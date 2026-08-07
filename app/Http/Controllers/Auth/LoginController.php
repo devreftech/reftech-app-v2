@@ -33,6 +33,16 @@ class LoginController extends Controller
     }
 
     /**
+     * Show the application's login form.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function showLoginForm()
+    {
+        return view('components.modal.login');
+    }
+
+    /**
      * Create a new controller instance.
      *
      * @return void
