@@ -1,0 +1,155 @@
+@extends('layouts.sales.app')
+@section('title', 'Product In')
+@section('content')
+    <h4 class="fw-bold py-3 mb-4">
+        Product In
+    </h4>
+    @if (Auth::user()->role == 'Admin')
+        <div class="row">
+            <div class="col-12 col-md-6">
+                <div class="card mb-3">
+                    <div class="card-datatable table-responsive pt-0">
+                        <table class="datatable-product-in-req-lokal table table-striped">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>ID</th>
+                                    <th>No. Product In</th>
+                                    <th>No DO</th>
+                                    <th>Date</th>
+                                    <th>VAT</th>
+                                    <th>Qty</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card mb-3">
+                    <div class="card-datatable table-responsive pt-0">
+                        <table class="datatable-product-in-req-import table table-striped">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>ID</th>
+                                    <th>No. Product In</th>
+                                    <th>No DO</th>
+                                    <th>Date</th>
+                                    <th>VAT</th>
+                                    <th>Qty</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+    @if (in_array(Auth::user()->id, [18, 20]))
+        <div class="card mb-3">
+            <div class="card-datatable table-responsive pt-0">
+                <table class="datatable-product-in-req-logistic table table-striped">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>ID</th>
+                            <th>No. Product In</th>
+                            <th>No DO</th>
+                            <th>Category</th>
+                            <th>Date</th>
+                            <th>Qty</th>
+                            <th>Assign</th>
+                        </tr>
+                    </thead>
+                    <tfoot>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th>No. Product In</th>
+                            <th>No DO</th>
+                            <th>Category</th>
+                            <th>Date</th>
+                            <th>Qty</th>
+                            <th>Assign</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    @endif
+    @if (Auth::user()->role != 'Logistic')
+        <div class="card mb-3">
+            <div class="card-datatable table-responsive pt-0">
+                <table class="datatable-product-in-lokal table table-striped">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th>ID</th>
+                            <th>Invoice</th>
+                            <th>Supplier</th>
+                            <th>Product</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>VAT</th>
+                            <th>Date</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-datatable table-responsive pt-0">
+                <table class="datatable-product-in-import table table-striped">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th>ID</th>
+                            <th>Invoice</th>
+                            <th>Supplier</th>
+                            <th>Product</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>VAT</th>
+                            <th>Date</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    @endif
+@endsection()
+
+@push('after-style')
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+    <link rel="stylesheet"
+        href="{{ asset('assets') }}/vendor/libs/datatables-checkboxes-jquery/datatables.checkboxes.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/animate-css/animate.css">
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-rowgroup-bs5/rowgroup.bootstrap5.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/formvalidation/dist/css/formValidation.min.css" />
+@endpush
+
+@push('after-script')
+    <script src="{{ asset('assets') }}/vendor/libs/moment/moment.js"></script>
+    <script src="{{ asset('assets') }}/vendor/libs/flatpickr/flatpickr.js"></script>
+    <script src="{{ asset('assets') }}/vendor/libs/formvalidation/dist/js/FormValidation.min.js"></script>
+    <script src="{{ asset('assets') }}/vendor/libs/formvalidation/dist/js/plugins/Bootstrap5.min.js"></script>
+    <script src="{{ asset('assets') }}/vendor/libs/formvalidation/dist/js/plugins/AutoFocus.min.js"></script>
+    <script src="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+@endpush
+
+@push('page-script')
+    <script src="{{ asset('assets') }}/js/tables-datatables-basic.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-product-in-lokal.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-product-in-import.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-product-in-req-lokal.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-product-in-req-import.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-product-in-req-logistic.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-product-in-logistic.js"></script>
+@endpush

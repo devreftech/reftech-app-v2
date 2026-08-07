@@ -1,0 +1,118 @@
+@page {
+    size: auto !important;
+    size: 240mm 330mm !important;
+    margin: 0mm !important;
+}
+@media print {
+    html,
+    body {
+        background: #fff !important;
+        -webkit-print-color-adjust:exact !important;
+        print-color-adjust:exact !important;
+    }
+
+    body > :not(.invoice-print) {
+        display: none !important;
+    }
+
+    .invoice-print {
+        font-size: 14px !important;
+    }
+    
+    .invoice-print p, .invoice-print pre, .invoice-print h5, .invoice-print h1, .invoice-print span {
+        color: black !important;
+    }
+
+    .invoice-print .title-invoice{
+        color: blue !important;
+    }
+
+    .invoice-print table {
+        /* max-width: fit-content !important; */
+        width: 100%;
+        font-size: 12px !important;
+    }
+    
+    .invoice-print table th{
+        color: black !important;
+        background-color: rgb(214, 214, 214) !important;
+    }
+
+    .invoice-print table .row-product {
+        border-bottom: 1px solid rgba(76, 78, 100, 0.5) !important;
+    }
+
+    .invoice-print table .total{
+        background-color: #dedede;
+    }
+    .invoice-print table .note{
+        background-color: #FBFBFB;
+    }
+    .invoice-print svg {
+        fill: #828393 !important;
+    }
+    .invoice-print img {
+        width: 60%;
+    }
+
+    .invoice-print .termc {
+        background-color: #FBFBFB !important;
+        font-size: 12px !important;
+    }
+
+    .invoice-print * {
+        border-color: rgba(76, 78, 100, 0.5) !important;
+        color: #828393 !important;
+    }
+    .invoice-print * .border-top {
+        border-top: 1px solid rgba(76, 78, 100, 0.5) !important;
+    }
+}
+
+@media screen {
+    html,
+    body {
+        background: #fff !important;
+    }
+
+    body > :not(.invoice-print) {
+        display: none !important;
+    }
+
+    .invoice-print {
+        font-size: 15px !important;
+    }
+
+    .invoice-print table {
+        font-size: 12px !important;
+    }
+
+    .invoice-print table .row-product {
+        border-bottom: 1px solid rgba(76, 78, 100, 0.5) !important;
+    }
+
+    .invoice-print svg {
+        fill: #828393 !important;
+    }
+    .invoice-print .img-logo {
+        width: 60%;
+    }
+    .invoice-print .img-reports {
+        width: 100%;
+    }
+    .invoice-print .termc {
+        font-size: 12px !important;
+    }
+
+    .invoice-print * {
+        border-color: rgba(76, 78, 100, 0.5) !important;
+        color: #828393 !important;
+    }
+    .invoice-print * .border-top {
+        border-top: 1px solid rgba(76, 78, 100, 0.5) !important;
+    }
+
+    .dark-style .invoice-print th {
+        color: #fff !important;
+    }
+}

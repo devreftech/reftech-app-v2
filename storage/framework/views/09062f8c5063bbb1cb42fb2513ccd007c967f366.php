@@ -1,0 +1,94 @@
+<form action="<?php echo e(route('action.crm', $existing->id)); ?>" method="post" enctype="multipart/form-data">
+    
+    <?php echo csrf_field(); ?>
+    <div class="modal animate__animated animate__fadeIn" id="createAction<?php echo e($existing->id); ?>" tabindex="-1"
+        style="display: none;" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="exampleModalLabel5">Create CRM</h4>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <?php if($errors->any()): ?>
+                        <div class="alert alert-danger">
+                            <ul>
+                                <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $error): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <li><?php echo e($error); ?></li>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                            </ul>
+                        </div>
+                    <?php endif; ?>
+                    <div class="row g-2 mb-3">
+                        <div class="col mb-2">
+                            
+                            <div class="form-floating form-floating-outline">
+                                <input class="form-control" type="date" id="date" name="date">
+                                <label for="date">Date</label>
+                            </div>
+                        </div>
+                        <div class="col mb-2">
+                            <div class="form-floating form-floating-outline">
+                                <input class="form-control" type="date" id="follow_up" name="follow_up">
+                                <label for="follow_up">Next Follow Up</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col mb-2">
+                            <div class="form-floating form-floating-outline">
+                                <select class="form-select" id="selectAction" aria-label="Default select example"
+                                    name="action">
+                                    <option disabled>----- Choose Action -----</option>
+                                    <option value="Phone Office">Phone Office</option>
+                                    <option value="WhatsApp">WhatsApp</option>
+                                </select>
+                                <label for="selectAction">Action</label>
+                            </div>
+                        </div>
+                        <div class="col mb-2">
+                            <div class="form-floating form-floating-outline">
+                                <select class="form-select" id="selectWeek" aria-label="Default select example"
+                                    name="week">
+                                    <option disabled>----- Choose Week -----</option>
+                                    <option value="1">Week 1</option>
+                                    <option value="2">Week 2</option>
+                                    <option value="3">Week 3</option>
+                                    <option value="4">Week 4</option>
+                                    <option value="5">Week 5</option>
+                                </select>
+                                <label for="selectWeek">Week</label>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <div class="form-floating form-floating-outline">
+                                <select class="form-select" id="selectStatus" aria-label="Default select example"
+                                    name="status">
+                                    <option disabled>----- Choose Status -----</option>
+                                    <option value="Responded">Responded</option>
+                                    <option value="Not Respon">Not Responded</option>
+                                </select>
+                                <label for="selectStatus">Status</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col mb-2">
+                            <div class="form-floating form-floating-outline">
+                                <input type="text" id="scheduleAnimation" class="form-control" name="note"
+                                    placeholder="Put Your Note Here...." value="-">
+                                <label for="scheduleAnimation">Note</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary waves-effect"
+                        data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary waves-effect waves-light">Save changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+<?php /**PATH /home/u877155683/domains/reftech.my.id/reftech.my.id/resources/views/pages/sales/activities/form-existing.blade.php ENDPATH**/ ?>

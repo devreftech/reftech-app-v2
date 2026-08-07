@@ -1,0 +1,66 @@
+<form action="<?php echo e(@$akurasi ? route('update.salon', @$akurasi->id) : route('store.salon')); ?>" method="post"
+    enctype="multipart/form-data">
+    <?php echo csrf_field(); ?>
+    <div class="modal-onboarding modal fade animate__animated" id="accurData" tabindex="-1" style="display: none;"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content text-center">
+                <div class="modal-header border-0">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="onboarding-content mb-0">
+                        <h4 class="onboarding-title text-body">Product Overview</h4>
+                        <form>
+                            <div class="row align-items-center">
+                                <h5 class="text-center mb-3">Target 5.0</h5>
+                                <div class="col-4 mb-3">
+                                    <h5 class="text-start m-0"><?php echo e($salesID == 16 ? 'Airend Center' : 'Part Compressor'); ?></h5>
+                                </div>
+                                <div class="col-8 mb-3">
+                                    <input class="form-control form-control-lg" type="text" placeholder="Target"
+                                        id="airend" name="airend" oninput="validateFloatInputAkurasi(this)"
+                                        maxlength="4"
+                                        value="<?php echo e(@$akurasi->airend ? str_replace('.', ',', $akurasi->airend) : '0'); ?>">
+                                </div>
+                                <?php if($salesID == 16): ?>
+                                    <div class="col-4 mb-3">
+                                        <h5 class="text-start m-0">Kojisha</h5>
+                                    </div>
+                                    <div class="col-8 mb-3">
+                                        <input class="form-control form-control-lg" type="text" placeholder="Target"
+                                            id="kojisha" name="kojisha" oninput="validateFloatInputAkurasi(this)"
+                                            maxlength="4"
+                                            value="<?php echo e(@$akurasi->kojisha ? str_replace('.', ',', $akurasi->kojisha) : '0'); ?>">
+                                    </div>
+                                    <div class="col-12 mb-3">
+                                        <div class="card text-center bg-label-secondary">
+                                            <div class="card-body">
+                                                <input type="text" name="average" id="average"
+                                                    value="<?php echo e(@$akurasi->average ? str_replace('.', ',', $akurasi->average) : '0'); ?>"
+                                                    hidden>
+                                                <h5>Average</h5>
+                                                <p id="averageText">
+                                                    <?php echo e(@$akurasi->average ? str_replace('.', ',', $akurasi->average) : '0'); ?>
+
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                                <input type="text" name="type" id="type" value="Akurasi" hidden>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">
+                        Close
+                    </button>
+                    <button type="submit" class="btn btn-primary waves-effect waves-light">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+<?php /**PATH /home/u877155683/domains/reftech.my.id/reftech.my.id/resources/views/components/modal/onlineSales/akurasi-data.blade.php ENDPATH**/ ?>
