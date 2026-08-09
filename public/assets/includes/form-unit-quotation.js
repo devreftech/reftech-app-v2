@@ -2,6 +2,14 @@ $(function () {
 
     var rowIndex = 0;
 
+    // Textarea deskripsi custom-row rows="2" fixed — template PM (mis. Scope of Work
+    // PM4) bisa puluhan baris, jadi harus auto-expand supaya gak keliatan "kepotong".
+    function autoResizeDescTextarea(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+    }
+
     // ── Spec labels per field ─────────────────────────────────────────────
     var SPEC_LABELS = {
         brand:            'Brand',
@@ -271,6 +279,7 @@ $(function () {
 
         $row.find('input[name*="[label]"]').val(item.label || '');
         $row.find('textarea[name*="[description]"], input[name*="[description]"]').val(item.description || '');
+        autoResizeDescTextarea($row.find('.field-description')[0]);
         $row.find('.field-qty').val(item.qty || 1);
 
         var $infoQty = $row.find('select[name*="[info_qty]"]');
@@ -573,6 +582,11 @@ $(function () {
             updateRowAmount($row);
         });
 
+        $row.find('.field-description').on('input', function () {
+            autoResizeDescTextarea(this);
+        });
+        autoResizeDescTextarea($row.find('.field-description')[0]);
+
         $row.find('.rupiah-input').on('input', function () {
             var raw = $(this).val().replace(/\./g, '');
             $(this).val(formatRupiah(raw));
@@ -714,6 +728,29 @@ $(function () {
                 $addrSelect.val(selectedVal).trigger('change');
             }
 
+            // Auto-set Payment Term from Sales Payment Template (Client specific or Default)
+            var targetPayment = data.clientPayment || data.defaultPayment || null;
+            if (targetPayment && !window.EDIT_PAYMENT) {
+                var $paymentSelect = $('#payment-select');
+                if ($paymentSelect.length) {
+                    var hasMatchingOption = false;
+                    $paymentSelect.find('option').each(function () {
+                        if ($(this).val() === targetPayment) {
+                            hasMatchingOption = true;
+                            return false;
+                        }
+                    });
+
+                    if (hasMatchingOption) {
+                        $paymentSelect.val(targetPayment).trigger('change');
+                    } else {
+                        $paymentSelect.val('manual').trigger('change');
+                        $('#input-payment-manual').val(targetPayment);
+                        $('#input-payment-hidden').val(targetPayment);
+                    }
+                }
+            }
+
             // Clear edit variables so subsequent client changes don't re-select old data
             window.EDIT_PIC_ID = null;
             window.EDIT_PLANT_ID = null;
@@ -748,6 +785,39 @@ $(function () {
 
     $('#input-address-manual').on('input', function () {
         $('#input-address-hidden').val($(this).val());
+    });
+
+    // ── Payment dropdown with custom "isi sendiri" option ─────────────────
+    var $paymentSelect = $('#payment-select');
+    if ($paymentSelect.length) {
+        var editPayment = window.EDIT_PAYMENT || null;
+        var presetValues = $paymentSelect.find('option').map(function () { return $(this).val(); }).get();
+
+        if (editPayment && presetValues.indexOf(editPayment) === -1) {
+            $paymentSelect.val('manual');
+            $('#manual-payment-wrapper').show();
+            $('#input-payment-manual').val(editPayment);
+            $('#input-payment-hidden').val(editPayment);
+        } else if (editPayment) {
+            $paymentSelect.val(editPayment);
+            $('#input-payment-hidden').val(editPayment);
+        }
+        window.EDIT_PAYMENT = null;
+    }
+
+    $('#payment-select').on('change', function () {
+        var val = $(this).val();
+        if (val === 'manual') {
+            $('#manual-payment-wrapper').show();
+            $('#input-payment-hidden').val($('#input-payment-manual').val());
+        } else {
+            $('#manual-payment-wrapper').hide();
+            $('#input-payment-hidden').val(val);
+        }
+    });
+
+    $('#input-payment-manual').on('input', function () {
+        $('#input-payment-hidden').val($(this).val());
     });
 
     // ── Auto-calculate week from date ─────────────────────────────────────
@@ -839,14 +909,255 @@ $(function () {
         }
     }
 
+    // ── Load Template PM (Unit Global) — dipanggil dari modal, bukan sessionStorage lagi ──
+    var $pmLoadModal = $('#modal-load-pm-template');
+    if ($pmLoadModal.length) {
+        var pmLoadSelectedUnitId = null;
+        var pmLoadSelectedLevel = null;
+        var pmLoadPreviewData = null;
+
+        $('#pm-load-unit-select').select2({
+            dropdownParent: $pmLoadModal,
+            placeholder: 'Cari unit (SKU / Brand / Model)...',
+            minimumInputLength: 1,
+            ajax: {
+                url: '/unit-global/search',
+                dataType: 'json',
+                delay: 300,
+                data: function (params) { return { q: params.term }; },
+                processResults: function (data) {
+                    return {
+                        results: $.map(data, function (u) {
+                            return {
+                                id: u.id,
+                                text: (u.brand || '') + ' — ' + (u.model || u.sku || '') + ' (' + (u.sku || '') + ')'
+                            };
+                        })
+                    };
+                }
+            }
+        });
+
+        // Ubah note master (bebas format: plain line, "- " dash, dst) jadi list ber-bullet "• "
+        // biar konsisten sama auto-bullet textarea Note di form ini.
+        function pmFormatNoteBullets(text) {
+            var BULLET = '• ';
+            return String(text).split(/\r?\n/).map(function (line, idx) {
+                var trimmed = line.trim().replace(/^[-*•]\s*/, '');
+                if (!trimmed) return '';
+                if (/^Scope of Work\s*:?/i.test(trimmed) || (trimmed.endsWith(':') && idx === 0)) {
+                    return trimmed;
+                }
+                return BULLET + trimmed;
+            }).filter(function (line) { return line !== ''; }).join('\n');
+        }
+
+        function pmLoadTryFetch() {
+            $('#pm-load-preview').hide();
+            $('#btn-pm-load-confirm').prop('disabled', true);
+            pmLoadPreviewData = null;
+
+            if (!pmLoadSelectedUnitId || !pmLoadSelectedLevel) return;
+
+            $.ajax({
+                url: '/unit-global/' + pmLoadSelectedUnitId + '/pm-template',
+                method: 'GET',
+                data: { level: pmLoadSelectedLevel },
+                success: function (data) {
+                    pmLoadPreviewData = data;
+                    var count = data.items.length;
+                    $('#pm-load-preview').text(count === 0
+                        ? 'Template level ini masih kosong — susun dulu di halaman Unit Global.'
+                        : count + ' item tersimpan di template ini.'
+                    ).show();
+                    $('#btn-pm-load-confirm').prop('disabled', count === 0);
+                },
+                error: function () {
+                    Swal.fire({ icon: 'error', title: 'Gagal memuat template', text: 'Unit ini belum punya template PM untuk level tersebut.' });
+                }
+            });
+        }
+
+        $('#pm-load-unit-select').on('select2:select', function (e) {
+            pmLoadSelectedUnitId = e.params.data.id;
+            pmLoadTryFetch();
+        });
+
+        $(document).on('click', '.pm-load-level-btn', function () {
+            $('.pm-load-level-btn').removeClass('active');
+            $(this).addClass('active');
+            pmLoadSelectedLevel = $(this).data('level');
+            pmLoadTryFetch();
+        });
+
+        $('#btn-pm-load-confirm').on('click', function () {
+            if (!pmLoadPreviewData) return;
+
+            // Auto-set Type Quote to "Service" when loading PM template
+            $('#select-type, select[name="type"]').val('Service').trigger('change');
+
+            // Auto-set Title / Description to "Level PM | Nama Unit" (e.g. PM1 | KAESER BSD 71)
+            var select2Data = $('#pm-load-unit-select').select2('data');
+            var unitText = '';
+            if (select2Data && select2Data.length > 0 && select2Data[0].text) {
+                unitText = select2Data[0].text.replace(/\s*\([^)]*\)\s*$/, '').replace(/\s*—\s*/, ' ').trim();
+            }
+            if (pmLoadSelectedLevel && unitText) {
+                var generatedTitle = pmLoadSelectedLevel + ' | ' + unitText;
+                $('input[name="title"]').val(generatedTitle).trigger('change');
+            }
+
+            // Delivery Process: PM3/PM4 punya Non-Consumable Part, jadi dipecah 2 baris.
+            // Level lain (PM1/PM2) biarkan default "Ready stock".
+            if (pmLoadSelectedLevel === 'PM3' || pmLoadSelectedLevel === 'PM4') {
+                $('#delivery').val('Consumable Part ( Ready Stock )\nNon-Consumable Part ( Ready Stock )').trigger('change');
+            }
+
+            // Warranty: PM1, PM2, PM3 disembunyikan & dikosongkan. PM4 ditampilkan & diisi "3 Month".
+            if (pmLoadSelectedLevel === 'PM1' || pmLoadSelectedLevel === 'PM2' || pmLoadSelectedLevel === 'PM3') {
+                $('#warranty-wrapper').hide();
+                $('#warranty').val('');
+            } else if (pmLoadSelectedLevel === 'PM4') {
+                $('#warranty-wrapper').show();
+                $('#warranty').val('3 Month');
+            }
+
+            // Replay urutan item template apa adanya — head title, part, custom (termasuk jasa
+            // service, yang sudah jadi item biasa di template, bukan auto-generate lagi).
+            // Item type "part" (ada id_equivalent) dipasang sebagai baris Spare Part beneran
+            // (bukan custom text) supaya id_equivalent kebawa & terkoneksi ke logic baca stok
+            // saat quotation ini nanti dikonversi jadi PO.
+            // "Preventive Maintenance PM1" -> "Preventive Maintenance 1" (begitu juga PM2/PM3/PM4),
+            // dipakai baik utk head title maupun item jasa service biasa di bawahnya.
+            function pmSimplifyLevelLabel(label) {
+                return (label || '').replace(/\bPM([1-4])\b/i, '$1');
+            }
+
+            $.each(pmLoadPreviewData.items, function (i, item) {
+                if (item.type === 'header') {
+                    addHeaderRowFromData({ label: pmSimplifyLevelLabel(item.label) });
+                } else if (item.type === 'part' && item.id_equivalent && item.equivalent) {
+                    // Judul "Brand - PN" sudah otomatis direkonstruksi halaman detail quotation
+                    // dari relasi equivalent, jadi field label di sini diisi DESKRIPSI produk
+                    // (konvensi yang sama dipakai saat pilih Spare Part manual) — bukan "Brand PN"
+                    // lagi, supaya gak dobel nongol jadi "judul" pas ditampilkan.
+                    addUnitRowFromData({
+                        id_equivalent: item.id_equivalent,
+                        equivalent: item.equivalent,
+                        label: item.description || item.equivalent.product_desc || item.label || 'Item',
+                        qty: item.qty,
+                        info_qty: item.info_qty || 'Pcs',
+                        price: item.price,
+                        disc: 0
+                    });
+                } else {
+                    addCustomRowFromData({
+                        label: pmSimplifyLevelLabel(item.label) || 'Item',
+                        description: pmFormatNoteBullets(item.description || ''),
+                        qty: item.qty,
+                        info_qty: item.info_qty || 'Pcs',
+                        price: item.price,
+                        disc: 0
+                    });
+                }
+            });
+
+            // Note master per level (dari power_service_prices.note_pmX) — selalu timpa isi
+            // textarea Note yang ada saat ini, diformat ber-bullet biar selaras sama gaya
+            // auto-bullet textarea Note (lihat BULLET di script inline halaman ini).
+            if (pmLoadPreviewData.note) {
+                $('#note').val(pmFormatNoteBullets(pmLoadPreviewData.note)).trigger('input');
+            }
+
+            $pmLoadModal.modal('hide');
+            $('#pm-load-unit-select').val(null).trigger('change');
+            $('.pm-load-level-btn').removeClass('active');
+            $('#pm-load-preview').hide();
+            pmLoadSelectedUnitId = null;
+            pmLoadSelectedLevel = null;
+            pmLoadPreviewData = null;
+        });
+    }
+
     // Format nilai diskon awal (mode edit) kalau tipenya nominal Rupiah.
     // Nilai dari server berbentuk decimal string ("300000.00") — parse dulu
     // sebagai float sebelum diformat, supaya titik desimalnya tidak ikut
     // dianggap ribuan oleh formatRupiah.
+    // ── Dynamic Quotation Numbering by Type ──────────────────────────────
+    var TYPE_PREFIXES = {
+        'Unit':      'U',
+        'Rental':    'R',
+        'Project':   'PR',
+        'Parts':     'P',
+        'Service':   'S',
+        'Piping':    'PIP',
+        'Air Audit': 'AA'
+    };
+
+    $('#select-type').on('change', function () {
+        var type = $(this).val();
+        var prefix = TYPE_PREFIXES[type] || 'PU';
+        var $noQuote = $('input[name="no_quote"]');
+        var currentNo = $noQuote.val();
+
+        if (currentNo) {
+            var updatedNo = currentNo.replace(/^(\d+)-([A-Z0-9]+)(\/.*)$/i, function (match, seq, oldPrefix, rest) {
+                return seq + '-' + prefix + rest;
+            });
+            $noQuote.val(updatedNo);
+        }
+    });
+
     if ($('#select-diskon-type').val() === 'amount') {
         var initialDiskon = parseFloat($('#input-diskon').val()) || 0;
         $('#input-diskon').val(formatRupiah(Math.round(initialDiskon)));
     }
+
+    // ── Reorder Items Logic (Drag & Drop + Up/Down Buttons) ──────────────
+    function recalcHeaderPrefixes() {
+        var headerCount = 0;
+        $('#line-items-container .unit-row[data-type="header"]').each(function () {
+            var $input = $(this).find('.field-label');
+            var val = $input.val() || '';
+            var prefix = String.fromCharCode(65 + (headerCount % 26)) + '. ';
+            var cleanVal = val.replace(/^[A-Z]\.\s*/i, '');
+            $input.val(prefix + cleanVal);
+            headerCount++;
+        });
+    }
+
+    var lineItemsContainer = document.getElementById('line-items-container');
+    if (lineItemsContainer && typeof Sortable !== 'undefined') {
+        Sortable.create(lineItemsContainer, {
+            handle: '.btn-drag-handle',
+            animation: 150,
+            ghostClass: 'bg-light-primary',
+            onEnd: function () {
+                recalcHeaderPrefixes();
+                recalcSummary();
+            }
+        });
+    }
+
+    $(document).on('click', '.btn-move-up', function () {
+        var $row = $(this).closest('.unit-row');
+        var $prev = $row.prev('.unit-row');
+        if ($prev.length) {
+            $row.insertBefore($prev);
+            recalcHeaderPrefixes();
+            recalcSummary();
+        }
+    });
+
+    $(document).on('click', '.btn-move-down', function () {
+        var $row = $(this).closest('.unit-row');
+        var $next = $row.next('.unit-row');
+        if ($next.length) {
+            $row.insertAfter($next);
+            recalcHeaderPrefixes();
+            recalcSummary();
+        }
+    });
 
     toggleEmptyState();
     recalcSummary();

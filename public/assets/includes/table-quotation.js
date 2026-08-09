@@ -151,10 +151,10 @@ $(function () {
                             '<i class="mdi mdi-plus me-1"></i>Quotation' +
                         '</button>' +
                         '<ul class="dropdown-menu dropdown-menu-end">' +
-                            '<li><a class="dropdown-item" href="' + route("create.quotation") + '">Quotation Parts</a></li>' +
-                            '<li><a class="dropdown-item" href="' + route("create-service.quotation") + '">Quotation General</a></li>' +
-                            '<li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#chooseMachine">Quotation Service</a></li>' +
-                            '<li><a class="dropdown-item" href="' + route("unit-quotation.create") + '">Quotation Unit</a></li>' +
+                            '<li><a class="dropdown-item disabled text-muted" href="javascript:void(0)" style="pointer-events:none; opacity:0.6;">Quotation Parts <span class="badge bg-label-secondary ms-1" style="font-size:9px;">Nonaktif</span></a></li>' +
+                            '<li><a class="dropdown-item disabled text-muted" href="javascript:void(0)" style="pointer-events:none; opacity:0.6;">Quotation General <span class="badge bg-label-secondary ms-1" style="font-size:9px;">Nonaktif</span></a></li>' +
+                            '<li><a class="dropdown-item disabled text-muted" href="javascript:void(0)" style="pointer-events:none; opacity:0.6;">Quotation Service <span class="badge bg-label-secondary ms-1" style="font-size:9px;">Nonaktif</span></a></li>' +
+                            '<li><a class="dropdown-item fw-semibold" href="' + route("unit-quotation.create") + '"><i class="mdi mdi-sparkles text-warning me-1"></i>Smart Quote <span class="badge bg-danger ms-1" style="font-size:9px;">New</span></a></li>' +
                         '</ul>' +
                     '</div>'
                 );
