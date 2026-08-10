@@ -13,6 +13,7 @@ use App\Models\SalesTargetHistory;
 use App\Models\Target;
 use App\Models\UnitQuotation;
 use App\Models\User;
+use App\Services\OverviewService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,6 +21,12 @@ use Illuminate\Support\Facades\DB;
 
 class OverviewController extends Controller
 {
+    protected $overviewService;
+
+    public function __construct(OverviewService $overviewService)
+    {
+        $this->overviewService = $overviewService;
+    }
     /**
      * Display a listing of the resource.
      *

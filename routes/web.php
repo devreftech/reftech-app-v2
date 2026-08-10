@@ -192,7 +192,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/leads/send-intro/{id}', [LeadsController::class, 'sendIntroEmail'])->name('leads.send-intro');
 
     // Route For Email Templates
-    Route::resource('/email-templates', EmailTemplateController::class);
+    // Route::resource('/email-templates', EmailTemplateController::class);
 
     // Route For Forecast
     Route::get('/forecast', [ForecastController::class, 'index'])->name('forecast.index');

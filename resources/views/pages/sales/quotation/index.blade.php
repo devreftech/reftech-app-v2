@@ -284,12 +284,6 @@
                     </button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#admin-tab-unit-quotation" type="button">
-                        <i class="mdi mdi-sparkles me-1 text-warning"></i>Smart Quote
-                        <span class="badge rounded-pill bg-primary ms-1" id="admin-badge-unit-quotation">-</span>
-                    </button>
-                </li>
-                <li class="nav-item">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#admin-tab-hot" type="button">
                         <i class="mdi mdi-fire me-1"></i>Hot Prospect
                         <span class="badge rounded-pill bg-danger ms-1" id="admin-badge-hot">-</span>
@@ -332,24 +326,6 @@
                     </div>
                 </div>
 
-                {{-- Admin Tab 2: Quotation Unit --}}
-                <div class="tab-pane fade" id="admin-tab-unit-quotation">
-                    <div class="table-responsive">
-                        <table class="datatable-unit-quotation-admin table table-bordered" data-badge="admin-badge-unit-quotation">
-                            <thead>
-                                <tr>
-                                    <th class="text-center">No. Quotation</th>
-                                    <th>Client</th>
-                                    <th>Description</th>
-                                    <th class="text-center">Date</th>
-                                    <th class="text-center">Total</th>
-                                    <th class="text-center">Status</th>
-                                    <th class="text-center" style="width:48px;"></th>
-                                </tr>
-                            </thead>
-                        </table>
-                    </div>
-                </div>
 
                 {{-- Admin Tab 3: Hot Prospect --}}
                 <div class="tab-pane fade" id="admin-tab-hot">
@@ -485,7 +461,6 @@
     <script src="{{ asset('assets') }}/includes/table-quotation-archive.js"></script>
     <script src="{{ asset('assets') }}/includes/table-unit-quotation.js"></script>
     <script src="{{ asset('assets') }}/includes/table-quotation-admin-tab.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-unit-quotation-admin.js"></script>
     <script src="{{ asset('assets') }}/includes/table-hot-prospect-admin.js"></script>
     <script src="{{ asset('assets') }}/includes/table-po-admin-tab.js"></script>
     <script src="{{ asset('assets') }}/includes/table-loss-admin-tab.js"></script>
@@ -555,7 +530,7 @@
         window.adminSalesFilter = '';
         window.adminQuotationYearFilter = $('#admin-year-filter').val() || 'all';
         var reloadAdminTables = function () {
-            ['dtAdminQuotation', 'dtAdminUnitQuotation', 'dtAdminHot', 'dtAdminPo', 'dtAdminLoss'].forEach(function (key) {
+            ['dtAdminQuotation', 'dtAdminHot', 'dtAdminPo', 'dtAdminLoss'].forEach(function (key) {
                 if (window[key]) window[key].ajax.reload();
             });
         };

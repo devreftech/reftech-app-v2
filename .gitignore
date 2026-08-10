@@ -22,3 +22,10 @@ leads-project.zip
 public/asset/po/
 public/asset/facilities/
 public/asset/machines/
+
+# Database Dumps & Scratch
+*.sql
+*.sql.gz
+*.gz
+storage/scratch/
+

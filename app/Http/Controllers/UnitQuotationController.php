@@ -863,7 +863,8 @@ class UnitQuotationController extends Controller
 
     private function saveDetails(int $quoteId, array $items): void
     {
-        foreach ($items as $i => $item) {
+        $sortOrder = 0;
+        foreach ($items as $item) {
             $isHeader = (($item['type'] ?? '') === 'header' || ($item['type'] ?? '') === 'heading');
             $qty      = $isHeader ? 0 : floatval($item['qty']   ?? 1);
             $price    = $isHeader ? 0 : floatval($item['price'] ?? 0);
@@ -884,7 +885,7 @@ class UnitQuotationController extends Controller
                 'price'             => $price,
                 'disc'              => $disc,
                 'amount'            => $amount,
-                'sort_order'        => $i,
+                'sort_order'        => $sortOrder++,
             ]);
         }
     }

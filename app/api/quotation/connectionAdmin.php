@@ -24,7 +24,7 @@ if (Auth::check()) {
         LEFT JOIN pic p on p.id = q.id_pic
         LEFT JOIN client c on c.id = p.id_client
         INNER JOIN users u on u.id = q.id_sales
-        WHERE q.status IN (20,30,40,60,80) AND q.level = '1' AND q.is_primary = '1'AND q.type != 'Unit'
+        WHERE q.status IN (20,30,40,60,80) AND q.level = '1' AND q.is_primary = '1'
         GROUP BY primary_id ORDER BY q.expired_date ASC";
 
         $stmt = $pdo->prepare($query);
