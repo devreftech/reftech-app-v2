@@ -23,7 +23,7 @@
                 </table>
             </div>
         </div>
-    @elseif(Auth::user()->role == 'Admin')
+    @elseif(Auth::user()->role == 'Admin' || Auth::user()->role == 'Sales Manager')
         <h4 class="fw-bold py-3 mb-4">
             <span class="text-muted fw-light">Service Department /</span> Service Reports
         </h4>

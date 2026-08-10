@@ -238,11 +238,22 @@
                                 <label class="col-sm-4 col-form-label text-muted small fw-semibold" for="payment-select">Payment</label>
                                 <div class="col-sm-8">
                                     <select class="form-select form-select-sm" id="payment-select">
-                                        <option value="Cash Before Delivery">Cash Before Delivery</option>
-                                        <option value="DP 50% & BP 50%">DP 50% & BP 50%</option>
-                                        <option value="DP 30% & BP 70%">DP 30% & BP 70%</option>
-                                        <option value="14 Days after invoice release">14 Days after invoice release</option>
-                                        <option value="30 Days after invoice release">30 Days after invoice release</option>
+                                        @if(isset($paymentTemplates) && count($paymentTemplates) > 0)
+                                            <optgroup label="Template Sales">
+                                                @foreach($paymentTemplates as $pt)
+                                                    <option value="{{ $pt->payment_term }}">
+                                                        {{ $pt->name }} {{ $pt->client ? '('.$pt->client->company.')' : '' }}
+                                                    </option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endif
+                                        <optgroup label="Standar System">
+                                            <option value="Cash Before Delivery">Cash Before Delivery</option>
+                                            <option value="DP 50% & BP 50%">DP 50% & BP 50%</option>
+                                            <option value="DP 30% & BP 70%">DP 30% & BP 70%</option>
+                                            <option value="14 Days after invoice release">14 Days after invoice release</option>
+                                            <option value="30 Days after invoice release">30 Days after invoice release</option>
+                                        </optgroup>
                                         <option value="manual">-- Custom (Isi Sendiri) --</option>
                                     </select>
                                     <input type="hidden" name="payment" id="input-payment-hidden" value="{{ old('payment', $quote->payment) }}">

@@ -109,29 +109,28 @@ $(function () {
                         if (type !== "display") return data;
                         var tip = full["tip"];
                         var $status = {
-                            20:    { title: "Send WA / Email",     pct: "20%",   class: "bg-label-secondary", colorTip: "tooltip-secondary" },
-                            30:    { title: "Inquiry Accepted",    pct: "30%",   class: "bg-label-dark",      colorTip: "tooltip-dark" },
-                            40:    { title: "Progress Follow Up",  pct: "40%",   class: "bg-label-info",      colorTip: "tooltip-info" },
-                            60:    { title: "Negotiation / Revisi",pct: "60%",   class: "bg-label-primary",   colorTip: "tooltip-primary" },
-                            80:    { title: "Hot Prospect",        pct: "80%",   class: "bg-label-warning",   colorTip: "tooltip-warning" },
-                            90:    { title: "Hold",                pct: "Hold",  class: "bg-warning",         colorTip: "tooltip-warning" },
-                            100:   { title: "Done PO",             pct: "100%",  class: "bg-label-success",   colorTip: "tooltip-success" },
-                            0:     { title: "Loss",                pct: "0%",    class: "bg-label-danger",    colorTip: "tooltip-danger" },
-                            draft:        { title: "Draft",        pct: null, class: "bg-label-secondary", colorTip: "" },
-                            sent:         { title: "Sent",         pct: null, class: "bg-label-info",      colorTip: "" },
-                            negotiation:  { title: "Negotiation",  pct: null, class: "bg-label-warning",   colorTip: "" },
-                            revision:     { title: "Revisi",       pct: null, class: "bg-label-primary",   colorTip: "" },
-                            hot_prospect: { title: "Hot Prospect", pct: null, class: "bg-label-warning",   colorTip: "" },
-                            po_received:  { title: "PO Received",  pct: null, class: "bg-label-success",   colorTip: "" },
-                            loss:         { title: "Loss",         pct: null, class: "bg-label-danger",    colorTip: "" },
+                            20:    { title: "Send WA / Email",     class: "bg-label-secondary", colorTip: "tooltip-secondary" },
+                            30:    { title: "Inquiry Accepted",    class: "bg-label-dark",      colorTip: "tooltip-dark" },
+                            40:    { title: "Follow Up",           class: "bg-label-info",      colorTip: "tooltip-info" },
+                            60:    { title: "Negotiation / Revisi",class: "bg-label-primary",   colorTip: "tooltip-primary" },
+                            80:    { title: "Hot Prospect",        class: "bg-label-warning",   colorTip: "tooltip-warning" },
+                            90:    { title: "Hold",                class: "bg-warning",         colorTip: "tooltip-warning" },
+                            100:   { title: "Done PO",             class: "bg-label-success",   colorTip: "tooltip-success" },
+                            0:     { title: "Loss",                class: "bg-label-danger",    colorTip: "tooltip-danger" },
+                            draft:        { title: "Draft",        class: "bg-label-secondary", colorTip: "" },
+                            sent:         { title: "Sent",         class: "bg-label-info",      colorTip: "" },
+                            negotiation:  { title: "Negotiation",  class: "bg-label-warning",   colorTip: "" },
+                            revision:     { title: "Revisi",       class: "bg-label-primary",   colorTip: "" },
+                            hot_prospect: { title: "Hot Prospect", class: "bg-label-warning",   colorTip: "" },
+                            po_received:  { title: "PO Received",  class: "bg-label-success",   colorTip: "" },
+                            loss:         { title: "Loss",         class: "bg-label-danger",    colorTip: "" },
                         };
                         var s = $status[data];
                         if (!s) return data;
-                        var label = s.pct ? s.title + " · " + s.pct : s.title;
                         var tooltip = s.colorTip
                             ? ' data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="' + s.colorTip + '" title="' + (tip || "") + '"'
                             : "";
-                        var badge = '<span class="badge rounded-pill ' + s.class + ' cursor-pointer"' + tooltip + '>' + label + "</span>";
+                        var badge = '<span class="badge rounded-pill ' + s.class + ' cursor-pointer"' + tooltip + '>' + s.title + "</span>";
                         if (full["row_type"] === "unit") {
                             badge += ' <span class="badge bg-label-info ms-1">Smart</span>';
                         }

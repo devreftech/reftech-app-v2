@@ -2569,6 +2569,30 @@
                 </ul>
             </li>
 
+            <li class="menu-item {{ request()->is('forecast*') ? 'open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <i class="menu-icon tf-icons mdi mdi-chart-box-plus-outline"></i>
+                    <div data-i18n="Forecast">Forecast</div>
+                </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('forecast') && !request()->has('view') ? 'active' : '' }}">
+                        <a href="{{ route('forecast.index') }}" class="menu-link">
+                            <div data-i18n="Dashboard Forecast">Dashboard Forecast</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('forecast/setup') ? 'active' : '' }}">
+                        <a href="{{ route('forecast.setup') }}" class="menu-link">
+                            <div data-i18n="Quick Setup Mesin">Quick Setup Mesin</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('forecast/contracts') ? 'active' : '' }}">
+                        <a href="{{ route('forecast.contracts') }}" class="menu-link">
+                            <div data-i18n="Jadwal Kontrak Servis">Jadwal Kontrak Servis</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Sales Order</span>
             </li>
@@ -2588,6 +2612,32 @@
                 <a href="{{ route('return.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-archive-cancel"></i>
                     <div data-i18n="Return">Return</div>
+                </a>
+            </li>
+
+            <li class="menu-header fw-light mt-4">
+                <span class="menu-header-text">Service Departement</span>
+            </li>
+            <li class="menu-item {{ request()->is('service-reports') || request()->is('service-reports/*') ? 'active' : '' }}">
+                <a href="{{ route('service-reports.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-list-box-outline"></i>
+                    <div data-i18n="Service Report">Service Report</div>
+                </a>
+            </li>
+
+            <li class="menu-header fw-light mt-4">
+                <span class="menu-header-text">E-Stock</span>
+            </li>
+            <li class="menu-item {{ request()->is('product') || request()->is('product/*') ? 'active' : '' }}">
+                <a href="{{ route('product.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-package-variant"></i>
+                    <div data-i18n="Spare Part">Spare Part (Stok Part)</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('unit') || request()->is('unit/*') ? 'active' : '' }}">
+                <a href="{{ route('unit.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-desktop-tower"></i>
+                    <div data-i18n="Data Unit">Data Unit (Stok Unit)</div>
                 </a>
             </li>
 

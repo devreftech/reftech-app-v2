@@ -46,7 +46,7 @@
                                                 <option value="30" {{ $quote->status == '30' ? 'selected' : '' }}>
                                                     Inquiry Accepted <small class="text-muted">30%</small></option>
                                                 <option value="40" {{ $quote->status == '40' ? 'selected' : '' }}>
-                                                    Progress Follow Up <small class="text-muted">40%</small>
+                                                    Follow Up <small class="text-muted">40%</small>
                                                 </option>
                                                 <option value="60" {{ $quote->status == '60' ? 'selected' : '' }}>
                                                     Negotiation/Revisi <small class="text-muted">60%</small>

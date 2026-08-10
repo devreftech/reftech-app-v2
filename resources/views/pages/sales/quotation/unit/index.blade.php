@@ -9,9 +9,9 @@
                         <div class="d-flex justify-content-between align-items-start card-widget-1 border-end pb-3 pb-sm-0">
                             <div>
                                 <p class="mb-2">Quotation</p>
-                                <h4 class="mb-2">Rp {{ number_format(Auth::user()->role == "Admin" ? $forecastAdmin : $forecast, 2, ',', '.') }}</h4>
+                                <h4 class="mb-2">Rp {{ number_format(in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $forecastAdmin : $forecast, 2, ',', '.') }}</h4>
                                 <p class="mb-0"><span
-                                        class="badge rounded-pill bg-label-success">{{ (Auth::user()->role == "Admin" ? $quotationAdmin : $quotation)->whereIn('status', ['20', '30', '40', '60', '80'])->count() }}</span>
+                                        class="badge rounded-pill bg-label-success">{{ (in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $quotationAdmin : $quotation)->whereIn('status', ['20', '30', '40', '60', '80'])->count() }}</span>
                                 </p>
                             </div>
                             <div class="avatar me-sm-4">
@@ -26,9 +26,9 @@
                         <div class="d-flex justify-content-between align-items-start card-widget-2 border-end pb-3 pb-sm-0">
                             <div>
                                 <p class="mb-2">Hot Prospect</p>
-                                <h4 class="mb-2">Rp {{ number_format(Auth::user()->role == "Admin" ? $prospectAdmin : $prospect, 2, ',', '.') }}</h4>
+                                <h4 class="mb-2">Rp {{ number_format(in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $prospectAdmin : $prospect, 2, ',', '.') }}</h4>
                                 <p class="mb-0"><span
-                                        class="badge rounded-pill bg-label-success">{{ (Auth::user()->role == "Admin" ? $quotationAdmin : $quotation)->where('status', '80')->count() }}</span>
+                                        class="badge rounded-pill bg-label-success">{{ (in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $quotationAdmin : $quotation)->where('status', '80')->count() }}</span>
                                 </p>
                             </div>
                             <div class="avatar me-lg-4">
@@ -43,9 +43,9 @@
                         <div class="d-flex justify-content-between align-items-start border-end pb-3 pb-sm-0 card-widget-3">
                             <div>
                                 <p class="mb-2">Purchase Order</p>
-                                <h4 class="mb-2">Rp {{ number_format(Auth::user()->role == "Admin" ? $poAdmin : $po, 2, ',', '.') }}</h4>
+                                <h4 class="mb-2">Rp {{ number_format(in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $poAdmin : $po, 2, ',', '.') }}</h4>
                                 <p class="mb-0"><span
-                                        class="badge rounded-pill bg-label-success">{{ (Auth::user()->role == "Admin" ? $quotationAdmin : $quotation)->where('status', '100')->count() }}</span>
+                                        class="badge rounded-pill bg-label-success">{{ (in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $quotationAdmin : $quotation)->where('status', '100')->count() }}</span>
                                 </p>
                             </div>
                             <div class="avatar me-sm-4">
@@ -59,9 +59,9 @@
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
                                 <p class="mb-2">Loss Order</p>
-                                <h4 class="mb-2">Rp {{ number_format(Auth::user()->role == "Admin" ? $lossAdmin : $loss, 2, ',', '.') }}</h4>
+                                <h4 class="mb-2">Rp {{ number_format(in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $lossAdmin : $loss, 2, ',', '.') }}</h4>
                                 <p class="mb-0"><span
-                                        class="badge rounded-pill bg-label-danger">{{ (Auth::user()->role == "Admin" ? $quotationAdmin : $quotation)->where('status', '0')->count() }}</span>
+                                        class="badge rounded-pill bg-label-danger">{{ (in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $quotationAdmin : $quotation)->where('status', '0')->count() }}</span>
                                 </p>
                             </div>
                             <div class="avatar">
@@ -77,7 +77,7 @@
     </div>
     <div class="card mb-3">
         <div class="card-datatable table-responsive pt-0">
-            <table class="datatable{{Auth::user()->role == "Admin" ? '-quotation-admin-unit' : '-quotation-unit'}} table table-striped">
+            <table class="datatable{{ in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? '-quotation-admin-unit' : '-quotation-unit'}} table table-striped">
                 <thead>
                     <tr>
                         <th></th>
@@ -93,7 +93,7 @@
                         <th>Status</th>
                         @endif
                         <th>Stats</th>
-                        @if (Auth::user()->role == 'Admin')
+                        @if (in_array(Auth::user()->role, ['Admin', 'Sales Manager']))
                             <th>Assign</th>
                         @endif
                     </tr>

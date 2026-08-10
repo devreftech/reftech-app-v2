@@ -54,8 +54,8 @@ try {
            u2.name AS sales_name, u2.image AS sales_image
     FROM unit_quotation uq
     LEFT JOIN client c2 ON c2.id = NULLIF(uq.id_client,'')
-    INNER JOIN users u2 ON u2.id = uq.id_sales
-    WHERE uq.status = 'hot_prospect' AND uq.is_latest = 1 $salesFilter2 $yearFilterU
+    LEFT JOIN users u2 ON u2.id = uq.id_sales
+    WHERE uq.status = 'hot_prospect' AND (uq.is_latest = 1 OR uq.is_latest IS NULL) $salesFilter2 $yearFilterU
 
     ORDER BY estimated_date ASC";
 

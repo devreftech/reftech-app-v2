@@ -22,7 +22,7 @@ class QuotationService
      */
     public function calculateCardStats($year, $salesId = null)
     {
-        $isAdmin = Auth::user()->role === 'Admin';
+        $isAdmin = in_array(Auth::user()->role, ['Admin', 'Sales Manager']);
 
         // 1. Forecast (Quotation)
         $qForecast = DB::table('quotation as q')
@@ -88,24 +88,24 @@ class QuotationService
             $qProspect->whereYear('q.status_date', $year);
             $uqProspect->whereYear('uq.date', $year);
             $qPo->whereYear('q.po_date', $year);
-            $uqPo->whereYear('uq.po_date', $year);
+            $uqPo->whereYear('uq.po_received', $year);
             $qLoss->whereYear('q.status_date', $year);
         }
 
         // Forecast total & count
-        $forecastSum = (float) $qForecast->sum('q.neto');
+        $forecastSum = (float) $qForecast->sum('q.nett');
         $forecastCount = (int) $qForecast->count();
 
         // Prospect total & count
-        $prospectSum = (float) $qProspect->sum('q.neto') + (float) $uqProspect->sum('uq.grand_total');
+        $prospectSum = (float) $qProspect->sum('q.nett') + (float) $uqProspect->sum('uq.total');
         $prospectCount = (int) $qProspect->count() + (int) $uqProspect->count();
 
         // PO total & count
-        $poSum = (float) $qPo->sum('q.neto') + (float) $uqPo->sum('uq.grand_total');
+        $poSum = (float) $qPo->sum('q.nett') + (float) $uqPo->sum('uq.total');
         $poCount = (int) $qPo->count() + (int) $uqPo->count();
 
         // Loss total & count
-        $lossSum = (float) $qLoss->sum('q.neto');
+        $lossSum = (float) $qLoss->sum('q.nett');
         $lossCount = (int) $qLoss->count();
 
         return [

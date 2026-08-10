@@ -14,10 +14,10 @@
                         </div>
                     </div>
                     <h4 class="mb-2 fw-bold text-dark">Rp
-                        <span id="card-forecast-sum">{{ number_format(Auth::user()->role == 'Admin' ? $forecastAdmin : $forecast, 2, ',', '.') }}</span>
+                        <span id="card-forecast-sum">{{ number_format(in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $forecastAdmin : $forecast, 2, ',', '.') }}</span>
                     </h4>
                     <div class="d-flex align-items-center gap-1">
-                        <span class="badge bg-label-primary rounded-pill fw-semibold" id="card-forecast-count">{{ Auth::user()->role == 'Admin' ? $forecastAdminCount : $forecastCount }}</span>
+                        <span class="badge bg-label-primary rounded-pill fw-semibold" id="card-forecast-count">{{ in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $forecastAdminCount : $forecastCount }}</span>
                         <span class="text-muted small">Total Quotation</span>
                     </div>
                 </div>
@@ -35,10 +35,10 @@
                         </div>
                     </div>
                     <h4 class="mb-2 fw-bold text-dark">Rp
-                        <span id="card-prospect-sum">{{ number_format(Auth::user()->role == 'Admin' ? $prospectAdmin : $prospect, 2, ',', '.') }}</span>
+                        <span id="card-prospect-sum">{{ number_format(in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $prospectAdmin : $prospect, 2, ',', '.') }}</span>
                     </h4>
                     <div class="d-flex align-items-center gap-1">
-                        <span class="badge bg-label-warning rounded-pill fw-semibold" id="card-prospect-count">{{ Auth::user()->role == 'Admin' ? $prospectAdminCount : $prospectCount }}</span>
+                        <span class="badge bg-label-warning rounded-pill fw-semibold" id="card-prospect-count">{{ in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $prospectAdminCount : $prospectCount }}</span>
                         <span class="text-muted small">Prospek Aktif</span>
                     </div>
                 </div>
@@ -56,10 +56,10 @@
                         </div>
                     </div>
                     <h4 class="mb-2 fw-bold text-dark">Rp
-                        <span id="card-po-sum">{{ number_format(Auth::user()->role == 'Admin' ? $poAdmin : $po, 2, ',', '.') }}</span>
+                        <span id="card-po-sum">{{ number_format(in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $poAdmin : $po, 2, ',', '.') }}</span>
                     </h4>
                     <div class="d-flex align-items-center gap-1">
-                        <span class="badge bg-label-success rounded-pill fw-semibold" id="card-po-count">{{ Auth::user()->role == 'Admin' ? $poAdminCount : $poCount }}</span>
+                        <span class="badge bg-label-success rounded-pill fw-semibold" id="card-po-count">{{ in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $poAdminCount : $poCount }}</span>
                         <span class="text-muted small">PO Goal</span>
                     </div>
                 </div>
@@ -77,17 +77,17 @@
                         </div>
                     </div>
                     <h4 class="mb-2 fw-bold text-dark">Rp
-                        <span id="card-loss-sum">{{ number_format(Auth::user()->role == 'Admin' ? $lossAdmin : $loss, 2, ',', '.') }}</span>
+                        <span id="card-loss-sum">{{ number_format(in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $lossAdmin : $loss, 2, ',', '.') }}</span>
                     </h4>
                     <div class="d-flex align-items-center gap-1">
-                        <span class="badge bg-label-danger rounded-pill fw-semibold" id="card-loss-count">{{ Auth::user()->role == 'Admin' ? $lossAdminCount : $lossCount }}</span>
+                        <span class="badge bg-label-danger rounded-pill fw-semibold" id="card-loss-count">{{ in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? $lossAdminCount : $lossCount }}</span>
                         <span class="text-muted small">Order Loss</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    @if (Auth::user()->role !== 'Admin')
+    @if (!in_array(Auth::user()->role, ['Admin', 'Sales Manager']))
     {{-- ── SALES: Tabbed view ─────────────────────────────────────── --}}
     <div class="d-flex align-items-center justify-content-end mb-3 gap-2">
         <label class="form-label mb-0 text-muted" style="white-space:nowrap;">Filter Tahun:</label>
@@ -105,12 +105,6 @@
                     <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-quotation" type="button">
                         <i class="mdi mdi-file-document-outline me-1"></i>Quotation
                         <span class="badge rounded-pill bg-primary ms-1" id="badge-quotation">-</span>
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-unit-quotation" type="button">
-                        <i class="mdi mdi-sparkles me-1 text-warning"></i>Smart Quote
-                        <span class="badge rounded-pill bg-primary ms-1" id="badge-unit-quotation">-</span>
                     </button>
                 </li>
                 <li class="nav-item">
@@ -228,24 +222,6 @@
                                     <th>Description</th>
                                     <th>Date</th>
                                     <th>Status</th>
-                                </tr>
-                            </thead>
-                        </table>
-                    </div>
-                </div>
-
-                {{-- Tab 6: Penawaran Unit --}}
-                <div class="tab-pane fade" id="tab-unit-quotation">
-                    <div class="table-responsive">
-                        <table class="datatable-unit-quotation table table-bordered" data-badge="badge-unit-quotation">
-                            <thead>
-                                <tr>
-                                    <th class="text-center">No. Quotation</th>
-                                    <th>Client</th>
-                                    <th>Description</th>
-                                    <th class="text-center">Date</th>
-                                    <th class="text-center">Total</th>
-                                    <th class="text-center">Status</th>
                                 </tr>
                             </thead>
                         </table>
@@ -486,7 +462,7 @@
         });
 
         function updateCardStats() {
-            var isAdmin = {{ Auth::user()->role === 'Admin' ? 'true' : 'false' }};
+            var isAdmin = {{ in_array(Auth::user()->role, ['Admin', 'Sales Manager']) ? 'true' : 'false' }};
             var year = isAdmin ? (window.adminQuotationYearFilter || 'all') : (window.quotationYearFilter || 'all');
             var salesId = isAdmin ? (window.adminSalesFilter || '') : '';
 

@@ -108,19 +108,28 @@ $(function () {
                         var tip = full["tip"] || "Belum di update";
                         var qType = full["type"];
                         var statusMap = {
-                            20: { title: "20%", class: "bg-label-secondary", colorTip: "tooltip-secondary" },
-                            30: { title: "30%", class: "bg-label-dark", colorTip: "tooltip-dark" },
-                            40: { title: "40%", class: "bg-label-info", colorTip: "tooltip-info" },
-                            60: { title: "60%", class: "bg-label-primary", colorTip: "tooltip-primary" },
-                            80: { title: "80%", class: "bg-label-warning", colorTip: "tooltip-warning" },
-                            100: { title: "100%", class: "bg-label-success", colorTip: "tooltip-success" },
-                            0: { title: "0%", class: "bg-label-danger", colorTip: "tooltip-danger" }
+                            20:    { title: "Send WA / Email",     class: "bg-label-secondary", colorTip: "tooltip-secondary" },
+                            30:    { title: "Inquiry Accepted",    class: "bg-label-dark",      colorTip: "tooltip-dark" },
+                            40:    { title: "Follow Up",           class: "bg-label-info",      colorTip: "tooltip-info" },
+                            60:    { title: "Negotiation / Revisi",class: "bg-label-primary",   colorTip: "tooltip-primary" },
+                            80:    { title: "Hot Prospect",        class: "bg-label-warning",   colorTip: "tooltip-warning" },
+                            90:    { title: "Hold",                class: "bg-warning",         colorTip: "tooltip-warning" },
+                            100:   { title: "Done PO",             class: "bg-label-success",   colorTip: "tooltip-success" },
+                            0:     { title: "Loss",                class: "bg-label-danger",    colorTip: "tooltip-danger" },
+                            draft:        { title: "Draft",        class: "bg-label-secondary", colorTip: "" },
+                            sent:         { title: "Sent",         class: "bg-label-info",      colorTip: "" },
+                            negotiation:  { title: "Negotiation",  class: "bg-label-warning",   colorTip: "" },
+                            revision:     { title: "Revisi",       class: "bg-label-primary",   colorTip: "" },
+                            hot_prospect: { title: "Hot Prospect", class: "bg-label-warning",   colorTip: "" },
+                            po_received:  { title: "PO Received",  class: "bg-label-success",   colorTip: "" },
+                            loss:         { title: "Loss",         class: "bg-label-danger",    colorTip: "" },
+                            cancel:       { title: "Cancel",       class: "bg-label-danger",    colorTip: "" },
                         };
-                        var conf = statusMap[status_number] || { title: status_number + "%", class: "bg-label-secondary", colorTip: "tooltip-secondary" };
-                        var badge = '<span class="badge rounded-pill ' + conf.class + ' cursor-pointer"' +
+                        var s = statusMap[status_number] || { title: status_number, class: "bg-label-secondary", colorTip: "tooltip-secondary" };
+                        var badge = '<span class="badge rounded-pill ' + s.class + ' cursor-pointer"' +
                             ' data-bs-toggle="tooltip" data-bs-placement="top"' +
-                            ' data-bs-custom-class="' + conf.colorTip + '" title="' + tip + '">' +
-                            conf.title + '</span>';
+                            ' data-bs-custom-class="' + (s.colorTip || "") + '" title="' + tip + '">' +
+                            s.title + '</span>';
                         if (qType === "Unit" || full["row_type"] === "unit") {
                             badge += ' <span class="badge bg-label-info ms-1">Smart</span>';
                         }

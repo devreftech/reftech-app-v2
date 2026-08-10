@@ -55,8 +55,8 @@ try {
            u2.name AS sales_name, u2.image AS sales_image
     FROM unit_quotation uq
     LEFT JOIN client cl ON cl.id = NULLIF(uq.id_client,'')
-    INNER JOIN users u2 ON u2.id = uq.id_sales
-    WHERE uq.status = 'po_received' AND uq.is_latest = 1 $salesFilter2
+    LEFT JOIN users u2 ON u2.id = uq.id_sales
+    WHERE uq.status = 'po_received' AND (uq.is_latest = 1 OR uq.is_latest IS NULL) $salesFilter2
     AND EXISTS (
         SELECT 1 FROM unit_quotation_status_history sh2
         WHERE sh2.id_unit_quotation = uq.id AND sh2.status = 'po_received'$yearFilterU

@@ -205,6 +205,11 @@ class UnitQuotationController extends Controller
     {
         $quote   = UnitQuotation::with(['client', 'pic', 'plant', 'details.unit', 'details.fixedAsset', 'details.equivalent.product'])->findOrFail($id);
         $clients = Client::orderBy('company')->get();
+        $paymentTemplates = \App\Models\SalesPaymentTemplate::with('client')
+            ->where('id_sales', Auth::id())
+            ->orderBy('is_default', 'desc')
+            ->orderBy('name')
+            ->get();
 
         $editItems = $quote->details->map(function ($d) {
             return [
@@ -235,7 +240,7 @@ class UnitQuotationController extends Controller
             ];
         })->values();
 
-        return view('pages.unit-quotation.edit', compact('quote', 'clients', 'editItems'));
+        return view('pages.unit-quotation.edit', compact('quote', 'clients', 'editItems', 'paymentTemplates'));
     }
 
     public function update(Request $request, $id)
