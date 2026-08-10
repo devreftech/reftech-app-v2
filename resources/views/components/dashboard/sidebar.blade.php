@@ -891,6 +891,12 @@
                     @endif
                 </a>
             </li>
+            <li class="menu-item {{ request()->is('activity-log') || request()->is('activity-log/*') ? 'active' : '' }}">
+                <a href="{{ route('activity-log.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-history"></i>
+                    <div data-i18n="Activity Log">Activity Log</div>
+                </a>
+            </li>
         @elseif (auth::user()?->role == 'Sales')
             <!-- Dashboards -->
             <li class="menu-item {{ request()->is('/') ? 'active' : '' }}">

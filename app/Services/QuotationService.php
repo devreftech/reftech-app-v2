@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DetailQuotation;
 use App\Models\Prospect;
 use App\Models\Quotation;
 use App\Models\UnitQuotation;
@@ -139,6 +140,27 @@ class QuotationService
             'noSaleProspect' => $noSaleProspect,
             'leveledProspect' => $leveledProspect,
             'salesList' => $salesList,
+        ];
+    }
+
+    /**
+     * Fetch quotation with details and primary quotation data.
+     *
+     * @param int|string $id
+     * @return array
+     */
+    public function getQuotationWithDetails($id)
+    {
+        $quote = Quotation::with(['pic.client', 'sales', 'detail_quotation', 'termncon'])->findOrFail($id);
+        $lastQuote = Quotation::where('primary_id', $quote->primary_id)->orderByDesc('num_rev')->first();
+        $primQuote = Quotation::where('primary_id', $quote->primary_id)->where('is_primary', '1')->first();
+        $detquote = DetailQuotation::where('id_quotation', $id)->get();
+
+        return [
+            'quote' => $quote,
+            'lastQuote' => $lastQuote,
+            'primQuote' => $primQuote,
+            'detquote' => $detquote,
         ];
     }
 }

@@ -10,7 +10,19 @@ class HelpdeskController extends Controller
 {
     public function index()
     {
-        return view('pages.helpdesk.index');
+        $userTickets = HelpdeskTicket::with('user')
+            ->where(function ($q) {
+                $q->where('category', 'user_report')->orWhereNull('category');
+            })
+            ->latest()
+            ->paginate(15, ['*'], 'user_page');
+
+        $systemErrorTickets = HelpdeskTicket::with('user')
+            ->where('category', 'system_error')
+            ->latest()
+            ->paginate(15, ['*'], 'error_page');
+
+        return view('pages.helpdesk.index', compact('userTickets', 'systemErrorTickets'));
     }
 
     public function store(Request $request)

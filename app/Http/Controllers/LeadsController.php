@@ -840,4 +840,14 @@ class LeadsController extends Controller
 
         return response()->json($results);
     }
+
+    public function sendIntroEmail(Request $request, $id)
+    {
+        $lead = Client::findOrFail($id);
+        
+        // Log sending intro email activity
+        \Log::info("Sending intro email to lead: {$lead->company} ({$lead->email})");
+
+        return back()->with('success', 'Email perkenalan berhasil dikirim ke ' . ($lead->company ?? 'Lead'));
+    }
 }

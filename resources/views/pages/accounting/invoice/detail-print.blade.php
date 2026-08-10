@@ -577,19 +577,6 @@
                                             {{ number_format($amount2, 0, '', '.') }}</p>
                                     </td>
                                 </tr>
-                                @if ($totalPph > 0)
-                                    <tr class="fw-medium py-0" style="font-size: 13px">
-                                        <td colspan="{{ $labelColspan }}" class="text-end py-0"
-                                            style="padding-right: 10px !important;">
-                                            <p class="m-0">PPH</p>
-                                        </td>
-                                        <td class="pr-4 py-0" style="padding-left: 0 !important;">
-                                            <p class="m-0 text-end">
-                                                {{ $totalPph == '0' ? '0' : 'RP ' . number_format($totalPph, 0, '', '.') }}
-                                            </p>
-                                        </td>
-                                    </tr>
-                                @endif
                                 @php
                                     $totalwithpph = $payments[1]?->amount - $totalPph;
                                 @endphp
@@ -619,6 +606,19 @@
                                                 {{ $vat == '0' ? '0' : 'RP ' . number_format($vat, 0, '', '.') }}</p>
                                         </td>
                                     </tr>
+                                    @if ($totalPph > 0)
+                                        <tr class="fw-medium py-0" style="font-size: 13px">
+                                            <td colspan="{{ $labelColspan }}" class="text-end py-0"
+                                                style="padding-right: 10px !important;">
+                                                <p class="m-0">PPH</p>
+                                            </td>
+                                            <td class="pr-4 py-0" style="padding-left: 0 !important;">
+                                                <p class="m-0 text-end">
+                                                    {{ $totalPph == '0' ? '0' : 'RP ' . number_format($totalPph, 0, '', '.') }}
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    @endif
                                     @if ($quote->shipping != 0)
                                         <tr class="fw-medium" style="font-size: 13px">
                                             <td colspan="{{ $labelColspan }}" class="text-end py-0"
@@ -645,6 +645,19 @@
                                         </td>
                                     </tr>
                                 @else
+                                    @if ($totalPph > 0)
+                                        <tr class="fw-medium py-0" style="font-size: 13px">
+                                            <td colspan="{{ $labelColspan }}" class="text-end py-0"
+                                                style="padding-right: 10px !important;">
+                                                <p class="m-0">PPH</p>
+                                            </td>
+                                            <td class="pr-4 py-0" style="padding-left: 0 !important;">
+                                                <p class="m-0 text-end">
+                                                    {{ $totalPph == '0' ? '0' : 'RP ' . number_format($totalPph, 0, '', '.') }}
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    @endif
                                     @if ($quote->shipping != 0)
                                         <tr class="fw-medium" style="font-size: 13px">
                                             <td colspan="{{ $labelColspan }}" class="text-end py-0"
@@ -1226,19 +1239,6 @@
                                             {{ number_format($amount2, 0, '', '.') }}</p>
                                     </td>
                                 </tr>
-                                @if ($totalPph > 0)
-                                    <tr class="fw-medium py-0" style="font-size: 13px">
-                                        <td colspan="{{ $labelColspan }}" class="text-end py-0"
-                                            style="padding-right: 10px !important;">
-                                            <p class="m-0">PPH</p>
-                                        </td>
-                                        <td class="pr-4 py-0" style="padding-left: 0 !important;">
-                                            <p class="m-0 text-end">
-                                                {{ $totalPph == '0' ? '0' : 'RP ' . number_format($totalPph, 0, '', '.') }}
-                                            </p>
-                                        </td>
-                                    </tr>
-                                @endif
                                 @php
                                     $totalwithpph = $payments[1]?->amount - $totalPph;
                                 @endphp
@@ -1268,6 +1268,19 @@
                                                 {{ $vat == '0' ? '0' : 'RP ' . number_format($vat, 0, '', '.') }}</p>
                                         </td>
                                     </tr>
+                                    @if ($totalPph > 0)
+                                        <tr class="fw-medium py-0" style="font-size: 13px">
+                                            <td colspan="{{ $labelColspan }}" class="text-end py-0"
+                                                style="padding-right: 10px !important;">
+                                                <p class="m-0">PPH</p>
+                                            </td>
+                                            <td class="pr-4 py-0" style="padding-left: 0 !important;">
+                                                <p class="m-0 text-end">
+                                                    {{ $totalPph == '0' ? '0' : 'RP ' . number_format($totalPph, 0, '', '.') }}
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    @endif
                                     @if ($quote->shipping != 0)
                                         <tr class="fw-medium" style="font-size: 13px">
                                             <td colspan="{{ $labelColspan }}" class="text-end py-0"
@@ -1294,6 +1307,19 @@
                                         </td>
                                     </tr>
                                 @else
+                                    @if ($totalPph > 0)
+                                        <tr class="fw-medium py-0" style="font-size: 13px">
+                                            <td colspan="{{ $labelColspan }}" class="text-end py-0"
+                                                style="padding-right: 10px !important;">
+                                                <p class="m-0">PPH</p>
+                                            </td>
+                                            <td class="pr-4 py-0" style="padding-left: 0 !important;">
+                                                <p class="m-0 text-end">
+                                                    {{ $totalPph == '0' ? '0' : 'RP ' . number_format($totalPph, 0, '', '.') }}
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    @endif
                                     @if ($quote->shipping != 0)
                                         <tr class="fw-medium" style="font-size: 13px">
                                             <td colspan="{{ $labelColspan }}" class="text-end py-0"

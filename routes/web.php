@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActivitiesController;
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\ApiTableController;
 use App\Http\Controllers\ArchiveController;
 use App\Http\Controllers\AuditController;
@@ -1522,14 +1523,29 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/helpdesk', [HelpdeskController::class, 'store'])->name('helpdesk.store');
     Route::patch('/helpdesk/status/{id}', [HelpdeskController::class, 'updateStatus'])->name('helpdesk.update-status');
 
+    // Activity Log & System Audit
+    Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log.index');
+
     Route::get('/db/helpdesk', function () {
         $tickets = HelpdeskTicket::where('id_user', Auth::id())->latest()->get();
         return response()->json(['data' => $tickets]);
     });
     Route::get('/db/helpdesk/admin', function () {
-        $tickets = HelpdeskTicket::join('users as u', 'u.id', '=', 'helpdesk_tickets.id_user')
-            ->latest('helpdesk_tickets.created_at')
+        $category = request()->query('category', 'user_report');
+        $query = HelpdeskTicket::leftJoin('users as u', 'u.id', '=', 'helpdesk_tickets.id_user');
+        
+        if ($category === 'system_error') {
+            $query->where('helpdesk_tickets.category', 'system_error');
+        } else {
+            $query->where(function ($q) {
+                $q->where('helpdesk_tickets.category', 'user_report')
+                  ->orWhereNull('helpdesk_tickets.category');
+            });
+        }
+
+        $tickets = $query->latest('helpdesk_tickets.created_at')
             ->get(['helpdesk_tickets.*', 'u.name', 'u.image as user_image']);
+
         return response()->json(['data' => $tickets]);
     });
 

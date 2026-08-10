@@ -600,4 +600,37 @@ class LibraryController extends Controller
             ->get();
         return view('pages.library.index-manbook', compact('type', 'comment', 'unreadComment', 'commentAdmin', 'unreadCommentAdmin', 'noSaleProspect', 'leveledProspect', 'library'));
     }
+
+    public function store_marktool(Request $request)
+    {
+        return $this->storeLibraryItem($request, 'Marketing Tools', 'maketing');
+    }
+
+    public function store_brosur(Request $request)
+    {
+        return $this->storeLibraryItem($request, 'Brosur', 'brosur');
+    }
+
+    public function store_partlist(Request $request)
+    {
+        return $this->storeLibraryItem($request, 'Partlist', 'partlist');
+    }
+
+    public function store_manbook(Request $request)
+    {
+        return $this->storeLibraryItem($request, 'Manual Book', 'manual');
+    }
+
+    private function storeLibraryItem(Request $request, string $type, string $redirectCode)
+    {
+        $library = new \App\Models\Library();
+        $library->name = $request->name;
+        $library->link = $request->link;
+        $library->type = $type;
+        $library->models = $request->models;
+        $library->date = \Carbon\Carbon::now();
+        $library->save();
+
+        return redirect('/library/' . $redirectCode)->with('message', 'Data telah ditambahkan.');
+    }
 }

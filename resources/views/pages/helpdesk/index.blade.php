@@ -11,22 +11,68 @@
         </button>
     </div>
 
-    <div class="card mb-3">
-        <div class="card-datatable table-responsive pt-0">
-            @if (Auth::user()->role == 'Admin')
-                <table class="datatable-helpdesk-admin table table-striped">
-                    <thead>
-                        <tr>
-                            <th>No Ticket</th>
-                            <th>Requester</th>
-                            <th>Title</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                </table>
-            @else
+    @if (Auth::user()->role == 'Admin')
+        <div class="nav-align-top mb-4">
+            <ul class="nav nav-tabs nav-fill" role="tablist">
+                <li class="nav-item">
+                    <button type="button" class="nav-link active" role="tab" data-bs-toggle="tab" data-bs-target="#navs-user-tickets" aria-controls="navs-user-tickets" aria-selected="true">
+                        <i class="tf-icons mdi mdi-ticket-outline me-1"></i> Tiket User
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button type="button" class="nav-link" role="tab" data-bs-toggle="tab" data-bs-target="#navs-system-errors" aria-controls="navs-system-errors" aria-selected="false">
+                        <i class="tf-icons mdi mdi-alert-decagram-outline me-1 text-danger"></i> ⚡ Temuan Error System
+                    </button>
+                </li>
+            </ul>
+            <div class="tab-content p-0 pt-3">
+                <div class="tab-pane fade show active" id="navs-user-tickets" role="tabpanel">
+                    <div class="card mb-3">
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatable-helpdesk-admin table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>No Ticket</th>
+                                        <th>Requester</th>
+                                        <th>Title</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="navs-system-errors" role="tabpanel">
+                    <div class="card mb-3">
+                        <div class="card-body pb-0">
+                            <div class="alert alert-danger d-flex align-items-center mb-3" role="alert">
+                                <i class="mdi mdi-shield-alert-outline me-2"></i>
+                                <div>Daftar error runtime (HTTP 500 / Exception) yang terdeteksi otomatis oleh sistem saat pengguna menggunakan aplikasi.</div>
+                            </div>
+                        </div>
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatable-helpdesk-system-errors table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>No Ticket</th>
+                                        <th>User/Impacted</th>
+                                        <th>Title / Component</th>
+                                        <th>Status</th>
+                                        <th>Date Detected</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @else
+        <div class="card mb-3">
+            <div class="card-datatable table-responsive pt-0">
                 <table class="datatable-helpdesk table table-striped">
                     <thead>
                         <tr>
@@ -37,9 +83,9 @@
                         </tr>
                     </thead>
                 </table>
-            @endif
+            </div>
         </div>
-    </div>
+    @endif
 
     @include('components.modal.helpdesk.form')
     @include('components.modal.helpdesk.detail')

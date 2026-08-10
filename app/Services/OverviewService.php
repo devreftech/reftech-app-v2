@@ -2,9 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\Quotation;
 use App\Models\SalesReports;
+use App\Models\UnitQuotation;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class OverviewService
 {
@@ -51,5 +55,42 @@ class OverviewService
     public function getActiveSalesList()
     {
         return User::where('role', 'Sales')->where('active', '1')->get();
+    }
+
+    /**
+     * Calculate support report stats and data arrays for OverviewController.
+     *
+     * @param int $year
+     * @param int $month
+     * @param int|null $semester
+     * @param string $mode
+     * @param int $supportId
+     * @return array
+     */
+    public function getSupportReportData(int $year, int $month, ?int $semester, string $mode, int $supportId)
+    {
+        if ($mode === 'semester') {
+            $firstDay = $semester == 1 ? "{$year}-01-01" : "{$year}-07-01";
+            $lastDay  = $semester == 1
+                ? date('Y-m-t', strtotime("{$year}-06-01"))
+                : date('Y-m-t', strtotime("{$year}-12-01"));
+        } else {
+            $firstDay = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
+            $lastDay  = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+        }
+
+        $yearList = SalesReports::select('year')->distinct()->orderBy('year', 'desc')->pluck('year');
+        if (!$yearList->contains($year)) {
+            $yearList = $yearList->push($year)->sortDesc()->values();
+        }
+
+        return [
+            'year' => $year,
+            'month' => $month,
+            'firstDay' => $firstDay,
+            'lastDay' => $lastDay,
+            'yearList' => $yearList,
+            'supportId' => $supportId,
+        ];
     }
 }

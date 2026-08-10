@@ -1252,4 +1252,23 @@ class DashboardController extends Controller
         $formattedPO = number_format($totalProspectPO, 0, ",", ".");
         return $formattedPO;
     }
+
+    public function filteredTargetProspectAdmin($sales)
+    {
+        return $this->filteredTargetProspect($sales);
+    }
+
+    public function totalForecastAdmin($sales)
+    {
+        return $this->totalForecast($sales);
+    }
+
+    public function target($sales)
+    {
+        $dateNow = Carbon::now();
+        $target = Target::where('id_sales', $sales)->where('year', $dateNow->year)->first();
+        return response()->json([
+            'target' => $target ? number_format($target->target ?? 0, 0, ",", ".") : "0"
+        ]);
+    }
 }
