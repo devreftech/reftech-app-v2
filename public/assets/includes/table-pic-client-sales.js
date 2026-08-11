@@ -70,9 +70,6 @@ $(function () {
                     render: function (data, type, full, row) {
                         var id = full["id"];
                         return (
-                            '<a href="#" data-id="' +
-                            id +
-                            '" class="btn btn-sm btn-label-danger delete-pic m-2"><i class="menu-icon tf-icons mdi mdi-14px mdi-delete-outline m-0"></i></a>' +
                             '<a type="button" href="#" data-bs-toggle="modal" data-bs-target="#updatePic-' +
                             id +
                             '" data-id="' +

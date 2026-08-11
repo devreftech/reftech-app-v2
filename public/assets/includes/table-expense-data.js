@@ -78,13 +78,13 @@ $(function () {
             order: [[2, "desc"]],
             // orderCellsTop: true,
             dom:
-                '<"row align-items-center"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 dt-action-buttons d-flex justify-content-center justify-content-md-end"B>>' +
+                '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"B>>' +
                 '<"table-responsive"t>' +
                 '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             buttons: [
                 {
-                    text: '<i class="mdi mdi-plus me-1"></i> <span class="d-none d-sm-inline-block">Add New Expense</span>',
-                    className: "btn btn-sm btn-primary shadow-sm btn-new",
+                    text: '<i class="mdi mdi-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add New Expense</span>',
+                    className: "btn btn-primary btn-new",
                     action: function (e, dt, node, config) {
                         window.location = route("expense.create");
                     },

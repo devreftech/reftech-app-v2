@@ -38,11 +38,16 @@ $(function () {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                data: function (d) {
-                    d.year = window.agingYearFilter || "all";
-                    d.sales_id = window.agingSalesFilter || "all";
-                    return d;
-                },
+
+                // success: function (hasil, Url) {
+                //     console.log("Url:", Url);
+                //     console.log(hasil);
+                // },
+                // error: function (error) {
+                //     console.log("Url:", Url);
+                //     console.error("Error:", error);
+                //     console.log("error disini");
+                // },
             },
             columns: [
                 { data: "short_invoice" },
@@ -121,9 +126,6 @@ $(function () {
             // orderCellsTop: true,
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>><"table-responsive"t><"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
         });
-
-        window.agingDataTables = window.agingDataTables || {};
-        window.agingDataTables.kojisha = dt_filter;
     }
     dt_table_aging_report_kojisha.on("draw", function () {
         initTooltips();

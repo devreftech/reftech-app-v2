@@ -81,7 +81,9 @@ $(function () {
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             var $dataId = full["id"];
-                            var detailRoute = route("quotation.show", $dataId);
+                            var detailRoute = full["is_unit_quotation"]
+                                ? route("unit-quotation.show", $dataId)
+                                : route("quotation.show", $dataId);
                             return (
                                 '<a class="text-dark" href="' +
                                 detailRoute +

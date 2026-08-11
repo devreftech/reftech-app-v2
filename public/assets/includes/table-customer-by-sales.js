@@ -1,6 +1,6 @@
 $(function () {
     var baseAjaxUrl = "/db/crm/status";
-    var selectedSales = 1;
+    var selectedSales = $("#cbs-sales-tab-nav").data("default-sales-id") || $(".select-sales.active").data("id") || 1;
 
     function initDataTable(selector, statusId) {
         var $el = $(selector);

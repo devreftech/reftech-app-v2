@@ -28,11 +28,11 @@ $(function () {
                 { data: "commodity" },
                 { data: "brand" },
                 { data: "pn" },
+                { data: "price" },
                 { data: "description" },
                 { data: "stock" },
                 { data: "warehouse_stock" },
                 { data: "pending_stock" },
-                { data: "price" },
             ],
             columnDefs: [
                 {
@@ -68,7 +68,7 @@ $(function () {
                                 '<span data-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="tooltip-primary" title="' +
                                 tooltipTitle.replace(/"/g, '&quot;') +
                                 '">' +
-                                '<a class="text-primary fw-bold" href="' +
+                                '<a class="text-dark" href="' +
                                 detailRoute +
                                 '">' +
                                 truncated +
@@ -80,8 +80,7 @@ $(function () {
                     },
                 },
                 {
-                    targets: 9, // Price
-                    className: "text-end",
+                    targets: 5,
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             // Ambil nilai last_modal
@@ -113,7 +112,7 @@ $(function () {
                     },
                 },
                 {
-                    targets: 5, // description
+                    targets: 6, // description
                     render: function (data, type, full, row) {
                         if (!data) return "-";
                         if (type === "display") {
@@ -135,8 +134,7 @@ $(function () {
                     }
                 },
                 {
-                    targets: [6, 7, 8],
-                    className: "text-center",
+                    targets: [7, 8, 9],
                     render: function (data, type, row) {
                         return data !== null && data !== undefined ? data : 0;
                     },

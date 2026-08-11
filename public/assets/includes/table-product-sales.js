@@ -15,23 +15,23 @@ $(function () {
             columns: [
                 { data: "" },
                 { data: "id" },
-                { data: "id" },
                 { data: "image" },
                 { data: "brand" },
                 { data: "pn" },
                 { data: "description" },
-                { data: "go" },
                 { data: "stock" },
                 { data: "warehouse_stock" },
+                { data: "pending_stock" },
                 { data: "price" },
             ],
             columnDefs: [
                 {
-                    targets: 10,
+                    targets: 9,
+                    className: "text-end",
                     render: $.fn.dataTable.render.number(".", "", 0, "Rp."),
                 },
                 {
-                    targets: 3,
+                    targets: 2,
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             if (data === null || data === "") {
@@ -60,44 +60,16 @@ $(function () {
                     },
                 },
                 {
-                    // For Checkboxes
                     targets: 1,
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 3,
-                    checkboxes: true,
-                    render: function () {
-                        return '<input type="checkbox" class="dt-checkboxes form-check-input">';
-                    },
-                    checkboxes: {
-                        selectAllRender:
-                            '<input type="checkbox" class="form-check-input">',
-                    },
-                },
-                {
-                    targets: 2,
                     searchable: true,
                     visible: false,
                 },
                 {
                     responsivePriority: 1,
-                    targets: 3,
+                    targets: 2,
                 },
-                // {
-                //     targets: 3,
-                //     render: function (data, type, full, row) {
-                //         if (type === "display") {
-                //             var $dataId = full["id"];
-                //             var detailRoute = route("product.show", $dataId);
-                //             return (
-                //                 '<a class="text-dark" href="' + detailRoute + '">' + data + "</a>"
-                //             );
-                //         }
-                //         return data;
-                //     },
-                // },
                 {
-                    targets: [3, 4, 5, 9],
+                    targets: [2, 3, 6, 7, 8],
                     render: function (data, type, row) {
                         if (data === null || data === undefined) {
                             return "-";
@@ -106,8 +78,43 @@ $(function () {
                         }
                     },
                 },
+                {
+                    targets: 5, // description with G/R badge in front
+                    render: function (data, type, full, row) {
+                        var badge = '';
+                        var goVal = full.go ? String(full.go).trim() : '';
+
+                        if (goVal === 'Genuine' || goVal === 'G') {
+                            badge = '<span class="badge bg-label-success me-1" data-bs-toggle="tooltip" title="Genuine">G</span>';
+                        } else if (goVal === 'Replacement' || goVal === 'R') {
+                            badge = '<span class="badge bg-label-warning me-1" data-bs-toggle="tooltip" title="Replacement">R</span>';
+                        } else if (goVal) {
+                            badge = '<span class="badge bg-label-info me-1">' + goVal + '</span>';
+                        }
+
+                        if (!data) return badge ? badge + '-' : '-';
+
+                        if (type === "display") {
+                            var truncated = data.length > 35 ? data.substr(0, 32) + '...' : data;
+                            var textSpan = '<span data-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="tooltip-primary" title="' + data.replace(/"/g, '&quot;') + '">' + truncated + '</span>';
+                            return badge + textSpan;
+                        }
+                        return data;
+                    }
+                },
+                {
+                    targets: 4, // Part Number
+                    render: function (data, type, full, row) {
+                        if (!data) return "-";
+                        if (type === "display") {
+                            var truncated = data.length > 20 ? data.substr(0, 17) + '...' : data;
+                            return '<span data-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="tooltip-primary" title="' + data.replace(/"/g, '&quot;') + '">' + truncated + '</span>';
+                        }
+                        return data;
+                    }
+                },
             ],
-            order: [[2, "desc"]],
+            order: [[1, "desc"]],
             dom: '<"card-header flex-column flex-md-row"<"head-label text-center"><"dt-action-buttons text-end pt-3 pt-md-0"B>><"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             displayLength: 7,
             lengthMenu: [7, 10, 25, 50, 75, 100],
@@ -122,8 +129,7 @@ $(function () {
                             text: '<i class="mdi mdi-printer-outline me-1" ></i>Print',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
+                                columns: [2, 3, 4, 5, 6, 7, 8, 9],
                                 format: {
                                     body: function (inner, coldex, rowdex) {
                                         if (inner.length <= 0) return inner;
@@ -154,7 +160,6 @@ $(function () {
                                 },
                             },
                             customize: function (win) {
-                                //customize print view for dark
                                 $(win.document.body)
                                     .css("color", config.colors.headingColor)
                                     .css(
@@ -178,8 +183,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-document-outline me-1" ></i>Csv',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
+                                columns: [2, 3, 4, 5, 6, 7, 8, 9],
                                 format: {
                                     body: function (inner, coldex, rowdex) {
                                         if (inner.length <= 0) return inner;
@@ -215,8 +219,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-excel-outline me-1"></i>Excel',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
+                                columns: [2, 3, 4, 5, 6, 7, 8, 9],
                                 format: {
                                     body: function (inner, coldex, rowdex) {
                                         if (inner.length <= 0) return inner;
@@ -252,8 +255,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-pdf-box me-1"></i>Pdf',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
+                                columns: [2, 3, 4, 5, 6, 7, 8, 9],
                                 format: {
                                     body: function (inner, coldex, rowdex) {
                                         if (inner.length <= 0) return inner;
@@ -289,8 +291,7 @@ $(function () {
                             text: '<i class="mdi mdi-content-copy me-1" ></i>Copy',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
+                                columns: [2, 3, 4, 5, 6, 7, 8, 9],
                                 format: {
                                     body: function (inner, coldex, rowdex) {
                                         if (inner.length <= 0) return inner;
@@ -323,14 +324,6 @@ $(function () {
                         },
                     ],
                 },
-                // {
-                //     text: '<i class="mdi mdi-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add New Product</span>',
-                //     className: "btn btn-primary",
-                //     attr: {
-                //         "data-bs-target": "#createProduct",
-                //         "data-bs-toggle": "modal",
-                //     },
-                // },
             ],
             drawCallback: function (settings) {
                 $('[data-toggle="tooltip"]').tooltip();
@@ -346,7 +339,7 @@ $(function () {
                     type: "column",
                     renderer: function (api, rowIdx, columns) {
                         var data = $.map(columns, function (col, i) {
-                            return col.title !== "" // ? Do not show row in modal popup if title is blank (for check box)
+                            return col.title !== ""
                                 ? '<tr data-dt-row="' +
                                       col.rowIndex +
                                       '" data-dt-column="' +
@@ -363,18 +356,10 @@ $(function () {
                                 : "";
                         }).join("");
 
-                        return data
-                            ? $('<table class="table"/><tbody />').append(data)
-                            : false;
+                        return data ? $('<table class="table"/><tbody />').append(data) : false;
                     },
                 },
             },
         });
-        $("div.head-label").html(
-            '<h5 class="card-title mb-0">Table Product</h5>'
-        );
     }
-    dt_table_product_sales.on("draw", function () {
-        $('[data-toggle="tooltip"]').tooltip();
-    });
 });

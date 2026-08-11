@@ -72,6 +72,26 @@
         width: 60%;
     }
 
+    /* Lock header to row layout regardless of print scale — Bootstrap responsive
+       classes (flex-md-column etc.) can trigger column mode at certain scale % */
+    .invoice-print .container-fluid > .d-flex {
+        flex-direction: row !important;
+        align-items: flex-start !important;
+        flex-wrap: nowrap !important;
+    }
+    .invoice-print .container-fluid > .d-flex > .mb-xl-0 {
+        flex: 0 0 65% !important;
+        max-width: 65% !important;
+    }
+    .invoice-print .npwp_add pre {
+        max-width: 100% !important;
+    }
+    .invoice-print .info,
+    .invoice-print .npwp_add {
+        flex: 0 0 50% !important;
+        max-width: 50% !important;
+    }
+
     .invoice-print .termc {
         background-color: #fbfbfb !important;
         font-size: 12px !important;
@@ -113,6 +133,11 @@
     }
     .invoice-print .img-logo {
         width: 60%;
+    }
+    .invoice-print .info,
+    .invoice-print .npwp_add {
+        flex: 0 0 50% !important;
+        max-width: 50% !important;
     }
     .invoice-print .img-reports {
         width: 100%;

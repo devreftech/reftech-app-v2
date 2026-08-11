@@ -28,24 +28,27 @@ $(function () {
             columns: [
                 { data: "" },
                 { data: "id" },
+                { data: "id" },
                 {
                     data: "no_quote",
                 },
                 { data: "pn" },
                 { data: "qty" },
                 { data: "price" },
-                { data: "status" },
+                {
+                    data: "status",
+                },
                 {
                     data: "estimated_date",
                 },
             ],
             columnDefs: [
                 {
-                    targets: 5,
+                    targets: 6,
                     render: $.fn.dataTable.render.number(".", "", 0, "Rp."),
                 },
                 {
-                    targets: 2,
+                    targets: 3,
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             var $dataId = full["id"];
@@ -73,16 +76,78 @@ $(function () {
                     },
                 },
                 {
+                    // For Checkboxes
                     targets: 1,
+                    orderable: false,
+                    searchable: false,
+                    responsivePriority: 3,
+                    checkboxes: true,
+                    render: function () {
+                        return '<input type="checkbox" class="dt-checkboxes form-check-input">';
+                    },
+                    checkboxes: {
+                        selectAllRender:
+                            '<input type="checkbox" class="form-check-input">',
+                    },
+                },
+                {
+                    targets: 2,
                     searchable: true,
                     visible: false,
                 },
                 {
                     responsivePriority: 1,
-                    targets: 2,
+                    targets: 3,
+                },
+                {
+                    // Label Status Name
+                    targets: 7,
+                    render: function (data, type, full, meta) {
+                        var $status_number = full["status"];
+                        var $status = {
+                            20: {
+                                title: "Send WA / Email",
+                                class: "bg-label-secondary",
+                            },
+                            30: {
+                                title: "Inquiry Accepted",
+                                class: " bg-label-dark",
+                            },
+                            40: {
+                                title: "Progress Follow Up",
+                                class: " bg-label-info",
+                            },
+                            60: {
+                                title: "Negotiation / Revisi",
+                                class: " bg-label-primary",
+                            },
+                            80: {
+                                title: "Hot Prospect",
+                                class: " bg-label-warning",
+                            },
+                            100: {
+                                title: "Done PO",
+                                class: " bg-label-success",
+                            },
+                            0: {
+                                title: "Loss",
+                                class: " bg-label-danger",
+                            },
+                        };
+                        if (typeof $status[$status_number] === "undefined") {
+                            return data;
+                        }
+                        return (
+                            '<span class="badge rounded-pill ' +
+                            $status[$status_number].class +
+                            '">' +
+                            $status[$status_number].title +
+                            "</span>"
+                        );
+                    },
                 },
             ],
-            order: [[1, "desc"]],
+            order: [[2, "desc"]],
             dom: '<"card-header flex-column flex-md-row"<"head-label-quote text-center">><"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             // displayLength: 7,
             // lengthMenu: [7, 10, 25, 50, 75, 100],

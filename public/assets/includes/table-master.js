@@ -24,18 +24,14 @@ $(function () {
             },
             columns: [
                 { data: "" },
-                { data: "id" },
-                { data: "id" },
+                { data: "id_p" },
                 { data: "commodity" },
                 { data: "description" },
+                { data: "dimension" },
                 { data: "go" },
-                { 
-                    data: "all_stock",
-                    render: function(data, type, row) {
-                        return data != null ? data.toString() : ''; // Konversi data menjadi string
-                    },
-                    className: "text-end" // Tambahkan kelas CSS untuk rata kanan
-                }
+                { data: "stock" },
+                { data: "warehouse_stock" },
+                { data: "pending_stock" }
             ],
             columnDefs: [
                 {
@@ -50,50 +46,66 @@ $(function () {
                     },
                 },
                 {
-                    // For Checkboxes
                     targets: 1,
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 3,
-                    checkboxes: true,
-                    render: function () {
-                        return '<input type="checkbox" class="dt-checkboxes form-check-input">';
-                    },
-                    checkboxes: {
-                        selectAllRender:
-                            '<input type="checkbox" class="form-check-input">',
-                    },
-                },
-                {
-                    targets: 2,
                     searchable: true,
                     visible: false,
                 },
                 {
                     responsivePriority: 1,
-                    targets: 3,
-                },
-                {
-                    targets: 3,
+                    targets: 2,
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             var $dataId = full["id_p"];
                             var detailRoute = route("product.show", $dataId);
-                            var $title = full["modal_replacements"]
+                            var $title = full["modal_replacements"];
+                            var truncated = data && data.length > 25 ? data.substr(0, 22) + '...' : data;
+                            var tooltipTitle = data + ' | ' + $title;
                             return (
-                                
-                            '<span data-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="tooltip-primary" title="' +
-                            $title +
-                            '">'+
-                            '<a class="text-dark" href="' + detailRoute + '">' + data + "</a>" +
-                            "</span>"
+                                '<span data-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="tooltip-primary" title="' +
+                                tooltipTitle.replace(/"/g, '&quot;') +
+                                '">' +
+                                '<a class="text-dark" href="' +
+                                detailRoute +
+                                '">' +
+                                truncated +
+                                "</a>" +
+                                "</span>"
                             );
                         }
                         return data;
                     },
                 },
+                {
+                    targets: 3, // DESC (description)
+                    render: function (data, type, full, row) {
+                        if (!data) return "-";
+                        if (type === "display") {
+                            var truncated = data.length > 35 ? data.substr(0, 32) + '...' : data;
+                            return '<span data-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="tooltip-primary" title="' + data.replace(/"/g, '&quot;') + '">' + truncated + '</span>';
+                        }
+                        return data;
+                    }
+                },
+                {
+                    targets: 4, // Dimension
+                    render: function (data, type, full, row) {
+                        return data !== null && data !== undefined && data !== '' ? data : "-";
+                    }
+                },
+                {
+                    targets: 5, // Genuine / Replacement (go)
+                    render: function (data, type, full, row) {
+                        return data !== null && data !== undefined && data !== '' ? data : "-";
+                    }
+                },
+                {
+                    targets: [6, 7, 8], // Stocks
+                    render: function (data, type, row) {
+                        return data !== null && data !== undefined ? data : 0;
+                    },
+                },
             ],
-            order: [[2, "desc"]],
+            order: [[1, "desc"]],
             dom: '<"card-header flex-column flex-md-row"<"head-label text-center"><"dt-action-buttons text-end pt-3 pt-md-0"B>><"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             displayLength: 15,
             lengthMenu: [15, 25, 50, 75, 100],
@@ -108,7 +120,7 @@ $(function () {
                             text: '<i class="mdi mdi-printer-outline me-1" ></i>Print',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6,],
+                                columns: [2, 3, 4, 5, 6, 7, 8],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -164,7 +176,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-document-outline me-1" ></i>Csv',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6,],
+                                columns: [2, 3, 4, 5, 6, 7, 8],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -201,7 +213,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-excel-outline me-1"></i>Excel',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6,],
+                                columns: [2, 3, 4, 5, 6, 7, 8],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -238,7 +250,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-pdf-box me-1"></i>Pdf',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6],
+                                columns: [2, 3, 4, 5, 6, 7, 8],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -275,7 +287,7 @@ $(function () {
                             text: '<i class="mdi mdi-content-copy me-1" ></i>Copy',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6,],
+                                columns: [2, 3, 4, 5, 6, 7, 8],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {

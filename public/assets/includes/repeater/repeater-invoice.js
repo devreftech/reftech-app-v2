@@ -20,6 +20,7 @@ $(function(){
                 var info = $(this).find(".invoice-item-info");
                 var amount = $(this).find(".invoice-item-amount");
                 var amountLabel = $(this).find(".amount-label");
+                var detailId = $(this).find(".invoice-item-detail-id");
                 var fromControl = $(this).find(".form-control, .form-select");
                 var stock = $(this).find(".info-stock-label");
                 var weight = $(this).find(".info-weight-label");
@@ -28,6 +29,7 @@ $(function(){
                 fromControl.each(function (i) {
                     var id = "form-repeater-" + row + "-" + col;
                     // var nameProduct = "product[" + col + "]";
+                    var idProduct = "product-" + row;
                     var idPrice = "price-" + row;
                     var idDetailProduct = "detailProduct-" + row;
                     var idPriceLabel = "priceLabel-" + row;
@@ -38,6 +40,7 @@ $(function(){
                     var idStock = "info-stock-" + row;
                     var idWeight = "info-weight-" + row;
                     var idAmountLabel = "amount-label-" + row;
+                    $(product[i]).attr("id", idProduct);
                     $(product[i]).attr("data-id", row);
                     // $(product[i]).attr("name", nameProduct);
                     $(price[i]).attr("id", idPrice);
@@ -61,16 +64,21 @@ $(function(){
                     $(amount[i]).attr("data-id", row);
                     $(stock[i]).attr("id", idStock);
                     $(weight[i]).attr("id", idWeight);
+                    $(detailId[i]).val('');
                     col++;
                 });
     
                 row++;
     
-                $(this).slideDown();
+                $(this).slideDown(function() {
+                    $(document).trigger('repeater:added');
+                });
             },
             remove: function (e) {
-                confirm("Are you sure you want to delete this element?") &&
+                if (confirm("Are you sure you want to delete this element?")) {
                     $(this).remove(e);
+                    $(document).trigger('repeater:deleted');
+                }
             },
         });
     }

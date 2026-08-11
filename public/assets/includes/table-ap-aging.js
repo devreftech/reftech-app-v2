@@ -23,13 +23,6 @@ $(function () {
             });
         });
 
-        var bucketColors = {
-            success: "#28a745",
-            warning: "#c79100",
-            orange: "#fd7e14",
-            danger: "#dc3545",
-        };
-
         var dt_filter = dt_table_sales_aging_ap.DataTable({
             ajax: {
                 type: "GET",
@@ -37,12 +30,24 @@ $(function () {
                 headers: {
                     "Content-Type": "application/json",
                 },
+
+                // success: function (hasil, Url) {
+                //     console.log("Url:", Url);
+                //     console.log(hasil);
+                // },
+                // error: function (error) {
+                //     console.log("Url:", Url);
+                //     console.error("Error:", error);
+                //     console.log("error disini");
+                // },
             },
             columns: [
+                // { data: "" },
+                // { data: "id" },
+                // { data: "id" },
                 { data: "invoice" },
                 { data: "tanggal" },
                 { data: "overdue" },
-                { data: "bucket" },
                 {
                     data: "supplier",
                     render: (data, type, full) =>
@@ -50,6 +55,7 @@ $(function () {
                 },
                 { data: "total" },
                 { data: "total_qty" },
+                // { data: "total_payment_level1" },
                 {
                     data: "accept",
                     render: function (data, type, full) {
@@ -62,6 +68,22 @@ $(function () {
                 },
             ],
             columnDefs: [
+                // {
+                //     // For Responsive
+                //     className: "control",
+                //     orderable: false,
+                //     searchable: false,
+                //     responsivePriority: 2,
+                //     targets: 0,
+                //     render: function (data, type, full, meta) {
+                //         return "";
+                //     },
+                // },
+                // {
+                //     targets: 0,
+                //     searchable: true,
+                //     visible: false,
+                // },
                 {
                     responsivePriority: 1,
                     targets: 0,
@@ -85,34 +107,16 @@ $(function () {
                 },
                 {
                     targets: 2,
-                    className: "text-center",
                     render: function (data, type, row) {
                         if (type !== "display") return data;
 
-                        return row.accept == 1 ? "-" : data + " hari";
+                        return row.accept == 1
+                            ? '<span class="badge bg-success">PAID</span>'
+                            : data + ' Days';
                     },
                 },
                 {
-                    targets: 3,
-                    className: "text-center",
-                    render: function (data, type, full) {
-                        if (type !== "display") return data;
-                        if (full.accept == 1) return "-";
-
-                        var color = bucketColors[full.bucket_class] || "#6c757d";
-                        return (
-                            '<span class="badge" style="background-color:' +
-                            color +
-                            '20; color:' +
-                            color +
-                            ';">' +
-                            data +
-                            "</span>"
-                        );
-                    },
-                },
-                {
-                    targets: 5,
+                    targets: 4,
                     render: function (data, type, row) {
                         if (type === "display" || type === "filter") {
                             return (
@@ -126,6 +130,7 @@ $(function () {
                 },
             ],
             order: [],
+            // orderCellsTop: true,
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>><"table-responsive"t><"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
         });
     }

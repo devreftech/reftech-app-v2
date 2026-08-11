@@ -13,70 +13,25 @@ $(function () {
                 },
             },
             columns: [
-                { data: "" },
-                { data: "id" },
-                { data: "id" },
                 { data: "company" },
                 { data: "title" },
                 { data: "nett" },
-                { data: "estimated_date" },
                 { data: "status" },
                 { data: "" },
             ],
             columnDefs: [
                 {
-                    targets: 5,
+                    targets: 2,
                     render: $.fn.dataTable.render.number(".", "", 0, "Rp."),
                 },
-                {
-                    // For Responsive
-                    className: "control",
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 2,
-                    targets: 0,
-                    render: function (data, type, full, meta) {
-                        return "";
-                    },
-                },
-                {
-                    // For Checkboxes
-                    targets: 1,
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 3,
-                    checkboxes: true,
-                    render: function () {
-                        return '<input type="checkbox" class="dt-checkboxes form-check-input">';
-                    },
-                    checkboxes: {
-                        selectAllRender:
-                            '<input type="checkbox" class="form-check-input">',
-                    },
-                },
-                {
-                    targets: 2,
-                    searchable: true,
-                    visible: false,
-                },
+                
                 {
                     responsivePriority: 1,
-                    targets: 4,
-                },
-                {
-                    // Date column
-                    targets: 6,
-                    render: function (data, type, full, meta) {
-                        if (!data) return "-";
-                        var d = new Date(data);
-                        var dd = String(d.getDate()).padStart(2, "0");
-                        var mm = String(d.getMonth() + 1).padStart(2, "0");
-                        return dd + "-" + mm + "-" + d.getFullYear();
-                    },
+                    targets: 1,
                 },
                 {
                     // Label Status Percent
-                    targets: 7,
+                    targets: 3,
                     render: function (data, type, full, meta) {
                         var $status_number = full["status"];
                         var $titleTool = full["note"];
@@ -183,7 +138,7 @@ $(function () {
                             text: '<i class="mdi mdi-printer-outline me-1" ></i>Print',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8],
+                                columns: [3, 4, 5, 6, 7],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -239,7 +194,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-document-outline me-1" ></i>Csv',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8],
+                                columns: [3, 4, 5, 6, 7],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -276,7 +231,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-excel-outline me-1"></i>Excel',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8],
+                                columns: [3, 4, 5, 6, 7],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -313,7 +268,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-pdf-box me-1"></i>Pdf',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8],
+                                columns: [3, 4, 5, 6, 7],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -350,7 +305,7 @@ $(function () {
                             text: '<i class="mdi mdi-content-copy me-1" ></i>Copy',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8],
+                                columns: [3, 4, 5, 6, 7],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {

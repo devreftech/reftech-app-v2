@@ -29,7 +29,6 @@ $(function () {
                 { data: "id" },
                 { data: "company" },
                 { data: "area" },
-                { data: "ru" },
                 { data: "issue" },
                 { data: "date" },
                 { data: "follow_up" },
@@ -76,9 +75,29 @@ $(function () {
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             var $dataId = full["id"];
+                            var $status_ru = full["ru"];
+                            var $status = {
+                                User: {
+                                    title: "U",
+                                    class: "bg-success",
+                                },
+                                Reseller: {
+                                    title: "R",
+                                    class: " bg-warning",
+                                },
+                            };
                             var detailRoute = route("detail.leads", $dataId);
                             return (
-                                '<a class="text-dark" href="' + detailRoute + '">' + data + "</a>"
+                                '<a class="text-dark" href="' +
+                                detailRoute +
+                                '">' +
+                                '<span class="badge ' +
+                                $status[$status_ru].class +
+                                '">' +
+                                $status[$status_ru].title +
+                                "</span> " +
+                                data +
+                                "</a>"
                             );
                         }
                         return data;
@@ -87,33 +106,6 @@ $(function () {
                 {
                     // Label
                     targets: 5,
-                    render: function (data, type, full, meta) {
-                        var $status_ru = full["ru"];
-                        var $status = {
-                            User: {
-                                title: "User",
-                                class: "bg-success",
-                            },
-                            Reseller: {
-                                title: "Reseller",
-                                class: " bg-warning",
-                            },
-                        };
-                        if (typeof $status[$status_ru] === "undefined") {
-                            return data;
-                        }
-                        return (
-                            '<span class="badge ' +
-                            $status[$status_ru].class +
-                            '">' +
-                            $status[$status_ru].title +
-                            "</span>"
-                        );
-                    },
-                },
-                {
-                    // Label
-                    targets: 6,
                     render: function (data, type, full, meta) {
                         var $status_number = full["id_issues"];
                         var $titleTool = full["note"];
@@ -172,7 +164,7 @@ $(function () {
                     },
                 },
                 {
-                    targets: [7, 8],
+                    targets: [6, 7],
                     render: function (data, type, row) {
                         if (data === null || data === undefined) {
                             return "-";

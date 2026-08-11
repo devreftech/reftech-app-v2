@@ -48,7 +48,30 @@ $(function () {
                     },
                 },
                 {
+                    data: "prev_qty",
+                    render: function (data) {
+                        return data + " pcs";
+                    },
+                },
+                {
                     data: "note",
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    render: function (data, type, row) {
+                        return `
+            <button 
+                type="button"
+                class="btn btn-sm btn-warning editStock"
+                data-id="${row.id}"
+                data-bs-toggle="modal"
+                data-bs-target="#updateStock">
+                Edit
+            </button>
+        `;
+                    },
                 },
             ],
             columnDefs: [
@@ -127,7 +150,7 @@ $(function () {
                                             if (
                                                 item.classList !== undefined &&
                                                 item.classList.contains(
-                                                    "user-name"
+                                                    "user-name",
                                                 )
                                             ) {
                                                 result =
@@ -153,11 +176,11 @@ $(function () {
                                     .css("color", config.colors.headingColor)
                                     .css(
                                         "border-color",
-                                        config.colors.borderColor
+                                        config.colors.borderColor,
                                     )
                                     .css(
                                         "background-color",
-                                        config.colors.bodyBg
+                                        config.colors.bodyBg,
                                     );
                                 $(win.document.body)
                                     .find("table")
@@ -183,7 +206,7 @@ $(function () {
                                             if (
                                                 item.classList !== undefined &&
                                                 item.classList.contains(
-                                                    "user-name"
+                                                    "user-name",
                                                 )
                                             ) {
                                                 result =
@@ -220,7 +243,7 @@ $(function () {
                                             if (
                                                 item.classList !== undefined &&
                                                 item.classList.contains(
-                                                    "user-name"
+                                                    "user-name",
                                                 )
                                             ) {
                                                 result =
@@ -257,7 +280,7 @@ $(function () {
                                             if (
                                                 item.classList !== undefined &&
                                                 item.classList.contains(
-                                                    "user-name"
+                                                    "user-name",
                                                 )
                                             ) {
                                                 result =
@@ -294,7 +317,7 @@ $(function () {
                                             if (
                                                 item.classList !== undefined &&
                                                 item.classList.contains(
-                                                    "user-name"
+                                                    "user-name",
                                                 )
                                             ) {
                                                 result =
@@ -365,7 +388,7 @@ $(function () {
             },
         });
         $("div.head-label").html(
-            '<h5 class="card-title mb-0">Table Stock Opname</h5>'
+            '<h5 class="card-title mb-0">Table Stock Opname</h5>',
         );
     }
     dt_table_opname.on("draw", function () {

@@ -100,6 +100,16 @@ $(function () {
                                     '<i class="menu-icon tf-icons mdi mdi-pencil mdi-20px"></i>' +
                                 '</a>' +
                             '</div>'
+                            // '<div class="d-inline-block">' +
+                            // '<a href="javascript:;" class="btn btn-sm btn-text-secondary rounded-pill btn-icon dropdown-toggle hide-arrow" data-bs-toggle="dropdown"><i class="mdi mdi-dots-vertical"></i></a>' +
+                            // '<ul class="dropdown-menu dropdown-menu-end m-0">' +
+                            // '<li><a href="javascript:;" class="dropdown-item text-success" data-bs-toggle="modal" data-bs-target="#acceptinvoice'+ $dataId +'">Accept</a></li>' +
+                            // '<li><a href="javascript:;" class="dropdown-item text-danger reject-invoice" data-id="'+ $dataId +'">Reject</a></li>' +
+                            // '<li><a href="' +
+                            // $detailUrl +
+                            // '" class="dropdown-item">View</a></li>' +
+                            // "</ul>" +
+                            // "</div>"
                         );
                     },
                 },

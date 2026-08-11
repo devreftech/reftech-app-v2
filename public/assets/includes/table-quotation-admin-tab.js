@@ -14,22 +14,18 @@ $(function () {
                 '<input type="text" class="form-control form-control-sm" placeholder="Cari ' + title + '..." />'
             );
             $("input", this).on("keyup change", function () {
-                if (dt_quotation_admin_tab.column(i).search() !== this.value) {
-                    dt_quotation_admin_tab.column(i).search(this.value).draw();
+                if (dt_q_admin.column(i).search() !== this.value) {
+                    dt_q_admin.column(i).search(this.value).draw();
                 }
             });
         });
 
-        var dt_quotation_admin_tab = dt_table.DataTable({
+        var dt_q_admin = dt_table.DataTable({
             ajax: {
                 type: "GET",
                 url: Url,
                 headers: { "Content-Type": "application/json" },
-                data: function (d) {
-                    d.sales_id = window.adminSalesFilter || '';
-                    d.year = window.adminQuotationYearFilter || 'all';
-                    return d;
-                },
+                data: function (d) { d.sales_id = window.adminSalesFilter || ''; return d; },
             },
             columns: [
                 { data: "no_quote" },
@@ -50,18 +46,13 @@ $(function () {
                         if (type !== "display") return data;
                         var id      = full["id"];
                         var qType   = full["type"];
-                        var rowType = full["row_type"];
                         var url;
-                        if (rowType === 'unit' || qType === 'Unit') {
-                            url = '/unit-quotation/' + id;
-                        } else if (qType == "Sparepart") {
+                        if (qType == "Sparepart") {
                             url = route("quotation.show", id);
                         } else if (qType == "Service") {
                             url = route("show-service.quotation", id);
-                        } else if (qType == "Overhaul") {
-                            url = route("show-overhaul.quotation", id);
                         } else {
-                            url = route("quotation.show", id);
+                            url = route("show-overhaul.quotation", id);
                         }
                         var full_no = data || "-";
                         var short   = full_no.length > 5 ? full_no.substring(0, 5) + "…" : full_no;
@@ -88,7 +79,7 @@ $(function () {
                     targets: 2,
                     render: function (data, type) {
                         if (type !== "display") return data;
-                        var formatted = parseInt(data || 0).toLocaleString("id-ID");
+                        var formatted = parseInt(data).toLocaleString("id-ID");
                         return '<div class="d-flex justify-content-between px-2"><span>Rp.</span><span>' + formatted + "</span></div>";
                     },
                 },
@@ -104,36 +95,20 @@ $(function () {
                     targets: 5,
                     render: function (data, type, full) {
                         if (type !== "display") return data;
-                        var status_number = full["status"];
                         var tip = full["tip"] || "Belum di update";
-                        var qType = full["type"];
-                        var statusMap = {
-                            20:    { title: "Send WA / Email",     class: "bg-label-secondary", colorTip: "tooltip-secondary" },
-                            30:    { title: "Inquiry Accepted",    class: "bg-label-dark",      colorTip: "tooltip-dark" },
-                            40:    { title: "Follow Up",           class: "bg-label-info",      colorTip: "tooltip-info" },
-                            60:    { title: "Negotiation / Revisi",class: "bg-label-primary",   colorTip: "tooltip-primary" },
-                            80:    { title: "Hot Prospect",        class: "bg-label-warning",   colorTip: "tooltip-warning" },
-                            90:    { title: "Hold",                class: "bg-warning",         colorTip: "tooltip-warning" },
-                            100:   { title: "Done PO",             class: "bg-label-success",   colorTip: "tooltip-success" },
-                            0:     { title: "Loss",                class: "bg-label-danger",    colorTip: "tooltip-danger" },
-                            draft:        { title: "Draft",        class: "bg-label-secondary", colorTip: "" },
-                            sent:         { title: "Sent",         class: "bg-label-info",      colorTip: "" },
-                            negotiation:  { title: "Negotiation",  class: "bg-label-warning",   colorTip: "" },
-                            revision:     { title: "Revisi",       class: "bg-label-primary",   colorTip: "" },
-                            hot_prospect: { title: "Hot Prospect", class: "bg-label-warning",   colorTip: "" },
-                            po_received:  { title: "PO Received",  class: "bg-label-success",   colorTip: "" },
-                            loss:         { title: "Loss",         class: "bg-label-danger",    colorTip: "" },
-                            cancel:       { title: "Cancel",       class: "bg-label-danger",    colorTip: "" },
+                        var $status = {
+                            20:  { title: "Send WA / Email",     pct: "20%",  class: "bg-label-secondary", colorTip: "tooltip-secondary" },
+                            30:  { title: "Inquiry Accepted",     pct: "30%",  class: "bg-label-dark",      colorTip: "tooltip-dark" },
+                            40:  { title: "Progress Follow Up",   pct: "40%",  class: "bg-label-info",      colorTip: "tooltip-info" },
+                            60:  { title: "Negotiation / Revisi", pct: "60%",  class: "bg-label-primary",   colorTip: "tooltip-primary" },
+                            80:  { title: "Hot Prospect",         pct: "80%",  class: "bg-label-warning",   colorTip: "tooltip-warning" },
                         };
-                        var s = statusMap[status_number] || { title: status_number, class: "bg-label-secondary", colorTip: "tooltip-secondary" };
-                        var badge = '<span class="badge rounded-pill ' + s.class + ' cursor-pointer"' +
+                        var s = $status[data];
+                        if (!s) return data;
+                        return '<span class="badge rounded-pill ' + s.class + ' cursor-pointer"' +
                             ' data-bs-toggle="tooltip" data-bs-placement="top"' +
-                            ' data-bs-custom-class="' + (s.colorTip || "") + '" title="' + tip + '">' +
-                            s.title + '</span>';
-                        if (qType === "Unit" || full["row_type"] === "unit") {
-                            badge += ' <span class="badge bg-label-info ms-1">Smart</span>';
-                        }
-                        return badge;
+                            ' data-bs-custom-class="' + s.colorTip + '" title="' + tip + '">' +
+                            s.title + " · " + s.pct + "</span>";
                     },
                 },
                 {
@@ -183,7 +158,7 @@ $(function () {
             },
         });
 
-        window.dtAdminQuotation = dt_quotation_admin_tab;
+        window.dtAdminQuotation = dt_q_admin;
 
         dt_table.on("draw.dt", function () {
             $('[data-bs-toggle="tooltip"]').tooltip();

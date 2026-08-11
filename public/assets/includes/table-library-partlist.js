@@ -27,7 +27,7 @@ $(function () {
                 { data: "id" },
                 { data: "name" },
                 { data: "models" },
-                { data: "date" }, 
+                { data: "date" },
             ],
             columnDefs: [
                 {
