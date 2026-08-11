@@ -1,12 +1,12 @@
 <?php
 use Illuminate\Support\Facades\Auth;
 
-header('Content-Type: application/json');$host = "localhost";
-$host = "localhost";
-$users = "u877155683_reftech_my";
-$pass = "REFtechjaya321!";
+header('Content-Type: application/json');$host = env('DB_HOST', '127.0.0.1');
+$host = env('DB_HOST', '127.0.0.1');
+$users = env('DB_USERNAME');
+$pass = env('DB_PASSWORD');
 
-$databaseName = "u877155683_reftech_my";
+$databaseName = env('DB_DATABASE');
 $tableName = "quotation";
 
 // Periksa apakah pengguna terotentikasi
@@ -18,6 +18,7 @@ if (Auth::check()) {
         // Membuat koneksi PDO
         $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec("SET SESSION sql_mode = ''");
 
         // Query database for data
         $query = "SELECT q.*,CONCAT(c.ru, ' - ', c.company) as client, CONCAT(q.note, ' (', q.status_date, ')') AS tip, c.company, c.ru, u.name FROM quotation q 

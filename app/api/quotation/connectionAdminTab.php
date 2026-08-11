@@ -16,6 +16,7 @@ $databaseName = env('DB_DATABASE', 'u877155683_reftech_my');
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec("SET SESSION sql_mode = ''");
 
     $salesId = request()->get('sales_id');
     $salesFilterQ = $salesId ? " AND u.id = " . intval($salesId) : "";

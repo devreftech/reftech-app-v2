@@ -21,6 +21,7 @@ $search = trim(request()->get('search', ['value' => ''])['value'] ?? '');
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8", $user, $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec("SET SESSION sql_mode = ''");
 
     $where  = '';
     $params = [];
