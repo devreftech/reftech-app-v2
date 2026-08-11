@@ -20,6 +20,7 @@ $category   = request()->get('category', '');
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec("SET SESSION sql_mode = ''");
 
     $conditions = [];
     $params     = [];

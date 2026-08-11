@@ -18,6 +18,7 @@ if (Auth::check()) {
         // Membuat koneksi PDO
         $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec("SET SESSION sql_mode = ''");
 
         // Query database for data
         $query = "SELECT p.*, CONCAT(pr.commodity, ' - ', dp.replacement) AS product, CONCAT(d.qty, ' ', pr.unit) as qty, s.supplier as supplier_name FROM product_in p 

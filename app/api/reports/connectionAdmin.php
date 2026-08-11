@@ -20,6 +20,7 @@ if (Auth::check()) {
     // Membuat koneksi PDO
     $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec("SET SESSION sql_mode = ''");
 
     // Query database for data
     $query = "SELECT STRAIGHT_JOIN r.*, c.company, u.name AS technician, s.name AS sales ,  CONCAT(sp.brand, ' ', un.model) AS brand_type ,  CONCAT('(', COALESCE(m.serial, '-'), ') - ', COALESCE(m.tag, '-')) AS serial_tag

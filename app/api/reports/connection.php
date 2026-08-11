@@ -18,6 +18,7 @@ if (Auth::check()) {
         // Membuat koneksi PDO
         $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec("SET SESSION sql_mode = ''");
 
         // Query database for data
         $query = "SELECT r.id, r.no_service, c.company, r.jobdesc, CONCAT(sp.brand, ' ', un.model) AS brand_type,

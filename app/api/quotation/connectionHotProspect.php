@@ -14,6 +14,7 @@ if (Auth::check()) {
     try {
         $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec("SET SESSION sql_mode = ''");
 
         $year = request()->get('year');
         $yearFilterQ = ($year && $year !== 'all') ? " AND YEAR(q.estimated_date) = " . intval($year) : "";
