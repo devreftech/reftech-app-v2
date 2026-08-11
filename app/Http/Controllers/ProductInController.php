@@ -105,7 +105,7 @@ class ProductInController extends Controller
                 $dProductIn->id_detail_product = $request->replacement[$item];
                 $dProductIn->qty = $request->qty[$item];
                 $dProductIn->modal = $request->price[$item];
-                $dProductIn->disc = $request->disc[$item];
+                $dProductIn->disc = !empty($request->disc[$item]) ? $request->disc[$item] : 0;
                 $dProductIn->amount = $request->amount[$item];
                 $dProductIn->warehouse = $request->warehouse[$item];
                 $productD = DetailProduct::where('id', $request->replacement[$item])->first();
@@ -396,7 +396,7 @@ class ProductInController extends Controller
                 $dproductIn->warehouse = $request->warehouse[$item];
                 $dproductIn->modal = $request->price[$item];
                 $dproductIn->amount = $request->amount[$item];
-                $dproductIn->disc = $request->disc[$item];
+                $dproductIn->disc = !empty($request->disc[$item]) ? $request->disc[$item] : 0;
                 $dProductSave = $dproductIn->save();
             }
         }

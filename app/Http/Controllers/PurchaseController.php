@@ -417,7 +417,7 @@ class PurchaseController extends Controller
                 $dProductIn->id_detail_product = $request->replacement[$item];
                 $dProductIn->qty = $request->qty[$item];
                 $dProductIn->modal = $request->price[$item];
-                $dProductIn->disc = $request->disc[$item];
+                $dProductIn->disc = !empty($request->disc[$item]) ? $request->disc[$item] : 0;
                 $dProductIn->amount = $request->amount[$item];
                 $dProductIn->warehouse = $request->warehouse[$item];
                 $productD = DetailProduct::find($request->replacement[$item]);
