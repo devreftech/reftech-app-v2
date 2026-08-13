@@ -2,11 +2,11 @@
 use Illuminate\Support\Facades\Auth;
 
 header('Content-Type: application/json');
-$host = env('DB_HOST', '127.0.0.1');
-$users = env('DB_USERNAME', 'root');
-$pass = env('DB_PASSWORD', '');
+$host = config('database.connections.mysql.host');
+$users = config('database.connections.mysql.username');
+$pass = config('database.connections.mysql.password');
 
-$databaseName = env('DB_DATABASE', 'u877155683_reftech_my');
+$databaseName = config('database.connections.mysql.database');
 $tableName = "quotation";
 
 // Periksa apakah pengguna terotentikasi

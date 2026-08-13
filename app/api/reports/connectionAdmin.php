@@ -1,12 +1,12 @@
-﻿<?php
+<?php
 use Illuminate\Support\Facades\Auth;
 
 header('Content-Type: application/json');
-$host = env('DB_HOST', 'localhost');
-$users = env('DB_USERNAME', 'root');
-$pass = env('DB_PASSWORD', '');
+$host = config('database.connections.mysql.host');
+$users = config('database.connections.mysql.username');
+$pass = config('database.connections.mysql.password');
 
-$databaseName = env('DB_DATABASE', 'u877155683_reftech_my');
+$databaseName = config('database.connections.mysql.database');
 $tableName = "reports";
 
 // Periksa apakah pengguna terotentikasi
