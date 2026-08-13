@@ -22,7 +22,7 @@
                 <h5 class="card-title mb-0">Riwayat Barang Keluar Unit</h5>
             </div>
             <div class="table-responsive">
-                <table class="table table-striped mb-0">
+                <table class="table table-bordered mb-0">
                     <thead>
                         <tr>
                             <th>No Transaksi</th>

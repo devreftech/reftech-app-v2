@@ -7,7 +7,7 @@
     <div class="card mb-3">
         <div class="card-datatable table-responsive pt-0">
             <table
-                class="datatable-sales-completed-retur table table-striped">
+                class="datatable-sales-completed-retur table table-bordered">
                 <thead>
                     <tr>
                         <th>No Return</th>
@@ -25,7 +25,7 @@
     {{-- <div class="card mb-3">
         <div class="card-datatable table-responsive pt-0">
             <table
-                class="datatable-request-return table table-striped">
+                class="datatable-request-return table table-bordered">
                 <thead>
                     <tr>
                         <th></th>

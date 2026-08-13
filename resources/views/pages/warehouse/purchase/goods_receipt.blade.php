@@ -1,6 +1,15 @@
 @extends('layouts.sales.app')
 @section('title', 'Goods Receipt Verification')
 @section('content')
+    <style>
+        .premium-container .card,
+        .premium-container .modern-card {
+            border: 1px solid rgba(226, 232, 240, 0.8) !important;
+            box-shadow: 0 2px 6px 0 rgba(67, 89, 113, 0.06), 0 0 1px 0 rgba(67, 89, 113, 0.12) !important;
+            border-radius: 0.75rem !important;
+            background-color: #ffffff;
+        }
+    </style>
     <div class="container-fluid premium-container p-0" style="width: calc(100% - 10px); margin-right:5px;margin-left:5px;">
         <div class="row">
             <div class="col-12">
@@ -93,7 +102,7 @@
                                                 <td>{{ $key + 1 }}</td>
                                                 <td>
                                                     <span class="fw-semibold text-dark">{{ $pr->equivalent->brand }} {{ $pr->equivalent->pn }}</span>
-                                                    <small class="text-muted d-block" style="font-size: 11px;">PR No: {{ $pr->no_pr }}</small>
+                                                    <small class="text-muted d-block" style="font-size: 11px;">PR No: {{ $header->no_pr ?? '-' }}</small>
                                                 </td>
                                                 <td>
                                                     <span class="fw-bold text-dark fs-5" id="qty-order-{{ $key }}">{{ $pr->qty }}</span>

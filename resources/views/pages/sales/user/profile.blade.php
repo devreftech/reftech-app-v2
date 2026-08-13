@@ -58,10 +58,17 @@
 
     {{-- Hero Profile Banner Card --}}
     <div class="card mb-4 border-0 shadow-sm overflow-hidden" style="border-radius: 16px;">
-        <div style="background: linear-gradient(135deg, #666cff 0%, #4f46e5 100%); height: 130px; position: relative;">
-            <div class="position-absolute end-0 bottom-0 opacity-25 p-3">
-                <i class="mdi mdi-account-circle-outline text-white" style="font-size: 140px; margin-right: -20px; margin-bottom: -40px;"></i>
-            </div>
+        <div style="background: {{ $user->banner ? 'url(' . asset($user->banner) . ') center/cover no-repeat' : 'linear-gradient(135deg, #666cff 0%, #4f46e5 100%)' }}; height: 160px; position: relative;">
+            @if(!$user->banner)
+                <div class="position-absolute end-0 bottom-0 opacity-25 p-3">
+                    <i class="mdi mdi-account-circle-outline text-white" style="font-size: 140px; margin-right: -20px; margin-bottom: -40px;"></i>
+                </div>
+            @endif
+            @if(Auth::id() == $user->id || Auth::user()->role == 'Admin')
+                <button type="button" class="btn btn-sm btn-white bg-white text-dark shadow-sm position-absolute end-0 top-0 m-3 d-flex align-items-center gap-1 border-0" data-bs-toggle="modal" data-bs-target="#changeBannerModal">
+                    <i class="mdi mdi-camera-outline fs-5 text-primary"></i> <span class="d-none d-sm-inline fw-semibold">Ubah Banner</span>
+                </button>
+            @endif
         </div>
         <div class="card-body pt-0 pb-4">
             <div class="d-flex flex-column flex-md-row align-items-center align-items-md-end gap-3" style="margin-top: -50px;">
@@ -503,6 +510,42 @@
             </div>
         </div>
     </div>
+
+    {{-- Change Banner Modal --}}
+    <div class="modal fade" id="changeBannerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header border-bottom py-3">
+                    <h5 class="modal-title fw-bold text-dark d-flex align-items-center">
+                        <i class="mdi mdi-image-edit-outline text-primary me-2 fs-4"></i> Update Foto Banner Profil
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ route('profile.banner.update', $user->id) }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-body p-4">
+                        <div class="mb-3 text-center">
+                            <div class="mb-2 rounded overflow-hidden shadow-sm position-relative" style="height: 140px; background: {{ $user->banner ? 'url(' . asset($user->banner) . ') center/cover no-repeat' : 'linear-gradient(135deg, #666cff 0%, #4f46e5 100%)' }};" id="bannerPreviewContainer">
+                                <span class="badge bg-dark bg-opacity-50 position-absolute bottom-0 end-0 m-2">Preview Banner</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="bannerInput" class="form-label fw-semibold text-dark">Pilih Foto Banner Baru</label>
+                            <input class="form-control" type="file" id="bannerInput" name="banner" accept="image/*" required>
+                            <div class="form-text">Rekomendasi rasio 4:1 (misal 1200x300px), ukuran maksimal 5MB (JPG, PNG, WEBP).</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top bg-light py-2">
+                        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="mdi mdi-upload me-1"></i> Simpan Banner
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('after-style')
@@ -647,6 +690,19 @@
                         });
                     }
                 });
+            });
+
+            // Append modal to body to prevent backdrop z-index / overflow issues
+            if ($('#changeBannerModal').length) {
+                $('#changeBannerModal').appendTo('body');
+            }
+
+            // Live preview for banner image upload
+            $('#bannerInput').on('change', function(e) {
+                const [file] = e.target.files;
+                if (file) {
+                    $('#bannerPreviewContainer').css('background-image', `url('${URL.createObjectURL(file)}')`);
+                }
             });
         });
     </script>

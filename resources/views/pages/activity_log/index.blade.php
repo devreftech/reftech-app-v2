@@ -67,7 +67,7 @@
                     @forelse($logs as $log)
                         <tr>
                             <td>
-                                <span class="fw-semibold">{{ $log->created_at->format('d-m-Y H:i:s') }}</span>
+                                <span class="fw-semibold">{{ $log->created_at->clone()->timezone('Asia/Jakarta')->format('d-m-Y H:i:s') }}</span>
                                 <br><small class="text-muted">{{ $log->created_at->diffForHumans() }}</small>
                             </td>
                             <td>

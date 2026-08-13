@@ -16,6 +16,7 @@ use App\Models\PendingPO;
 use App\Models\Product;
 use App\Models\ProductOut;
 use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestDetail;
 use App\Models\Quotation;
 use App\Models\Retur;
 use App\Models\SerialProduct;
@@ -136,7 +137,7 @@ class PendingController extends Controller
             $activity = ChangeStatus::where('id_pending', $id)->with('comment')->get();
             $resis = Expanse::where('id_pending', $id)->where('type', 'Resi')->get();
             $dPending = DetailPendingPO::with('equivalent.product')->where('id_pending', $id)->get();
-            $purchase = PurchaseRequest::where('id_pending', $id)->get();
+            $purchase = PurchaseRequest::where('id_pending', $id)->with('details')->first();
             $return = Retur::where('id_pending', $id)->get();
             $allproductOut = ProductOut::leftJoin('pending_po', 'product_out.id', '=', 'pending_po.id_product_out')
                 ->whereNull('pending_po.id_product_out')
@@ -169,7 +170,7 @@ class PendingController extends Controller
             ->get();
         // $allEquiv = SerialProduct::all();
         // $detProduct = DetailProductOut::where('id_product_out', $allproductOut[0]->id)->get();
-        $purchase = PurchaseRequest::where('id_pending', $id)->get();
+        $purchase = PurchaseRequest::where('id_pending', $id)->with('details')->first();
 
         // dd($detail);
         // dd($status->count());
@@ -671,9 +672,11 @@ class PendingController extends Controller
         }
 
         $orderIds = $allOrders->pluck('id');
-        $materialCostByOrder = PurchaseRequest::whereIn('id_pending', $orderIds)
-            ->where('status', '3')
-            ->groupBy('id_pending')->selectRaw('id_pending, SUM(amount) as total')
+        $materialCostByOrder = PurchaseRequestDetail::join('purchase_request', 'purchase_request.id', '=', 'purchase_request_detail.id_purchase_request')
+            ->whereIn('purchase_request.id_pending', $orderIds)
+            ->where('purchase_request.status', '3')
+            ->groupBy('purchase_request.id_pending')
+            ->selectRaw('purchase_request.id_pending, SUM(purchase_request_detail.amount) as total')
             ->pluck('total', 'id_pending');
         $shippingCostByOrder = Expanse::whereIn('id_pending', $orderIds)
             ->where('type', 'Resi')
@@ -737,9 +740,11 @@ class PendingController extends Controller
         }
 
         $projectIds = $projects->pluck('id');
-        $materialCostByProject = PurchaseRequest::whereIn('id_pending', $projectIds)
-            ->where('status', '3')
-            ->groupBy('id_pending')->selectRaw('id_pending, SUM(amount) as total')
+        $materialCostByProject = PurchaseRequestDetail::join('purchase_request', 'purchase_request.id', '=', 'purchase_request_detail.id_purchase_request')
+            ->whereIn('purchase_request.id_pending', $projectIds)
+            ->where('purchase_request.status', '3')
+            ->groupBy('purchase_request.id_pending')
+            ->selectRaw('purchase_request.id_pending, SUM(purchase_request_detail.amount) as total')
             ->pluck('total', 'id_pending');
         $generalCostByProject = ProjectExpense::whereIn('id_pending', $projectIds)
             ->groupBy('id_pending')->selectRaw('id_pending, SUM(amount) as total')

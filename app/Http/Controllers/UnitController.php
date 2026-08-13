@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\Machine;
 use App\Models\Payment;
 use App\Models\PowerServicePrice;
+use App\Models\BearingKitPrice;
 use App\Models\Product;
 use App\Models\Prospect;
 use App\Models\Quotation;
@@ -675,6 +676,12 @@ class UnitController extends Controller
         $serviceDesc = $formatBullets($serviceDesc);
         $serviceNote = $formatBullets($serviceNote);
 
+        // Saran (bukan otomatis dipasang) buat tombol "Tambah Set Bearing Kit" di kategori B PM4 —
+        // prefill dari pricelist Forecast berdasarkan Motor Power unit ini, tetap bisa diedit.
+        $bearingKitPrice = $normalizedPower
+            ? BearingKitPrice::where('power', $normalizedPower)->first()
+            : null;
+
         return response()->json([
             'unit' => [
                 'id' => $unit->id,
@@ -692,6 +699,15 @@ class UnitController extends Controller
                 'amount' => $serviceFee,
                 'matched' => (bool) $servicePrice,
                 'power_normalized' => $normalizedPower,
+            ],
+            'bearing_kit_suggestion' => [
+                'matched' => (bool) $bearingKitPrice,
+                'power_normalized' => $normalizedPower,
+                'items' => [
+                    ['label' => 'Set of Bearing Kit', 'amount' => $bearingKitPrice ? (float) $bearingKitPrice->price_bearing_kit : 0],
+                    ['label' => 'Set of Bearing Kit Main Motor', 'amount' => $bearingKitPrice ? (float) $bearingKitPrice->price_bearing_kit_main_motor : 0],
+                    ['label' => 'Set of Bearing Kit Fan Motor', 'amount' => $bearingKitPrice ? (float) $bearingKitPrice->price_bearing_kit_fan_motor : 0],
+                ],
             ],
         ]);
     }

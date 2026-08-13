@@ -46,8 +46,11 @@ $(function () {
                         if (type !== "display") return data;
                         var id      = full["id"];
                         var qType   = full["type"];
+                        var rowType = full["row_type"];
                         var url;
-                        if (qType == "Sparepart") {
+                        if (rowType === "unit") {
+                            url = "/unit-quotation/" + id;
+                        } else if (qType == "Sparepart") {
                             url = route("quotation.show", id);
                         } else if (qType == "Service") {
                             url = route("show-service.quotation", id);
@@ -102,13 +105,23 @@ $(function () {
                             40:  { title: "Progress Follow Up",   pct: "40%",  class: "bg-label-info",      colorTip: "tooltip-info" },
                             60:  { title: "Negotiation / Revisi", pct: "60%",  class: "bg-label-primary",   colorTip: "tooltip-primary" },
                             80:  { title: "Hot Prospect",         pct: "80%",  class: "bg-label-warning",   colorTip: "tooltip-warning" },
+                            draft:        { title: "Send WA / Email", pct: null, class: "bg-label-secondary", colorTip: "tooltip-secondary" },
+                            sent:         { title: "Sent",         pct: null, class: "bg-label-info",      colorTip: "tooltip-info" },
+                            negotiation:  { title: "Negotiation",  pct: null, class: "bg-label-warning",   colorTip: "tooltip-warning" },
+                            revision:     { title: "Revisi",       pct: null, class: "bg-label-primary",   colorTip: "tooltip-primary" },
+                            hot_prospect: { title: "Hot Prospect", pct: null, class: "bg-label-warning",   colorTip: "tooltip-warning" },
+                            po_received:  { title: "PO Received",  pct: null, class: "bg-label-success",   colorTip: "tooltip-success" },
+                            loss:         { title: "Loss",         pct: null, class: "bg-label-danger",    colorTip: "tooltip-danger" },
                         };
                         var s = $status[data];
                         if (!s) return data;
-                        return '<span class="badge rounded-pill ' + s.class + ' cursor-pointer"' +
-                            ' data-bs-toggle="tooltip" data-bs-placement="top"' +
-                            ' data-bs-custom-class="' + s.colorTip + '" title="' + tip + '">' +
-                            s.title + " · " + s.pct + "</span>";
+                        var label = s.pct ? s.title + " · " + s.pct : s.title;
+                        var tooltip = ' data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="' + s.colorTip + '" title="' + tip + '"';
+                        var badge = '<span class="badge rounded-pill ' + s.class + ' cursor-pointer"' + tooltip + '>' + label + "</span>";
+                        if (full["row_type"] === "unit") {
+                            badge += ' <span class="badge bg-label-info ms-1">Smart</span>';
+                        }
+                        return badge;
                     },
                 },
                 {

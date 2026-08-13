@@ -6,7 +6,7 @@
     </h4>
     <div class="card mb-3">
         <div class="card-datatable table-responsive pt-0">
-                <table class="datatable-stock table table-striped">
+                <table class="datatable-stock table table-bordered">
                     <thead>
                         <tr>
                             <th></th>

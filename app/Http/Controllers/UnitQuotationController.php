@@ -13,6 +13,8 @@ use App\Models\Pic;
 use App\Models\Unit;
 use App\Models\UnitQuotation;
 use App\Models\UnitQuotationDetail;
+use App\Models\User;
+use App\Services\PurchaseRequestService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
@@ -21,6 +23,13 @@ use Carbon\Carbon;
 
 class UnitQuotationController extends Controller
 {
+    protected PurchaseRequestService $prService;
+
+    public function __construct(PurchaseRequestService $prService)
+    {
+        $this->prService = $prService;
+    }
+
     public function index()
     {
         return view('pages.unit-quotation.index');
@@ -29,15 +38,32 @@ class UnitQuotationController extends Controller
     public function create()
     {
         $defaultNoQuote = $this->generateNoQuote();
+        $isManager = in_array(Auth::user()->role, ['Admin', 'Sales Manager']);
 
-        $clients = Client::where('id_sales', Auth::id())->orderBy('company')->get();
-        $paymentTemplates = \App\Models\SalesPaymentTemplate::with('client')
-            ->where('id_sales', Auth::id())
-            ->orderBy('is_default', 'desc')
-            ->orderBy('name')
-            ->get();
+        $salesUsers = $isManager
+            ? User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->orderBy('name')->get(['id', 'name'])
+            : collect();
 
-        return view('pages.unit-quotation.create', compact('clients', 'defaultNoQuote', 'paymentTemplates'));
+        $clients = $isManager
+            ? Client::orderBy('company')->get()
+            : Client::where('id_sales', Auth::id())->orderBy('company')->get();
+
+        $paymentTemplates = $isManager
+            ? collect()
+            : \App\Models\SalesPaymentTemplate::with('client')
+                ->where('id_sales', Auth::id())
+                ->orderBy('is_default', 'desc')
+                ->orderBy('name')
+                ->get();
+
+        return view('pages.unit-quotation.create', compact('clients', 'defaultNoQuote', 'paymentTemplates', 'isManager', 'salesUsers'));
+    }
+
+    public function getClientsBySales($salesId)
+    {
+        $clients = Client::where('id_sales', $salesId)->orderBy('company')->get(['id', 'company', 'role']);
+
+        return response()->json(['clients' => $clients]);
     }
 
     public function getPics($clientId)
@@ -618,7 +644,7 @@ class UnitQuotationController extends Controller
 
     public function addPayment(Request $request, $id)
     {
-        UnitQuotation::findOrFail($id);
+        $quote = UnitQuotation::findOrFail($id);
 
         $payment                    = new Payment();
         $payment->id_unit_quotation = $id;
@@ -639,9 +665,27 @@ class UnitQuotationController extends Controller
         $payment->save();
 
         if ($isEscrow) {
+            // Mark any invoice already issued through the normal flow as paid.
             Invoice::where('id_unit_quotation', $id)
                 ->whereNotNull('no_invoice')
                 ->update(['status_p' => 1]);
+
+            // Escrow payments bypass the Request Invoice → Accounting approval flow:
+            // the invoice is issued immediately, using the quotation number as the
+            // invoice number so it never consumes a slot in the normal invoice
+            // numbering sequence.
+            Invoice::create([
+                'id_unit_quotation' => $id,
+                'no_po'             => $quote->po_number,
+                'flag'              => 'Reftech',
+                'pph'               => 0,
+                'type'              => 'Escrow',
+                'percent'           => $payment->percent,
+                'no_invoice'        => $quote->no_quote,
+                'date'              => $payment->date,
+                'invoiceTo'         => '1',
+                'status_p'          => 1,
+            ]);
         }
 
         return redirect()->route('unit-quotation.show', $id)->with('success', 'Payment berhasil ditambahkan.');
@@ -925,6 +969,7 @@ class UnitQuotationController extends Controller
         $pending->save();
 
         // Create detail rows and apply stock allocation logic similar to QuotationController::convert_po
+        $prHeader = null;
         foreach ($quote->details as $item) {
             // skip header rows
             if (($item->type ?? '') === 'header' || ($item->type ?? '') === 'heading') {
@@ -976,18 +1021,16 @@ class UnitQuotationController extends Controller
                 $bksAlloc = $bksStock;
                 $note = 'Auto Allocated & Reserved (Kurang). Kept available stock: BDG ' . $bdgAlloc . ', BKS ' . $bksAlloc;
 
-                // Auto create PurchaseRequest for missing quantity
+                // Auto create/append to PurchaseRequest for missing quantity
                 $missingQty = $item->qty - $totalStock;
-                $pr = new \App\Models\PurchaseRequest();
-                $pr->no_pr = $this->generateNoPr();
-                $pr->id_pending = $pending->id;
-                $pr->id_user = Auth::id() ?? $quote->id_sales;
-                $pr->id_equivalent = $item->id_equivalent;
-                $pr->qty = $missingQty;
-                $pr->status = '0';
-                $pr->date = Carbon::now();
-                $pr->note = 'Otomatis dibuat oleh sistem karena stok kurang (Butuh: ' . $item->qty . ', Tersedia: ' . $totalStock . ')';
-                $pr->save();
+                if (!$prHeader) {
+                    $prHeader = $this->prService->findOrCreateDraftHeader($pending->id, Auth::id() ?? $quote->id_sales);
+                }
+                $prHeader->details()->create([
+                    'id_equivalent' => $item->id_equivalent,
+                    'qty' => $missingQty,
+                    'note' => 'Otomatis dibuat oleh sistem karena stok kurang (Butuh: ' . $item->qty . ', Tersedia: ' . $totalStock . ')',
+                ]);
             }
 
             if ($product) {
@@ -1059,21 +1102,6 @@ class UnitQuotationController extends Controller
         return $map[$normalized] ?? 4;
     }
 
-    private function generateNoPr(): string
-    {
-        $year = now()->format('Y');
-        $month = now()->format('m');
-        $prefix = "PR/{$year}/{$month}/";
-
-        $last = \App\Models\PurchaseRequest::where('no_pr', 'like', $prefix . '%')
-            ->orderByDesc('no_pr')
-            ->value('no_pr');
-
-        $lastSeq = $last ? (int) substr($last, -3) : 0;
-        $nextSeq = str_pad($lastSeq + 1, 3, '0', STR_PAD_LEFT);
-
-        return $prefix . $nextSeq;
-    }
 
     private function getTypePrefix(?string $type): string
     {

@@ -41,7 +41,7 @@ try {
 
     SELECT uq.id, uq.no_quote,
            COALESCE(NULLIF(c2.company,''),'-') AS company,
-           NULL AS ru,
+           c2.ru AS ru,
            uq.total AS subtotal,
            COALESCE(NULLIF(uq.title,''),'-') AS title,
            uq.date AS estimated_date,

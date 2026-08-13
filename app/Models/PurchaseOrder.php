@@ -29,6 +29,7 @@ class PurchaseOrder extends Model
         'note',
         'subtotal',
         'vat',
+        'delivery_cost',
         'total',
     ];
     public function detail()

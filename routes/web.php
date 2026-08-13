@@ -163,6 +163,7 @@ Route::group(["middleware" => "auth"], function () {
     })->name('under-maintenance');
     // Route User
     Route::resource('/profile', UserController::class);
+    Route::post('/profile/{id}/banner', [UserController::class, 'updateBanner'])->name('profile.banner.update');
 
     // Route Sales Payment Templates
     Route::get('/sales-payment-templates', [SalesPaymentTemplateController::class, 'index'])->name('sales-payment-templates.index');
@@ -204,6 +205,8 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/forecast/prices', [ForecastController::class, 'updatePrices'])->name('forecast.prices.update');
     Route::post('/forecast/prices/template', [ForecastController::class, 'updateStandardTemplate'])->name('forecast.prices.template');
     Route::delete('/forecast/prices/{id}', [ForecastController::class, 'deletePrices'])->name('forecast.prices.delete');
+    Route::post('/forecast/prices/bearing-kit', [ForecastController::class, 'updateBearingKitPrice'])->name('forecast.prices.bearing-kit.update');
+    Route::delete('/forecast/prices/bearing-kit/{id}', [ForecastController::class, 'deleteBearingKitPrice'])->name('forecast.prices.bearing-kit.delete');
     Route::get('/forecast/contracts', [ForecastController::class, 'manageContracts'])->name('forecast.contracts');
     Route::post('/forecast/contracts/store', [ForecastController::class, 'storeContract'])->name('forecast.contracts.store');
     Route::post('/forecast/contracts/{id}/schedule', [ForecastController::class, 'storeContractSchedule'])->name('forecast.contracts.schedule');
@@ -325,6 +328,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/report/monthly/{year?}/{month?}', [OverviewController::class, 'reportMonthly'])->name('report.monthly');
     Route::get('/report/finance/{year?}/{month?}', [OverviewController::class, 'reportFinance'])->name('report.finance');
     Route::get('/report/year/{year}', [OverviewController::class, 'reportsByYear'])->name('report.year');
+    Route::get('/report/project/{year?}', [OverviewController::class, 'reportProject'])->name('report.project');
     Route::get('/report/current', [OverviewController::class, 'reportCurrent'])->name('report.current');
     Route::get('/report/{semester}', [OverviewController::class, 'reportsSemester'])->name('report.semester');
     Route::get('/sales-target', [SalesTargetController::class, 'index'])->name('sales-target.index');
@@ -439,6 +443,10 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/supplier/quick-store', [ProductInController::class, 'quickStoreSupplier'])->name('supplier.quick-store');
     Route::patch('/supplier/{id}', [ProductInController::class, 'updateSupplier'])->name('supplier.update');
     Route::delete('/supplier/{id}', [ProductInController::class, 'deleteSupplier'])->name('supplier.delete');
+    Route::post('/supplier/{id}/pic', [ProductInController::class, 'storeSupplierPic'])->name('supplier.pic.store');
+    Route::patch('/supplier/pic/{id}', [ProductInController::class, 'updateSupplierPic'])->name('supplier.pic.update');
+    Route::delete('/supplier/pic/{id}', [ProductInController::class, 'destroySupplierPic'])->name('supplier.pic.destroy');
+    Route::get('/supplier/{id}/edit-data', [ProductInController::class, 'editDataSupplier'])->name('supplier.edit-data');
 
     // Route untuk Product Out
     Route::resource('/product-out', ProductOutController::class);
@@ -1528,12 +1536,16 @@ Route::group(["middleware" => "auth"], function () {
 
     Route::get('/db/helpdesk', function () {
         $tickets = HelpdeskTicket::where('id_user', Auth::id())->latest()->get();
+        $tickets->each(function ($ticket) {
+            $ticket->created_at = $ticket->created_at?->clone()->timezone('Asia/Jakarta');
+            $ticket->updated_at = $ticket->updated_at?->clone()->timezone('Asia/Jakarta');
+        });
         return response()->json(['data' => $tickets]);
     });
     Route::get('/db/helpdesk/admin', function () {
         $category = request()->query('category', 'user_report');
         $query = HelpdeskTicket::leftJoin('users as u', 'u.id', '=', 'helpdesk_tickets.id_user');
-        
+
         if ($category === 'system_error') {
             $query->where('helpdesk_tickets.category', 'system_error');
         } else {
@@ -1545,6 +1557,10 @@ Route::group(["middleware" => "auth"], function () {
 
         $tickets = $query->latest('helpdesk_tickets.created_at')
             ->get(['helpdesk_tickets.*', 'u.name', 'u.image as user_image']);
+        $tickets->each(function ($ticket) {
+            $ticket->created_at = $ticket->created_at?->clone()->timezone('Asia/Jakarta');
+            $ticket->updated_at = $ticket->updated_at?->clone()->timezone('Asia/Jakarta');
+        });
 
         return response()->json(['data' => $tickets]);
     });
@@ -1668,9 +1684,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/purchase-request/{id}', [PurchaseController::class, 'show'])->name('purchase-request.show');
     Route::delete('/purchase-request/delete/{id}', [PurchaseController::class, 'delete'])->name('purchase-request.delete');
     Route::patch('/purchase-request/acc/{id}', [PurchaseController::class, 'acc'])->name('purchase-request.acc');
-    Route::patch('/purchase-request/acc-all/{id}', [PurchaseController::class, 'acc_all'])->name('purchase-request.acc-all');
     Route::patch('/purchase-request/delivery/{id}', [PurchaseController::class, 'delivery'])->name('purchase-request.delivery');
-    Route::patch('/purchase-request/delivery-all/{id}', [PurchaseController::class, 'delivery_all'])->name('purchase-request.delivery-all');
     Route::patch('/purchase-request/delivery-info/{id}', [PurchaseController::class, 'updateDeliveryInfo'])->name('purchase-request.update-delivery-info');
     Route::get('/purchase-request/done-all/{id}', [PurchaseController::class, 'done_all'])->name('purchase-request.done-all');
     Route::post('/purchase-request/store-done-all/{id}', [PurchaseController::class, 'store_done_all'])->name('purchase-request.store-done-all');
@@ -1829,6 +1843,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::resource('/unit-quotation', UnitQuotationController::class);
     Route::get('/unit-quotation/{id}/print', [UnitQuotationController::class, 'print'])->name('unit-quotation.print');
     Route::get('/unit-quotation/pics/{clientId}', [UnitQuotationController::class, 'getPics'])->name('unit-quotation.pics');
+    Route::get('/unit-quotation/clients-by-sales/{salesId}', [UnitQuotationController::class, 'getClientsBySales'])->name('unit-quotation.clients-by-sales');
     Route::post('/unit-quotation/{id}/change-status', [UnitQuotationController::class, 'changeStatus'])->name('unit-quotation.change-status');
     Route::post('/unit-quotation/{id}/revise', [UnitQuotationController::class, 'revise'])->name('unit-quotation.revise');
     Route::post('/unit-quotation/{id}/upload-po', [UnitQuotationController::class, 'uploadPO'])->name('unit-quotation.upload-po');
@@ -2316,6 +2331,9 @@ Route::group(["middleware" => "auth"], function () {
     });
     Route::get('/db/quotation/admin/tab', function () {
         require_once base_path('app/api/quotation/connectionAdminTab.php');
+    });
+    Route::get('/db/quotation/admin/project', function () {
+        require_once base_path('app/api/quotation/connectionAdminProject.php');
     });
     Route::get('/db/quotation/prospect', function () {
         require_once base_path('app/api/quotation/connectionProspect.php');
@@ -6912,109 +6930,72 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             ->get();
         return response()->json(['data' => $expanse]);
     });
-    Route::get('/db/purchase-request/new', function () {
-        $purchase = PurchaseRequest::join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
-            ->join('serial_product as s', 'purchase_request.id_equivalent', '=', 's.id')
+    $purchaseRequestListQuery = function (string $status) {
+        // Sejak PR digabung jadi 1 baris per PO (bukan per item lagi), tabel ini
+        // meng-agregat detail item lewat GROUP BY: 1 item -> tampilkan detailnya,
+        // >1 item -> diringkas ("N item"); field pengiriman yang beda-beda antar
+        // item (mis. kasus campur Lokal/Impor dalam 1 PO) ditandai "Campuran".
+        $columns = [
+            'p.id',
+            'purchase_request.no_pr',
+            'purchase_request.date',
+            'p.no_pending',
+            'i.no_po',
+            'c.company',
+            'u.image as user_image',
+            'u.name as user_name',
+            DB::raw('COUNT(d.id) as item_count'),
+            DB::raw("CASE WHEN COUNT(d.id) = 1 THEN MAX(CONCAT(d.qty, ' ', pr.unit)) ELSE CONCAT(COUNT(d.id), ' item') END as qty_full"),
+            DB::raw("CASE WHEN COUNT(d.id) = 1 THEN MAX(CONCAT(s.brand, ' ', s.pn, ' (', SUBSTRING(pr.go, 1, 1) , ')')) ELSE CONCAT(COUNT(d.id), ' item') END as item"),
+            DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(d.purchase_type, '')) <= 1 THEN MAX(d.purchase_type) ELSE 'Campuran' END as purchase_type"),
+            DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(d.cargo, '')) <= 1 THEN MAX(d.cargo) ELSE 'Campuran' END as cargo"),
+            DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(d.no_resi, '')) <= 1 THEN MAX(d.no_resi) ELSE 'Campuran' END as no_resi"),
+            DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(d.purchase_date, '')) <= 1 THEN MAX(d.purchase_date) ELSE NULL END as purchase_date"),
+        ];
+        $groupBy = ['purchase_request.id', 'p.id', 'purchase_request.no_pr', 'purchase_request.date', 'p.no_pending', 'i.no_po', 'c.company', 'u.image', 'u.name'];
+
+        // PR yang berasal dari quotation biasa (pending_po.id_quotation)
+        $fromQuotation = PurchaseRequest::join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
+            ->join('purchase_request_detail as d', 'd.id_purchase_request', '=', 'purchase_request.id')
+            ->join('serial_product as s', 'd.id_equivalent', '=', 's.id')
             ->join('product as pr', 'pr.id', '=', 's.id_product')
             ->join('quotation as q', 'p.id_quotation', '=', 'q.id')
             ->leftJoin('invoice as i', 'i.id_quotation', '=', 'q.id')
             ->join('pic as pi', 'pi.id', '=', 'q.id_pic')
             ->join('client as c', 'c.id', '=', 'pi.id_client')
             ->leftJoin('users as u', 'u.id', '=', 'q.id_sales')
-            ->where('purchase_request.status', '0')
-            ->select(
-                'p.id',
-                'purchase_request.no_pr',
-                'purchase_request.date',
-                'p.no_pending',
-                'i.no_po',
-                'c.company',
-                'purchase_request.note',
-                'u.image as user_image',
-                'u.name as user_name',
-                DB::raw("CONCAT(purchase_request.qty, ' ', pr.unit) as qty_full"),
-                DB::raw("CONCAT(s.brand, ' ', s.pn, ' (', SUBSTRING(pr.go, 1, 1) , ')') as item")
-            )->get();
-        return response()->json(['data' => $purchase]);
-    });
-    Route::get('/db/purchase-request/acc', function () {
-        $purchase = PurchaseRequest::join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
-            ->join('serial_product as s', 'purchase_request.id_equivalent', '=', 's.id')
+            ->where('purchase_request.status', $status)
+            ->groupBy($groupBy)
+            ->select($columns);
+
+        // PR yang berasal dari unit quotation (pending_po.id_unit_quotation)
+        $fromUnitQuotation = PurchaseRequest::join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
+            ->join('purchase_request_detail as d', 'd.id_purchase_request', '=', 'purchase_request.id')
+            ->join('serial_product as s', 'd.id_equivalent', '=', 's.id')
             ->join('product as pr', 'pr.id', '=', 's.id_product')
-            ->join('quotation as q', 'p.id_quotation', '=', 'q.id')
-            ->join('invoice as i', 'i.id_quotation', '=', 'q.id')
-            ->join('pic as pi', 'pi.id', '=', 'q.id_pic')
+            ->join('unit_quotation as uq', 'p.id_unit_quotation', '=', 'uq.id')
+            ->leftJoin('invoice as i', 'i.id_unit_quotation', '=', 'uq.id')
+            ->join('pic as pi', 'pi.id', '=', 'uq.id_pic')
             ->join('client as c', 'c.id', '=', 'pi.id_client')
-            ->leftJoin('users as u', 'u.id', '=', 'q.id_sales')
-            ->where('purchase_request.status', '1')
-            ->select(
-                'p.id',
-                'purchase_request.no_pr',
-                'purchase_request.date',
-                'p.no_pending',
-                'i.no_po',
-                'c.company',
-                'purchase_request.note',
-                'u.image as user_image',
-                'u.name as user_name',
-                DB::raw("CONCAT(purchase_request.qty, ' ', pr.unit) as qty_full"),
-                DB::raw("CONCAT(s.brand, ' ', s.pn, ' (', SUBSTRING(pr.go, 1, 1) , ')') as item")
-            )->get();
-        return response()->json(['data' => $purchase]);
+            ->leftJoin('users as u', 'u.id', '=', 'uq.id_sales')
+            ->where('purchase_request.status', $status)
+            ->groupBy($groupBy)
+            ->select($columns);
+
+        return $fromQuotation->unionAll($fromUnitQuotation)->orderByDesc('date');
+    };
+
+    Route::get('/db/purchase-request/new', function () use ($purchaseRequestListQuery) {
+        return response()->json(['data' => $purchaseRequestListQuery('0')->get()]);
     });
-    Route::get('/db/purchase-request/delivery', function () {
-        $purchase = PurchaseRequest::join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
-            ->join('serial_product as s', 'purchase_request.id_equivalent', '=', 's.id')
-            ->join('product as pr', 'pr.id', '=', 's.id_product')
-            ->join('quotation as q', 'p.id_quotation', '=', 'q.id')
-            ->join('invoice as i', 'i.id_quotation', '=', 'q.id')
-            ->join('pic as pi', 'pi.id', '=', 'q.id_pic')
-            ->join('client as c', 'c.id', '=', 'pi.id_client')
-            ->leftJoin('users as u', 'u.id', '=', 'q.id_sales')
-            ->where('purchase_request.status', '2')
-            ->select(
-                'p.id',
-                'purchase_request.no_pr',
-                'purchase_request.date',
-                'p.no_pending',
-                'i.no_po',
-                'c.company',
-                'purchase_request.note',
-                'u.image as user_image',
-                'u.name as user_name',
-                'purchase_request.purchase_type',
-                'purchase_request.cargo',
-                'purchase_request.no_resi',
-                'purchase_request.purchase_date',
-                DB::raw("CONCAT(purchase_request.qty, ' ', pr.unit) as qty_full"),
-                DB::raw("CONCAT(s.brand, ' ', s.pn, ' (', SUBSTRING(pr.go, 1, 1) , ')') as item")
-            )->get();
-        return response()->json(['data' => $purchase]);
+    Route::get('/db/purchase-request/acc', function () use ($purchaseRequestListQuery) {
+        return response()->json(['data' => $purchaseRequestListQuery('1')->get()]);
     });
-    Route::get('/db/purchase-request/done', function () {
-        $purchase = PurchaseRequest::join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
-            ->join('serial_product as s', 'purchase_request.id_equivalent', '=', 's.id')
-            ->join('product as pr', 'pr.id', '=', 's.id_product')
-            ->join('quotation as q', 'p.id_quotation', '=', 'q.id')
-            ->join('invoice as i', 'i.id_quotation', '=', 'q.id')
-            ->join('pic as pi', 'pi.id', '=', 'q.id_pic')
-            ->join('client as c', 'c.id', '=', 'pi.id_client')
-            ->leftJoin('users as u', 'u.id', '=', 'q.id_sales')
-            ->where('purchase_request.status', '3')
-            ->select(
-                'p.id',
-                'purchase_request.no_pr',
-                'purchase_request.date',
-                'p.no_pending',
-                'i.no_po',
-                'c.company',
-                'purchase_request.note',
-                'u.image as user_image',
-                'u.name as user_name',
-                DB::raw("CONCAT(purchase_request.qty, ' ', pr.unit) as qty_full"),
-                DB::raw("CONCAT(s.brand, ' ', s.pn, ' (', SUBSTRING(pr.go, 1, 1) , ')') as item")
-            )->get();
-        return response()->json(['data' => $purchase]);
+    Route::get('/db/purchase-request/delivery', function () use ($purchaseRequestListQuery) {
+        return response()->json(['data' => $purchaseRequestListQuery('2')->get()]);
+    });
+    Route::get('/db/purchase-request/done', function () use ($purchaseRequestListQuery) {
+        return response()->json(['data' => $purchaseRequestListQuery('3')->get()]);
     });
     Route::get('/db/payable/invoice', function () {
         $payable = ProductIn::leftJoin('supplier as s', 'product_in.id_supplier', '=', 's.id')

@@ -17,6 +17,10 @@
                 <i class="mdi mdi-plus fs-5"></i>
                 <span>Tambah Harga Master PM</span>
             </button>
+            <button type="button" class="btn btn-dark d-flex align-items-center gap-2 shadow-sm waves-effect waves-light" id="btnOpenAddBearingKitModal">
+                <i class="mdi mdi-cog-outline fs-5"></i>
+                <span>Tambah Harga Set Bearing Kit</span>
+            </button>
         </div>
     </div>
 
@@ -237,6 +241,79 @@
             </table>
         </div>
     </div>
+
+    <!-- Full-Width Bearing Kit Master Data Table -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-transparent d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 py-3 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <i class="mdi mdi-cog-outline text-dark fs-4"></i>
+                <div>
+                    <h5 class="card-title mb-0 fw-bold">Daftar Harga Set of Bearing Kit</h5>
+                    <small class="text-muted">Dipakai pada kategori B (Non-Consumable Part) template PM4 di halaman Unit Global.</small>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 w-100 w-md-auto">
+                <div class="input-group input-group-merge style-search">
+                    <span class="input-group-text border-end-0 bg-light"><i class="mdi mdi-magnify"></i></span>
+                    <input type="text" id="searchBearingKitTable" class="form-control form-control-sm border-start-0 bg-light" placeholder="Cari kapasitas power (mis: 15 kW)...">
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive text-nowrap">
+            <table class="table table-hover align-middle mb-0" id="bearingKitTable">
+                <thead class="table-light">
+                    <tr>
+                        <th class="fw-bold">Power (kW)</th>
+                        <th class="fw-bold">Set of Bearing Kit</th>
+                        <th class="fw-bold">Set of Bearing Kit Main Motor</th>
+                        <th class="fw-bold">Set of Bearing Kit Fan Motor</th>
+                        <th class="fw-bold text-center" style="width: 130px;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="table-border-bottom-0">
+                    @forelse($bearingKitPrices as $bk)
+                    <tr class="main-row" data-power="{{ strtolower($bk->power) }}">
+                        <td>
+                            <span class="badge bg-label-dark px-3 py-2 fs-6 fw-bold border border-dark-subtle">
+                                <i class="mdi mdi-flash me-1"></i>{{ $bk->power }}
+                            </span>
+                        </td>
+                        <td><span class="fw-bold text-dark">Rp {{ number_format($bk->price_bearing_kit, 0, ',', '.') }}</span></td>
+                        <td><span class="fw-bold text-dark">Rp {{ number_format($bk->price_bearing_kit_main_motor, 0, ',', '.') }}</span></td>
+                        <td><span class="fw-bold text-dark">Rp {{ number_format($bk->price_bearing_kit_fan_motor, 0, ',', '.') }}</span></td>
+                        <td class="text-center">
+                            <div class="d-inline-flex gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-edit-bearing-kit waves-effect"
+                                        data-id="{{ $bk->id }}"
+                                        data-power="{{ $bk->power }}"
+                                        data-bearing-kit="{{ $bk->price_bearing_kit }}"
+                                        data-bearing-kit-main-motor="{{ $bk->price_bearing_kit_main_motor }}"
+                                        data-bearing-kit-fan-motor="{{ $bk->price_bearing_kit_fan_motor }}">
+                                    <i class="mdi mdi-pencil me-1"></i>Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-bearing-kit waves-effect"
+                                        data-id="{{ $bk->id }}"
+                                        data-power="{{ $bk->power }}">
+                                    <i class="mdi mdi-trash-can-outline"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="py-3">
+                                <i class="mdi mdi-alert-circle-outline text-muted fs-1 mb-2 d-block"></i>
+                                <h6 class="text-muted fw-bold">Belum Ada Master Harga Set Bearing Kit</h6>
+                                <p class="text-muted small">Klik tombol "+ Tambah Harga Set Bearing Kit" di atas untuk menambahkan data baru.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <!-- Modal 1: Manage Master Harga Jasa PM (Prices Only - Super Compact) -->
@@ -428,8 +505,86 @@
     </div>
 </div>
 
+<!-- Modal 3: Manage Master Harga Set Bearing Kit (Super Compact) -->
+<div class="modal fade" id="modalManageBearingKit" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar avatar-sm bg-label-dark rounded d-flex align-items-center justify-content-center">
+                        <i class="mdi mdi-cog-outline fs-4"></i>
+                    </div>
+                    <h5 class="modal-title fw-bold mb-0" id="modalManageBearingKitTitle">Form Master Harga Set Bearing Kit</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('forecast.prices.bearing-kit.update') }}" method="POST" id="formManageBearingKit">
+                @csrf
+                <div class="modal-body p-4">
+                    <!-- Power Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-dark mb-1" for="bkPowerSelect">Kapasitas Power (kW) <span class="text-danger">*</span></label>
+                        <div class="row g-2">
+                            <div class="col-12 mb-2">
+                                <select class="form-select" id="bkPowerSelect" name="power">
+                                    <option value="" disabled selected>-- Pilih Kapasitas Terdaftar --</option>
+                                    @foreach($availablePowers as $power)
+                                        <option value="{{ $power }}">{{ $power }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <input type="text" class="form-control" id="bkCustomPower" name="custom_power" placeholder="Atau ketik kustom, misal: 45 kW">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="divider text-start my-3">
+                        <div class="divider-text fw-bold text-muted fs-7"><i class="mdi mdi-cash-multiple me-1"></i>Input Harga Set Bearing Kit</div>
+                    </div>
+
+                    <!-- 3 Compact Price Inputs -->
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small mb-1" for="price_bearing_kit">Set of Bearing Kit <span class="text-danger">*</span></label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light fw-bold">Rp</span>
+                                <input type="text" class="form-control currency-mask" id="price_bearing_kit" name="price_bearing_kit" required placeholder="0">
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small mb-1" for="price_bearing_kit_main_motor">Set of Bearing Kit Main Motor <span class="text-danger">*</span></label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light fw-bold">Rp</span>
+                                <input type="text" class="form-control currency-mask" id="price_bearing_kit_main_motor" name="price_bearing_kit_main_motor" required placeholder="0">
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small mb-1" for="price_bearing_kit_fan_motor">Set of Bearing Kit Fan Motor <span class="text-danger">*</span></label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light fw-bold">Rp</span>
+                                <input type="text" class="form-control currency-mask" id="price_bearing_kit_fan_motor" name="price_bearing_kit_fan_motor" required placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top py-3">
+                    <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary waves-effect waves-light"><i class="mdi mdi-content-save me-1"></i>Simpan Harga Bearing Kit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Hidden Delete Form -->
 <form id="formDeletePrice" action="" method="POST" class="d-none">
+    @csrf
+    @method('DELETE')
+</form>
+
+<!-- Hidden Delete Form (Bearing Kit) -->
+<form id="formDeleteBearingKit" action="" method="POST" class="d-none">
     @csrf
     @method('DELETE')
 </form>
@@ -439,6 +594,7 @@
     $(document).ready(function() {
         const manageModal = new bootstrap.Modal(document.getElementById('modalManagePrice'));
         const templateModal = new bootstrap.Modal(document.getElementById('modalStandardTemplate'));
+        const manageBearingKitModal = new bootstrap.Modal(document.getElementById('modalManageBearingKit'));
 
         // Helper currency formatter
         function formatRupiah(val) {
@@ -467,6 +623,14 @@
             });
         });
 
+        // Search Bearing Kit Table filter
+        $('#searchBearingKitTable').on('keyup', function() {
+            var value = $(this).val().toLowerCase();
+            $('#bearingKitTable tbody tr.main-row').filter(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+            });
+        });
+
         // Toggle detail row
         $('.btn-toggle-detail').click(function() {
             var target = $($(this).data('target'));
@@ -490,6 +654,18 @@
         $('#customPower').on('input', function() {
             if ($(this).val().trim() !== '') {
                 $('#powerSelect').val('');
+            }
+        });
+
+        // Sync bkPowerSelect and bkCustomPower
+        $('#bkPowerSelect').change(function() {
+            if ($(this).val() !== '') {
+                $('#bkCustomPower').val('');
+            }
+        });
+        $('#bkCustomPower').on('input', function() {
+            if ($(this).val().trim() !== '') {
+                $('#bkPowerSelect').val('');
             }
         });
 
@@ -530,6 +706,71 @@
             $('#price_pm4').val(formatRupiah(btn.data('pm4')));
 
             manageModal.show();
+        });
+
+        // Open Add Bearing Kit Modal
+        $('#btnOpenAddBearingKitModal').click(function() {
+            $('#formManageBearingKit')[0].reset();
+            $('#bkPowerSelect').val('');
+            $('#bkCustomPower').val('');
+            $('#modalManageBearingKitTitle').text('Tambah Master Harga Set Bearing Kit Baru');
+            manageBearingKitModal.show();
+        });
+
+        // Open Edit Bearing Kit Modal
+        $('.btn-edit-bearing-kit').click(function() {
+            var btn = $(this);
+            var power = btn.data('power');
+
+            $('#modalManageBearingKitTitle').text('Edit Master Harga Set Bearing Kit - ' + power);
+
+            var matchedSelect = false;
+            $('#bkPowerSelect option').each(function() {
+                if ($(this).val().toLowerCase() === power.toLowerCase()) {
+                    $('#bkPowerSelect').val($(this).val());
+                    $('#bkCustomPower').val('');
+                    matchedSelect = true;
+                    return false;
+                }
+            });
+
+            if (!matchedSelect) {
+                $('#bkPowerSelect').val('');
+                $('#bkCustomPower').val(power);
+            }
+
+            $('#price_bearing_kit').val(formatRupiah(btn.data('bearing-kit')));
+            $('#price_bearing_kit_main_motor').val(formatRupiah(btn.data('bearing-kit-main-motor')));
+            $('#price_bearing_kit_fan_motor').val(formatRupiah(btn.data('bearing-kit-fan-motor')));
+
+            manageBearingKitModal.show();
+        });
+
+        // Delete Bearing Kit Confirm SweetAlert
+        $('.btn-delete-bearing-kit').click(function() {
+            var id = $(this).data('id');
+            var power = $(this).data('power');
+            var deleteUrl = "{{ url('/forecast/prices/bearing-kit') }}/" + id;
+
+            Swal.fire({
+                title: 'Hapus Master Harga Bearing Kit?',
+                text: "Apakah Anda yakin ingin menghapus harga Set of Bearing Kit untuk power (" + power + ")? Tindakan ini tidak dapat dibatalkan.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Hapus Data',
+                cancelButtonText: 'Batal',
+                customClass: {
+                    confirmButton: 'btn btn-danger waves-effect waves-light me-2',
+                    cancelButton: 'btn btn-label-secondary waves-effect'
+                },
+                buttonsStyling: false
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    var deleteForm = $('#formDeleteBearingKit');
+                    deleteForm.attr('action', deleteUrl);
+                    deleteForm.submit();
+                }
+            });
         });
 
         // Open Standard Template Modal

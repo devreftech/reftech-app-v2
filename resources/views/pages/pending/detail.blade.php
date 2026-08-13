@@ -588,19 +588,19 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $no = 1; @endphp
-                                @forelse ($purchase as $pr)
-                                    @php
-                                        switch ($pr->status) {
-                                            case 1: $status_pr = 'Sudah di ACC'; $color_pr = 'bg-label-primary'; break;
-                                            case 2: $status_pr = 'Dalam Pengiriman'; $color_pr = 'bg-label-warning'; break;
-                                            case 3: $status_pr = 'Done'; $color_pr = 'bg-label-success'; break;
-                                            default: $status_pr = 'Belum Di ACC'; $color_pr = 'bg-label-secondary'; break;
-                                        }
-                                    @endphp
+                                @php
+                                    $no = 1;
+                                    switch ($purchase->status ?? null) {
+                                        case '1': $status_pr = 'Sudah di ACC'; $color_pr = 'bg-label-primary'; break;
+                                        case '2': $status_pr = 'Dalam Pengiriman'; $color_pr = 'bg-label-warning'; break;
+                                        case '3': $status_pr = 'Done'; $color_pr = 'bg-label-success'; break;
+                                        default: $status_pr = 'Belum Di ACC'; $color_pr = 'bg-label-secondary'; break;
+                                    }
+                                @endphp
+                                @forelse (($purchase->details ?? collect()) as $pr)
                                     <tr>
                                         <td class="text-center">{{ $no }}</td>
-                                        <td class="fw-bold"><a href="{{ route('purchase-request.show', $pr->id_pending) }}" class="text-primary">{{ $pr->no_pr ?? '-' }}</a></td>
+                                        <td class="fw-bold"><a href="{{ route('purchase-request.show', $pending->id) }}" class="text-primary">{{ $purchase->no_pr ?? '-' }}</a></td>
                                         <td>
                                             @if ($pr->id_equivalent == '0')
                                                 -
@@ -755,19 +755,19 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $no = 1; @endphp
-                                @forelse ($purchase as $pr)
-                                    @php
-                                        switch ($pr->status) {
-                                            case 1: $status_pr = 'Sudah di ACC'; $color_pr = 'bg-label-primary'; break;
-                                            case 2: $status_pr = 'Dalam Pengiriman'; $color_pr = 'bg-label-warning'; break;
-                                            case 3: $status_pr = 'Done'; $color_pr = 'bg-label-success'; break;
-                                            default: $status_pr = 'Belum Di ACC'; $color_pr = 'bg-label-secondary'; break;
-                                        }
-                                    @endphp
+                                @php
+                                    $no = 1;
+                                    switch ($purchase->status ?? null) {
+                                        case '1': $status_pr = 'Sudah di ACC'; $color_pr = 'bg-label-primary'; break;
+                                        case '2': $status_pr = 'Dalam Pengiriman'; $color_pr = 'bg-label-warning'; break;
+                                        case '3': $status_pr = 'Done'; $color_pr = 'bg-label-success'; break;
+                                        default: $status_pr = 'Belum Di ACC'; $color_pr = 'bg-label-secondary'; break;
+                                    }
+                                @endphp
+                                @forelse (($purchase->details ?? collect()) as $pr)
                                     <tr>
                                         <td class="text-center">{{ $no }}</td>
-                                        <td class="fw-bold"><a href="{{ route('purchase-request.show', $pr->id_pending) }}" class="text-primary">{{ $pr->no_pr ?? '-' }}</a></td>
+                                        <td class="fw-bold"><a href="{{ route('purchase-request.show', $pending->id) }}" class="text-primary">{{ $purchase->no_pr ?? '-' }}</a></td>
                                         <td>
                                             @if ($pr->id_equivalent == '0')
                                                 -
@@ -1030,7 +1030,7 @@
         <!-- 3. FINANCE / ACCOUNTING TAB -->
         <div class="tab-pane fade" id="finance-pane" role="tabpanel" aria-labelledby="finance-tab">
             @php
-                $totalPrAmount = $purchase->where('status', '3')->sum('amount');
+                $totalPrAmount = ($purchase && $purchase->status == '3') ? $purchase->details->sum('amount') : 0;
                 $totalResiAmount = $resis->sum('cost');
                 $totalCost = $totalPrAmount + $totalResiAmount;
                 $estimatedProfit = $quotation->nett - $totalCost;

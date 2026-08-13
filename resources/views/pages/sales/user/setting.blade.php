@@ -31,24 +31,33 @@
                     @method('patch')
                     <h4 class="card-header">Profile Details</h4>
                     <div class="card-body">
-                        <div class="d-flex align-items-start align-items-sm-center gap-4">
-                            <img src="{{ url('') . '/' . Auth::user()->image }}" alt="user-avatar"
-                                class="d-block w-px-120 h-px-120 rounded" id="uploadedAvatar">
-                            <div class="button-wrapper">
-                                <label for="upload" class="btn btn-primary me-2 mb-3 waves-effect waves-light"
-                                    tabindex="0">
-                                    <span class="d-none d-sm-block">Upload new photo</span>
-                                    <i class="mdi mdi-tray-arrow-up d-block d-sm-none"></i>
-                                    <input type="file" id="upload" class="account-file-input" name="image"
-                                        hidden="" accept="image/png, image/jpeg">
-                                </label>
-                                <button type="button"
-                                    class="btn btn-outline-secondary account-image-reset mb-3 waves-effect">
-                                    <i class="mdi mdi-reload d-block d-sm-none"></i>
-                                    <span class="d-none d-sm-block">Reset</span>
-                                </button>
-
-                                <div class="text-muted small">Allowed JPG, GIF or PNG. Max size of 800K</div>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Profile Photo</label>
+                                <div class="d-flex align-items-center gap-3">
+                                    <img src="{{ url('') . '/' . Auth::user()->image }}" alt="user-avatar"
+                                        class="d-block w-px-100 h-px-100 rounded-circle object-cover border" id="uploadedAvatar">
+                                    <div class="button-wrapper">
+                                        <label for="upload" class="btn btn-primary btn-sm me-2 mb-2 waves-effect waves-light" tabindex="0">
+                                            <span>Upload Avatar</span>
+                                            <input type="file" id="upload" class="account-file-input" name="image" hidden="" accept="image/png, image/jpeg, image/webp">
+                                        </label>
+                                        <div class="text-muted small">Allowed JPG, PNG or WEBP.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Profile Banner Photo</label>
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="rounded border overflow-hidden shadow-sm flex-shrink-0" style="width: 140px; height: 75px; background: {{ Auth::user()->banner ? 'url(' . asset(Auth::user()->banner) . ') center/cover no-repeat' : 'linear-gradient(135deg, #666cff 0%, #4f46e5 100%)' }};" id="settingBannerPreview"></div>
+                                    <div class="button-wrapper">
+                                        <label for="uploadBannerSetting" class="btn btn-outline-primary btn-sm me-2 mb-2 waves-effect" tabindex="0">
+                                            <span>Upload Banner</span>
+                                            <input type="file" id="uploadBannerSetting" name="banner" hidden="" accept="image/png, image/jpeg, image/webp">
+                                        </label>
+                                        <div class="text-muted small">Recommended ratio 4:1. Max 5MB.</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -159,6 +168,13 @@
                 var newType = (currentType === "password") ? "text" : "password";
                 inputElement.attr("type", newType);
             }
+
+            $('#uploadBannerSetting').on('change', function(e) {
+                const [file] = e.target.files;
+                if (file) {
+                    $('#settingBannerPreview').css('background-image', `url('${URL.createObjectURL(file)}')`);
+                }
+            });
         });
     </script>
 @endpush

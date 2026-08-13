@@ -57,6 +57,22 @@
                             <i class="mdi mdi-account-group-outline me-1"></i> Customer & Delivery Address
                         </div>
                     </div>
+                    @if ($isManager ?? false)
+                        <div class="col-md-4">
+                            <div class="form-floating form-floating-outline">
+                                <select class="select2 form-select" id="sales-select">
+                                    <option value="">-- Semua Sales (Optional) --</option>
+                                    @foreach ($salesUsers as $s)
+                                        <option value="{{ $s->id }}">{{ $s->name }}</option>
+                                    @endforeach
+                                </select>
+                                <label>Filter by Sales <span class="text-muted small">(optional)</span></label>
+                            </div>
+                            <div class="form-text small text-muted">
+                                Pilih sales untuk memuat client miliknya, atau langsung cari client di kolom sebelah tanpa memilih sales.
+                            </div>
+                        </div>
+                    @endif
                     <div class="col-md-4">
                         <div class="form-floating form-floating-outline">
                             <select class="select2 form-select" name="id_client" id="client-select">
@@ -129,10 +145,10 @@
                     <div class="col-md-2">
                         <div class="form-floating form-floating-outline">
                             <select class="form-select" id="select-type" name="type">
-                                <option value="" disabled selected>-- Type --</option>
+                                <option value="" disabled>-- Type --</option>
                                 <option value="Unit">Unit</option>
                                 <option value="Rental">Rental</option>
-                                <option value="Project">Project</option>
+                                <option value="Project" selected>Project</option>
                                 <option value="Parts">Parts</option>
                                 <option value="Service">Service</option>
                                 <option value="Piping">Piping</option>

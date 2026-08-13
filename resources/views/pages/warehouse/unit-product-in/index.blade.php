@@ -23,7 +23,7 @@
                     <h5 class="card-title mb-0">PO Unit Menunggu Diterima (Goods Receipt)</h5>
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-striped mb-0">
+                    <table class="table table-bordered mb-0">
                         <thead>
                             <tr>
                                 <th>No PO</th>
@@ -55,7 +55,7 @@
                 <h5 class="card-title mb-0">Riwayat Barang Masuk Unit</h5>
             </div>
             <div class="table-responsive">
-                <table class="table table-striped mb-0">
+                <table class="table table-bordered mb-0">
                     <thead>
                         <tr>
                             <th>No Transaksi</th>

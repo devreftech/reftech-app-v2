@@ -77,12 +77,13 @@ class POController extends Controller
         $purchase->date = $request->date;
         $purchase->email = $supplier->email ?? '-';
         $purchase->phone = $supplier->phone ?? '-';
-        $purchase->address = $supplier->address ?? '-';
+        $purchase->address = $request->address ?? $supplier->address ?? '-';
         $purchase->payment = $request->payment ?? '';
         $purchase->note = $request->note ?? '';
         $purchase->subtotal = $request->subtotal;
         $purchase->vat = $request->tax;
         $purchase->diskon = $request->diskon;
+        $purchase->delivery_cost = $request->delivery_cost ?? 0;
         $purchase->total = $request->harga_total;
         $purchaseSave = $purchase->save();
         $dPurchaseSave = true;
@@ -104,7 +105,7 @@ class POController extends Controller
             }
         }
         if ($purchaseSave && $dPurchaseSave) {
-            return redirect('purchase')->with('success', 'data berhasil ditambahkan');
+            return redirect('purchase/' . $purchase->id)->with('success', 'data berhasil ditambahkan');
         }
     }
 
@@ -168,12 +169,13 @@ class POController extends Controller
         $purchase->date = $request->date;
         $purchase->email = $supplier->email ?? '-';
         $purchase->phone = $supplier->phone ?? '-';
-        $purchase->address = $supplier->address ?? '-';
+        $purchase->address = $request->address ?? $supplier->address ?? '-';
         $purchase->payment = $request->payment ?? '';
         $purchase->note = $request->note ?? '';
         $purchase->subtotal = $request->subtotal;
         $purchase->vat = $request->tax;
         $purchase->diskon = $request->diskon;
+        $purchase->delivery_cost = $request->delivery_cost ?? 0;
         $purchase->total = $request->harga_total;
         $purchaseSave = $purchase->save();
         $dPurchaseSave = true;
@@ -234,7 +236,12 @@ class POController extends Controller
         $purchase = PurchaseOrder::find($id);
         $dPurchase = DetailPurchaseOrder::where('id_purchase_order', $id)->get();
         $tax = $purchase->total * 11 / 100;
-        return view('pages.accounting.purchase.detail-print', compact('purchase', 'dPurchase', 'tax'));
+        $totalPph = 0;
+        foreach ($dPurchase as $item) {
+            $pph = ($item->amount * $item->pph) / 100;
+            $totalPph += $pph;
+        }
+        return view('pages.accounting.purchase.detail-print', compact('purchase', 'dPurchase', 'tax', 'totalPph'));
     }
 
     public function add_pph(Request $request, $id)

@@ -3,6 +3,25 @@
 * File include item demo only specific css only
 ******************************************************************************/
 
+/* Core Typography: Standard Inter Font Family */
+html,
+body,
+button,
+input,
+select,
+textarea,
+.form-control,
+.form-select,
+.form-floating,
+.form-label,
+.select2-container,
+.card,
+.btn,
+.badge,
+.table {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+}
+
 .light-style .menu .app-brand.demo {
   height: 64px;
 }
@@ -109,3 +128,115 @@
   text-align: center;
   margin-top: 1.25rem;
 }
+
+/*
+* Global Clean Design System Overrides
+* Card concept matching /product-in: flat card, subtle 1px border, light shadow, rounded corners.
+* Table concept: non-striped, crisp bordered tables, clean typography.
+******************************************************************************/
+
+/* Clean Modern Card Concept */
+.card,
+.modern-card,
+.custom-stat-card,
+.custom-main-card {
+  border: 1px solid rgba(24, 28, 33, 0.08) !important;
+  box-shadow: 0 4px 18px 0 rgba(24, 28, 33, 0.03) !important;
+  border-radius: 10px !important;
+  background-color: #ffffff !important;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.custom-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px 0 rgba(24, 28, 33, 0.07) !important;
+}
+
+/* Card Header & Title */
+.card-header {
+  background-color: transparent !important;
+  border-bottom: 1px solid rgba(24, 28, 33, 0.08) !important;
+  padding: 1rem 1.25rem !important;
+}
+
+.card-title,
+.head-label-delay h5,
+.head-label h5 {
+  font-weight: 700 !important;
+  color: #2F3349 !important;
+  font-size: 1.05rem !important;
+  letter-spacing: -0.01em;
+  margin: 0 !important;
+}
+
+/* Non-striped Clean Bordered Tables System */
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  --bs-table-accent-bg: transparent !important;
+  background-color: transparent !important;
+}
+
+.table {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  border-collapse: collapse !important;
+}
+
+.table thead th {
+  background-color: #fcfcfd !important;
+  color: #5D596C !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  font-size: 0.76rem !important;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid rgba(24, 28, 33, 0.08) !important;
+  border-top: 1px solid rgba(24, 28, 33, 0.08) !important;
+  padding: 12px 16px !important;
+}
+
+.table tbody td {
+  padding: 12px 16px !important;
+  color: #333333 !important;
+  font-size: 0.86rem !important;
+  border-bottom: 1px solid rgba(24, 28, 33, 0.08) !important;
+  border-right: 1px solid rgba(24, 28, 33, 0.05);
+  vertical-align: middle !important;
+}
+
+.table-bordered th,
+.table-bordered td {
+  border: 1px solid rgba(24, 28, 33, 0.08) !important;
+}
+
+/* Table cell link & button text colors */
+.table tbody td a:not(.btn) {
+  color: #7367F0 !important;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.15s ease-in-out;
+}
+
+.table tbody td a:not(.btn):hover {
+  color: #5d51e8 !important;
+  text-decoration: underline;
+}
+
+.table tbody td a.btn,
+.table tbody td .btn {
+  font-weight: 500 !important;
+  text-decoration: none !important;
+}
+
+.table tbody td a.btn-primary,
+.table tbody td .btn-primary {
+  color: #ffffff !important;
+  background-color: #7367F0 !important;
+  border-color: #7367F0 !important;
+}
+
+.table tbody td a.btn-primary:hover,
+.table tbody td .btn-primary:hover {
+  color: #ffffff !important;
+  background-color: #5e52e0 !important;
+  border-color: #5e52e0 !important;
+}
+

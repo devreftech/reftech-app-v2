@@ -117,7 +117,7 @@ $(function () {
                             90:    { title: "Hold",                pct: "Hold",  class: "bg-warning",         colorTip: "tooltip-warning" },
                             100:   { title: "Done PO",             pct: "100%",  class: "bg-label-success",   colorTip: "tooltip-success" },
                             0:     { title: "Loss",                pct: "0%",    class: "bg-label-danger",    colorTip: "tooltip-danger" },
-                            draft:        { title: "Draft",        pct: null, class: "bg-label-secondary", colorTip: "" },
+                            draft:        { title: "Send WA / Email", pct: null, class: "bg-label-secondary", colorTip: "" },
                             sent:         { title: "Sent",         pct: null, class: "bg-label-info",      colorTip: "" },
                             negotiation:  { title: "Negotiation",  pct: null, class: "bg-label-warning",   colorTip: "" },
                             revision:     { title: "Revisi",       pct: null, class: "bg-label-primary",   colorTip: "" },

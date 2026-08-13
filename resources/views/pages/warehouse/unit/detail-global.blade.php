@@ -362,6 +362,9 @@
                                                     <button type="button" class="btn btn-sm btn-outline-success" id="btn-pm-add-service">
                                                         <i class="mdi mdi-account-hard-hat-outline me-1"></i> Tambah Jasa Service
                                                     </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-dark" id="btn-pm-add-bearing-kit" style="display:none;">
+                                                        <i class="mdi mdi-cog-outline me-1"></i> Tambah Set Bearing Kit
+                                                    </button>
                                                     <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-pm-add-custom">
                                                         <i class="mdi mdi-plus me-1"></i> Tambah Item Custom
                                                     </button>
@@ -819,6 +822,7 @@
                 var pmCurrentLevel = null;
                 var pmCurrentUnit = null;
                 var pmServiceSuggestion = null;
+                var pmBearingKitSuggestion = null;
                 var pmUidCounter = 0;
                 var pmSortable = null;
                 var pmItems = []; // {_uid, type: 'header'|'part'|'custom', id_equivalent, label, description, qty, info_qty, price}
@@ -919,6 +923,8 @@
                             pmCurrentLevel = data.level;
                             pmCurrentUnit = data.unit;
                             pmServiceSuggestion = data.service_suggestion;
+                            pmBearingKitSuggestion = data.bearing_kit_suggestion;
+                            $('#btn-pm-add-bearing-kit').toggle(pmCurrentLevel === 'PM4');
                             pmItems = $.map(data.items, function(p) {
                                 return {
                                     type: p.type || 'part',
@@ -1241,6 +1247,54 @@
                             qty: 1,
                             info_qty: 'Lot',
                             price: result.value.price
+                        });
+                        renderPmItems();
+                    });
+                });
+
+                // ── Tambah Set Bearing Kit (khusus PM4, kategori B — prefill dari pricelist Forecast, tetap bisa diedit) ──
+                $(document).on('click', '#btn-pm-add-bearing-kit', function() {
+                    if (!pmBearingKitSuggestion) return;
+                    var items = pmBearingKitSuggestion.items;
+                    var html = $.map(items, function(it, i) {
+                        return '<div class="mb-2 text-start">' +
+                            '<label class="form-label small fw-semibold mb-1">' + pmEscapeHtml(it.label) + '</label>' +
+                            '<input id="pm-bearing-kit-price-' + i + '" type="text" class="swal2-input m-0" value="' + pmFormatThousand(it.amount || 0) + '">' +
+                            '</div>';
+                    }).join('');
+                    Swal.fire({
+                        title: 'Tambah Set Bearing Kit',
+                        html: html +
+                            (!pmBearingKitSuggestion.matched ? '<div class="swal2-validation-message" style="display:block;">Belum ada harga Set of Bearing Kit untuk power unit ini di pricelist Forecast — isi manual.</div>' : ''),
+                        confirmButtonText: 'Tambah',
+                        showCancelButton: true,
+                        didOpen: function() {
+                            $.each(items, function(i) {
+                                $('#pm-bearing-kit-price-' + i).on('input', function() {
+                                    $(this).val(pmFormatThousand(pmParseThousand($(this).val())));
+                                });
+                            });
+                        },
+                        preConfirm: function() {
+                            return $.map(items, function(it, i) {
+                                return {
+                                    label: it.label,
+                                    price: pmParseThousand(document.getElementById('pm-bearing-kit-price-' + i).value)
+                                };
+                            });
+                        }
+                    }).then(function(result) {
+                        if (!result.isConfirmed) return;
+                        $.each(result.value, function(i, it) {
+                            pmItems.push({
+                                type: 'custom',
+                                id_equivalent: null,
+                                label: it.label,
+                                description: '',
+                                qty: 1,
+                                info_qty: 'Set',
+                                price: it.price
+                            });
                         });
                         renderPmItems();
                     });

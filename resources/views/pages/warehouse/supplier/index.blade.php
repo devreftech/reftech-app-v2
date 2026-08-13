@@ -1,14 +1,17 @@
 @extends('layouts.sales.app')
 @section('title', 'Supplier')
 @section('content')
-    <h4 class="fw-bold py-3 mb-4">
-        Supplier
-    </h4>
+    <div class="d-flex align-items-center justify-content-between py-3 mb-1">
+        <h4 class="fw-bold m-0">Supplier</h4>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createSupplier">
+            <i class="mdi mdi-plus me-1"></i> Supplier
+        </button>
+    </div>
     <div class="row">
         <div class="col-12">
             <div class="card mb-3">
                 <div class="card-datatable table-responsive pt-0">
-                    <table class="datatable-supplier table table-striped">
+                    <table class="datatable-supplier table table-bordered">
                         <thead>
                             <tr>
                                 <th></th>

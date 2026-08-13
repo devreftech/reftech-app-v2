@@ -621,20 +621,54 @@ $(function () {
         return map[role] || '';
     }
 
-    $('#client-select').select2({
-        placeholder: '-- Select Client --',
-        allowClear: true,
-        templateResult: function (option) {
-            if (!option.id) return option.text;
-            var role = $(option.element).data('role');
-            return $('<span>' + clientBadge(role) + option.text + '</span>');
-        },
-        templateSelection: function (option) {
-            if (!option.id) return option.text;
-            var role = $(option.element).data('role');
-            return $('<span>' + clientBadge(role) + option.text + '</span>');
-        },
-    });
+    function initClientSelect2() {
+        var $clientSelect = $('#client-select');
+        if ($clientSelect.data('select2')) {
+            $clientSelect.select2('destroy');
+        }
+        $clientSelect.select2({
+            placeholder: '-- Select Client --',
+            allowClear: true,
+            templateResult: function (option) {
+                if (!option.id) return option.text;
+                var role = $(option.element).data('role');
+                return $('<span>' + clientBadge(role) + option.text + '</span>');
+            },
+            templateSelection: function (option) {
+                if (!option.id) return option.text;
+                var role = $(option.element).data('role');
+                return $('<span>' + clientBadge(role) + option.text + '</span>');
+            },
+        });
+    }
+    initClientSelect2();
+
+    // ── Sales filter (Sales Manager / Admin only) — reload Client list by selected sales ──
+    var $salesSelect = $('#sales-select');
+    if ($salesSelect.length) {
+        $salesSelect.select2({ placeholder: '-- Semua Sales (Optional) --', allowClear: true });
+
+        $salesSelect.on('change', function () {
+            var salesId = $(this).val();
+            var $clientSelect = $('#client-select');
+            var currentClientId = $clientSelect.val();
+
+            $clientSelect.empty().append('<option value="">-- Select Client --</option>');
+
+            if (!salesId) {
+                initClientSelect2();
+                return;
+            }
+
+            $.get('/unit-quotation/clients-by-sales/' + salesId, function (res) {
+                (res.clients || []).forEach(function (c) {
+                    var selected = (currentClientId && String(c.id) === String(currentClientId)) ? ' selected' : '';
+                    $clientSelect.append('<option value="' + c.id + '" data-role="' + (c.role || '') + '"' + selected + '>' + c.company + '</option>');
+                });
+                initClientSelect2();
+            });
+        });
+    }
 
     // ── PIC & Address dropdowns — load by client ─────────────────────────
     $('#client-select').on('change', function () {
