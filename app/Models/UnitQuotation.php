@@ -24,6 +24,7 @@ class UnitQuotation extends Model
         'date',
         'expired_date',
         'title',
+        'hide_title',
         'type',
         'week',
         'subtotal',
@@ -51,6 +52,7 @@ class UnitQuotation extends Model
         'date'         => 'date',
         'expired_date' => 'date',
         'tax'          => 'boolean',
+        'hide_title'   => 'boolean',
     ];
 
     public function client()

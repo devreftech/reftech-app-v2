@@ -14,6 +14,7 @@ use App\Models\PrDiscussionMention;
 use App\Models\Product;
 use App\Models\ProductIn;
 use App\Models\Prospect;
+use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestDetail;
 use App\Models\Quotation;
@@ -46,8 +47,12 @@ class PurchaseController extends Controller
         $accCount = PurchaseRequest::where('status', '1')->whereIn('id_pending', $validPendingIds)->count();
         $deliveryCount = PurchaseRequest::where('status', '2')->whereIn('id_pending', $validPendingIds)->count();
         $doneCount = PurchaseRequest::where('status', '3')->whereIn('id_pending', $validPendingIds)->count();
+        // Sama seperti isi tab-nya: PO cuma dihitung selama PR-nya masih status Acc(1).
+        $poCount = PurchaseOrder::whereNotNull('id_purchase_request')
+            ->whereIn('id_purchase_request', PurchaseRequest::where('status', '1')->pluck('id'))
+            ->count();
 
-        return view('pages.warehouse.purchase.index', compact('newCount', 'accCount', 'deliveryCount', 'doneCount'));
+        return view('pages.warehouse.purchase.index', compact('newCount', 'accCount', 'deliveryCount', 'doneCount', 'poCount'));
     }
     public function store(Request $request, $id)
     {
@@ -113,7 +118,7 @@ class PurchaseController extends Controller
         }
 
         $activity = ChangeStatus::where('id_pending', $id)->with('comment')->get();
-        $purchase = PurchaseRequest::where('id_pending', $id)->with('details.equivalent.product')->first();
+        $purchase = PurchaseRequest::where('id_pending', $id)->with('details.equivalent.product', 'details.allocations.purchaseOrder', 'purchaseOrders')->first();
 
         // Data diskusi PR
         $discussions = PrDiscussion::where('id_pending', $id)
@@ -250,6 +255,13 @@ class PurchaseController extends Controller
         if (!$purchase) {
             return 0;
         }
+        if (!$purchase->purchaseOrders()->exists()) {
+            return response()->json(['message' => 'Buat Purchase Order terlebih dahulu sebelum lanjut ke On Delivery.'], 422);
+        }
+        $purchase->load('details.allocations');
+        if (!$this->prService->isFullyAllocated($purchase)) {
+            return response()->json(['message' => 'Masih ada item yang belum dialokasikan sepenuhnya ke Purchase Order.'], 422);
+        }
 
         $purchase->status = '2';
         $purchaseSave = $purchase->save();
@@ -275,17 +287,19 @@ class PurchaseController extends Controller
         ];
         $this->validate($request, $rule);
 
-        $detail = PurchaseRequestDetail::find($id);
-        if (!$detail) {
+        // $id = id baris alokasi (purchase_request_detail_allocation), bukan id item PR —
+        // satu item PR bisa split qty ke beberapa PO, jadi info pengiriman melekat per alokasi.
+        $allocation = \App\Models\PurchaseRequestDetailAllocation::find($id);
+        if (!$allocation) {
             return 0;
         }
 
-        $detail->purchase_type = $request->purchase_type;
-        $detail->cargo = $request->cargo;
-        $detail->no_resi = $request->no_resi;
-        $detail->purchase_date = $request->purchase_date;
+        $allocation->purchase_type = $request->purchase_type;
+        $allocation->cargo = $request->cargo;
+        $allocation->no_resi = $request->no_resi;
+        $allocation->purchase_date = $request->purchase_date;
 
-        return $detail->save() ? 1 : 0;
+        return $allocation->save() ? 1 : 0;
     }
 
     public function done_all($id)

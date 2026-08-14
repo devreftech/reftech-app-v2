@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\Quotation;
 use App\Models\Reminder;
 use App\Models\Resi;
+use App\Services\PurchaseRequestService;
 use Auth;
 use Carbon\Carbon;
 use DB;
@@ -17,6 +18,13 @@ use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
+    protected PurchaseRequestService $prService;
+
+    public function __construct(PurchaseRequestService $prService)
+    {
+        $this->prService = $prService;
+    }
+
     public function index_invoice()
     {
         $salesUsers = \App\Models\User::where('role', 'Sales')->orderBy('name', 'asc')->get();
@@ -238,7 +246,9 @@ class PaymentController extends Controller
         $activity->status = 2;
         $activity->date = Carbon::now();
         $activity->save();
+
         if ($paymentSave) {
+            $this->prService->evaluatePaymentGate($payment, Auth::id());
             return 1;
         } else {
             return 0;

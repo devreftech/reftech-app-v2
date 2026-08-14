@@ -203,6 +203,9 @@
                     <button type="button" class="btn btn-sm btn-outline-info" id="btn-add-header">
                         <i class="mdi mdi-format-header-1 me-1"></i> Add Head Title
                     </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-transport">
+                        <i class="mdi mdi-truck-outline me-1"></i> Add Transport
+                    </button>
                     <button type="button" class="btn btn-sm btn-outline-success ms-md-auto" data-bs-toggle="modal" data-bs-target="#modal-load-pm-template">
                         <i class="mdi mdi-file-document-multiple-outline me-1"></i> Load Template PM
                     </button>
@@ -236,6 +239,9 @@
                             </div>
                         </div>
                         <div id="pm-load-preview" class="small text-muted mt-3" style="display:none;"></div>
+                        <div class="small text-muted mt-3">
+                            <i class="mdi mdi-information-outline me-1"></i>Baris <strong>Transportation</strong> akan otomatis ditambahkan — Tipe & Kota tinggal dipilih setelah item masuk ke quotation.
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
@@ -562,6 +568,7 @@
                                     <option value="Ls">Ls</option>
                                     <option value="Btg">Btg</option>
                                     <option value="Mtr">Mtr</option>
+                                    <option value="Days">Days</option>
                                 </select>
                             </div>
                         </div>
@@ -643,6 +650,7 @@
     @if(old('payment'))
         <script>window.EDIT_PAYMENT = @json(old('payment'));</script>
     @endif
+    <script>window.TRANSPORT_PRICES = @json($transportationPrices);</script>
     <script src="{{ asset('assets') }}/includes/form-unit-quotation.js"></script>
 @endpush
 

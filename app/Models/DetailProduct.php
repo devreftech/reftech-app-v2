@@ -35,6 +35,10 @@ DetailProduct extends Model
     {
         return $this->hasMany('App\Models\DetailProductIn', 'id_detail_product');
     }
+    public function detailProductOut()
+    {
+        return $this->hasMany('App\Models\DetailProductOut', 'id_detail_product');
+    }
     public function detailChangeWarehouse()
     {
         return $this->hasMany('App\Models\DetailChangeWarehouse', 'id_replacement');

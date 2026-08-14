@@ -814,7 +814,7 @@ class OverviewController extends Controller
         $firstDay = "{$year}-01-01";
         $lastDay  = "{$year}-12-31";
 
-        $managers = User::whereIn('role', ['Admin', 'Sales Manager'])->where('active', '1')->orderBy('name')->get();
+        $managers = User::whereIn('id', [5, 38])->where('active', '1')->orderBy('name')->get();
 
         $poCount    = Quotation::whereIn('id_sales', $managers->pluck('id'))->whereBetween('po_date', [$firstDay, $lastDay])->where('status', '100')->where('level', '1')->where('is_primary', '1')->count()
             + UnitQuotation::whereIn('id_sales', $managers->pluck('id'))->where('status', 'po_received')->where('is_latest', 1)->whereBetween('po_received', [$firstDay, $lastDay])->count();

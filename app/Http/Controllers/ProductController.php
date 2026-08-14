@@ -183,7 +183,9 @@ class ProductController extends Controller
     {
         $product = Product::find($id);
         $allStock = $product->stock + $product->warehouse_stock;
-        $details = DetailProduct::where('id_product', $id)->get();
+        $details = DetailProduct::where('id_product', $id)
+            ->withCount(['detailProductIn as total_in', 'detailProductOut as total_out'])
+            ->get();
         $serials = SerialProduct::where('id_product', $id)->get();
         $partInquiries = SerialProduct::with(['sparePartVendorPrices.supplier'])
             ->where('id_product', $id)
@@ -397,6 +399,18 @@ class ProductController extends Controller
     public function destroyReplacement($id)
     {
         $replacement = DetailProduct::find($id);
+
+        if (!$replacement) {
+            return response()->json(['error' => 'Replacement not found.'], 404);
+        }
+
+        $guard = app(DeletionGuardService::class);
+        $check = $guard->checkReplacementDeletion($replacement);
+        if (!$check['allowed']) {
+            return response()->json([
+                'error' => 'Replacement tidak dapat dihapus karena ' . implode(', ', $check['reasons']),
+            ], 422);
+        }
 
         $delReplace = $replacement->delete();
 

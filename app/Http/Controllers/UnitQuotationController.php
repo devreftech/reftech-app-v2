@@ -6,10 +6,13 @@ use App\Models\Client;
 use App\Models\Contract;
 use App\Models\Delivery;
 use App\Models\DetailDelivery;
+use App\Models\DetailPendingPO;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PendingPO;
 use App\Models\Pic;
+use App\Models\Product;
+use App\Models\PurchaseRequest;
 use App\Models\Unit;
 use App\Models\UnitQuotation;
 use App\Models\UnitQuotationDetail;
@@ -56,7 +59,9 @@ class UnitQuotationController extends Controller
                 ->orderBy('name')
                 ->get();
 
-        return view('pages.unit-quotation.create', compact('clients', 'defaultNoQuote', 'paymentTemplates', 'isManager', 'salesUsers'));
+        $transportationPrices = \App\Models\TransportationPrice::orderBy('city')->get(['id', 'city', 'price']);
+
+        return view('pages.unit-quotation.create', compact('clients', 'defaultNoQuote', 'paymentTemplates', 'isManager', 'salesUsers', 'transportationPrices'));
     }
 
     public function getClientsBySales($salesId)
@@ -266,7 +271,9 @@ class UnitQuotationController extends Controller
             ];
         })->values();
 
-        return view('pages.unit-quotation.edit', compact('quote', 'clients', 'editItems', 'paymentTemplates'));
+        $transportationPrices = \App\Models\TransportationPrice::orderBy('city')->get(['id', 'city', 'price']);
+
+        return view('pages.unit-quotation.edit', compact('quote', 'clients', 'editItems', 'paymentTemplates', 'transportationPrices'));
     }
 
     public function update(Request $request, $id)
@@ -417,7 +424,7 @@ class UnitQuotationController extends Controller
         $delivery = new Delivery();
         $delivery->id_unit_quotation = $quote->id;
         $delivery->id_invoice        = $request->id_invoice ?: null;
-        $delivery->date              = $request->date ?? Carbon::today()->toDateString();
+        $delivery->date              = $request->filled('date') ? $request->date : null;
         $delivery->destination       = $request->destination;
         $delivery->type              = $request->type ?? 'Ekspedisi';
         $delivery->code              = 'Unit';
@@ -664,6 +671,8 @@ class UnitQuotationController extends Controller
         }
         $payment->save();
 
+        $this->prService->evaluatePaymentGate($payment, Auth::id());
+
         if ($isEscrow) {
             // Mark any invoice already issued through the normal flow as paid.
             Invoice::where('id_unit_quotation', $id)
@@ -741,6 +750,15 @@ class UnitQuotationController extends Controller
         return response()->json(1);
     }
 
+    public function toggleHideTitle(Request $request, $id)
+    {
+        $quote = UnitQuotation::findOrFail($id);
+        $quote->hide_title = !$quote->hide_title;
+        $quote->save();
+
+        return back()->with('success', $quote->hide_title ? 'Title disembunyikan di halaman print.' : 'Title ditampilkan di halaman print.');
+    }
+
     public function cancelPO(Request $request, $id)
     {
         $quote = UnitQuotation::findOrFail($id);
@@ -813,7 +831,33 @@ class UnitQuotationController extends Controller
         // 4. Hapus Selling Contract terkait jika ada
         Contract::where('id_unit_quotation', $quote->id)->delete();
 
-        // 5. Reset data PO & status kembali ke Negotiation
+        // 5. Reset Sales Order (Pending PO) kalau belum diproses logistik sama sekali
+        // (status masih 0 = draft/baru). Kalau sudah diproses (status > 0), jangan
+        // disentuh — menghapusnya bisa merusak data fulfillment yang sudah nyata terjadi.
+        // Dibuat ulang otomatis dari qty quotation terbaru saat PO di-upload lagi
+        // (lihat createPendingPoForUnitQuotation()).
+        $pending = PendingPO::where('id_unit_quotation', $quote->id)->first();
+        if ($pending && (int) $pending->status === 0) {
+            $details = DetailPendingPO::where('id_pending', $pending->id)->get();
+            foreach ($details as $detail) {
+                if ($detail->id_equivalent) {
+                    $sp = $detail->equivalent;
+                    $product = $sp ? $sp->product : null;
+                    if ($product) {
+                        $product->stock += $detail->bdg;
+                        $product->warehouse_stock += $detail->bks;
+                        $product->pending_stock -= ($detail->bdg + $detail->bks);
+                        $product->save();
+                    }
+                }
+                $detail->delete();
+            }
+
+            PurchaseRequest::where('id_pending', $pending->id)->delete();
+            $pending->delete();
+        }
+
+        // 6. Reset data PO & status kembali ke Negotiation
         $quote->status         = 'negotiation';
         $quote->cancel_request = 0;
         $quote->po_number      = null;
@@ -969,7 +1013,6 @@ class UnitQuotationController extends Controller
         $pending->save();
 
         // Create detail rows and apply stock allocation logic similar to QuotationController::convert_po
-        $prHeader = null;
         foreach ($quote->details as $item) {
             // skip header rows
             if (($item->type ?? '') === 'header' || ($item->type ?? '') === 'heading') {
@@ -1020,17 +1063,9 @@ class UnitQuotationController extends Controller
                 $bdgAlloc = $bdgStock;
                 $bksAlloc = $bksStock;
                 $note = 'Auto Allocated & Reserved (Kurang). Kept available stock: BDG ' . $bdgAlloc . ', BKS ' . $bksAlloc;
-
-                // Auto create/append to PurchaseRequest for missing quantity
+                // PR untuk kekurangan ini baru dibuat setelah DP dikonfirmasi,
+                // lihat pemanggilan generateShortfallForUnitPending() di bawah.
                 $missingQty = $item->qty - $totalStock;
-                if (!$prHeader) {
-                    $prHeader = $this->prService->findOrCreateDraftHeader($pending->id, Auth::id() ?? $quote->id_sales);
-                }
-                $prHeader->details()->create([
-                    'id_equivalent' => $item->id_equivalent,
-                    'qty' => $missingQty,
-                    'note' => 'Otomatis dibuat oleh sistem karena stok kurang (Butuh: ' . $item->qty . ', Tersedia: ' . $totalStock . ')',
-                ]);
             }
 
             if ($product) {
@@ -1048,7 +1083,15 @@ class UnitQuotationController extends Controller
             $dPending->bks = $bksAlloc;
             $dPending->status = $status ?? 0;
             $dPending->note = $note ?? '';
+            $dPending->pr_qty_needed = $missingQty ?? null;
             $dPending->save();
+
+            // reset per-item so a later "Ready Stock" item doesn't inherit a stale value
+            $missingQty = null;
+        }
+
+        if ($this->prService->paymentGateSatisfied($pending)) {
+            $this->prService->generateShortfallForUnitPending($pending, Auth::id() ?? $quote->id_sales);
         }
 
         // Create initial change status (Pending Created) similar to QuotationController
@@ -1119,35 +1162,60 @@ class UnitQuotationController extends Controller
 
     private function getNextSequenceNumber(): int
     {
-        $dateNow = Carbon::now();
-        $salesId = Auth::id();
+        $dateNow  = Carbon::now();
+        $salesId  = Auth::id();
+        $userCode = Auth::user()->code ?? Auth::user()->name;
 
-        $legacyQuotes = \App\Models\Quotation::whereYear('created_at', $dateNow)
-            ->where('id_sales', $salesId)
-            ->pluck('no_quote');
-
+        // Unit Quotation adalah format yang dipakai sekarang & ke depannya — nomor urut per sales
+        // basenya HANYA dari tabel unit_quotation ini, bukan lagi tabel Quotation lama. Riwayat
+        // legacy Quotation (termasuk data lama yang no_quote-nya berantakan/salah ketik) sudah
+        // tidak relevan sebagai acuan nomor quotation baru.
         $unitQuotes = UnitQuotation::whereYear('created_at', $dateNow)
             ->where('id_sales', $salesId)
             ->pluck('no_quote');
 
         $maxSeq = 0;
 
-        foreach ($legacyQuotes->concat($unitQuotes) as $noQuote) {
-            if ($noQuote && preg_match('/^(\d+)-/i', $noQuote, $matches)) {
-                $seq = (int) $matches[1];
-                if ($seq > $maxSeq) {
-                    $maxSeq = $seq;
-                }
+        foreach ($unitQuotes as $noQuote) {
+            if (!$noQuote || !preg_match('/^(\d+)-/i', $noQuote, $matches)) {
+                continue;
+            }
+
+            // Nomor lama hasil revisi/duplikasi quotation tahun lalu (tahun di teks nomor beda
+            // dari tahun berjalan) atau hasil reassign dari sales lain (kode di teks nomor beda
+            // dari kode sales ini) diabaikan — supaya nggak "meracuni" nomor urut sales ini terus
+            // menerus ke depan walau `created_at` / `id_sales` sudah keburu ikut yang baru.
+            if (!$this->noQuoteBelongsToCurrentTrack($noQuote, $dateNow->year, $userCode)) {
+                continue;
+            }
+
+            $seq = (int) $matches[1];
+            if ($seq > $maxSeq) {
+                $maxSeq = $seq;
             }
         }
 
         if ($maxSeq === 0) {
-            $totalCount = \App\Models\Quotation::whereYear('created_at', $dateNow)->where('id_sales', $salesId)->count()
-                + UnitQuotation::whereYear('created_at', $dateNow)->where('id_sales', $salesId)->count();
-            $maxSeq = $totalCount;
+            $maxSeq = UnitQuotation::whereYear('created_at', $dateNow)->where('id_sales', $salesId)->count();
         }
 
         return $maxSeq + 1;
+    }
+
+    private function noQuoteBelongsToCurrentTrack(string $noQuote, int $year, string $userCode): bool
+    {
+        // Ambil token 4-digit terakhir sebagai tahun (toleran terhadap suffix seperti " (REV-01)").
+        if (!preg_match_all('/\/(\d{4})/', $noQuote, $yearMatches) || (int) end($yearMatches[1]) !== $year) {
+            return false;
+        }
+
+        // Kode sales harus muncul persis setelah "RJO-" atau "RJO/", diapit batas kata.
+        $codePattern = preg_quote($userCode, '#');
+        if (!preg_match('#RJO[-/]' . $codePattern . '(?=[/-]|$)#i', $noQuote)) {
+            return false;
+        }
+
+        return true;
     }
 
     private function generateNoQuote(?string $type = null): string

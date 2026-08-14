@@ -5,11 +5,22 @@ namespace App\Http\Controllers;
 use App\Models\DetailPurchaseOrder;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestDetail;
+use App\Models\PurchaseRequestDetailAllocation;
 use App\Models\Supplier;
+use App\Services\PurchaseRequestService;
 use Illuminate\Http\Request;
 
 class POController extends Controller
 {
+    protected PurchaseRequestService $prService;
+
+    public function __construct(PurchaseRequestService $prService)
+    {
+        $this->prService = $prService;
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -25,13 +36,52 @@ class POController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
+    public function create(Request $request)
     {
         $suppliers = Supplier::all();
         $previewNoPo = $this->generateNoPo();
         $units = \App\Models\Unit::where('type', 'global')->orderBy('brand')->get();
         $products = Product::orderBy('commodity')->get();
-        return view('pages.accounting.purchase.form', compact('suppliers', 'previewNoPo', 'units', 'products'));
+
+        $sourcePr = null;
+        $prefillItems = [];
+        if ($request->query('from_pr')) {
+            $sourcePr = PurchaseRequest::with('details.equivalent.product', 'details.allocations')->find($request->query('from_pr'));
+            if ($sourcePr) {
+                $selectedItems = $request->query('items', []);
+
+                $detailsToPrefill = $sourcePr->details->filter(function ($detail) use ($selectedItems) {
+                    if (!empty($selectedItems)) {
+                        return array_key_exists((string) $detail->id, $selectedItems);
+                    }
+                    // Fallback (akses langsung tanpa selection dari halaman PR): tampilkan
+                    // hanya item yang masih ada sisa qty belum teralokasi ke PO manapun.
+                    return $detail->remainingQty > 0;
+                });
+
+                foreach ($detailsToPrefill as $detail) {
+                    $product = $detail->equivalent->product ?? null;
+                    if ($product) {
+                        $requestedQty = !empty($selectedItems)
+                            ? (int) ($selectedItems[(string) $detail->id] ?? 0)
+                            : $detail->remainingQty;
+                        // Clamp: tidak boleh minta lebih dari sisa yang belum teralokasi.
+                        $qty = min($requestedQty > 0 ? $requestedQty : $detail->remainingQty, $detail->remainingQty);
+                        if ($qty <= 0) {
+                            continue;
+                        }
+                        $prefillItems[] = [
+                            'id_product' => $product->id,
+                            'label' => $product->commodity . ' — ' . $product->description,
+                            'qty' => $qty,
+                            'pr_detail_id' => $detail->id,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return view('pages.accounting.purchase.form', compact('suppliers', 'previewNoPo', 'units', 'products', 'sourcePr', 'prefillItems'));
     }
 
     private function generateNoPo(): string
@@ -68,6 +118,7 @@ class POController extends Controller
         $itemCategories = $request->item_category ?? [];
         $purchase = new PurchaseOrder();
         $purchase->id_supplier = $request->supplier;
+        $purchase->id_purchase_request = $request->id_purchase_request ?: null;
         $purchase->no_po = $request->no_po;
         $purchase->category = in_array('Unit', $itemCategories) ? 'Unit' : 'Sparepart';
         $purchase->company = $supplier->supplier;
@@ -102,6 +153,18 @@ class POController extends Controller
                 $dPurchase->disc = $request->disc[$key];
                 $dPurchase->amount = $request->amount[$key];
                 $dPurchaseSave = $dPurchase->save();
+
+                $prDetailId = $request->pr_detail_id[$key] ?? null;
+                if ($prDetailId) {
+                    $prDetail = PurchaseRequestDetail::find($prDetailId);
+                    if ($prDetail && $prDetail->remainingQty > 0) {
+                        PurchaseRequestDetailAllocation::create([
+                            'id_purchase_request_detail' => $prDetail->id,
+                            'id_purchase_order' => $purchase->id,
+                            'qty' => min((int) $request->qty[$key], $prDetail->remainingQty),
+                        ]);
+                    }
+                }
             }
         }
         if ($purchaseSave && $dPurchaseSave) {
@@ -117,7 +180,7 @@ class POController extends Controller
      */
     public function show($id)
     {
-        $purchase = PurchaseOrder::find($id);
+        $purchase = PurchaseOrder::with('supplier')->find($id);
         $dPurchase = DetailPurchaseOrder::where('id_purchase_order', $id)->get();
         $tax = $purchase->total * 11 / 100;
         $totalPph = 0;
@@ -125,7 +188,70 @@ class POController extends Controller
             $pph = ($product->amount * $product->pph) / 100;
             $totalPph += $pph;
         }
-        return view('pages.accounting.purchase.detail', compact('purchase', 'dPurchase', 'tax', 'totalPph'));
+
+        $sourcePr = null;
+        $prDeliveryDone = false;
+        $prDeliveryType = null;
+        if ($purchase->id_purchase_request) {
+            $sourcePr = PurchaseRequest::find($purchase->id_purchase_request);
+            $prDeliveryType = $this->resolvePurchaseType($purchase->supplier->info ?? null);
+
+            $poAllocations = PurchaseRequestDetailAllocation::where('id_purchase_order', $purchase->id)->get();
+            $prDeliveryDone = $poAllocations->isNotEmpty() && $poAllocations->every(fn ($a) => !is_null($a->purchase_type));
+        }
+
+        return view('pages.accounting.purchase.detail', compact('purchase', 'dPurchase', 'tax', 'totalPph', 'sourcePr', 'prDeliveryDone', 'prDeliveryType'));
+    }
+
+    private function resolvePurchaseType(?string $supplierInfo): string
+    {
+        $normalized = strtolower((string) $supplierInfo);
+        return str_contains($normalized, 'import') || str_contains($normalized, 'impor') ? 'Impor' : 'Lokal';
+    }
+
+    /**
+     * Tandai item PR yang teralokasi ke PO ini sebagai "on delivery". Tipe (Lokal/Impor)
+     * otomatis ikut info supplier PO, tanggal pembelian ikut tanggal PO dibuat — cuma
+     * cargo & no resi yang perlu diisi manual. Hanya item yang teralokasi ke PO INI yang
+     * kena update, bukan seluruh item PR (PR bisa dipecah ke beberapa PO/supplier).
+     */
+    public function delivery(Request $request, $id)
+    {
+        $rule = [
+            'cargo' => 'required|string|max:255',
+            'no_resi' => 'nullable|string|max:255',
+        ];
+        $this->validate($request, $rule);
+
+        $purchase = PurchaseOrder::with('supplier')->find($id);
+        if (!$purchase || !$purchase->id_purchase_request) {
+            return response()->json(['message' => 'Purchase Order ini tidak terhubung ke Purchase Request.'], 422);
+        }
+
+        $purchaseType = $this->resolvePurchaseType($purchase->supplier->info ?? null);
+
+        $allocations = PurchaseRequestDetailAllocation::where('id_purchase_order', $purchase->id)->get();
+
+        if ($allocations->isEmpty()) {
+            return response()->json(['message' => 'Tidak ada item Purchase Request yang teralokasi ke Purchase Order ini.'], 422);
+        }
+
+        // Update per baris alokasi (bukan per item PR) — satu item PR bisa split qty
+        // ke beberapa PO, jadi info pengiriman harus melekat ke alokasi masing-masing PO.
+        PurchaseRequestDetailAllocation::where('id_purchase_order', $purchase->id)->update([
+            'purchase_type' => $purchaseType,
+            'cargo' => $request->cargo,
+            'no_resi' => $request->no_resi,
+            'purchase_date' => $purchase->date,
+        ]);
+
+        $pr = PurchaseRequest::with('details.allocations')->find($purchase->id_purchase_request);
+        if ($pr && (int) $pr->status === 1 && $this->prService->allDeliveriesSubmitted($pr)) {
+            $pr->status = '2';
+            $pr->save();
+        }
+
+        return 1;
     }
 
     /**

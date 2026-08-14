@@ -262,6 +262,40 @@ class LeadsController extends Controller
             ->sortDesc()
             ->values();
 
+        $poChartStartYear = $yearsNow - 4;
+
+        $poYearlyByYear = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')
+            ->where('pic.id_client', $id)
+            ->where('quotation.level', '1')
+            ->where('quotation.is_primary', '1')
+            ->where('quotation.status', '100')
+            ->whereNotNull('quotation.po_date')
+            ->whereYear('quotation.po_date', '>=', $poChartStartYear)
+            ->selectRaw('YEAR(quotation.po_date) as year, SUM(quotation.nett) as total')
+            ->groupBy('year')
+            ->pluck('total', 'year');
+
+        $unitPoYearlyByYear = \App\Models\UnitQuotation::where(function ($q) use ($id) {
+                $q->where('id_client', $id)->orWhereHas('pic', function ($p) use ($id) {
+                    $p->where('id_client', $id);
+                });
+            })
+            ->where('is_latest', 1)
+            ->where('status', 'po_received')
+            ->whereNotNull('po_received')
+            ->whereYear('po_received', '>=', $poChartStartYear)
+            ->selectRaw('YEAR(po_received) as year, SUM(total - IFNULL(tax_amount, 0)) as total')
+            ->groupBy('year')
+            ->pluck('total', 'year');
+
+        $poYearlyLabels = [];
+        $poYearlyTotals = [];
+        for ($year = $poChartStartYear; $year <= $yearsNow; $year++) {
+            $poYearlyLabels[] = (string) $year;
+            $poYearlyTotals[] = (int) (($poYearlyByYear[$year] ?? 0) + ($unitPoYearlyByYear[$year] ?? 0));
+        }
+        $poCurrentYearTotal = (int) (($poYearlyByYear[$yearsNow] ?? 0) + ($unitPoYearlyByYear[$yearsNow] ?? 0));
+
         $quotationStatusMap = [
             '20' => ['label' => 'Send Quotation', 'color' => 'secondary'],
             '30' => ['label' => 'Inquiry Accepted', 'color' => 'dark'],
@@ -405,7 +439,8 @@ class LeadsController extends Controller
             ->take(5)
             ->get();
         return view('pages.sales.clients.leads.detail', compact(
-            'existing', 'callhis', 'quote', 'activityTimeline', 'plants', 'poYears', 'leveledProspect', 'noSaleProspect',
+            'existing', 'callhis', 'quote', 'activityTimeline', 'plants', 'poYears', 'poYearlyLabels', 'poYearlyTotals',
+            'poCurrentYearTotal', 'leveledProspect', 'noSaleProspect',
             'comment', 'unreadComment', 'commentAdmin', 'unreadCommentAdmin', 'sales', 'unit', 'charge', 'issue',
             'service', 'visit', 'machines', 'monthNow', 'yearsNow', 'leads', 'crmhis'
         ));

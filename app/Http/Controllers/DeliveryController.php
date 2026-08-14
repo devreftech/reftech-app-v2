@@ -142,7 +142,11 @@ class DeliveryController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        $delivery = Delivery::findOrFail($id);
+        $delivery->date = $request->filled('date') ? $request->date : null;
+        $delivery->save();
+
+        return redirect()->back()->with('success', 'Tanggal Surat Jalan berhasil diperbarui.');
     }
 
     /**

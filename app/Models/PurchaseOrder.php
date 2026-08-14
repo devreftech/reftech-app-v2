@@ -18,6 +18,7 @@ class PurchaseOrder extends Model
         'no_po',
         'category',
         'receipt_status',
+        'id_purchase_request',
         'attn',
         'mobile',
         'company',
@@ -39,5 +40,13 @@ class PurchaseOrder extends Model
     public function supplier()
     {
         return $this->belongsTo('App\Models\Supplier', 'id_supplier', 'id');
+    }
+    public function purchaseRequest()
+    {
+        return $this->belongsTo('App\Models\PurchaseRequest', 'id_purchase_request', 'id');
+    }
+    public function prAllocations()
+    {
+        return $this->hasMany('App\Models\PurchaseRequestDetailAllocation', 'id_purchase_order');
     }
 }

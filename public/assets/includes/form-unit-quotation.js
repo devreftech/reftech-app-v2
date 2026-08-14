@@ -325,6 +325,92 @@ $(function () {
         bindRowEvents($row);
     }
 
+    // ── Add transport row — pakai layout Custom Item, ditambah dropdown Tipe + Kota (master Transportation) ──
+    var TRANSPORT_PRICES = window.TRANSPORT_PRICES || [];
+
+    // Tipe kunjungan menentukan teks judul yang tampil di quotation; harga tetap ambil dari master per Kota.
+    var TRANSPORT_TYPES = [
+        { label: 'General Check',      text: 'Inspection & Transportation Cost' },
+        { label: 'Service',            text: 'Service & Transportation Cost' },
+        { label: 'Pengecekan Piping',  text: 'Piping Inspection & Transportation Cost' },
+        { label: 'Survey Project',     text: 'Site Survey & Transportation Cost' },
+    ];
+
+    function transportTypeOptionsHtml(selectedText) {
+        var html = '<option value="">-- Pilih Tipe Transportation --</option>';
+        $.each(TRANSPORT_TYPES, function (i, t) {
+            var sel = (selectedText && selectedText === t.text) ? ' selected' : '';
+            html += '<option value="' + t.text + '"' + sel + '>' + t.label + '</option>';
+        });
+        return html;
+    }
+
+    function transportCityOptionsHtml(selectedCity) {
+        var html = '<option value="">-- Pilih Kota Transportasi --</option>';
+        $.each(TRANSPORT_PRICES, function (i, tp) {
+            var sel = (selectedCity && selectedCity === tp.city) ? ' selected' : '';
+            html += '<option value="' + tp.city + '" data-price="' + tp.price + '"' + sel + '>' + tp.city + '</option>';
+        });
+        return html;
+    }
+
+    function bindTransportRowEvents($row) {
+        $row.find('.field-transport-type').on('change', function () {
+            $row.find('.field-label').val($(this).val() || '');
+            updateRowAmount($row);
+        });
+        $row.find('.field-transport-city').on('change', function () {
+            var price = $(this).find('option:selected').data('price') || 0;
+            $row.find('.field-price').val(formatRupiah(Math.round(price)));
+            updateRowAmount($row);
+        });
+    }
+
+    function buildTransportRow(idx, selectedTypeText, selectedCity) {
+        var html = $('#tmpl-custom-row').html().replace(/__IDX__/g, idx);
+        var $row = $(html);
+        $row.attr('data-type', 'transport');
+        $row.find('input[name*="[type]"]').val('transport');
+
+        var selectsHtml =
+            '<div class="mb-2"><select class="form-select form-select-sm field-transport-type">' + transportTypeOptionsHtml(selectedTypeText) + '</select></div>' +
+            '<div class="mb-2"><select class="form-select form-select-sm field-transport-city">' + transportCityOptionsHtml(selectedCity) + '</select></div>';
+        $row.find('.field-label').before(selectsHtml);
+        $row.find('.field-label').prop('readonly', true).addClass('bg-light').val(selectedTypeText || '');
+        $row.find('.field-description').closest('div').hide();
+
+        return $row;
+    }
+
+    function addTransportRow() {
+        var idx  = rowIndex++;
+        var $row = buildTransportRow(idx, null, null);
+        $('#line-items-container').append($row);
+        toggleEmptyState();
+        bindRowEvents($row);
+        bindTransportRowEvents($row);
+    }
+
+    function addTransportRowFromData(item) {
+        var idx = rowIndex++;
+        var matchedType = null;
+        $.each(TRANSPORT_TYPES, function (i, t) {
+            if (t.text === item.label) { matchedType = t.text; return false; }
+        });
+        var $row = buildTransportRow(idx, matchedType, null);
+        $('#line-items-container').append($row);
+        toggleEmptyState();
+
+        $row.find('.field-label').val(item.label || '');
+        $row.find('.field-qty').val(item.qty || 1);
+        $row.find('.field-price').val(formatRupiah(Math.round(item.price || 0)));
+        $row.find('.field-disc').val(item.disc || 0);
+        updateRowAmount($row);
+
+        bindRowEvents($row);
+        bindTransportRowEvents($row);
+    }
+
     // ── Init Select2 AJAX for unit row ────────────────────────────────────
     function initUnitRowSelect2($row) {
         var $sel = $row.find('.select2-unit-search');
@@ -897,6 +983,7 @@ $(function () {
     $('#btn-add-unit').on('click', addUnitRow);
     $('#btn-add-custom').on('click', addCustomRow);
     $('#btn-add-header').on('click', addHeaderRow);
+    $('#btn-add-transport').on('click', addTransportRow);
 
     $('#input-diskon').on('input', function () {
         if ($('#select-diskon-type').val() === 'amount') {
@@ -959,6 +1046,8 @@ $(function () {
                 addUnitRowFromData(item);
             } else if (item.type === 'header' || item.type === 'heading') {
                 addHeaderRowFromData(item);
+            } else if (item.type === 'transport') {
+                addTransportRowFromData(item);
             } else {
                 addCustomRowFromData(item);
             }
@@ -1094,9 +1183,18 @@ $(function () {
                 return (label || '').replace(/\bPM([1-4])\b/i, '$1');
             }
 
+            // Header "... SERVICE COST" ditandai jadi "... SERVICE COST & TRANSPORTATION" —
+            // section ini yang menaungi baris Transportation yang ikut ditambahkan otomatis.
+            function pmMaybeAppendTransportToHeader(label) {
+                if (/SERVICE COST/i.test(label) && !/TRANSPORTATION/i.test(label)) {
+                    return label + ' & TRANSPORTATION';
+                }
+                return label;
+            }
+
             $.each(pmLoadPreviewData.items, function (i, item) {
                 if (item.type === 'header') {
-                    addHeaderRowFromData({ label: pmSimplifyLevelLabel(item.label) });
+                    addHeaderRowFromData({ label: pmMaybeAppendTransportToHeader(pmSimplifyLevelLabel(item.label)) });
                 } else if (item.type === 'part' && item.id_equivalent && item.equivalent) {
                     // Judul "Brand - PN" sudah otomatis direkonstruksi halaman detail quotation
                     // dari relasi equivalent, jadi field label di sini diisi DESKRIPSI produk
@@ -1122,6 +1220,9 @@ $(function () {
                     });
                 }
             });
+
+            // Selalu tambahkan 1 baris Transportation — Tipe & Kota sengaja dikosongkan, dipilih manual oleh sales.
+            addTransportRow();
 
             // Note master per level (dari power_service_prices.note_pmX) — selalu timpa isi
             // textarea Note yang ada saat ini, diformat ber-bullet biar selaras sama gaya

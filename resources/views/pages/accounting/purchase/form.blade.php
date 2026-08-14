@@ -27,6 +27,13 @@
         @if (@$purchase)
             @method('patch')
         @endif
+        <input type="hidden" name="id_purchase_request" value="{{ old('id_purchase_request', $sourcePr->id ?? '') }}">
+        @if ($sourcePr ?? null)
+            <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
+                <i class="mdi mdi-file-document-outline fs-5"></i>
+                <div>Item Sparepart di bawah otomatis dari <strong>{{ $sourcePr->no_pr }}</strong>. Silakan pilih supplier & lengkapi harga.</div>
+            </div>
+        @endif
         @if ($errors->any())
             <div class="alert alert-danger">
                 <ul class="mb-0">
@@ -213,6 +220,7 @@
                                         <div class="row w-100">
                                             <input type="hidden" class="invoice-item-detail-id" name="detail_id[]"
                                                 value="{{ $item->id }}">
+                                            <input type="hidden" name="pr_detail_id[]" value="">
                                             <div class="col-md col-12 mb-md-0 item-fields">
                                                 <div class="item-category-toggle mb-2">
                                                     <div class="form-check form-check-inline">
@@ -337,12 +345,133 @@
                                 @endphp
                             @endforeach
                         </div>
+                    @elseif (!empty($prefillItems))
+                        <div class="mb-0" data-repeater-list="group-a">
+                            @foreach ($prefillItems as $i => $pi)
+                                @php $rno = $i + 1; @endphp
+                                <div class="repeater-wrapper" data-repeater-item="">
+                                    <div class="position-relative border-bottom p-3">
+                                        <div class="row w-100">
+                                            <input type="hidden" class="invoice-item-detail-id" name="detail_id[]" value="">
+                                            <input type="hidden" name="pr_detail_id[]" value="{{ $pi['pr_detail_id'] ?? '' }}">
+                                            <div class="col-md col-12 mb-md-0 item-fields">
+                                                <div class="item-category-toggle mb-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input item-category-radio" type="radio"
+                                                            value="Sparepart" checked>
+                                                        <label class="form-check-label small">Sparepart</label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input item-category-radio" type="radio"
+                                                            value="Unit">
+                                                        <label class="form-check-label small">Unit Global</label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input item-category-radio" type="radio"
+                                                            value="Custom">
+                                                        <label class="form-check-label small">Custom Item</label>
+                                                    </div>
+                                                </div>
+                                                <div class="field-product-sparepart">
+                                                    <select class="form-select form-select-sm select2-product-po" name="id_product[]">
+                                                        <option value="">Cari SKU / Product...</option>
+                                                        @foreach ($products ?? [] as $p)
+                                                            <option value="{{ $p->id }}"
+                                                                data-label="{{ $p->commodity }} — {{ $p->description }}"
+                                                                data-unit="{{ $p->unit }}"
+                                                                {{ $pi['id_product'] == $p->id ? 'selected' : '' }}>
+                                                                {{ $p->commodity }} — {{ $p->description }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div class="field-product-unit" style="display:none;">
+                                                    <select class="form-select form-select-sm select2-unit-po" name="id_unit[]">
+                                                        <option value="">Cari Unit...</option>
+                                                        @foreach ($units ?? [] as $u)
+                                                            <option value="{{ $u->id }}"
+                                                                data-sku="{{ $u->sku }}"
+                                                                data-name="{{ $u->brand }} {{ $u->model }}"
+                                                                data-label="{{ $u->sku }} - {{ $u->brand }} {{ $u->model }}">
+                                                                {{ $u->sku }} {{ $u->brand }} {{ $u->model }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div class="field-product-custom" style="display:none;">
+                                                    <textarea class="form-control form-control-sm invoice-item-detail-product"
+                                                        name="product[]" rows="2"
+                                                        placeholder="Nama/Deskripsi Item Custom...">{{ $pi['label'] }}</textarea>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3 col-12 mb-md-0 mb-3">
+                                                <p class="mb-2 repeater-title small text-muted">Price</p>
+                                                <div class="input-group input-group-sm" data-price="{{ $rno }}">
+                                                    <span class="input-group-text">Rp. </span>
+                                                    <input type="text" class="form-control invoice-item-price-label"
+                                                        id="priceLabel-{{ $rno }}" data-id="{{ $rno }}" name="harga"
+                                                        placeholder="Put Price Here" data-type="currency" min="0"
+                                                        pattern="^[0-9]\d{0,2}(\.\d{3})*$" value="">
+                                                    <input class="form-control invoice-item-price" type="number"
+                                                        name="price[]" id="price-{{ $rno }}" value="" hidden>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-1 col-12 mb-md-0 mb-3">
+                                                <p class="mb-2 repeater-title small text-muted">Qty</p>
+                                                <input type="number" class="form-control form-control-sm invoice-item-qty"
+                                                    placeholder="Min 1" name="qty[]" id="qty-{{ $rno }}" data-id="{{ $rno }}"
+                                                    min="1" value="{{ $pi['qty'] }}">
+                                            </div>
+                                            <div class="col-md-1 col-12 mb-md-0 mb-3">
+                                                <p class="mb-2 repeater-title small text-muted">Info Qty</p>
+                                                <select class="form-select form-select-sm invoice-item-info" id="info-qty-{{ $rno }}"
+                                                    data-id="{{ $rno }}" aria-label="Default select example" name="info_qty[]">
+                                                    <option disabled>---Info---</option>
+                                                    <option value="Pcs">Pcs</option>
+                                                    <option value="Set">Set</option>
+                                                    <option value="Pail">Pail</option>
+                                                    <option value="Unit">Unit</option>
+                                                    <option value="Lot">Lot</option>
+                                                    <option value="Meter">Meter</option>
+                                                    <option value="Can">Can</option>
+                                                    <option value="Hari">Hari</option>
+                                                    <option value="Bulan">Bulan</option>
+                                                    <option value="Kg">Kg</option>
+                                                    <option value="Tube">Tube</option>
+                                                    <option value="Titik">Titik</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-1 col-12 mb-md-0 mb-3">
+                                                <p class="mb-2 repeater-title small text-muted">Disc (%)</p>
+                                                <div class="input-group input-group-sm" data-disc="{{ $rno }}">
+                                                    <input type="text" class="form-control invoice-item-disc"
+                                                        id="disc-{{ $rno }}" data-id="{{ $rno }}" name="disc[]" placeholder="%"
+                                                        value="0">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2 col-12 pe-4 text-md-end">
+                                                <p class="mb-2 repeater-title small text-muted">Amount</p>
+                                                <p class="mb-0 amount-label fw-semibold text-primary" id="amount-label-{{ $rno }}" data-id="{{ $rno }}"></p>
+                                                <input type="number" class="form-control invoice-item-amount"
+                                                    name="amount[]" id="amount-{{ $rno }}" data-id="{{ $rno }}"
+                                                    value="" hidden>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del position-absolute top-0 end-0 m-2"
+                                            data-repeater-delete="">
+                                            <i class="mdi mdi-delete-outline"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
                     @else
                         <div class="mb-0" data-repeater-list="group-a">
                             <div class="repeater-wrapper" data-repeater-item="">
                                 <div class="position-relative border-bottom p-3">
                                     <div class="row w-100">
                                         <input type="hidden" class="invoice-item-detail-id" name="detail_id[]" value="">
+                                        <input type="hidden" name="pr_detail_id[]" value="">
                                         <div class="col-md col-12 mb-md-0 item-fields">
                                             <div class="item-category-toggle mb-2">
                                                 <div class="form-check form-check-inline">

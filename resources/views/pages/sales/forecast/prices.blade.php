@@ -6,20 +6,12 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
         <div>
             <h4 class="fw-bold mb-1"><span class="text-muted fw-light">Forecast /</span> Master Harga Jasa PM</h4>
-            <p class="text-muted mb-0">Kelola tarif standar jasa PM (PM1 - PM4) per kapasitas power (kW) dan template scope penawaran.</p>
+            <p class="text-muted mb-0">Kelola tarif standar jasa PM (PM1 - PM4), Set of Bearing Kit, dan Transportation per kota.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
-            <button type="button" class="btn btn-outline-secondary d-flex align-items-center gap-2 shadow-sm waves-effect" id="btnOpenTemplateModal">
-                <i class="mdi mdi-text-box-edit-outline fs-5 text-primary"></i>
+            <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-2 shadow-sm waves-effect" id="btnOpenTemplateModal">
+                <i class="mdi mdi-text-box-edit-outline fs-5"></i>
                 <span>Template Scope & Remarks (Global)</span>
-            </button>
-            <button type="button" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm waves-effect waves-light" id="btnOpenAddModal">
-                <i class="mdi mdi-plus fs-5"></i>
-                <span>Tambah Harga Master PM</span>
-            </button>
-            <button type="button" class="btn btn-dark d-flex align-items-center gap-2 shadow-sm waves-effect waves-light" id="btnOpenAddBearingKitModal">
-                <i class="mdi mdi-cog-outline fs-5"></i>
-                <span>Tambah Harga Set Bearing Kit</span>
             </button>
         </div>
     </div>
@@ -35,12 +27,12 @@
 
     <!-- Summary KPI Stat Cards -->
     <div class="row g-3 mb-4">
-        <div class="col-sm-6 col-lg-4">
-            <div class="card h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #f6f8fd 0%, #e9effd 100%);">
-                <div class="card-body d-flex align-items-center justify-content-between">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #f6f8fd 0%, #e9effd 100%); border-radius: 10px;">
+                <div class="card-body d-flex align-items-center justify-content-between p-3">
                     <div>
-                        <span class="text-muted fw-semibold small d-block mb-1">TOTAL POWER TERDAFTAR</span>
-                        <h3 class="mb-0 fw-bold text-primary">{{ $prices->count() }} <span class="fs-6 text-muted font-normal">Kapasitas</span></h3>
+                        <span class="text-muted fw-semibold small d-block mb-1" style="font-size: 11px;">JASA PM TERDAFTAR</span>
+                        <h4 class="mb-0 fw-bold text-primary">{{ $prices->count() }} <span class="fs-7 text-muted font-normal">Kapasitas</span></h4>
                     </div>
                     <div class="avatar avatar-md bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm">
                         <i class="mdi mdi-engine fs-4"></i>
@@ -48,14 +40,40 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-lg-4">
-            <div class="card h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #f3faf7 0%, #e1f5ed 100%);">
-                <div class="card-body d-flex align-items-center justify-content-between">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 10px;">
+                <div class="card-body d-flex align-items-center justify-content-between p-3">
                     <div>
-                        <span class="text-muted fw-semibold small d-block mb-1">RATA-RATA TARIF PM 1</span>
-                        <h3 class="mb-0 fw-bold text-success">
+                        <span class="text-muted fw-semibold small d-block mb-1" style="font-size: 11px;">BEARING KIT TERDAFTAR</span>
+                        <h4 class="mb-0 fw-bold text-dark">{{ $bearingKitPrices->count() }} <span class="fs-7 text-muted font-normal">Kapasitas</span></h4>
+                    </div>
+                    <div class="avatar avatar-md bg-dark text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm">
+                        <i class="mdi mdi-cog-outline fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #f0fbfc 0%, #dcf5f7 100%); border-radius: 10px;">
+                <div class="card-body d-flex align-items-center justify-content-between p-3">
+                    <div>
+                        <span class="text-muted fw-semibold small d-block mb-1" style="font-size: 11px;">KOTA TRANSPORTATION</span>
+                        <h4 class="mb-0 fw-bold text-info">{{ $transportationPrices->count() }} <span class="fs-7 text-muted font-normal">Kota</span></h4>
+                    </div>
+                    <div class="avatar avatar-md bg-info text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm">
+                        <i class="mdi mdi-truck-outline fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #f3faf7 0%, #e1f5ed 100%); border-radius: 10px;">
+                <div class="card-body d-flex align-items-center justify-content-between p-3">
+                    <div>
+                        <span class="text-muted fw-semibold small d-block mb-1" style="font-size: 11px;">RATA-RATA TARIF PM 1</span>
+                        <h4 class="mb-0 fw-bold text-success" style="font-size: 1.1rem;">
                             Rp {{ number_format($prices->count() > 0 ? $prices->avg('price_pm1') : 0, 0, ',', '.') }}
-                        </h3>
+                        </h4>
                     </div>
                     <div class="avatar avatar-md bg-success text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm">
                         <i class="mdi mdi-wrench-outline fs-4"></i>
@@ -63,255 +81,353 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-lg-4">
-            <div class="card h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #fffcf4 0%, #fff3d6 100%);">
-                <div class="card-body d-flex align-items-center justify-content-between">
-                    <div>
-                        <span class="text-muted fw-semibold small d-block mb-1">RATA-RATA TARIF PM 2</span>
-                        <h3 class="mb-0 fw-bold text-warning">
-                            Rp {{ number_format($prices->count() > 0 ? $prices->avg('price_pm2') : 0, 0, ',', '.') }}
-                        </h3>
-                    </div>
-                    <div class="avatar avatar-md bg-warning text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm">
-                        <i class="mdi mdi-oil fs-4"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
-    <!-- Full-Width Master Data Table -->
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-transparent d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 py-3 border-bottom">
-            <div class="d-flex align-items-center gap-2">
-                <i class="mdi mdi-table text-primary fs-4"></i>
-                <h5 class="card-title mb-0 fw-bold">Daftar Harga Jasa Standar PM</h5>
-            </div>
-            <div class="d-flex align-items-center gap-2 w-100 w-md-auto">
-                <div class="input-group input-group-merge style-search">
-                    <span class="input-group-text border-end-0 bg-light"><i class="mdi mdi-magnify"></i></span>
-                    <input type="text" id="searchTable" class="form-control form-control-sm border-start-0 bg-light" placeholder="Cari kapasitas power (mis: 15 kW)...">
-                </div>
-            </div>
-        </div>
-        <div class="table-responsive text-nowrap">
-            <table class="table table-hover align-middle mb-0" id="pricesTable">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 40px;"></th>
-                        <th class="fw-bold">Power (kW)</th>
-                        <th class="fw-bold">PM 1 (Air & Oil Filter)</th>
-                        <th class="fw-bold">PM 2 (+ Separator & Oli)</th>
-                        <th class="fw-bold">PM 3 (+ Carbon Remover)</th>
-                        <th class="fw-bold">PM 4 (+ Overhaul)</th>
-                        <th class="fw-bold text-center" style="width: 130px;">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="table-border-bottom-0">
-                    @forelse($prices as $price)
-                    <tr class="main-row" data-power="{{ strtolower($price->power) }}">
-                        <td class="text-center">
-                            <button type="button" class="btn btn-icon btn-xs btn-label-secondary btn-toggle-detail" data-target="#detail-{{ $price->id }}" title="Lihat Scope Standar">
-                                <i class="mdi mdi-chevron-down fs-5"></i>
+    <!-- Nav Tabs Navigation -->
+    <div class="nav-align-top mb-4">
+        <ul class="nav nav-tabs nav-fill shadow-sm rounded border-0 mb-4" role="tablist" style="background:#fff; padding: 6px;">
+            <li class="nav-item">
+                <button type="button" class="nav-link active fw-bold py-2.5 fs-6" role="tab" data-bs-toggle="tab" data-bs-target="#tab-jasa-pm" aria-controls="tab-jasa-pm" aria-selected="true">
+                    <i class="mdi mdi-wrench-outline me-2 fs-5 text-primary"></i> Master Harga Jasa PM
+                    <span class="badge rounded-pill bg-primary ms-1" style="font-size: 11px;">{{ $prices->count() }}</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button type="button" class="nav-link fw-bold py-2.5 fs-6" role="tab" data-bs-toggle="tab" data-bs-target="#tab-bearing-kit" aria-controls="tab-bearing-kit" aria-selected="false">
+                    <i class="mdi mdi-cog-outline me-2 fs-5 text-dark"></i> Set of Bearing Kit
+                    <span class="badge rounded-pill bg-dark ms-1" style="font-size: 11px;">{{ $bearingKitPrices->count() }}</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button type="button" class="nav-link fw-bold py-2.5 fs-6" role="tab" data-bs-toggle="tab" data-bs-target="#tab-transportation" aria-controls="tab-transportation" aria-selected="false">
+                    <i class="mdi mdi-truck-outline me-2 fs-5 text-info"></i> Transportation Kota
+                    <span class="badge rounded-pill bg-info ms-1" style="font-size: 11px;">{{ $transportationPrices->count() }}</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content p-0 bg-transparent border-0 shadow-none">
+            <!-- TAB 1: JASA PM -->
+            <div class="tab-pane fade show active" id="tab-jasa-pm" role="tabpanel">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 py-3 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="mdi mdi-table text-primary fs-4"></i>
+                            <div>
+                                <h5 class="card-title mb-0 fw-bold">Daftar Harga Jasa Standar PM</h5>
+                                <small class="text-muted">Tarif standar PM 1 - PM 4 per kapasitas power (kW)</small>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 w-100 w-md-auto flex-wrap flex-md-nowrap">
+                            <div class="input-group input-group-merge style-search" style="min-width: 220px;">
+                                <span class="input-group-text border-end-0 bg-light"><i class="mdi mdi-magnify"></i></span>
+                                <input type="text" id="searchTable" class="form-control form-control-sm border-start-0 bg-light" placeholder="Cari power (mis: 15 kW)...">
+                            </div>
+                            <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1.5 shadow-sm waves-effect waves-light text-nowrap" id="btnOpenAddModal">
+                                <i class="mdi mdi-plus fs-5"></i>
+                                <span>Tambah Harga Master PM</span>
                             </button>
-                        </td>
-                        <td>
-                            <span class="badge bg-label-primary px-3 py-2 fs-6 fw-bold border border-primary-subtle">
-                                <i class="mdi mdi-flash me-1"></i>{{ $price->power }}
-                            </span>
-                        </td>
-                        <td><span class="fw-bold text-dark">Rp {{ number_format($price->price_pm1, 0, ',', '.') }}</span></td>
-                        <td><span class="fw-bold text-dark">Rp {{ number_format($price->price_pm2, 0, ',', '.') }}</span></td>
-                        <td><span class="fw-bold text-dark">Rp {{ number_format($price->price_pm3, 0, ',', '.') }}</span></td>
-                        <td><span class="fw-bold text-dark">Rp {{ number_format($price->price_pm4, 0, ',', '.') }}</span></td>
-                        <td class="text-center">
-                            <div class="d-inline-flex gap-1">
-                                <button type="button" class="btn btn-sm btn-outline-primary btn-edit waves-effect"
-                                        data-id="{{ $price->id }}"
-                                        data-power="{{ $price->power }}"
-                                        data-pm1="{{ $price->price_pm1 }}"
-                                        data-pm2="{{ $price->price_pm2 }}"
-                                        data-pm3="{{ $price->price_pm3 }}"
-                                        data-pm4="{{ $price->price_pm4 }}">
-                                    <i class="mdi mdi-pencil me-1"></i>Edit
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger btn-delete waves-effect"
-                                        data-id="{{ $price->id }}"
-                                        data-power="{{ $price->power }}">
-                                    <i class="mdi mdi-trash-can-outline"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                    <!-- Expandable Detail Row (Preview Scope & Remarks) -->
-                    <tr class="detail-row d-none bg-light" id="detail-{{ $price->id }}">
-                        <td colspan="7" class="p-3">
-                            <div class="card border border-info border-opacity-25 shadow-none mb-0" style="background: #fafcff;">
-                                <div class="card-header bg-transparent py-2 px-3 border-bottom d-flex align-items-center justify-content-between">
-                                    <h6 class="mb-0 fw-bold text-primary fs-7"><i class="mdi mdi-information-outline me-1"></i>Template Scope Kerja & Remarks Quotation yang Berlaku di Penawaran</h6>
-                                    <small class="text-muted">Klik panah pada baris untuk menutup</small>
-                                </div>
-                                <div class="card-body p-3">
-                                    <div class="row g-3">
-                                        <!-- PM1 -->
-                                        <div class="col-md-3">
-                                            <div class="p-2 border rounded bg-white h-100">
-                                                <div class="fw-bold text-success border-bottom pb-1 mb-2 d-flex justify-content-between">
-                                                    <span>PM 1</span>
-                                                    <span>Rp {{ number_format($price->price_pm1, 0, ',', '.') }}</span>
-                                                </div>
-                                                <div class="small mb-2">
-                                                    <span class="fw-semibold text-muted d-block mb-1">Scope Kerja Penawaran:</span>
-                                                    <div class="text-dark whitespace-pre-line bg-light p-2 rounded" style="white-space: pre-line; max-height: 120px; overflow-y: auto;">{{ $price->desc_pm1 ?: ($defaultTemplate->desc_pm1 ?? '-') }}</div>
-                                                </div>
-                                                <div class="small">
-                                                    <span class="fw-semibold text-muted d-block mb-1">Remarks Quotation:</span>
-                                                    <div class="text-muted fst-italic bg-light p-2 rounded" style="white-space: pre-line;">{{ $price->note_pm1 ?: ($defaultTemplate->note_pm1 ?? '-') }}</div>
+                        </div>
+                    </div>
+                    <div class="table-responsive text-nowrap">
+                        <table class="table table-hover align-middle mb-0" id="pricesTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40px;"></th>
+                                    <th class="fw-bold">Power (kW)</th>
+                                    <th class="fw-bold">PM 1 (Air & Oil Filter)</th>
+                                    <th class="fw-bold">PM 2 (+ Separator & Oli)</th>
+                                    <th class="fw-bold">PM 3 (+ Carbon Remover)</th>
+                                    <th class="fw-bold">PM 4 (+ Overhaul)</th>
+                                    <th class="fw-bold text-center" style="width: 130px;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="table-border-bottom-0">
+                                @forelse($prices as $price)
+                                <tr class="main-row" data-power="{{ strtolower($price->power) }}">
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-icon btn-xs btn-label-secondary btn-toggle-detail" data-target="#detail-{{ $price->id }}" title="Lihat Scope Standar">
+                                            <i class="mdi mdi-chevron-down fs-5"></i>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-label-primary px-3 py-2 fs-6 fw-bold border border-primary-subtle">
+                                            <i class="mdi mdi-flash me-1"></i>{{ $price->power }}
+                                        </span>
+                                    </td>
+                                    <td><span class="fw-bold text-dark">Rp {{ number_format($price->price_pm1, 0, ',', '.') }}</span></td>
+                                    <td><span class="fw-bold text-dark">Rp {{ number_format($price->price_pm2, 0, ',', '.') }}</span></td>
+                                    <td><span class="fw-bold text-dark">Rp {{ number_format($price->price_pm3, 0, ',', '.') }}</span></td>
+                                    <td><span class="fw-bold text-dark">Rp {{ number_format($price->price_pm4, 0, ',', '.') }}</span></td>
+                                    <td class="text-center">
+                                        <div class="d-inline-flex gap-1">
+                                            <button type="button" class="btn btn-sm btn-outline-primary btn-edit waves-effect"
+                                                    data-id="{{ $price->id }}"
+                                                    data-power="{{ $price->power }}"
+                                                    data-pm1="{{ $price->price_pm1 }}"
+                                                    data-pm2="{{ $price->price_pm2 }}"
+                                                    data-pm3="{{ $price->price_pm3 }}"
+                                                    data-pm4="{{ $price->price_pm4 }}">
+                                                <i class="mdi mdi-pencil me-1"></i>Edit
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete waves-effect"
+                                                    data-id="{{ $price->id }}"
+                                                    data-power="{{ $price->power }}">
+                                                <i class="mdi mdi-trash-can-outline"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="detail-row d-none bg-light" id="detail-{{ $price->id }}">
+                                    <td colspan="7" class="p-3">
+                                        <div class="card border border-info border-opacity-25 shadow-none mb-0" style="background: #fafcff;">
+                                            <div class="card-header bg-transparent py-2 px-3 border-bottom d-flex align-items-center justify-content-between">
+                                                <h6 class="mb-0 fw-bold text-primary fs-7"><i class="mdi mdi-information-outline me-1"></i>Template Scope Kerja & Remarks Quotation yang Berlaku di Penawaran</h6>
+                                                <small class="text-muted">Klik panah pada baris untuk menutup</small>
+                                            </div>
+                                            <div class="card-body p-3">
+                                                <div class="row g-3">
+                                                    <!-- PM1 -->
+                                                    <div class="col-md-3">
+                                                        <div class="p-2 border rounded bg-white h-100">
+                                                            <div class="fw-bold text-success border-bottom pb-1 mb-2 d-flex justify-content-between">
+                                                                <span>PM 1</span>
+                                                                <span>Rp {{ number_format($price->price_pm1, 0, ',', '.') }}</span>
+                                                            </div>
+                                                            <div class="small mb-2">
+                                                                <span class="fw-semibold text-muted d-block mb-1">Scope Kerja Penawaran:</span>
+                                                                <div class="text-dark whitespace-pre-line bg-light p-2 rounded" style="white-space: pre-line; max-height: 120px; overflow-y: auto;">{{ $price->desc_pm1 ?: ($defaultTemplate->desc_pm1 ?? '-') }}</div>
+                                                            </div>
+                                                            <div class="small">
+                                                                <span class="fw-semibold text-muted d-block mb-1">Remarks Quotation:</span>
+                                                                <div class="text-muted fst-italic bg-light p-2 rounded" style="white-space: pre-line;">{{ $price->note_pm1 ?: ($defaultTemplate->note_pm1 ?? '-') }}</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <!-- PM2 -->
+                                                    <div class="col-md-3">
+                                                        <div class="p-2 border rounded bg-white h-100">
+                                                            <div class="fw-bold text-primary border-bottom pb-1 mb-2 d-flex justify-content-between">
+                                                                <span>PM 2</span>
+                                                                <span>Rp {{ number_format($price->price_pm2, 0, ',', '.') }}</span>
+                                                            </div>
+                                                            <div class="small mb-2">
+                                                                <span class="fw-semibold text-muted d-block mb-1">Scope Kerja Penawaran:</span>
+                                                                <div class="text-dark whitespace-pre-line bg-light p-2 rounded" style="white-space: pre-line; max-height: 120px; overflow-y: auto;">{{ $price->desc_pm2 ?: ($defaultTemplate->desc_pm2 ?? '-') }}</div>
+                                                            </div>
+                                                            <div class="small">
+                                                                <span class="fw-semibold text-muted d-block mb-1">Remarks Quotation:</span>
+                                                                <div class="text-muted fst-italic bg-light p-2 rounded" style="white-space: pre-line;">{{ $price->note_pm2 ?: ($defaultTemplate->note_pm2 ?? '-') }}</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <!-- PM3 -->
+                                                    <div class="col-md-3">
+                                                        <div class="p-2 border rounded bg-white h-100">
+                                                            <div class="fw-bold text-warning border-bottom pb-1 mb-2 d-flex justify-content-between">
+                                                                <span>PM 3</span>
+                                                                <span>Rp {{ number_format($price->price_pm3, 0, ',', '.') }}</span>
+                                                            </div>
+                                                            <div class="small mb-2">
+                                                                <span class="fw-semibold text-muted d-block mb-1">Scope Kerja Penawaran:</span>
+                                                                <div class="text-dark whitespace-pre-line bg-light p-2 rounded" style="white-space: pre-line; max-height: 120px; overflow-y: auto;">{{ $price->desc_pm3 ?: ($defaultTemplate->desc_pm3 ?? '-') }}</div>
+                                                            </div>
+                                                            <div class="small">
+                                                                <span class="fw-semibold text-muted d-block mb-1">Remarks Quotation:</span>
+                                                                <div class="text-muted fst-italic bg-light p-2 rounded" style="white-space: pre-line;">{{ $price->note_pm3 ?: ($defaultTemplate->note_pm3 ?? '-') }}</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <!-- PM4 -->
+                                                    <div class="col-md-3">
+                                                        <div class="p-2 border rounded bg-white h-100">
+                                                            <div class="fw-bold text-danger border-bottom pb-1 mb-2 d-flex justify-content-between">
+                                                                <span>PM 4</span>
+                                                                <span>Rp {{ number_format($price->price_pm4, 0, ',', '.') }}</span>
+                                                            </div>
+                                                            <div class="small mb-2">
+                                                                <span class="fw-semibold text-muted d-block mb-1">Scope Kerja Penawaran:</span>
+                                                                <div class="text-dark whitespace-pre-line bg-light p-2 rounded" style="white-space: pre-line; max-height: 120px; overflow-y: auto;">{{ $price->desc_pm4 ?: ($defaultTemplate->desc_pm4 ?? '-') }}</div>
+                                                            </div>
+                                                            <div class="small">
+                                                                <span class="fw-semibold text-muted d-block mb-1">Remarks Quotation:</span>
+                                                                <div class="text-muted fst-italic bg-light p-2 rounded" style="white-space: pre-line;">{{ $price->note_pm4 ?: ($defaultTemplate->note_pm4 ?? '-') }}</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <!-- PM2 -->
-                                        <div class="col-md-3">
-                                            <div class="p-2 border rounded bg-white h-100">
-                                                <div class="fw-bold text-primary border-bottom pb-1 mb-2 d-flex justify-content-between">
-                                                    <span>PM 2</span>
-                                                    <span>Rp {{ number_format($price->price_pm2, 0, ',', '.') }}</span>
-                                                </div>
-                                                <div class="small mb-2">
-                                                    <span class="fw-semibold text-muted d-block mb-1">Scope Kerja Penawaran:</span>
-                                                    <div class="text-dark whitespace-pre-line bg-light p-2 rounded" style="white-space: pre-line; max-height: 120px; overflow-y: auto;">{{ $price->desc_pm2 ?: ($defaultTemplate->desc_pm2 ?? '-') }}</div>
-                                                </div>
-                                                <div class="small">
-                                                    <span class="fw-semibold text-muted d-block mb-1">Remarks Quotation:</span>
-                                                    <div class="text-muted fst-italic bg-light p-2 rounded" style="white-space: pre-line;">{{ $price->note_pm2 ?: ($defaultTemplate->note_pm2 ?? '-') }}</div>
-                                                </div>
-                                            </div>
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="7" class="text-center py-5">
+                                        <div class="py-3">
+                                            <i class="mdi mdi-alert-circle-outline text-muted fs-1 mb-2 d-block"></i>
+                                            <h6 class="text-muted fw-bold">Belum Ada Master Harga Jasa PM</h6>
+                                            <p class="text-muted small">Klik tombol "+ Tambah Harga Master PM" di atas untuk menambahkan data baru.</p>
                                         </div>
-                                        <!-- PM3 -->
-                                        <div class="col-md-3">
-                                            <div class="p-2 border rounded bg-white h-100">
-                                                <div class="fw-bold text-warning border-bottom pb-1 mb-2 d-flex justify-content-between">
-                                                    <span>PM 3</span>
-                                                    <span>Rp {{ number_format($price->price_pm3, 0, ',', '.') }}</span>
-                                                </div>
-                                                <div class="small mb-2">
-                                                    <span class="fw-semibold text-muted d-block mb-1">Scope Kerja Penawaran:</span>
-                                                    <div class="text-dark whitespace-pre-line bg-light p-2 rounded" style="white-space: pre-line; max-height: 120px; overflow-y: auto;">{{ $price->desc_pm3 ?: ($defaultTemplate->desc_pm3 ?? '-') }}</div>
-                                                </div>
-                                                <div class="small">
-                                                    <span class="fw-semibold text-muted d-block mb-1">Remarks Quotation:</span>
-                                                    <div class="text-muted fst-italic bg-light p-2 rounded" style="white-space: pre-line;">{{ $price->note_pm3 ?: ($defaultTemplate->note_pm3 ?? '-') }}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <!-- PM4 -->
-                                        <div class="col-md-3">
-                                            <div class="p-2 border rounded bg-white h-100">
-                                                <div class="fw-bold text-danger border-bottom pb-1 mb-2 d-flex justify-content-between">
-                                                    <span>PM 4</span>
-                                                    <span>Rp {{ number_format($price->price_pm4, 0, ',', '.') }}</span>
-                                                </div>
-                                                <div class="small mb-2">
-                                                    <span class="fw-semibold text-muted d-block mb-1">Scope Kerja Penawaran:</span>
-                                                    <div class="text-dark whitespace-pre-line bg-light p-2 rounded" style="white-space: pre-line; max-height: 120px; overflow-y: auto;">{{ $price->desc_pm4 ?: ($defaultTemplate->desc_pm4 ?? '-') }}</div>
-                                                </div>
-                                                <div class="small">
-                                                    <span class="fw-semibold text-muted d-block mb-1">Remarks Quotation:</span>
-                                                    <div class="text-muted fst-italic bg-light p-2 rounded" style="white-space: pre-line;">{{ $price->note_pm4 ?: ($defaultTemplate->note_pm4 ?? '-') }}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="7" class="text-center py-5">
-                            <div class="py-3">
-                                <i class="mdi mdi-alert-circle-outline text-muted fs-1 mb-2 d-block"></i>
-                                <h6 class="text-muted fw-bold">Belum Ada Master Harga Jasa PM</h6>
-                                <p class="text-muted small">Klik tombol "+ Tambah Harga Master PM" di atas untuk menambahkan data baru.</p>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
-    <!-- Full-Width Bearing Kit Master Data Table -->
-    <div class="card border-0 shadow-sm mt-4">
-        <div class="card-header bg-transparent d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 py-3 border-bottom">
-            <div class="d-flex align-items-center gap-2">
-                <i class="mdi mdi-cog-outline text-dark fs-4"></i>
-                <div>
-                    <h5 class="card-title mb-0 fw-bold">Daftar Harga Set of Bearing Kit</h5>
-                    <small class="text-muted">Dipakai pada kategori B (Non-Consumable Part) template PM4 di halaman Unit Global.</small>
+            <!-- TAB 2: SET OF BEARING KIT -->
+            <div class="tab-pane fade" id="tab-bearing-kit" role="tabpanel">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 py-3 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="mdi mdi-cog-outline text-dark fs-4"></i>
+                            <div>
+                                <h5 class="card-title mb-0 fw-bold">Daftar Harga Set of Bearing Kit</h5>
+                                <small class="text-muted">Dipakai pada kategori B (Non-Consumable Part) template PM4 di halaman Unit Global.</small>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 w-100 w-md-auto flex-wrap flex-md-nowrap">
+                            <div class="input-group input-group-merge style-search" style="min-width: 220px;">
+                                <span class="input-group-text border-end-0 bg-light"><i class="mdi mdi-magnify"></i></span>
+                                <input type="text" id="searchBearingKitTable" class="form-control form-control-sm border-start-0 bg-light" placeholder="Cari power (mis: 15 kW)...">
+                            </div>
+                            <button type="button" class="btn btn-dark btn-sm d-flex align-items-center gap-1.5 shadow-sm waves-effect waves-light text-nowrap" id="btnOpenAddBearingKitModal">
+                                <i class="mdi mdi-plus fs-5"></i>
+                                <span>Tambah Harga Set Bearing Kit</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive text-nowrap">
+                        <table class="table table-hover align-middle mb-0" id="bearingKitTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="fw-bold">Power (kW)</th>
+                                    <th class="fw-bold">Set of Bearing Kit</th>
+                                    <th class="fw-bold">Set of Bearing Kit Main Motor</th>
+                                    <th class="fw-bold">Set of Bearing Kit Fan Motor</th>
+                                    <th class="fw-bold text-center" style="width: 130px;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="table-border-bottom-0">
+                                @forelse($bearingKitPrices as $bk)
+                                <tr class="main-row" data-power="{{ strtolower($bk->power) }}">
+                                    <td>
+                                        <span class="badge bg-label-dark px-3 py-2 fs-6 fw-bold border border-dark-subtle">
+                                            <i class="mdi mdi-flash me-1"></i>{{ $bk->power }}
+                                        </span>
+                                    </td>
+                                    <td><span class="fw-bold text-dark">Rp {{ number_format($bk->price_bearing_kit, 0, ',', '.') }}</span></td>
+                                    <td><span class="fw-bold text-dark">Rp {{ number_format($bk->price_bearing_kit_main_motor, 0, ',', '.') }}</span></td>
+                                    <td><span class="fw-bold text-dark">Rp {{ number_format($bk->price_bearing_kit_fan_motor, 0, ',', '.') }}</span></td>
+                                    <td class="text-center">
+                                        <div class="d-inline-flex gap-1">
+                                            <button type="button" class="btn btn-sm btn-outline-primary btn-edit-bearing-kit waves-effect"
+                                                    data-id="{{ $bk->id }}"
+                                                    data-power="{{ $bk->power }}"
+                                                    data-bearing-kit="{{ $bk->price_bearing_kit }}"
+                                                    data-bearing-kit-main-motor="{{ $bk->price_bearing_kit_main_motor }}"
+                                                    data-bearing-kit-fan-motor="{{ $bk->price_bearing_kit_fan_motor }}">
+                                                <i class="mdi mdi-pencil me-1"></i>Edit
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-bearing-kit waves-effect"
+                                                    data-id="{{ $bk->id }}"
+                                                    data-power="{{ $bk->power }}">
+                                                <i class="mdi mdi-trash-can-outline"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="5" class="text-center py-5">
+                                        <div class="py-3">
+                                            <i class="mdi mdi-alert-circle-outline text-muted fs-1 mb-2 d-block"></i>
+                                            <h6 class="text-muted fw-bold">Belum Ada Master Harga Set Bearing Kit</h6>
+                                            <p class="text-muted small">Klik tombol "+ Tambah Harga Set Bearing Kit" di atas untuk menambahkan data baru.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-            <div class="d-flex align-items-center gap-2 w-100 w-md-auto">
-                <div class="input-group input-group-merge style-search">
-                    <span class="input-group-text border-end-0 bg-light"><i class="mdi mdi-magnify"></i></span>
-                    <input type="text" id="searchBearingKitTable" class="form-control form-control-sm border-start-0 bg-light" placeholder="Cari kapasitas power (mis: 15 kW)...">
+
+            <!-- TAB 3: TRANSPORTATION -->
+            <div class="tab-pane fade" id="tab-transportation" role="tabpanel">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 py-3 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="mdi mdi-truck-outline text-info fs-4"></i>
+                            <div>
+                                <h5 class="card-title mb-0 fw-bold">Daftar Harga Transportation per Kota</h5>
+                                <small class="text-muted">Dipakai pada tombol "Add Transport" di halaman Quotation & Load Template PM.</small>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 w-100 w-md-auto flex-wrap flex-md-nowrap">
+                            <div class="input-group input-group-merge style-search" style="min-width: 220px;">
+                                <span class="input-group-text border-end-0 bg-light"><i class="mdi mdi-magnify"></i></span>
+                                <input type="text" id="searchTransportTable" class="form-control form-control-sm border-start-0 bg-light" placeholder="Cari kota...">
+                            </div>
+                            <button type="button" class="btn btn-info btn-sm d-flex align-items-center gap-1.5 shadow-sm waves-effect waves-light text-white text-nowrap" id="btnOpenAddTransportModal">
+                                <i class="mdi mdi-plus fs-5"></i>
+                                <span>Tambah Harga Transportation</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive text-nowrap">
+                        <table class="table table-hover align-middle mb-0" id="transportTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="fw-bold">Kota</th>
+                                    <th class="fw-bold">Harga Transportation</th>
+                                    <th class="fw-bold text-center" style="width: 130px;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="table-border-bottom-0">
+                                @forelse($transportationPrices as $tp)
+                                <tr class="main-row" data-city="{{ strtolower($tp->city) }}">
+                                    <td>
+                                        <span class="badge bg-label-info px-3 py-2 fs-6 fw-bold border border-info-subtle">
+                                            <i class="mdi mdi-map-marker me-1"></i>{{ $tp->city }}
+                                        </span>
+                                    </td>
+                                    <td><span class="fw-bold text-dark">Rp {{ number_format($tp->price, 0, ',', '.') }}</span></td>
+                                    <td class="text-center">
+                                        <div class="d-inline-flex gap-1">
+                                            <button type="button" class="btn btn-sm btn-outline-primary btn-edit-transport waves-effect"
+                                                    data-id="{{ $tp->id }}"
+                                                    data-city="{{ $tp->city }}"
+                                                    data-price="{{ $tp->price }}">
+                                                <i class="mdi mdi-pencil me-1"></i>Edit
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-transport waves-effect"
+                                                    data-id="{{ $tp->id }}"
+                                                    data-city="{{ $tp->city }}">
+                                                <i class="mdi mdi-trash-can-outline"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="3" class="text-center py-5">
+                                        <div class="py-3">
+                                            <i class="mdi mdi-alert-circle-outline text-muted fs-1 mb-2 d-block"></i>
+                                            <h6 class="text-muted fw-bold">Belum Ada Master Harga Transportation</h6>
+                                            <p class="text-muted small">Klik tombol "+ Tambah Harga Transportation" di atas untuk menambahkan data baru.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="table-responsive text-nowrap">
-            <table class="table table-hover align-middle mb-0" id="bearingKitTable">
-                <thead class="table-light">
-                    <tr>
-                        <th class="fw-bold">Power (kW)</th>
-                        <th class="fw-bold">Set of Bearing Kit</th>
-                        <th class="fw-bold">Set of Bearing Kit Main Motor</th>
-                        <th class="fw-bold">Set of Bearing Kit Fan Motor</th>
-                        <th class="fw-bold text-center" style="width: 130px;">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="table-border-bottom-0">
-                    @forelse($bearingKitPrices as $bk)
-                    <tr class="main-row" data-power="{{ strtolower($bk->power) }}">
-                        <td>
-                            <span class="badge bg-label-dark px-3 py-2 fs-6 fw-bold border border-dark-subtle">
-                                <i class="mdi mdi-flash me-1"></i>{{ $bk->power }}
-                            </span>
-                        </td>
-                        <td><span class="fw-bold text-dark">Rp {{ number_format($bk->price_bearing_kit, 0, ',', '.') }}</span></td>
-                        <td><span class="fw-bold text-dark">Rp {{ number_format($bk->price_bearing_kit_main_motor, 0, ',', '.') }}</span></td>
-                        <td><span class="fw-bold text-dark">Rp {{ number_format($bk->price_bearing_kit_fan_motor, 0, ',', '.') }}</span></td>
-                        <td class="text-center">
-                            <div class="d-inline-flex gap-1">
-                                <button type="button" class="btn btn-sm btn-outline-primary btn-edit-bearing-kit waves-effect"
-                                        data-id="{{ $bk->id }}"
-                                        data-power="{{ $bk->power }}"
-                                        data-bearing-kit="{{ $bk->price_bearing_kit }}"
-                                        data-bearing-kit-main-motor="{{ $bk->price_bearing_kit_main_motor }}"
-                                        data-bearing-kit-fan-motor="{{ $bk->price_bearing_kit_fan_motor }}">
-                                    <i class="mdi mdi-pencil me-1"></i>Edit
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-danger btn-delete-bearing-kit waves-effect"
-                                        data-id="{{ $bk->id }}"
-                                        data-power="{{ $bk->power }}">
-                                    <i class="mdi mdi-trash-can-outline"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="5" class="text-center py-5">
-                            <div class="py-3">
-                                <i class="mdi mdi-alert-circle-outline text-muted fs-1 mb-2 d-block"></i>
-                                <h6 class="text-muted fw-bold">Belum Ada Master Harga Set Bearing Kit</h6>
-                                <p class="text-muted small">Klik tombol "+ Tambah Harga Set Bearing Kit" di atas untuk menambahkan data baru.</p>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
         </div>
     </div>
 </div>
@@ -577,6 +693,48 @@
     </div>
 </div>
 
+<!-- Modal 4: Manage Master Harga Transportation (Super Compact) -->
+<div class="modal fade" id="modalManageTransport" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar avatar-sm bg-label-info rounded d-flex align-items-center justify-content-center">
+                        <i class="mdi mdi-truck-outline fs-4"></i>
+                    </div>
+                    <h5 class="modal-title fw-bold mb-0" id="modalManageTransportTitle">Form Master Harga Transportation</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('forecast.prices.transportation.update') }}" method="POST" id="formManageTransport">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark mb-1" for="transportCity">Kota <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="transportCity" name="city" required placeholder="Misal: Jakarta">
+                    </div>
+
+                    <div class="divider text-start my-3">
+                        <div class="divider-text fw-bold text-muted fs-7"><i class="mdi mdi-cash-multiple me-1"></i>Input Harga Transportation</div>
+                    </div>
+
+                    <div class="mb-1">
+                        <label class="form-label fw-semibold small mb-1" for="transportPrice">Harga Transportation <span class="text-danger">*</span></label>
+                        <div class="input-group input-group-merge">
+                            <span class="input-group-text bg-light fw-bold">Rp</span>
+                            <input type="text" class="form-control currency-mask" id="transportPrice" name="price" required placeholder="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top py-3">
+                    <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary waves-effect waves-light"><i class="mdi mdi-content-save me-1"></i>Simpan Harga Transportation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Hidden Delete Form -->
 <form id="formDeletePrice" action="" method="POST" class="d-none">
     @csrf
@@ -589,12 +747,19 @@
     @method('DELETE')
 </form>
 
+<!-- Hidden Delete Form (Transportation) -->
+<form id="formDeleteTransport" action="" method="POST" class="d-none">
+    @csrf
+    @method('DELETE')
+</form>
+
 @push('script')
 <script>
     $(document).ready(function() {
         const manageModal = new bootstrap.Modal(document.getElementById('modalManagePrice'));
         const templateModal = new bootstrap.Modal(document.getElementById('modalStandardTemplate'));
         const manageBearingKitModal = new bootstrap.Modal(document.getElementById('modalManageBearingKit'));
+        const manageTransportModal = new bootstrap.Modal(document.getElementById('modalManageTransport'));
 
         // Helper currency formatter
         function formatRupiah(val) {
@@ -627,6 +792,14 @@
         $('#searchBearingKitTable').on('keyup', function() {
             var value = $(this).val().toLowerCase();
             $('#bearingKitTable tbody tr.main-row').filter(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+            });
+        });
+
+        // Search Transportation Table filter
+        $('#searchTransportTable').on('keyup', function() {
+            var value = $(this).val().toLowerCase();
+            $('#transportTable tbody tr.main-row').filter(function() {
                 $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
             });
         });
@@ -767,6 +940,52 @@
             }).then(function(result) {
                 if (result.isConfirmed) {
                     var deleteForm = $('#formDeleteBearingKit');
+                    deleteForm.attr('action', deleteUrl);
+                    deleteForm.submit();
+                }
+            });
+        });
+
+        // Open Add Transportation Modal
+        $('#btnOpenAddTransportModal').click(function() {
+            $('#formManageTransport')[0].reset();
+            $('#modalManageTransportTitle').text('Tambah Master Harga Transportation Baru');
+            manageTransportModal.show();
+        });
+
+        // Open Edit Transportation Modal
+        $('.btn-edit-transport').click(function() {
+            var btn = $(this);
+            var city = btn.data('city');
+
+            $('#modalManageTransportTitle').text('Edit Master Harga Transportation - ' + city);
+            $('#transportCity').val(city);
+            $('#transportPrice').val(formatRupiah(btn.data('price')));
+
+            manageTransportModal.show();
+        });
+
+        // Delete Transportation Confirm SweetAlert
+        $('.btn-delete-transport').click(function() {
+            var id = $(this).data('id');
+            var city = $(this).data('city');
+            var deleteUrl = "{{ url('/forecast/prices/transportation') }}/" + id;
+
+            Swal.fire({
+                title: 'Hapus Master Harga Transportation?',
+                text: "Apakah Anda yakin ingin menghapus harga Transportation untuk kota (" + city + ")? Tindakan ini tidak dapat dibatalkan.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Hapus Data',
+                cancelButtonText: 'Batal',
+                customClass: {
+                    confirmButton: 'btn btn-danger waves-effect waves-light me-2',
+                    cancelButton: 'btn btn-label-secondary waves-effect'
+                },
+                buttonsStyling: false
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    var deleteForm = $('#formDeleteTransport');
                     deleteForm.attr('action', deleteUrl);
                     deleteForm.submit();
                 }

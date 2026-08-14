@@ -136,6 +136,9 @@
             <!-- Layout Page -->
             <div class="layout-page">
 
+                <!--  Maintenance Warning Banner & Modal  -->
+                @include('components.maintenance-warning')
+
                 <!--  Navbar  -->
                 @include('layouts.sales.navbar')
                 <!--  END: Navbar  -->

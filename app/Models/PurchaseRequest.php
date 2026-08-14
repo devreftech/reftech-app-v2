@@ -33,4 +33,8 @@ class PurchaseRequest extends Model
     {
         return $this->hasMany('App\Models\PurchaseRequestDetail', 'id_purchase_request');
     }
+    public function purchaseOrders()
+    {
+        return $this->hasMany('App\Models\PurchaseOrder', 'id_purchase_request');
+    }
 }

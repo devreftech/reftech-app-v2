@@ -193,7 +193,7 @@
                     <div class="border rounded p-3 mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="fw-bold mb-0">Quotation Aktif / Berjalan</h5>
-                            <a href="{{ route('quotation.create') }}" type="button" class="btn btn-primary">
+                            <a href="{{ route('unit-quotation.create') }}" type="button" class="btn btn-primary">
                                 + New Quotation
                             </a>
                         </div>
@@ -266,56 +266,128 @@
 
                 {{-- ==================== TAB 3: PURCHASE ORDER (KEY ACCOUNT) ==================== --}}
                 <div class="tab-pane fade" id="tab-existing-po" role="tabpanel">
-                    <div class="border rounded p-3 mb-4">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="fw-bold mb-0">Key Account Summary</h5>
-                            <div class="form-floating form-floating-outline" style="min-width: 160px">
-                                <select id="poYearFilter" class="form-select">
-                                    <option value="">All Time</option>
-                                    @foreach ($poYears as $year)
-                                        <option value="{{ $year }}" @selected($year == $yearsNow)>{{ $year }}</option>
-                                    @endforeach
-                                </select>
-                                <label for="poYearFilter">Tahun</label>
+                    {{-- Key Account Summary Header & Cards --}}
+                    <div class="card border-0 shadow-sm p-4 mb-4" style="background: #ffffff; border-radius: 12px;">
+                        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="avatar avatar-md rounded-3 bg-label-primary d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                                    <i class="mdi mdi-chart-box-outline fs-3"></i>
+                                </div>
+                                <div>
+                                    <h5 class="fw-bold mb-0 text-dark">Key Account Summary</h5>
+                                    <small class="text-muted">Analisis performa transaksi & akumulasi nilai Purchase Order</small>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="form-floating form-floating-outline" style="min-width: 170px">
+                                    <select id="poYearFilter" class="form-select border-primary shadow-xs">
+                                        <option value="">Semua Tahun (All Time)</option>
+                                        @foreach ($poYears as $year)
+                                            <option value="{{ $year }}" @selected($year == $yearsNow)>Tahun {{ $year }}</option>
+                                        @endforeach
+                                    </select>
+                                    <label for="poYearFilter" class="fw-semibold text-primary"><i class="mdi mdi-filter-variant me-1"></i>Filter Tahun</label>
+                                </div>
                             </div>
                         </div>
+
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <div class="border rounded p-3 text-center h-100">
-                                    <p class="text-muted mb-1">Total Revenue</p>
-                                    <h4 class="fw-bold mb-0" id="poTotalRevenue">Rp 0</h4>
+                                <div class="card po-kpi-card border shadow-none h-100 p-3" style="border-top: 4px solid #696cff !important; border-radius: 10px; background: #fafafd;">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-md rounded-circle bg-label-primary me-3 d-flex align-items-center justify-content-center">
+                                            <i class="mdi mdi-cash-multiple fs-3"></i>
+                                        </div>
+                                        <div class="overflow-hidden">
+                                            <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px; font-size: 11px;">Total Revenue</span>
+                                            <h4 class="fw-extrabold mb-0 text-primary text-truncate" id="poTotalRevenue">Rp 0</h4>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <div class="border rounded p-3 text-center h-100">
-                                    <p class="text-muted mb-1">Total PO</p>
-                                    <h4 class="fw-bold mb-0" id="poTotalCount">0</h4>
+                                <div class="card po-kpi-card border shadow-none h-100 p-3" style="border-top: 4px solid #28c76f !important; border-radius: 10px; background: #fafdfb;">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-md rounded-circle bg-label-success me-3 d-flex align-items-center justify-content-center">
+                                            <i class="mdi mdi-file-document-check-outline fs-3"></i>
+                                        </div>
+                                        <div class="overflow-hidden">
+                                            <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px; font-size: 11px;">Total Purchase Order</span>
+                                            <h4 class="fw-extrabold mb-0 text-success text-truncate" id="poTotalCount">0</h4>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <div class="border rounded p-3 text-center h-100">
-                                    <p class="text-muted mb-1">Avg. Deal Size</p>
-                                    <h4 class="fw-bold mb-0" id="poAvgDeal">Rp 0</h4>
+                                <div class="card po-kpi-card border shadow-none h-100 p-3" style="border-top: 4px solid #00cfe8 !important; border-radius: 10px; background: #f7fcfd;">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-md rounded-circle bg-label-info me-3 d-flex align-items-center justify-content-center">
+                                            <i class="mdi mdi-calculator-variant-outline fs-3"></i>
+                                        </div>
+                                        <div class="overflow-hidden">
+                                            <span class="text-uppercase fw-bold text-muted small" style="letter-spacing: 0.5px; font-size: 11px;">Avg. Deal Size</span>
+                                            <h4 class="fw-extrabold mb-0 text-info text-truncate" id="poAvgDeal">Rp 0</h4>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="border rounded p-3">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="fw-bold mb-0">Riwayat Purchase Order</h5>
+
+                    {{-- Total Order Chart Section --}}
+                    <div class="card border-0 shadow-sm p-4 mb-4" style="background: #ffffff; border-radius: 12px;">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <div class="avatar avatar-xs rounded bg-label-primary p-1 d-flex align-items-center justify-content-center">
+                                <i class="mdi mdi-chart-timeline-variant fs-5"></i>
+                            </div>
+                            <h5 class="fw-bold mb-0 text-dark">Grafik Tren Total Order Per Tahun</h5>
                         </div>
-                        <div class="card-datatable table-responsive pt-0">
-                            <table class="datatable-po-history table table-bordered" id="dataTablePo">
-                                <thead>
+                        <div class="row g-4 align-items-center">
+                            <div class="col-12 col-lg-4 col-md-5">
+                                <div class="p-3.5 rounded-3 position-relative overflow-hidden" style="background: linear-gradient(135deg, rgba(105, 108, 255, 0.08) 0%, rgba(105, 108, 255, 0.02) 100%); border: 1px solid rgba(105, 108, 255, 0.15);">
+                                    <span class="badge bg-label-primary px-3 py-1 rounded-pill mb-2 fw-bold" style="font-size: 11px;">
+                                        <i class="mdi mdi-calendar-check me-1"></i>Tahun {{ $yearsNow }}
+                                    </span>
+                                    <div class="text-muted small mb-1 fw-medium">Total Nilai Order (PO)</div>
+                                    <div class="fw-extrabold text-primary mb-2" style="font-size: 1.75rem; letter-spacing: -0.5px; line-height: 1.2;">
+                                        Rp {{ number_format($poCurrentYearTotal, 0, ',', '.') }}
+                                    </div>
+                                    <p class="text-muted mb-0" style="font-size: 11.5px; line-height: 1.5;">
+                                        Akumulasi dari seluruh penawaran yang sudah terbit PO (quotation & unit quotation) pada tahun berjalan.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-8 col-md-7">
+                                <div id="clientYearlyOrderChart" style="min-height: 230px;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Riwayat Purchase Order Table --}}
+                    <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: 12px;">
+                        <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-3 px-4 border-bottom">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="avatar avatar-xs rounded bg-label-secondary p-1 d-flex align-items-center justify-content-center">
+                                    <i class="mdi mdi-history fs-5 text-secondary"></i>
+                                </div>
+                                <h5 class="fw-bold mb-0 text-dark">Riwayat Purchase Order</h5>
+                            </div>
+                            <span class="badge bg-label-primary rounded-pill px-3 py-1">
+                                <i class="mdi mdi-text-box-search-outline me-1"></i>Daftar Transaksi PO
+                            </span>
+                        </div>
+                        <div class="card-datatable table-responsive p-3">
+                            <table class="datatable-po-history table table-hover border-top" id="dataTablePo" style="width:100%;">
+                                <thead class="table-light">
                                     <tr>
                                         <th></th>
                                         <th></th>
                                         <th>ID</th>
-                                        <th>No Quote</th>
-                                        <th>Deskripsi</th>
-                                        <th>Date</th>
-                                        <th>Status</th>
-                                        <th>Total Price</th>
+                                        <th class="fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">No Quote</th>
+                                        <th class="fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Deskripsi</th>
+                                        <th class="fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Tanggal PO</th>
+                                        <th class="fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Status</th>
+                                        <th class="fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Total Price</th>
                                     </tr>
                                 </thead>
                             </table>
@@ -1312,6 +1384,15 @@
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/formvalidation/dist/css/formValidation.min.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/select2/select2.css" />
+    <style>
+        .po-kpi-card {
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .po-kpi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(105, 108, 255, 0.12) !important;
+        }
+    </style>
 @endpush
 @push('after-script')
     <script src="{{ asset('assets') }}/vendor/libs/moment/moment.js"></script>
@@ -1324,6 +1405,7 @@
     <script src="{{ asset('assets') }}/vendor/libs/select2/select2.js"></script>
 @endpush
 @push('page-script')
+    <script src="{{ asset('assets') }}/vendor/libs/apex-charts/apexcharts.js"></script>
     <script src="{{ asset('assets') }}/js/tables-datatables-basic.js"></script>
     <script src="{{ asset('assets') }}/includes/table-quotation-client.js"></script>
     {{-- CRM History diganti jadi timeline server-side, gak perlu DataTables lagi --}}
@@ -1339,6 +1421,54 @@
     {{-- <script src="{{ asset('assets') }}/includes/table-req-visit.js"></script> --}}
     <script src="{{ asset('assets') }}/js/extended-ui-sweetalert2.js"></script>
     <script src="{{ asset('assets') }}/js/forms-selects.js"></script>
+    <script>
+        (function () {
+            const isDark = document.documentElement.classList.contains('dark-style');
+            const labelColor = isDark ? '#a8aaae' : '#6d6b77';
+            const borderColor = isDark ? '#404152' : '#dbdade';
+
+            const formatRp = val => {
+                if (val >= 1_000_000_000) return 'Rp ' + (val / 1_000_000_000).toFixed(1) + 'B';
+                if (val >= 1_000_000) return 'Rp ' + (val / 1_000_000).toFixed(1) + 'M';
+                return 'Rp ' + val.toLocaleString('id-ID');
+            };
+
+            const yearlyLabels = @json($poYearlyLabels);
+            const yearlyTotals = @json($poYearlyTotals);
+
+            const chartEl = document.querySelector('#clientYearlyOrderChart');
+            if (chartEl) {
+                new ApexCharts(chartEl, {
+                    chart: { type: 'bar', height: 230, toolbar: { show: false } },
+                    series: [{ name: 'Total Order', data: yearlyTotals }],
+                    colors: ['#696cff'],
+                    plotOptions: { bar: { borderRadius: 6, columnWidth: '38%' } },
+                    fill: {
+                        type: 'gradient',
+                        gradient: {
+                            shade: 'light',
+                            type: 'vertical',
+                            shadeIntensity: 0.25,
+                            gradientToColors: ['#8c8eff'],
+                            inverseColors: false,
+                            opacityFrom: 0.95,
+                            opacityTo: 0.85
+                        }
+                    },
+                    dataLabels: { enabled: false },
+                    xaxis: {
+                        categories: yearlyLabels,
+                        labels: { style: { colors: labelColor, fontSize: '12px', fontWeight: 600 } },
+                        axisBorder: { show: false },
+                        axisTicks: { show: false },
+                    },
+                    yaxis: { labels: { formatter: formatRp, style: { colors: labelColor, fontSize: '11px' } } },
+                    grid: { borderColor, strokeDashArray: 4, padding: { top: -10, bottom: -5 } },
+                    tooltip: { y: { formatter: formatRp } },
+                }).render();
+            }
+        })();
+    </script>
 @endpush
 @push('script')
     <script>

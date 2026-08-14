@@ -41,4 +41,16 @@ class PurchaseRequestDetail extends Model
     {
         return $this->belongsTo('App\Models\SerialProduct', 'id_equivalent', 'id');
     }
+    public function allocations()
+    {
+        return $this->hasMany('App\Models\PurchaseRequestDetailAllocation', 'id_purchase_request_detail');
+    }
+    public function getAllocatedQtyAttribute()
+    {
+        return $this->allocations->sum('qty');
+    }
+    public function getRemainingQtyAttribute()
+    {
+        return max(0, $this->qty - $this->allocatedQty);
+    }
 }

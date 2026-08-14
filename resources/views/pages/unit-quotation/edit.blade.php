@@ -194,6 +194,9 @@
                     <button type="button" class="btn btn-sm btn-outline-info" id="btn-add-header">
                         <i class="mdi mdi-format-header-1 me-1"></i> Add Head Title
                     </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-transport">
+                        <i class="mdi mdi-truck-outline me-1"></i> Add Transport
+                    </button>
                 </div>
             </div>
         </div>
@@ -514,6 +517,7 @@
                                     <option value="Ls">Ls</option>
                                     <option value="Btg">Btg</option>
                                     <option value="Mtr">Mtr</option>
+                                    <option value="Days">Days</option>
                                 </select>
                             </div>
                         </div>
@@ -602,6 +606,7 @@
         window.EDIT_PLANT_ID = {{ $quote->id_plant ?? 'null' }};
         window.EDIT_ADDRESS = @json($quote->address ?? '');
         window.EDIT_PAYMENT = @json($quote->payment ?? '');
+        window.TRANSPORT_PRICES = @json($transportationPrices);
     </script>
     <script src="{{ asset('assets') }}/includes/form-unit-quotation.js"></script>
     <script>

@@ -34,6 +34,7 @@ $(function () {
                 { data: "brand" },
                 { data: "pn" },
                 { data: "price" },
+                { data: "total_quote" },
                 {
                     data: "",
                     render: function (data, type, row) {
@@ -49,6 +50,18 @@ $(function () {
                 {
                     targets: 5,
                     render: $.fn.dataTable.render.number(".", "", 0, "Rp."),
+                },
+                {
+                    targets: 6,
+                    className: "text-center",
+                    render: function (data, type, full, row) {
+                        var count = data || 0;
+                        if (type === "display") {
+                            var cls = count > 0 ? "bg-label-info" : "bg-label-secondary";
+                            return '<span class="badge rounded-pill ' + cls + '">' + count + '</span>';
+                        }
+                        return count;
+                    },
                 },
                 {
                     targets: 2,

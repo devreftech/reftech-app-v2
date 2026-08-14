@@ -1036,7 +1036,6 @@ class QuotationController extends Controller
             $pending->save();
 
             if ($quotation->type == 'Sparepart') {
-                $prHeader = null;
                 foreach ($detQuote as $item) {
                     if ($item->id_equivalent != '0') {
                         $product = Product::join('serial_product as sp', 'sp.id_product', '=', 'product.id')
@@ -1067,17 +1066,8 @@ class QuotationController extends Controller
                                 $bdgAlloc = $bdgStock;
                                 $bksAlloc = $bksStock;
                                 $item->note = 'Auto Allocated & Reserved (Kurang). Kept available stock: BDG ' . $bdgAlloc . ', BKS ' . $bksAlloc;
-
-                                // Auto Create/Append to Purchase Request for the missing quantity
-                                $missingQty = $item->qty - $totalStock;
-                                if (!$prHeader) {
-                                    $prHeader = $this->prService->findOrCreateDraftHeader($pending->id, Auth::id() ?? $quotation->id_sales);
-                                }
-                                $prHeader->details()->create([
-                                    'id_equivalent' => $item->id_equivalent,
-                                    'qty' => $missingQty,
-                                    'note' => 'Otomatis dibuat oleh sistem karena stok kurang (Butuh: ' . $item->qty . ', Tersedia: ' . $totalStock . ')',
-                                ]);
+                                // PR untuk kekurangan ini baru dibuat setelah DP dikonfirmasi,
+                                // lihat pemanggilan generateShortfallForQuotationPending() di bawah.
                             }
 
                             $product->stock -= $bdgAlloc;
@@ -1090,6 +1080,10 @@ class QuotationController extends Controller
                             $item->save();
                         }
                     }
+                }
+
+                if ($this->prService->paymentGateSatisfied($pending)) {
+                    $this->prService->generateShortfallForQuotationPending($pending, Auth::id() ?? $quotation->id_sales);
                 }
             }
 
@@ -1387,7 +1381,6 @@ class QuotationController extends Controller
         $pending->save();
 
         if ($quotation->type == 'Sparepart') {
-            $prHeader = null;
             foreach ($detQuote as $item) {
                 if ($item->id_equivalent != '0') {
                     $product = Product::join('serial_product as sp', 'sp.id_product', '=', 'product.id')
@@ -1418,17 +1411,9 @@ class QuotationController extends Controller
                             $bdgAlloc = $bdgStock;
                             $bksAlloc = $bksStock;
                             $item->note = 'Auto Allocated & Reserved (Kurang). Kept available stock: BDG ' . $bdgAlloc . ', BKS ' . $bksAlloc;
-
-                            // Auto Create/Append to Purchase Request for the missing quantity
-                            $missingQty = $item->qty - $totalStock;
-                            if (!$prHeader) {
-                                $prHeader = $this->prService->findOrCreateDraftHeader($pending->id, Auth::id() ?? $quotation->id_sales);
-                            }
-                            $prHeader->details()->create([
-                                'id_equivalent' => $item->id_equivalent,
-                                'qty' => $missingQty,
-                                'note' => 'Otomatis dibuat oleh sistem karena stok kurang (Butuh: ' . $item->qty . ', Tersedia: ' . $totalStock . ')',
-                            ]);
+                            // PR untuk kekurangan ini baru dibuat setelah DP dikonfirmasi,
+                            // lihat pemanggilan generateShortfallForQuotationPending() di bawah.
+                            $item->pr_qty_needed = $item->qty - $totalStock;
                         }
 
                         $product->stock -= $bdgAlloc;
@@ -1441,6 +1426,10 @@ class QuotationController extends Controller
                         $item->save();
                     }
                 }
+            }
+
+            if ($this->prService->paymentGateSatisfied($pending)) {
+                $this->prService->generateShortfallForQuotationPending($pending, Auth::id() ?? $quotation->id_sales);
             }
         }
 
@@ -1823,6 +1812,8 @@ class QuotationController extends Controller
         $payment->note = $request->note;
         $payment->save();
 
+        $this->prService->evaluatePaymentGate($payment, Auth::id());
+
         $invoice = Invoice::where('id_quotation', $id)->get();
         // dd($request->type);
         $targetInvoice = $invoice[$paymentCount] ?? null;
@@ -1967,6 +1958,7 @@ class QuotationController extends Controller
         $payment->level = 1;
         $paymentSave = $payment->save();
         if ($paymentSave) {
+            $this->prService->evaluatePaymentGate($payment, Auth::id());
             return redirect('/payment-detail/payment/' . $id)->with('success', 'Data telah ditambahkan');
         } else {
             return 0;

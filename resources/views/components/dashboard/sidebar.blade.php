@@ -23,7 +23,7 @@
     <div class="menu-inner-shadow"></div>
 
     <ul class="menu-inner py-1">
-        @if (auth::user()?->role == 'Admin' || auth::user()?->role == 'Accounting')
+        @if (in_array(auth::user()?->role, ['Admin', 'Developer', 'Accounting']))
             <!-- Dashboards -->
             <li class="menu-item {{ request()->is('/') ? 'active' : '' }}">
                 <a href="{{ url('/') }}" class="menu-link">
@@ -1517,89 +1517,107 @@
                     <div data-i18n="Kanban">Kanban</div>
                 </a>
             </li>
-            <li class="menu-item {{ request()->is('master/product') ? 'active' : '' }}">
-                <a href="{{ route('master.product') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-package"></i>
-                    <div data-i18n="Master">Master</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('product') || request()->is('product/*') ? 'active' : '' }}">
-                <a href="{{ route('product.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-package-variant"></i>
-                    <div data-i18n="Product">Product</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('unit') || request()->is('unit/*') ? 'active' : '' }}">
-                <a href="{{ route('unit.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-desktop-tower"></i>
-                    <div data-i18n="Unit">Unit</div>
-                </a>
+
+            <li class="menu-header fw-light mt-4">
+                <span class="menu-header-text">Master Data</span>
             </li>
             <li
-                class="menu-item {{ request()->is('unit-global') || request()->is('unit-global/*') ? 'active' : '' }}">
-                <a href="{{ route('unit-global.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-desktop-tower"></i>
-                    <div data-i18n="Unit Global">Unit Global</div>
+                class="menu-item {{ request()->is('master/product') || request()->is('product') || request()->is('product/*') || request()->is('product-set') || request()->is('unit') || request()->is('unit/*') || request()->is('unit-global') || request()->is('unit-global/*') || request()->is('catalog-unit') || request()->is('catalog-unit/*') ? 'open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <i class="menu-icon tf-icons mdi mdi-database-outline"></i>
+                    <div data-i18n="Master Data">Master Data</div>
                 </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('master/product') ? 'active' : '' }}">
+                        <a href="{{ route('master.product') }}" class="menu-link">
+                            <div data-i18n="Master">Master</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('product') || request()->is('product/*') ? 'active' : '' }}">
+                        <a href="{{ route('product.index') }}" class="menu-link">
+                            <div data-i18n="Product">Product</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('product-set') ? 'active' : '' }}">
+                        <a href="{{ route('product-set.index') }}" class="menu-link">
+                            <div data-i18n="Product Set">Product Set</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('unit') || request()->is('unit/*') ? 'active' : '' }}">
+                        <a href="{{ route('unit.index') }}" class="menu-link">
+                            <div data-i18n="Unit">Unit</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('unit-global') || request()->is('unit-global/*') ? 'active' : '' }}">
+                        <a href="{{ route('unit-global.index') }}" class="menu-link">
+                            <div data-i18n="Unit Global">Unit Global</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('catalog-unit') || request()->is('catalog-unit/*') ? 'active' : '' }}">
+                        <a href="{{ route('catalog-unit.index') }}" class="menu-link">
+                            <div data-i18n="Catalog Unit">Catalog Unit</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="menu-header fw-light mt-4">
+                <span class="menu-header-text">Warehouse</span>
             </li>
             <li
-                class="menu-item {{ request()->is('catalog-unit') || request()->is('catalog-unit/*') ? 'active' : '' }}">
-                <a href="{{ route('catalog-unit.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-tag-text-outline"></i>
-                    <div data-i18n="Catalog Unit">Catalog Unit</div>
+                class="menu-item {{ request()->is('product-in') || request()->is('product-in/*') || request()->is('product-out') || request()->is('product-out/*') || request()->is('change-warehouse') || request()->is('change-warehouse/*') || request()->is('unit-acquisition') || request()->is('unit-acquisition/*') || request()->is('return') || request()->is('return/*') ? 'open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <i class="menu-icon tf-icons mdi mdi-swap-horizontal"></i>
+                    <div data-i18n="Stock Movement">Stock Movement</div>
                 </a>
-            </li>
-            <li class="menu-item {{ request()->is('product-in') || request()->is('product-in/*') ? 'active' : '' }}">
-                <a href="{{ route('product-in.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-package-variant-plus"></i>
-                    <div data-i18n="Good Receipt">Good Receipt</div>
-                </a>
-            </li>
-            <li
-                class="menu-item {{ request()->is('product-out') || request()->is('product-out/*') ? 'active' : '' }}">
-                <a href="{{ route('product-out.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-package-variant-minus"></i>
-                    <div data-i18n="Product-Out">Product-Out</div>
-                </a>
-            </li>
-            <li
-                class="menu-item {{ request()->is('unit-acquisition') || request()->is('unit-acquisition/*') ? 'active' : '' }}">
-                <a href="{{ route('unit-acquisition.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-truck-delivery-outline"></i>
-                    <div data-i18n="Unit Acquisition">Unit Acquisition</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('stock') || request()->is('stock/*') ? 'active' : '' }}">
-                <a href="{{ route('stock.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-package-variant-closed-check"></i>
-                    <div data-i18n="Stock">Stock</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('product-set') ? 'active' : '' }}">
-                <a href="{{ route('product-set.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-format-list-group"></i>
-                    <div data-i18n="Product Set">Product Set</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('stock-opname') ? 'active' : '' }}">
-                <a href="{{ route('opname.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-dropbox"></i>
-                    <div data-i18n="Stock Opname">Stock Opname</div>
-                </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('product-in') || request()->is('product-in/*') ? 'active' : '' }}">
+                        <a href="{{ route('product-in.index') }}" class="menu-link">
+                            <div data-i18n="Good Receipt">Good Receipt</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('product-out') || request()->is('product-out/*') ? 'active' : '' }}">
+                        <a href="{{ route('product-out.index') }}" class="menu-link">
+                            <div data-i18n="Product-Out">Product-Out</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('change-warehouse') || request()->is('change-warehouse/*') ? 'active' : '' }}">
+                        <a href="{{ route('change-warehouse.index') }}" class="menu-link">
+                            <div data-i18n="Change Warehouse">Change Warehouse</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('unit-acquisition') || request()->is('unit-acquisition/*') ? 'active' : '' }}">
+                        <a href="{{ route('unit-acquisition.index') }}" class="menu-link">
+                            <div data-i18n="Unit Acquisition">Unit Acquisition</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('return') || request()->is('return/*') ? 'active' : '' }}">
+                        <a href="{{ route('return.index') }}" class="menu-link">
+                            <div data-i18n="Return">Return</div>
+                        </a>
+                    </li>
+                </ul>
             </li>
             <li
-                class="menu-item {{ request()->is('change-warehouse') || request()->is('change-warehouse/*') ? 'active' : '' }}">
-                <a href="{{ route('change-warehouse.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-warehouse"></i>
-                    <div data-i18n="Change Warehouse">Change Warehouse</div>
+                class="menu-item {{ request()->is('stock') || request()->is('stock/*') || request()->is('stock-opname') ? 'open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <i class="menu-icon tf-icons mdi mdi-clipboard-list-outline"></i>
+                    <div data-i18n="Monitoring">Monitoring</div>
                 </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('stock') || request()->is('stock/*') ? 'active' : '' }}">
+                        <a href="{{ route('stock.index') }}" class="menu-link">
+                            <div data-i18n="Stock">Stock</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('stock-opname') ? 'active' : '' }}">
+                        <a href="{{ route('opname.index') }}" class="menu-link">
+                            <div data-i18n="Stock Opname">Stock Opname</div>
+                        </a>
+                    </li>
+                </ul>
             </li>
-            <li class="menu-item {{ request()->is('return') || request()->is('return/*') ? 'active' : '' }}">
-                <a href="{{ route('return.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-package-variant-closed-check"></i>
-                    <div data-i18n="Return">Return</div>
-                </a>
-            </li>
+
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Sales Order</span>
             </li>
@@ -1619,53 +1637,18 @@
                     <div data-i18n="Sales Order">Sales Order</div>
                 </a>
             </li>
-            {{-- <li class="menu-item {{ request()->is('new-order') ? 'active' : '' }}">
-                <a href="{{ route('pending-po.order') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-cart-plus"></i>
-                    <div data-i18n="New Order">New Order</div>
-                    @if (@$newCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $newCount }}</div>
-                    @endif
-                </a>
+
+            <li class="menu-header fw-light mt-4">
+                <span class="menu-header-text">Procurement</span>
             </li>
-            <li
-                class="menu-item {{ request()->is('sales-order/list') || request()->is('sales-order/list') || request()->is('pending-po/*') || request()->is('pending-po-done') || request()->is('pending-po-project') ? 'open' : '' }}">
-                <a href="javascript:void(0);" class="menu-link menu-toggle">
-                    <i class="menu-icon tf-icons mdi mdi-list-box-outline"></i>
-                    <div data-i18n="Sales Order">Sales Order</div>
-                </a>
-                <ul class="menu-sub">
-                    <li class="menu-item {{ request()->is('sales-order/list') ? 'active' : '' }}">
-                        <a href="{{ route('pending-po.list') }}" class="menu-link">
-                            <div data-i18n="List">List</div>
-                            @if (@$listCount >= 1)
-                                <div class="badge bg-danger rounded-pill ms-auto">{{ $listCount }}</div>
-                            @endif
-                        </a>
-                    </li>
-                    <li class="menu-item {{ request()->is('sales-order/delivery') ? 'active' : '' }}">
-                        <a href="{{ route('pending-po.delivery') }}" class="menu-link">
-                            <div data-i18n="Delivery & Proccess">Delivery & Proccess</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ request()->is('pending-po-done') ? 'active' : '' }}">
-                        <a href="{{ route('pending-po.completed') }}" class="menu-link">
-                            <div data-i18n="Completed">Completed</div>
-                        </a>
-                    </li>
-                </ul>
-            </li> --}}
             <li
                 class="menu-item {{ request()->is('purchase-request') || request()->is('purchase-request/*') ? 'active' : '' }}">
                 <a href="{{ route('purchase-request.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-format-list-group-plus"></i>
                     <div data-i18n="Purchase Request">Purchase Request</div>
-                </a>
-            </li>
-            <li class="menu-item  {{ request()->is('return') || request()->is('return/*') ? 'active' : '' }}">
-                <a href="{{ route('return.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-archive-cancel"></i>
-                    <div data-i18n="Return">Return</div>
+                    @if (@$prCount >= 1)
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $prCount }}</div>
+                    @endif
                 </a>
             </li>
 
@@ -2660,6 +2643,18 @@
                     @if (@$openTicketCount >= 1)
                         <div class="badge bg-danger rounded-pill ms-auto">{{ $openTicketCount }}</div>
                     @endif
+                </a>
+            </li>
+        @endif
+
+        @if (auth::user()?->role == 'Developer')
+            <li class="menu-header fw-light mt-4">
+                <span class="menu-header-text">Developer Tools</span>
+            </li>
+            <li class="menu-item {{ request()->is('developer/maintenance*') ? 'active' : '' }}">
+                <a href="{{ route('developer.maintenance.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-server-network"></i>
+                    <div data-i18n="Maintenance Mode">Maintenance Mode</div>
                 </a>
             </li>
         @endif

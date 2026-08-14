@@ -261,6 +261,20 @@
                             Terima Barang (Unit)
                         </a>
                     @endif
+                    @if ($sourcePr)
+                        @if ($prDeliveryDone)
+                            <div class="alert alert-success py-2 px-3 mb-3 small">
+                                <i class="mdi mdi-check-circle-outline me-1"></i> Info pengiriman untuk PO ini sudah dikirim.
+                            </div>
+                        @elseif ((int) $sourcePr->status === 1)
+                            <a href="#" class="btn btn-info text-white d-grid w-100 mb-3 waves-effect" id="btnPoDelivery">
+                                <i class="mdi mdi-truck-delivery me-1"></i> On Delivery
+                            </a>
+                        @endif
+                        <a href="{{ route('purchase-request.show', $sourcePr->id_pending) }}" class="btn btn-label-secondary d-grid w-100 mb-3 waves-effect">
+                            <i class="mdi mdi-file-document-outline me-1"></i> Lihat Purchase Request
+                        </a>
+                    @endif
                     <a class="btn btn-primary d-grid w-100 mb-3 waves-effect" target="_blank"
                         href="{{ route('purchase.show_print', $purchase->id) }}">
                         Download / Print
@@ -294,6 +308,45 @@
         </div>
     </div>
     @include('components.modal.purchase.pph')
+
+    @if ($sourcePr && !$prDeliveryDone && (int) $sourcePr->status === 1)
+        <div class="modal fade" id="modalPoDelivery" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form id="poDeliveryForm">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold">Info Pengiriman — {{ $purchase->no_po }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-3 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label text-muted small mb-1">Tipe (dari supplier)</label>
+                                    <input type="text" class="form-control" value="{{ $prDeliveryType }}" disabled>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted small mb-1">Tgl Pembelian (dari tgl PO)</label>
+                                    <input type="text" class="form-control" value="{{ \Carbon\Carbon::parse($purchase->date)->format('d-m-Y') }}" disabled>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="poDeliveryCargo" class="form-label">Cargo / Ekspedisi</label>
+                                <input type="text" class="form-control" id="poDeliveryCargo" name="cargo" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="poDeliveryNoResi" class="form-label">No. Resi</label>
+                                <input type="text" class="form-control" id="poDeliveryNoResi" name="no_resi">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary">On Delivery</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
 @endsection
 @push('after-style')
     <!-- Page CSS -->
@@ -321,6 +374,60 @@
         $('#backButton').click(function() {
             window.history.back();
         });
+
+        var poDeliveryModalEl = document.getElementById('modalPoDelivery');
+        if (poDeliveryModalEl) {
+            var poDeliveryModal = new bootstrap.Modal(poDeliveryModalEl);
+
+            $('#btnPoDelivery').on('click', function(e) {
+                e.preventDefault();
+                poDeliveryModal.show();
+            });
+
+            $('#poDeliveryForm').on('submit', function(e) {
+                e.preventDefault();
+                $.ajax({
+                    'url': '{{ route('purchase.delivery', $purchase->id) }}',
+                    'type': 'POST',
+                    'data': {
+                        '_method': 'PATCH',
+                        '_token': '{{ csrf_token() }}',
+                        'cargo': $('#poDeliveryCargo').val(),
+                        'no_resi': $('#poDeliveryNoResi').val(),
+                    },
+                    success: function(response) {
+                        if (response == 1) {
+                            poDeliveryModal.hide();
+                            Swal.fire({
+                                icon: "success",
+                                title: "Delivery succed!",
+                                text: "Info pengiriman berhasil disimpan.",
+                                customClass: {
+                                    confirmButton: "btn btn-success waves-effect",
+                                },
+                            })
+                            window.setTimeout(function() {
+                                window.location.reload();
+                            }, 1500);
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                text: 'Gagal menyimpan info pengiriman.'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        var message = 'Gagal menyimpan info pengiriman.';
+                        if (xhr.status === 422 && xhr.responseJSON) {
+                            if (xhr.responseJSON.message) message = xhr.responseJSON.message;
+                            else if (xhr.responseJSON.errors) message = Object.values(xhr.responseJSON.errors).flat().join('\n');
+                        }
+                        Swal.fire({ icon: 'error', title: 'Oops...', text: message });
+                    }
+                });
+            });
+        }
 
         $(document).on('click', '.delete-purchase', function() {
             var id = $(this).data('id');

@@ -570,6 +570,12 @@
                         </button>
                     </div>
                 @endif
+                @if (!$purchase && $detQuotation->where('status', 3)->count() > 0)
+                    <div class="alert alert-warning d-flex align-items-center mb-3">
+                        <i class="mdi mdi-clock-alert-outline me-2 fs-5"></i>
+                        Ada item yang stoknya kurang, tapi Purchase Request belum dibuat — menunggu konfirmasi payment DP dari Accounting.
+                    </div>
+                @endif
                 <div class="card mb-4 shadow-sm border-0">
                     <div class="card-header bg-transparent py-3 border-bottom">
                         <h5 class="m-0 fw-bold text-primary"><i class="mdi mdi-cart-arrow-down me-2"></i> Purchase Request</h5>
@@ -735,6 +741,12 @@
                             data-bs-target="#purchaseReq" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
                             <i class="mdi mdi-plus-box me-1"></i> Purchase Request
                         </button>
+                    </div>
+                @endif
+                @if (!$purchase && $detQuotation->where('status', 3)->count() > 0)
+                    <div class="alert alert-warning d-flex align-items-center mb-3">
+                        <i class="mdi mdi-clock-alert-outline me-2 fs-5"></i>
+                        Ada item yang stoknya kurang, tapi Purchase Request belum dibuat — menunggu konfirmasi payment DP dari Accounting.
                     </div>
                 @endif
                 <div class="card mb-4 shadow-sm border-0">

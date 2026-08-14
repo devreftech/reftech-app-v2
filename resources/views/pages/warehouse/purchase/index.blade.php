@@ -10,8 +10,8 @@
         </div>
 
         {{-- Stat summary cards matching Quotation page design --}}
-        <div class="row g-3 mb-4">
-            <div class="col-sm-6 col-xl-3">
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-5 g-3 mb-4">
+            <div class="col">
                 <div class="card h-100 border-0 custom-stat-card">
                     <div class="card-body p-3">
                         <div class="d-flex align-items-center justify-content-between mb-2">
@@ -30,7 +30,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-sm-6 col-xl-3">
+            <div class="col">
                 <div class="card h-100 border-0 custom-stat-card">
                     <div class="card-body p-3">
                         <div class="d-flex align-items-center justify-content-between mb-2">
@@ -49,7 +49,26 @@
                     </div>
                 </div>
             </div>
-            <div class="col-sm-6 col-xl-3">
+            <div class="col">
+                <div class="card h-100 border-0 custom-stat-card">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted fw-semibold small text-uppercase tracking-wider">Purchase Order</span>
+                            <div class="avatar avatar-sm">
+                                <span class="avatar-initial rounded-3 bg-label-dark shadow-xs">
+                                    <i class="mdi mdi-file-document-outline mdi-20px"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <h4 class="mb-2 fw-bold text-dark">{{ $poCount }}</h4>
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="badge bg-label-dark rounded-pill fw-semibold">{{ $poCount }}</span>
+                            <span class="text-muted small">PO Terbit</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
                 <div class="card h-100 border-0 custom-stat-card">
                     <div class="card-body p-3">
                         <div class="d-flex align-items-center justify-content-between mb-2">
@@ -68,7 +87,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-sm-6 col-xl-3">
+            <div class="col">
                 <div class="card h-100 border-0 custom-stat-card">
                     <div class="card-body p-3">
                         <div class="d-flex align-items-center justify-content-between mb-2">
@@ -110,6 +129,16 @@
                             <i class="mdi mdi-clipboard-check-outline me-1"></i>Approved
                             @if (@$accCount >= 1)
                                 <span class="badge bg-warning rounded-pill ms-1">{{ $accCount }}</span>
+                            @endif
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button type="button" class="nav-link px-3 py-2 fw-semibold" role="tab" data-bs-toggle="tab"
+                            data-bs-target="#navs-pills-top-po" aria-controls="navs-pills-top-po"
+                            aria-selected="false">
+                            <i class="mdi mdi-file-document-outline me-1"></i>Purchase Order
+                            @if (@$poCount >= 1)
+                                <span class="badge bg-dark rounded-pill ms-1">{{ $poCount }}</span>
                             @endif
                         </button>
                     </li>
@@ -174,23 +203,37 @@
                         </table>
                     </div>
                 </div>
+                <div class="tab-pane fade p-3" id="navs-pills-top-po" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="datatable-purchase-order table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>No PO</th>
+                                    <th>No PR</th>
+                                    <th>Customer</th>
+                                    <th>Item</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
                 <div class="tab-pane fade p-3" id="navs-pills-top-delivery" role="tabpanel">
                     <div class="table-responsive">
                         <table class="datatable-purchase-request-delivery table table-bordered">
                             <thead>
                                 <tr>
                                     <th>No PR</th>
-                                    <th>No PO</th>
+                                    <th>No PO (Client)</th>
                                     <th>No SO</th>
                                     <th>Customer</th>
                                     <th>Item</th>
                                     <th>Qty</th>
                                     <th>Date</th>
-                                    <th class="text-center">Sign</th>
-                                    <th>Tipe Pembelian</th>
-                                    <th>Cargo</th>
-                                    <th>No Resi</th>
+                                    <th>Pengiriman</th>
                                     <th>Tgl Pembelian</th>
+                                    <th class="text-center">Sign</th>
                                 </tr>
                             </thead>
                         </table>

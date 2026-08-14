@@ -246,4 +246,67 @@ $(function () {
         );
     });
 
+    function loadTabCounts() {
+        $.ajax({
+            type: 'GET',
+            url: '/db/unit/ready/counts',
+            dataType: 'json',
+            success: function (res) {
+                var counts = {
+                    oilInjected: 0,
+                    oilFree: 0,
+                    compact: 0,
+                    refDryer: 0,
+                    desiccant: 0,
+                    filtration: 0,
+                    tank: 0
+                };
+
+                if (Array.isArray(res)) {
+                    res.forEach(function (row) {
+                        var unit = (row.unit || '').trim().toUpperCase();
+                        var type = (row.type_unit || '').trim().toLowerCase();
+                        var total = parseInt(row.total, 10) || 0;
+
+                        if (unit === 'AIR COMPRESSOR SCREW') {
+                            if (type.indexOf('oil-injected') !== -1 || type.indexOf('oil injected') !== -1) {
+                                counts.oilInjected += total;
+                            } else if (type.indexOf('oil-free') !== -1 || type.indexOf('oil free') !== -1) {
+                                counts.oilFree += total;
+                            } else if (type.indexOf('compact') !== -1) {
+                                counts.compact += total;
+                            } else {
+                                counts.oilInjected += total;
+                            }
+                        } else if (unit === 'REFRIGERANT AIR DRYER') {
+                            counts.refDryer += total;
+                        } else if (unit === 'DESICANT DRYER' || unit === 'DESICCANT DRYER') {
+                            counts.desiccant += total;
+                        } else if (unit === 'FILTRATION SYSTEM') {
+                            counts.filtration += total;
+                        } else if (unit === 'AIR RECEIVER TANK') {
+                            counts.tank += total;
+                        }
+                    });
+                }
+
+                $('#badge-oil-injected').text(counts.oilInjected);
+                $('#badge-oil-free').text(counts.oilFree);
+                $('#badge-compact').text(counts.compact);
+                $('#badge-ref-dryer').text(counts.refDryer);
+                $('#badge-desiccant').text(counts.desiccant);
+                $('#badge-main-filtration').text(counts.filtration);
+                $('#badge-main-tank').text(counts.tank);
+
+                var totalCompressor = counts.oilInjected + counts.oilFree + counts.compact;
+                var totalDryer = counts.refDryer + counts.desiccant;
+
+                $('#badge-main-compressor').text(totalCompressor);
+                $('#badge-main-dryer').text(totalDryer);
+            }
+        });
+    }
+
+    loadTabCounts();
+
 });

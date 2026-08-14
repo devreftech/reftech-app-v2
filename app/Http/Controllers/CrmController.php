@@ -186,6 +186,40 @@ class CrmController extends Controller
             ->sortDesc()
             ->values();
 
+        $poChartStartYear = $yearsNow - 4;
+
+        $poYearlyByYear = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')
+            ->where('pic.id_client', $id)
+            ->where('quotation.level', '1')
+            ->where('quotation.is_primary', '1')
+            ->where('quotation.status', '100')
+            ->whereNotNull('quotation.po_date')
+            ->whereYear('quotation.po_date', '>=', $poChartStartYear)
+            ->selectRaw('YEAR(quotation.po_date) as year, SUM(quotation.nett) as total')
+            ->groupBy('year')
+            ->pluck('total', 'year');
+
+        $unitPoYearlyByYear = \App\Models\UnitQuotation::where(function ($q) use ($id) {
+                $q->where('id_client', $id)->orWhereHas('pic', function ($p) use ($id) {
+                    $p->where('id_client', $id);
+                });
+            })
+            ->where('is_latest', 1)
+            ->where('status', 'po_received')
+            ->whereNotNull('po_received')
+            ->whereYear('po_received', '>=', $poChartStartYear)
+            ->selectRaw('YEAR(po_received) as year, SUM(total - IFNULL(tax_amount, 0)) as total')
+            ->groupBy('year')
+            ->pluck('total', 'year');
+
+        $poYearlyLabels = [];
+        $poYearlyTotals = [];
+        for ($year = $poChartStartYear; $year <= $yearsNow; $year++) {
+            $poYearlyLabels[] = (string) $year;
+            $poYearlyTotals[] = (int) (($poYearlyByYear[$year] ?? 0) + ($unitPoYearlyByYear[$year] ?? 0));
+        }
+        $poCurrentYearTotal = (int) (($poYearlyByYear[$yearsNow] ?? 0) + ($unitPoYearlyByYear[$yearsNow] ?? 0));
+
         $quotationStatusMap = [
             '20' => ['label' => 'Send Quotation', 'color' => 'secondary'],
             '30' => ['label' => 'Inquiry Accepted', 'color' => 'dark'],
@@ -227,6 +261,37 @@ class CrmController extends Controller
                 'color' => $statusInfo['color'],
                 'no_quote' => $q->no_quote,
                 'url' => route('quotation.show', $q->id),
+            ]);
+        }
+
+        $unitQuotes = \App\Models\UnitQuotation::where(function ($q) use ($id) {
+            $q->where('id_client', $id)->orWhereHas('pic', function ($p) use ($id) {
+                $p->where('id_client', $id);
+            });
+        })->where('is_latest', 1)->get();
+
+        foreach ($unitQuotes as $uq) {
+            $unitStatusMap = [
+                'po_received' => ['label' => 'Done PO', 'color' => 'success'],
+                'loss' => ['label' => 'Loss', 'color' => 'danger'],
+                'cancelled' => ['label' => 'Loss', 'color' => 'danger'],
+                'hot_prospect' => ['label' => 'Hot Prospect', 'color' => 'warning'],
+                'negotiation' => ['label' => 'Negotiation / Revisi', 'color' => 'primary'],
+                'revision' => ['label' => 'Negotiation / Revisi', 'color' => 'primary'],
+                'sent' => ['label' => 'Send Quotation', 'color' => 'secondary'],
+                'draft' => ['label' => 'Send Quotation', 'color' => 'secondary'],
+            ];
+            $statusInfo = $unitStatusMap[$uq->status] ?? ['label' => $uq->status, 'color' => 'info'];
+
+            $activityTimeline->push([
+                'date' => $uq->created_at ?? Carbon::parse($uq->date),
+                'title' => 'Penawaran Unit Dibuat',
+                'category' => 'Quotation Unit',
+                'status' => $statusInfo['label'],
+                'note' => $uq->note ?? $uq->title,
+                'color' => $statusInfo['color'],
+                'no_quote' => $uq->no_quote,
+                'url' => route('unit-quotation.show', $uq->id),
             ]);
         }
 
@@ -318,6 +383,9 @@ class CrmController extends Controller
                 'activityTimeline',
                 'plants',
                 'poYears',
+                'poYearlyLabels',
+                'poYearlyTotals',
+                'poCurrentYearTotal',
                 'leveledProspect',
                 'noSaleProspect',
                 'comment',
@@ -589,6 +657,9 @@ class CrmController extends Controller
         $dateNow = Carbon::now();
         $yearNow = $dateNow->year;
         $client = Client::find($id);
+        if (!$client) {
+            abort(404);
+        }
         $picIds = Pic::where('id_client', $id)->pluck('id'); // hanya ambil ID-nya
         $quotePO = Quotation::whereIn('id_pic', $picIds)
             ->whereYear('po_date', 2025)

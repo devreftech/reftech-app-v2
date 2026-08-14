@@ -163,14 +163,23 @@
                         </h5>
                     </div>
                     <div class="card-body p-0">
+                        @php $showAllocationUi = $purchase && $purchase->status == 1; @endphp
                         <div class="table-responsive text-nowrap">
-                            <table class="table table-bordered align-middle mb-0">
+                            <table class="table table-bordered align-middle mb-0" id="prItemsTable">
                                 <thead>
                                     <tr>
+                                        @if ($showAllocationUi)
+                                            <th style="width: 36px;" class="text-center">
+                                                <input type="checkbox" class="form-check-input" id="checkAllPrItems">
+                                            </th>
+                                        @endif
                                         <th style="width: 50px;" class="text-center">No</th>
                                         <th>No PR</th>
                                         <th>Item / Equivalent</th>
                                         <th class="text-center">Qty</th>
+                                        @if ($showAllocationUi)
+                                            <th class="text-center" style="width: 110px;">Qty ke PO</th>
+                                        @endif
                                         <th>Catatan / Note</th>
                                         <th>Info Pengiriman</th>
                                         <th class="text-center" style="width: 100px;">Aksi</th>
@@ -179,7 +188,16 @@
                                 <tbody>
                                     @php $no = 1; @endphp
                                     @forelse (($purchase->details ?? collect()) as $pr)
+                                        @php $remaining = $pr->remainingQty; @endphp
                                         <tr>
+                                            @if ($showAllocationUi)
+                                                <td class="text-center">
+                                                    @if ($remaining > 0)
+                                                        <input type="checkbox" class="form-check-input pr-item-check"
+                                                            data-id="{{ $pr->id }}" data-remaining="{{ $remaining }}">
+                                                    @endif
+                                                </td>
+                                            @endif
                                             <td class="text-center fw-medium">{{ $no }}</td>
                                             <td class="fw-bold text-dark">{{ $purchase->no_pr ?? '-' }}</td>
                                             <td>
@@ -203,9 +221,31 @@
                                                 @endif
                                             </td>
                                             <td class="text-center">
-                                                <span class="fw-bold text-dark fs-6">{{ $pr->qty }}</span> 
-                                                <span class="text-muted small">{{ $pr->equivalent->product->unit ?? '' }}</span>
+                                                <span class="fw-bold text-dark fs-6">{{ $remaining }}</span>
+                                                <span class="text-muted small">/ {{ $pr->qty }} {{ $pr->equivalent->product->unit ?? '' }}</span>
+                                                @if ($pr->allocations->count())
+                                                    <div class="mt-1 d-flex flex-column gap-1 align-items-center">
+                                                        @foreach ($pr->allocations as $alloc)
+                                                            <a href="{{ route('purchase.show', $alloc->id_purchase_order) }}"
+                                                                class="badge bg-label-dark text-decoration-none" data-bs-toggle="tooltip"
+                                                                title="{{ $alloc->purchaseOrder->no_po ?? '-' }}">
+                                                                {{ $alloc->qty }} pcs → {{ $alloc->purchaseOrder->no_po ?? '-' }}
+                                                            </a>
+                                                        @endforeach
+                                                    </div>
+                                                @endif
                                             </td>
+                                            @if ($showAllocationUi)
+                                                <td class="text-center">
+                                                    @if ($remaining > 0)
+                                                        <input type="number" class="form-control form-control-sm pr-item-qty text-center"
+                                                            data-id="{{ $pr->id }}" min="1" max="{{ $remaining }}"
+                                                            value="{{ $remaining }}" disabled style="width: 80px; margin: 0 auto;">
+                                                    @else
+                                                        <span class="badge bg-label-success">Lunas</span>
+                                                    @endif
+                                                </td>
+                                            @endif
                                             <td style="max-width: 220px; white-space: normal;">
                                                 @if ($pr->note && $pr->note != '-')
                                                     <div class="p-2 rounded bg-light border-start border-primary border-3 small text-secondary">
@@ -216,28 +256,39 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                @if ($purchase->status >= 2 && $pr->purchase_type)
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <div class="p-2 rounded bg-label-secondary d-flex flex-column gap-1" style="font-size: 0.8rem; min-width: 160px; line-height: 1.3;">
-                                                            <span class="badge {{ $pr->purchase_type == 'Lokal' ? 'bg-label-info' : 'bg-label-primary' }} align-self-start mb-1">
-                                                                {{ $pr->purchase_type }}
-                                                            </span>
-                                                            <span class="text-dark"><i class="mdi mdi-truck-delivery-outline text-muted me-1"></i>{{ $pr->cargo }}</span>
-                                                            <span class="text-dark"><i class="mdi mdi-barcode text-muted me-1"></i>{{ $pr->no_resi ?: 'Belum ada resi' }}</span>
-                                                            <span class="text-muted small"><i class="mdi mdi-calendar-outline me-1"></i>{{ $pr->purchase_date ? \Carbon\Carbon::parse($pr->purchase_date)->format('d-m-Y') : '-' }}</span>
-                                                        </div>
-                                                        <a href="#" data-bs-toggle="tooltip" title="Edit Info Pengiriman"
-                                                            class="btn btn-sm btn-icon btn-label-secondary waves-effect rounded-circle edit-delivery-info"
-                                                            data-id="{{ $pr->id }}"
-                                                            data-purchase-type="{{ $pr->purchase_type }}"
-                                                            data-cargo="{{ $pr->cargo }}"
-                                                            data-no-resi="{{ $pr->no_resi }}"
-                                                            data-purchase-date="{{ $pr->purchase_date }}">
-                                                            <i class="mdi mdi-pencil-outline"></i>
-                                                        </a>
+                                                @if ($pr->allocations->count())
+                                                    <div class="d-flex flex-column gap-2">
+                                                        @foreach ($pr->allocations as $alloc)
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                @if ($alloc->purchase_type)
+                                                                    <div class="p-2 rounded bg-label-secondary d-flex flex-column gap-1" style="font-size: 0.8rem; min-width: 160px; line-height: 1.3;">
+                                                                        <span class="text-muted" style="font-size: 0.7rem;">{{ $alloc->purchaseOrder->no_po ?? '-' }} ({{ $alloc->qty }} pcs)</span>
+                                                                        <span class="badge {{ $alloc->purchase_type == 'Lokal' ? 'bg-label-info' : 'bg-label-primary' }} align-self-start mb-1">
+                                                                            {{ $alloc->purchase_type }}
+                                                                        </span>
+                                                                        <span class="text-dark"><i class="mdi mdi-truck-delivery-outline text-muted me-1"></i>{{ $alloc->cargo }}</span>
+                                                                        <span class="text-dark"><i class="mdi mdi-barcode text-muted me-1"></i>{{ $alloc->no_resi ?: 'Belum ada resi' }}</span>
+                                                                        <span class="text-muted small"><i class="mdi mdi-calendar-outline me-1"></i>{{ $alloc->purchase_date ? \Carbon\Carbon::parse($alloc->purchase_date)->format('d-m-Y') : '-' }}</span>
+                                                                    </div>
+                                                                    <a href="#" data-bs-toggle="tooltip" title="Edit Info Pengiriman"
+                                                                        class="btn btn-sm btn-icon btn-label-secondary waves-effect rounded-circle edit-delivery-info"
+                                                                        data-id="{{ $alloc->id }}"
+                                                                        data-purchase-type="{{ $alloc->purchase_type }}"
+                                                                        data-cargo="{{ $alloc->cargo }}"
+                                                                        data-no-resi="{{ $alloc->no_resi }}"
+                                                                        data-purchase-date="{{ $alloc->purchase_date }}">
+                                                                        <i class="mdi mdi-pencil-outline"></i>
+                                                                    </a>
+                                                                @else
+                                                                    <span class="badge bg-label-secondary">
+                                                                        <i class="mdi mdi-clock-outline me-1"></i>{{ $alloc->purchaseOrder->no_po ?? '-' }}: Belum Dikirim
+                                                                    </span>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
                                                     </div>
                                                 @else
-                                                    <span class="badge bg-label-secondary"><i class="mdi mdi-clock-outline me-1"></i>Belum Dikirim</span>
+                                                    <span class="text-muted small">Belum ada PO</span>
                                                 @endif
                                             </td>
                                             <td class="text-center">
@@ -260,12 +311,21 @@
                                         @php $no++; @endphp
                                     @empty
                                         <tr>
-                                            <td colspan="7" class="text-center text-muted py-4">Tidak Ada Purchase Request</td>
+                                            <td colspan="{{ $showAllocationUi ? 9 : 7 }}" class="text-center text-muted py-4">Tidak Ada Purchase Request</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
                             </table>
                         </div>
+                        @if ($showAllocationUi)
+                            <div class="d-flex justify-content-between align-items-center p-3 border-top bg-light-subtle">
+                                <span class="text-muted small"><span id="selectedItemsCount">0</span> item dipilih</span>
+                                <a href="#" id="btnCreatePoFromSelection"
+                                    class="btn btn-primary btn-sm disabled" tabindex="-1" aria-disabled="true">
+                                    <i class="mdi mdi-file-document-plus-outline me-1"></i> Buat Purchase Order dari Item Terpilih
+                                </a>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
@@ -405,10 +465,47 @@
                                 <i class="mdi mdi-check-all me-2 fs-5"></i> ACC Purchase Request
                             </a>
                         @elseif ($purchase && $purchase->status == 1)
-                            <a href="#" class="btn btn-info text-white d-flex align-items-center justify-content-center w-100 mb-2 waves-effect delivery-purchase"
-                                data-id="{{ $purchase->id }}">
-                                <i class="mdi mdi-truck-delivery me-2 fs-5"></i> On Delivery
-                            </a>
+                            @php
+                                $fullyAllocated = $purchase->details->every(fn ($d) => $d->remainingQty <= 0);
+                                $poDeliveryStatus = [];
+                                foreach ($purchase->purchaseOrders as $po) {
+                                    $detailsForThisPo = $purchase->details->filter(
+                                        fn ($d) => $d->allocations->contains(fn ($a) => $a->id_purchase_order == $po->id)
+                                    );
+                                    $poDeliveryStatus[$po->id] = $detailsForThisPo->isNotEmpty()
+                                        && $detailsForThisPo->every(fn ($d) => !is_null($d->purchase_type));
+                                }
+                            @endphp
+                            @if (!$fullyAllocated)
+                                <div class="alert alert-warning py-2 px-3 mb-2 small">
+                                    Pilih item di tabel dan buat Purchase Order sampai semua qty teralokasi.
+                                </div>
+                            @elseif (in_array(false, $poDeliveryStatus, true))
+                                <div class="alert alert-info py-2 px-3 mb-2 small">
+                                    Semua item sudah teralokasi. Buka tiap PO di bawah untuk konfirmasi pengiriman (On Delivery).
+                                </div>
+                            @else
+                                <div class="alert alert-success py-2 px-3 mb-2 small">
+                                    Semua PO sudah dikonfirmasi pengirimannya.
+                                </div>
+                            @endif
+                            @if ($purchase->purchaseOrders->count())
+                                <div class="mb-2">
+                                    <div class="text-muted small fw-bold mb-1">PO Terkait:</div>
+                                    @foreach ($purchase->purchaseOrders as $po)
+                                        <div class="d-flex align-items-center justify-content-between mb-1">
+                                            <a href="{{ route('purchase.show', $po->id) }}" class="small text-primary">
+                                                <i class="mdi mdi-file-document-outline me-1"></i>{{ $po->no_po }}
+                                            </a>
+                                            @if ($poDeliveryStatus[$po->id] ?? false)
+                                                <span class="badge bg-label-success">Terkirim</span>
+                                            @else
+                                                <span class="badge bg-label-warning">Menunggu</span>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
                         @endif
 
                         @php
@@ -546,6 +643,62 @@
 @endpush
 @push('script')
     <script>
+        // Selection item PR untuk dibuatkan Purchase Order (bisa split ke beberapa supplier)
+        (function () {
+            var $table = $('#prItemsTable');
+            if (!$table.length) return;
+
+            function updateSelectionState() {
+                var $checked = $table.find('.pr-item-check:checked');
+                $('#selectedItemsCount').text($checked.length);
+
+                var $btn = $('#btnCreatePoFromSelection');
+                if ($checked.length) {
+                    $btn.removeClass('disabled').attr('aria-disabled', 'false').removeAttr('tabindex');
+                } else {
+                    $btn.addClass('disabled').attr('aria-disabled', 'true').attr('tabindex', '-1');
+                }
+            }
+
+            $table.on('change', '.pr-item-check', function () {
+                var $qtyInput = $table.find('.pr-item-qty[data-id="' + $(this).data('id') + '"]');
+                $qtyInput.prop('disabled', !this.checked);
+                if (this.checked) {
+                    $qtyInput.trigger('focus');
+                }
+                updateSelectionState();
+            });
+
+            $('#checkAllPrItems').on('change', function () {
+                var checked = this.checked;
+                $table.find('.pr-item-check').prop('checked', checked).trigger('change');
+            });
+
+            $table.on('input', '.pr-item-qty', function () {
+                var max = parseInt($(this).attr('max'), 10) || 1;
+                var val = parseInt($(this).val(), 10) || 0;
+                if (val > max) $(this).val(max);
+                if (val < 1) $(this).val(1);
+            });
+
+            $('#btnCreatePoFromSelection').on('click', function (e) {
+                e.preventDefault();
+                if ($(this).hasClass('disabled')) return;
+
+                var params = [];
+                $table.find('.pr-item-check:checked').each(function () {
+                    var id = $(this).data('id');
+                    var qty = $table.find('.pr-item-qty[data-id="' + id + '"]').val();
+                    params.push('items[' + id + ']=' + encodeURIComponent(qty));
+                });
+                if (!params.length) return;
+
+                window.location.href = '{{ route('purchase.create') }}?from_pr={{ $purchase->id ?? '' }}&' + params.join('&');
+            });
+
+            updateSelectionState();
+        })();
+
         // Scroll diskusi ke pesan terbaru
         (function () {
             var list = document.querySelector('.discussion-list');
@@ -825,16 +978,6 @@
         var deliveryModal = new bootstrap.Modal(deliveryModalEl);
         var deliveryContext = {};
 
-        $(document).on('click', '.delivery-purchase', function() {
-            deliveryContext = {
-                mode: 'single',
-                id: $(this).data('id'),
-            };
-            $('#deliveryInfoForm')[0].reset();
-            $('#deliveryInfoModalTitle').text('Info Pengiriman');
-            $('#deliveryInfoSubmitBtn').text('On Delivery');
-            deliveryModal.show();
-        });
         $(document).on('click', '.edit-delivery-info', function() {
             deliveryContext = {
                 mode: 'edit',
@@ -858,13 +1001,8 @@
             var noResi = $('[name="no_resi"]', this).val();
             var purchaseDate = $('[name="purchase_date"]', this).val();
 
-            var urlMap = {
-                edit: '{{ url('purchase-request') }}/delivery-info/' + deliveryContext.id,
-                single: '{{ url('purchase-request') }}/delivery/' + deliveryContext.id,
-            };
-            var url = urlMap[deliveryContext.mode] || urlMap.single;
-            var successText = deliveryContext.mode === 'edit' ?
-                'Info pengiriman berhasil diperbarui.' : 'Your file has been deliveried.';
+            var url = '{{ url('purchase-request') }}/delivery-info/' + deliveryContext.id;
+            var successText = 'Info pengiriman berhasil diperbarui.';
 
             $.ajax({
                 'url': url,
@@ -903,6 +1041,8 @@
                     var message = 'Data Failed to Delivery!';
                     if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
                         message = Object.values(xhr.responseJSON.errors).flat().join('\n');
+                    } else if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.message) {
+                        message = xhr.responseJSON.message;
                     }
                     Swal.fire({
                         icon: 'error',

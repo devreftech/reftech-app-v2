@@ -81,7 +81,7 @@
                     <span class="avatar-initial rounded-circle bg-label-success"><i class="mdi mdi-cube-outline fs-4"></i></span>
                 </div>
                 <div>
-                    <small class="text-muted fw-semibold d-block" style="font-size: 11px;">All Stock</small>
+                    <small class="text-muted fw-semibold d-block" style="font-size: 11px;">All Stock <span class="fw-normal">(Warehouse + Office + Pending)</span></small>
                     <span class="fw-bold text-success" style="font-size: 15px;">{{ $allStock }} {{ $product->unit }}</span>
                 </div>
             </div>
@@ -89,11 +89,10 @@
     </div>
 </div>
 
-<div class="row g-3 mb-4">
-    {{-- LEFT COLUMN --}}
-    <div class="col-xl-8">
-        {{-- Product Info --}}
-        <div class="card border-0 shadow-sm mb-3 overflow-hidden">
+<div class="row g-3 mb-3">
+    {{-- LEFT: Product Info --}}
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100 overflow-hidden">
             <div class="card-header bg-body-tertiary border-bottom py-3 px-4">
                 <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
                     <i class="mdi mdi-information-outline text-primary"></i> Informasi Produk
@@ -102,7 +101,7 @@
             <div class="card-body p-4">
                 <div class="row g-3" style="font-size: 13px;">
                     <div class="col-md-6">
-                        <small class="text-muted d-block mb-1">Comodity</small>
+                        <small class="text-muted d-block mb-1">Commodity</small>
                         <span class="fw-semibold text-dark">{{ $product->commodity }}</span>
                     </div>
                     <div class="col-md-6">
@@ -143,10 +142,95 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    {{-- RIGHT: Replacement, then Part Inquiry --}}
+    <div class="col-lg-6">
+        {{-- Replacement --}}
+        <div class="card border-0 shadow-sm mb-3 overflow-hidden">
+            <div class="card-header bg-body-tertiary border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+                <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="mdi mdi-swap-horizontal text-primary"></i> Replacement
+                </h6>
+                <button type="button" class="btn btn-xs btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createReplacement-{{ $product->id }}">
+                    <i class="mdi mdi-plus me-1"></i> New
+                </button>
+            </div>
+            <div class="table-responsive text-nowrap">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Replacement</th>
+                            <th>Stock</th>
+                            <th class="text-center">Total In/Out</th>
+                            @if (Auth::user()->role == 'Admin')
+                                <th>Modal</th>
+                            @endif
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="table-border-bottom-0">
+                        @forelse ($details as $detail)
+                            @php
+                                $allRep = $detail->stock + $detail->warehouse_stock;
+                                $totalIn = $detail->total_in ?? 0;
+                                $totalOut = $detail->total_out ?? 0;
+                                $isUsed = ($totalIn + $totalOut) > 0;
+                            @endphp
+                            <tr>
+                                <td>
+                                    {{ $detail->replacement }}
+                                </td>
+                                <td>
+                                    {{ $allRep }} {{ $detail->product->unit }}
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge rounded-pill {{ $isUsed ? 'bg-label-info' : 'bg-label-secondary' }}" title="Product In: {{ $totalIn }}, Product Out: {{ $totalOut }}">
+                                        In {{ $totalIn }} / Out {{ $totalOut }}
+                                    </span>
+                                </td>
+                                @if (Auth::user()->role == 'Admin')
+                                    <td>
+                                        Rp.{{ number_format($detail->modal, 0, '', '.') }}
+                                    </td>
+                                @endif
+                                <td>
+                                    @if (Auth::user()->role == 'Admin')
+                                        @if ($isUsed)
+                                            <a href="#" class="btn btn-sm btn-label-danger disabled" style="pointer-events:none; opacity:0.5;" title="Sudah dipakai di Product In/Out, tidak bisa dihapus">
+                                                <i class="menu-icon tf-icons mdi mdi-14px mdi-delete-outline m-0"></i>
+                                            </a>
+                                        @else
+                                            <a href="#" data-id="{{ $detail->id }}"
+                                                class="btn btn-sm btn-label-danger delete-replacement">
+                                                <i class="menu-icon tf-icons mdi mdi-14px mdi-delete-outline m-0"></i>
+                                            </a>
+                                        @endif
+                                    @endif
+                                    <a type="button" data-bs-toggle="modal"
+                                        data-bs-target="#editReplacement-{{ $detail->id }}">
+                                        <button type="button" class="btn btn-sm btn-label-primary">
+                                            <i
+                                                class="menu-icon tf-icons mdi mdi-14px mdi-note-edit-outline m-0"></i>
+                                        </button>
+                                    </a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    Kamu belum punya Replacement.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
         {{-- Part Inquiry --}}
         @if ($partInquiries->isNotEmpty())
-        <div class="card border-0 shadow-sm mb-3 overflow-hidden">
+        <div class="card border-0 shadow-sm overflow-hidden">
             <div class="card-header bg-body-tertiary border-bottom py-3 px-4">
                 <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
                     <i class="mdi mdi-magnify text-primary"></i> Part Inquiry
@@ -154,7 +238,7 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-striped mb-0">
+                    <table class="table table-hover mb-0">
                         <thead>
                             <tr>
                                 <th>Brand</th>
@@ -186,168 +270,130 @@
             </div>
         </div>
         @endif
+    </div>
+</div>
 
-        {{-- Product In / Out --}}
-        <div class="card border-0 shadow-sm mb-3 overflow-hidden">
-            <div class="card-header bg-body-tertiary border-bottom py-3 px-4">
-                <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
-                    <i class="mdi mdi-arrow-down-bold-box-outline text-primary"></i> Product In
-                </h6>
-            </div>
-            <div class="card-body">
-                <table class="datatable-product-in-detail table table-striped">
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th>ID</th>
-                            <th>invoice</th>
-                            <th>Product</th>
-                            <th>Qty</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                </table>
-            </div>
-        </div>
-        <div class="card border-0 shadow-sm mb-3 overflow-hidden">
-            <div class="card-header bg-body-tertiary border-bottom py-3 px-4">
-                <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
-                    <i class="mdi mdi-arrow-up-bold-box-outline text-primary"></i> Product Out
-                </h6>
-            </div>
-            <div class="card-body">
-                <table class="datatable-product-out-detail table table-striped">
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th>ID</th>
-                            <th>invoice</th>
-                            <th>Product</th>
-                            <th>Qty</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                </table>
-            </div>
-        </div>
-        <div class="card border-0 shadow-sm mb-3 overflow-hidden">
-            <div class="card-header bg-body-tertiary border-bottom py-3 px-4">
-                <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
-                    <i class="mdi mdi-file-document-multiple-outline text-primary"></i> Quotation
-                </h6>
-            </div>
-            <div class="card-body">
-                <table class="datatable-product-quotation table table-striped">
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th>ID</th>
-                            <th>no quote</th>
-                            <th>equivalent</th>
-                            <th>Qty</th>
-                            <th>price</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                </table>
-            </div>
-        </div>
-
-        {{-- Equivalent --}}
+{{-- Equivalent --}}
+<div class="row g-3 mb-3">
+    <div class="col-12">
         <div class="card border-0 shadow-sm overflow-hidden">
             <div class="card-header bg-body-tertiary border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
                 <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
                     <i class="mdi mdi-shuffle-variant text-primary"></i> Equivalent
+                    <span class="badge rounded-pill bg-label-secondary" id="badge-equivalent">0</span>
                 </h6>
                 <button type="button" class="btn btn-xs btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createEquivalent-{{ $product->id }}">
                     <i class="mdi mdi-plus me-1"></i> New
                 </button>
             </div>
             <div class="card-body">
-                <table class="datatable-product-equivalent{{Auth::user()->role == 'Logistic' ? '-logistik' : ''}} table table-striped">
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th>ID</th>
-                            <th>Image</th>
-                            <th>Brand</th>
-                            <th>PN</th>
-                            <th>Price</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                </table>
+                <div class="table-responsive">
+                    <table class="datatable-product-equivalent{{Auth::user()->role == 'Logistic' ? '-logistik' : ''}} table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>ID</th>
+                                <th>Image</th>
+                                <th>Brand</th>
+                                <th>PN</th>
+                                <th>Price</th>
+                                <th class="text-center">Total Quote</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
+</div>
 
-    {{-- RIGHT SIDEBAR --}}
-    <div class="col-xl-4">
-        {{-- Replacement --}}
-        <div class="card border-0 shadow-sm mb-3 overflow-hidden">
-            <div class="card-header bg-body-tertiary border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+{{-- Product In & Product Out --}}
+<div class="row g-3 mb-3">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100 overflow-hidden">
+            <div class="card-header bg-body-tertiary border-bottom py-3 px-4">
                 <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
-                    <i class="mdi mdi-swap-horizontal text-primary"></i> Replacement
+                    <i class="mdi mdi-arrow-down-bold-box-outline text-primary"></i> Product In
+                    <span class="badge rounded-pill bg-label-secondary" id="badge-product-in">0</span>
                 </h6>
-                <button type="button" class="btn btn-xs btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createReplacement-{{ $product->id }}">
-                    <i class="mdi mdi-plus me-1"></i> New
-                </button>
             </div>
-            <div class="table-responsive text-nowrap">
-                <table class="table table-striped mb-0">
-                    <thead>
-                        <tr>
-                            <th>Replacement</th>
-                            <th>Stock</th>
-                            @if (Auth::user()->role == 'Admin')
-                                <th>Modal</th>
-                            @endif
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody class="table-border-bottom-0">
-                        @forelse ($details as $detail)
-                            @php
-                                $allRep = $detail->stock + $detail->warehouse_stock;
-                            @endphp
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="datatable-product-in-detail table">
+                        <thead>
                             <tr>
-                                <td>
-                                    {{ $detail->replacement }}
-                                </td>
-                                <td>
-                                    {{ $allRep }} {{ $detail->product->unit }}
-                                </td>
-                                @if (Auth::user()->role == 'Admin')
-                                    <td>
-                                        Rp.{{ number_format($detail->modal, 0, '', '.') }}
-                                    </td>
-                                @endif
-                                <td>
-                                    @if (Auth::user()->role == 'Admin')
-                                        <a href="#" data-id="{{ $detail->id }}"
-                                            class="btn btn-sm btn-label-danger delete-replacement">
-                                            <i class="menu-icon tf-icons mdi mdi-14px mdi-delete-outline m-0"></i>
-                                        </a>
-                                    @endif
-                                    <a type="button" data-bs-toggle="modal"
-                                        data-bs-target="#editReplacement-{{ $detail->id }}">
-                                        <button type="button" class="btn btn-sm btn-label-primary">
-                                            <i
-                                                class="menu-icon tf-icons mdi mdi-14px mdi-note-edit-outline m-0"></i>
-                                        </button>
-                                    </a>
-                                </td>
+                                <th></th>
+                                <th></th>
+                                <th>No. Invoice</th>
+                                <th>Supplier</th>
+                                <th>Item / Replacement</th>
+                                <th>Qty</th>
+                                <th>Date</th>
                             </tr>
-                        @empty
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100 overflow-hidden">
+            <div class="card-header bg-body-tertiary border-bottom py-3 px-4">
+                <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="mdi mdi-arrow-up-bold-box-outline text-primary"></i> Product Out
+                    <span class="badge rounded-pill bg-label-secondary" id="badge-product-out">0</span>
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="datatable-product-out-detail table">
+                        <thead>
                             <tr>
-                                <td colspan="4" class="text-center">
-                                    Kamu belum punya Replacement.
-                                </td>
+                                <th></th>
+                                <th></th>
+                                <th>No. Invoice</th>
+                                <th>Client</th>
+                                <th>Item / Replacement</th>
+                                <th>Qty</th>
+                                <th>Date</th>
                             </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Quotation --}}
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm overflow-hidden">
+            <div class="card-header bg-body-tertiary border-bottom py-3 px-4">
+                <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="mdi mdi-file-document-multiple-outline text-primary"></i> Quotation
+                    <span class="badge rounded-pill bg-label-secondary" id="badge-quotation">0</span>
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="datatable-product-quotation table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th></th>
+                                <th>No. Quotation</th>
+                                <th>Company / Client</th>
+                                <th>Part / Equivalent</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -498,6 +544,14 @@
                                     text: 'Data Failed to Delete!'
                                 });
                             }
+                        },
+                        error: function(xhr) {
+                            var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Data Failed to Delete!';
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Tidak bisa dihapus',
+                                text: msg
+                            });
                         }
                     });
                 } else if (result.dismiss === Swal.DismissReason.cancel) {
@@ -554,6 +608,14 @@
                                     text: 'Data Failed to Delete!'
                                 });
                             }
+                        },
+                        error: function(xhr) {
+                            var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Data Failed to Delete!';
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Tidak bisa dihapus',
+                                text: msg
+                            });
                         }
                     });
                 } else if (result.dismiss === Swal.DismissReason.cancel) {
@@ -568,6 +630,17 @@
                 }
             });
         });
+        function bindCountBadge(tableSelector, badgeId) {
+            $(document).on('xhr.dt', tableSelector, function(e, settings, json) {
+                var count = (json && json.data) ? json.data.length : 0;
+                $('#' + badgeId).text(count);
+            });
+        }
+        bindCountBadge('.datatable-product-in-detail', 'badge-product-in');
+        bindCountBadge('.datatable-product-out-detail', 'badge-product-out');
+        bindCountBadge('.datatable-product-quotation', 'badge-quotation');
+        bindCountBadge('[class*="datatable-product-equivalent"]', 'badge-equivalent');
+
         $(() => {
 
             function formatNumber(n) {

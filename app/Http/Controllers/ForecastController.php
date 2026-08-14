@@ -8,6 +8,7 @@ use App\Models\Unit;
 use App\Models\UnitPmTemplateItem;
 use App\Models\PowerServicePrice;
 use App\Models\BearingKitPrice;
+use App\Models\TransportationPrice;
 use App\Models\Contract;
 use App\Models\ContractVisitSchedule;
 use App\Models\Quotation;
@@ -645,7 +646,10 @@ class ForecastController extends Controller
         // Master harga Set of Bearing Kit (dipakai kategori B template PM4 di Unit Global)
         $bearingKitPrices = BearingKitPrice::orderBy('power')->get();
 
-        return view('pages.sales.forecast.prices', compact('prices', 'availablePowers', 'defaultTemplate', 'bearingKitPrices'));
+        // Master harga Transportation per kota (dipakai tombol "Add Transport" di quotation & template PM)
+        $transportationPrices = TransportationPrice::orderBy('city')->get();
+
+        return view('pages.sales.forecast.prices', compact('prices', 'availablePowers', 'defaultTemplate', 'bearingKitPrices', 'transportationPrices'));
     }
 
     /**
@@ -801,6 +805,45 @@ class ForecastController extends Controller
         self::clearForecastCache();
 
         return redirect()->route('forecast.prices')->with('message', 'Data harga Set of Bearing Kit berhasil dihapus.');
+    }
+
+    /**
+     * Update/Store Master Harga Transportation per kota — dipakai tombol "Add Transport" di quotation & template PM.
+     */
+    public function updateTransportationPrice(Request $request)
+    {
+        $request->merge([
+            'price' => intval(str_replace(['.', ','], '', $request->input('price', 0))),
+        ]);
+
+        $rules = [
+            'city' => 'required|string',
+            'price' => 'required|integer|min:0',
+        ];
+
+        $this->validate($request, $rules);
+
+        TransportationPrice::updateOrCreate(
+            ['city' => trim($request->city)],
+            ['price' => $request->price]
+        );
+
+        self::clearForecastCache();
+
+        return redirect()->route('forecast.prices')->with('message', 'Master harga Transportation berhasil disimpan.');
+    }
+
+    /**
+     * Delete Master Harga Transportation record
+     */
+    public function deleteTransportationPrice($id)
+    {
+        $price = TransportationPrice::findOrFail($id);
+        $price->delete();
+
+        self::clearForecastCache();
+
+        return redirect()->route('forecast.prices')->with('message', 'Data harga Transportation berhasil dihapus.');
     }
 
     /**
