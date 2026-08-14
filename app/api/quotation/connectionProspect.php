@@ -1,12 +1,12 @@
 <?php
 use Illuminate\Support\Facades\Auth;
 
-header('Content-Type: application/json');$host = env('DB_HOST', '127.0.0.1');
-$host = env('DB_HOST', '127.0.0.1');
-$users = env('DB_USERNAME');
-$pass = env('DB_PASSWORD');
+header('Content-Type: application/json');
+$host = config('database.connections.mysql.host');
+$users = config('database.connections.mysql.username');
+$pass = config('database.connections.mysql.password');
 
-$databaseName = env('DB_DATABASE');
+$databaseName = config('database.connections.mysql.database');
 $tableName = "quotation";
 
 // Periksa apakah pengguna terotentikasi

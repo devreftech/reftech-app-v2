@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DetailProduct;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PendingPO;
@@ -77,6 +78,24 @@ class DeletionGuardService
 
         if ($equivalent->spareparts()->exists()) {
             $reasons[] = 'equivalent dipakai di sparepart';
+        }
+
+        return [
+            'allowed' => empty($reasons),
+            'reasons' => $reasons,
+        ];
+    }
+
+    public function checkReplacementDeletion(DetailProduct $replacement): array
+    {
+        $reasons = [];
+
+        if ($replacement->detailProductIn()->exists()) {
+            $reasons[] = 'replacement sudah dipakai di product in';
+        }
+
+        if ($replacement->detailProductOut()->exists()) {
+            $reasons[] = 'replacement sudah dipakai di product out';
         }
 
         return [

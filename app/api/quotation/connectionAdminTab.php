@@ -8,10 +8,10 @@ if (!Auth::check()) {
     exit;
 }
 
-$host = env('DB_HOST', '127.0.0.1');
-$users = env('DB_USERNAME', 'root');
-$pass = env('DB_PASSWORD', '');
-$databaseName = env('DB_DATABASE', 'u877155683_reftech_my');
+$host = config('database.connections.mysql.host');
+$users = config('database.connections.mysql.username');
+$pass = config('database.connections.mysql.password');
+$databaseName = config('database.connections.mysql.database');
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
@@ -41,7 +41,7 @@ try {
 
     SELECT uq.id, uq.no_quote,
            COALESCE(NULLIF(c2.company,''),'-') AS company,
-           NULL AS ru,
+           c2.ru AS ru,
            uq.total AS subtotal,
            COALESCE(NULLIF(uq.title,''),'-') AS title,
            uq.date AS estimated_date,

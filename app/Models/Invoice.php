@@ -27,6 +27,7 @@ class Invoice extends Model
         'rejected_at',
         'rejected_reason',
         'rejected_by',
+        'status_p',
     ];
 
     /**

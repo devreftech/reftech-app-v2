@@ -17,7 +17,7 @@
             <div class="col-12 col-md-6">
                 <div class="card mb-3">
                     <div class="card-datatable table-responsive pt-0">
-                        <table class="datatable-product-in-req-lokal table table-striped">
+                        <table class="datatable-product-in-req-lokal table table-bordered">
                             <thead>
                                 <tr>
                                     <th></th>
@@ -36,7 +36,7 @@
             <div class="col-12 col-md-6">
                 <div class="card mb-3">
                     <div class="card-datatable table-responsive pt-0">
-                        <table class="datatable-product-in-req-import table table-striped">
+                        <table class="datatable-product-in-req-import table table-bordered">
                             <thead>
                                 <tr>
                                     <th></th>
@@ -55,11 +55,36 @@
         </div>
     @endif
     @if (Auth::user()->role == 'Logistic')
+        <div class="card mb-3">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <div>
+                    <h5 class="card-title mb-0">PR Masuk (Sedang Dikirim)</h5>
+                    <small class="text-muted">Purchase Request yang sudah On Delivery, menunggu barang datang untuk di-GR.</small>
+                </div>
+            </div>
+            <div class="card-datatable table-responsive pt-0">
+                <table class="datatable-pr-incoming table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>No PR</th>
+                            <th>No PO</th>
+                            <th>No SO</th>
+                            <th>Customer</th>
+                            <th>Item</th>
+                            <th>Tipe Pembelian</th>
+                            <th>Cargo</th>
+                            <th>Perkiraan Datang</th>
+                            <th class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
         <div class="row">
             <div class="col-12 col-md-6">
                 <div class="card mb-3">
                     <div class="card-datatable table-responsive pt-0">
-                        <table class="datatable-product-in-req-logistic table table-striped">
+                        <table class="datatable-product-in-req-logistic table table-bordered">
                             <thead>
                                 <tr>
                                     <th></th>
@@ -89,7 +114,7 @@
             <div class="col-12 col-md-6">
                 <div class="card mb-3">
                     <div class="card-datatable table-responsive pt-0">
-                        <table class="datatable-product-in-logistic table table-striped">
+                        <table class="datatable-product-in-logistic table table-bordered">
                             <thead>
                                 <tr>
                                     <th></th>
@@ -110,7 +135,7 @@
     @if (Auth::user()->role != 'Logistic')
         <div class="card mb-3">
             <div class="card-datatable table-responsive pt-0">
-                <table class="datatable-product-in-lokal table table-striped">
+                <table class="datatable-product-in-lokal table table-bordered">
                     <thead>
                         <tr>
                             <th></th>
@@ -131,7 +156,7 @@
         </div>
         <div class="card mb-3">
             <div class="card-datatable table-responsive pt-0">
-                <table class="datatable-product-in-import table table-striped">
+                <table class="datatable-product-in-import table table-bordered">
                     <thead>
                         <tr>
                             <th></th>
@@ -226,15 +251,34 @@
         }
         
         /* Custom link styling inside tables */
-        .table tbody td a {
+        .table tbody td a:not(.btn) {
             color: #7367F0 !important;
             font-weight: 500;
             text-decoration: none;
             transition: color 0.15s ease-in-out;
         }
-        .table tbody td a:hover {
+        .table tbody td a:not(.btn):hover {
             color: #5d51e8 !important;
             text-decoration: underline;
+        }
+        
+        /* Ensure button links inside table cells retain crisp white text color */
+        .table tbody td a.btn,
+        .table tbody td .btn {
+            font-weight: 500 !important;
+            text-decoration: none !important;
+        }
+        .table tbody td a.btn-primary,
+        .table tbody td .btn-primary {
+            color: #ffffff !important;
+            background-color: #7367F0 !important;
+            border-color: #7367F0 !important;
+        }
+        .table tbody td a.btn-primary:hover,
+        .table tbody td .btn-primary:hover {
+            color: #ffffff !important;
+            background-color: #5e52e0 !important;
+            border-color: #5e52e0 !important;
         }
         
         /* Custom badge styling */
@@ -302,4 +346,5 @@
     <script src="{{ asset('assets') }}/includes/table-product-in-req-import.js"></script>
     <script src="{{ asset('assets') }}/includes/table-product-in-req-logistic.js"></script>
     <script src="{{ asset('assets') }}/includes/table-product-in-logistic.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-pr-incoming.js"></script>
 @endpush

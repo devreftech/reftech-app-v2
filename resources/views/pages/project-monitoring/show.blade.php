@@ -403,46 +403,49 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @forelse($purchases as $pr)
-                                            <tr>
-                                                <td>
-                                                    <span class="text-primary fw-semibold">{{ $pr->no_pr }}</span>
-                                                </td>
-                                                <td class="text-wrap">
-                                                    @if($pr->equivalent)
-                                                        {{ $pr->equivalent->product->commodity ?? '-' }}
-                                                        ({{ $pr->equivalent->pn ?? '' }})
-                                                    @else
-                                                        -
-                                                    @endif
-                                                </td>
-                                                <td class="text-center">{{ $pr->qty }}</td>
-                                                <td>
-                                                    @if($pr->status == '3')
-                                                        <span class="badge bg-success">Received</span>
-                                                    @elseif($pr->status == '2')
-                                                        <span class="badge bg-info">Ordered</span>
-                                                    @elseif($pr->status == '1')
-                                                        <span class="badge bg-warning">Approved</span>
-                                                    @else
-                                                        <span class="badge bg-secondary">Pending</span>
-                                                    @endif
-                                                </td>
-                                                <td class="text-end">
-                                                    @if($pr->price)
-                                                        Rp {{ number_format($pr->price, 0, ',', '.') }}
-                                                    @else
-                                                        -
-                                                    @endif
-                                                </td>
-                                                <td class="text-end">
-                                                    @if($pr->amount)
-                                                        Rp {{ number_format($pr->amount, 0, ',', '.') }}
-                                                    @else
-                                                        -
-                                                    @endif
-                                                </td>
-                                            </tr>
+                                        @forelse($purchases as $header)
+                                            @forelse($header->details as $pr)
+                                                <tr>
+                                                    <td>
+                                                        <span class="text-primary fw-semibold">{{ $header->no_pr }}</span>
+                                                    </td>
+                                                    <td class="text-wrap">
+                                                        @if($pr->equivalent)
+                                                            {{ $pr->equivalent->product->commodity ?? '-' }}
+                                                            ({{ $pr->equivalent->pn ?? '' }})
+                                                        @else
+                                                            -
+                                                        @endif
+                                                    </td>
+                                                    <td class="text-center">{{ $pr->qty }}</td>
+                                                    <td>
+                                                        @if($header->status == '3')
+                                                            <span class="badge bg-success">Received</span>
+                                                        @elseif($header->status == '2')
+                                                            <span class="badge bg-info">Ordered</span>
+                                                        @elseif($header->status == '1')
+                                                            <span class="badge bg-warning">Approved</span>
+                                                        @else
+                                                            <span class="badge bg-secondary">Pending</span>
+                                                        @endif
+                                                    </td>
+                                                    <td class="text-end">
+                                                        @if($pr->price)
+                                                            Rp {{ number_format($pr->price, 0, ',', '.') }}
+                                                        @else
+                                                            -
+                                                        @endif
+                                                    </td>
+                                                    <td class="text-end">
+                                                        @if($pr->amount)
+                                                            Rp {{ number_format($pr->amount, 0, ',', '.') }}
+                                                        @else
+                                                            -
+                                                        @endif
+                                                    </td>
+                                                </tr>
+                                            @empty
+                                            @endforelse
                                         @empty
                                             <tr>
                                                 <td colspan="6" class="text-center">Belum ada pengajuan pembelian barang (PR) untuk proyek ini.</td>

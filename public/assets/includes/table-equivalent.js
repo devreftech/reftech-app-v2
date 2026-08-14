@@ -34,13 +34,21 @@ $(function () {
                 { data: "brand" },
                 { data: "pn" },
                 { data: "price" },
+                { data: "total_quote" },
                 {
                     data: "",
                     render: function (data, type, row) {
+                        var totalQuote = row.total_quote || 0;
+                        var deleteBtn =
+                            totalQuote > 0
+                                ? '<a href="#" class="btn btn-sm btn-label-danger m-2 disabled" style="pointer-events:none; opacity:0.5;" title="Sudah dipakai di ' +
+                                  totalQuote +
+                                  ' quotation, tidak bisa dihapus"><i class="menu-icon tf-icons mdi mdi-14px mdi-delete-outline m-0"></i></a>'
+                                : '<a href="#" data-id="' +
+                                  row.id +
+                                  '" class="btn btn-sm btn-label-danger delete-equivalent m-2"><i class="menu-icon tf-icons mdi mdi-14px mdi-delete-outline m-0"></i></a>';
                         return (
-                            '<a href="#" data-id="' +
-                            row.id +
-                            '" class="btn btn-sm btn-label-danger delete-equivalent m-2"><i class="menu-icon tf-icons mdi mdi-14px mdi-delete-outline m-0"></i></a>' +
+                            deleteBtn +
                             '<a type="button" href="#" data-bs-toggle="modal" data-bs-target="#editEquivalent-'+ row.id +'" data-id="' +
                             row.id +
                             '" class="btn btn-sm btn-label-primary"><i class="menu-icon tf-icons mdi mdi-14px mdi-note-edit-outline m-0"></i></a>'
@@ -52,6 +60,18 @@ $(function () {
                 {
                     targets: 5,
                     render: $.fn.dataTable.render.number(".", "", 0, "Rp."),
+                },
+                {
+                    targets: 6,
+                    className: "text-center",
+                    render: function (data, type, full, row) {
+                        var count = data || 0;
+                        if (type === "display") {
+                            var cls = count > 0 ? "bg-label-info" : "bg-label-secondary";
+                            return '<span class="badge rounded-pill ' + cls + '">' + count + '</span>';
+                        }
+                        return count;
+                    },
                 },
                 {
                     targets: 2,

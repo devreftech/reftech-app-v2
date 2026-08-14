@@ -57,6 +57,22 @@
                             <i class="mdi mdi-account-group-outline me-1"></i> Customer & Delivery Address
                         </div>
                     </div>
+                    @if ($isManager ?? false)
+                        <div class="col-md-4">
+                            <div class="form-floating form-floating-outline">
+                                <select class="select2 form-select" id="sales-select">
+                                    <option value="">-- Semua Sales (Optional) --</option>
+                                    @foreach ($salesUsers as $s)
+                                        <option value="{{ $s->id }}">{{ $s->name }}</option>
+                                    @endforeach
+                                </select>
+                                <label>Filter by Sales <span class="text-muted small">(optional)</span></label>
+                            </div>
+                            <div class="form-text small text-muted">
+                                Pilih sales untuk memuat client miliknya, atau langsung cari client di kolom sebelah tanpa memilih sales.
+                            </div>
+                        </div>
+                    @endif
                     <div class="col-md-4">
                         <div class="form-floating form-floating-outline">
                             <select class="select2 form-select" name="id_client" id="client-select">
@@ -129,10 +145,10 @@
                     <div class="col-md-2">
                         <div class="form-floating form-floating-outline">
                             <select class="form-select" id="select-type" name="type">
-                                <option value="" disabled selected>-- Type --</option>
+                                <option value="" disabled>-- Type --</option>
                                 <option value="Unit">Unit</option>
                                 <option value="Rental">Rental</option>
-                                <option value="Project">Project</option>
+                                <option value="Project" selected>Project</option>
                                 <option value="Parts">Parts</option>
                                 <option value="Service">Service</option>
                                 <option value="Piping">Piping</option>
@@ -187,6 +203,9 @@
                     <button type="button" class="btn btn-sm btn-outline-info" id="btn-add-header">
                         <i class="mdi mdi-format-header-1 me-1"></i> Add Head Title
                     </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-transport">
+                        <i class="mdi mdi-truck-outline me-1"></i> Add Transport
+                    </button>
                     <button type="button" class="btn btn-sm btn-outline-success ms-md-auto" data-bs-toggle="modal" data-bs-target="#modal-load-pm-template">
                         <i class="mdi mdi-file-document-multiple-outline me-1"></i> Load Template PM
                     </button>
@@ -220,6 +239,9 @@
                             </div>
                         </div>
                         <div id="pm-load-preview" class="small text-muted mt-3" style="display:none;"></div>
+                        <div class="small text-muted mt-3">
+                            <i class="mdi mdi-information-outline me-1"></i>Baris <strong>Transportation</strong> akan otomatis ditambahkan — Tipe & Kota tinggal dipilih setelah item masuk ke quotation.
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
@@ -546,6 +568,7 @@
                                     <option value="Ls">Ls</option>
                                     <option value="Btg">Btg</option>
                                     <option value="Mtr">Mtr</option>
+                                    <option value="Days">Days</option>
                                 </select>
                             </div>
                         </div>
@@ -627,6 +650,7 @@
     @if(old('payment'))
         <script>window.EDIT_PAYMENT = @json(old('payment'));</script>
     @endif
+    <script>window.TRANSPORT_PRICES = @json($transportationPrices);</script>
     <script src="{{ asset('assets') }}/includes/form-unit-quotation.js"></script>
 @endpush
 

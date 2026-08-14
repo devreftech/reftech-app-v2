@@ -1,6 +1,6 @@
 $(function () {
     var dt_table_reports = $(".datatable-reports");
-    var Url = "db/reports";
+    var Url = "/db/reports";
 
     if (dt_table_reports.length) {
         var dt_reports = dt_table_reports.DataTable({
@@ -22,15 +22,14 @@ $(function () {
                 // },
             },
             columns: [
-                { data: "" },
-                { data: "id" },
+                { data: null, defaultContent: '' },
                 { data: "id" },
                 { data: "no_service" },
-                { data: "company" },
-                { data: "jobdesc" },
-                { data: "brand_type" },
-                { data: "date" },
-                { data: "" },
+                { data: "company", defaultContent: '-' },
+                { data: "jobdesc", defaultContent: '-' },
+                { data: "brand_type", defaultContent: '-' },
+                { data: "serial_tag", defaultContent: '-' },
+                { data: "date", defaultContent: '-' },
             ],
             columnDefs: [
                 {
@@ -45,33 +44,18 @@ $(function () {
                     },
                 },
                 {
-                    // For Checkboxes
                     targets: 1,
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 3,
-                    checkboxes: true,
-                    render: function () {
-                        return '<input type="checkbox" class="dt-checkboxes form-check-input">';
-                    },
-                    checkboxes: {
-                        selectAllRender:
-                            '<input type="checkbox" class="form-check-input">',
-                    },
-                },
-                {
-                    targets: 2,
                     searchable: true,
                     visible: false,
                 },
                 {
-                    targets: 3,
+                    targets: 2,
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             var $dataId = full["id"];
                             var detailRoute = route("service-reports.show", $dataId);
                             return (
-                                '<a class="text-dark" href="' + detailRoute + '">' + data + "</a>"
+                                '<a class="text-primary fw-semibold" href="' + detailRoute + '">' + data + "</a>"
                             );
                         }
                         return data;
@@ -79,31 +63,19 @@ $(function () {
                 },
                 {
                     responsivePriority: 2,
-                    targets: [3,4],
+                    targets: [2,3],
                 },
                 {
-                    // Actions
-                    targets: -1,
-                    title: "Actions",
-                    orderable: false,
-                    searchable: false,
+                    targets: 6,
                     render: function (data, type, full, meta) {
-                        var $dataId = full["id"];
-                        var $detailRUrl = route("service-reports.show", $dataId);
-                        return (
-                            '<div class="d-inline-block">' +
-                            '<a href="javascript:;" class="btn btn-sm btn-text-secondary rounded-pill btn-icon dropdown-toggle hide-arrow" data-bs-toggle="dropdown"><i class="mdi mdi-dots-vertical"></i></a>' +
-                            '<ul class="dropdown-menu dropdown-menu-end m-0">' +
-                            '<li><a href="' +
-                            $detailRUrl +
-                            '" class="dropdown-item">Details</a></li>' +
-                            "</ul>" +
-                            "</div>"
-                        );
+                        if (type === "display") {
+                            return data && data.length ? data : '-';
+                        }
+                        return data;
                     },
                 },
             ],
-            order: [[2, "desc"]],
+            order: [[1, "desc"]],
             dom: '<"card-header flex-column flex-md-row"<"head-label hl-1 text-center"><"dt-action-buttons text-end pt-3 pt-md-0"B>><"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             displayLength: 7,
             lengthMenu: [7, 10, 25, 50, 75, 100],
@@ -117,8 +89,8 @@ $(function () {
                             extend: "print",
                             text: '<i class="mdi mdi-printer-outline me-1" ></i>Print',
                             className: "dropdown-item",
-                            exportOptions: {
-                                columns: [3, 4, 5, 6, 7],
+                                exportOptions: {
+                                columns: [2, 3, 4, 5, 6, 7],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -174,7 +146,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-document-outline me-1" ></i>Csv',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7],
+                                columns: [2, 3, 4, 5, 6, 7],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -211,7 +183,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-excel-outline me-1"></i>Excel',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7],
+                                columns: [2, 3, 4, 5, 6, 7],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -247,8 +219,8 @@ $(function () {
                             extend: "pdf",
                             text: '<i class="mdi mdi-file-pdf-box me-1"></i>Pdf',
                             className: "dropdown-item",
-                            exportOptions: {
-                                columns: [3, 4, 5, 6, 7],
+                                exportOptions: {
+                                columns: [2, 3, 4, 5, 6, 7],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -285,7 +257,7 @@ $(function () {
                             text: '<i class="mdi mdi-content-copy me-1" ></i>Copy',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7],
+                                columns: [2, 3, 4, 5, 6, 7],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {

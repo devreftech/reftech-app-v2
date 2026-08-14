@@ -19,6 +19,7 @@ use App\Models\Payment;
 use App\Models\PendingPO;
 use App\Models\Pic;
 use App\Models\PurchaseRequest;
+use App\Services\PurchaseRequestService;
 use App\Models\Product;
 use App\Models\Prospect;
 use App\Models\Quotation;
@@ -43,10 +44,12 @@ use Illuminate\Http\Request;
 class QuotationController extends Controller
 {
     protected $quotationService;
+    protected PurchaseRequestService $prService;
 
-    public function __construct(QuotationService $quotationService)
+    public function __construct(QuotationService $quotationService, PurchaseRequestService $prService)
     {
         $this->quotationService = $quotationService;
+        $this->prService = $prService;
     }
 
     /**
@@ -1063,19 +1066,8 @@ class QuotationController extends Controller
                                 $bdgAlloc = $bdgStock;
                                 $bksAlloc = $bksStock;
                                 $item->note = 'Auto Allocated & Reserved (Kurang). Kept available stock: BDG ' . $bdgAlloc . ', BKS ' . $bksAlloc;
-
-                                // Auto Create Purchase Request for the missing quantity
-                                $missingQty = $item->qty - $totalStock;
-                                $pr = new PurchaseRequest();
-                                $pr->no_pr = $this->generateNoPr();
-                                $pr->id_pending = $pending->id;
-                                $pr->id_user = Auth::id() ?? $quotation->id_sales;
-                                $pr->id_equivalent = $item->id_equivalent;
-                                $pr->qty = $missingQty;
-                                $pr->status = '0';
-                                $pr->date = Carbon::now();
-                                $pr->note = 'Otomatis dibuat oleh sistem karena stok kurang (Butuh: ' . $item->qty . ', Tersedia: ' . $totalStock . ')';
-                                $pr->save();
+                                // PR untuk kekurangan ini baru dibuat setelah DP dikonfirmasi,
+                                // lihat pemanggilan generateShortfallForQuotationPending() di bawah.
                             }
 
                             $product->stock -= $bdgAlloc;
@@ -1088,6 +1080,10 @@ class QuotationController extends Controller
                             $item->save();
                         }
                     }
+                }
+
+                if ($this->prService->paymentGateSatisfied($pending)) {
+                    $this->prService->generateShortfallForQuotationPending($pending, Auth::id() ?? $quotation->id_sales);
                 }
             }
 
@@ -1415,19 +1411,9 @@ class QuotationController extends Controller
                             $bdgAlloc = $bdgStock;
                             $bksAlloc = $bksStock;
                             $item->note = 'Auto Allocated & Reserved (Kurang). Kept available stock: BDG ' . $bdgAlloc . ', BKS ' . $bksAlloc;
-
-                            // Auto Create Purchase Request for the missing quantity
-                            $missingQty = $item->qty - $totalStock;
-                            $pr = new PurchaseRequest();
-                            $pr->no_pr = $this->generateNoPr();
-                            $pr->id_pending = $pending->id;
-                            $pr->id_user = Auth::id() ?? $quotation->id_sales;
-                            $pr->id_equivalent = $item->id_equivalent;
-                            $pr->qty = $missingQty;
-                            $pr->status = '0';
-                            $pr->date = Carbon::now();
-                            $pr->note = 'Otomatis dibuat oleh sistem karena stok kurang (Butuh: ' . $item->qty . ', Tersedia: ' . $totalStock . ')';
-                            $pr->save();
+                            // PR untuk kekurangan ini baru dibuat setelah DP dikonfirmasi,
+                            // lihat pemanggilan generateShortfallForQuotationPending() di bawah.
+                            $item->pr_qty_needed = $item->qty - $totalStock;
                         }
 
                         $product->stock -= $bdgAlloc;
@@ -1440,6 +1426,10 @@ class QuotationController extends Controller
                         $item->save();
                     }
                 }
+            }
+
+            if ($this->prService->paymentGateSatisfied($pending)) {
+                $this->prService->generateShortfallForQuotationPending($pending, Auth::id() ?? $quotation->id_sales);
             }
         }
 
@@ -1822,6 +1812,8 @@ class QuotationController extends Controller
         $payment->note = $request->note;
         $payment->save();
 
+        $this->prService->evaluatePaymentGate($payment, Auth::id());
+
         $invoice = Invoice::where('id_quotation', $id)->get();
         // dd($request->type);
         $targetInvoice = $invoice[$paymentCount] ?? null;
@@ -1966,6 +1958,7 @@ class QuotationController extends Controller
         $payment->level = 1;
         $paymentSave = $payment->save();
         if ($paymentSave) {
+            $this->prService->evaluatePaymentGate($payment, Auth::id());
             return redirect('/payment-detail/payment/' . $id)->with('success', 'Data telah ditambahkan');
         } else {
             return 0;
@@ -3684,19 +3677,4 @@ class QuotationController extends Controller
         return $romanMonth[$month];
     }
 
-    private function generateNoPr(): string
-    {
-        $year = now()->format('Y');
-        $month = now()->format('m');
-        $prefix = "PR/{$year}/{$month}/";
-
-        $last = PurchaseRequest::where('no_pr', 'like', $prefix . '%')
-            ->orderByDesc('no_pr')
-            ->value('no_pr');
-
-        $lastSeq = $last ? (int) substr($last, -3) : 0;
-        $nextSeq = str_pad($lastSeq + 1, 3, '0', STR_PAD_LEFT);
-
-        return $prefix . $nextSeq;
-    }
 }

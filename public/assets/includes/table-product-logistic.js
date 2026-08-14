@@ -34,6 +34,12 @@ $(function () {
                 { data: "go" },
                 { data: "stock" },
                 { data: "warehouse_stock" },
+                {
+                    data: "pending_stock",
+                    render: function (data, type, row) {
+                        return data ?? "0";
+                    },
+                },
             ],
             columnDefs: [
                 {

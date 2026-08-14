@@ -96,7 +96,10 @@
 
                     @if ($targetAddress && $targetAddress !== '-')
                         <span class="text-muted" style="white-space:nowrap;"><i class="mdi mdi-map-marker-outline me-1 text-primary"></i>Address</span>
-                        <span class="fw-medium text-dark" style="line-height:1.4;">: {{ $targetAddress }}</span>
+                        <div class="fw-medium text-dark" style="line-height:1.4; display:flex; align-items:flex-start;">
+                            <span style="flex-shrink:0; margin-right:4px;">:</span>
+                            <span style="flex:1;">{{ $targetAddress }}</span>
+                        </div>
                     @endif
                 </div>
             </div>
@@ -135,7 +138,7 @@
             $amountSpan = ($quote->tax || $hasDisc) ? 2 : 1;
         @endphp
         <div>
-            <table class="table table-bordered m-0" style="border: 1px solid rgb(60,60,60); width: 100%;">
+            <table class="table table-bordered items-top-align-table m-0" style="border: 1px solid rgb(60,60,60); width: 100%;">
                 <thead class="table-light">
                     <tr>
                         <th class="text-center align-middle" style="width:1%">No.</th>
@@ -261,7 +264,7 @@
                     @endforeach
 
                     {{-- Finance Summary --}}
-                    <tr class="fw-medium" style="font-size: 13px">
+                    <tr class="fw-medium finance-summary-row" style="font-size: 13px">
                         <td colspan="{{ $quote->tax ? 2 : 1 }}" rowspan="9" style="border: none !important;"></td>
                         <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
                             <p class="m-0">{{ ($quote->tax || $totalPph > 0) ? 'Subtotal' : 'Total' }}</p>
@@ -271,7 +274,7 @@
                         </td>
                     </tr>
                     @if ($quote->diskon > 0)
-                        <tr class="fw-medium" style="font-size: 13px">
+                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
                             <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
                                 <p class="m-0">Discount{{ $quote->discount_label ? ' (' . $quote->discount_label . ')' : '' }}</p>
                             </td>
@@ -279,7 +282,7 @@
                                 <p class="m-0">- Rp {{ number_format($quote->discount_amount, 0, '', '.') }}</p>
                             </td>
                         </tr>
-                        <tr class="fw-medium" style="font-size: 13px">
+                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
                             <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
                                 <p class="m-0">Total After Discount</p>
                             </td>
@@ -289,7 +292,7 @@
                         </tr>
                     @endif
                     @if ($quote->tax)
-                        <tr class="fw-medium" style="font-size: 13px">
+                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
                             <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
                                 <p class="m-0"><span class="i18n" data-en="DPP on PPN">DPP Atas PPN</span></p>
                             </td>
@@ -297,7 +300,7 @@
                                 <p class="m-0">Rp {{ number_format($afterDisc * 11 / 12, 0, '', '.') }}</p>
                             </td>
                         </tr>
-                        <tr class="fw-medium" style="font-size: 13px">
+                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
                             <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
                                 <p class="m-0">PPN 12%</p>
                             </td>
@@ -307,7 +310,7 @@
                         </tr>
                     @endif
                     @if ($quote->shipping > 0)
-                        <tr class="fw-medium" style="font-size: 13px">
+                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
                             <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
                                 <p class="m-0">Shipping Cost</p>
                             </td>
@@ -317,7 +320,7 @@
                         </tr>
                     @endif
                     @if ($totalPph > 0)
-                        <tr class="fw-medium" style="font-size: 13px">
+                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
                             <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
                                 <p class="m-0">PPH</p>
                             </td>
@@ -330,7 +333,7 @@
                         $showTagihanBreakdown = floatval($invoice->percent) < 100 || in_array($invoice->type, ['DP', 'BP', 'Balance Payment', 'Down Payment']);
                     @endphp
                     @if ($quote->tax || $totalPph > 0 || $showTagihanBreakdown)
-                        <tr class="fw-medium" style="font-size: 13px">
+                        <tr class="fw-medium finance-summary-row finance-summary-row-total" style="font-size: 13px">
                             <td colspan="{{ $labelSpan }}" class="text-end py-2" style="background-color:{{ $bgColor }}; padding-right: 10px !important;">
                                 <p class="m-0 fw-bold">TOTAL</p>
                             </td>
@@ -346,7 +349,7 @@
                                 $dpAmount  = round($quote->total * $dpPercent / 100);
                             @endphp
                             @if ($dpAmount > 0)
-                                <tr class="fw-medium" style="font-size: 13px">
+                                <tr class="fw-medium finance-summary-row" style="font-size: 13px">
                                     <td colspan="{{ $labelSpan }}" class="text-end py-1" style="padding-right: 10px !important; color:#dc3545;">
                                         <p class="m-0"><span class="i18n" data-en="DP Already Paid ({{ $dpPercent }}%)">DP Telah Dibayar ({{ $dpPercent }}%)</span></p>
                                     </td>
@@ -361,7 +364,7 @@
                             $billingLabelId = 'TAGIHAN ' . $billingType . ' (' . floatval($invoice->percent) . '%)';
                             $billingLabelEn = 'AMOUNT DUE - ' . $billingType . ' (' . floatval($invoice->percent) . '%)';
                         @endphp
-                        <tr style="font-size: 13px; background:yellow; border-top:2px solid #e6c300;">
+                        <tr class="finance-summary-row" style="font-size: 13px; background:yellow; border-top:2px solid #e6c300;">
                             <td colspan="{{ $labelSpan }}" class="text-end py-2 fw-bold" style="padding-right: 10px !important; color:#000;">
                                 <p class="m-0 fw-bold"><span class="i18n" data-en="{{ $billingLabelEn }}">{{ $billingLabelId }}</span></p>
                             </td>
@@ -392,15 +395,15 @@
                     <table style="width:100%; border-collapse:collapse;">
                         @if ($quote->tax)
                             <tr>
-                                <td style="padding:2px 0; color:#555; width:90px;">Bank Name</td>
+                                <td style="padding:2px 0; color:#555; width:90px;">Nama Bank</td>
                                 <td style="padding:2px 0; font-weight:600; color:#111;">: Bank BCA (IDR)</td>
                             </tr>
                             <tr>
-                                <td style="padding:2px 0; color:#555;">Acc Name</td>
+                                <td style="padding:2px 0; color:#555;">Nama Akun</td>
                                 <td style="padding:2px 0; font-weight:700; color:#696cff;">: PT REFTECH JAYA OPTIMA</td>
                             </tr>
                             <tr>
-                                <td style="padding:2px 0; color:#555;">Acc No.</td>
+                                <td style="padding:2px 0; color:#555;">No. Rekening</td>
                                 <td style="padding:2px 0; font-weight:700; color:#111;">: 008 - 6289 - 789</td>
                             </tr>
                             <tr>
@@ -431,9 +434,9 @@
                     $signDateId   = $signDateBase->copy()->locale('id')->translatedFormat('d F Y');
                     $signDateEn   = $signDateBase->copy()->locale('en')->translatedFormat('d F Y');
                 @endphp
-                <p style="margin-bottom:4px; color:#777; font-size:11px;">Bandung, <span class="i18n" data-en="{{ $signDateEn }}">{{ $signDateId }}</span></p>
+                <p style="margin-bottom:4px; color:#777; font-size:14px;">Bandung, <span class="i18n" data-en="{{ $signDateEn }}">{{ $signDateId }}</span></p>
                 @if ($quote->tax)
-                    <p style="font-weight:700; font-size:12px; margin-bottom:4px; color:#222;">PT. Reftech Jaya Optima</p>
+                    <p style="font-weight:700; font-size:14px; margin-bottom:4px; color:#222;">PT. Reftech Jaya Optima</p>
                 @endif
                 @if (isset($invoice->sign))
                     <div style="margin:8px 0;">
@@ -442,8 +445,8 @@
                 @else
                     <div style="padding:55px 0;"></div>
                 @endif
-                <p style="font-weight:700; font-size:13px; color:#111; border-bottom:1px solid #ddd; display:inline-block; padding-bottom:2px; margin-bottom:2px;">Ariep Rachman</p>
-                <p style="color:#777; font-size:11px; margin:0;">Director</p>
+                <p style="font-weight:700; font-size:14px; color:#111; border-bottom:1px solid #ddd; display:inline-block; padding-bottom:2px; margin-bottom:2px;">Ariep Rachman</p>
+                <p style="color:#777; font-size:12px; margin:0;" class="i18n" data-en="Director">Direktur</p>
             </div>
         </div>
 
@@ -452,6 +455,23 @@
 @push('after-style')
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/css/pages/app-invoice-print-header.css" />
     <style>
+        .invoice-print .text-end h1.invoice-title-heading { color: #2529fa !important; }
+        /* Theme's .table tbody td rule forces vertical-align:middle !important with higher
+           specificity than the .align-top utility class — override it here for the item table. */
+        table.items-top-align-table tbody td {
+            vertical-align: top !important;
+        }
+        /* Same specificity issue as above — demo.css forces 12px vertical padding on every
+           table cell, making the Subtotal/DPP/PPN summary rows way taller than intended. */
+        table.items-top-align-table tbody tr.finance-summary-row td {
+            padding-top: 3px !important;
+            padding-bottom: 3px !important;
+        }
+        /* TOTAL row stays a bit taller than the rest so it visually stands out. */
+        table.items-top-align-table tbody tr.finance-summary-row-total td {
+            padding-top: 7px !important;
+            padding-bottom: 7px !important;
+        }
         @media print {
             @page { size: A4 portrait; margin: 10mm 12mm 10mm 12mm; }
             .invoice-print .text-end h1.invoice-title-heading { color: #2529fa !important; }

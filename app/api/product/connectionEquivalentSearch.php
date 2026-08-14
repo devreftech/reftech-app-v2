@@ -8,10 +8,10 @@ if (!Auth::check()) {
     exit;
 }
 
-$host = env('DB_HOST', '127.0.0.1');
-$user = env('DB_USERNAME', 'root');
-$pass = env('DB_PASSWORD', '');
-$db   = env('DB_DATABASE', 'u877155683_reftech_my');
+$host = config('database.connections.mysql.host');
+$user = config('database.connections.mysql.username');
+$pass = config('database.connections.mysql.password');
+$db   = config('database.connections.mysql.database');
 
 $q = trim(request()->get('q', ''));
 

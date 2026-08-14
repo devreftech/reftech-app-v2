@@ -14,54 +14,69 @@ use App\Models\PrDiscussionMention;
 use App\Models\Product;
 use App\Models\ProductIn;
 use App\Models\Prospect;
+use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestDetail;
 use App\Models\Quotation;
 use App\Models\SerialProduct;
 use App\Models\SubtitleQuotation;
 use App\Models\Supplier;
 use App\Models\UnitQuotation;
 use App\Models\User;
+use App\Services\PurchaseRequestService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class PurchaseController extends Controller
 {
+    protected PurchaseRequestService $prService;
+
+    public function __construct(PurchaseRequestService $prService)
+    {
+        $this->prService = $prService;
+    }
+
     public function index()
     {
-        $newCount = PurchaseRequest::where('status', '0')->count();
-        $accCount = PurchaseRequest::where('status', '1')->count();
-        $deliveryCount = PurchaseRequest::where('status', '2')->count();
-        $doneCount = PurchaseRequest::where('status', '3')->count();
+        // Badge hanya menghitung PR yang pending_po-nya masih ada, biar konsisten
+        // dengan isi tabel (PR dengan id_pending yatim tidak pernah bisa ditampilkan).
+        $validPendingIds = PendingPO::pluck('id');
 
-        return view('pages.warehouse.purchase.index', compact('newCount', 'accCount', 'deliveryCount', 'doneCount'));
+        $newCount = PurchaseRequest::where('status', '0')->whereIn('id_pending', $validPendingIds)->count();
+        $accCount = PurchaseRequest::where('status', '1')->whereIn('id_pending', $validPendingIds)->count();
+        $deliveryCount = PurchaseRequest::where('status', '2')->whereIn('id_pending', $validPendingIds)->count();
+        $doneCount = PurchaseRequest::where('status', '3')->whereIn('id_pending', $validPendingIds)->count();
+        // Sama seperti isi tab-nya: PO cuma dihitung selama PR-nya masih status Acc(1).
+        $poCount = PurchaseOrder::whereNotNull('id_purchase_request')
+            ->whereIn('id_purchase_request', PurchaseRequest::where('status', '1')->pluck('id'))
+            ->count();
+
+        return view('pages.warehouse.purchase.index', compact('newCount', 'accCount', 'deliveryCount', 'doneCount', 'poCount'));
     }
     public function store(Request $request, $id)
     {
-        // dd($request->all());
         $pending = PendingPO::find($id);
         $quotation = Quotation::find($pending->id_quotation);
 
         $dQuote = DetailQuotation::where('id_quotation', $quotation->id)->get();
 
         $success = false;
+        $header = null;
 
         foreach ($request->qty as $key => $value) {
             if ($value != 0) {
-
-                $purchase = new PurchaseRequest();
-                $purchase->no_pr = $this->generateNoPr();
-                $purchase->id_pending = $id;
-                $purchase->id_user = Auth::id();
-                $purchase->id_equivalent = $dQuote[$key]->id_equivalent;
-                $purchase->qty = $request->qty[$key];   // perbaikan
-                $purchase->note = $request->note[$key]; // perbaikan
-                $purchase->status = '0';
-                $purchase->date = Carbon::now();
-
-                if ($purchase->save()) {
-                    $success = true;
+                if (!$header) {
+                    $header = $this->prService->findOrCreateDraftHeader($id, Auth::id());
                 }
+
+                $header->details()->create([
+                    'id_equivalent' => $dQuote[$key]->id_equivalent,
+                    'qty' => $request->qty[$key],
+                    'note' => $request->note[$key],
+                ]);
+
+                $success = true;
             }
         }
 
@@ -71,41 +86,15 @@ class PurchaseController extends Controller
     }
     public function store_project(Request $request, $id)
     {
-        // dd($request->all());
-        $success = false;
+        $header = $this->prService->findOrCreateDraftHeader($id, Auth::id());
 
-        $purchase = new PurchaseRequest();
-        $purchase->no_pr = $this->generateNoPr();
-        $purchase->id_pending = $id;
-        $purchase->id_user = Auth::id();
-        $purchase->id_equivalent = $request->id_equivalent;
-        $purchase->qty = $request->qty;
-        $purchase->note = $request->note;
-        $purchase->status = '0';
-        $purchase->date = Carbon::now();
+        $header->details()->create([
+            'id_equivalent' => $request->id_equivalent,
+            'qty' => $request->qty,
+            'note' => $request->note,
+        ]);
 
-        if ($purchase->save()) {
-            $success = true;
-        }
-
-        if ($success) {
-            return redirect('pending-po/' . $id)->with('success', 'Purchase Request telah dibuat');
-        }
-    }
-    private function generateNoPr(): string
-    {
-        $year = now()->format('Y');
-        $month = now()->format('m');
-        $prefix = "PR/{$year}/{$month}/";
-
-        $last = PurchaseRequest::where('no_pr', 'like', $prefix . '%')
-            ->orderByDesc('no_pr')
-            ->value('no_pr');
-
-        $lastSeq = $last ? (int) substr($last, -3) : 0;
-        $nextSeq = str_pad($lastSeq + 1, 3, '0', STR_PAD_LEFT);
-
-        return $prefix . $nextSeq;
+        return redirect('pending-po/' . $id)->with('success', 'Purchase Request telah dibuat');
     }
     public function show($id)
     {
@@ -129,7 +118,7 @@ class PurchaseController extends Controller
         }
 
         $activity = ChangeStatus::where('id_pending', $id)->with('comment')->get();
-        $purchase = PurchaseRequest::where('id_pending', $id)->get();
+        $purchase = PurchaseRequest::where('id_pending', $id)->with('details.equivalent.product', 'details.allocations.purchaseOrder', 'purchaseOrders')->first();
 
         // Data diskusi PR
         $discussions = PrDiscussion::where('id_pending', $id)
@@ -237,38 +226,20 @@ class PurchaseController extends Controller
     }
     public function delete($id)
     {
-        $purchase = PurchaseRequest::find($id);
-        $delPurchase = $purchase->delete();
-        if ($delPurchase) {
-            return 1;
-        } else {
+        $detail = PurchaseRequestDetail::find($id);
+        if (!$detail) {
             return 0;
         }
-
+        return $detail->delete() ? 1 : 0;
     }
     public function acc($id)
     {
         $purchase = PurchaseRequest::find($id);
+        if (!$purchase) {
+            return 0;
+        }
         $purchase->status = '1';
-        $purchaseSave = $purchase->save();
-        if ($purchaseSave) {
-            return 1;
-        } else {
-            return 0;
-        }
-    }
-    public function acc_all($id)
-    {
-        $purchases = PurchaseRequest::where('id_pending', $id)->get();
-        foreach ($purchases as $purchase) {
-            $purchase->status = '1';
-            $purchaseSave = $purchase->save();
-        }
-        if ($purchaseSave) {
-            return 1;
-        } else {
-            return 0;
-        }
+        return $purchase->save() ? 1 : 0;
     }
     public function delivery(Request $request, $id)
     {
@@ -281,42 +252,30 @@ class PurchaseController extends Controller
         $this->validate($request, $rule);
 
         $purchase = PurchaseRequest::find($id);
-        $purchase->status = '2';
-        $purchase->purchase_type = $request->purchase_type;
-        $purchase->cargo = $request->cargo;
-        $purchase->no_resi = $request->no_resi;
-        $purchase->purchase_date = $request->purchase_date;
-        $purchaseSave = $purchase->save();
-        if ($purchaseSave) {
-            return 1;
-        } else {
+        if (!$purchase) {
             return 0;
         }
-    }
-    public function delivery_all(Request $request, $id)
-    {
-        $rule = [
-            'purchase_type' => 'required|in:Lokal,Impor',
-            'cargo' => 'required|string|max:255',
-            'no_resi' => 'nullable|string|max:255',
-            'purchase_date' => 'required|date',
-        ];
-        $this->validate($request, $rule);
+        if (!$purchase->purchaseOrders()->exists()) {
+            return response()->json(['message' => 'Buat Purchase Order terlebih dahulu sebelum lanjut ke On Delivery.'], 422);
+        }
+        $purchase->load('details.allocations');
+        if (!$this->prService->isFullyAllocated($purchase)) {
+            return response()->json(['message' => 'Masih ada item yang belum dialokasikan sepenuhnya ke Purchase Order.'], 422);
+        }
 
-        $purchases = PurchaseRequest::where('id_pending', $id)->get();
-        foreach ($purchases as $purchase) {
-            $purchase->status = '2';
-            $purchase->purchase_type = $request->purchase_type;
-            $purchase->cargo = $request->cargo;
-            $purchase->no_resi = $request->no_resi;
-            $purchase->purchase_date = $request->purchase_date;
-            $purchaseSave = $purchase->save();
-        }
-        if ($purchaseSave) {
-            return 1;
-        } else {
-            return 0;
-        }
+        $purchase->status = '2';
+        $purchaseSave = $purchase->save();
+
+        // Isi info pengiriman ke semua item (default sama untuk semua),
+        // item tertentu bisa di-override belakangan lewat updateDeliveryInfo().
+        $purchase->details()->update([
+            'purchase_type' => $request->purchase_type,
+            'cargo' => $request->cargo,
+            'no_resi' => $request->no_resi,
+            'purchase_date' => $request->purchase_date,
+        ]);
+
+        return $purchaseSave ? 1 : 0;
     }
     public function updateDeliveryInfo(Request $request, $id)
     {
@@ -328,26 +287,28 @@ class PurchaseController extends Controller
         ];
         $this->validate($request, $rule);
 
-        $purchase = PurchaseRequest::find($id);
-        $purchase->purchase_type = $request->purchase_type;
-        $purchase->cargo = $request->cargo;
-        $purchase->no_resi = $request->no_resi;
-        $purchase->purchase_date = $request->purchase_date;
-        $purchaseSave = $purchase->save();
-        if ($purchaseSave) {
-            return 1;
-        } else {
+        // $id = id baris alokasi (purchase_request_detail_allocation), bukan id item PR —
+        // satu item PR bisa split qty ke beberapa PO, jadi info pengiriman melekat per alokasi.
+        $allocation = \App\Models\PurchaseRequestDetailAllocation::find($id);
+        if (!$allocation) {
             return 0;
         }
+
+        $allocation->purchase_type = $request->purchase_type;
+        $allocation->cargo = $request->cargo;
+        $allocation->no_resi = $request->no_resi;
+        $allocation->purchase_date = $request->purchase_date;
+
+        return $allocation->save() ? 1 : 0;
     }
 
     public function done_all($id)
     {
         $pending = PendingPO::find($id);
+        $header = PurchaseRequest::where('id_pending', $id)->first();
+        $purchases = $header ? $header->details()->orderBy('id')->get() : collect();
 
-        $purchases = PurchaseRequest::where('id_pending', $id)->get();
         $fullRep = [];
-
         foreach ($purchases as $key => $purchase) {
             $equivalent = SerialProduct::where('id', $purchase->id_equivalent)->first();
 
@@ -355,7 +316,6 @@ class PurchaseController extends Controller
                 $fullRep[$key] = DetailProduct::where('id_product', $equivalent->id_product)->get();
             }
         }
-        // dd($fullRep);
         $suppliers = Supplier::all();
         $detProduct = DetailProduct::join('product', 'detail_product.id_product', '=', 'product.id')->get('detail_product.*');
         return view('pages.warehouse.purchase.form', compact('detProduct', 'suppliers', 'fullRep', 'purchases', 'pending'));
@@ -379,10 +339,11 @@ class PurchaseController extends Controller
             'replacement.*.exists' => 'Commodity || Replacement tidak valid',
         ];
         $this->validate($request, $rule, $message);
-        // dd($request->all());
-        $purchases = PurchaseRequest::where('id_pending', $id)->get();
+
+        $header = PurchaseRequest::where('id_pending', $id)->first();
+        $purchases = $header ? $header->details()->orderBy('id')->get() : collect();
+
         foreach ($purchases as $key => $purchase) {
-            $purchase->status = '3';
             if (isset($request->price[$key])) {
                 $purchase->price = $request->price[$key];
             }
@@ -391,6 +352,12 @@ class PurchaseController extends Controller
             }
             $purchase->save();
         }
+
+        if ($header) {
+            $header->status = '3';
+            $header->save();
+        }
+
         $supplier = Supplier::find($request->supplier);
         // Masukan Data ke Tabel Quotataion
         $productIn = new ProductIn();
@@ -417,7 +384,7 @@ class PurchaseController extends Controller
                 $dProductIn->id_detail_product = $request->replacement[$item];
                 $dProductIn->qty = $request->qty[$item];
                 $dProductIn->modal = $request->price[$item];
-                $dProductIn->disc = $request->disc[$item];
+                $dProductIn->disc = !empty($request->disc[$item]) ? $request->disc[$item] : 0;
                 $dProductIn->amount = $request->amount[$item];
                 $dProductIn->warehouse = $request->warehouse[$item];
                 $productD = DetailProduct::find($request->replacement[$item]);
@@ -525,8 +492,9 @@ class PurchaseController extends Controller
     public function goodsReceiptForm($id)
     {
         $pending = PendingPO::findOrFail($id);
-        $purchases = PurchaseRequest::where('id_pending', $id)->get();
-        
+        $header = PurchaseRequest::where('id_pending', $id)->first();
+        $purchases = $header ? $header->details()->orderBy('id')->get() : collect();
+
         $fullRep = [];
         foreach ($purchases as $key => $purchase) {
             $equivalent = SerialProduct::where('id', $purchase->id_equivalent)->first();
@@ -536,10 +504,10 @@ class PurchaseController extends Controller
                 $fullRep[$key] = collect([]);
             }
         }
-        
+
         $suppliers = Supplier::all();
-        
-        return view('pages.warehouse.purchase.goods_receipt', compact('pending', 'purchases', 'fullRep', 'suppliers'));
+
+        return view('pages.warehouse.purchase.goods_receipt', compact('pending', 'header', 'purchases', 'fullRep', 'suppliers'));
     }
 
     public function storeGoodsReceipt(Request $request, $id)
@@ -549,7 +517,7 @@ class PurchaseController extends Controller
             'gr_date' => 'required|date',
             'supplier' => 'required|integer|exists:supplier,id',
             'pr_id' => 'required|array',
-            'pr_id.*' => 'required|integer|exists:purchase_request,id',
+            'pr_id.*' => 'required|integer|exists:purchase_request_detail,id',
             'gr_status' => 'required|array',
             'gr_status.*' => 'required|in:Sesuai,Tidak Sesuai',
             'replacement' => 'required|array',
@@ -560,7 +528,7 @@ class PurchaseController extends Controller
             'warehouse.*' => 'required|in:BDG,BKS',
             'gr_note' => 'nullable|array',
         ];
-        
+
         $message = [
             'no_do.required' => 'Nomor Delivery Order (DO) Wajib Diisi',
             'gr_date.required' => 'Tanggal Penerimaan Wajib Diisi',
@@ -572,6 +540,7 @@ class PurchaseController extends Controller
 
         $pending = PendingPO::findOrFail($id);
         $supplier = Supplier::findOrFail($request->supplier);
+        $header = PurchaseRequest::where('id_pending', $id)->first();
 
         // 1. Create the ProductIn (Barang Masuk) record
         $productIn = new ProductIn();
@@ -595,7 +564,7 @@ class PurchaseController extends Controller
 
         // 2. Loop through each item to save Goods Receipt details
         foreach ($request->pr_id as $key => $prId) {
-            $pr = PurchaseRequest::find($prId);
+            $pr = PurchaseRequestDetail::find($prId);
             if ($pr) {
                 $status = $request->gr_status[$key];
                 $qtyRec = $request->qty_received[$key];
@@ -609,7 +578,7 @@ class PurchaseController extends Controller
                 $pr->gr_status = $status;
                 $pr->qty_received = $qtyRec;
                 $pr->gr_note = $note;
-                $pr->status = '3'; // Done / Received
+                $pr->warehouse = $wh;
                 $pr->save();
 
                 // Save Detail Product In
@@ -642,9 +611,14 @@ class PurchaseController extends Controller
                         $product->save();
                     }
                 }
-                
+
                 $dProductSave = true;
             }
+        }
+
+        if ($dProductSave && $header) {
+            $header->status = '3';
+            $header->save();
         }
 
         if ($dProductSave) {
@@ -662,10 +636,10 @@ class PurchaseController extends Controller
         ];
         $this->validate($request, $rule);
 
-        $purchase = PurchaseRequest::findOrFail($id);
-        $purchase->qty = $request->qty;
-        $purchase->note = $request->note;
-        $purchase->save();
+        $detail = PurchaseRequestDetail::findOrFail($id);
+        $detail->qty = $request->qty;
+        $detail->note = $request->note;
+        $detail->save();
 
         return redirect()->back()->with('success', 'Purchase Request berhasil diperbarui.');
     }

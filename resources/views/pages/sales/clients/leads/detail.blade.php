@@ -184,7 +184,7 @@
                     <div class="border rounded p-3 mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="fw-bold mb-0">Quotation Aktif / Berjalan</h5>
-                            <a href="{{ route('quotation.create') }}" type="button" class="btn btn-primary">
+                            <a href="{{ route('unit-quotation.create') }}" type="button" class="btn btn-primary">
                                 + New Quotation
                             </a>
                         </div>

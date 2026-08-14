@@ -15,9 +15,6 @@
 .invoice-add .invoice-preview-card .repeater-wrapper:not(:last-child) {
   margin-bottom: 1.5rem;
 }
-#dynamicRows {
-  border-bottom: none !important;
-}
 @media print {
   .invoice-edit hr,
   .invoice-add hr {

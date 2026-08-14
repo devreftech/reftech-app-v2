@@ -73,13 +73,12 @@ $(function () {
                 },
                 {
                     targets: -1,
-                    className: "text-center",
-                    orderable: false,
-                    searchable: false,
                     render: function (data, type, full, row) {
                         var id = full["id"];
                         return (
-                            '<a href="#" data-id="' + id + '" class="btn btn-sm btn-icon btn-label-danger delete-inventory rounded-circle" title="Hapus"><i class="mdi mdi-trash-can-outline"></i></a>'
+                            '<a href="#" data-id="' +
+                            id +
+                            '" class="btn btn-sm btn-label-danger delete-inventory m-2"><i class="menu-icon tf-icons mdi mdi-14px mdi-delete-outline m-0"></i></a>'
                         );
                     },
                 },
@@ -87,13 +86,13 @@ $(function () {
             order: [[0, "desc"]],
             // orderCellsTop: true,
             dom:
-                '<"row align-items-center"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 dt-action-buttons d-flex justify-content-center justify-content-md-end"B>>' +
+                '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f><"dt-action-buttons text-end pt-3 pt-md-0"B>>' +
                 '<"table-responsive"t>' +
                 '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             buttons: [
                 {
-                    text: '<i class="mdi mdi-plus me-1"></i> <span class="d-none d-sm-inline-block">Add New Adjusment</span>',
-                    className: "btn btn-sm btn-primary shadow-sm btn-new",
+                    text: '<i class="mdi mdi-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add New Adjusment</span>',
+                    className: "btn btn-primary btn-new",
                     action: function (e, dt, node, config) {
                         window.location = route("expense-inventory.create");
                     },
@@ -109,6 +108,6 @@ $(function () {
         });
     }
     dt_table_expense_inventory.on("draw", function () {
-        $('.delete-inventory').tooltip();
+        $('[data-toggle="tooltip"]').tooltip();
     });
 });

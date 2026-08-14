@@ -11,6 +11,7 @@ use App\Models\ProductIn;
 use App\Models\Prospect;
 use App\Models\Retur;
 use App\Models\Supplier;
+use App\Models\SupplierPic;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -105,7 +106,7 @@ class ProductInController extends Controller
                 $dProductIn->id_detail_product = $request->replacement[$item];
                 $dProductIn->qty = $request->qty[$item];
                 $dProductIn->modal = $request->price[$item];
-                $dProductIn->disc = $request->disc[$item];
+                $dProductIn->disc = !empty($request->disc[$item]) ? $request->disc[$item] : 0;
                 $dProductIn->amount = $request->amount[$item];
                 $dProductIn->warehouse = $request->warehouse[$item];
                 $productD = DetailProduct::where('id', $request->replacement[$item])->first();
@@ -396,7 +397,7 @@ class ProductInController extends Controller
                 $dproductIn->warehouse = $request->warehouse[$item];
                 $dproductIn->modal = $request->price[$item];
                 $dproductIn->amount = $request->amount[$item];
-                $dproductIn->disc = $request->disc[$item];
+                $dproductIn->disc = !empty($request->disc[$item]) ? $request->disc[$item] : 0;
                 $dProductSave = $dproductIn->save();
             }
         }
@@ -543,7 +544,88 @@ class ProductInController extends Controller
     public function detailSupplier($id)
     {
         $supplier = Supplier::find($id);
-        return view('pages.warehouse.supplier.detail', compact('supplier'));
+        $pics = SupplierPic::where('id_supplier', $id)->orderByDesc('id')->get();
+
+        $currentYear = now()->year;
+        $startYear = $currentYear - 4;
+        $yearlyTotalsByYear = ProductIn::selectRaw('YEAR(date) as year, SUM(total) as total')
+            ->where('id_supplier', $id)
+            ->whereNotNull('date')
+            ->whereYear('date', '>=', $startYear)
+            ->groupBy('year')
+            ->pluck('total', 'year');
+
+        $yearlyLabels = [];
+        $yearlyTotals = [];
+        for ($year = $startYear; $year <= $currentYear; $year++) {
+            $yearlyLabels[] = (string) $year;
+            $yearlyTotals[] = (int) ($yearlyTotalsByYear[$year] ?? 0);
+        }
+        $currentYearTotal = (int) ($yearlyTotalsByYear[$currentYear] ?? 0);
+
+        return view('pages.warehouse.supplier.detail', compact(
+            'supplier',
+            'pics',
+            'yearlyLabels',
+            'yearlyTotals',
+            'currentYearTotal',
+            'currentYear'
+        ));
+    }
+
+    public function storeSupplierPic(Request $request, $id)
+    {
+        $request->validate([
+            'namePic'  => 'required|string',
+            'position' => 'nullable|string',
+            'phonePic' => 'nullable|string',
+            'emailPic' => 'nullable|string',
+        ]);
+
+        $pic = new SupplierPic();
+        $pic->id_supplier = $id;
+        $pic->name_pic = $request->namePic;
+        $pic->position = $request->position;
+        $pic->phone_pic = $request->phonePic;
+        $pic->email_pic = $request->emailPic;
+        $pic->save();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'data' => $pic]);
+        }
+
+        return redirect('/supplier/' . $id)->with('success', 'PIC berhasil ditambahkan');
+    }
+
+    public function updateSupplierPic(Request $request, $id)
+    {
+        $request->validate([
+            'namePic'  => 'required|string',
+            'position' => 'nullable|string',
+            'phonePic' => 'nullable|string',
+            'emailPic' => 'nullable|string',
+        ]);
+
+        $pic = SupplierPic::find($id);
+        $pic->name_pic = $request->namePic;
+        $pic->position = $request->position;
+        $pic->phone_pic = $request->phonePic;
+        $pic->email_pic = $request->emailPic;
+        $pic->save();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'data' => $pic]);
+        }
+
+        return redirect('/supplier/' . $pic->id_supplier)->with('success', 'PIC berhasil diubah');
+    }
+
+    public function destroySupplierPic($id)
+    {
+        $pic = SupplierPic::find($id);
+        $deleted = $pic->delete();
+
+        return $deleted ? 1 : 0;
     }
 
     public function storeSupplier(Request $request)
@@ -604,9 +686,22 @@ class ProductInController extends Controller
         $supplier->npwp = $request->npwp;
         $supplier->info = $request->info;
         $supplierSave = $supplier->save();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => (bool) $supplierSave, 'data' => $supplier]);
+        }
+
         if ($supplierSave) {
             return redirect()->back()->with('success', 'Supplier berhasil ditambahkan!');
         }
+    }
+
+    public function editDataSupplier($id)
+    {
+        $supplier = Supplier::find($id);
+        $pics = SupplierPic::where('id_supplier', $id)->orderByDesc('id')->get();
+
+        return response()->json(['supplier' => $supplier, 'pics' => $pics]);
     }
     public function acceptIn($id)
     {

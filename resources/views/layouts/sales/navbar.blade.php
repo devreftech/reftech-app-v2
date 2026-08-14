@@ -21,6 +21,23 @@
 
         <ul class="navbar-nav flex-row align-items-center ms-auto">
 
+            <!-- Developer Maintenance Badge -->
+            @if (Auth::user()?->role === 'Developer')
+                @php
+                    $maintDet = \App\Services\MaintenanceService::getDetails();
+                    $isMaintActive = !empty($maintDet['is_active']);
+                    $isMaintPlanned = !empty($maintDet['is_planned']);
+                @endphp
+                <li class="nav-item me-2">
+                    <a href="{{ route('developer.maintenance.index') }}"
+                        class="btn btn-sm {{ $isMaintActive ? 'btn-danger animate__animated animate__pulse animate__infinite' : ($isMaintPlanned ? 'btn-label-warning' : 'btn-label-success') }} rounded-pill px-3 py-1 d-flex align-items-center"
+                        title="Klik untuk kelola Maintenance Mode">
+                        <i class="mdi {{ $isMaintActive ? 'mdi-alert-octagon' : ($isMaintPlanned ? 'mdi-clock-alert-outline' : 'mdi-check-circle-outline') }} me-1"></i>
+                        <span class="fw-bold">{{ $isMaintActive ? 'Maintenance ON' : ($isMaintPlanned ? 'Plan: ' . $maintDet['plan_start_time'] : 'System LIVE') }}</span>
+                    </a>
+                </li>
+            @endif
+
             <!-- Style Switcher -->
             <li class="nav-item me-1 me-xl-0">
                 <a class="nav-link btn btn-text-secondary rounded-pill btn-icon style-switcher-toggle hide-arrow"
@@ -29,6 +46,158 @@
                 </a>
             </li>
             <!--/ Style Switcher -->
+            <!-- Quick Action (Sales) -->
+            @if (in_array(Auth::user()?->role, ['Sales', 'Sales Manager', 'Admin']))
+                <li class="nav-item dropdown me-2 me-xl-1">
+                    <a class="nav-link btn btn-text-primary rounded-pill btn-icon dropdown-toggle hide-arrow"
+                        href="javascript:void(0);" data-bs-toggle="dropdown" aria-expanded="false" title="Quick Action">
+                        <i class="mdi mdi-plus-circle-outline mdi-24px text-primary"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end py-2 shadow-lg" style="min-width: 240px;">
+                        <li class="dropdown-header d-flex align-items-center py-2 border-bottom mb-1">
+                            <span class="fw-bold text-primary">
+                                <i class="mdi mdi-lightning-bolt me-1"></i>Quick Action
+                            </span>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('unit-quotation.create') }}">
+                                <div class="avatar avatar-xs me-2">
+                                    <span class="avatar-initial rounded-circle bg-label-primary">
+                                        <i class="mdi mdi-file-document-plus-outline"></i>
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="fw-semibold d-block text-dark">Create Quote</span>
+                                    <small class="text-muted">Smart Quote</small>
+                                </div>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('leads.index') }}">
+                                <div class="avatar avatar-xs me-2">
+                                    <span class="avatar-initial rounded-circle bg-label-success">
+                                        <i class="mdi mdi-account-plus-outline"></i>
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="fw-semibold d-block text-dark">Create Leads</span>
+                                    <small class="text-muted">Tambah Calon Pelanggan</small>
+                                </div>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ url('/product') }}">
+                                <div class="avatar avatar-xs me-2">
+                                    <span class="avatar-initial rounded-circle bg-label-warning">
+                                        <i class="mdi mdi-package-variant-closed"></i>
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="fw-semibold d-block text-dark">Stock Spare Part</span>
+                                    <small class="text-muted">Cek Data Product & Stok</small>
+                                </div>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ url('/unit') }}">
+                                <div class="avatar avatar-xs me-2">
+                                    <span class="avatar-initial rounded-circle bg-label-info">
+                                        <i class="mdi mdi-air-conditioner"></i>
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="fw-semibold d-block text-dark">Unit Ready Stock</span>
+                                    <small class="text-muted">Cek Unit Siap Ditawarkan</small>
+                                </div>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            @endif
+
+            <!-- Quick Action (Accounting) -->
+            @if (in_array(Auth::user()?->role, ['Accounting', 'Finance Manager']))
+                <li class="nav-item dropdown me-2 me-xl-1">
+                    <a class="nav-link btn btn-text-primary rounded-pill btn-icon dropdown-toggle hide-arrow"
+                        href="javascript:void(0);" data-bs-toggle="dropdown" aria-expanded="false" title="Quick Action Accounting">
+                        <i class="mdi mdi-plus-circle-outline mdi-24px text-primary"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end py-2 shadow-lg" style="min-width: 260px;">
+                        <li class="dropdown-header d-flex align-items-center py-2 border-bottom mb-1">
+                            <span class="fw-bold text-primary">
+                                <i class="mdi mdi-lightning-bolt me-1"></i>Quick Action Accounting
+                            </span>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('invoice.index') }}">
+                                <div class="avatar avatar-xs me-2">
+                                    <span class="avatar-initial rounded-circle bg-label-primary">
+                                        <i class="mdi mdi-file-document-check-outline"></i>
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="fw-semibold d-block text-dark">Cek Invoice</span>
+                                    <small class="text-muted">Daftar & Status Tagihan</small>
+                                </div>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('kanban.monitoring-document') }}">
+                                <div class="avatar avatar-xs me-2">
+                                    <span class="avatar-initial rounded-circle bg-label-info">
+                                        <i class="mdi mdi-view-dashboard-outline"></i>
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="fw-semibold d-block text-dark">Mon. Document</span>
+                                    <small class="text-muted">Monitoring Dokumen Penagihan</small>
+                                </div>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('invoice.request') }}">
+                                <div class="avatar avatar-xs me-2">
+                                    <span class="avatar-initial rounded-circle bg-label-warning">
+                                        <i class="mdi mdi-file-clock-outline"></i>
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="fw-semibold d-block text-dark">Request Invoice</span>
+                                    <small class="text-muted">Antrean Permintaan Invoice</small>
+                                </div>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('payment_index.payment') }}">
+                                <div class="avatar avatar-xs me-2">
+                                    <span class="avatar-initial rounded-circle bg-label-success">
+                                        <i class="mdi mdi-cash-check"></i>
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="fw-semibold d-block text-dark">Payment Receipt</span>
+                                    <small class="text-muted">Penerimaan Pembayaran</small>
+                                </div>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('payment_index.aging') }}">
+                                <div class="avatar avatar-xs me-2">
+                                    <span class="avatar-initial rounded-circle bg-label-danger">
+                                        <i class="mdi mdi-calendar-clock"></i>
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="fw-semibold d-block text-dark">Invoice Aging</span>
+                                    <small class="text-muted">Piutang Jatuh Tempo (AR)</small>
+                                </div>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            @endif
+            <!--/ Quick Action -->
+
             <!-- Notification -->
             <li class="nav-item dropdown-notifications navbar-dropdown dropdown me-2 me-xl-1">
                 <a class="nav-link btn btn-text-secondary rounded-pill btn-icon dropdown-toggle hide-arrow"

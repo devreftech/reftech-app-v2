@@ -26,15 +26,16 @@ $(function () {
                 { data: "" },
                 { data: "id" },
                 { data: "id" },
-                { data: "sku" },
                 { data: "brand" },
+                { data: "unit" },
                 { data: "pn" },
-                { data: "sn" },
+                { data: "serial" },
                 { data: "power" },
                 { data: "bar" },
                 { data: "air_cap" },
                 { data: "status" },
                 { data: "price" },
+                { data: "price_rental" },
             ],
             columnDefs: [
                 {
@@ -72,62 +73,133 @@ $(function () {
                     responsivePriority: 1,
                     targets: 3,
                 },
+                // {
+                //     targets: 3,
+                //     render: function (data, type, full, row) {
+                //         if (type === "display") {
+                //             var $dataId = full["id_p"];
+                //             var detailRoute = route("unit.show", $dataId);
+                //             return (
+
+                //             '<span>'+
+                //             '<a class="text-dark" href="' + detailRoute + '">' + data + "</a>" +
+                //             "</span>"
+                //             );
+                //         }
+                //         return data;
+                //     },
+                // },
                 {
                     targets: 3,
                     render: function (data, type, full, row) {
-                        if (type === "display") {
-                            var $dataId = full["id_p"];
-                            var detailRoute = route("unit.show", $dataId);
-                            return (
-                                
-                            '<span>'+
-                            '<a class="text-dark" href="' + detailRoute + '">' + data + "</a>" +
-                            "</span>"
-                            );
-                        }
-                        return data;
+                        var dataId = full["id"];
+                        return (
+                            '<a href="javascript:;" class="text-black waves-effect waves-light" data-bs-target="#editUnit-' +
+                            dataId +
+                            '" data-bs-toggle="modal">' +
+                            data +
+                            "</a>"
+                        );
                     },
                 },
                 {
-                    targets: 10,
+                    targets: 9,
                     render: function (data, type, full, meta) {
                         var $title = full["status"];
+                        var ket = full["tag"];
                         var $status = {
-                            "Ready": {
+                            Ready: {
                                 title: $title,
                                 class: "bg-label-primary",
+                                colorTip: "tooltip-primary",
+                                titleTip: ket,
                             },
                             "On Rental": {
                                 title: $title,
                                 class: " bg-label-warning",
+                                colorTip: "tooltip-warning",
+                                titleTip: ket,
                             },
-                            "Sold": {
+                            Sold: {
                                 title: $title,
                                 class: " bg-label-secondary",
+                                colorTip: "tooltip-secondary",
+                                titleTip: ket,
                             },
-                            "Service": {
+                            Service: {
                                 title: $title,
                                 class: " bg-label-danger",
+                                colorTip: "tooltip-danger",
+                                titleTip: ket,
                             },
                         };
                         if (typeof $status[$title] === "undefined") {
                             return data;
                         }
                         return (
-                            '<span class="badge rounded-pill ' +
+                            '<span data-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="' +
+                            $status[$title].colorTip +
+                            '" title="' +
+                            $status[$title].titleTip +
+                            '" class="badge rounded-pill ' +
                             $status[$title].class +
                             '">' +
                             $status[$title].title +
                             "</span>"
                         );
+                        // return (
+                        //     '<span class="badge rounded-pill ' +
+                        //     $status[$title].class +
+                        //     '">' +
+                        //     $status[$title].title +
+                        //     "</span>"
+                        // );
+                    },
+                },
+                {
+                    targets: [10],
+                    render: function (data, type, row) {
+                        if (data === null || data === undefined) {
+                            return "-";
+                        } else {
+                            return $.fn.dataTable.render
+                                .number(".", "", 0, "Rp.")
+                                .display(data);
+                        }
                     },
                 },
                 {
                     targets: 11,
-                    render: $.fn.dataTable.render.number(".", "", 0, "Rp."),
+                    render: function (data, type, full, meta) {
+                        var rentalprice = full["price_rental"];
+                        var bestprice = full["price_best"];
+
+                        if (rentalprice == null || rentalprice === "") {
+                            return data;
+                        }
+
+                        var formattedrentalprice = $.fn.dataTable.render
+                            .number(".", "", 0, "Rp.")
+                            .display(rentalprice);
+
+                        var formattedbestprice =
+                            bestprice != null && bestprice !== ""
+                                ? $.fn.dataTable.render
+                                      .number(".", "", 0, "Rp.")
+                                      .display(bestprice)
+                                : "-";
+
+                        return (
+                            '<span data-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="primary" title="' +
+                            formattedbestprice +
+                            '">' +
+                            formattedrentalprice +
+                            "</span>"
+                        );
+                    },
                 },
                 {
-                    targets: [4, 5, 11],
+                    targets: [3, 4, 10, 11],
                     render: function (data, type, row) {
                         if (data === null || data === undefined) {
                             return "-";
@@ -400,9 +472,7 @@ $(function () {
                 },
             },
         });
-        $("div.head-label").html(
-            '<h5 class="card-title mb-0">Table Unit</h5>'
-        );
+        $("div.head-label").html('<h5 class="card-title mb-0">Table Unit Baru</h5>');
     }
     dt_table_product_unit.on("draw", function () {
         $('[data-toggle="tooltip"]').tooltip();

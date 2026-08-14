@@ -195,7 +195,7 @@
                                     </span>
                                 @endif
                             </div>
-                            
+
                             <p class="mb-2 fw-bold text-dark" style="font-size:14px; line-height:1.3;">
                                 {{ $quote->client?->company ?? '-' }}
                             </p>
@@ -235,7 +235,7 @@
                                     <i class="mdi mdi-file-document-outline me-1"></i>Payment Terms &amp; Info
                                 </span>
                             </div>
-                            
+
                             @php
                                 $tempoPayRec = $payments->firstWhere('type', 'Tempo') ?? $payments->first();
                                 $dueDateDisplay = $tempoPayRec?->due_date ? \Carbon\Carbon::parse($tempoPayRec->due_date) : null;
@@ -287,7 +287,7 @@
                         $colCount = 5 + ($hasDisc ? 1 : 0) + ($quote->tax ? 1 : 0);
                     @endphp
                     <div class="table-responsive rounded border mb-3">
-                        <table class="table table-bordered m-0" style="width:100%; font-size:12px;">
+                        <table class="table table-bordered items-top-align-table m-0" style="width:100%; font-size:12px;">
                             <thead style="font-size:11px; background:#eeeeff; color:#3d3d8f;">
                                 <tr>
                                     <th class="text-center align-middle py-2" style="width:4%; font-weight:700; border-color:#d0d0ff;">No.</th>
@@ -498,15 +498,15 @@
                                 <table style="width:100%; border-collapse:collapse;">
                                     @if ($quote->tax)
                                         <tr>
-                                            <td style="padding:2px 0; color:#555; width:90px;">Bank Name</td>
+                                            <td style="padding:2px 0; color:#555; width:90px;">Nama Bank</td>
                                             <td style="padding:2px 0; font-weight:600; color:#111;">: Bank BCA (IDR)</td>
                                         </tr>
                                         <tr>
-                                            <td style="padding:2px 0; color:#555;">Acc Name</td>
+                                            <td style="padding:2px 0; color:#555;">Nama Akun</td>
                                             <td style="padding:2px 0; font-weight:700; color:#696cff;">: PT. REFTECH JAYA OPTIMA</td>
                                         </tr>
                                         <tr>
-                                            <td style="padding:2px 0; color:#555;">Acc No.</td>
+                                            <td style="padding:2px 0; color:#555;">No. Rekening</td>
                                             <td style="padding:2px 0; font-weight:700; color:#111;">: 008 - 6289 - 789</td>
                                         </tr>
                                         <tr>
@@ -1067,7 +1067,7 @@
                                                     </span>
                                                 </div>
                                                 <p class="mb-0 text-muted small">
-                                                    <i class="mdi mdi-calendar-outline me-1"></i>Tanggal: {{ \Carbon\Carbon::parse($del->date)->format('d F Y') }}
+                                                    <i class="mdi mdi-calendar-outline me-1"></i>Tanggal: {{ $del->date ? \Carbon\Carbon::parse($del->date)->format('d-m-Y') : '' }}
                                                     &nbsp;|&nbsp;
                                                     <i class="mdi mdi-map-marker-outline me-1"></i>Alamat: {{ $quote->client ? ($del->destination == '1' ? $quote->client->address : $quote->client->subAddress) : '-' }}
                                                 </p>
@@ -1261,7 +1261,7 @@
                                 <i class="mdi mdi-truck-delivery-outline text-primary fs-4"></i>
                                 <div>
                                     <h5 class="modal-title fw-bold mb-0">Surat Jalan #{{ $del->id }}</h5>
-                                    <small class="text-muted">Jenis: {{ ucfirst($del->type ?? 'Ekspedisi') }} &bull; Tanggal: {{ \Carbon\Carbon::parse($del->date)->format('d F Y') }}</small>
+                                    <small class="text-muted">Jenis: {{ ucfirst($del->type ?? 'Ekspedisi') }}</small>
                                 </div>
                             </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -1269,23 +1269,46 @@
                         <div class="modal-body p-4">
                             {{-- Header Document Info --}}
                             <div class="row g-3 mb-4 pb-3 border-bottom" style="font-size: 12px;">
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <div class="p-3 bg-light rounded border h-100">
                                         <span class="text-uppercase text-muted fw-bold small d-block mb-1">Pengirim (Shipper)</span>
                                         <strong class="text-dark fs-6 d-block mb-1">PT Reftech Jaya Optima</strong>
                                         <p class="mb-0 text-muted" style="line-height:1.4;">Taman Kopo Indah V, Soho Sommerville No. 31, Bandung – Jawa Barat 40218</p>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <div class="p-3 bg-light rounded border h-100">
                                         <span class="text-uppercase text-muted fw-bold small d-block mb-1">Penerima (Deliver To)</span>
                                         <strong class="text-dark fs-6 d-block mb-1">{{ $quote->client->company ?? '-' }}</strong>
                                         <p class="mb-0 text-muted" style="line-height:1.4;">
                                             <i class="mdi mdi-map-marker-outline me-1"></i>{{ $quote->client ? ($del->destination == '1' ? $quote->client->address : $quote->client->subAddress) : '-' }}
                                         </p>
-                                        <div class="mt-2 pt-2 border-top">
-                                            <span class="fw-semibold">PO / Quote No:</span> <span class="badge bg-label-primary">{{ $quote->po_number ?: $quote->no_quote }}</span>
-                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="p-3 bg-light rounded border h-100">
+                                        <span class="text-uppercase text-muted fw-bold small d-block mb-1">Shipment Info</span>
+                                        <p class="mb-1"><span class="fw-semibold">PO / Quote No:</span> <span class="badge bg-label-primary">{{ $quote->po_number ?: $quote->no_quote }}</span></p>
+                                        <p class="mb-1"><span class="fw-semibold">Jenis:</span> {{ ucfirst($del->type ?? 'Ekspedisi') }}</p>
+                                        <p class="mb-1 d-flex align-items-center gap-1">
+                                            <span class="fw-semibold">Tanggal:</span>
+                                            <span>{{ $del->date ? \Carbon\Carbon::parse($del->date)->format('d-m-Y') : '' }}</span>
+                                            @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
+                                                <button type="button" class="btn btn-xs btn-link p-0 ms-1" data-bs-toggle="collapse" data-bs-target="#edit-delivery-date-{{ $del->id }}" title="Ubah Tanggal">
+                                                    <i class="mdi mdi-pencil-outline"></i>
+                                                </button>
+                                            @endif
+                                        </p>
+                                        @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
+                                            <div class="collapse" id="edit-delivery-date-{{ $del->id }}">
+                                                <form action="{{ route('delivery.update', $del->id) }}" method="POST" class="d-flex gap-1 align-items-center mt-1">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="date" name="date" class="form-control form-control-sm" style="width:150px;" value="{{ $del->date }}">
+                                                    <button type="submit" class="btn btn-xs btn-primary py-1 px-2">Simpan</button>
+                                                </form>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -1355,9 +1378,10 @@
                         <div class="modal-body">
                             <div class="row g-3 mb-3">
                                 <div class="col-md-4">
-                                    <label class="form-label">Tanggal</label>
+                                    <label class="form-label">Tanggal <span class="text-muted fw-normal">(opsional)</span></label>
                                     <input type="date" class="form-control" name="date"
-                                        value="{{ \Carbon\Carbon::today()->toDateString() }}" required>
+                                        value="{{ \Carbon\Carbon::today()->toDateString() }}">
+                                    <div class="form-text">Boleh dikosongkan kalau tanggal belum dilampirkan.</div>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Tujuan / Alamat</label>
@@ -1673,6 +1697,13 @@
 @push('after-style')
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/css/pages/app-invoice.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css" />
+    <style>
+        /* Theme's .table tbody td rule forces vertical-align:middle !important with higher
+           specificity than the .align-top utility class — override it here for the item table. */
+        table.items-top-align-table tbody td {
+            vertical-align: top !important;
+        }
+    </style>
 @endpush
 
 @push('after-script')

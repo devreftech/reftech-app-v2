@@ -16,6 +16,7 @@ use App\Models\Quotation;
 use App\Models\SubtitleQuotation;
 use App\Models\Suo;
 use App\Models\UnitQuotation;
+use App\Services\PurchaseRequestService;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
@@ -26,6 +27,13 @@ use Intervention\Image\Facades\Image;
 
 class InvoiceController extends Controller
 {
+    protected PurchaseRequestService $prService;
+
+    public function __construct(PurchaseRequestService $prService)
+    {
+        $this->prService = $prService;
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -1050,9 +1058,18 @@ class InvoiceController extends Controller
         $invoice->status_p = 1;
         $invoice->save();
 
+        $confirmedPayments = Payment::where('id_unit_quotation', $invoice->id_unit_quotation)
+            ->where('level', 0)
+            ->get();
+
         Payment::where('id_unit_quotation', $invoice->id_unit_quotation)
             ->where('level', 0)
             ->update(['level' => 1, 'date_confirm' => now()]);
+
+        foreach ($confirmedPayments as $payment) {
+            $payment->date_confirm = now();
+            $this->prService->evaluatePaymentGate($payment, Auth::id());
+        }
 
         return redirect()->route('invoice.show_unit', $id)->with('success', 'Pembayaran telah dikonfirmasi.');
     }

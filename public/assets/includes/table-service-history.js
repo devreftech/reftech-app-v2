@@ -72,21 +72,12 @@ $(function () {
                                 $dataId
                             );
                             var dataSub = data.substring(0, 5);
-                            var pmBadge = '';
-                            if (full["pm_level"]) {
-                                var badgeColor = 'bg-label-primary';
-                                if (full["pm_level"] === 'PM2') badgeColor = 'bg-label-warning';
-                                if (full["pm_level"] === 'PM3') badgeColor = 'bg-label-danger';
-                                if (full["pm_level"] === 'PM4') badgeColor = 'bg-label-info';
-                                if (full["pm_level"] === 'Troubleshooting') badgeColor = 'bg-label-secondary';
-                                pmBadge = ' <span class="badge ' + badgeColor + ' ms-1" style="font-size: 0.7rem;">' + full["pm_level"] + '</span>';
-                            }
                             return (
-                                '<a class="text-dark fw-semibold" href="' +
+                                '<a class="text-dark" href="' +
                                 detailRoute +
                                 '">' +
                                 dataSub +
-                                "</a>" + pmBadge
+                                "</a>"
                             );
                         }
                         return data;

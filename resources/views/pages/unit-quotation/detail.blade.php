@@ -64,6 +64,14 @@
                         <p class="mb-1 fw-bold" style="font-size:13px; color:#0f172a !important;">
                             <i class="mdi mdi-calendar-blank-outline me-1 text-primary"></i>{{ $quote->date?->format('d-m-Y') }}
                         </p>
+                        @if ($quote->title)
+                            <p class="mb-1 fw-semibold" style="font-size:12.5px; color:#333;">{{ $quote->title }}</p>
+                            <div class="form-check form-switch d-flex justify-content-end align-items-center gap-1 mb-1">
+                                <label class="form-check-label text-muted" for="toggle-hide-title" style="font-size:10.5px;">Hide Title (Print)</label>
+                                <input class="form-check-input" type="checkbox" role="switch" id="toggle-hide-title"
+                                    data-id="{{ $quote->id }}" @checked($quote->hide_title)>
+                            </div>
+                        @endif
                         <div class="mb-1 mt-1">
                             <span class="badge bg-{{ $st['color'] }} px-3 py-1 fs-6">{{ $st['label'] }}</span>
                         </div>
@@ -160,7 +168,7 @@
                     $hasDisc = $quote->details->where('disc', '>', 0)->count() > 0;
                 @endphp
                 <div class="table-responsive rounded border mb-3">
-                    <table class="table table-bordered m-0" style="width:100%; font-size:12px;">
+                    <table class="table table-bordered items-top-align-table m-0" style="width:100%; font-size:12px;">
                         <thead style="font-size:11px; background:#eeeeff; color:#3d3d8f;">
                             <tr>
                                 <th class="text-center py-2" style="width:4%; font-weight:700; border-color:#d0d0ff;">No.</th>
@@ -422,8 +430,9 @@
             $pendingInvoices = $invoices->filter(fn($i) => is_null($i->no_invoice));
             $issuedTotal     = $issuedInvoices->sum(fn($i) => round($quote->total * floatval($i->percent ?? 100) / 100));
             $remaining       = $quote->total - $issuedTotal;
+            $isOwnerAdmin    = Auth::user()->role === 'Admin' && $quote->sales?->role === 'Admin';
         @endphp
-        @if (!in_array(Auth::user()->role, ['Accounting', 'Admin']))
+        @if (Auth::user()->role !== 'Accounting' && (Auth::user()->role !== 'Admin' || $quote->sales?->role === 'Admin'))
         <div class="card mb-3 border-0 shadow-sm overflow-hidden">
             <div class="card-header bg-primary bg-gradient py-3 px-4 d-flex align-items-center justify-content-between text-white">
                 <h6 class="card-title mb-0 fw-bold text-white d-flex align-items-center">
@@ -454,7 +463,7 @@
                         </a>
                     </div>
                     <div class="col-6">
-                        @if (Auth::user()->role === 'Sales')
+                        @if (Auth::user()->role === 'Sales' || $isOwnerAdmin)
                             <form action="{{ route('unit-quotation.revise', $quote->id) }}" method="POST">
                                 @csrf
                                 <button type="submit" class="btn btn-outline-info w-100 d-flex align-items-center justify-content-center gap-1"
@@ -480,7 +489,7 @@
                     </div>
                     
                     {{-- Upload / View PO --}}
-                    @if (Auth::user()->role === 'Sales' && $quote->status !== 'po_received')
+                    @if ((Auth::user()->role === 'Sales' || $isOwnerAdmin) && $quote->status !== 'po_received')
                         <button type="button" class="btn btn-sm btn-label-success d-flex align-items-center justify-content-center w-100 mb-2 btn-upload-po-unit fw-semibold"
                             data-npwp="{{ $quote->client->npwp ?? '' }}"
                             data-client-url="{{ $quote->client->role == 'Leads' ? route('detail.leads', $quote->client->id) : route('existing.show', $quote->client->id) }}">
@@ -642,7 +651,7 @@
                 @endif
 
                 {{-- 5. Change Status Option --}}
-                @if (Auth::user()->role === 'Sales' && $quote->status !== 'po_received')
+                @if ((Auth::user()->role === 'Sales' || $isOwnerAdmin) && $quote->status !== 'po_received')
                     <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center w-100 py-1.5"
                         data-bs-toggle="modal" data-bs-target="#modalChangeStatus">
                         <i class="mdi mdi-swap-horizontal me-1"></i> Change Status
@@ -1214,6 +1223,13 @@
 @push('after-style')
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/css/pages/app-invoice.css" />
+    <style>
+        /* Theme's .table tbody td rule forces vertical-align:middle !important with higher
+           specificity than the .align-top utility class — override it here for the item table. */
+        table.items-top-align-table tbody td {
+            vertical-align: top !important;
+        }
+    </style>
 @endpush
 @push('after-script')
     <script src="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.js"></script>
@@ -1356,6 +1372,22 @@
                     }
                 });
             }
+        });
+    });
+
+    $(document).on('change', '#toggle-hide-title', function () {
+        var $checkbox = $(this);
+        var id = $checkbox.data('id');
+        $.post('{{ url('unit-quotation') }}/' + id + '/toggle-hide-title', {
+            _token: '{{ csrf_token() }}'
+        }).fail(function () {
+            $checkbox.prop('checked', !$checkbox.is(':checked'));
+            Swal.fire({
+                icon: 'error', title: 'Gagal',
+                text: 'Gagal mengubah pengaturan Hide Title.',
+                customClass: { confirmButton: 'btn btn-primary waves-effect' },
+                buttonsStyling: false,
+            });
         });
     });
 

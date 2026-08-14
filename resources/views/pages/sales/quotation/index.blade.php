@@ -235,6 +235,9 @@
     @else
     {{-- ── ADMIN: Tabbed view ──────────────────────────────────────── --}}
     <div class="d-flex align-items-center justify-content-end mb-3 gap-2">
+        <a href="{{ route('unit-quotation.create') }}" class="btn btn-primary btn-sm me-auto">
+            <i class="mdi mdi-plus me-1"></i> Quick Quote
+        </a>
         <label class="form-label mb-0 text-muted" style="white-space:nowrap;">Filter Tahun:</label>
         <select class="form-select form-select-sm" id="admin-year-filter" style="max-width:150px;">
             <option value="all">Semua Tahun</option>
@@ -257,6 +260,12 @@
                     <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#admin-tab-quotation" type="button">
                         <i class="mdi mdi-file-document-outline me-1"></i>Quotation
                         <span class="badge rounded-pill bg-primary ms-1" id="admin-badge-quotation">-</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#admin-tab-project" type="button">
+                        <i class="mdi mdi-briefcase-outline me-1"></i>Project
+                        <span class="badge rounded-pill bg-info ms-1" id="admin-badge-project">-</span>
                     </button>
                 </li>
                 <li class="nav-item">
@@ -302,6 +311,30 @@
                     </div>
                 </div>
 
+
+                {{-- Admin Tab 2: Project (quotation dibuat oleh Admin / Sales Manager) --}}
+                <div class="tab-pane fade" id="admin-tab-project">
+                    <div class="d-flex justify-content-end p-3 pb-0">
+                        <a href="{{ route('report.project') }}" class="btn btn-label-primary btn-sm">
+                            <i class="mdi mdi-chart-bar me-1"></i> Lihat Report Akumulasi
+                        </a>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="datatable-quotation-admin-project table table-bordered" data-badge="admin-badge-project">
+                            <thead>
+                                <tr>
+                                    <th>Quote No.</th>
+                                    <th>Company</th>
+                                    <th>Total Price</th>
+                                    <th>Description</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th class="text-center" style="width:48px;"></th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
 
                 {{-- Admin Tab 3: Hot Prospect --}}
                 <div class="tab-pane fade" id="admin-tab-hot">
@@ -397,6 +430,7 @@
         table.datatable-loss-quote td, table.datatable-loss-quote th,
         table.datatable-quotation-archive td, table.datatable-quotation-archive th,
         table.datatable-quotation-admin-tab td, table.datatable-quotation-admin-tab th,
+        table.datatable-quotation-admin-project td, table.datatable-quotation-admin-project th,
         table.datatable-unit-quotation-admin td, table.datatable-unit-quotation-admin th,
         table.datatable-hot-prospect-admin td, table.datatable-hot-prospect-admin th,
         table.datatable-po-quote-admin-tab td, table.datatable-po-quote-admin-tab th,
@@ -437,6 +471,7 @@
     <script src="{{ asset('assets') }}/includes/table-quotation-archive.js"></script>
     <script src="{{ asset('assets') }}/includes/table-unit-quotation.js"></script>
     <script src="{{ asset('assets') }}/includes/table-quotation-admin-tab.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-quotation-admin-project.js"></script>
     <script src="{{ asset('assets') }}/includes/table-hot-prospect-admin.js"></script>
     <script src="{{ asset('assets') }}/includes/table-po-admin-tab.js"></script>
     <script src="{{ asset('assets') }}/includes/table-loss-admin-tab.js"></script>
@@ -506,7 +541,7 @@
         window.adminSalesFilter = '';
         window.adminQuotationYearFilter = $('#admin-year-filter').val() || 'all';
         var reloadAdminTables = function () {
-            ['dtAdminQuotation', 'dtAdminHot', 'dtAdminPo', 'dtAdminLoss'].forEach(function (key) {
+            ['dtAdminQuotation', 'dtAdminProject', 'dtAdminHot', 'dtAdminPo', 'dtAdminLoss'].forEach(function (key) {
                 if (window[key]) window[key].ajax.reload();
             });
         };

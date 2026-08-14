@@ -806,6 +806,74 @@ class OverviewController extends Controller
         ));
     }
 
+    public function reportProject($year = null)
+    {
+        $year = $year ?: now()->year;
+        $yearList = collect(range(now()->year, now()->year - 4));
+
+        $firstDay = "{$year}-01-01";
+        $lastDay  = "{$year}-12-31";
+
+        $managers = User::whereIn('id', [5, 38])->where('active', '1')->orderBy('name')->get();
+
+        $poCount    = Quotation::whereIn('id_sales', $managers->pluck('id'))->whereBetween('po_date', [$firstDay, $lastDay])->where('status', '100')->where('level', '1')->where('is_primary', '1')->count()
+            + UnitQuotation::whereIn('id_sales', $managers->pluck('id'))->where('status', 'po_received')->where('is_latest', 1)->whereBetween('po_received', [$firstDay, $lastDay])->count();
+        $poTotal    = Quotation::whereIn('id_sales', $managers->pluck('id'))->whereBetween('po_date', [$firstDay, $lastDay])->where('status', '100')->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + UnitQuotation::whereIn('id_sales', $managers->pluck('id'))->where('status', 'po_received')->where('is_latest', 1)->whereBetween('po_received', [$firstDay, $lastDay])->sum(DB::raw('total - tax_amount'));
+        $quoteCount = Quotation::whereIn('id_sales', $managers->pluck('id'))->whereBetween('estimated_date', [$firstDay, $lastDay])->whereIn('status', ['20', '40', '60', '80', '90'])->where('level', '1')->where('is_primary', '1')->count()
+            + UnitQuotation::whereIn('id_sales', $managers->pluck('id'))->whereBetween('date', [$firstDay, $lastDay])->whereNotIn('status', ['hot_prospect', 'po_received'])->where('is_latest', 1)->count();
+        $quoteTotal = Quotation::whereIn('id_sales', $managers->pluck('id'))->whereBetween('estimated_date', [$firstDay, $lastDay])->whereIn('status', ['20', '40', '60', '80', '90'])->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + UnitQuotation::whereIn('id_sales', $managers->pluck('id'))->whereBetween('date', [$firstDay, $lastDay])->whereNotIn('status', ['hot_prospect', 'po_received'])->where('is_latest', 1)->sum('total');
+        $lossCount  = Quotation::whereIn('id_sales', $managers->pluck('id'))->whereBetween('estimated_date', [$firstDay, $lastDay])->where('status', '0')->where('level', '1')->where('is_primary', '1')->count()
+            + UnitQuotation::whereIn('id_sales', $managers->pluck('id'))->whereBetween('date', [$firstDay, $lastDay])->where('status', 'loss')->where('is_latest', 1)->count();
+        $lossTotal  = Quotation::whereIn('id_sales', $managers->pluck('id'))->whereBetween('estimated_date', [$firstDay, $lastDay])->where('status', '0')->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + UnitQuotation::whereIn('id_sales', $managers->pluck('id'))->whereBetween('date', [$firstDay, $lastDay])->where('status', 'loss')->where('is_latest', 1)->sum('total');
+
+        $data = [];
+        foreach ($managers as $user) {
+            $bulanan = DB::table('quotation')
+                ->selectRaw('MONTH(po_date) as bulan, SUM(nett) as total')
+                ->where('id_sales', $user->id)
+                ->where('status', 100)
+                ->where('level', '1')
+                ->where('is_primary', '1')
+                ->whereYear('po_date', $year)
+                ->groupBy(DB::raw('MONTH(po_date)'))
+                ->pluck('total', 'bulan')
+                ->toArray();
+            $bulananUnit = DB::table('unit_quotation')
+                ->selectRaw('MONTH(po_received) as bulan, SUM(total - tax_amount) as total')
+                ->where('id_sales', $user->id)
+                ->where('status', 'po_received')
+                ->where('is_latest', 1)
+                ->whereYear('po_received', $year)
+                ->groupBy(DB::raw('MONTH(po_received)'))
+                ->pluck('total', 'bulan')
+                ->toArray();
+
+            $jumlah = [];
+            for ($i = 1; $i <= 12; $i++) {
+                $jumlah[$i] = (int) ($bulanan[$i] ?? 0) + (int) ($bulananUnit[$i] ?? 0);
+            }
+
+            $data[] = [
+                'id'          => $user->id,
+                'image'       => $user->image,
+                'name'        => $user->name,
+                'role'        => $user->role,
+                'total'       => array_sum($jumlah),
+                'jumlah'      => $jumlah,
+                'quoteCount'  => Quotation::where('id_sales', $user->id)->whereBetween('estimated_date', [$firstDay, $lastDay])->whereIn('status', ['20', '40', '60', '80', '90'])->where('level', '1')->where('is_primary', '1')->count()
+                    + UnitQuotation::where('id_sales', $user->id)->whereBetween('date', [$firstDay, $lastDay])->whereNotIn('status', ['hot_prospect', 'po_received'])->where('is_latest', 1)->count(),
+            ];
+        }
+
+        return view('pages.admin.report-project', compact(
+            'year', 'yearList', 'data',
+            'poCount', 'poTotal', 'quoteCount', 'quoteTotal', 'lossCount', 'lossTotal'
+        ));
+    }
+
     public function reportsByYear($year)
     {
         $yearList = SalesReports::select('year')->distinct()->orderBy('year', 'desc')->pluck('year');

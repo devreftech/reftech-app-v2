@@ -50,6 +50,17 @@
         width: 60%;
     }
 
+    /* Lock header to row layout regardless of print scale */
+    .invoice-print .container-fluid > .d-flex {
+        flex-direction: row !important;
+        align-items: flex-start !important;
+        flex-wrap: nowrap !important;
+    }
+    .invoice-print .container-fluid > .d-flex > .mb-xl-0 {
+        flex: 0 0 65% !important;
+        max-width: 65% !important;
+    }
+
     .invoice-print .termc {
         background-color: #fbfbfb !important;
         font-size: 12px !important;

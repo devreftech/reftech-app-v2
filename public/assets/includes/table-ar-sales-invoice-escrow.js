@@ -36,18 +36,19 @@ $(function () {
                 },
                 data: function (d) {
                     d.year = window.invoiceYearFilter || "all";
-                    d.sales_id = window.invoiceSalesFilter || "all";
                     return d;
                 },
             },
             columns: [
-                { data: "short_invoice" },
+                { data: "no_invoice" },
                 { data: "tanggal" },
                 { data: "company" },
                 { data: "harga_total" },
-                { data: "fee" },
+                { data: "company" },
                 { data: "name" },
-                { data: "bendera" },
+                {
+                    data: "bendera"
+                },
             ],
             columnDefs: [
                 {
@@ -57,22 +58,18 @@ $(function () {
                 {
                     targets: 0,
                     render: function (data, type, full, row) {
-                        var full_no = full["no_invoice"] || data || "-";
                         if (type === "display") {
                             var id = full["id"];
-                            var detailRoute = route("payment_detail.invoice", id);
-                            var short = full_no.length > 8 ? full_no.substring(0, 8) + "…" : full_no;
+                            detailRoute = route("payment_detail.invoice", id);
                             return (
-                                '<a class="fw-bold text-primary" href="' +
+                                '<a class="text-black" href="' +
                                 detailRoute +
-                                '" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="tooltip-quote-no" title="' +
-                                full_no +
                                 '">' +
-                                short +
+                                data +
                                 "</a>"
                             );
                         }
-                        return full_no;
+                        return data;
                     },
                 },
                 {
@@ -80,9 +77,9 @@ $(function () {
                     render: function (data, type, row) {
                         if (type === "display" || type === "filter") {
                             return (
-                                '<div class="d-flex justify-content-between"><span class="me-1">Rp</span><span>' +
-                                new Intl.NumberFormat("id-ID").format(data || 0) +
-                                "</span></div>"
+                                '<div class="text-end">Rp ' +
+                                new Intl.NumberFormat("id-ID").format(data) +
+                                "</div>"
                             );
                         }
                         return data;
@@ -92,26 +89,15 @@ $(function () {
                     targets: 4,
                     render: function (data, type, row) {
                         if (type === "display" || type === "filter") {
-                            if (data && data > 0) {
-                                return (
-                                    '<div class="d-flex justify-content-between"><span class="me-1">Rp</span><span>' +
-                                    new Intl.NumberFormat("id-ID").format(data) +
-                                    "</span></div>"
-                                );
-                            }
-                            return '<div class="text-center">-</div>';
+                            return (
+                                '<div class="text-center">'+ '-' +'</div>'
+                            );
                         }
                         return data;
                     },
                 },
                 {
-                    targets: 5,
-                    render: function (data, type, row) {
-                        return '<div class="text-center">' + (data || "-") + '</div>';
-                    },
-                },
-                {
-                    targets: 6,
+                    targets: -1,
                     render: function (data, type, full, row) {
                         var title, label;
                         if (data == "Reftech") {
@@ -122,28 +108,17 @@ $(function () {
                             label = "bg-label-danger";
                         }
                         return (
-                            '<div class="text-center"><span class="badge rounded-pill ' +
+                            '<span class="badge rounded-pill ' +
                             label +
                             '">' +
                             title +
-                            "</span></div>"
+                            "</span>"
                         );
                     },
                 },
             ],
             order: [],
-            dom: '<"row me-2"<"col-md-2"<"me-3"l>><"col-md-10"<"dt-action-buttons text-xl-end text-lg-start text-md-end text-start d-flex align-items-center justify-content-end flex-md-row flex-column mb-3 mb-md-0"fB>>>t<"row mx-2"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
-            buttons: [
-                {
-                    extend: 'collection',
-                    className: 'btn btn-label-secondary dropdown-toggle mx-3',
-                    text: '<i class="mdi mdi-export-variant me-1"></i>Export',
-                    buttons: [
-                        { extend: 'csv', className: 'dropdown-item', text: '<i class="mdi mdi-file-document-outline me-1"></i>CSV' },
-                        { extend: 'excel', className: 'dropdown-item', text: '<i class="mdi mdi-file-excel-outline me-1"></i>Excel' }
-                    ]
-                }
-            ],
+            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>><"table-responsive"t><"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
         });
 
         window.invoiceDataTables = window.invoiceDataTables || {};

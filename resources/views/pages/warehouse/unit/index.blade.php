@@ -25,24 +25,28 @@
                     <button class="nav-link active px-3 py-3" data-bs-toggle="tab"
                         data-bs-target="#tab-main-compressor" type="button" role="tab">
                         <i class="mdi mdi-air-conditioner me-1"></i>Air Compressor
+                        <span class="badge rounded-pill bg-label-primary ms-1" id="badge-main-compressor">0</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link px-3 py-3" data-bs-toggle="tab"
                         data-bs-target="#tab-main-dryer" type="button" role="tab">
                         <i class="mdi mdi-snowflake me-1"></i>Dryer
+                        <span class="badge rounded-pill bg-label-primary ms-1" id="badge-main-dryer">0</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link px-3 py-3" data-bs-toggle="tab"
                         data-bs-target="#tab-main-filtration" type="button" role="tab">
                         <i class="mdi mdi-filter me-1"></i>Filtration System
+                        <span class="badge rounded-pill bg-label-primary ms-1" id="badge-main-filtration">0</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link px-3 py-3" data-bs-toggle="tab"
                         data-bs-target="#tab-main-tank" type="button" role="tab">
                         <i class="mdi mdi-propane-tank me-1"></i>Air Receiver Tank
+                        <span class="badge rounded-pill bg-label-primary ms-1" id="badge-main-tank">0</span>
                     </button>
                 </li>
             </ul>
@@ -57,18 +61,21 @@
                         <button class="nav-link active" id="tab-oil-injected-btn" data-bs-toggle="tab"
                             data-bs-target="#tab-oil-injected" type="button" role="tab">
                             <i class="mdi mdi-water me-1"></i>Oil-Injected
+                            <span class="badge rounded-pill bg-label-secondary ms-1" id="badge-oil-injected">0</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="tab-oil-free-btn" data-bs-toggle="tab"
                             data-bs-target="#tab-oil-free" type="button" role="tab">
                             <i class="mdi mdi-water-off me-1"></i>Oil-Free
+                            <span class="badge rounded-pill bg-label-secondary ms-1" id="badge-oil-free">0</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="tab-compact-btn" data-bs-toggle="tab"
                             data-bs-target="#tab-compact" type="button" role="tab">
                             <i class="mdi mdi-package-variant me-1"></i>Compact
+                            <span class="badge rounded-pill bg-label-secondary ms-1" id="badge-compact">0</span>
                         </button>
                     </li>
                 </ul>
@@ -126,12 +133,14 @@
                             <button class="nav-link active btn-sm" id="tab-ref-dryer-btn" data-bs-toggle="pill"
                                 data-bs-target="#tab-ref-dryer" type="button" role="tab">
                                 <i class="mdi mdi-coolant-temperature me-1"></i>Refrigerant
+                                <span class="badge rounded-pill bg-label-secondary ms-1" id="badge-ref-dryer">0</span>
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link btn-sm" id="tab-desiccant-btn" data-bs-toggle="pill"
                                 data-bs-target="#tab-desiccant" type="button" role="tab">
                                 <i class="mdi mdi-water-remove me-1"></i>Desiccant
+                                <span class="badge rounded-pill bg-label-secondary ms-1" id="badge-desiccant">0</span>
                             </button>
                         </li>
                     </ul>

@@ -43,7 +43,7 @@
                         </div>
                     @endif
                     <div class="text-end">
-                        <h1 class="fw-bold" style="color: #2529fa; letter-spacing: 2px;">INVOICE</h1>
+                        <h1 class="fw-bold invoice-title-heading" style="color: #2529fa; letter-spacing: 2px;">INVOICE</h1>
                         <div>
                             <span class="fw-bolder" style="font-size:18px">{{ $invoice->no_invoice }}</span>
                         </div>
@@ -1546,6 +1546,9 @@
         <!-- Page CSS -->
         <link rel="stylesheet" href="{{ asset('assets') }}/vendor/css/pages/app-invoice-print-header.css" />
         <link rel="stylesheet" href="style.css">
+        <style>
+            .invoice-print .text-end h1.invoice-title-heading { color: #2529fa !important; }
+        </style>
     @endpush
     @push('after-script')
         <script src="{{ asset('assets') }}/js/app-invoice-print.js"></script>

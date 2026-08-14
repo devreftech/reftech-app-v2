@@ -27,6 +27,7 @@ $(function () {
                 { data: "id" },
                 { data: "id" },
                 { data: "company" },
+                { data: "ru" },
                 { data: "status" },
                 { data: "email" },
                 { data: "phone" },
@@ -108,9 +109,24 @@ $(function () {
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             var $dataId = full["id"];
+                            var $status_ru = full["ru"];
+                            var $status = {
+                                User: {
+                                    title: "U",
+                                    class: "bg-success",
+                                },
+                                Reseller: {
+                                    title: "R",
+                                    class: " bg-warning",
+                                },
+                            };
                             var detailRoute = route("existing.show", $dataId);
                             return (
-                                '<a class="text-dark" href="' + detailRoute + '">' + data + "</a>"
+                                '<a class="text-dark" href="' +
+                                detailRoute +
+                                '">' +
+                                data +
+                                "</a>"
                             );
                         }
                         return data;
@@ -118,6 +134,33 @@ $(function () {
                 },
                 {
                     targets: 4,
+                    render: function (data, type, full, row) {
+                        if (type === "display") {
+                            var $status_ru = full["ru"];
+                            var $status = {
+                                User: {
+                                    title: "U",
+                                    class: "bg-success",
+                                },
+                                Reseller: {
+                                    title: "R",
+                                    class: " bg-warning",
+                                },
+                            };
+                            var detailRoute = route("existing.show", $dataId);
+                            return (
+                                '<span class="badge ' +
+                                $status[$status_ru].class +
+                                '">' +
+                                $status[$status_ru].title +
+                                "</span> "
+                            );
+                        }
+                        return data;
+                    },
+                },
+                {
+                    targets: 5,
                     render: function (data, type, full, meta) {
                         // Tambahkan dropdown ke dalam kolom
                         var dropdown =
@@ -131,11 +174,11 @@ $(function () {
                         dropdown +=
                             '<option value="2" ' +
                             (data === "2" ? "selected" : "") +
-                            ">Normal</option>";
+                            ">Aktif</option>";
                         dropdown +=
                             '<option value="3" ' +
                             (data === "3" ? "selected" : "") +
-                            ">Hot</option>";
+                            ">Non Aktif</option>";
                         dropdown += "</select>";
                         return dropdown;
                     },
@@ -167,7 +210,7 @@ $(function () {
                                             if (
                                                 item.classList !== undefined &&
                                                 item.classList.contains(
-                                                    "user-name"
+                                                    "user-name",
                                                 )
                                             ) {
                                                 result =
@@ -193,11 +236,11 @@ $(function () {
                                     .css("color", config.colors.headingColor)
                                     .css(
                                         "border-color",
-                                        config.colors.borderColor
+                                        config.colors.borderColor,
                                     )
                                     .css(
                                         "background-color",
-                                        config.colors.bodyBg
+                                        config.colors.bodyBg,
                                     );
                                 $(win.document.body)
                                     .find("table")
@@ -223,7 +266,7 @@ $(function () {
                                             if (
                                                 item.classList !== undefined &&
                                                 item.classList.contains(
-                                                    "user-name"
+                                                    "user-name",
                                                 )
                                             ) {
                                                 result =
@@ -260,7 +303,7 @@ $(function () {
                                             if (
                                                 item.classList !== undefined &&
                                                 item.classList.contains(
-                                                    "user-name"
+                                                    "user-name",
                                                 )
                                             ) {
                                                 result =
@@ -297,7 +340,7 @@ $(function () {
                                             if (
                                                 item.classList !== undefined &&
                                                 item.classList.contains(
-                                                    "user-name"
+                                                    "user-name",
                                                 )
                                             ) {
                                                 result =
@@ -334,7 +377,7 @@ $(function () {
                                             if (
                                                 item.classList !== undefined &&
                                                 item.classList.contains(
-                                                    "user-name"
+                                                    "user-name",
                                                 )
                                             ) {
                                                 result =

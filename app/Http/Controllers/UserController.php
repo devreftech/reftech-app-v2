@@ -96,7 +96,7 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        $user = User::find(Auth::user()->id);
+        $user = $user->exists ? $user : User::find(Auth::id());
         $overview = User::where("role", "sales")->get();
         return view('pages.sales.user.profile', compact('user', 'overview'));
     }
@@ -135,22 +135,19 @@ class UserController extends Controller
         ];
 
         $this->validate($request, $rule, $customMessages);
-        // dd($request);
         $users = User::find($id);
         $users->name = $request->name;
         $users->email = $request->email;
         $users->birthday = $request->birthday;
-        $users->password = Hash::make($request->password);
-        $users->address = $request->address;
-        if (Auth::user()->role == 'Admin') {
-            // $users->nip = $request->nip;
-            // $users->code = $request->code;
-            // $users->active = $request->active;
+        if ($request->filled('password')) {
+            $users->password = Hash::make($request->password);
         }
+        $users->address = $request->address;
         $users->phone = '+62' . $request->phone;
+
         if ($request->hasFile('image')) {
-            if ($users->image != 'asset/profile/profile.jpg') {
-                File::delete($users->image);
+            if ($users->image && $users->image != 'asset/profile/profile.jpg' && File::exists(public_path($users->image))) {
+                File::delete(public_path($users->image));
             }
 
             $foto = $request->file('image');
@@ -159,14 +156,73 @@ class UserController extends Controller
 
             $upload_path = 'asset/profile';
             $imagename = $upload_path . '/' . $foto_name . '.' . $foto_ext;
-            $request->file('image')->move($upload_path, $imagename);
+            $foto->move(public_path($upload_path), $foto_name . '.' . $foto_ext);
 
-            $users['image'] = $imagename;
+            $users->image = $imagename;
         }
+
+        if ($request->hasFile('banner')) {
+            if ($users->banner && File::exists(public_path($users->banner))) {
+                File::delete(public_path($users->banner));
+            }
+
+            $banner = $request->file('banner');
+            $banner_ext = $banner->getClientOriginalExtension();
+            $banner_name = 'banner_' . Str::random(10);
+
+            $upload_path = 'asset/profile/banners';
+            if (!File::exists(public_path($upload_path))) {
+                File::makeDirectory(public_path($upload_path), 0777, true, true);
+            }
+            $bannerPath = $upload_path . '/' . $banner_name . '.' . $banner_ext;
+            $banner->move(public_path($upload_path), $banner_name . '.' . $banner_ext);
+
+            $users->banner = $bannerPath;
+        }
+
         $status = $users->save();
         if ($status) {
-            return redirect('/profile' . '/' . $id)->with('success', 'Data Has been updated');
+            return redirect('/profile/' . $id)->with('success', 'Data Has been updated');
         }
+    }
+
+    /**
+     * Update user profile banner photo.
+     */
+    public function updateBanner(\Illuminate\Http\Request $request, $id)
+    {
+        $request->validate([
+            'banner' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+        ], [
+            'banner.required' => 'Silakan pilih foto banner!',
+            'banner.image' => 'File harus berupa gambar.',
+            'banner.mimes' => 'Format gambar: jpeg, png, jpg, gif, webp.',
+            'banner.max' => 'Ukuran maksimal banner 5MB.',
+        ]);
+
+        $user = User::findOrFail($id);
+
+        if ($request->hasFile('banner')) {
+            if ($user->banner && File::exists(public_path($user->banner))) {
+                File::delete(public_path($user->banner));
+            }
+
+            $foto = $request->file('banner');
+            $foto_ext = $foto->getClientOriginalExtension();
+            $foto_name = 'banner_' . Str::random(10);
+
+            $upload_path = 'asset/profile/banners';
+            if (!File::exists(public_path($upload_path))) {
+                File::makeDirectory(public_path($upload_path), 0777, true, true);
+            }
+            $imagename = $upload_path . '/' . $foto_name . '.' . $foto_ext;
+            $foto->move(public_path($upload_path), $foto_name . '.' . $foto_ext);
+
+            $user->banner = $imagename;
+            $user->save();
+        }
+
+        return redirect()->back()->with('success', 'Foto Banner profil berhasil diperbarui!');
     }
 
     /**

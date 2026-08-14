@@ -136,8 +136,14 @@
                             <tr>
                                 <td><a href="{{ route('purchase-request.index') }}">{{ $pr->no_pr }}</a></td>
                                 <td>{{ optional($pr->pending)->no_pending ?? '-' }}</td>
-                                <td>{{ optional(optional($pr->equivalent)->product)->commodity ?? '-' }}</td>
-                                <td>{{ $pr->qty }}</td>
+                                <td>
+                                    @if ($pr->details->count() == 1)
+                                        {{ optional(optional($pr->details->first()->equivalent)->product)->commodity ?? '-' }}
+                                    @else
+                                        {{ $pr->details->count() }} item
+                                    @endif
+                                </td>
+                                <td>{{ $pr->details->count() == 1 ? $pr->details->first()->qty : '-' }}</td>
                                 <td>{{ \Carbon\Carbon::parse($pr->date)->translatedFormat('d/m/Y') }}</td>
                             </tr>
                         @empty

@@ -29,8 +29,21 @@
                 <p class="mb-1 fw-bold" style="font-size:13px; color:#0f172a !important;">
                     <i class="mdi mdi-calendar-blank-outline me-1 text-primary"></i>{{ $quote->date?->format('d-m-Y') }}
                 </p>
+                @if (!$quote->hide_title && $quote->title)
+                    <div class="mt-1.5 mb-1" style="display: flex; justify-content: flex-end;">
+                        <span class="d-inline-flex align-items-center px-2.5 py-1 rounded" style="background: #eef2ff; color: #3730a3; border: 1px solid #c7d2fe; font-size: 11.5px; font-weight: 600; line-height: 1.35; max-width: 320px; text-align: right;">
+                            <i class="mdi mdi-bookmark-outline text-primary me-1" style="font-size: 13px;"></i>
+                            <span>{{ $quote->title }}</span>
+                        </span>
+                    </div>
+                @endif
                 @if ($quote->no_pr)
-                    <p class="mb-0" style="font-size:11px; color:#888;">No. PR: {{ $quote->no_pr }}</p>
+                    <div class="mt-1" style="display: flex; justify-content: flex-end;">
+                        <span class="d-inline-flex align-items-center px-2 py-0.5 rounded" style="background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; font-size: 10.5px; font-weight: 500;">
+                            <i class="mdi mdi-file-document-outline me-1" style="font-size: 11px;"></i>
+                            <span>No. PR: {{ $quote->no_pr }}</span>
+                        </span>
+                    </div>
                 @endif
             </div>
         </div>
@@ -131,7 +144,7 @@
             $hasDisc = $quote->details->where('disc', '>', 0)->count() > 0;
         @endphp
 
-        <table class="table table-bordered m-0 mb-3" style="width:100%; font-size:12px;">
+        <table class="table table-bordered items-top-align-table m-0 mb-3" style="width:100%; font-size:12px;">
             <thead style="font-size:11px; background:#eeeeff; color:#3d3d8f;">
                 <tr>
                     <th class="text-center" style="width:4%; padding:10px 8px; font-weight:700; border-color:#d0d0ff;">No.</th>
@@ -385,6 +398,11 @@
 
 @push('after-style')
     <style>
+        /* Theme's .table tbody td rule forces vertical-align:middle !important with higher
+           specificity than the .align-top utility class — override it here for the item table. */
+        table.items-top-align-table tbody td {
+            vertical-align: top !important;
+        }
         @page {
             size: A4 portrait !important;
             margin: 15mm 15mm 15mm 15mm !important;

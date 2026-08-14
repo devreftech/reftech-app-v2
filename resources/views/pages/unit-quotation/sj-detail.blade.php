@@ -32,8 +32,7 @@
                             </div>
                             <div class="text-end">
                                 <h1 class="fw-bold" style="color:#181cffff; letter-spacing:2px;">DELIVERY ORDER</h1>
-                                <p class="mb-1 fw-bold text-dark" style="font-size:14px;">#{{ $doNumber }}</p>
-                                <p class="mb-0 text-muted small">{{ \Carbon\Carbon::parse($delivery->date)->format('d F Y') }}</p>
+                                <p class="mb-0 fw-bold text-dark" style="font-size:14px;">#{{ $doNumber }}</p>
                             </div>
                         </div>
 
@@ -53,8 +52,16 @@
                                 <p class="mb-1 fw-semibold" style="font-size:12px; color:#222;">
                                     <i class="mdi mdi-clipboard-text-outline me-1 text-primary"></i>PO / Quote No: <span class="fw-bold">{{ $unitQuote->po_number ?: $unitQuote->no_quote }}</span>
                                 </p>
-                                <p class="mb-0 fw-semibold" style="font-size:12px; color:#222;">
+                                <p class="mb-1 fw-semibold" style="font-size:12px; color:#222;">
                                     <i class="mdi mdi-truck-outline me-1 text-primary"></i>Jenis: <span class="fw-bold">{{ ucfirst($delivery->type) }}</span>
+                                </p>
+                                <p class="mb-0 fw-semibold" style="font-size:12px; color:#222;">
+                                    <i class="mdi mdi-calendar-outline me-1 text-primary"></i>Tanggal:
+                                    @if ($delivery->date)
+                                        <span class="fw-bold">{{ \Carbon\Carbon::parse($delivery->date)->format('d-m-Y') }}</span>
+                                    @else
+                                        <span style="display:inline-block; min-width:90px; border-bottom:1px solid #555;">&nbsp;</span>
+                                    @endif
                                 </p>
                             </div>
                         </div>
@@ -159,7 +166,13 @@
                                                             <p class="mb-1">Delivery To</p>
                                                         </div>
                                                         <div class="col-8">
-                                                            <p class="mb-1">: {{ \Carbon\Carbon::parse($delivery->date)->format('d-m-Y') }}</p>
+                                                            <p class="mb-1">:
+                                                            @if ($delivery->date)
+                                                                {{ \Carbon\Carbon::parse($delivery->date)->format('d-m-Y') }}
+                                                            @else
+                                                                <span style="display:inline-block; min-width:90px; border-bottom:1px solid #555;">&nbsp;</span>
+                                                            @endif
+                                                        </p>
                                                             <p class="mb-1">: {{ $unitQuote->po_number ?: $unitQuote->no_quote }}</p>
                                                             <p class="mb-1">: {{ $client->company ?? '-' }}</p>
                                                             <p class="mb-1">: {{ $address }}</p>

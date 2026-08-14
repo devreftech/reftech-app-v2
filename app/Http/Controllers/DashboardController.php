@@ -1265,10 +1265,9 @@ class DashboardController extends Controller
 
     public function target($sales)
     {
-        $dateNow = Carbon::now();
-        $target = Target::where('id_sales', $sales)->where('year', $dateNow->year)->first();
+        $target = Target::where('id_sales', $sales)->first();
         return response()->json([
-            'target' => $target ? number_format($target->target ?? 0, 0, ",", ".") : "0"
+            'target' => $target ? number_format($target->total ?? $target->target ?? 0, 0, ",", ".") : "0"
         ]);
     }
 }

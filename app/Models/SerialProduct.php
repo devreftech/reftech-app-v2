@@ -44,7 +44,31 @@ class SerialProduct extends Model
     {
         return $this->hasMany('App\Models\Quotation', 'id_equivalent');
     }
+    public function detailQuotations()
+    {
+        return $this->hasMany('App\Models\DetailQuotation', 'id_equivalent');
+    }
+    public function detailQuotation()
+    {
+        return $this->hasMany('App\Models\DetailQuotation', 'id_equivalent');
+    }
+    public function detailPending()
+    {
+        return $this->hasMany('App\Models\DetailPendingPO', 'id_equivalent');
+    }
+    public function purchaseRequests()
+    {
+        return $this->hasMany('App\Models\PurchaseRequestDetail', 'id_equivalent');
+    }
+    public function spareparts()
+    {
+        return $this->hasMany('App\Models\Sparepart', 'id_equivalent');
+    }
     public function detail_return()
+    {
+        return $this->hasMany('App\Models\DetailReturn', 'id_pn');
+    }
+    public function detailReturn()
     {
         return $this->hasMany('App\Models\DetailReturn', 'id_pn');
     }
@@ -52,13 +76,13 @@ class SerialProduct extends Model
     {
         return $this->hasMany('App\Models\DetailDelivery', 'id_pn');
     }
+    public function detailDelivery()
+    {
+        return $this->hasMany('App\Models\DetailDelivery', 'id_pn');
+    }
     public function detail_pending()
     {
-        return $this->hasMany('App\Models\DetailPending', 'id_equivalent');
-    }
-    public function pr()
-    {
-        return $this->hasMany('App\Models\PurchaseRequest', 'id_equivalent');
+        return $this->hasMany('App\Models\DetailPendingPO', 'id_equivalent');
     }
     public function machine()
     {

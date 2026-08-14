@@ -61,11 +61,11 @@ $(function () {
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             var $dataId = full["id"];
-                            var isUnit = full["is_unit_quotation"];
-                            var detailRoute = isUnit ? route("unit-quotation.show", $dataId) : route("quotation.show", $dataId);
-                            var badgeUnit = isUnit ? ' <span class="badge bg-label-info ms-1" style="font-size:10px;">Smart</span>' : '';
+                            var detailRoute = full["is_unit_quotation"]
+                                ? route("unit-quotation.show", $dataId)
+                                : route("quotation.show", $dataId);
                             return (
-                                '<a class="text-dark" href="' + detailRoute + '">' + data + "</a>" + badgeUnit
+                                '<a class="text-dark" href="' + detailRoute + '">' + data + "</a>"
                             );
                         }
                         return data;

@@ -162,32 +162,29 @@ $(function () {
             ],
             order: [[1, "desc"]],
             // orderCellsTop: true,
-            dom: '<"row me-2"<"col-md-2"<"me-3"l>><"col-md-10"<"dt-action-buttons text-xl-end text-lg-start text-md-end text-start d-flex align-items-center justify-content-end flex-md-row flex-column mb-3 mb-md-0"B>>>t<"row mx-2"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
+            dom:
+                '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f><"dt-action-buttons text-end pt-3 pt-md-0"B>>' +
+                '<"table-responsive"t>' +
+                '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             buttons: [
-                {
-                    extend: 'collection',
-                    className: 'btn btn-label-secondary dropdown-toggle',
-                    text: '<i class="mdi mdi-export-variant me-1"></i>Export',
-                    buttons: [
-                        { extend: 'csv', className: 'dropdown-item', text: '<i class="mdi mdi-file-document-outline me-1"></i>CSV' },
-                        { extend: 'excel', className: 'dropdown-item', text: '<i class="mdi mdi-file-excel-outline me-1"></i>Excel' }
-                    ]
-                }
+                // {
+                //     text: '<i class="mdi mdi-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add New Payable</span>',
+                //     className: "btn btn-primary btn-new",
+                //     action: function (e, dt, node, config) {
+                //         window.location = route("payable.create");
+                //     },
+                // },
+                // {
+                //     text: '<i class="mdi mdi-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add New Payable</span>',
+                //     className: "btn btn-primary",
+                //     attr: {
+                //         href: "{{ route('payable.create') }}",
+                //     },
+                // },
             ],
-            drawCallback: function (settings) {
-                $('[data-toggle="tooltip"]').tooltip();
-                var api = this.api();
-                var totalCount = api.rows({ search: 'applied' }).count();
-                $('#badge-customers').text(totalCount);
-            },
         });
     }
     dt_table_customer_search.on("draw", function () {
         $('[data-toggle="tooltip"]').tooltip();
-        var api = dt_filter;
-        if (api) {
-            var totalCount = api.rows({ search: 'applied' }).count();
-            $('#badge-customers').text(totalCount);
-        }
     });
 });

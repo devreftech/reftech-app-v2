@@ -44,7 +44,7 @@ class LogisticDashboardService
         // PR otomatis dari Sales Order (stok tidak cukup)
         $logPrFromSo = PurchaseRequest::whereNotNull('id_pending')
             ->where('status', '0')
-            ->with(['pending', 'equivalent.product'])
+            ->with(['pending', 'details.equivalent.product'])
             ->orderByDesc('date')
             ->take(6)
             ->get();
@@ -75,8 +75,14 @@ class LogisticDashboardService
 
         // Aktivitas terbaru: gabungan PR dibuat, barang diterima, barang dikirim
         $logRecentPr = PurchaseRequest::orderByDesc('created_at')
+            ->withCount('details')
             ->limit(5)
-            ->get(['no_pr as ref', 'created_at as tanggal', 'qty as ket', DB::raw("'PR Dibuat' as tipe")]);
+            ->get(['id', 'no_pr as ref', 'created_at as tanggal'])
+            ->map(function ($pr) {
+                $pr->ket = $pr->details_count . ' item';
+                $pr->tipe = 'PR Dibuat';
+                return $pr;
+            });
         $logRecentIncoming = ProductIn::where('accept', '1')
             ->orderByDesc('updated_at')
             ->limit(5)

@@ -31,18 +31,27 @@ $(function () {
                 {
                     data: "no_quote",
                 },
+                { data: "company" },
                 { data: "pn" },
                 { data: "qty" },
                 { data: "price" },
-                { data: "status" },
+                {
+                    data: "status",
+                },
                 {
                     data: "estimated_date",
                 },
             ],
             columnDefs: [
                 {
-                    targets: 5,
+                    targets: 6,
                     render: $.fn.dataTable.render.number(".", "", 0, "Rp."),
+                },
+                {
+                    targets: 3,
+                    render: function (data, type, full, row) {
+                        return data ? data : "-";
+                    },
                 },
                 {
                     targets: 2,
@@ -81,9 +90,55 @@ $(function () {
                     responsivePriority: 1,
                     targets: 2,
                 },
+                {
+                    // Label Status Name
+                    targets: 7,
+                    render: function (data, type, full, meta) {
+                        var $status_number = full["status"];
+                        var $status = {
+                            20: {
+                                title: "Send WA / Email",
+                                class: "bg-label-secondary",
+                            },
+                            30: {
+                                title: "Inquiry Accepted",
+                                class: " bg-label-dark",
+                            },
+                            40: {
+                                title: "Progress Follow Up",
+                                class: " bg-label-info",
+                            },
+                            60: {
+                                title: "Negotiation / Revisi",
+                                class: " bg-label-primary",
+                            },
+                            80: {
+                                title: "Hot Prospect",
+                                class: " bg-label-warning",
+                            },
+                            100: {
+                                title: "Done PO",
+                                class: " bg-label-success",
+                            },
+                            0: {
+                                title: "Loss",
+                                class: " bg-label-danger",
+                            },
+                        };
+                        if (typeof $status[$status_number] === "undefined") {
+                            return data;
+                        }
+                        return (
+                            '<span class="badge rounded-pill ' +
+                            $status[$status_number].class +
+                            '">' +
+                            $status[$status_number].title +
+                            "</span>"
+                        );
+                    },
+                },
             ],
             order: [[1, "desc"]],
-            dom: '<"card-header flex-column flex-md-row"<"head-label-quote text-center">><"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             // displayLength: 7,
             // lengthMenu: [7, 10, 25, 50, 75, 100],
             // buttons: [
@@ -345,9 +400,6 @@ $(function () {
                 },
             },
         });
-        $("div.head-label-quote").html(
-            '<h5 class="card-title mb-0">Table Quotation Product</h5>'
-        );
     }
     dt_table_product_quotation.on("draw", function () {
         $('[data-toggle="tooltip"]').tooltip();

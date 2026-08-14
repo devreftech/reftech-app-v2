@@ -148,13 +148,22 @@ $(function () {
                     searchable: false,
                     render: function (data, type, full, meta) {
                         var $dataId = full["id"];
-                        var $detailQUrl = route("quotation.show", $dataId);
+                        var type = full["type"];
+                        type == "Sparepart"
+                            ? (detailRoute = route(
+                                  "quotation.show",
+                                  $dataId
+                              ))
+                            : (detailRoute = route(
+                                  "show-service.quotation",
+                                  $dataId
+                              ));
                         return (
                             '<div class="d-inline-block">' +
                             '<a href="javascript:;" class="btn btn-sm btn-text-secondary rounded-pill btn-icon dropdown-toggle hide-arrow" data-bs-toggle="dropdown"><i class="mdi mdi-dots-vertical"></i></a>' +
                             '<ul class="dropdown-menu dropdown-menu-end m-0">' +
                             '<li><a href="' +
-                            $detailQUrl +
+                            detailRoute +
                             '" class="dropdown-item">Details</a></li>' +
                             '<div class="dropdown-divider"></div>' +
                             '<li><a href="javascript:;" class="dropdown-item text-danger delete-record">Delete</a></li>' +

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PendingPO;
 use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestDetail;
 use App\Models\ProjectExpense;
 use App\Models\Quotation;
 use App\Models\DetailQuotation;
@@ -81,9 +82,11 @@ class ProjectMonitoringController extends Controller
 
         // Batch cost sums per project (sebelumnya 3 query per project di dalam map = N+1)
         $projectIds = $projects->pluck('id');
-        $materialCostByProject = PurchaseRequest::whereIn('id_pending', $projectIds)
-            ->where('status', '3')
-            ->groupBy('id_pending')->selectRaw('id_pending, SUM(amount) as total')
+        $materialCostByProject = PurchaseRequestDetail::join('purchase_request', 'purchase_request.id', '=', 'purchase_request_detail.id_purchase_request')
+            ->whereIn('purchase_request.id_pending', $projectIds)
+            ->where('purchase_request.status', '3')
+            ->groupBy('purchase_request.id_pending')
+            ->selectRaw('purchase_request.id_pending, SUM(purchase_request_detail.amount) as total')
             ->pluck('total', 'id_pending');
         $generalCostByProject = ProjectExpense::whereIn('id_pending', $projectIds)
             ->groupBy('id_pending')->selectRaw('id_pending, SUM(amount) as total')
@@ -209,7 +212,7 @@ class ProjectMonitoringController extends Controller
 
         // Purchases (PR & Costs)
         $purchases = PurchaseRequest::where('id_pending', $project->id)
-            ->with('equivalent.product')
+            ->with('details.equivalent.product')
             ->get();
 
         // General Expenses
@@ -224,7 +227,7 @@ class ProjectMonitoringController extends Controller
             ->get();
 
         // Financial Math
-        $materialCost = $purchases->where('status', '3')->sum('amount');
+        $materialCost = $purchases->where('status', '3')->flatMap->details->sum('amount');
         $generalCost = $expenses->sum('amount');
         $shippingCost = $shippingCosts->sum('cost');
         $totalCost = $materialCost + $generalCost + $shippingCost;

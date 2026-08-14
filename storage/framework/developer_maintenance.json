@@ -1,0 +1,15 @@
+{
+    "is_active": false,
+    "message": "Sistem sedang dalam proses pemeliharaan & pembaruan dari Staging ke Production.",
+    "end_time": null,
+    "started_at": null,
+    "started_by": null,
+    "is_planned": false,
+    "plan_start_time": "11:43 WIB",
+    "plan_end_time": "12:13 WIB",
+    "plan_warn_minutes": 30,
+    "plan_message": "Pemberitahuan: Sistem akan memasuki masa pemeliharaan (Maintenance). Mohon segera selesaikan dan simpan pekerjaan atau transaksi Anda.",
+    "auto_activate": true,
+    "planned_by": "Lukiy (lukiy@reftech.id)",
+    "planned_at": "2026-08-14 04:13:44"
+}

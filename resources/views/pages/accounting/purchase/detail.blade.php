@@ -1,224 +1,259 @@
 @extends('layouts.sales.app')
 @section('title', 'Detail Purchase Order')
 @section('content')
+    @php
+        $totalPph = $totalPph ?? 0;
+        $hasDisc = $dPurchase->contains(fn($item) => $item->disc > 0);
+    @endphp
     <div class="row invoice-preview">
-        {{-- Invoice --}}
+        {{-- Main PO Document Card --}}
         <div class="col-xl-9 col-md-8 col-12 mb-md-0 mb-4">
-            <div class="card invoice-preview-card mb-3">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column">
+            <div class="card invoice-preview-card mb-3 shadow-sm border-0">
+                <div class="card-body p-4">
+                    {{-- Header --}}
+                    <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column mb-0">
                         <div class="mb-xl-0 pb-1">
-                            <div class="d-flex svg-illustration align-items-center gap-2 mb-4">
+                            <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
                                 <span class="app-brand-logo demo">
                                     <span style="color: var(--bs-primary)">
-                                        <img class="text-md" src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt=""
-                                            srcset="" width="60%">
+                                        <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="PT Reftech Jaya Optima" width="60%">
                                     </span>
                                 </span>
                             </div>
-                            <p class="mb-1 fw-bolder">PT Reftech Jaya Optima</p>
-                            <div style="font-size: 10px">
-                                <p class="mb-1">Taman Kopo Indah V, Soho Sommerville No. 31</p>
-                                <p class="mb-1">Bandung – Jawa Barat 40218</p>
-                                <p class="mb-1">
-                                    <i class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-14px"></i>022 54417653
-                                    {{ '   ' }}<i
-                                        class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px"></i>info@reftech.id
-                                </p>
-                                <p class="mb-1">
+                            <p class="mb-1 fw-bolder" style="font-size: 15px">PT Reftech Jaya Optima</p>
+                            <div style="font-size: 12px; color: #555;">
+                                <p class="mb-0">Taman Kopo Indah V, Soho Sommerville No. 31</p>
+                                <p class="mb-0">Bandung – Jawa Barat 40218</p>
+                                <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>info@reftech.id &nbsp;|&nbsp; <i class="mdi mdi-web me-1" style="font-size:11px;"></i>www.reftech.id</p>
+                                <p class="mb-0 mt-1" style="font-size:10.5px; color:#444; font-weight:500;">
+                                    <i class="mdi mdi-certificate-outline me-1 text-primary"></i><span class="fw-bold" style="color:#696cff;">ISO Certified:</span> ISO 9001:2015 &nbsp;|&nbsp; ISO 14001:2015 &nbsp;|&nbsp; ISO 45001:2018
                                 </p>
                             </div>
                         </div>
                         <div class="text-end">
-                            <h3 class="fw-bold">Purchase Order</h3>
-                            <div>
-                                <span class="fw-bolder">#{{ $purchase->no_po }}</span>
+                            <h3 class="fw-bold mb-1" style="letter-spacing:2px; color:#696cff;">PURCHASE ORDER</h3>
+                            <p class="mb-1 fw-bold text-dark" style="font-size:16px;">#{{ $purchase->no_po }}</p>
+                            <p class="mb-1 fw-bold" style="font-size:13px; color:#0f172a !important;">
+                                <i class="mdi mdi-calendar-blank-outline me-1 text-primary"></i>{{ Carbon\Carbon::parse($purchase->date)->format('d-m-Y') }}
+                            </p>
+                            <div class="mb-1 mt-1">
+                                <span class="badge bg-primary px-3 py-1 fs-6">PURCHASE ORDER</span>
                             </div>
-                            <div class="mt-1">
-                                <span class="text-muted">{{ Carbon\Carbon::parse($purchase->date)->format('d-m-Y') }}</span>
-                            </div>
+                            @if ($purchase->category)
+                                <p class="mb-0 text-muted" style="font-size:11px;">Category: {{ $purchase->category }}</p>
+                            @endif
                         </div>
                     </div>
-                </div>
-                <hr class="my-0">
-                <div class="card-body mb-3">
-                    <div class="row">
-                        <div class="col-6">
-                            <h6 class="fw-semibold fs-4 mb-3">Vendor:</h6>
-                        </div>
-                        <div class="col-6 mb-2">
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-6">
-                            <div class="row">
-                                <div class="col-4 fw-medium">
-                                    <p class="mb-1">ATTN </p>
-                                </div>
-                                <div class="col-8">
-                                    <p class="mb-1">: {{ $purchase->attn }}</p>
-                                </div>
-                                <div class="col-4 fw-medium">
-                                    <p class="mb-1">Company </p>
-                                </div>
-                                <div class="col-8">
-                                    <p class="mb-1">: {{ $purchase->company }}</p>
-                                </div>
-                                <div class="col-4 fw-medium">
-                                    <p class="mb-1">Phone </p>
-                                </div>
-                                <div class="col-8">
-                                    <p class="mb-1">: {{ $purchase->phone }}</p>
-                                </div>
-                                <div class="col-4 fw-medium">
-                                    <p class="mb-1">Address</p>
-                                </div>
-                                <div class="col-8">
-                                    <p class="mb-1">: {{ $purchase->address }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="row">
-                                <div class="col-6 fw-medium text-end">
-                                    <p class="mb-1">Mobile :</p>
-                                </div>
-                                <div class="col-6 text-end">
-                                    <p class="mb-1"> {{ $purchase->mobile ?? '-' }}</p>
-                                </div>
-                                <div class="col-6 fw-medium text-end">
-                                    <p class="mb-1">Email :</p>
-                                </div>
-                                <div class="col-6 text-end">
-                                    <p class="mb-1"> {{ $purchase->email ?? '-' }}</p>
-                                </div>
-                                <div class="col-6 fw-medium text-end">
-                                    <p class="mb-1">Payment :</p>
-                                </div>
-                                <div class="col-6 text-end">
-                                    <p class="mb-1"> {{ $purchase->payment ?? '-' }}</p>
-                                </div>
-                                <div class="col-6 fw-medium text-end">
-                                    <p class="mb-1">Delivery Time :</p>
-                                </div>
-                                <div class="col-6 text-end">
-                                    <p class="mb-1"> {{ $purchase->delivery ?? '-' }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="table-responsive mb-5">
-                    <table class="table m-0">
-                        <thead class="table-light border-top">
-                            <tr>
-                                <th>No.</th>
-                                <th>Item</th>
-                                <th>Qty</th>
-                                <th>Price</th>
-                                <th>Disc</th>
-                                <th>Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+
+                    {{-- Accent Divider --}}
+                    <div style="height:3px; background:linear-gradient(90deg,#696cff 0%,#9c9eff 60%,#e0e0e0 100%); border-radius:2px; margin:14px 0 16px;"></div>
+
+                    {{-- Vendor / Supplier + Ship To / Prepared By Boxes --}}
+                    <div style="display:flex !important; align-items:stretch !important; gap:12px; margin-bottom:16px; font-size:12px;">
+                        {{-- Vendor Box --}}
+                        <div style="flex:1; display:flex; flex-direction:column; align-self:stretch; border:1px solid #dcdcdc; border-radius:6px; padding:10px 14px; background:#fafafa;">
+                            <p class="mb-1 fw-bold text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#555;">Vendor / Supplier</p>
+                            <p class="mb-1 fw-bold" style="font-size:13.5px; color:#111;">{{ $purchase->company ?: '-' }}</p>
                             @php
-                                $no = 0;
+                                $vendorParts = [];
+                                if ($purchase->attn) {
+                                    $vendorParts[] = '<i class="mdi mdi-account-outline me-1" style="font-size:11px; color:#444;"></i><span style="color:#222; font-weight:500;">ATTN: ' . e($purchase->attn) . '</span>';
+                                }
+                                if ($purchase->phone || $purchase->mobile) {
+                                    $vendorParts[] = '<i class="mdi mdi-phone-outline me-1" style="font-size:11px; color:#444;"></i><span style="color:#222; font-weight:500;">' . e($purchase->phone ?: $purchase->mobile) . '</span>';
+                                }
+                                if ($purchase->email) {
+                                    $vendorParts[] = '<i class="mdi mdi-email-outline me-1" style="font-size:11px; color:#444;"></i><span style="color:#222; font-weight:500;">' . e($purchase->email) . '</span>';
+                                }
                             @endphp
-                            @foreach ($dPurchase as $product)
-                                @php
-                                    $no++;
-                                @endphp
-                                <tr style="font-size: 13px">
-                                    <td class="align-top">{{ $no }}</td>
-                                    <td class="text-nowrap align-top">
-                                        <p class="mb-0 fw-semibold" style="font-size: 12px">
-                                            {{ $product->product }}
-                                        </p>
-                                    </td>
-                                    <td class="align-top">{{ $product->qty }} {{ $product->info_qty }} </td>
-                                    <td class="align-top text-end">RP {{ number_format($product->price, 0, '', '.') }}</td>
-                                    <td class="align-top">{{ $product->disc }} % </td>
-                                    <td class="align-top text-end">RP {{ number_format($product->amount, 0, '', '.') }}
-                                    </td>
-                                </tr>
-                            @endforeach
-                            <tr style="border-bottom: #FFFFFF;">
-                                <td colspan="4" class="align-top px-4 py-5">
-                                    <div class="row">
-                                        <div class="col-3 fw-medium">
-                                            <p class="mb-1">Note </p>
-                                        </div>
-                                        <div class="col">
-                                            <p class="mb-1">: {{ $purchase->note }}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-end px-4 py-5">
-                                    <p class="mb-2">Subtotal:</p>
-                                    <p class="mb-2">Diskon:</p>
-                                    @if ($purchase->vat > 0)
-                                        <p class="mb-2">Total:</p>
-                                        <p class="mb-2">DPP Nilai Lain :</p>
-                                        <p class="mb-2">VAT 12% :</p>
-                                    @endif
-                                    @if ($totalPph > 0)
-                                        <p class="mb-2">Total PPH :</p>
-                                    @endif
-                                    <p class="mb-2 fw-bolder">Total Price :</p>
-                                </td>
-                                @php
-                                    $tax = ($purchase->total * 11) / 100;
-                                    $noTax = $purchase->total - ($purchase->total * 11) / 100;
-                                    $dpp = ($noTax * 11) / 12;
-                                @endphp
-                                <td class="px-4 py-5">
-                                    <p class="fw-semibold mb-2 text-end">RP
-                                        {{ number_format($purchase->subtotal, 0, '', '.') }}</p>
-                                    <p class="fw-semibold mb-2 text-end">RP
-                                        {{ number_format($purchase->diskon, 0, '', '.') }}</p>
-                                    @if ($purchase->vat > 0)
-                                        <p class="fw-semibold mb-2 text-end">RP
-                                            {{ number_format($noTax, 0, '', '.') }}
-                                        </p>
-                                        <p class="fw-semibold mb-2 text-end">
-                                            {{ $dpp == '0' ? '0' : 'RP ' . number_format($dpp, 0, '', '.') }}</p>
-                                        <p class="fw-semibold mb-2 text-end">
-                                            {{ $tax == '0' ? '0' : 'RP ' . number_format($tax, 0, '', '.') }}</p>
-                                    @endif
-                                    @if ($totalPph > 0)
-                                        <p class="fw-semibold mb-2 text-end">
-                                            {{ $totalPph == '0' ? '0' : 'RP ' . number_format($totalPph, 0, '', '.') }}
-                                        </p>
-                                    @endif
-                                    <p class="fw-semibold mb-2 text-end">
-                                        {{ $purchase->total == '0' ? '0' : 'RP ' . number_format($purchase->total, 0, '', '.') }}
-                                    </p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="row">
-                    <div class="col-4 text-center">
-                        <p class="fs-normal fw-bolder">Authorized By.</p>
-                        <img src="{{ url('') . '/asset/sign/ttdAngel.jpg' }}" alt="" srcset=""
-                            height="77">
-                        <p class="pt-3">Reftech Jaya Optima</p>
+                            @if (count($vendorParts) > 0)
+                                <p class="mb-1" style="font-size:11.5px; color:#333;">
+                                    {!! implode(' &nbsp;|&nbsp; ', $vendorParts) !!}
+                                </p>
+                            @endif
+                            @if ($purchase->address)
+                                <div class="mb-0" style="display:flex; align-items:flex-start; font-size:11.5px; color:#222;">
+                                    <i class="mdi mdi-map-marker-outline me-1" style="font-size:11px; color:#444; line-height:1.4; flex-shrink:0;"></i><span style="font-weight:500; line-height:1.4;">{{ $purchase->address }}</span>
+                                </div>
+                            @endif
+                        </div>
+
+                        {{-- Ship To / Terms Box --}}
+                        <div style="min-width:260px; display:flex; flex-direction:column; align-self:stretch; border:1px solid #dcdcdc; border-radius:6px; padding:10px 14px; background:#fafafa;">
+                            <p class="mb-1 fw-bold text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#555;">Ship To & Commercial Terms</p>
+                            <p class="mb-1 fw-bold" style="font-size:13.5px; color:#111;">PT Reftech Jaya Optima</p>
+                            <p class="mb-1" style="font-size:11.5px; color:#444;">
+                                <i class="mdi mdi-truck-delivery-outline me-1" style="font-size:11px; color:#444;"></i><span style="font-weight:500;">Delivery: {{ $purchase->delivery ?: '-' }}</span>
+                            </p>
+                            <p class="mb-0" style="font-size:11.5px; color:#222;">
+                                <i class="mdi mdi-credit-card-outline me-1" style="font-size:11px; color:#444;"></i><span style="font-weight:500;">Payment: {{ $purchase->payment ?: '-' }}</span>
+                            </p>
+                        </div>
                     </div>
-                    <div class="col-4"></div>
-                    <div class="col-4 text-center">
-                        <p class="fs-normal fw-bolder">Accepted By Vendor.</p>
-                        <div class="pb-5"></div>
-                        <p class="pt-3 mb-0 mt-2">{{ $purchase->attn }}</p>
-                        <p>{{ $purchase->company }}</p>
+
+                    <p class="mb-3" style="font-size:12px; color:#777; font-style:italic;">
+                        Dear Sir/Madam, Please find below our official Purchase Order for the following items :
+                    </p>
+
+                    {{-- Items Table --}}
+                    <div class="table-responsive rounded border mb-3">
+                        <table class="table table-bordered m-0" style="width:100%; font-size:12px;">
+                            <thead style="font-size:11px; background:#eeeeff; color:#3d3d8f;">
+                                <tr>
+                                    <th class="text-center py-2" style="width:5%; font-weight:700; border-color:#d0d0ff;">No.</th>
+                                    <th class="text-center py-2" style="width:45%; font-weight:700; border-color:#d0d0ff;">Item Description</th>
+                                    <th class="text-center py-2" style="width:12%; font-weight:700; border-color:#d0d0ff;">Qty</th>
+                                    <th class="text-center py-2" style="width:18%; font-weight:700; border-color:#d0d0ff;">Price (IDR)</th>
+                                    @if ($hasDisc)
+                                        <th class="text-center py-2" style="width:7%; font-weight:700; border-color:#d0d0ff;">Disc</th>
+                                    @endif
+                                    <th class="text-center py-2" style="width:13%; font-weight:700; border-color:#d0d0ff;">Amount (IDR)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php $no = 0; @endphp
+                                @foreach ($dPurchase as $product)
+                                    @php $no++; @endphp
+                                    <tr style="font-size: 12px">
+                                        <td class="text-center align-top py-2">{{ $no }}</td>
+                                        <td class="align-top py-2">
+                                            <p class="mb-0 fw-semibold" style="font-size: 12px; color:#111;">
+                                                {{ $product->product }}
+                                            </p>
+                                        </td>
+                                        <td class="text-center align-top py-2">
+                                            <span class="fw-bold" style="color:#222;">{{ $product->qty }}</span> {{ $product->info_qty }}
+                                        </td>
+                                        <td class="text-end align-top py-2">
+                                            Rp {{ number_format($product->price, 0, '', '.') }}
+                                        </td>
+                                        @if ($hasDisc)
+                                            <td class="text-center align-top py-2">
+                                                {{ $product->disc ? $product->disc . '%' : '-' }}
+                                            </td>
+                                        @endif
+                                        <td class="text-end align-top py-2 fw-semibold" style="color:#111;">
+                                            Rp {{ number_format($product->amount, 0, '', '.') }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{-- Calculations & Notes --}}
+                    @php
+                        $tax = ($purchase->total * 11) / 100;
+                        $noTax = $purchase->total - ($purchase->total * 11) / 100;
+                        $dpp = ($noTax * 11) / 12;
+                    @endphp
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 rounded border h-100" style="background:#fafafa; font-size:12px;">
+                                <p class="fw-bold mb-1 text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#555;">
+                                    <i class="mdi mdi-note-text-outline me-1 text-primary"></i> Note / Catatan
+                                </p>
+                                <p class="mb-0" style="color:#333; font-style:italic;">
+                                    {{ $purchase->note ?: 'Tidak ada catatan khusus.' }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="table-responsive">
+                                <table class="table table-bordered m-0" style="font-size: 12px; border-color: #c5c5c5;">
+                                    <tbody>
+                                        <tr>
+                                            <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">SUBTOTAL</td>
+                                            <td class="py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #111; vertical-align: middle; width: 55%;">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span>Rp</span>
+                                                    <span class="fw-semibold">{{ number_format($purchase->subtotal, 0, '', '.') }}</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        @if ($purchase->diskon > 0)
+                                            <tr>
+                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">DISCOUNT</td>
+                                                <td class="py-1_5 px-3 text-danger" style="border-color: #c5c5c5; background: #ffffff; vertical-align: middle;">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span>- Rp</span>
+                                                        <span class="fw-semibold">{{ number_format($purchase->diskon, 0, '', '.') }}</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endif
+                                        @if ($purchase->vat > 0)
+                                            <tr>
+                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">DPP NILAI LAIN</td>
+                                                <td class="py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #111; vertical-align: middle;">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span>Rp</span>
+                                                        <span class="fw-semibold">{{ $dpp == '0' ? '0' : number_format($dpp, 0, '', '.') }}</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">VAT 12%</td>
+                                                <td class="py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #111; vertical-align: middle;">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span>Rp</span>
+                                                        <span class="fw-semibold">{{ $tax == '0' ? '0' : number_format($tax, 0, '', '.') }}</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endif
+                                        @if ($totalPph > 0)
+                                            <tr>
+                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">TOTAL PPH</td>
+                                                <td class="py-1_5 px-3 text-danger" style="border-color: #c5c5c5; background: #ffffff; vertical-align: middle;">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span>- Rp</span>
+                                                        <span class="fw-semibold">{{ number_format($totalPph, 0, '', '.') }}</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endif
+                                        <tr>
+                                            <td class="text-end fw-bolder text-uppercase py-2 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #000; font-size: 13px; vertical-align: middle;">TOTAL PRICE</td>
+                                            <td class="py-2 px-3 fw-bold" style="border-color: #c5c5c5; background: #ffffff; color: #000; font-size: 13px; vertical-align: middle;">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span class="fw-bold">Rp</span>
+                                                    <span class="fw-bold fs-6">{{ $purchase->total == '0' ? '0' : number_format($purchase->total, 0, '', '.') }}</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Signatures --}}
+                    <div class="row pt-3 text-center" style="font-size:12px;">
+                        <div class="col-6">
+                            <p class="fw-bold mb-1" style="color:#333;">Authorized By.</p>
+                            <div class="my-1">
+                                <img src="{{ url('') . '/asset/sign/ttdAngel.jpg' }}" alt="TTD Angel" height="70">
+                            </div>
+                            <p class="fw-bold mb-0" style="color:#111;">PT Reftech Jaya Optima</p>
+                        </div>
+                        <div class="col-6">
+                            <div class="pt-2">
+                                <p class="fw-bold mb-1" style="color:#333;">Accepted By Vendor.</p>
+                                <div style="height:70px;"></div>
+                                <p class="fw-bold mb-0" style="color:#111;">{{ $purchase->attn ?: '-' }}</p>
+                                <p class="text-muted mb-0" style="font-size:11px;">{{ $purchase->company }}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        {{-- End: Invoice --}}
-        {{-- Button Invocie --}}
+
+        {{-- Sidebar Actions --}}
         <div class="col-xl-3 col-md-4 col-12 invoice-actions">
-            <div class="card mb-3">
+            <div class="card mb-3 shadow-sm border-0">
                 <div class="card-body">
                     @if ($purchase->category == 'Unit' && $purchase->receipt_status == 'Pending')
                         <a class="btn btn-success d-grid w-100 mb-3 waves-effect"
@@ -226,22 +261,36 @@
                             Terima Barang (Unit)
                         </a>
                     @endif
-                    <a class="btn btn-primary btn-outline-secondary d-grid w-100 mb-3 waves-effect" target="_blank"
+                    @if ($sourcePr)
+                        @if ($prDeliveryDone)
+                            <div class="alert alert-success py-2 px-3 mb-3 small">
+                                <i class="mdi mdi-check-circle-outline me-1"></i> Info pengiriman untuk PO ini sudah dikirim.
+                            </div>
+                        @elseif ((int) $sourcePr->status === 1)
+                            <a href="#" class="btn btn-info text-white d-grid w-100 mb-3 waves-effect" id="btnPoDelivery">
+                                <i class="mdi mdi-truck-delivery me-1"></i> On Delivery
+                            </a>
+                        @endif
+                        <a href="{{ route('purchase-request.show', $sourcePr->id_pending) }}" class="btn btn-label-secondary d-grid w-100 mb-3 waves-effect">
+                            <i class="mdi mdi-file-document-outline me-1"></i> Lihat Purchase Request
+                        </a>
+                    @endif
+                    <a class="btn btn-primary d-grid w-100 mb-3 waves-effect" target="_blank"
                         href="{{ route('purchase.show_print', $purchase->id) }}">
-                        Download
+                        Download / Print
                     </a>
                     <a class="btn btn-label-info d-grid w-100 mb-3 waves-effect"
                         href="{{ route('purchase.edit', $purchase->id) }}">
-                        Edit
+                        Edit PO
                     </a>
                     <a href="#" class="btn btn-outline-danger d-grid w-100 waves-effect delete-purchase mb-3"
-                        data-id="{{ $purchase->id }}">Delete</a>
+                        data-id="{{ $purchase->id }}">Delete PO</a>
                     <button class="btn btn-outline-secondary d-grid w-100 mb-3 waves-effect" id="backButton">
                         Back
                     </button>
                 </div>
             </div>
-            <div class="card">
+            <div class="card shadow-sm border-0">
                 <div class="card-body">
                     @if ($totalPph > 0)
                         <a href="#" class="btn btn-danger d-grid w-100 waves-effect delete-pph mb-3"
@@ -254,17 +303,50 @@
                             </button>
                         </a>
                     @endif
-                    {{-- <a type="button" data-bs-toggle="modal" data-bs-target="#addPph"
-                        class="d-grid w-100 waves-effect mb-3">
-                        <button type="button" class="btn btn-twitter">
-                            Input PPH Manual
-                        </button>
-                    </a> --}}
                 </div>
             </div>
         </div>
     </div>
     @include('components.modal.purchase.pph')
+
+    @if ($sourcePr && !$prDeliveryDone && (int) $sourcePr->status === 1)
+        <div class="modal fade" id="modalPoDelivery" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form id="poDeliveryForm">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold">Info Pengiriman — {{ $purchase->no_po }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-3 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label text-muted small mb-1">Tipe (dari supplier)</label>
+                                    <input type="text" class="form-control" value="{{ $prDeliveryType }}" disabled>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label text-muted small mb-1">Tgl Pembelian (dari tgl PO)</label>
+                                    <input type="text" class="form-control" value="{{ \Carbon\Carbon::parse($purchase->date)->format('d-m-Y') }}" disabled>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="poDeliveryCargo" class="form-label">Cargo / Ekspedisi</label>
+                                <input type="text" class="form-control" id="poDeliveryCargo" name="cargo" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="poDeliveryNoResi" class="form-label">No. Resi</label>
+                                <input type="text" class="form-control" id="poDeliveryNoResi" name="no_resi">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary">On Delivery</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
 @endsection
 @push('after-style')
     <!-- Page CSS -->
@@ -292,6 +374,60 @@
         $('#backButton').click(function() {
             window.history.back();
         });
+
+        var poDeliveryModalEl = document.getElementById('modalPoDelivery');
+        if (poDeliveryModalEl) {
+            var poDeliveryModal = new bootstrap.Modal(poDeliveryModalEl);
+
+            $('#btnPoDelivery').on('click', function(e) {
+                e.preventDefault();
+                poDeliveryModal.show();
+            });
+
+            $('#poDeliveryForm').on('submit', function(e) {
+                e.preventDefault();
+                $.ajax({
+                    'url': '{{ route('purchase.delivery', $purchase->id) }}',
+                    'type': 'POST',
+                    'data': {
+                        '_method': 'PATCH',
+                        '_token': '{{ csrf_token() }}',
+                        'cargo': $('#poDeliveryCargo').val(),
+                        'no_resi': $('#poDeliveryNoResi').val(),
+                    },
+                    success: function(response) {
+                        if (response == 1) {
+                            poDeliveryModal.hide();
+                            Swal.fire({
+                                icon: "success",
+                                title: "Delivery succed!",
+                                text: "Info pengiriman berhasil disimpan.",
+                                customClass: {
+                                    confirmButton: "btn btn-success waves-effect",
+                                },
+                            })
+                            window.setTimeout(function() {
+                                window.location.reload();
+                            }, 1500);
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                text: 'Gagal menyimpan info pengiriman.'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        var message = 'Gagal menyimpan info pengiriman.';
+                        if (xhr.status === 422 && xhr.responseJSON) {
+                            if (xhr.responseJSON.message) message = xhr.responseJSON.message;
+                            else if (xhr.responseJSON.errors) message = Object.values(xhr.responseJSON.errors).flat().join('\n');
+                        }
+                        Swal.fire({ icon: 'error', title: 'Oops...', text: message });
+                    }
+                });
+            });
+        }
 
         $(document).on('click', '.delete-purchase', function() {
             var id = $(this).data('id');
