@@ -301,6 +301,7 @@
                                     <th>Quote No.</th>
                                     <th>Company</th>
                                     <th>Total Price</th>
+                                    <th>Type</th>
                                     <th>Description</th>
                                     <th>Date</th>
                                     <th>Status</th>
@@ -345,6 +346,7 @@
                                     <th>Quote No.</th>
                                     <th>Company</th>
                                     <th>Total Price</th>
+                                    <th>Type</th>
                                     <th>Description</th>
                                     <th>Date</th>
                                     <th>Status</th>

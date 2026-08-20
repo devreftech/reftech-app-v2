@@ -99,7 +99,7 @@
                         </div>
                     </div>
                     <div class="row g-2 mb-3">
-                        <div class="col mb-2">
+                        <div class="col-md-6 mb-2">
                             <div class="form-floating form-floating-outline">
                                 <select class="form-select" id="selectG/O" aria-label="Default select example"
                                     name="go">
@@ -111,16 +111,31 @@
                                         Replacement
                                     </option>
                                 </select>
-                                <label for="selectG/O">Genuine/Replacement
-                                </label>
+                                <label for="selectG/O">Genuine/Replacement</label>
                             </div>
                         </div>
+                        <div class="col-md-6 mb-2">
+                            <div class="form-floating form-floating-outline">
+                                <select class="form-select" id="procurement_type" aria-label="Tipe Pengadaan"
+                                    name="procurement_type">
+                                    <option value="ready_stock" {{ (@$product->procurement_type ?? 'ready_stock') == 'ready_stock' ? 'selected' : '' }}>
+                                        Ready Stock (Wajib Pantau FSN)
+                                    </option>
+                                    <option value="by_order" {{ @$product->procurement_type == 'by_order' ? 'selected' : '' }}>
+                                        By Order / Indent (Sesuai Kebutuhan)
+                                    </option>
+                                </select>
+                                <label for="procurement_type">Tipe Pengadaan / Kebijakan Stok</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
                         <div class="col mb-2">
                             <div class="form-floating form-floating-outline">
                                 <input type="text" id="detail_desc" class="form-control" name="detail_desc"
                                     placeholder="Short Description"
                                     value="{{ old('detail_desc', @$product->detail_desc ?? '') }}">
-                                <label for="detail_desc">Short Descroption</label>
+                                <label for="detail_desc">Short Description</label>
                             </div>
                         </div>
                     </div>

@@ -169,6 +169,11 @@ class ProjectMonitoringController extends Controller
      */
     public function show($id)
     {
+        $pendingRow = PendingPO::findOrFail($id);
+        if ($pendingRow->id_unit_quotation) {
+            return redirect()->route('unit-quotation.show', $pendingRow->id_unit_quotation);
+        }
+
         $project = PendingPO::join('quotation as q', 'pending_po.id_quotation', '=', 'q.id')
             ->join('pic as p', 'q.id_pic', '=', 'p.id')
             ->join('client as c', 'p.id_client', '=', 'c.id')

@@ -3,6 +3,22 @@
 * File include item demo only specific css only
 ******************************************************************************/
 
+/* Notifikasi navbar: bell goyang pas ada notifikasi baru masuk (polling) */
+@keyframes bell-shake {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(18deg); }
+  30% { transform: rotate(-16deg); }
+  45% { transform: rotate(12deg); }
+  60% { transform: rotate(-10deg); }
+  75% { transform: rotate(6deg); }
+  90% { transform: rotate(-4deg); }
+}
+.bell-shake {
+  animation: bell-shake 0.8s ease-in-out 2;
+  transform-origin: top center;
+  display: inline-block;
+}
+
 /* Core Typography: Standard Inter Font Family */
 html,
 body,
@@ -137,6 +153,7 @@ textarea,
 
 /* Clean Modern Card Concept */
 .card,
+.clean-card,
 .modern-card,
 .custom-stat-card,
 .custom-main-card {
@@ -147,6 +164,8 @@ textarea,
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
+.card:hover,
+.clean-card:hover,
 .custom-stat-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px 0 rgba(24, 28, 33, 0.07) !important;
@@ -239,4 +258,245 @@ textarea,
   background-color: #5e52e0 !important;
   border-color: #5e52e0 !important;
 }
+
+/* ==========================================================================
+   Dark Mode Overrides (Kompatibilitas Mode Gelap)
+   ========================================================================== */
+html.dark-style .card,
+html.dark-style .clean-card,
+html.dark-style .modern-card,
+html.dark-style .custom-stat-card,
+html.dark-style .custom-main-card,
+html.dark-style .purchase-request-page .card,
+html.dark-style .purchase-request-page .modern-card,
+html.dark-style .product-in-card,
+html.dark-style .metric-card,
+html.dark-style .form-section-card,
+html.dark-style .ppt-card,
+html.dark-style .unit-info-card,
+html.dark-style .quote-filter-card {
+  background-color: #2b2c40 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.25) !important;
+  color: #cfcde4;
+}
+
+html.dark-style .card:hover,
+html.dark-style .clean-card:hover,
+html.dark-style .custom-stat-card:hover,
+html.dark-style .metric-card:hover,
+html.dark-style .form-section-card:hover {
+  border-color: rgba(105, 108, 255, 0.4) !important;
+  box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.35) !important;
+}
+
+html.dark-style .card-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background-color: transparent !important;
+}
+
+html.dark-style .card-title,
+html.dark-style .head-label-delay h5,
+html.dark-style .head-label h5,
+html.dark-style .form-section-title,
+html.dark-style .ppt-title {
+  color: #cfcde4 !important;
+}
+
+/* Bootstrap Utility Overrides for Dark Mode */
+html.dark-style .text-dark,
+html.dark-style .text-body-dark {
+  color: #cfcde4 !important;
+}
+
+html.dark-style .text-muted {
+  color: #a1a0b5 !important;
+}
+
+html.dark-style .bg-white {
+  background-color: #2b2c40 !important;
+  color: #cfcde4 !important;
+}
+
+html.dark-style .bg-light,
+html.dark-style .table-light,
+html.dark-style .table-light > th,
+html.dark-style .table-light > td {
+  background-color: #32344d !important;
+  color: #cfcde4 !important;
+}
+
+html.dark-style .btn-white {
+  background-color: #32344d !important;
+  color: #a1a0b5 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.dark-style .btn-white:hover {
+  background-color: #3c3f5c !important;
+  color: #cfcde4 !important;
+}
+
+/* Dark Mode Table Compatibility */
+html.dark-style .table thead th {
+  background-color: #32344d !important;
+  color: #a1a0b5 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark-style .table tbody td {
+  color: #cfcde4 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark-style .table-bordered th,
+html.dark-style .table-bordered td {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark-style .table-hover tbody tr:hover,
+html.dark-style .table-hover tbody tr:hover > * {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  color: #ffffff !important;
+}
+
+/* Discussion & Chat Bubbles in Dark Mode */
+html.dark-style .chat-bubble-me {
+  background-color: #3f3b77 !important;
+  border-color: #5650a8 !important;
+  color: #e7e6fc !important;
+}
+
+html.dark-style .chat-bubble-other {
+  background-color: #32344d !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #cfcde4 !important;
+}
+
+html.dark-style #mentionDropdown .list-group-item {
+  background-color: #2b2c40;
+  color: #cfcde4;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+html.dark-style #mentionDropdown .list-group-item:hover {
+  background-color: #32344d;
+}
+
+html.dark-style .mention-tag {
+  background-color: rgba(105, 108, 255, 0.16) !important;
+  color: #a39cfb !important;
+  border-color: rgba(105, 108, 255, 0.3) !important;
+}
+
+/* Kanban Board in Dark Mode */
+html.dark-style .kanban-board {
+  background-color: #232333 !important;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+html.dark-style .kanban-board header {
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark-style .kanban-title-board {
+  color: #cfcde4 !important;
+}
+
+html.dark-style .kanban-item {
+  background-color: #2b2c40 !important;
+  color: #cfcde4 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+}
+
+html.dark-style .kanban-item:hover {
+  background-color: #32344d !important;
+}
+
+html.dark-style .kanban-title-button {
+  background-color: #2b2c40 !important;
+  color: #a1a0b5 !important;
+  border: 1px dashed rgba(255, 255, 255, 0.15) !important;
+}
+
+html.dark-style .kanban-title-button:hover {
+  background-color: #32344d !important;
+  color: #cfcde4 !important;
+}
+
+html.dark-style .custom-toast {
+  background: rgba(43, 44, 64, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #cfcde4 !important;
+}
+
+/* Project Progress Tracker (PPT) in Dark Mode */
+html.dark-style .ppt-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+  background: linear-gradient(135deg, rgba(105, 108, 255, 0.08) 0%, rgba(43, 44, 64, 0) 100%) !important;
+}
+
+html.dark-style .ppt-category-wrap {
+  background-color: #32344d !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark-style .ppt-category-select {
+  color: #cfcde4 !important;
+  background-color: transparent !important;
+}
+
+html.dark-style .ppt-category-select option {
+  background-color: #2b2c40;
+  color: #cfcde4;
+}
+
+/* Select2 in Dark Mode */
+html.dark-style .select2-container--default .select2-selection--single {
+  background-color: #2b2c40 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #cfcde4 !important;
+}
+
+html.dark-style .select2-container--default .select2-selection--single .select2-selection__rendered {
+  color: #cfcde4 !important;
+}
+
+html.dark-style .select2-dropdown {
+  background-color: #2b2c40 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+html.dark-style .select2-container--default .select2-search--dropdown .select2-search__field {
+  background-color: #32344d !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #cfcde4 !important;
+}
+
+html.dark-style .select2-results__option {
+  color: #cfcde4;
+}
+
+html.dark-style .select2-container--default .select2-results__option--highlighted {
+  background-color: #696cff !important;
+  color: #ffffff !important;
+}
+
+html.dark-style .select2-unit-sub {
+  color: #a1a0b5 !important;
+}
+
+/* General Dark Mode Form Controls */
+html.dark-style .form-control:not(:focus),
+html.dark-style .form-select:not(:focus) {
+  background-color: #2b2c40;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #cfcde4;
+}
+
+html.dark-style .nav-tabs .nav-link:not(.active) {
+  color: #a1a0b5;
+}
+
+
 

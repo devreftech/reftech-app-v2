@@ -1,7 +1,7 @@
 <form action="{{ route('plant.crm.store', $existing->id) }}" method="post">
     @csrf
-    <div class="modal animate__animated animate__fadeIn" id="{{ 'createPlant' }}" tabindex="-1"
-        style="display: none;" aria-hidden="true">
+    <div class="modal fade" id="{{ 'createPlant' }}" tabindex="-1"
+        aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">

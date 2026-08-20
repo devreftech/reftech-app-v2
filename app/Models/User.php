@@ -55,6 +55,21 @@ class User extends Authenticatable
     ];
 
 
+    /**
+     * Developer accounts see the same data/pages as Admin everywhere in the app.
+     * The raw DB value stays 'Developer' so Developer-only features (maintenance
+     * tools, nav badges) can still tell the two apart via isDeveloper().
+     */
+    public function getRoleAttribute($value)
+    {
+        return $value === 'Developer' ? 'Admin' : $value;
+    }
+
+    public function isDeveloper(): bool
+    {
+        return $this->getRawOriginal('role') === 'Developer';
+    }
+
     public function detail()
     {
         return $this->hasMany('App\Models\DetailUser', 'id_users');
@@ -132,5 +147,15 @@ class User extends Authenticatable
     public function handledSales()
     {
         return $this->belongsToMany(User::class, 'accounting_sales_mapping', 'id_accounting', 'id_sales');
+    }
+
+    public function sentMessages()
+    {
+        return $this->hasMany(ChatMessage::class, 'sender_id');
+    }
+
+    public function receivedMessages()
+    {
+        return $this->hasMany(ChatMessage::class, 'receiver_id');
     }
 }

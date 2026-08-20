@@ -40,6 +40,28 @@ class ProductOutController extends Controller
         return view('pages.warehouse.product-out.form', compact('product'));
     }
 
+    // Format: 001-BK/VIII/BDG/2026 — sama polanya dengan No. Product In (BM), cuma
+    // prefix-nya BK (Barang Keluar) biar sekilas kebaca beda dokumen masuk/keluar.
+    // Nomor urut per gudang (BDG/BKS) tiap bulan.
+    private function generateNoProductOut(string $warehouse = 'BDG'): string
+    {
+        $now = now();
+        $year = $now->format('Y');
+        $romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+        $roman = $romanMonths[(int) $now->format('n') - 1];
+        $wh = in_array($warehouse, ['BDG', 'BKS']) ? $warehouse : 'BDG';
+        $suffix = "-BK/{$roman}/{$wh}/{$year}";
+
+        $last = ProductOut::where('no_product_out', 'like', '%' . $suffix)
+            ->orderByDesc('no_product_out')
+            ->value('no_product_out');
+
+        $lastSeq = $last ? (int) substr($last, 0, 3) : 0;
+        $nextSeq = str_pad($lastSeq + 1, 3, '0', STR_PAD_LEFT);
+
+        return $nextSeq . $suffix;
+    }
+
     /**
      * Store a newly created resource in storage.
      *
@@ -68,6 +90,7 @@ class ProductOutController extends Controller
         $this->validate($request, $rule, $message);
         // Masukan Data ke Tabel Product Out
         $productOut = new ProductOut();
+        $productOut->no_product_out = $this->generateNoProductOut($request->warehouse[0] ?? 'BDG');
         $productOut->id_user = Auth::user()->id;
         $productOut->invoice = $request->invoice;
         $productOut->po = $request->po;
@@ -232,6 +255,7 @@ class ProductOutController extends Controller
         $this->validate($request, $rule, $message);
         // Masukan Data ke Tabel Product Out
         $productOut = new ProductOut();
+        $productOut->no_product_out = $this->generateNoProductOut($request->warehouse[0] ?? 'BDG');
         $productOut->id_user = Auth::user()->id;
         $productOut->invoice = $request->invoice;
         $productOut->po = $request->po;

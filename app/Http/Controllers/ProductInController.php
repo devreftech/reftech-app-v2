@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\DetailReturn;
 use App\Models\Product;
 use App\Models\ProductIn;
+use App\Models\ProductInCost;
 use App\Models\Prospect;
 use App\Models\Retur;
 use App\Models\Supplier;
@@ -38,9 +39,43 @@ class ProductInController extends Controller
     public function create()
     {
         $suppliers = Supplier::all();
-        $detProduct = DetailProduct::join('product', 'detail_product.id_product', '=', 'product.id')->get('detail_product.*');
         $nextNoProductIn = $this->generateNoProductIn();
-        return view('pages.warehouse.product-in.form', compact('detProduct', 'suppliers', 'nextNoProductIn'));
+        return view('pages.warehouse.product-in.form', compact('suppliers', 'nextNoProductIn'));
+    }
+
+    // Sumber data dropdown "Commodity || Replacement" di form Product In — dulu di-render
+    // penuh sekaligus (3000+ <option>, bikin select2 lemot pas dibuka), sekarang di-search
+    // on-demand kayak pola yang sama dipakai di QuotationController::searchProducts().
+    public function searchReplacements(Request $request)
+    {
+        $search = $request->input('q');
+
+        $query = DetailProduct::join('product', 'detail_product.id_product', '=', 'product.id')
+            ->select('detail_product.id', 'detail_product.replacement', 'product.commodity', 'product.detail_desc', 'product.go');
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('detail_product.replacement', 'like', "%{$search}%")
+                    ->orWhere('product.commodity', 'like', "%{$search}%")
+                    ->orWhere('product.detail_desc', 'like', "%{$search}%");
+            });
+        }
+
+        $results = $query->limit(30)->get()->map(function ($p) {
+            $goCode = $p->go == 'Genuine' ? 'G' : 'R';
+            return [
+                'id' => $p->id,
+                // 'text' dipakai select2 buat fallback tampilan/screen reader — badge G/R
+                // yang keliatan di dropdown-nya di-render terpisah lewat templateResult (JS).
+                'text' => "{$p->commodity} ({$p->detail_desc}) || {$p->replacement} - {$goCode}",
+                'commodity' => $p->commodity,
+                'detail_desc' => $p->detail_desc,
+                'replacement' => $p->replacement,
+                'go' => $goCode,
+            ];
+        });
+
+        return response()->json($results);
     }
 
     /**
@@ -49,20 +84,25 @@ class ProductInController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    private function generateNoProductIn(): string
+    // Format: 001-BM/VIII/BDG/2026 — nomor urut per gudang (BDG/BKS) tiap bulan,
+    // biar keliatan langsung barangnya masuk ke gudang mana dari nomornya.
+    private function generateNoProductIn(string $warehouse = 'BDG'): string
     {
-        $year = now()->format('Y');
-        $month = now()->format('m');
-        $prefix = "PIN/{$year}/{$month}/";
+        $now = now();
+        $year = $now->format('Y');
+        $romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+        $roman = $romanMonths[(int) $now->format('n') - 1];
+        $wh = in_array($warehouse, ['BDG', 'BKS']) ? $warehouse : 'BDG';
+        $suffix = "-BM/{$roman}/{$wh}/{$year}";
 
-        $last = ProductIn::where('no_product_in', 'like', $prefix . '%')
+        $last = ProductIn::where('no_product_in', 'like', '%' . $suffix)
             ->orderByDesc('no_product_in')
             ->value('no_product_in');
 
-        $lastSeq = $last ? (int) substr($last, -3) : 0;
+        $lastSeq = $last ? (int) substr($last, 0, 3) : 0;
         $nextSeq = str_pad($lastSeq + 1, 3, '0', STR_PAD_LEFT);
 
-        return $prefix . $nextSeq;
+        return $nextSeq . $suffix;
     }
 
     public function store(Request $request)
@@ -82,7 +122,7 @@ class ProductInController extends Controller
         $supplier = Supplier::find($request->supplier);
         // Masukan Data ke Tabel Quotataion
         $productIn = new ProductIn();
-        $productIn->no_product_in = $this->generateNoProductIn();
+        $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
         $productIn->created_by = Auth::id();
         $productIn->no_do = NULL;
         $productIn->invoice = $request->invoice;
@@ -142,12 +182,200 @@ class ProductInController extends Controller
      */
     public function show($id)
     {
-        $product = ProductIn::find($id);
+        $product = ProductIn::with([
+            'purchaseOrder.supplier',
+            'creator',
+            'detail.detailProduct.product',
+            'return.detail.replacement.product',
+            'costs.creator',
+        ])->findOrFail($id);
+
         $tax = $product->subtotal * $product->tax / 100;
-        $detail = DetailProductIn::where('id_product_in', $id)->get();
+        $detail = $product->detail;
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
-        $return = Retur::where('id_product_in', $id)->get();
-        return view('pages.warehouse.product-in.detail', compact('product', 'detail', 'noSaleProspect', 'tax', 'return'));
+        $return = $product->return;
+
+        // Info tambahan buat mode edit inline — cuma relevan selama belum ada invoice
+        // (lihat preview.blade.php lama), jadi query-nya di-skip kalau udah gak kepake.
+        $suppliers = collect();
+        $detProduct = collect();
+        if (!$product->invoice) {
+            $suppliers = Supplier::all();
+            $detProduct = DetailProduct::join('product', 'detail_product.id_product', '=', 'product.id')->get('detail_product.*');
+
+            // Brand-nya nyimpen di serial_product (bukan di product/detail_product langsung),
+            // dan satu product bisa punya beberapa serial/brand (part alternatif) — jadi
+            // dicocokkan ke PN (replacement) yang persis dulu, baru fallback ke brand
+            // pertama yang share id_product yang sama.
+            $productIds = $detail->pluck('detailProduct.id_product')->filter()->unique();
+            $serials = \App\Models\SerialProduct::whereIn('id_product', $productIds)->get(['id_product', 'pn', 'brand']);
+            foreach ($detail as $d) {
+                $idProduct = $d->detailProduct->id_product ?? null;
+                $match = $serials->first(fn ($s) => $s->id_product === $idProduct && $s->pn === $d->detailProduct->replacement);
+                $fallback = $serials->first(fn ($s) => $s->id_product === $idProduct);
+                $d->brand = $match->brand ?? $fallback->brand ?? null;
+            }
+
+            $this->attachPoPriceReference($detail, $product->purchaseOrder);
+        }
+
+        // Preview alokasi Biaya Tambahan (tab "Biaya Tambahan") — dihitung tiap load,
+        // baru ditulis ke DB kalau user klik "Simpan & Terapkan ke HPP" (lihat applyHpp()).
+        $costAllocation = $this->calculateCostAllocation($detail, $product->costs);
+
+        return view('pages.warehouse.product-in.detail', compact(
+            'product', 'detail', 'noSaleProspect', 'tax', 'return', 'suppliers', 'detProduct', 'costAllocation'
+        ));
+    }
+
+    // Hitung nilai barang per item (harga PO kalau belum invoice, harga invoice/modal
+    // kalau udah) lalu distribusikan Biaya Tambahan secara proporsional ke nilai barang
+    // (item lebih mahal dapat porsi lebih besar) — dipakai buat preview di halaman dan
+    // buat nilai final yang ditimpakan ke HPP pas applyHpp().
+    //
+    // $unitPrices (opsional): map [detail_product_in.id => harga satuan]. Dipakai biar
+    // fungsi ini gak perlu baca atribut dinamis `po_price` dari model — soalnya kalau
+    // model itu nanti ikut di-save() (lihat applyHpp()), atribut dinamis semacam itu
+    // ikut ke-dirty dan bikin Eloquent nyoba nulis ke kolom yang gak ada di DB.
+    private function calculateCostAllocation($detail, $costs, ?array $unitPrices = null): array
+    {
+        $totalAdditionalCost = $costs->sum('amount');
+
+        $itemValues = $detail->map(function ($d) use ($unitPrices) {
+            $unitValue = $unitPrices !== null ? ($unitPrices[$d->id] ?? 0) : ($d->po_price ?? $d->modal ?? 0);
+            return $unitValue * $d->qty;
+        });
+        $nominalPo = $itemValues->sum();
+
+        $rows = [];
+        foreach ($detail as $i => $d) {
+            $itemValue = $itemValues[$i];
+            $share = $nominalPo > 0 ? $itemValue / $nominalPo : 0;
+            $allocatedCost = (int) round($share * $totalAdditionalCost);
+            $hppBaru = $d->qty > 0 ? (int) round(($itemValue + $allocatedCost) / $d->qty) : null;
+
+            $rows[] = [
+                'id' => $d->id,
+                'item_value' => $itemValue,
+                'share' => $share,
+                'allocated_cost' => $allocatedCost,
+                'hpp_baru' => $hppBaru,
+            ];
+        }
+
+        return [
+            'nominal_po' => $nominalPo,
+            'total_additional_cost' => $totalAdditionalCost,
+            'rows' => collect($rows)->keyBy('id'),
+        ];
+    }
+
+    public function addCost(Request $request, $id)
+    {
+        $request->validate([
+            'label' => 'required|string|max:255',
+            'amount' => 'required|integer|min:1',
+        ]);
+
+        ProductInCost::create([
+            'id_product_in' => $id,
+            'label' => $request->label,
+            'amount' => $request->amount,
+            'created_by' => Auth::id(),
+        ]);
+
+        return redirect()->route('product-in.show', $id)->with('message', 'Biaya tambahan berhasil ditambahkan.');
+    }
+
+    public function deleteCost($costId)
+    {
+        $cost = ProductInCost::findOrFail($costId);
+        $productInId = $cost->id_product_in;
+        $cost->delete();
+
+        return redirect()->route('product-in.show', $productInId)->with('message', 'Biaya tambahan berhasil dihapus.');
+    }
+
+    // Timpa (bukan rata-rata sama stok lama) detail_product.hpp & detail_product_in.hpp
+    // per item sesuai hasil alokasi Biaya Tambahan — jadi HPP mencerminkan biaya batch
+    // GR ini aja, sisa stok lama gak ikut ke-average.
+    public function applyHpp($id)
+    {
+        $product = ProductIn::with(['detail.detailProduct', 'costs', 'purchaseOrder.detail'])->findOrFail($id);
+
+        // Harga acuan per item belum tentu ke-set di sini — beda dari show(), request ini
+        // gak lewat situ — jadi dicocokkan ulang ke harga PO/invoice biar alokasinya
+        // konsisten sama yang ditampilkan di preview. Dibikin lookup array biasa (bukan
+        // atribut dinamis di model) karena model-model ini di bawah bakal di-save().
+        $unitPrices = null;
+        if (!$product->invoice) {
+            $poPriceByProduct = $product->purchaseOrder
+                ? $product->purchaseOrder->detail->whereNotNull('id_product')->keyBy('id_product')
+                : collect();
+
+            $unitPrices = [];
+            foreach ($product->detail as $d) {
+                $idProduct = $d->detailProduct->id_product ?? null;
+                $poDetail = $idProduct ? $poPriceByProduct->get($idProduct) : null;
+                $unitPrices[$d->id] = $poDetail->price ?? 0;
+            }
+        }
+
+        $allocation = $this->calculateCostAllocation($product->detail, $product->costs, $unitPrices);
+
+        foreach ($product->detail as $d) {
+            $row = $allocation['rows']->get($d->id);
+            if (!$row || is_null($row['hpp_baru'])) {
+                continue;
+            }
+            $d->hpp = $row['hpp_baru'];
+            $d->save();
+
+            if ($d->detailProduct) {
+                $d->detailProduct->hpp = $row['hpp_baru'];
+                $d->detailProduct->save();
+            }
+        }
+
+        return redirect()->route('product-in.show', $id)->with('message', 'HPP berhasil diterapkan ke item-item barang masuk ini.');
+    }
+
+    // Cocokkan tiap item barang masuk ke harga di PO asalnya (per produk) — dipakai
+    // buat nampilin kolom Price di tabel "Item Diterima" (show) dan buat auto-fill
+    // form invoicing (edit), jadi Accounting/Logistic gak perlu ngetik ulang harga
+    // yang sebenarnya udah disepakati pas PO dibuat.
+    private function attachPoPriceReference($detail, $purchaseOrder): void
+    {
+        if (!$purchaseOrder) {
+            foreach ($detail as $d) {
+                $d->po_price = null;
+                $d->po_disc = null;
+            }
+            return;
+        }
+
+        $poPriceByProduct = $purchaseOrder->detail
+            ->whereNotNull('id_product')
+            ->keyBy('id_product');
+
+        foreach ($detail as $d) {
+            $idProduct = $d->detailProduct->id_product ?? null;
+            $poDetail = $idProduct ? $poPriceByProduct->get($idProduct) : null;
+            $d->po_price = $poDetail->price ?? null;
+            $d->po_disc = $poDetail->disc ?? null;
+        }
+    }
+
+    // product-in.preview & product-in.gr-detail sudah digabung ke halaman detail
+    // (product-in.show) — redirect biar link/bookmark lama tetap jalan.
+    public function preview($id)
+    {
+        return redirect()->route('product-in.show', $id);
+    }
+
+    public function grDetail($id)
+    {
+        return redirect()->route('product-in.show', $id);
     }
 
     /**
@@ -158,10 +386,14 @@ class ProductInController extends Controller
      */
     public function edit($id)
     {
-        $productIn = ProductIn::find($id);
-        $dProductIn = DetailProductIn::where('id_product_in', $id)->get();
+        $productIn = ProductIn::with('purchaseOrder.detail')->find($id);
+        $dProductIn = DetailProductIn::where('id_product_in', $id)->with('detailProduct')->get();
         $suppliers = Supplier::all();
-        // dd($dProductIn);
+
+        // Auto-fill Price/Discount dari harga PO asal — masih bisa di-override
+        // manual di form kalau perlu.
+        $this->attachPoPriceReference($dProductIn, $productIn->purchaseOrder ?? null);
+
         return view('pages.warehouse.product-in.invoicing', compact('suppliers', 'productIn', 'dProductIn'));
     }
 
@@ -249,17 +481,21 @@ class ProductInController extends Controller
         $rule = [
             'no_do' => 'required',
             'date' => 'required',
+            // GR Manual (barang masuk tanpa PO) — wajib ada alasan/catatan biar ada jejak
+            // audit kenapa stok ini muncul tanpa Purchase Order.
+            'note' => 'required|string|max:1000',
         ];
         $message = [
             'no_do.required' => 'Field No DO Wajib Diisi',
             'date.required' => 'Field Date Wajib Diisi',
+            'note.required' => 'Catatan/Alasan Wajib Diisi',
         ];
         $this->validate($request, $rule, $message);
         // dd($request->all());
         $supplier = Supplier::find($request->supplier);
         // Masukan Data ke Tabel Quotataion
         $productIn = new ProductIn();
-        $productIn->no_product_in = $this->generateNoProductIn();
+        $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
         $productIn->created_by = Auth::id();
         $productIn->no_do = $request->no_do;
         $productIn->invoice = null;
@@ -273,7 +509,7 @@ class ProductInController extends Controller
         $productIn->subtotal = null;
         $productIn->total_no_tax = null;
         $productIn->tax = null;
-        $productIn->note = null;
+        $productIn->note = $request->note;
         $productIn->shipping = null;
         $productIn->total = null;
         $productInSave = $productIn->save();
@@ -518,15 +754,6 @@ class ProductInController extends Controller
 
         $detail->delete();
         return response()->json(['success' => true, 'message' => 'Item berhasil dihapus']);
-    }
-
-    public function preview($id)
-    {
-        $product    = ProductIn::find($id);
-        $detail     = DetailProductIn::where('id_product_in', $id)->get();
-        $suppliers  = Supplier::all();
-        $detProduct = DetailProduct::join('product', 'detail_product.id_product', '=', 'product.id')->get('detail_product.*');
-        return view('pages.warehouse.product-in.preview', compact('product', 'detail', 'suppliers', 'detProduct'));
     }
 
     public function productIn_print($id)

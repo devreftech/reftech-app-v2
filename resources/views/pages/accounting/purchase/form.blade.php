@@ -1,6 +1,14 @@
 @extends('layouts.sales.app')
 @section('title', @$purchase ? 'Edit Purchase Order' : 'Create Purchase Order')
 @section('content')
+    <style>
+        /* Nonaktifkan efek hover geser-ke-atas (translateY) khusus di halaman ini */
+        #formAuthentication .card:hover {
+            transform: none !important;
+            box-shadow: 0 4px 18px 0 rgba(24, 28, 33, 0.03) !important;
+        }
+    </style>
+
     {{-- Hero Page Header & Top Bar --}}
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center py-3 mb-3 gap-3">
         <div>
@@ -82,10 +90,10 @@
                 <div class="row g-3">
                     <div class="col-12">
                         <div class="d-flex align-items-center text-muted small fw-bold text-uppercase mb-1" style="letter-spacing:.5px;">
-                            <i class="mdi mdi-account-group-outline me-1"></i> Supplier
+                            <i class="mdi mdi-account-group-outline me-1"></i> Supplier & Kontak
                         </div>
                     </div>
-                    <div class="col-md-8">
+                    <div class="col-12">
                         <div class="d-flex align-items-center gap-2">
                             <div class="form-floating form-floating-outline flex-grow-1">
                                 <select id="supplier-dropdown" class="select2 form-select invoice-item-supplier"
@@ -115,28 +123,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="form-floating form-floating-outline">
-                            <input class="form-control" type="date" id="date" name="date" required
-                                value="{{ old('date', @$purchase->date ?? \Carbon\Carbon::today()->format('Y-m-d')) }}">
-                            <label for="date">Date</label>
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="form-floating form-floating-outline">
-                            <textarea class="form-control" id="address" name="address" rows="2"
-                                placeholder="Alamat supplier akan ter-load otomatis saat supplier dipilih">{{ old('address', @$purchase->address ?? '') }}</textarea>
-                            <label for="address">Address (Supplier)</label>
-                        </div>
-                    </div>
-
-                    <div class="col-12">
-                        <hr class="my-2">
-                        <div class="d-flex align-items-center text-muted small fw-bold text-uppercase mb-1" style="letter-spacing:.5px;">
-                            <i class="mdi mdi-file-document-outline me-1"></i> PO Parameters
-                        </div>
-                    </div>
-                    <div class="col-md-3">
+                    <div class="col-md-6">
                         <div class="d-flex align-items-center gap-2">
                             <div class="form-floating form-floating-outline flex-grow-1">
                                 <select id="attn" name="attn" class="form-select" data-allow-clear="true">
@@ -159,11 +146,32 @@
                             Belum ada PIC untuk supplier ini.
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-6">
                         <div class="form-floating form-floating-outline">
                             <input class="form-control" type="text" placeholder="Put Mobile Here ...."
                                 id="mobile" name="mobile" value="{{ old('mobile', @$purchase->mobile ?? '') }}">
                             <label for="mobile">Mobile</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-floating form-floating-outline">
+                            <textarea class="form-control" id="address" name="address" rows="2"
+                                placeholder="Alamat supplier akan ter-load otomatis saat supplier dipilih">{{ old('address', @$purchase->address ?? '') }}</textarea>
+                            <label for="address">Address (Supplier)</label>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <hr class="my-2">
+                        <div class="d-flex align-items-center text-muted small fw-bold text-uppercase mb-1" style="letter-spacing:.5px;">
+                            <i class="mdi mdi-file-document-outline me-1"></i> PO Parameters
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-floating form-floating-outline">
+                            <input class="form-control" type="date" id="date" name="date" required
+                                value="{{ old('date', @$purchase->date ?? \Carbon\Carbon::today()->format('Y-m-d')) }}">
+                            <label for="date">Date</label>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -193,6 +201,30 @@
                         <div class="mt-2" id="manual-payment-wrapper" style="display:none;">
                             <input type="text" class="form-control" id="input-payment-manual"
                                 placeholder="Ketik custom payment term...">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="form-floating form-floating-outline flex-grow-1">
+                                @php
+                                    $selectedPoType = old('category', @$purchase->category ?? 'Sparepart');
+                                @endphp
+                                <select class="form-select" id="po-type-select" name="category">
+                                    @foreach ($poTypes as $poType)
+                                        <option value="{{ $poType->name }}" {{ $selectedPoType == $poType->name ? 'selected' : '' }}>
+                                            {{ $poType->name }}
+                                        </option>
+                                    @endforeach
+                                    @if ($selectedPoType && $poTypes->doesntContain('name', $selectedPoType))
+                                        <option value="{{ $selectedPoType }}" selected>{{ $selectedPoType }}</option>
+                                    @endif
+                                </select>
+                                <label for="po-type-select">PO Type</label>
+                            </div>
+                            <button type="button" class="btn btn-label-secondary" data-bs-toggle="modal"
+                                data-bs-target="#quickAddPoTypeModal" title="Tambah Tipe PO">
+                                <i class="mdi mdi-plus"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -420,7 +452,13 @@
                                                 <p class="mb-2 repeater-title small text-muted">Qty</p>
                                                 <input type="number" class="form-control form-control-sm invoice-item-qty"
                                                     placeholder="Min 1" name="qty[]" id="qty-{{ $rno }}" data-id="{{ $rno }}"
+                                                    data-pr-remaining="{{ $pi['pr_remaining'] ?? '' }}"
                                                     min="1" value="{{ $pi['qty'] }}">
+                                                <small class="text-info d-block mt-1 qty-stock-hint {{ ($pi['pr_remaining'] ?? null) !== null && $pi['qty'] > $pi['pr_remaining'] ? '' : 'd-none' }}"
+                                                    id="qty-stock-hint-{{ $rno }}">
+                                                    <i class="mdi mdi-information-outline"></i>
+                                                    {{ $pi['pr_remaining'] ?? 0 }} pcs utk PR, +{{ max(0, $pi['qty'] - ($pi['pr_remaining'] ?? 0)) }} stok
+                                                </small>
                                             </div>
                                             <div class="col-md-1 col-12 mb-md-0 mb-3">
                                                 <p class="mb-2 repeater-title small text-muted">Info Qty</p>
@@ -804,6 +842,30 @@
         </div>
     </div>
 
+    <div class="modal fade" id="quickAddPoTypeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Tambah Tipe PO</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="qtError" class="alert alert-danger d-none"></div>
+                    <div class="mb-3">
+                        <label class="form-label">Nama Tipe PO <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="qtName" placeholder="Contoh: Jasa">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" id="saveQuickAddPoType">
+                        <i class="mdi mdi-content-save-outline me-1"></i> Simpan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="quickAddPicModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -919,6 +981,41 @@
                 });
             }
 
+            // Quick Add PO Type (AJAX, tanpa reload) — tipe baru langsung tersimpan di master
+            // data jadi ke depan tinggal muncul di dropdown, tidak perlu diketik ulang.
+            $('#saveQuickAddPoType').on('click', function() {
+                var name = $('#qtName').val().trim();
+                if (!name) {
+                    $('#qtError').removeClass('d-none').text('Nama tipe PO wajib diisi.');
+                    return;
+                }
+
+                $.ajax({
+                    url: '{{ route('purchase-order-type.quick-store') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        name: name
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            var newType = res.data;
+                            var option = new Option(newType.name, newType.name, true, true);
+                            $('#po-type-select').append(option).trigger('change');
+
+                            $('#qtName').val('');
+                            $('#qtError').addClass('d-none').text('');
+                            $('#quickAddPoTypeModal').modal('hide');
+                        }
+                    },
+                    error: function(xhr) {
+                        var msg = xhr.responseJSON && xhr.responseJSON.message ?
+                            xhr.responseJSON.message : 'Gagal menyimpan, coba lagi.';
+                        $('#qtError').removeClass('d-none').text(msg);
+                    }
+                });
+            });
+
             var $supplierDropdown = $('#supplier-dropdown');
 
             function initSupplierSelect2() {
@@ -950,12 +1047,18 @@
                 var $selected = $(this).find(':selected');
                 var phone = realValue($selected.data('phone'));
                 var address = realValue($selected.data('address'));
-                if (phone) {
-                    $('#mobile').val(phone);
-                }
+                // Selalu di-set (bukan cuma kalau ada isinya) — sama seperti address di
+                // bawah. Kalau pakai "if (phone)", giliran supplier baru gak punya nomor
+                // telepon tercatat, Mobile-nya nyangkut ke punya supplier sebelumnya.
+                $('#mobile').val(phone);
                 $('#address').val(address);
                 toggleEditSupplierBtn();
-                loadAttnOptions($(this).val());
+                // keepValue dipaksa kosong ('') di sini — kalau dibiarkan undefined,
+                // loadAttnOptions() bakal balik baca $attnDropdown.val() yang isinya
+                // masih PIC supplier LAMA (belum ke-reset), jadi nyangkut kepilih terus
+                // walau supplier sudah ganti dan PIC itu bukan miliknya. Dengan '' di
+                // sini, PIC pertama supplier BARU yang otomatis kepilih (autoSelectFirst).
+                loadAttnOptions($(this).val(), '', true);
             });
 
             // ATTN (PIC) select2 + tombol Tambah PIC
@@ -984,7 +1087,7 @@
                 return option;
             }
 
-            function loadAttnOptions(supplierId, keepValue) {
+            function loadAttnOptions(supplierId, keepValue, autoSelectFirst) {
                 var currentValue = keepValue !== undefined ? keepValue : $attnDropdown.val();
                 $attnDropdown.empty();
                 // Opsi kosong di awal, supaya kalau tidak ada PIC yang cocok dgn currentValue,
@@ -999,25 +1102,41 @@
                     url: '/supplier/' + supplierId + '/edit-data',
                     type: 'GET',
                     success: function(res) {
-                        (res.pics || []).forEach(function(pic) {
-                            $attnDropdown.append(makePicOption(pic, pic.name_pic === currentValue));
+                        // Kalau supplier sudah diganti lagi sebelum response ini datang (klik cepat
+                        // ganti-ganti supplier), response yang telat ini basi — jangan ditimpakan ke
+                        // dropdown ATTN supplier yang sekarang aktif (race condition, bukan cache).
+                        if (String($supplierDropdown.val() || '') !== String(supplierId)) {
+                            return;
+                        }
+                        var pics = res.pics || [];
+                        // Kalau belum ada PIC yang dipertahankan (mis. supplier baru dipilih), otomatis
+                        // pilih PIC pertama (terbaru) supaya user tidak perlu pilih manual tiap kali.
+                        var autoPickName = (!currentValue && autoSelectFirst && pics.length) ? pics[0].name_pic : null;
+                        pics.forEach(function(pic) {
+                            $attnDropdown.append(makePicOption(pic, pic.name_pic === currentValue || pic.name_pic === autoPickName));
                         });
-                        if (currentValue && !res.pics.some(function(p) { return p.name_pic === currentValue; })) {
+                        if (currentValue && !pics.some(function(p) { return p.name_pic === currentValue; })) {
                             var keepOption = new Option(currentValue, currentValue, true, true);
                             $attnDropdown.append(keepOption);
                         }
-                        $('#attn-empty-hint').toggle(!res.pics.length);
+                        $('#attn-empty-hint').toggle(!pics.length);
                         $attnDropdown.trigger('change');
                     }
                 });
             }
 
-            // Auto-fill Mobile & toggle tombol Edit PIC saat memilih PIC dari dropdown ATTN
+            // Auto-fill Mobile & toggle tombol Edit PIC saat memilih PIC dari dropdown ATTN.
+            // Cuma timpa Mobile kalau PIC yang kepilih itu punya nomor telepon sendiri yang
+            // beneran keisi — kalau PIC-nya gak punya nomor tercatat (banyak data lama yang
+            // kosong), biarkan nomor telepon umum milik supplier (di-set oleh handler
+            // ganti-supplier barusan) yang tetap tampil, jangan malah ditimpa jadi kosong.
             $attnDropdown.on('change', function() {
                 var $selected = $(this).find(':selected');
-                var phone = $selected.data('phone');
-                if (phone) {
-                    $('#mobile').val(phone);
+                if ($selected.data('id')) {
+                    var picPhone = realValue($selected.data('phone'));
+                    if (picPhone) {
+                        $('#mobile').val(picPhone);
+                    }
                 }
                 $('#btn-edit-attn-pic').toggleClass('d-none', !$selected.data('id'));
             });
@@ -1306,6 +1425,23 @@
                 var updated_len = input_val.length;
                 caret_pos = updated_len - original_len + caret_pos;
                 input[0].setSelectionRange(caret_pos, caret_pos);
+            });
+
+            // Info "qty lebih dari kebutuhan PR = tambahan stok" — live update pas qty diubah
+            $(document).on('keyup change', '.invoice-item-qty', function () {
+                var id = $(this).data('id');
+                var prRemaining = parseInt($(this).data('pr-remaining'), 10);
+                var qty = parseInt($(this).val(), 10) || 0;
+                var $hint = $('#qty-stock-hint-' + id);
+                if (!$hint.length || isNaN(prRemaining)) return;
+
+                if (qty > prRemaining) {
+                    $hint.removeClass('d-none').html(
+                        '<i class="mdi mdi-information-outline"></i> ' + prRemaining + ' pcs utk PR, +' + (qty - prRemaining) + ' stok'
+                    );
+                } else {
+                    $hint.addClass('d-none');
+                }
             });
 
             // Logic amount + Subtotal

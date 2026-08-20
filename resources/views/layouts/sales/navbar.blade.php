@@ -22,7 +22,7 @@
         <ul class="navbar-nav flex-row align-items-center ms-auto">
 
             <!-- Developer Maintenance Badge -->
-            @if (Auth::user()?->role === 'Developer')
+            @if (Auth::user()?->isDeveloper())
                 @php
                     $maintDet = \App\Services\MaintenanceService::getDetails();
                     $isMaintActive = !empty($maintDet['is_active']);
@@ -67,7 +67,7 @@
                                     </span>
                                 </div>
                                 <div>
-                                    <span class="fw-semibold d-block text-dark">Create Quote</span>
+                                    <span class="fw-semibold d-block">Create Quote</span>
                                     <small class="text-muted">Smart Quote</small>
                                 </div>
                             </a>
@@ -80,7 +80,7 @@
                                     </span>
                                 </div>
                                 <div>
-                                    <span class="fw-semibold d-block text-dark">Create Leads</span>
+                                    <span class="fw-semibold d-block">Create Leads</span>
                                     <small class="text-muted">Tambah Calon Pelanggan</small>
                                 </div>
                             </a>
@@ -93,7 +93,7 @@
                                     </span>
                                 </div>
                                 <div>
-                                    <span class="fw-semibold d-block text-dark">Stock Spare Part</span>
+                                    <span class="fw-semibold d-block">Stock Spare Part</span>
                                     <small class="text-muted">Cek Data Product & Stok</small>
                                 </div>
                             </a>
@@ -106,7 +106,7 @@
                                     </span>
                                 </div>
                                 <div>
-                                    <span class="fw-semibold d-block text-dark">Unit Ready Stock</span>
+                                    <span class="fw-semibold d-block">Unit Ready Stock</span>
                                     <small class="text-muted">Cek Unit Siap Ditawarkan</small>
                                 </div>
                             </a>
@@ -136,7 +136,7 @@
                                     </span>
                                 </div>
                                 <div>
-                                    <span class="fw-semibold d-block text-dark">Cek Invoice</span>
+                                    <span class="fw-semibold d-block">Cek Invoice</span>
                                     <small class="text-muted">Daftar & Status Tagihan</small>
                                 </div>
                             </a>
@@ -149,7 +149,7 @@
                                     </span>
                                 </div>
                                 <div>
-                                    <span class="fw-semibold d-block text-dark">Mon. Document</span>
+                                    <span class="fw-semibold d-block">Mon. Document</span>
                                     <small class="text-muted">Monitoring Dokumen Penagihan</small>
                                 </div>
                             </a>
@@ -162,7 +162,7 @@
                                     </span>
                                 </div>
                                 <div>
-                                    <span class="fw-semibold d-block text-dark">Request Invoice</span>
+                                    <span class="fw-semibold d-block">Request Invoice</span>
                                     <small class="text-muted">Antrean Permintaan Invoice</small>
                                 </div>
                             </a>
@@ -175,7 +175,7 @@
                                     </span>
                                 </div>
                                 <div>
-                                    <span class="fw-semibold d-block text-dark">Payment Receipt</span>
+                                    <span class="fw-semibold d-block">Payment Receipt</span>
                                     <small class="text-muted">Penerimaan Pembayaran</small>
                                 </div>
                             </a>
@@ -200,20 +200,19 @@
 
             <!-- Notification -->
             <li class="nav-item dropdown-notifications navbar-dropdown dropdown me-2 me-xl-1">
-                <a class="nav-link btn btn-text-secondary rounded-pill btn-icon dropdown-toggle hide-arrow"
+                <a class="nav-link btn btn-text-secondary rounded-pill btn-icon dropdown-toggle hide-arrow" id="navbarBellToggle"
                     href="javascript:void(0);" data-bs-toggle="dropdown" data-bs-auto-close="outside"
                     aria-expanded="false">
-                    <i class="mdi mdi-bell-outline mdi-24px"></i>
+                    <i class="mdi mdi-bell-outline mdi-24px" id="navbarBellIcon"></i>
                     @php
                         $hasBadge = false;
                         if (Auth::user()?->role == 'Admin' && @$unreadCommentAdmin && $unreadCommentAdmin->count() >= 1) $hasBadge = true;
                         if (Auth::user()?->role != 'Admin' && @$unreadComment && $unreadComment->count() >= 1) $hasBadge = true;
                         if (@$prMentions && $prMentions->count() >= 1) $hasBadge = true;
                         if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && @$pendingCancelQuotes && $pendingCancelQuotes->count() >= 1) $hasBadge = true;
+                        if (in_array(Auth::user()?->role, ['Accounting', 'Admin', 'Sales']) && @$paymentUnreadCount >= 1) $hasBadge = true;
                     @endphp
-                    @if ($hasBadge)
-                        <span class="position-absolute top-0 start-50 translate-middle-y badge badge-dot bg-danger mt-2 border"></span>
-                    @endif
+                    <span id="navbarBellDot" class="position-absolute top-0 start-50 translate-middle-y badge badge-dot bg-danger mt-2 border {{ $hasBadge ? '' : 'd-none' }}"></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end py-0">
                     <li class="dropdown-menu-header border-bottom">
@@ -221,6 +220,9 @@
                             <h6 class="mb-0 me-auto">Notification</h6>
                             @if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && @$pendingCancelQuotes && $pendingCancelQuotes->count() > 0)
                                 <span class="badge rounded-pill bg-danger me-1">{{ $pendingCancelQuotes->count() }} Cancel PO</span>
+                            @endif
+                            @if (in_array(Auth::user()?->role, ['Accounting', 'Admin', 'Sales']))
+                                <span id="paymentNotifCountBadge" class="badge rounded-pill bg-label-success {{ (@$paymentUnreadCount > 0) ? '' : 'd-none' }}">{{ @$paymentUnreadCount ?: 0 }} Notifikasi</span>
                             @endif
                             @if (Auth::user()?->role == 'Admin')
                                 @if (@$unreadCommentAdmin)
@@ -374,6 +376,68 @@
                                     </a>
                                 @endforeach
                             @endif
+
+                            {{-- Notifikasi Payment Ditambahkan / PO Menunggu Invoice (Unit Quotation) untuk Accounting, Admin & Sales.
+                                 Dibungkus scroll area sendiri (~5 baris kelihatan, sisanya di-scroll) supaya
+                                 dropdown-nya tidak jadi kepanjangan kalau notifikasinya banyak. --}}
+                            <li>
+                            <div style="max-height: 21.5rem; overflow-y: auto;">
+                            <ul id="paymentNotifList" class="list-group list-group-flush">
+                                @if (in_array(Auth::user()?->role, ['Accounting', 'Admin', 'Sales']) && @$paymentNotifications && $paymentNotifications->count() > 0)
+                                    @foreach ($paymentNotifications as $pn)
+                                        @php
+                                            $isInvoiceRequested = $pn->type === 'invoice_requested';
+                                            $isInvoiceApproved = $pn->type === 'invoice_approved';
+                                            $pnAmount = $pn->type === 'payment'
+                                                ? ($pn->payment->amount ?? 0)
+                                                : ($pn->unitQuotation->total ?? 0) * ($pn->invoice->percent ?? 100) / 100;
+                                            $pnUrl = route('unit-quotation.show', $pn->id_unit_quotation);
+                                            if ($pn->id_invoice) {
+                                                if ($isInvoiceRequested) {
+                                                    $pnUrl = route('before.accept.unit', $pn->id_invoice);
+                                                } elseif ($pn->type === 'payment' || $isInvoiceApproved) {
+                                                    $pnUrl = route('invoice.show_unit', $pn->id_invoice);
+                                                }
+                                            }
+                                        @endphp
+                                        <a href="{{ $pnUrl }}"
+                                            class="payment-notif-item {{ $pn->is_read ? '' : 'payment-notif-unread' }}"
+                                            data-notif-id="{{ $pn->id }}" data-read="{{ $pn->is_read ? '1' : '0' }}">
+                                            <li class="list-group-item list-group-item-action dropdown-notifications-item {{ $pn->is_read ? '' : 'bg-label-secondary' }}">
+                                                <div class="d-flex gap-2">
+                                                    <div class="flex-shrink-0">
+                                                        <div class="avatar me-1">
+                                                            <span class="avatar-initial rounded-circle {{ $isInvoiceRequested ? 'bg-label-primary' : ($isInvoiceApproved ? 'bg-label-info' : 'bg-label-success') }}">
+                                                                <i class="mdi {{ $isInvoiceRequested ? 'mdi-file-document-outline' : ($isInvoiceApproved ? 'mdi-check-decagram-outline' : 'mdi-cash-multiple') }}"></i>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex flex-column flex-grow-1 overflow-hidden w-px-200">
+                                                        <h6 class="mb-1 text-truncate">{{ $pn->unitQuotation->no_quote ?? '-' }}</h6>
+                                                        <small class="text-truncate text-body">
+                                                            @if ($isInvoiceRequested)
+                                                                Invoice senilai Rp {{ number_format($pnAmount, 0, '', '.') }} menunggu diterbitkan ({{ $pn->unitQuotation->client->company ?? '-' }})
+                                                            @elseif ($isInvoiceApproved)
+                                                                Invoice senilai Rp {{ number_format($pnAmount, 0, '', '.') }} sudah di-acc Accounting ({{ $pn->unitQuotation->client->company ?? '-' }})
+                                                            @else
+                                                                Payment Rp {{ number_format($pnAmount, 0, '', '.') }} ditambahkan ({{ $pn->unitQuotation->client->company ?? '-' }})
+                                                            @endif
+                                                        </small>
+                                                    </div>
+                                                    <div class="flex-shrink-0 dropdown-notifications-actions d-flex flex-column align-items-end gap-1">
+                                                        <small class="text-muted">{{ $pn->created_at->diffForHumans() }}</small>
+                                                        @unless ($pn->is_read)
+                                                            <span class="badge badge-dot bg-danger"></span>
+                                                        @endunless
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        </a>
+                                    @endforeach
+                                @endif
+                            </ul>
+                            </div>
+                            </li>
 
                     <li class="dropdown-menu-footer border-top p-2">
                         <a href="{{ route('index.notif') }}" class="btn btn-primary d-flex justify-content-center">

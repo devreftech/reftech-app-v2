@@ -1,5 +1,5 @@
 {{--
-    Modal: Post to Sales Order (Unit Quotation)
+    Modal: Post to Sales Order (Smart Quote)
     Diadaptasi dari components/modal/quotation/convert-po.blade.php
     Digunakan di: pages/unit-quotation/detail.blade.php
     Requires: $quote (UnitQuotation), $pendingPo (PendingPO|null)
@@ -30,7 +30,7 @@
                                 style="z-index: 2;">
                                 <div class="text-start">
                                     <span class="badge bg-white text-primary fw-bold text-uppercase px-2 py-1 mb-2"
-                                        style="border-radius: 5px; font-size: 11px;">Unit Quotation</span>
+                                        style="border-radius: 5px; font-size: 11px;">Smart Quote</span>
                                     <h4 class="text-white fw-bold mb-1" style="font-size: 20px;">
                                         {{ $quote->client->company ?? '-' }}
                                     </h4>
@@ -110,7 +110,7 @@
                                         </div>
                                         <small class="text-muted" style="font-size:11px;">
                                             <i class="mdi mdi-information-outline me-1"></i>
-                                            Unit Quotation umumnya bertipe Project
+                                            Smart Quote umumnya bertipe Project
                                         </small>
                                     </div>
 

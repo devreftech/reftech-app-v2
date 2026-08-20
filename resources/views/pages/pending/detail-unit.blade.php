@@ -14,15 +14,16 @@
         </div>
     @endif
 
-    <div class="card mb-4 text-white border-0 overflow-hidden position-relative shadow-sm" style="background: linear-gradient(135deg, #696cff 0%, #3f42b3 100%) !important;">
-        <div class="position-absolute translate-middle" style="top: 0; right: 0; width: 250px; height: 250px; border-radius: 50%; background: rgba(255,255,255,0.08); z-index: 1;"></div>
-        <div class="position-absolute translate-middle" style="bottom: -50px; left: -50px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255,255,255,0.05); z-index: 1;"></div>
+    <div class="card mb-4 text-white border-0 position-relative shadow-sm" style="background: linear-gradient(135deg, #696cff 0%, #3f42b3 100%) !important;">
+        <div class="position-absolute overflow-hidden" style="inset: 0; border-radius: inherit; z-index: 1;">
+            <div class="position-absolute translate-middle" style="top: 0; right: 0; width: 250px; height: 250px; border-radius: 50%; background: rgba(255,255,255,0.08);"></div>
+            <div class="position-absolute translate-middle" style="bottom: -50px; left: -50px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255,255,255,0.05);"></div>
+        </div>
         <div class="card-body p-4 position-relative" style="z-index: 2;">
             <div class="row align-items-center">
                 <div class="col-md-8">
                     <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
                         <span class="badge bg-white text-primary fw-bold text-uppercase px-3 py-1.5 fs-7" style="border-radius: 5px;">Sales Order</span>
-                        <span class="badge bg-white text-primary fw-bold text-uppercase px-2 py-1" style="border-radius: 5px; font-size: 10px;">Unit Quotation</span>
                         @php
                             switch ($pending->status) {
                                 case 1: $statusName = 'On Check'; $statusBadge = 'bg-warning text-dark'; break;
@@ -38,10 +39,19 @@
                         <span class="badge {{ $statusBadge }} fw-bold"><i class="mdi mdi-checkbox-marked-circle-outline me-1"></i> {{ $statusName }}</span>
                     </div>
                     <h3 class="fw-bold mb-1 text-white">{{ $quote->client->company ?? '-' }}</h3>
-                    <p class="mb-0 opacity-80 small">
+                    <p class="mb-1 opacity-80 small">
                         <i class="mdi mdi-tag-outline me-1"></i> No SO: <span class="fw-semibold text-white">{{ $pending->no_pending }}</span>
                         <span class="mx-2">|</span>
                         <i class="mdi mdi-calendar-blank-outline me-1"></i> Tanggal: <span class="fw-semibold text-white">{{ \Carbon\Carbon::parse($pending->date)->format('d M Y') }}</span>
+                    </p>
+                    <p class="mb-0 opacity-80 small">
+                        <i class="mdi mdi-account-tie me-1"></i> Sales PIC: <span class="fw-semibold text-white">{{ $quote->sales->name ?? '-' }}</span>
+                        <span class="mx-2">|</span>
+                        <i class="mdi mdi-account me-1"></i> PIC Klien: <span class="fw-semibold text-white">{{ $quote->pic->name_pic ?? ($quote->attn ?? '-') }}</span>
+                        @if ($quote->pic->phone_pic ?? null)
+                            <span class="mx-2">|</span>
+                            <i class="mdi mdi-phone-outline me-1"></i> <span class="fw-semibold text-white">{{ $quote->pic->phone_pic }}</span>
+                        @endif
                     </p>
                 </div>
                 <div class="col-md-4 text-md-end mt-3 mt-md-0 d-flex flex-column flex-md-row justify-content-md-end gap-2 align-items-md-center">
@@ -89,64 +99,16 @@
         </div>
     </div>
 
-    <!-- Tabs Navigation -->
-    <ul class="nav nav-tabs nav-fill mb-4 shadow-sm rounded bg-white p-1" id="orderDetailTabsUnit" role="tablist" style="border: none;">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active fw-bold py-3 text-uppercase fs-7 d-flex align-items-center justify-content-center gap-2 border-0" id="detail-tab-unit" data-bs-toggle="tab" data-bs-target="#detail-pane-unit" type="button" role="tab" aria-controls="detail-pane-unit" aria-selected="true" style="border-radius: 5px; transition: all 0.2s;">
-                <i class="mdi mdi-information-outline fs-5"></i> Detail
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold py-3 text-uppercase fs-7 d-flex align-items-center justify-content-center gap-2 border-0" id="logistic-tab-unit" data-bs-toggle="tab" data-bs-target="#logistic-pane-unit" type="button" role="tab" aria-controls="logistic-pane-unit" aria-selected="false" style="border-radius: 5px; transition: all 0.2s;">
-                <i class="mdi mdi-package-variant-closed fs-5"></i> Logistic
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold py-3 text-uppercase fs-7 d-flex align-items-center justify-content-center gap-2 border-0" id="finance-tab-unit" data-bs-toggle="tab" data-bs-target="#finance-pane-unit" type="button" role="tab" aria-controls="finance-pane-unit" aria-selected="false" style="border-radius: 5px; transition: all 0.2s;">
-                <i class="mdi mdi-cash-multiple fs-5"></i> Finance / Accounting
-            </button>
-        </li>
-    </ul>
-
-    <div class="tab-content p-0 border-0 bg-transparent" id="orderDetailTabsUnitContent">
-        <!-- 1. DETAIL TAB -->
-        <div class="tab-pane fade show active" id="detail-pane-unit" role="tabpanel" aria-labelledby="detail-tab-unit">
-            <div class="row g-4 mb-4">
-                <!-- Client & PIC Card -->
-                <div class="col-md-6 col-lg-4">
-                    <div class="card h-100 shadow-sm border-0">
-                        <div class="card-header pb-2 border-bottom py-3">
-                            <h5 class="card-title mb-0 fw-bold text-primary"><i class="mdi mdi-office-building-outline me-2"></i> Informasi Klien</h5>
-                        </div>
-                        <div class="card-body pt-3">
-                            <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
-                                <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(105, 108, 255, 0.08); color: #696cff;">
-                                    <i class="mdi mdi-account-tie fs-5"></i>
-                                </div>
-                                <div>
-                                    <small class="text-muted d-block" style="font-size: 11px;">Sales PIC</small>
-                                    <span class="fw-semibold text-dark">{{ $quote->sales->name ?? '-' }}</span>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
-                                <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(3, 195, 236, 0.08); color: #03c3ec;">
-                                    <i class="mdi mdi-domain fs-5"></i>
-                                </div>
-                                <div>
-                                    <small class="text-muted d-block" style="font-size: 11px;">Klien</small>
-                                    <span class="fw-semibold text-dark">{{ $quote->client->company ?? '-' }}</span>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
-                                <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(255, 171, 0, 0.08); color: #ffab00;">
-                                    <i class="mdi mdi-account fs-5"></i>
-                                </div>
-                                <div>
-                                    <small class="text-muted d-block" style="font-size: 11px;">PIC Klien</small>
-                                    <span class="fw-semibold text-dark">{{ $quote->pic->name_pic ?? ($quote->attn ?? '-') }}</span>
-                                </div>
-                            </div>
-
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="mdi mdi-information-outline fs-4 text-primary"></i>
+        <h5 class="fw-bold mb-0 text-dark text-uppercase" style="letter-spacing: .3px; font-size: 14px;">Informasi Detail</h5>
+    </div>
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-0">
+            <div class="row g-0">
+                <!-- Alamat Dokumen & Pengiriman -->
+                <div class="col-lg-4 info-col p-4">
+                    <h6 class="fw-bold text-primary mb-3 text-uppercase" style="font-size: 12.5px; letter-spacing: .3px;"><i class="mdi mdi-map-marker-outline me-2"></i> Alamat Dokumen &amp; Pengiriman</h6>
                             @php
                                 $chargeLabel = function ($val) {
                                     if ($val == 1) return ['Company', 'bg-label-primary'];
@@ -159,7 +121,19 @@
                                 [$shippingChargeText, $shippingChargeClass] = $chargeLabel($shippingChargeVal);
                             @endphp
 
-                            <div class="d-flex align-items-start mb-3 p-2 rounded hover-light border-top pt-3">
+                            <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
+                                <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(113, 221, 55, 0.08); color: #71dd37;">
+                                    <i class="mdi mdi-package-variant fs-5"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block" style="font-size: 11px;">Keterangan Gabung</small>
+                                    <span class="badge {{ $pending->combine_shipping_and_parts ? 'bg-label-success' : 'bg-label-danger' }} fw-semibold" style="font-size: 10px; padding: 3px 6px;">
+                                        {{ $pending->combine_shipping_and_parts ? 'Barang & Part Digabung' : 'Barang & Part Dipisah' }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="d-flex align-items-start mb-3 p-2 rounded hover-light">
                                 <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(105, 108, 255, 0.08); color: #696cff;">
                                     <i class="mdi mdi-file-document-box-outline fs-5"></i>
                                 </div>
@@ -202,40 +176,11 @@
                                     @endif
                                 </div>
                             </div>
-
-                            <div class="d-flex align-items-center p-2 rounded hover-light">
-                                <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(113, 221, 55, 0.08); color: #71dd37;">
-                                    <i class="mdi mdi-package-variant fs-5"></i>
-                                </div>
-                                <div>
-                                    <small class="text-muted d-block" style="font-size: 11px;">Keterangan Gabung</small>
-                                    <span class="badge {{ $pending->combine_shipping_and_parts ? 'bg-label-success' : 'bg-label-danger' }} fw-semibold" style="font-size: 10px; padding: 3px 6px;">
-                                        {{ $pending->combine_shipping_and_parts ? 'Barang & Part Digabung' : 'Barang & Part Dipisah' }}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
-                <!-- Document Info Card -->
-                <div class="col-md-6 col-lg-4">
-                    <div class="card h-100 shadow-sm border-0">
-                        <div class="card-header pb-2 border-bottom py-3">
-                            <h5 class="card-title mb-0 fw-bold text-primary"><i class="mdi mdi-file-document-outline me-2"></i> Informasi Dokumen</h5>
-                        </div>
-                        <div class="card-body pt-3">
-                            <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
-                                <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(105, 108, 255, 0.08); color: #696cff;">
-                                    <i class="mdi mdi-file-document-box-outline fs-5"></i>
-                                </div>
-                                <div>
-                                    <small class="text-muted d-block" style="font-size: 11px;">No Penawaran (Unit Quotation)</small>
-                                    <a class="fw-bold text-primary" href="{{ route('unit-quotation.show', $quote->id) }}">
-                                        {{ $quote->no_quote }}
-                                    </a>
-                                </div>
-                            </div>
+                <!-- Document Info -->
+                <div class="col-lg-4 info-col p-4">
+                    <h6 class="fw-bold text-primary mb-3 text-uppercase" style="font-size: 12.5px; letter-spacing: .3px;"><i class="mdi mdi-file-document-outline me-2"></i> Informasi Dokumen</h6>
                             <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
                                 <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(255, 171, 0, 0.08); color: #ffab00;">
                                     <i class="mdi mdi-cart-outline fs-5"></i>
@@ -268,27 +213,17 @@
                                     @endforelse
                                 </div>
                             </div>
-                        </div>
-                    </div>
                 </div>
 
-                <!-- Shipping / Resi Info Card -->
-                <div class="col-md-6 col-lg-4">
-                    <div class="card h-100 shadow-sm border-0">
-                        <div class="card-header pb-2 border-bottom py-3">
-                            <h5 class="card-title mb-0 fw-bold text-primary"><i class="mdi mdi-truck-delivery-outline me-2"></i> Informasi Pengiriman</h5>
-                        </div>
-                        <div class="card-body pt-3 d-flex flex-column" style="max-height: 450px; overflow-y: auto;">
+                <!-- Shipping / Resi Info -->
+                <div class="col-lg-4 info-col p-4 d-flex flex-column" style="max-height: 450px; overflow-y: auto;">
+                    <h6 class="fw-bold text-primary mb-3 text-uppercase" style="font-size: 12.5px; letter-spacing: .3px;"><i class="mdi mdi-truck-delivery-outline me-2"></i> Informasi Pengiriman</h6>
                             @php
                                 switch ($pending->delivery) {
-                                    case 1: $kurir = 'Reftech (Internal)'; break;
-                                    case 2: $kurir = 'Sicepat'; break;
-                                    case 3: $kurir = 'JNE'; break;
-                                    case 4: $kurir = 'Lalamove'; break;
-                                    case 5: $kurir = 'Indah Cargo'; break;
-                                    case 6: $kurir = 'Deliveree'; break;
-                                    case 7: $kurir = 'Gojek / Grab'; break;
-                                    case 8: $kurir = 'J&T'; break;
+                                    case 1: $kurir = 'JNE / J&T / Cargo'; break;
+                                    case 2: $kurir = 'Send By Technician'; break;
+                                    case 3: $kurir = 'Taken Directly'; break;
+                                    case 4: $kurir = 'Other'; break;
                                     default: $kurir = 'Belum Ada Kurir'; break;
                                 }
                             @endphp
@@ -329,74 +264,23 @@
                 </div>
             </div>
 
-            <!-- Activity Timeline -->
-            @if ($activity->count() >= 1)
-                <div class="card mb-4 shadow-sm border-0">
-                    <div class="card-header pb-2 border-bottom py-3">
-                        <h5 class="card-title mb-0 fw-bold text-primary"><i class="mdi mdi-clock-outline me-2"></i> Activity Timeline</h5>
-                    </div>
-                    <div class="card-body pt-4">
-                        <ul class="timeline card-timeline mb-0">
-                            @foreach ($activity as $stats)
-                                @php
-                                    switch ($stats->status) {
-                                        case 1: $color = 'warning'; $st = 'On Check'; break;
-                                        case 2: $color = 'info'; $st = 'Ready Stock'; break;
-                                        case 3: $color = 'danger'; $st = 'Kurang'; break;
-                                        case 4: $color = 'primary'; $st = 'Pre-Order'; break;
-                                        case 5: $color = 'linkedin'; $st = 'Delivery Process'; break;
-                                        case 6: $color = 'success'; $st = 'Done'; break;
-                                        case 8: $color = 'danger'; $st = 'Return'; break;
-                                        case 9: $color = 'warning'; $st = 'Delayed'; break;
-                                        default: $color = 'secondary'; $st = 'In Progress'; break;
-                                    }
-                                @endphp
-                                <li class="timeline-item timeline-item-transparent clearfix">
-                                    <span class="timeline-point timeline-point-{{ $color }}"></span>
-                                    <div class="timeline-event">
-                                        <div class="timeline-header mb-1">
-                                            <h6 class="mb-0 fw-bold text-dark">Status: <span class="badge bg-label-{{ $color }} btn-xs">{{ $st }}</span></h6>
-                                            <small class="text-muted">{{ $stats->created_at->diffForHumans() }} ({{ $stats->created_at->format('d M Y H:i') }})</small>
-                                        </div>
-                                        <p class="mb-2 small text-muted">Diperbarui oleh: <span class="fw-semibold text-dark">{{ $stats->user->name ?? 'System' }}</span></p>
+    <div class="d-flex align-items-center gap-2 mb-3 mt-2">
+        <i class="mdi mdi-package-variant-closed fs-4 text-primary"></i>
+        <h5 class="fw-bold mb-0 text-dark text-uppercase" style="letter-spacing: .3px; font-size: 14px;">Logistik &amp; Pengiriman</h5>
+    </div>
 
-                                        <div class="ms-3 border-start ps-3 py-1">
-                                            @foreach ($stats->comment as $com)
-                                                <div class="mb-2 p-2 rounded bg-light hover-light border border-light position-relative">
-                                                    <div class="d-flex justify-content-between align-items-center flex-wrap">
-                                                        <span class="fw-bold text-dark" style="font-size: 12px;">{{ $com->user->name }}</span>
-                                                        <small class="text-muted" style="font-size: 10px;">{{ $com->date }}</small>
-                                                    </div>
-                                                    <p class="mb-0 text-muted mt-1" style="font-size: 12px; line-height: 1.4;">{{ $com->comment }}</p>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                </div>
+    <!-- Items Table -->
+    <div class="card mb-4 shadow-sm border-0">
+        <div class="card-header bg-transparent py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="m-0 fw-bold text-primary"><i class="mdi mdi-package-variant-closed me-2"></i> Daftar Barang</h5>
+            @if ($pending->status != '6' && $pending->status != '8')
+                <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal"
+                    data-bs-target="#replacementEditUnit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
+                    <i class="mdi mdi-list-status me-1"></i> Update Status Barang
+                </button>
             @endif
         </div>
-
-        <!-- 2. LOGISTIC TAB -->
-        <div class="tab-pane fade" id="logistic-pane-unit" role="tabpanel" aria-labelledby="logistic-tab-unit">
-            @if ($pending->status != '6' && $pending->status != '8')
-                <div class="d-flex justify-content-end mb-3 gap-2">
-                    <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal"
-                        data-bs-target="#replacementEditUnit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
-                        <i class="mdi mdi-list-status me-1"></i> Update Status Barang
-                    </button>
-                </div>
-            @endif
-
-            <!-- Items Table -->
-            <div class="card mb-4 shadow-sm border-0">
-                <div class="card-header bg-transparent py-3 border-bottom">
-                    <h5 class="m-0 fw-bold text-primary"><i class="mdi mdi-package-variant-closed me-2"></i> Daftar Barang</h5>
-                </div>
-                <div class="table-responsive text-nowrap">
+        <div class="table-responsive text-nowrap">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
@@ -408,7 +292,17 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @php $no = 1; @endphp
+                            @php
+                                $no = 1;
+                                // Qty asli yang di-order di quotation, dikelompokkan per equivalent —
+                                // dipakai sebagai acuan kolom Qty (bukan bdg+bks yang cuma qty stok teralokasi,
+                                // yang bisa lebih kecil dari qty order saat status Kurang).
+                                $orderedQtyByEquivalent = $quote->details
+                                    ->whereNotNull('id_equivalent')
+                                    ->where('id_equivalent', '!=', 0)
+                                    ->groupBy('id_equivalent')
+                                    ->map(fn ($rows) => $rows->sum('qty'));
+                            @endphp
                             @forelse ($dPending as $item)
                                 @php
                                     switch ($item->status) {
@@ -421,16 +315,33 @@
                                         default: $status = 'Belum Di Cek'; $badge = 'bg-label-secondary'; break;
                                     }
                                 @endphp
+                                @php
+                                    $goLabels = [
+                                        'Replacement' => 'bg-label-warning',
+                                        'Genuine'     => 'bg-label-success',
+                                        'OEM'         => 'bg-label-info',
+                                    ];
+                                    $goVal = $item->equivalent->product->go ?? null;
+                                    $orderedQty = $item->id_equivalent ? ($orderedQtyByEquivalent[$item->id_equivalent] ?? null) : null;
+                                @endphp
                                 <tr style="font-size: 13px">
                                     <td class="text-center">{{ $no }}</td>
                                     <td class="fw-semibold">
                                         @if (empty($item->id_equivalent) || $item->id_equivalent == '0')
                                             {{ $item->note ?: '-' }}
                                         @else
-                                            {{ $item->equivalent->brand ?? '' }} {{ $item->equivalent->pn ?? '' }}
+                                            <div class="d-flex align-items-center flex-wrap gap-2">
+                                                <span>{{ $item->equivalent->brand ?? '' }} {{ $item->equivalent->pn ?? '' }}</span>
+                                                @if ($goVal && isset($goLabels[$goVal]))
+                                                    <span class="badge {{ $goLabels[$goVal] }}" style="font-size: 9px;">{{ $goVal }}</span>
+                                                @endif
+                                            </div>
+                                            @if ($item->equivalent->product->description ?? null)
+                                                <div class="text-muted fw-normal text-wrap" style="font-size: 11.5px; line-height: 1.4; max-width: 320px;">{{ $item->equivalent->product->description }}</div>
+                                            @endif
                                         @endif
                                     </td>
-                                    <td>{{ $item->bdg + $item->bks }}</td>
+                                    <td>{{ $orderedQty !== null ? (float) $orderedQty : ($item->bdg + $item->bks) }}</td>
                                     <td>
                                         <span class="badge {{ $pending->status == '6' ? 'bg-label-success' : $badge }}">
                                             {{ $pending->status == '6' ? 'Done' : $status }}
@@ -450,14 +361,6 @@
             </div>
 
             <!-- Purchase Requests -->
-            @if ($pending->status != '6' && $pending->status != '8')
-                <div class="d-flex justify-content-end mb-3 mt-3 gap-2">
-                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
-                        data-bs-target="#purchaseReqUnit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
-                        <i class="mdi mdi-plus-box me-1"></i> Purchase Request
-                    </button>
-                </div>
-            @endif
             @if (!$purchase && $dPending->where('status', 3)->count() > 0)
                 <div class="alert alert-warning d-flex align-items-center mb-3">
                     <i class="mdi mdi-clock-alert-outline me-2 fs-5"></i>
@@ -465,8 +368,14 @@
                 </div>
             @endif
             <div class="card mb-4 shadow-sm border-0">
-                <div class="card-header bg-transparent py-3 border-bottom">
+                <div class="card-header bg-transparent py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <h5 class="m-0 fw-bold text-primary"><i class="mdi mdi-cart-arrow-down me-2"></i> Purchase Request</h5>
+                    @if ($pending->status != '6' && $pending->status != '8')
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
+                            data-bs-target="#purchaseReqUnit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
+                            <i class="mdi mdi-plus-box me-1"></i> Purchase Request
+                        </button>
+                    @endif
                 </div>
                 <div class="table-responsive text-nowrap">
                     <table class="table table-hover align-middle mb-0">
@@ -483,11 +392,20 @@
                         <tbody>
                             @php
                                 $no = 1;
-                                switch ($purchase->status ?? null) {
-                                    case '1': $status_pr = 'Sudah di ACC'; $color_pr = 'bg-label-primary'; break;
-                                    case '2': $status_pr = 'Dalam Pengiriman'; $color_pr = 'bg-label-warning'; break;
-                                    case '3': $status_pr = 'Done'; $color_pr = 'bg-label-success'; break;
-                                    default: $status_pr = 'Belum Di ACC'; $color_pr = 'bg-label-secondary'; break;
+                                // Samakan label & warna dengan tab status di halaman /purchase-request.
+                                // Status 1 (Approved) yang PO-nya sudah terbit dianggap sudah masuk
+                                // tahap "Purchase Order" (lihat poCount di PurchaseController::index),
+                                // jadi labelnya diganti biar jelas tinggal nunggu barang dari supplier.
+                                if (($purchase->status ?? null) == '1' && ($purchase->purchaseOrders->count() ?? 0) > 0) {
+                                    $status_pr = 'Menunggu Pengiriman Supplier';
+                                    $color_pr = 'bg-label-dark';
+                                } else {
+                                    switch ($purchase->status ?? null) {
+                                        case '1': $status_pr = 'Approved'; $color_pr = 'bg-label-warning'; break;
+                                        case '2': $status_pr = 'Delivery'; $color_pr = 'bg-label-info'; break;
+                                        case '3': $status_pr = 'Good Receipt'; $color_pr = 'bg-label-success'; break;
+                                        default: $status_pr = 'New Purchase'; $color_pr = 'bg-label-primary'; break;
+                                    }
                                 }
                             @endphp
                             @forelse (($purchase->details ?? collect()) as $pr)
@@ -631,64 +549,57 @@
                     </div>
                 </div>
             @endif
+
+    <!-- Activity Timeline -->
+    @if ($activity->count() >= 1)
+        <div class="d-flex align-items-center gap-2 mb-3 mt-2">
+            <i class="mdi mdi-clock-outline fs-4 text-primary"></i>
+            <h5 class="fw-bold mb-0 text-dark text-uppercase" style="letter-spacing: .3px; font-size: 14px;">Riwayat Aktivitas</h5>
         </div>
+        <div class="card mb-4 shadow-sm border-0">
+            <div class="card-body pt-4">
+                <ul class="timeline card-timeline mb-0">
+                    @foreach ($activity as $stats)
+                        @php
+                            switch ($stats->status) {
+                                case 1: $color = 'warning'; $st = 'On Check'; break;
+                                case 2: $color = 'info'; $st = 'Ready Stock'; break;
+                                case 3: $color = 'danger'; $st = 'Kurang'; break;
+                                case 4: $color = 'primary'; $st = 'Pre-Order'; break;
+                                case 5: $color = 'linkedin'; $st = 'Delivery Process'; break;
+                                case 6: $color = 'success'; $st = 'Done'; break;
+                                case 8: $color = 'danger'; $st = 'Return'; break;
+                                case 9: $color = 'warning'; $st = 'Delayed'; break;
+                                default: $color = 'secondary'; $st = 'In Progress'; break;
+                            }
+                        @endphp
+                        <li class="timeline-item timeline-item-transparent clearfix">
+                            <span class="timeline-point timeline-point-{{ $color }}"></span>
+                            <div class="timeline-event">
+                                <div class="timeline-header mb-1">
+                                    <h6 class="mb-0 fw-bold text-dark">Status: <span class="badge bg-label-{{ $color }} btn-xs">{{ $st }}</span></h6>
+                                    <small class="text-muted">{{ $stats->created_at->diffForHumans() }} ({{ $stats->created_at->format('d M Y H:i') }})</small>
+                                </div>
+                                <p class="mb-2 small text-muted">Diperbarui oleh: <span class="fw-semibold text-dark">{{ $stats->user->name ?? 'System' }}</span></p>
 
-        <!-- 3. FINANCE / ACCOUNTING TAB -->
-        <div class="tab-pane fade" id="finance-pane-unit" role="tabpanel" aria-labelledby="finance-tab-unit">
-            @php
-                $totalPrAmount = ($purchase && $purchase->status == '3') ? $purchase->details->sum('amount') : 0;
-                $totalResiAmount = $resis->sum('cost');
-                $totalCost = $totalPrAmount + $totalResiAmount;
-                $revenue = $quote->total ?? 0;
-                $estimatedProfit = $revenue - $totalCost;
-                $profitRatio = $revenue > 0 ? ($estimatedProfit / $revenue) * 100 : 0;
-                $costRatio = $revenue > 0 ? ($totalCost / $revenue) * 100 : 0;
-            @endphp
-
-            <div class="card bg-label-primary mb-4 border-0 shadow-none">
-                <div class="card-body p-4">
-                    <h5 class="card-title text-primary fw-bold mb-4"><i class="mdi mdi-chart-line me-2"></i> Ringkasan Kesehatan Keuangan</h5>
-                    <div class="row g-3">
-                        <div class="col-12 col-md-4">
-                            <div class="p-3 bg-white rounded border border-light shadow-sm">
-                                <span class="text-muted small d-block mb-1">Total Pendapatan (Revenue)</span>
-                                <h4 class="fw-bold text-success mb-0">Rp {{ number_format($revenue, 0, ',', '.') }}</h4>
+                                <div class="ms-3 border-start ps-3 py-1">
+                                    @foreach ($stats->comment as $com)
+                                        <div class="mb-2 p-2 rounded bg-light hover-light border border-light position-relative">
+                                            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                                <span class="fw-bold text-dark" style="font-size: 12px;">{{ $com->user->name }}</span>
+                                                <small class="text-muted" style="font-size: 10px;">{{ $com->date }}</small>
+                                            </div>
+                                            <p class="mb-0 text-muted mt-1" style="font-size: 12px; line-height: 1.4;">{{ $com->comment }}</p>
+                                        </div>
+                                    @endforeach
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-12 col-md-4">
-                            <div class="p-3 bg-white rounded border border-light shadow-sm">
-                                <span class="text-muted small d-block mb-1">Total Biaya (COGS)</span>
-                                <h4 class="fw-bold text-danger mb-0">Rp {{ number_format($totalCost, 0, ',', '.') }}</h4>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-4">
-                            <div class="p-3 bg-white rounded border border-light shadow-sm">
-                                <span class="text-muted small d-block mb-1">Estimasi Net Profit</span>
-                                <h4 class="fw-bold {{ $estimatedProfit >= 0 ? 'text-primary' : 'text-danger' }} mb-0">
-                                    Rp {{ number_format($estimatedProfit, 0, ',', '.') }}
-                                </h4>
-                            </div>
-                        </div>
-                    </div>
-                    <hr class="my-4 opacity-50">
-                    <div>
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted small fw-semibold">Rasio Pengeluaran vs Margin Keuntungan</span>
-                            <span class="badge bg-success-subtle text-success fs-7" style="background-color: rgba(113, 221, 55, 0.15); color: #71dd37; padding: 4px 8px; border-radius: 4px;">{{ number_format($profitRatio, 1) }}% Margin</span>
-                        </div>
-                        <div class="progress rounded-pill" style="height: 12px; overflow: hidden; background-color: rgba(0,0,0,0.05);">
-                            <div class="progress-bar bg-danger animate-bar" role="progressbar" style="width: {{ $costRatio }}%" aria-valuenow="{{ $costRatio }}" aria-valuemin="0" aria-valuemax="100"></div>
-                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ $profitRatio }}%" aria-valuenow="{{ $profitRatio }}" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                        <div class="d-flex justify-content-between mt-2 text-muted small" style="font-size: 11px;">
-                            <span>Biaya Operasional &amp; Material: {{ number_format($costRatio, 1) }}%</span>
-                            <span>Margin Keuntungan: {{ number_format($profitRatio, 1) }}%</span>
-                        </div>
-                    </div>
-                </div>
+                        </li>
+                    @endforeach
+                </ul>
             </div>
         </div>
-    </div>
+    @endif
 
     {{-- ==================== MODALS ==================== --}}
 
@@ -1088,6 +999,17 @@
 @push('after-style')
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/select2/select2.css" />
+    <style>
+        .info-col + .info-col {
+            border-top: 1px solid #eceef1;
+        }
+        @media (min-width: 992px) {
+            .info-col + .info-col {
+                border-top: 0;
+                border-left: 1px solid #eceef1;
+            }
+        }
+    </style>
 @endpush
 @push('after-script')
     <script src="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.js"></script>

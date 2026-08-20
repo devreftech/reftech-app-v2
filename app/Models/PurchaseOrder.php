@@ -16,8 +16,12 @@ class PurchaseOrder extends Model
     ];
     protected $fillable = [
         'no_po',
+        'no_gr',
+        'no_invoice_supplier',
+        'invoice_file',
         'category',
         'receipt_status',
+        'gr_sent_at',
         'id_purchase_request',
         'attn',
         'mobile',
@@ -35,7 +39,7 @@ class PurchaseOrder extends Model
     ];
     public function detail()
     {
-        return $this->hasMany('App\Models\DetailPurchaseOrder', 'id_purhcase_order');
+        return $this->hasMany('App\Models\DetailPurchaseOrder', 'id_purchase_order');
     }
     public function supplier()
     {

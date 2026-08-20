@@ -1,30 +1,46 @@
 @extends('layouts.sales.app')
 @section('title', 'Product In')
 @section('content')
+    @if (Auth::user()->role == 'Logistic')
+        <div class="mb-3">
+            <h4 class="fw-bold mb-1 text-dark">GR Manual &mdash; Barang Masuk Tanpa PO</h4>
+            <p class="text-muted mb-0 small">
+                Dipakai untuk barang yang tiba-tiba masuk stok tanpa melalui Purchase Order (mis. titipan supplier,
+                koreksi stok opname). Harga bisa diisi belakangan lewat Konfirmasi Invoice / Isi Invoice.
+            </p>
+        </div>
+    @endif
     <form action="{{ route(Auth::user()->role == 'Logistic' ? 'product-in.logistic-store' : 'product-in.store') }}"
         method="post" enctype="multipart/form-data">
         @csrf
-        <div class="form-floating mb-3">
-            <input type="text" class="form-control form-control-lg fw-bold fs-3 text-primary"
-                id="noProductInPreview" value="{{ $nextNoProductIn }}" disabled>
-            <label for="noProductInPreview">No. Product In <span class="badge bg-label-secondary ms-1">Auto</span></label>
-            <span class="form-floating-focused"></span>
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control form-control-lg fw-bold fs-4 text-primary"
+                                id="noProductInPreview" value="{{ $nextNoProductIn }}" disabled>
+                            <label for="noProductInPreview">No. Product In <span class="badge bg-label-secondary ms-1">Auto</span></label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
+                            <div class="form-floating">
+                                <input type="text" class="form-control form-control-lg fw-bold fs-4" id="floatingInputFilled"
+                                    placeholder="xxx/xx/xx/xxxx xxxx" aria-describedby="floatingInputFilledHelp" name="invoice">
+                                <label for="floatingInputFilled">No Invoice</label>
+                            </div>
+                        @else
+                            <div class="form-floating">
+                                <input type="text" class="form-control form-control-lg fw-bold fs-4" id="floatingInputFilled"
+                                    placeholder="xxx/xx/xx/xxxx xxxx" aria-describedby="floatingInputFilledHelp" name="no_do">
+                                <label for="floatingInputFilled">No Delivery Order</label>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
         </div>
-        @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
-            <div class="form-floating mb-3">
-                <input type="text" class="form-control form-control-lg fw-bold fs-3" id="floatingInputFilled"
-                    placeholder="xxx/xx/xx/xxxx xxxx" aria-describedby="floatingInputFilledHelp" name="invoice">
-                <label for="floatingInputFilled">No Invoice</label>
-                <span class="form-floating-focused"></span>
-            </div>
-        @else
-            <div class="form-floating mb-3">
-                <input type="text" class="form-control form-control-lg fw-bold fs-3" id="floatingInputFilled"
-                    placeholder="xxx/xx/xx/xxxx xxxx" aria-describedby="floatingInputFilledHelp" name="no_do">
-                <label for="floatingInputFilled">No Delivery Order</label>
-                <span class="form-floating-focused"></span>
-            </div>
-        @endif
         @if ($errors->any())
             <div class="alert alert-danger">
                 <ul>
@@ -37,9 +53,10 @@
         <div class="card">
             <div class="card-body">
                 <div class="form-invoice-repeater source-item">
-                    <div class="row">
-                        <div class="col-12 col-lg-6">
-                            <div class="form-floating form-floating-outline mb-2">
+                    <h6 class="text-uppercase text-muted small fw-bold mb-3">Informasi Supplier &amp; Tanggal</h6>
+                    <div class="row g-3 mb-4 align-items-end">
+                        <div class="col-12 {{ Auth::user()->role == 'Logistic' ? 'col-lg-5' : 'col-lg-4' }}">
+                            <div class="form-floating form-floating-outline">
                                 <select id="supplier-dropdown" class="select2 form-select invoice-item-supplier"
                                     data-allow-clear="true" name="supplier" data-id="1"
                                     {{ Auth::user()->role == 'Logistic' ? 'disabled' : '' }}>
@@ -51,42 +68,24 @@
                                     @endforeach
                                 </select>
                                 <label for="supplier-dropdown">Supplier</label>
-                                {{-- bekas --}}
-                                {{-- <div class="form-floating form-floating-outline mb-4">
-                                <input class="form-control" type="text" placeholder="Put Supplier Quotation Here ...."
-                                    id="supplier-input" name="suplier"
-                                    value="{{ old('supplier', @$productIn->supplier ?? '') }}"
-                                    {{ Auth::user()->role == 'Logistic' ? 'Disabled' : '' }}>
-                                <label for="supplier-input">Suplier</label>
-                            </div> --}}
                             </div>
                         </div>
-                        <div class="col-6 col-lg-2">
-                            @if (Auth::user()->role == 'Logistic')
-                                <div class="form-floating form-floating-outline mb-4">
-                                    <select class="form-select invoice-item-info" id="info-dropdown" name="info"
-                                        aria-label="Default select example">
-                                        <option value="Lokal">Lokal</option>
-                                        <option value="Import">Import</option>
-                                    </select>
-                                    <label for="info-dropdown">Supplier Info</label>
-                                </div>
-                            @else
-                                <div class="form-floating form-floating-outline mb-4">
-                                    <select class="form-select invoice-item-info" id="info-dropdown" name="info"
-                                        aria-label="Default select example" disabled>
-                                        <option selected disabled>Pilih supplier dulu...</option>
-                                    </select>
-                                    <label for="info-dropdown">Supplier Info</label>
-                                </div>
-                            @endif
+                        <div class="col-6 {{ Auth::user()->role == 'Logistic' ? 'col-lg-3' : 'col-lg-2' }}">
+                            <label class="small text-muted mb-1 d-block">Supplier Info</label>
+                            <div class="btn-group w-100" role="group" aria-label="Supplier Info">
+                                <button type="button"
+                                    class="btn btn-outline-primary info-toggle-btn {{ Auth::user()->role == 'Logistic' ? 'active' : '' }}"
+                                    data-value="Lokal" {{ Auth::user()->role == 'Logistic' ? '' : 'disabled' }}>Lokal</button>
+                                <button type="button" class="btn btn-outline-primary info-toggle-btn"
+                                    data-value="Import" {{ Auth::user()->role == 'Logistic' ? '' : 'disabled' }}>Import</button>
+                            </div>
+                            <input type="hidden" class="invoice-item-info" id="info-dropdown" name="info"
+                                value="{{ Auth::user()->role == 'Logistic' ? 'Lokal' : '' }}">
                         </div>
-                        <div class="col-6 col-lg-2">
-                            <div class="form-floating form-floating-outline mb-4">
+                        <div class="col-6 {{ Auth::user()->role == 'Logistic' ? 'col-lg-4' : 'col-lg-2' }}">
+                            <div class="form-floating form-floating-outline">
                                 <input class="form-control" type="date" id="Date" name="date"
-                                    {{-- {{ @$productIn->date ? '' : '_label' }}  naikin nanti --}}
-                                    value="{{ old('date', @$productIn->date ?? now()->format('Y-m-d')) }}"
-                                    {{-- {{ @$productIn->date ? '' : 'disabled' }} --}}>
+                                    value="{{ old('date', @$productIn->date ?? now()->format('Y-m-d')) }}">
                                 @if (empty($productIn->date))
                                     <input type="date" name="estimated_date" id=""
                                         value="{{ now()->format('Y-m-d') }}" hidden>
@@ -94,65 +93,55 @@
                                 <label for="Date">Date Product In</label>
                             </div>
                         </div>
-                        <div class="col-6 col-lg-2">
-                            <div class="form-floating form-floating-outline mb-4">
-                                <input class="form-control" type="date" id="Date" name="date"
-                                    {{-- {{ @$productIn->date ? '' : '_label' }}  naikin nanti --}}
-                                    value="{{ old('date', @$productIn->date ?? now()->format('Y-m-d')) }}"
-                                    {{-- {{ @$productIn->date ? '' : 'disabled' }} --}} {{ Auth::user()->role == 'Logistic' ? 'Disabled' : '' }}>
-                                <label for="Date">Date Invoice</label>
+                        @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
+                            <div class="col-6 col-lg-2">
+                                <div class="form-floating form-floating-outline">
+                                    <input class="form-control" type="date" id="DateInvoice" name="date_invoice"
+                                        value="{{ old('date_invoice', @$productIn->date_invoice ?? now()->format('Y-m-d')) }}">
+                                    <label for="DateInvoice">Date Invoice</label>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-lg-2">
-                            <button type="button" class="btn btn-primary waves-effect waves-light" data-bs-toggle="modal"
-                                data-bs-target="#createSupplier" {{ Auth::user()->role == 'Logistic' ? 'disabled' : '' }}>
-                                + Supplier
-                            </button>
-                        </div>
+                            <div class="col-lg-2">
+                                <button type="button" class="btn btn-primary waves-effect waves-light w-100" data-bs-toggle="modal"
+                                    data-bs-target="#createSupplier">
+                                    + Supplier
+                                </button>
+                            </div>
+                        @endif
                     </div>
+                    <h6 class="text-uppercase text-muted small fw-bold mb-3">Item Barang</h6>
                     <div class="mb-3" data-repeater-list="group-a">
-                        <div class="repeater-wrapper pt-0 pt-md-4" data-repeater-item="">
-                            <div class="d-flex border rounded position-relative pe-0">
+                        <div class="repeater-wrapper" data-repeater-item="">
+                            <div class="d-flex border rounded position-relative pe-0 mb-3">
                                 <div class="row w-100 p-3">
                                     <div
-                                        class="{{ Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting' ? 'col-md-4' : 'col-md-6' }} col-12 mb-md-0 mb-3">
+                                        class="{{ Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting' ? 'col-md-3' : 'col-md-6' }} col-12 mb-md-0 mb-3">
                                         <label for="product" class="mb-2">Product</label>
                                         <div class="form-floating form-floating-outline mb-2">
                                             <select id="replacement-dropdown-1"
-                                                class="select2 form-select invoice-item-replacement" data-allow-clear="true"
+                                                class="form-select invoice-item-replacement" data-allow-clear="true"
                                                 name="replacement[]" data-id="1">
-                                                <option> ---- Choose Commodity || Replacement Here ---- </option>
-                                                @foreach ($detProduct as $products)
-                                                    <option value="{{ $products->id }}">
-                                                        {{ $products->product->commodity }}
-                                                        ({{ $products->product->detail_desc }})
-                                                        ||
-                                                        {{ $products->replacement }} -
-                                                        {{ $products->product->go == 'Genuine' ? 'G' : 'R' }}
-                                                    </option>
-                                                @endforeach
+                                                <option value=""> ---- Choose Commodity || Replacement Here ---- </option>
                                             </select>
                                             <label for="replacement-dropdown">Commodity || Replacement</label>
                                         </div>
                                     </div>
-                                    <div class="col-md-1 col-12 mb-md-0 mb-3">
+                                    <div class="{{ Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting' ? 'col-md-1' : 'col-md-3' }} col-12 mb-md-0 mb-3">
                                         <p class="mb-2 repeater-title">Qty</p>
-                                        <input type="number" class="form-control mb-3 invoice-item-qty" placeholder="Min 1"
+                                        <input type="number" class="form-control invoice-item-qty" placeholder="Min 1"
                                             name="qty[]" id="qty-1" data-id="1" min="1"
                                             value="{{ old('qty[]') }}">
                                     </div>
-                                    <div class="col-md-1 col-12 mb-md-0 mb-3">
-                                        <p class="mb-2 repeater-title">warehouse</p>
-                                        <div class="form-floating form-floating-outline mb-4">
-                                            <select class="form-select invoice-item-warehouse" id="warehouse-1"
-                                                data-id="1" aria-label="Default select example" name="warehouse[]">
-                                                <option>---Info---</option>
-                                                <option value="BDG">BDG
-                                                </option>
-                                                <option value="BKS">BKS
-                                                </option>
-                                            </select>
+                                    <div class="{{ Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting' ? 'col-md-2' : 'col-md-3' }} col-12 mb-md-0 mb-3 warehouse-toggle-wrap">
+                                        <p class="mb-2 repeater-title">Warehouse</p>
+                                        <div class="btn-group w-100" role="group" aria-label="Warehouse">
+                                            <button type="button" class="btn btn-outline-primary btn-sm warehouse-toggle-btn"
+                                                data-value="BDG">BDG</button>
+                                            <button type="button" class="btn btn-outline-primary btn-sm warehouse-toggle-btn"
+                                                data-value="BKS">BKS</button>
                                         </div>
+                                        <input type="hidden" class="invoice-item-warehouse" id="warehouse-1"
+                                            data-id="1" name="warehouse[]" value="">
                                     </div>
                                     @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
                                         <div class="col-md-2 col-12 mb-md-0 mb-3">
@@ -194,7 +183,7 @@
                                     @endif
                                 </div>
                                 <div
-                                    class="d-flex flex-column align-items-center justify-content-between border-start p-2">
+                                    class="d-flex flex-column align-items-center justify-content-center border-start p-2">
                                     <i class="mdi mdi-close cursor-pointer bg-danger text-white btn-del"
                                         data-repeater-delete=""></i>
                                 </div>
@@ -306,6 +295,16 @@
                             </div>
                         </div>
                     @endif
+                    @if (Auth::user()->role == 'Logistic')
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="manual-gr-note" class="mb-2">Catatan / Alasan <span class="text-danger">*</span></label>
+                                <textarea class="form-control h-px-100" rows="2" id="manual-gr-note"
+                                    placeholder="Kenapa barang ini masuk tanpa PO? (mis. titipan supplier, koreksi stok opname)"
+                                    name="note" required>{{ old('note') }}</textarea>
+                            </div>
+                        </div>
+                    @endif
                     <div class="float-end">
                         <a href="{{ route('quotation.index') }}" type="button"
                             class="btn btn-lg btn-outline-secondary w-px-120">
@@ -346,13 +345,57 @@
                 return n.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".")
             }
 
+            // Render tiap hasil pencarian dengan badge G/R (Genuine/Replacement) alih-alih
+            // digabung jadi teks polos " - G" / " - R".
+            function formatReplacementOption(item) {
+                // Placeholder & pesan loading/searching-nya select2 gak punya field custom
+                // (commodity/detail_desc/replacement/go) — cuma hasil AJAX asli yang punya.
+                if (!item.commodity) return item.text;
+
+                var badgeClass = item.go === 'G' ? 'bg-label-success' : 'bg-label-warning';
+                var $result = $('<span></span>');
+                $result.text(item.commodity + ' (' + item.detail_desc + ') || ' + item.replacement + ' ');
+                $result.append($('<span class="badge ' + badgeClass + '"></span>').text(item.go));
+                return $result;
+            }
+
+            // Dulu semua 3000+ produk di-render sekaligus jadi <option>, bikin dropdown ini
+            // lemot dibuka. Sekarang di-search on-demand ke server (baru mulai nyari kalau
+            // ketik minimal 2 karakter), jadi buka form-nya instan.
             function initializeSelect2Replacement() {
-                $(`#replacement-dropdown-${rep}`).select2({
+                $(`#replacement-dropdown-${rep}`).not('.select2-hidden-accessible').select2({
                     placeholder: ' ---- Choose Commodity || Replacement Here ---- ',
                     allowClear: true,
                     width: '100%',
+                    minimumInputLength: 2,
+                    templateResult: formatReplacementOption,
+                    templateSelection: formatReplacementOption,
+                    ajax: {
+                        url: '{{ route('product-in.replacements.search') }}',
+                        dataType: 'json',
+                        delay: 250,
+                        data: function(params) {
+                            return { q: params.term };
+                        },
+                        processResults: function(data) {
+                            return { results: data };
+                        },
+                        cache: true,
+                    },
+                    language: {
+                        inputTooShort: function() {
+                            return 'Ketik minimal 2 huruf untuk mencari...';
+                        },
+                        searching: function() {
+                            return 'Mencari...';
+                        },
+                        noResults: function() {
+                            return 'Produk tidak ditemukan';
+                        },
+                    },
                 });
             }
+            initializeSelect2Replacement();
 
             $(".invoice-item-shipping-label").on('keyup', function() {
                 var input = $(this)
@@ -374,10 +417,26 @@
             });
             $('#supplier-dropdown').on('change', function() {
                 let info = $(this).find(':selected').data('info');
+                $('.info-toggle-btn').removeClass('active');
+                $(`.info-toggle-btn[data-value="${info}"]`).addClass('active');
+                $('#info-dropdown').val(info);
+            });
 
-                $('#info-dropdown').empty().append(`
-                    <option value="${info}" selected>${info}</option>
-                `);
+            // Toggle "Supplier Info" (Lokal/Import) — cuma aktif kalau tombolnya gak disabled
+            // (buat Admin/Accounting, nilainya otomatis ngikut supplier yang dipilih di atas).
+            $(document).on('click', '.info-toggle-btn:not(:disabled)', function() {
+                $('.info-toggle-btn').removeClass('active');
+                $(this).addClass('active');
+                $('#info-dropdown').val($(this).data('value')).trigger('change');
+            });
+
+            // Toggle "Warehouse" (BDG/BKS) per baris item — delegated biar otomatis kepasang
+            // ke baris baru yang ditambah lewat "Add Item" juga.
+            $(document).on('click', '.warehouse-toggle-btn', function() {
+                var $wrap = $(this).closest('.warehouse-toggle-wrap');
+                $wrap.find('.warehouse-toggle-btn').removeClass('active');
+                $(this).addClass('active');
+                $wrap.find('.invoice-item-warehouse').val($(this).data('value')).trigger('change');
             });
 
             $(".invoice-item-price-label").on('keyup', function() {

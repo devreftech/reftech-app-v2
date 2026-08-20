@@ -83,8 +83,8 @@
                             </span>
                         </div>
                         <div class="flex-grow-1">
-                            <textarea id="new-comment-text" class="form-control border p-2.5 text-dark" rows="2"
-                                placeholder="Ketik perkembangan follow up, kesepakatan dengan client, atau instruksi internal..." style="font-size: 13px; border-radius: 8px; background:#fafafa;" required></textarea>
+                            <textarea id="new-comment-text" class="form-control border p-2.5" rows="2"
+                                placeholder="Ketik perkembangan follow up, kesepakatan dengan client, atau instruksi internal..." style="font-size: 13px; border-radius: 8px;" required></textarea>
                             <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top">
                                 <small class="text-muted" style="font-size: 11px;">
                                     <i class="mdi mdi-information-outline me-1"></i>Komentar hanya dapat dilihat oleh tim internal
@@ -137,7 +137,7 @@
                                     </small>
                                 </div>
                                 @if ($hist->note)
-                                    <div class="mt-2 p-2.5 rounded-2 bg-light text-dark" style="font-size: 12px; border-left: 3px solid var(--bs-{{ $hst['color'] }}); background-color: #f8f9fa;">
+                                    <div class="mt-2 p-2.5 rounded-2 bg-light" style="font-size: 12px; border-left: 3px solid var(--bs-{{ $hst['color'] }});">
                                         <i class="mdi mdi-information-outline text-{{ $hst['color'] }} me-1"></i> {{ $hist->note }}
                                     </div>
                                 @endif

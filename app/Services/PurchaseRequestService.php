@@ -63,17 +63,35 @@ class PurchaseRequestService
     public function generateNoPr(): string
     {
         $year = now()->format('Y');
-        $month = now()->format('m');
-        $prefix = "PR/{$year}/{$month}/";
+        $romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+        $roman = $romanMonths[(int) now()->format('n') - 1];
+        $suffix = "-PR/RJO/{$roman}/{$year}";
 
-        $last = PurchaseRequest::where('no_pr', 'like', $prefix . '%')
+        $last = PurchaseRequest::where('no_pr', 'like', '%' . $suffix)
             ->orderByDesc('no_pr')
             ->value('no_pr');
 
-        $lastSeq = $last ? (int) substr($last, -3) : 0;
+        $lastSeq = $last ? (int) substr($last, 0, 3) : 0;
         $nextSeq = str_pad($lastSeq + 1, 3, '0', STR_PAD_LEFT);
 
-        return $prefix . $nextSeq;
+        return $nextSeq . $suffix;
+    }
+
+    public function generateNoGr(): string
+    {
+        $year = now()->format('Y');
+        $romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+        $roman = $romanMonths[(int) now()->format('n') - 1];
+        $suffix = "-GR/{$roman}/{$year}";
+
+        $last = \App\Models\PurchaseOrder::where('no_gr', 'like', '%' . $suffix)
+            ->orderByDesc('no_gr')
+            ->value('no_gr');
+
+        $lastSeq = $last ? (int) substr($last, 0, 3) : 0;
+        $nextSeq = str_pad($lastSeq + 1, 3, '0', STR_PAD_LEFT);
+
+        return $nextSeq . $suffix;
     }
 
     /**

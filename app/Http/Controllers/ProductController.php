@@ -153,6 +153,7 @@ class ProductController extends Controller
         $product->description = $request->description;
         $product->detail_desc = $request->detail_desc;
         $product->category = $request->category;
+        $product->procurement_type = $request->procurement_type ?? 'ready_stock';
         $product->go = $request->go;
         $product->weight = $request->weight;
         $product->first_stock = 0;
@@ -307,6 +308,7 @@ class ProductController extends Controller
         $product->description = $request->description;
         $product->detail_desc = $request->detail_desc;
         $product->category = $request->category;
+        $product->procurement_type = $request->procurement_type ?? 'ready_stock';
         $product->unit = $request->unit;
         $product->weight = $request->weight;
         $product->go = $request->go;
@@ -570,7 +572,9 @@ class ProductController extends Controller
         $dproduct = DetailProduct::count();
         $sproduct = SerialProduct::count();
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
-        return view('pages.warehouse.master.index', compact('commodity', 'dproduct', 'noSaleProspect', 'sproduct'));
+        $readyStockCount = Product::where('procurement_type', 'ready_stock')->orWhereNull('procurement_type')->count();
+        $byOrderCount = Product::where('procurement_type', 'by_order')->count();
+        return view('pages.warehouse.master.index', compact('commodity', 'dproduct', 'noSaleProspect', 'sproduct', 'readyStockCount', 'byOrderCount'));
     }
     public function indexUnit()
     {

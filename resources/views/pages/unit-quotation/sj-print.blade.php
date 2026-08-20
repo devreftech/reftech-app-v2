@@ -36,14 +36,14 @@
             <div style="height:3px; background:linear-gradient(90deg,#696cff 0%,#9c9eff 60%,#e0e0e0 100%); border-radius:2px; margin:12px 0 16px;"></div>
 
             <div style="display:flex; align-items:stretch; gap:12px; margin-bottom:20px; font-size:12px;">
-                <div style="flex:1; display:flex; flex-direction:column; border:1px solid #dcdcdc; border-radius:6px; padding:10px 14px; background:#fafafa;">
+                <div style="flex:1; display:flex; flex-direction:column; border:1px solid #000; border-radius:6px; padding:10px 14px; background:#fafafa;">
                     <p class="mb-1 fw-bold text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#555;">Deliver To</p>
                     <p class="mb-1 fw-bold" style="font-size:13.5px; color:#111;">{{ $client->company ?? '-' }}</p>
                     <p class="mb-0" style="font-size:11.5px; color:#222; line-height:1.4;">
                         <i class="mdi mdi-map-marker-outline me-1" style="font-size:11px; color:#444;"></i><span style="font-weight:500;">{{ $address }}</span>
                     </p>
                 </div>
-                <div style="min-width:240px; display:flex; flex-direction:column; border:1px solid #dcdcdc; border-radius:6px; padding:10px 14px; background:#fafafa;">
+                <div style="min-width:240px; display:flex; flex-direction:column; border:1px solid #000; border-radius:6px; padding:10px 14px; background:#fafafa;">
                     <p class="mb-1 fw-bold text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#555;">Shipment Info</p>
                     <p class="mb-1 fw-semibold" style="font-size:12px; color:#222;">
                         <i class="mdi mdi-clipboard-text-outline me-1 text-primary"></i>PO / Quote No: <span class="fw-bold">{{ $unitQuote->po_number ?: $unitQuote->no_quote }}</span>
@@ -56,14 +56,14 @@
                         @if ($delivery->date)
                             <span class="fw-bold">{{ \Carbon\Carbon::parse($delivery->date)->format('d-m-Y') }}</span>
                         @else
-                            <span style="display:inline-block; min-width:90px; border-bottom:1px solid #555;">&nbsp;</span>
+                            <span style="display:inline-block; min-width:90px; border-bottom:1px solid #000;">&nbsp;</span>
                         @endif
                     </p>
                 </div>
             </div>
 
             <div class="mb-4">
-                <table class="table table-bordered m-0" style="border: 1px solid rgb(60, 60, 60)">
+                <table class="table table-bordered m-0" style="border: 1px solid #000">
                     <thead>
                         <tr style="background:#f0f2ff;">
                             <th class="text-center" style="width:6%; font-size:12px;">No.</th>
@@ -75,7 +75,7 @@
                         @php $itemNo = 1; @endphp
                         @foreach ($dDelivery as $item)
                             @if (($item->type ?? 'item') === 'header')
-                                <tr style="background:#f0f0ff; border-top:1.5px solid #d0d0ff; border-bottom:1.5px solid #d0d0ff;">
+                                <tr style="background:rgb(214, 214, 214); border-top:1.5px solid #000; border-bottom:1.5px solid #000;">
                                     <td colspan="3" class="fw-bold text-uppercase py-2 px-3 text-primary" style="font-size:12px; letter-spacing:0.5px;">
                                         <i class="mdi mdi-bookmark-outline me-1"></i> {{ $item->desc }}
                                     </td>
@@ -96,13 +96,13 @@
             <div class="row">
                 <div class="col-4 mt-4 text-center">
                     <div style="height:56px;"></div>
-                    <p class="fw-bold mx-3 mb-0" style="border-top:1px solid #999; padding-top:4px;">PT. Reftech Jaya Optima</p>
+                    <p class="fw-bold mx-3 mb-0" style="border-top:1px solid #000; padding-top:4px;">PT. Reftech Jaya Optima</p>
                     <p class="text-muted small mb-0">Shipper</p>
                 </div>
                 <div class="col-4"></div>
                 <div class="col-4 mt-4 text-center">
                     <div style="height:56px;"></div>
-                    <p class="fw-bold mx-3 mb-0" style="border-top:1px solid #999; padding-top:4px;">{{ $client->company ?? '-' }}</p>
+                    <p class="fw-bold mx-3 mb-0" style="border-top:1px solid #000; padding-top:4px;">{{ $client->company ?? '-' }}</p>
                     <p class="text-muted small mb-0">Received</p>
                 </div>
             </div>
@@ -110,7 +110,7 @@
     @else
         <div class="container-fluid flex-grow-1 container-p-y">
             <div class="table-responsive mb-5">
-                <table class="table table-bordered m-0" style="border: 1px solid rgb(60, 60, 60)">
+                <table class="table table-bordered m-0" style="border: 1px solid #000">
                     <tbody>
                         <tr>
                             <td colspan="3" class="py-1">
@@ -165,7 +165,7 @@
                                                     @if ($delivery->date)
                                                         {{ \Carbon\Carbon::parse($delivery->date)->format('d-m-Y') }}
                                                     @else
-                                                        <span style="display:inline-block; min-width:90px; border-bottom:1px solid #555;">&nbsp;</span>
+                                                        <span style="display:inline-block; min-width:90px; border-bottom:1px solid #000;">&nbsp;</span>
                                                     @endif
                                                 </p>
                                                 <p class="mb-1">: {{ $unitQuote->po_number ?: $unitQuote->no_quote }}</p>
@@ -185,7 +185,7 @@
                         @php $itemNo = 1; @endphp
                         @foreach ($dDelivery as $item)
                             @if (($item->type ?? 'item') === 'header')
-                                <tr style="background:#f0f0ff;">
+                                <tr style="background:rgb(214, 214, 214);">
                                     <td colspan="3" class="fw-bold text-uppercase py-1" style="font-size:12px;">{{ $item->desc }}</td>
                                 </tr>
                             @else

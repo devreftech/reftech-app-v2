@@ -4,10 +4,9 @@
     <style>
         .card,
         .modern-card {
-            border: 1px solid rgba(226, 232, 240, 0.8) !important;
-            box-shadow: 0 2px 6px 0 rgba(67, 89, 113, 0.06), 0 0 1px 0 rgba(67, 89, 113, 0.12) !important;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 2px 6px 0 rgba(67, 89, 113, 0.06), 0 0 1px 0 rgba(67, 89, 113, 0.12);
             border-radius: 0.75rem !important;
-            background-color: #ffffff;
         }
     </style>
     <form action="{{ route(Auth::user()->role == 'Logistic' ? 'purchase-request.store-done-all-logistic' : 'purchase-request.store-done-all', $pending->id) }}"

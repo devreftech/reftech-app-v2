@@ -169,19 +169,19 @@
                 <table class="table table-sm mb-0">
                     <thead>
                         <tr>
-                            <th>DO No. / Invoice</th>
+                            <th>No. PO</th>
                             <th>Supplier</th>
                             <th>Date</th>
                             <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($logIncomingPending as $pin)
+                        @forelse ($logIncomingPending as $po)
                             <tr>
-                                <td><a href="{{ route('product-in.index') }}">{{ $pin->no_do ?: ($pin->invoice ?: '#'.$pin->id) }}</a></td>
-                                <td>{{ optional($pin->supp)->supplier ?? $pin->supplier ?? '-' }}</td>
-                                <td>{{ \Carbon\Carbon::parse($pin->date)->translatedFormat('d/m/Y') }}</td>
-                                <td><span class="badge bg-label-warning">Pending</span></td>
+                                <td><a href="{{ route('purchase.show', $po->id) }}">{{ $po->no_po ?: '#'.$po->id }}</a></td>
+                                <td>{{ optional($po->supplier)->supplier ?? '-' }}</td>
+                                <td>{{ \Carbon\Carbon::parse($po->date)->translatedFormat('d/m/Y') }}</td>
+                                <td><span class="badge bg-label-info">Sedang Dikirim</span></td>
                             </tr>
                         @empty
                             <tr>

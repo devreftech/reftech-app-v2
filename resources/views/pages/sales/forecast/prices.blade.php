@@ -85,7 +85,7 @@
 
     <!-- Nav Tabs Navigation -->
     <div class="nav-align-top mb-4">
-        <ul class="nav nav-tabs nav-fill shadow-sm rounded border-0 mb-4" role="tablist" style="background:#fff; padding: 6px;">
+        <ul class="nav nav-tabs nav-fill shadow-sm rounded border-0 mb-4" role="tablist" style="padding: 6px;">
             <li class="nav-item">
                 <button type="button" class="nav-link active fw-bold py-2.5 fs-6" role="tab" data-bs-toggle="tab" data-bs-target="#tab-jasa-pm" aria-controls="tab-jasa-pm" aria-selected="true">
                     <i class="mdi mdi-wrench-outline me-2 fs-5 text-primary"></i> Master Harga Jasa PM
@@ -573,7 +573,7 @@
 
                         <!-- PM 3 Template -->
                         <div class="col-md-6">
-                            <div class="card h-100 border shadow-none" style="background: #fffdfa;">
+                            <div class="card h-100 border shadow-none">
                                 <div class="card-header bg-transparent py-2 border-bottom d-flex align-items-center justify-content-between">
                                     <span class="badge bg-warning px-3 py-1 fs-7 fw-bold text-dark"><i class="mdi mdi-flask-outline me-1"></i>Template Standar PM 3</span>
                                     <small class="text-muted fw-semibold">Level 3</small>
@@ -593,7 +593,7 @@
 
                         <!-- PM 4 Template -->
                         <div class="col-md-6">
-                            <div class="card h-100 border shadow-none" style="background: #fffafa;">
+                            <div class="card h-100 border shadow-none">
                                 <div class="card-header bg-transparent py-2 border-bottom d-flex align-items-center justify-content-between">
                                     <span class="badge bg-danger px-3 py-1 fs-7 fw-bold"><i class="mdi mdi-cog-sync-outline me-1"></i>Template Standar PM 4</span>
                                     <small class="text-muted fw-semibold">Level 4</small>

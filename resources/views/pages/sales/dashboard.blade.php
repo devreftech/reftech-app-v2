@@ -1,7 +1,58 @@
 @extends('layouts.sales.app')
 @section('title', 'My Dashboard')
 @section('content')
-    @if (Auth::user()->role == 'Sales')
+    @if (Auth::user()->isDeveloper())
+        @php
+            $adminView = request()->query('view', $adminView ?? 'sales');
+        @endphp
+
+        <div class="card clean-card mb-4 p-3" style="border-color: rgba(143, 91, 255, 0.35);">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-label-dark fs-7 px-3 py-2 rounded-pill">
+                        <i class="mdi mdi-code-tags me-1"></i> Developer View
+                    </span>
+                    <small class="text-muted fw-semibold d-none d-sm-inline">Pilih Sudut Pandang Dashboard Departemen:</small>
+                </div>
+                <div class="d-flex flex-wrap gap-1" id="admin-view-switcher">
+                    <button type="button" data-view="sales"
+                       class="btn btn-sm btn-admin-view-switch {{ ($adminView ?? 'sales') === 'sales' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
+                        <i class="mdi mdi-chart-line me-1"></i> Sales
+                    </button>
+                    <button type="button" data-view="salesmanager"
+                       class="btn btn-sm btn-admin-view-switch {{ ($adminView ?? 'sales') === 'salesmanager' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
+                        <i class="mdi mdi-account-tie me-1"></i> Sales Manager
+                    </button>
+                    <button type="button" data-view="accounting"
+                       class="btn btn-sm btn-admin-view-switch {{ ($adminView ?? 'sales') === 'accounting' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
+                        <i class="mdi mdi-calculator me-1"></i> Accounting
+                    </button>
+                    <button type="button" data-view="finance"
+                       class="btn btn-sm btn-admin-view-switch {{ ($adminView ?? 'sales') === 'finance' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
+                        <i class="mdi mdi-cash-multiple me-1"></i> Finance
+                    </button>
+                    <button type="button" data-view="logistic"
+                       class="btn btn-sm btn-admin-view-switch {{ ($adminView ?? 'sales') === 'logistic' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
+                        <i class="mdi mdi-truck-delivery-outline me-1"></i> Logistic
+                    </button>
+                    <button type="button" data-view="workshop"
+                       class="btn btn-sm btn-admin-view-switch {{ ($adminView ?? 'sales') === 'workshop' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
+                        <i class="mdi mdi-wrench-outline me-1"></i> Workshop
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-view-container" style="transition: opacity 0.2s ease;">
+            @include('pages.sales.dashboard_view_content')
+        </div>
+        @php
+            $item = 0;
+        @endphp
+        @foreach ($dataOverview as $overview)
+            @include('components.modal.overview')
+        @endforeach
+    @elseif (Auth::user()->role == 'Sales')
         @if (Auth::user()->id == 16 || Auth::user()->id == 23)
             <div class="row gy-4 mb-4">
                 <!-- Congratulations card -->
@@ -1392,15 +1443,14 @@
 @push('after-style')
     <style>
         .clean-card {
-            border: 1px solid #e7e9ed !important;
+            border: 1px solid rgba(226, 232, 240, 0.8);
             border-radius: 16px !important;
-            background: #ffffff !important;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.015) !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.015);
             transition: all 0.2s ease-in-out;
         }
         .clean-card:hover {
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.035) !important;
-            border-color: rgba(105, 108, 255, 0.25) !important;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.035);
+            border-color: rgba(105, 108, 255, 0.25);
         }
         .tooltip-quote-no .tooltip-inner {
             max-width: 320px;
@@ -1493,6 +1543,10 @@
         .welcome-alert-icon.is-crm { background: rgba(3, 195, 236, 0.12); color: #03c3ec; }
         .welcome-alert-icon.is-quote { background: rgba(113, 221, 55, 0.12); color: #71dd37; }
         .welcome-alert-icon.is-fire { background: rgba(255, 62, 29, 0.12); color: #ff3e1d; animation: welcome-pulse 1.4s infinite; }
+        .welcome-alert-icon.is-invoice { background: rgba(105, 108, 255, 0.12); color: #696cff; }
+        .welcome-alert-icon.is-contract { background: rgba(3, 195, 236, 0.12); color: #03c3ec; }
+        .welcome-alert-icon.is-payment { background: rgba(113, 221, 55, 0.12); color: #71dd37; }
+        .welcome-alert-icon.is-overdue { background: rgba(255, 62, 29, 0.12); color: #ff3e1d; animation: welcome-pulse 1.4s infinite; }
         .welcome-alert-card-title { font-weight: 600; font-size: 1rem; color: #2b2c40; margin: 0; }
         .welcome-alert-card-text { font-size: 0.85rem; color: #6c6f80; margin: 0; }
         .welcome-alert-footer {
@@ -2575,6 +2629,144 @@
                             });
                         }
                     },
+                });
+            });
+        </script>
+    @endif
+
+    @if($showAccountingWelcomeAlert ?? false)
+        <script>
+            $(document).ready(function() {
+                Swal.fire({
+                    html: `
+                        <div class="welcome-alert-header" style="background: linear-gradient(135deg, #0d6efd 0%, #00d2d3 100%);">
+                            <span class="welcome-alert-wave">📊</span>
+                            <div class="welcome-alert-title">Hai {{ Auth::user()->name }}!</div>
+                            <div class="welcome-alert-subtitle">Berikut ringkasan tugas akuntansi penting hari ini</div>
+                        </div>
+                        <div class="welcome-alert-body">
+                            <a href="{{ route('invoice.request') }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-invoice"><i class="mdi mdi-file-document-edit-outline"></i></div>
+                                <div>
+                                    <p class="welcome-alert-card-title">{{ $acctPendingInvoiceCount ?? 0 }} Approval Invoice</p>
+                                    <p class="welcome-alert-card-text">Invoice customer pending yang menunggu dibuatkan nomor</p>
+                                </div>
+                            </a>
+
+                            <a href="{{ route('contract.index') }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-contract"><i class="mdi mdi-file-sign"></i></div>
+                                <div>
+                                    <p class="welcome-alert-card-title">{{ $acctPendingContractCount ?? 0 }} Approval Selling Contract</p>
+                                    <p class="welcome-alert-card-text">Selling contract yang perlu diverifikasi dan disetujui</p>
+                                </div>
+                            </a>
+
+                            <a href="{{ route('payment_index.payment') }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-payment"><i class="mdi mdi-credit-card-check-outline"></i></div>
+                                <div>
+                                    <p class="welcome-alert-card-title">{{ $acctPendingPaymentCount ?? 0 }} Approval Payment</p>
+                                    <p class="welcome-alert-card-text">Konfirmasi pembayaran masuk dari customer</p>
+                                </div>
+                            </a>
+
+                            <a href="{{ route('payment_index.aging') }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-overdue"><i class="mdi mdi-alert-circle-outline"></i></div>
+                                <div>
+                                    @if(($acctOverduePaymentCount ?? 0) > 0)
+                                        <p class="welcome-alert-card-title">{{ $acctOverduePaymentCount }} Invoice Jatuh Tempo (Rp {{ number_format($acctOverduePaymentNominal ?? 0, 0, ',', '.') }})</p>
+                                        <p class="welcome-alert-card-text">Segera lakukan tindak lanjut penagihan piutang</p>
+                                    @else
+                                        <p class="welcome-alert-card-title">Tidak Ada Invoice Jatuh Tempo</p>
+                                        <p class="welcome-alert-card-text">Semua pembayaran piutang berjalan lancar</p>
+                                    @endif
+                                </div>
+                            </a>
+                            <div class="welcome-alert-footer">Semangat bekerja! 💼</div>
+                        </div>
+                    `,
+                    width: '44rem',
+                    showClass: {
+                        popup: 'animate__animated animate__zoomIn animate__faster',
+                    },
+                    hideClass: {
+                        popup: 'animate__animated animate__fadeOutUp animate__faster',
+                    },
+                    confirmButtonText: 'Siap, Cek Sekarang! 🚀',
+                    customClass: {
+                        popup: 'swal-welcome-popup',
+                        confirmButton: 'btn btn-primary waves-effect waves-light',
+                    },
+                    buttonsStyling: false,
+                });
+            });
+        </script>
+    @endif
+
+    @if($showAdminWelcomeAlert ?? false)
+        <script>
+            $(document).ready(function() {
+                Swal.fire({
+                    html: `
+                        <div class="welcome-alert-header" style="background: linear-gradient(135deg, #71dd37 0%, #20c997 100%);">
+                            <span class="welcome-alert-wave">📋</span>
+                            <div class="welcome-alert-title">Hai {{ Auth::user()->name }}!</div>
+                            <div class="welcome-alert-subtitle">Berikut ringkasan tugas penting hari ini</div>
+                        </div>
+                        <div class="welcome-alert-body">
+                            <a href="{{ route('service-reports.index') }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-quote"><i class="mdi mdi-clipboard-text-search-outline"></i></div>
+                                <div>
+                                    @if(($yesterdayServiceReportCount ?? 0) > 0)
+                                        <p class="welcome-alert-card-title">{{ $yesterdayServiceReportCount }} Service Report Perlu Direview</p>
+                                        <p class="welcome-alert-card-text">{{ $serviceReportPeriodLabel ?? 'Review pekerjaan kemarin' }}</p>
+                                    @else
+                                        <p class="welcome-alert-card-title">Tidak Ada Service Report Kemarin</p>
+                                        <p class="welcome-alert-card-text">{{ $serviceReportPeriodLabel ?? 'Pekerjaan kemarin' }} sudah up-to-date</p>
+                                    @endif
+                                </div>
+                            </a>
+
+                            <a href="{{ route('prospect.index') }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-crm"><i class="mdi mdi-account-arrow-right-outline"></i></div>
+                                <div>
+                                    @if(($noSaleProspect ?? 0) > 0)
+                                        <p class="welcome-alert-card-title">{{ $noSaleProspect }} Prospect Baru Belum Didelegasi</p>
+                                        <p class="welcome-alert-card-text">Segera delegasikan prospect ke tim sales</p>
+                                    @else
+                                        <p class="welcome-alert-card-title">Semua Prospect Sudah Didelegasi</p>
+                                        <p class="welcome-alert-card-text">Tidak ada antrean prospect baru</p>
+                                    @endif
+                                </div>
+                            </a>
+
+                            <a href="{{ route('purchase-request.index') }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-fire"><i class="mdi mdi-cart-arrow-down"></i></div>
+                                <div>
+                                    @if(($prCount ?? 0) > 0)
+                                        <p class="welcome-alert-card-title">{{ $prCount }} Purchase Request Baru Perlu Diorder</p>
+                                        <p class="welcome-alert-card-text">Segera proses dan buatkan Purchase Order (PO)</p>
+                                    @else
+                                        <p class="welcome-alert-card-title">Tidak Ada Purchase Request Pending</p>
+                                        <p class="welcome-alert-card-text">Semua purchase request telah diproses</p>
+                                    @endif
+                                </div>
+                            </a>
+                            <div class="welcome-alert-footer">Semangat bekerja! ⚡</div>
+                        </div>
+                    `,
+                    width: '44rem',
+                    showClass: {
+                        popup: 'animate__animated animate__zoomIn animate__faster',
+                    },
+                    hideClass: {
+                        popup: 'animate__animated animate__fadeOutUp animate__faster',
+                    },
+                    confirmButtonText: 'Siap, Cek Sekarang! 🚀',
+                    customClass: {
+                        popup: 'swal-welcome-popup',
+                        confirmButton: 'btn btn-primary waves-effect waves-light',
+                    },
+                    buttonsStyling: false,
                 });
             });
         </script>

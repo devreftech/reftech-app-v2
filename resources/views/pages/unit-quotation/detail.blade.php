@@ -1,5 +1,5 @@
 @extends('layouts.sales.app')
-@section('title', 'Detail Unit Quotation')
+@section('title', 'Detail Smart Quote')
 @section('content')
 
 @php
@@ -489,19 +489,19 @@
                     </div>
                     
                     {{-- Upload / View PO --}}
-                    @if ((Auth::user()->role === 'Sales' || $isOwnerAdmin) && $quote->status !== 'po_received')
-                        <button type="button" class="btn btn-sm btn-label-success d-flex align-items-center justify-content-center w-100 mb-2 btn-upload-po-unit fw-semibold"
+                    @if (Auth::user()->role === 'Sales' || $isOwnerAdmin)
+                        <button type="button" id="btn-upload-po-wrap" class="btn btn-sm btn-label-success d-flex align-items-center justify-content-center w-100 mb-2 btn-upload-po-unit fw-semibold {{ $quote->status === 'po_received' ? 'd-none' : '' }}"
                             data-npwp="{{ $quote->client->npwp ?? '' }}"
                             data-client-url="{{ $quote->client->role == 'Leads' ? route('detail.leads', $quote->client->id) : route('existing.show', $quote->client->id) }}">
                             <i class="mdi mdi-file-upload-outline me-1"></i> Upload PO
                         </button>
                     @endif
-                    @if ($quote->po_file)
-                        <a href="#" onclick="openPdfViewer('{{ Storage::url($quote->po_file) }}', 'File PO {{ $quote->no_quote ?? '' }}'); return false;"
-                           class="btn btn-sm btn-label-secondary d-flex align-items-center justify-content-center w-100 mb-2 fw-semibold">
-                            <i class="mdi mdi-file-pdf-box text-danger me-1"></i> Lihat File PO
-                        </a>
-                    @endif
+                    <a href="#" id="btn-view-po-wrap"
+                       data-url="{{ $quote->po_file ? Storage::url($quote->po_file) : '' }}"
+                       onclick="openPdfViewer(this.dataset.url, 'File PO {{ $quote->no_quote ?? '' }}'); return false;"
+                       class="btn btn-sm btn-label-secondary d-flex align-items-center justify-content-center w-100 mb-2 fw-semibold {{ $quote->po_file ? '' : 'd-none' }}">
+                        <i class="mdi mdi-file-pdf-box text-danger me-1"></i> Lihat File PO
+                    </a>
 
                     {{-- Selling Contract & SUO (Berdampingan) --}}
                     <div class="row g-2 mt-1">
@@ -658,13 +658,12 @@
                     </button>
                 @endif
 
-                {{-- 5b. Post to Sales Order (hanya saat po_received & pendingPo sudah dibuat) --}}
+                {{-- 5b. Detail Sales Order (hanya saat po_received & pendingPo sudah dibuat) --}}
                 @if ($quote->status === 'po_received' && $pendingPo)
-                    <button type="button"
-                        class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center w-100 mt-2 fw-semibold"
-                        data-bs-toggle="modal" data-bs-target="#convertPoUnit">
-                        <i class="mdi mdi-truck-delivery-outline me-1"></i> Post to Sales Order
-                    </button>
+                    <a href="{{ route('pending-po.show', $pendingPo->id) }}"
+                        class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center w-100 mt-2 fw-semibold">
+                        <i class="mdi mdi-truck-delivery-outline me-1"></i> Detail Sales Order
+                    </a>
                 @endif
             </div>
 
@@ -809,11 +808,26 @@
                                 <i class="mdi mdi-upload"></i>
                             </button>
                         @endif
-                        @if (Auth::user()->role === 'Admin' || Auth::user()->role === 'Accounting')
+                        @if (in_array(Auth::user()->role, ['Admin', 'Accounting', 'Sales']) && $pay->level == 0)
+                            <button type="button" class="btn btn-sm btn-icon btn-label-secondary btn-edit-payment"
+                                data-id="{{ $pay->id }}"
+                                data-type="{{ $pay->type }}"
+                                data-method="{{ $pay->method }}"
+                                data-amount="{{ $pay->amount }}"
+                                data-percent="{{ $pay->percent }}"
+                                data-note="{{ $pay->note }}"
+                                data-tempo="{{ $pay->tempo }}"
+                                title="Edit">
+                                <i class="mdi mdi-pencil-outline"></i>
+                            </button>
                             <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-delete-payment"
                                 data-id="{{ $pay->id }}" title="Hapus">
                                 <i class="mdi mdi-delete-outline"></i>
                             </button>
+                        @elseif ($pay->level == 1)
+                            <span class="badge bg-label-success align-self-center" data-bs-toggle="tooltip" title="Sudah dikonfirmasi Accounting">
+                                <i class="mdi mdi-lock-check-outline"></i> Confirmed
+                            </span>
                         @endif
                     </div>
                 </div>
@@ -923,7 +937,7 @@
                 <h5 class="modal-title"><i class="mdi mdi-upload me-1"></i> Upload Purchase Order</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="{{ route('unit-quotation.upload-po', $quote->id) }}" method="POST"
+            <form id="formUploadPoUnit" action="{{ route('unit-quotation.upload-po', $quote->id) }}" method="POST"
                   enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body">
@@ -934,13 +948,19 @@
                                value="{{ old('po_number', $quote->po_number) }}" required>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label fw-semibold">Tanggal PO <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" name="po_date"
+                               value="{{ old('po_date', now()->toDateString()) }}" required>
+                        <div class="form-text text-muted">Default hari ini, bisa diubah sesuai tanggal PO sebenarnya.</div>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">Payment Method <span class="text-danger">*</span></label>
                         <select class="form-select" name="payment_method" id="select-payment-method" required>
                             <option value="" disabled selected>-- Pilih Metode Pembayaran --</option>
                             <option value="CBD">CBD (Cash Before Delivery)</option>
                             <option value="COD">COD (Cash On Delivery)</option>
-                            <option value="DP 50% & Pelunasan NET 30">DP 50% &amp; Pelunasan NET 30</option>
-                            <option value="DP 30% & Pelunasan NET 30">DP 30% &amp; Pelunasan NET 30</option>
+                            <option value="DP 50% & Pelunasan NET 50">DP 50% &amp; Pelunasan NET 50</option>
+                            <option value="DP 30% & Pelunasan NET 70">DP 30% &amp; Pelunasan NET 70</option>
                             <option value="Tempo">Tempo</option>
                         </select>
                     </div>
@@ -984,7 +1004,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
+                    <button type="submit" id="btnSubmitUploadPoUnit" class="btn btn-success">
                         <i class="mdi mdi-upload me-1"></i> Upload & Konfirmasi PO
                     </button>
                 </div>
@@ -1086,16 +1106,23 @@
             </div>
             <form action="{{ route('unit-quotation.add-payment', $quote->id) }}" method="POST">
                 @csrf
+                @php
+                    // Sinkronkan tipe payment default dengan Payment Method yang diisi waktu upload PO,
+                    // tapi tetap bisa diganti manual lewat dropdown ini.
+                    $addPaymentTypeMap = ['CBD' => 'CBD', 'COD' => 'COD', 'Tempo' => 'Tempo'];
+                    $defaultAddPaymentType = $addPaymentTypeMap[$quote->payment_method]
+                        ?? (str_starts_with($quote->payment_method ?? '', 'DP') ? 'DP' : '');
+                @endphp
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Tipe Payment <span class="text-danger">*</span></label>
                         <select class="form-select" name="type" id="add-payment-type" required>
-                            <option value="">-- Pilih Tipe --</option>
-                            <option value="DP">DP (Down Payment)</option>
-                            <option value="BP">BP (Balance Payment)</option>
-                            <option value="CBD">CBD (Cash Before Delivery)</option>
-                            <option value="COD">COD (Cash On Delivery)</option>
-                            <option value="Tempo">Tempo</option>
+                            <option value="" @selected($defaultAddPaymentType === '')>-- Pilih Tipe --</option>
+                            <option value="DP" @selected($defaultAddPaymentType === 'DP')>DP (Down Payment)</option>
+                            <option value="BP" @selected($defaultAddPaymentType === 'BP')>BP (Balance Payment)</option>
+                            <option value="CBD" @selected($defaultAddPaymentType === 'CBD')>CBD (Cash Before Delivery)</option>
+                            <option value="COD" @selected($defaultAddPaymentType === 'COD')>COD (Cash On Delivery)</option>
+                            <option value="Tempo" @selected($defaultAddPaymentType === 'Tempo')>Tempo</option>
                         </select>
                     </div>
                     <div class="mb-3" id="tempo-group" style="display:none;">
@@ -1119,14 +1146,14 @@
                         <label class="form-label fw-semibold">Jumlah (IDR) <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text">Rp</span>
-                            <input type="number" class="form-control" name="amount"
-                                   min="1" step="1" placeholder="Masukkan jumlah yang diterima" required>
+                            <input type="text" inputmode="numeric" class="form-control" name="amount" id="add-payment-amount"
+                                   placeholder="Masukkan jumlah yang diterima" required>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Persentase <span class="text-muted small">(opsional)</span></label>
                         <div class="input-group">
-                            <input type="number" class="form-control" name="percent"
+                            <input type="number" class="form-control" name="percent" id="add-payment-percent"
                                    min="1" max="100" placeholder="misal 50">
                             <span class="input-group-text">%</span>
                         </div>
@@ -1135,6 +1162,78 @@
                         <label class="form-label fw-semibold">Catatan <span class="text-muted small">(opsional)</span></label>
                         <input type="text" class="form-control" name="note"
                                placeholder="misal: Down Payment, Pelunasan...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="mdi mdi-check me-1"></i> Simpan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Edit Payment --}}
+<div class="modal fade" id="modalEditPayment" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="mdi mdi-pencil-outline me-1"></i> Edit Payment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formEditPayment" method="POST">
+                @csrf
+                @method('PATCH')
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tipe Payment <span class="text-danger">*</span></label>
+                        <select class="form-select" name="type" id="edit-payment-type" required>
+                            <option value="">-- Pilih Tipe --</option>
+                            <option value="DP">DP (Down Payment)</option>
+                            <option value="BP">BP (Balance Payment)</option>
+                            <option value="CBD">CBD (Cash Before Delivery)</option>
+                            <option value="COD">COD (Cash On Delivery)</option>
+                            <option value="Tempo">Tempo</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="edit-tempo-group" style="display:none;">
+                        <label class="form-label fw-semibold">Jangka Tempo (hari) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" name="tempo" id="edit-payment-tempo" min="1" placeholder="misal: 30">
+                            <span class="input-group-text">hari</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Metode Pembayaran <span class="text-danger">*</span></label>
+                        <select class="form-select" name="method" id="edit-payment-method" required>
+                            <option value="">-- Pilih Metode --</option>
+                            <option value="Transfer">Transfer</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Giro">Giro</option>
+                            <option value="Escrow">Escrow</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Jumlah (IDR) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">Rp</span>
+                            <input type="number" class="form-control" name="amount" id="edit-payment-amount"
+                                   min="1" step="1" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Persentase <span class="text-muted small">(opsional)</span></label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" name="percent" id="edit-payment-percent"
+                                   min="1" max="100">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Catatan <span class="text-muted small">(opsional)</span></label>
+                        <input type="text" class="form-control" name="note" id="edit-payment-note">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1213,10 +1312,9 @@
 
 @include('components.modal.viewer.pdf')
 
-{{-- Modal: Post to Sales Order (hanya muncul jika PendingPO sudah ada) --}}
-@if ($quote->status === 'po_received' && $pendingPo)
-    @include('components.modal.unit-quotation.convert-po')
-@endif
+{{-- Modal: Post to Sales Order — selalu di-render (tersembunyi secara default) supaya bisa
+     langsung dibuka via JS begitu Upload PO sukses (AJAX), tanpa perlu reload halaman. --}}
+@include('components.modal.unit-quotation.convert-po')
 
 @endsection
 
@@ -1229,6 +1327,47 @@
         table.items-top-align-table tbody td {
             vertical-align: top !important;
         }
+
+        /* Dark Mode Overrides for Smart Quote Document Preview */
+        html.dark-style .invoice-preview-card {
+            background-color: #2b2c40 !important;
+            color: #cfcde4;
+        }
+        html.dark-style .invoice-preview-card [style*="background:#fafafa"],
+        html.dark-style .invoice-preview-card [style*="background: #fafafa"] {
+            background-color: #32344d !important;
+            border-color: rgba(255,255,255,0.08) !important;
+        }
+        html.dark-style .invoice-preview-card [style*="background:#fff"],
+        html.dark-style .invoice-preview-card [style*="background: #fff"],
+        html.dark-style .invoice-preview-card [style*="background:#ffffff"] {
+            background-color: #2b2c40 !important;
+            border-color: rgba(255,255,255,0.08) !important;
+        }
+        html.dark-style .invoice-preview-card thead[style*="background:#eeeeff"] {
+            background-color: #3f3b77 !important;
+            color: #e7e6fc !important;
+        }
+        html.dark-style .invoice-preview-card thead[style*="background:#eeeeff"] th {
+            border-color: #5650a8 !important;
+            color: #e7e6fc !important;
+        }
+        html.dark-style .invoice-preview-card p[style*="color:#111"],
+        html.dark-style .invoice-preview-card span[style*="color:#222"],
+        html.dark-style .invoice-preview-card div[style*="color:#222"] {
+            color: #cfcde4 !important;
+        }
+        html.dark-style .invoice-preview-card p[style*="color:#555"],
+        html.dark-style .invoice-preview-card p[style*="color:#444"],
+        html.dark-style .invoice-preview-card p[style*="color:#333"],
+        html.dark-style .invoice-preview-card i[style*="color:#444"] {
+            color: #a1a0b5 !important;
+        }
+        html.dark-style .invoice-preview-card [style*="background:#fff8e1"] {
+            background-color: rgba(255, 171, 0, 0.16) !important;
+            border-color: rgba(255, 171, 0, 0.3) !important;
+            color: #ffab00 !important;
+        }
     </style>
 @endpush
 @push('after-script')
@@ -1237,6 +1376,14 @@
 @push('script')
 <script>
     var totalQuote = {{ $quote->total }};
+    // Dipakai buat auto-isi nominal/persentase di modal Tambah Payment sesuai invoice
+    // DP/BP yang sudah diterbitkan — lihat syncAddPaymentAmount() & handler tipe payment.
+    var issuedInvoicesData = {!! json_encode($issuedInvoices->map(fn($i) => [
+        'id'      => $i->id,
+        'type'    => $i->type,
+        'percent' => (float) ($i->percent ?? 0),
+        'paid'    => (bool) $i->status_p,
+    ])->values()) !!};
 
     {{-- Auto-open modal "Post to Sales Order" jika controller mengirim flash open_convert_po --}}
     @if (session('open_convert_po') && $pendingPo)
@@ -1261,12 +1408,114 @@
     }
 
     // Add Payment modal — show Tempo field only when type=Tempo
+    function formatRupiahDigits(digits) {
+        return digits ? Number(digits).toLocaleString('id-ID') : '';
+    }
+    function syncAddPaymentAmount() {
+        var pct = parseFloat($('#add-payment-percent').val());
+        if (!isNaN(pct) && pct > 0) {
+            $('#add-payment-amount').val(formatRupiahDigits(Math.round(totalQuote * pct / 100)));
+        }
+    }
+    // Format tampilan jadi "10.000.000" sambil mengetik, nilai mentah dikirim saat submit.
+    $('#add-payment-amount').on('input', function () {
+        var digits = $(this).val().replace(/\D/g, '');
+        $(this).val(formatRupiahDigits(digits));
+    });
+    // Kategori kasar tipe invoice ('DP'/'BP'/'CT') dari string type invoice yang aslinya
+    // bebas (mis. "Down Payment 2", "Balance Payment", "Pelunasan") — dipakai buat
+    // mencocokkan Tipe Payment (DP/BP) dengan invoice yang sudah diterbitkan.
+    function invoiceTypeCategory(type) {
+        var t = (type || '').toLowerCase();
+        if (t === 'dp' || t.indexOf('down payment') !== -1) return 'DP';
+        if (t === 'bp' || t.indexOf('balance payment') !== -1 || t.indexOf('pelunasan') !== -1) return 'BP';
+        if (t === 'ct') return 'CT';
+        return 'OTHER';
+    }
+
+    // Cari invoice yang sudah diterbitkan sesuai kategori (DP/BP) — prioritaskan yang
+    // belum ditandai Paid, biar persentasenya ikut invoice yang sedang ditagih.
+    function findMatchingInvoice(category) {
+        var candidates = (issuedInvoicesData || []).filter(function (inv) {
+            return invoiceTypeCategory(inv.type) === category;
+        });
+        if (!candidates.length) return null;
+        var unpaid = candidates.filter(function (inv) { return !inv.paid; });
+        var pool = unpaid.length ? unpaid : candidates;
+        return pool[pool.length - 1];
+    }
+
     $('#add-payment-type').on('change', function () {
-        if ($(this).val() === 'Tempo') {
+        var type = $(this).val();
+        if (type === 'Tempo') {
             $('#tempo-group').show().find('input').prop('required', true);
         } else {
             $('#tempo-group').hide().find('input').prop('required', false).val('');
         }
+        // CBD/COD selalu pembayaran penuh — persentase & jumlah otomatis terisi.
+        if (type === 'CBD' || type === 'COD') {
+            $('#add-payment-percent').val(100);
+            syncAddPaymentAmount();
+            return;
+        }
+        // DP/BP — samakan persentase & nominalnya dengan invoice yang sudah diterbitkan
+        // buat tipe itu, supaya tidak perlu diketik ulang manual.
+        if (type === 'DP' || type === 'BP') {
+            var matched = findMatchingInvoice(type);
+            if (matched && matched.percent > 0) {
+                $('#add-payment-percent').val(matched.percent);
+                syncAddPaymentAmount();
+            }
+        }
+    });
+    $('#add-payment-percent').on('input', syncAddPaymentAmount);
+    $('#modalAddPayment').on('show.bs.modal', function () {
+        $('#add-payment-type').trigger('change');
+    });
+    $('#modalAddPayment form').on('submit', function () {
+        $('#add-payment-amount').val($('#add-payment-amount').val().replace(/\D/g, ''));
+    });
+
+    // Edit Payment modal — show Tempo field only when type=Tempo
+    $('#edit-payment-type').on('change', function () {
+        if ($(this).val() === 'Tempo') {
+            $('#edit-tempo-group').show().find('input').prop('required', true);
+        } else {
+            $('#edit-tempo-group').hide().find('input').prop('required', false).val('');
+        }
+    });
+
+    // Buka modal Edit Payment, isi form dari data-* tombol yang diklik
+    $(document).on('click', '.btn-edit-payment', function () {
+        var id = $(this).data('id');
+        $('#formEditPayment').attr('action', '/smart-quote/payment/' + id);
+        $('#edit-payment-type').val($(this).data('type')).trigger('change');
+        $('#edit-payment-method').val($(this).data('method'));
+        $('#edit-payment-amount').val($(this).data('amount'));
+        $('#edit-payment-percent').val($(this).data('percent'));
+        $('#edit-payment-note').val($(this).data('note'));
+        $('#edit-payment-tempo').val($(this).data('tempo'));
+        new bootstrap.Modal(document.getElementById('modalEditPayment')).show();
+    });
+
+    // Submit Edit Payment via AJAX supaya halaman tidak reload
+    $('#formEditPayment').on('submit', function (e) {
+        e.preventDefault();
+        var $form = $(this);
+        $.ajax({
+            url: $form.attr('action'),
+            type: 'POST',
+            data: $form.serialize(),
+            success: function (res) {
+                if (res == 1) {
+                    window.location.reload();
+                }
+            },
+            error: function (xhr) {
+                var msg = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Gagal menyimpan perubahan.';
+                Swal.fire({ icon: 'error', title: 'Oops...', text: msg });
+            }
+        });
     });
 
     // Upload PO modal — Payment Method dropdown logic
@@ -1281,19 +1530,38 @@
             $tempoDays.addClass('d-none');
             $tempoDaysInput.prop('required', false).val('');
         }
+
+        // COD/CBD dibayar lunas di muka, jadi invoice pertama otomatis Full Payment.
+        if (val === 'COD' || val === 'CBD') {
+            $('#select-invoice-type').val('CT').trigger('change');
+        }
+
+        // Metode "DP nn% & ..." — ikutkan persentase DP invoice pertama supaya
+        // nominalnya otomatis kebaca dari Payment Method, tidak perlu diketik ulang manual.
+        var dpMatch = /^DP\s*(\d+(?:\.\d+)?)\s*%/i.exec(val || '');
+        if (dpMatch) {
+            $('#select-invoice-type').val('DP').trigger('change');
+            $('#dp-percent-input').val(dpMatch[1]);
+            updateDpPreview();
+        }
     });
 
-    // Before submit Upload PO: build final payment_method value
-    $('#modalUploadPO form').on('submit', function (e) {
+    // Submit Upload PO via AJAX — biar begitu sukses, langsung buka modal
+    // "Post to Sales Order" tanpa reload/loading transition halaman.
+    $('#formUploadPoUnit').on('submit', function (e) {
+        e.preventDefault();
+
+        var $form = $(this);
+        var $btn  = $('#btnSubmitUploadPoUnit');
+
         var method = $('#select-payment-method').val();
         var finalValue = method;
 
         if (method === 'Tempo') {
             var days = parseInt($('#input-tempo-days').val());
             if (!days || days < 1) {
-                e.preventDefault();
                 $('#input-tempo-days').focus();
-                alert('Masukkan jumlah hari untuk metode Tempo.');
+                Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Masukkan jumlah hari untuk metode Tempo.' });
                 return false;
             }
             finalValue = 'Tempo ' + days + ' Hari';
@@ -1302,7 +1570,74 @@
         // Set nilai final ke hidden input & rename agar server membaca dari sini
         $('#select-payment-method').prop('name', '');
         $('input[name="payment_method_final"]').attr('name', 'payment_method').val(finalValue);
+
+        var formData = new FormData(this);
+        var originalBtnHtml = $btn.html();
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Mengupload...');
+
+        $.ajax({
+            url: $form.attr('action'),
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: { 'Accept': 'application/json' },
+            success: function (res) {
+                $('#btn-upload-po-wrap').addClass('d-none');
+                if (res.po_file_url) {
+                    $('#btn-view-po-wrap').attr('data-url', res.po_file_url).removeClass('d-none');
+                }
+
+                var uploadModalEl = document.getElementById('modalUploadPO');
+                $(uploadModalEl).one('hidden.bs.modal', function () {
+                    openConvertPoModalUnit(res);
+                });
+                bootstrap.Modal.getOrCreateInstance(uploadModalEl).hide();
+            },
+            error: function (xhr) {
+                var res = xhr.responseJSON || {};
+                var msg = res.error
+                    || (res.errors ? Object.values(res.errors)[0][0] : null)
+                    || 'Gagal upload PO.';
+                Swal.fire({ icon: 'error', title: 'Oops...', text: msg });
+            },
+            complete: function () {
+                $btn.prop('disabled', false).html(originalBtnHtml);
+                // Kembalikan nama field asal, jaga-jaga kalau user retry submit.
+                $('#select-payment-method').prop('name', 'payment_method');
+                $('#input-payment-method-final').attr('name', 'payment_method_final');
+            }
+        });
     });
+
+    // Isi & buka modal "Post to Sales Order" pakai data hasil AJAX Upload PO,
+    // tanpa perlu reload halaman.
+    function openConvertPoModalUnit(res) {
+        var p = res.pendingPo || {};
+        var q = res.quote || {};
+
+        $('#uq_NoPending').val(p.no_pending || q.po_number || q.no_quote || '');
+        $('#uq_title').val(p.title || '');
+        $('#uq_selectEkspedisi').val(p.delivery != null ? String(p.delivery) : '');
+        $('#uq_convert_combine_shipping_and_parts')
+            .prop('checked', p.combine_shipping_and_parts == null ? true : !!p.combine_shipping_and_parts);
+        if (p.shipping_recipient_id) {
+            $('#uq_combined_recipient_select').val(p.shipping_recipient_id);
+            $('#uq_shipping_recipient_select').val(p.shipping_recipient_id);
+        }
+        if (p.doc_recipient_id) {
+            $('#uq_doc_recipient_select').val(p.doc_recipient_id);
+        }
+        if (p.shipping_address_manual) {
+            $('#uq_combined_address_manual, #uq_shipping_address_manual').val(p.shipping_address_manual);
+        }
+        if (p.doc_address_manual) {
+            $('#uq_doc_address_manual').val(p.doc_address_manual);
+        }
+
+        toggleAddressLayoutUQ();
+        new bootstrap.Modal(document.getElementById('convertPoUnit')).show();
+    }
 
     // Invoice type toggle — show DP% only when DP selected
     $('#select-invoice-type').on('change', function () {
@@ -1359,7 +1694,7 @@
             buttonsStyling: false,
         }).then(function (result) {
             if (result.isConfirmed) {
-                $.post('{{ url('unit-quotation') }}/' + id + '/request-selling-contract', {
+                $.post('{{ url('smart-quote') }}/' + id + '/request-selling-contract', {
                     _token: '{{ csrf_token() }}'
                 }, function (response) {
                     if (response == 1) {
@@ -1378,7 +1713,7 @@
     $(document).on('change', '#toggle-hide-title', function () {
         var $checkbox = $(this);
         var id = $checkbox.data('id');
-        $.post('{{ url('unit-quotation') }}/' + id + '/toggle-hide-title', {
+        $.post('{{ url('smart-quote') }}/' + id + '/toggle-hide-title', {
             _token: '{{ csrf_token() }}'
         }).fail(function () {
             $checkbox.prop('checked', !$checkbox.is(':checked'));
@@ -1422,7 +1757,7 @@
         fd.append('_token', '{{ csrf_token() }}');
         $(this).prop('disabled', true).text('Uploading...');
         $.ajax({
-            url: '/unit-quotation/payment/' + currentProofPaymentId + '/proof',
+            url: '/smart-quote/payment/' + currentProofPaymentId + '/proof',
             type: 'POST',
             data: fd,
             processData: false,
@@ -1455,7 +1790,7 @@
         }).then(function (result) {
             if (result.isConfirmed) {
                 $.ajax({
-                    url: '/unit-quotation/payment/' + id,
+                    url: '/smart-quote/payment/' + id,
                     type: 'POST',
                     data: { _method: 'DELETE', _token: '{{ csrf_token() }}' },
                     success: function (res) {
@@ -1483,7 +1818,7 @@
             buttonsStyling: false,
         }).then(function (result) {
             if (result.isConfirmed) {
-                $.post('{{ url('unit-quotation') }}/' + id, {
+                $.post('{{ url('smart-quote') }}/' + id, {
                     _method: 'DELETE',
                     _token: '{{ csrf_token() }}'
                 }, function (response) {
@@ -1592,7 +1927,7 @@
                 var id = $item.data('comment-id');
                 $.ajax({
                     type: 'POST',
-                    url: '{{ url('unit-quotation/comments') }}/' + id + '/update',
+                    url: '{{ url('smart-quote/comments') }}/' + id + '/update',
                     data: { comment: result.value.trim(), _token: '{{ csrf_token() }}' },
                     success: function () {
                         location.reload();
@@ -1624,7 +1959,7 @@
             if (result.isConfirmed) {
                 $.ajax({
                     type: 'POST',
-                    url: '{{ url('unit-quotation/comments') }}/' + id,
+                    url: '{{ url('smart-quote/comments') }}/' + id,
                     data: { _method: 'DELETE', _token: '{{ csrf_token() }}' },
                     success: function () {
                         location.reload();

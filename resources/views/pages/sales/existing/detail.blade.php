@@ -193,9 +193,6 @@
                     <div class="border rounded p-3 mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="fw-bold mb-0">Quotation Aktif / Berjalan</h5>
-                            <a href="{{ route('unit-quotation.create') }}" type="button" class="btn btn-primary">
-                                + New Quotation
-                            </a>
                         </div>
                         <div class="card-datatable table-responsive pt-0">
                             <table class="datatable-quotation-active table table-bordered">
@@ -353,7 +350,7 @@
                                         Rp {{ number_format($poCurrentYearTotal, 0, ',', '.') }}
                                     </div>
                                     <p class="text-muted mb-0" style="font-size: 11.5px; line-height: 1.5;">
-                                        Akumulasi dari seluruh penawaran yang sudah terbit PO (quotation & unit quotation) pada tahun berjalan.
+                                        Akumulasi dari seluruh penawaran yang sudah terbit PO (quotation & smart quote) pada tahun berjalan.
                                     </p>
                                 </div>
                             </div>
@@ -765,16 +762,19 @@
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link active fw-semibold" id="subtab-existing-service-btn" data-bs-toggle="pill" data-bs-target="#subtab-existing-service" type="button" role="tab" aria-controls="subtab-existing-service" aria-selected="true">
                                             <i class="mdi mdi-wrench-outline me-1"></i>Service
+                                            <span class="badge bg-label-primary rounded-pill ms-1 d-none" id="service-history-count-badge">0</span>
                                         </button>
                                     </li>
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link fw-semibold" id="subtab-existing-visit-btn" data-bs-toggle="pill" data-bs-target="#subtab-existing-visit" type="button" role="tab" aria-controls="subtab-existing-visit" aria-selected="false">
                                             <i class="mdi mdi-map-marker-path me-1"></i>Visit
+                                            <span class="badge bg-label-primary rounded-pill ms-1 d-none" id="visit-history-count-badge">0</span>
                                         </button>
                                     </li>
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link fw-semibold" id="subtab-existing-general-btn" data-bs-toggle="pill" data-bs-target="#subtab-existing-general" type="button" role="tab" aria-controls="subtab-existing-general" aria-selected="false">
                                             <i class="mdi mdi-clipboard-check-outline me-1"></i>General Check
+                                            <span class="badge bg-label-primary rounded-pill ms-1 d-none" id="general-history-count-badge">0</span>
                                         </button>
                                     </li>
                                 </ul>

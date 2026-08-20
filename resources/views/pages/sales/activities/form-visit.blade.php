@@ -3,7 +3,7 @@
     method="post" enctype="multipart/form-data">
     {{-- {{ csrf_token() }} --}}
     @csrf
-    <div class="modal animate__animated animate__fadeIn" id="createActionVisit" tabindex="-1" style="display: none;"
+    <div class="modal fade" id="createActionVisit" tabindex="-1"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">

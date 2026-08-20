@@ -7,6 +7,24 @@
     <form action="{{ route('product-in.invoicing', $productIn->id) }}" method="post" enctype="multipart/form-data">
         @csrf
         <h5>Edit Barang Masuk <span class="fw-bolder fs-4">{{ $productIn->no_do }}</span></h5>
+        @if ($productIn->purchaseOrder)
+            <div class="alert alert-info d-flex align-items-start gap-2 mb-3">
+                <i class="mdi mdi-file-document-outline fs-5"></i>
+                <div>
+                    Barang masuk ini berasal dari
+                    <a href="{{ route('purchase.show', $productIn->purchaseOrder->id) }}" target="_blank" class="fw-bold">{{ $productIn->purchaseOrder->no_po }}</a>
+                    (total PO: Rp {{ number_format($productIn->purchaseOrder->total, 0, '', '.') }}).
+                    Harga per item di bawah sudah otomatis terisi dari harga PO ini (ditandai badge <span class="badge bg-label-info">PO</span>) — tinggal cek, masih bisa diubah manual kalau perlu.
+                    @if ($productIn->purchaseOrder->detail->count())
+                        <ul class="mb-0 mt-1">
+                            @foreach ($productIn->purchaseOrder->detail as $poDetail)
+                                <li>{{ $poDetail->product }}: Rp {{ number_format($poDetail->price, 0, '', '.') }} x {{ $poDetail->qty }}</li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
+            </div>
+        @endif
         <div class="form-floating mb-3">
             <input type="text" class="form-control form-control-lg fw-bold fs-3" id="floatingInputFilled"
                 placeholder="xxx/xx/xx/xxxx xxxx" aria-describedby="floatingInputFilledHelp" name="invoice">
@@ -132,18 +150,31 @@
                                                 </select>
                                             </div>
                                         </div>
+                                        @php
+                                            // Prioritas nilai awal: input lama (kalau validasi gagal) > harga
+                                            // PO asal (auto-fill) > modal yang udah kesimpen sebelumnya (mode edit).
+                                            $defaultPrice = $product->po_price ?? $product->modal ?? null;
+                                            $defaultDisc = $product->po_disc ?? $product->disc ?? null;
+                                            $fromPo = !is_null($product->po_price ?? null);
+                                        @endphp
                                         <div class="col-md-2 col-12 mb-md-0 mb-3">
-                                            <p class="mb-2 repeater-title">Price</p>
+                                            <p class="mb-2 repeater-title">
+                                                Price
+                                                @if ($fromPo)
+                                                    <span class="badge bg-label-info" title="Otomatis dari harga PO asal">PO</span>
+                                                @endif
+                                            </p>
                                             <div class="input-group" data-price="{{ $no }}">
                                                 <span class="input-group-text">Rp. </span>
                                                 <input type="text" class="form-control invoice-item-price-label"
                                                     id="price-label" data-id="{{ $no }}" min="0"
                                                     placeholder="Put Price Here" data-type="currency"
                                                     pattern="^[0-9]\d{0,2}(\.\d{3})*$" @focus="focused = true"
-                                                    @blur="focused = false" value="{{ old('price[]') }}">
+                                                    @blur="focused = false"
+                                                    value="{{ old('price[]', $defaultPrice !== null ? number_format($defaultPrice, 0, '', '.') : '') }}">
                                                 <input class="form-control invoice-item-price" type="number"
                                                     name="price[]" id="price-{{ $no }}"
-                                                    value="{{ old('price[]') }}" hidden>
+                                                    value="{{ old('price[]', $defaultPrice) }}" hidden>
                                             </div>
                                         </div>
                                         <div class="col-md-2 col-12 mb-md-0 mb-3">
@@ -154,11 +185,12 @@
                                                     id="disc-label" data-id="{{ $no }}" min="0"
                                                     placeholder="Put Discount Here" data-type="currency"
                                                     pattern="^[0-9]\d{0,2}(\.\d{3})*$" @focus="focused = true"
-                                                    @blur="focused = false" value="{{ old('disc[]') }}"
+                                                    @blur="focused = false"
+                                                    value="{{ old('disc[]', $defaultDisc !== null ? number_format($defaultDisc, 0, '', '.') : '') }}"
                                                     {{ Auth::user()->role == 'Logistic' ? 'Disabled' : '' }}>
                                                 <input class="form-control invoice-item-disc" type="number"
                                                     name="disc[]" id="disc-{{ $no }}"
-                                                    value="{{ old('disc[]') }}" hidden>
+                                                    value="{{ old('disc[]', $defaultDisc) }}" hidden>
                                             </div>
                                         </div>
                                         <div class="col-md-2 col-12 pe-0">
@@ -543,6 +575,17 @@
                 rep++;
                 initializeSelect2Replacement();
             })
+
+            // Baris yang udah ke-prefill (dari harga PO asal / harga tersimpan
+            // sebelumnya) belum ke-hitung Amount/Subtotal/Total-nya sampai user
+            // ngetik sesuatu — jadi begitu halaman kebuka, "ketik ulang" nilai yang
+            // udah ada biar kalkulasinya langsung jalan tanpa perlu disentuh manual.
+            $('.invoice-item-price-label').each(function() {
+                if ($(this).val()) $(this).trigger('keyup');
+            });
+            $('.invoice-item-disc-label').each(function() {
+                if ($(this).val()) $(this).trigger('keyup');
+            });
         });
     </script>
 @endpush

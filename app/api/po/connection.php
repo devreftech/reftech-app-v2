@@ -46,9 +46,13 @@ if (Auth::check()) {
                           FROM unit_quotation_status_history sh
                           WHERE sh.id_unit_quotation = uq.id AND sh.status = 'po_received'
                           ORDER BY sh.created_at DESC LIMIT 1) AS po_date,
-                         NULL AS invoice_id,
+                         (SELECT invU.id FROM invoice invU
+                          WHERE invU.id_unit_quotation = uq.id AND invU.no_invoice IS NOT NULL
+                          ORDER BY invU.id DESC LIMIT 1) AS invoice_id,
                          uq.po_number AS no_po,
-                         NULL AS no_invoice,
+                         (SELECT invU.no_invoice FROM invoice invU
+                          WHERE invU.id_unit_quotation = uq.id AND invU.no_invoice IS NOT NULL
+                          ORDER BY invU.id DESC LIMIT 1) AS no_invoice,
                          'unit' AS row_type
                   FROM unit_quotation uq
                   LEFT JOIN client cl ON cl.id = NULLIF(uq.id_client,'')

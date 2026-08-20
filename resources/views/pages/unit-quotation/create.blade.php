@@ -1,13 +1,13 @@
 @extends('layouts.sales.app')
-@section('title', 'Create Unit Quotation')
+@section('title', 'Create Smart Quote')
 @section('content')
     {{-- Hero Page Header & Top Bar --}}
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center py-3 mb-3 gap-3">
         <div>
             <h4 class="fw-bold mb-1">
-                <span class="text-muted fw-light">Sales / <a href="{{ route('unit-quotation.index') }}" class="text-muted">Unit Quotation</a> /</span> Create
+                <span class="text-muted fw-light">Sales / <a href="{{ route('unit-quotation.index') }}" class="text-muted">Smart Quote</a> /</span> Create
             </h4>
-            <p class="text-muted mb-0 small"><i class="mdi mdi-file-document-edit-outline me-1"></i> Create official B2B unit quotation document</p>
+            <p class="text-muted mb-0 small"><i class="mdi mdi-file-document-edit-outline me-1"></i> Create official B2B smart quote document</p>
         </div>
         <div class="d-flex gap-2">
             <a href="{{ route('unit-quotation.index') }}" class="btn btn-label-secondary">
@@ -337,14 +337,14 @@
 
                     {{-- Summary Card (Kanan) --}}
                     <div class="col-lg-5">
-                        <div class="card border-0 shadow-sm overflow-hidden" style="background: #ffffff; border: 1px solid #e0e0ff !important; border-radius: 12px;">
+                        <div class="card border-0 shadow-sm overflow-hidden" style="border: 1px solid rgba(105, 108, 255, 0.2) !important; border-radius: 12px;">
                             {{-- Header --}}
                             <div class="card-header py-3 px-4 bg-light border-bottom d-flex align-items-center justify-content-between">
                                 <div class="d-flex align-items-center">
                                     <div class="avatar avatar-xs bg-label-primary rounded me-2 d-flex align-items-center justify-content-center" style="width:28px; height:28px;">
                                         <i class="mdi mdi-calculator text-primary fs-6"></i>
                                     </div>
-                                    <h6 class="fw-bold mb-0 text-dark">Total Summary</h6>
+                                    <h6 class="fw-bold mb-0">Total Summary</h6>
                                 </div>
                                 <span class="badge bg-label-primary px-2 py-1" style="font-size:10px;">IDR SUMMARY</span>
                             </div>

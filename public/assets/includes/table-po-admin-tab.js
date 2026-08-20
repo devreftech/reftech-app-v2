@@ -50,7 +50,7 @@ $(function () {
                         if (type !== "display") return data;
                         var url;
                         if (full["row_type"] === "unit") {
-                            url = "/unit-quotation/" + full["id"];
+                            url = "/smart-quote/" + full["id"];
                         } else if (full["type"] === "Service") {
                             url = route("show-service.quotation", full["id"]);
                         } else if (full["type"] === "Overhaul") {

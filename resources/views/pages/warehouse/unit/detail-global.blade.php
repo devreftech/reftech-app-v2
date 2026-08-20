@@ -276,7 +276,7 @@
                                     Susun manual item apa saja yang masuk penawaran PM per level untuk unit ini. Daftar item tersimpan
                                     permanen per unit + level, dan jadi sumber data <a href="{{ route('forecast.index') }}" target="_blank" class="fw-bold text-decoration-underline">Forecast Sales</a> juga.
                                     Biaya jasa tetap otomatis dari <a href="{{ route('forecast.prices') }}" target="_blank" class="fw-bold text-decoration-underline">pricelist Forecast</a> berdasarkan Motor Power unit ini.
-                                    Untuk memakai template ini di penawaran, buka halaman <strong>Create Unit Quotation</strong> lalu pakai tombol "Load Template PM".
+                                    Untuk memakai template ini di penawaran, buka halaman <strong>Create Smart Quote</strong> lalu pakai tombol "Load Template PM".
                                 </div>
                             </div>
 

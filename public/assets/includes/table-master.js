@@ -11,16 +11,15 @@ $(function () {
                 headers: {
                     "Content-Type": "application/json",
                 },
-
-                // success: function (hasil, Url) {
-                //     console.log("Url:", Url);
-                //     console.log(hasil);
-                // },
-                // error: function (error) {
-                //     console.log("Url:", Url);
-                //     console.error("Error:", error);
-                //     console.log("error disini");
-                // },
+                dataSrc: function (json) {
+                    if (json.kpi) {
+                        $('#kpi-fast-moving').text(json.kpi.fast_moving || 0);
+                        $('#kpi-slow-moving').text(json.kpi.slow_moving || 0);
+                        $('#kpi-dead-stock').text(json.kpi.dead_stock || 0);
+                        $('#kpi-by-order').text(json.kpi.by_order || 0);
+                    }
+                    return json.data || [];
+                }
             },
             columns: [
                 { data: "" },
@@ -29,6 +28,7 @@ $(function () {
                 { data: "description" },
                 { data: "dimension" },
                 { data: "go" },
+                { data: "movement_status" },
                 { data: "stock" },
                 { data: "warehouse_stock" },
                 { data: "pending_stock" }
@@ -99,7 +99,31 @@ $(function () {
                     }
                 },
                 {
-                    targets: [6, 7, 8], // Stocks
+                    targets: 6, // Status FSN / Movement
+                    render: function (data, type, full, row) {
+                        var status = full['movement_status'] || 'ready_stock';
+                        var badgeClass = full['badge_class'] || 'bg-label-primary';
+                        var statusLabel = full['status_label'] || '-';
+                        var days = full['days_inactive'];
+                        var lastOut = full['last_out_formatted'] || '-';
+                        
+                        var tooltipText = '';
+                        if (status === 'by_order') {
+                            tooltipText = 'Barang pesanan khusus (By Order / Indent). Stok normal = 0.';
+                        } else if (days !== null && days !== undefined) {
+                            tooltipText = 'Terakhir keluar: ' + lastOut + ' (' + days + ' hari lalu)';
+                        } else {
+                            tooltipText = 'Belum pernah ada catatan pengeluaran barang.';
+                        }
+                        
+                        if (type === 'display') {
+                            return '<span class="badge ' + badgeClass + '" data-toggle="tooltip" data-bs-placement="top" title="' + tooltipText.replace(/"/g, '&quot;') + '">' + statusLabel + '</span>';
+                        }
+                        return statusLabel;
+                    }
+                },
+                {
+                    targets: [7, 8, 9], // Stocks
                     render: function (data, type, row) {
                         return data !== null && data !== undefined ? data : 0;
                     },
@@ -120,7 +144,7 @@ $(function () {
                             text: '<i class="mdi mdi-printer-outline me-1" ></i>Print',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [2, 3, 4, 5, 6, 7, 8],
+                                columns: [2, 3, 4, 5, 6, 7, 8, 9],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -176,7 +200,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-document-outline me-1" ></i>Csv',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [2, 3, 4, 5, 6, 7, 8],
+                                columns: [2, 3, 4, 5, 6, 7, 8, 9],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -213,7 +237,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-excel-outline me-1"></i>Excel',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [2, 3, 4, 5, 6, 7, 8],
+                                columns: [2, 3, 4, 5, 6, 7, 8, 9],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -250,7 +274,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-pdf-box me-1"></i>Pdf',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [2, 3, 4, 5, 6, 7, 8],
+                                columns: [2, 3, 4, 5, 6, 7, 8, 9],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -287,7 +311,7 @@ $(function () {
                             text: '<i class="mdi mdi-content-copy me-1" ></i>Copy',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [2, 3, 4, 5, 6, 7, 8],
+                                columns: [2, 3, 4, 5, 6, 7, 8, 9],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -338,7 +362,7 @@ $(function () {
                     display: $.fn.dataTable.Responsive.display.modal({
                         header: function (row) {
                             var data = row.data();
-                            return "Details of " + data["company"];
+                            return "Details of " + data["commodity"];
                         },
                     }),
                     type: "column",
@@ -371,6 +395,25 @@ $(function () {
         $("div.head-label").html(
             '<h5 class="card-title mb-0">Table Product</h5>'
         );
+
+        // Quick Filter by FSN Status
+        $(document).on('click', '.fsn-filter-btn', function () {
+            $('.fsn-filter-btn').removeClass('active');
+            $(this).addClass('active');
+            var filter = $(this).data('filter');
+            
+            if (filter === 'all') {
+                dt_master.column(6).search('').draw();
+            } else if (filter === 'fast_moving') {
+                dt_master.column(6).search('^Fast Moving$', true, false).draw();
+            } else if (filter === 'slow_moving') {
+                dt_master.column(6).search('^Slow Moving$', true, false).draw();
+            } else if (filter === 'dead_stock') {
+                dt_master.column(6).search('^Dead Stock$', true, false).draw();
+            } else if (filter === 'by_order') {
+                dt_master.column(6).search('^By Order$', true, false).draw();
+            }
+        });
     }
     dt_table_master.on("draw", function () {
         $('[data-toggle="tooltip"]').tooltip();

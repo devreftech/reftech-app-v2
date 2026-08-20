@@ -6,7 +6,11 @@ class MaintenanceService
 {
     protected static function getFilePath(): string
     {
-        return storage_path('framework/developer_maintenance.json');
+        $dir = storage_path('framework');
+        if (!file_exists($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+        return $dir . '/developer_maintenance.json';
     }
 
     public static function getDefaultState(): array
@@ -26,7 +30,36 @@ class MaintenanceService
             'auto_activate' => true,
             'planned_by' => null,
             'planned_at' => null,
+            // UI Template setting ('light', 'dark', 'animated')
+            'template' => 'animated',
+            // Background Music (BGM) settings
+            'bgm_enabled' => true,
+            'bgm_url' => '/assets/audio/Water_Lily.mp3',
+            'bgm_title' => 'Lofi Ambient Relaxing - Water Lily',
         ];
+    }
+
+    public static function setBgm(bool $enabled, ?string $url = null, ?string $title = null): bool
+    {
+        $current = self::getDetails();
+        $data = array_merge($current, [
+            'bgm_enabled' => $enabled,
+            'bgm_url' => !empty(trim($url ?? '')) ? trim($url) : ($current['bgm_url'] ?? '/assets/audio/Water_Lily.mp3'),
+            'bgm_title' => !empty(trim($title ?? '')) ? trim($title) : ($current['bgm_title'] ?? 'Lofi Ambient Relaxing'),
+        ]);
+
+        return (bool) file_put_contents(self::getFilePath(), json_encode($data, JSON_PRETTY_PRINT));
+    }
+
+    public static function setTemplate(string $template): bool
+    {
+        $current = self::getDetails();
+        $template = in_array($template, ['dark', 'light', 'animated']) ? $template : 'animated';
+        $data = array_merge($current, [
+            'template' => $template,
+        ]);
+
+        return (bool) file_put_contents(self::getFilePath(), json_encode($data, JSON_PRETTY_PRINT));
     }
 
     public static function isActive(): bool
@@ -56,7 +89,7 @@ class MaintenanceService
         return self::getDefaultState();
     }
 
-    public static function activate(string $message = '', ?string $endTime = null, ?string $startedBy = null): bool
+    public static function activate(string $message = '', ?string $endTime = null, ?string $startedBy = null, ?string $template = null): bool
     {
         $current = self::getDetails();
         $data = array_merge($current, [
@@ -65,6 +98,7 @@ class MaintenanceService
             'end_time' => $endTime ? trim($endTime) : null,
             'started_at' => date('Y-m-d H:i:s'),
             'started_by' => $startedBy ?? 'Developer',
+            'template' => $template && in_array($template, ['dark', 'light', 'animated']) ? $template : ($current['template'] ?? 'animated'),
             // Deactivate plan once hard maintenance starts
             'is_planned' => false,
         ]);

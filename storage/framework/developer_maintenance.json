@@ -11,5 +11,9 @@
     "plan_message": "Pemberitahuan: Sistem akan memasuki masa pemeliharaan (Maintenance). Mohon segera selesaikan dan simpan pekerjaan atau transaksi Anda.",
     "auto_activate": true,
     "planned_by": "Lukiy (lukiy@reftech.id)",
-    "planned_at": "2026-08-14 04:13:44"
+    "planned_at": "2026-08-14 04:13:44",
+    "template": "animated",
+    "bgm_enabled": true,
+    "bgm_url": "\/assets\/audio\/bgm_1786708131_I_Miss_You_Every_Brand_New_Day__Fro.mp3",
+    "bgm_title": "I Miss You Every Brand New Day (From Spider-Man- Brand New Day Movie) (Official Music Video)"
 }

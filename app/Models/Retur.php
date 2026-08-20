@@ -13,8 +13,10 @@ class Retur extends Model
     protected $fillable = [
         "id_pending",
         "id_product_in",
-        "no_pending",
-        "status"
+        "no_return",
+        "status",
+        "date",
+        "done_date",
     ];
 
     public function pending()

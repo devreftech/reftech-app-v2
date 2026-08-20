@@ -68,7 +68,11 @@
                     <span class="avatar-initial rounded-circle bg-label-warning"><i class="mdi mdi-timer-sand fs-4"></i></span>
                 </div>
                 <div>
-                    <small class="text-muted fw-semibold d-block" style="font-size: 11px;">Pending Stock</small>
+                    <small class="text-muted fw-semibold d-block" style="font-size: 11px;"
+                        data-bs-toggle="tooltip" data-bs-placement="top"
+                        title="Sudah dikunci/direservasi untuk order yang sedang diproses, bukan stok yang bisa dipakai order lain">
+                        Pending Stock <i class="mdi mdi-information-outline" style="font-size: 11px;"></i>
+                    </small>
                     <span class="fw-bold text-dark" style="font-size: 15px;">{{ $product->pending_stock }} {{ $product->unit }}</span>
                 </div>
             </div>

@@ -44,7 +44,7 @@ $(function () {
                     render: function (data, type, full) {
                         if (type !== "display") return data;
                         var url = full["row_type"] === "unit"
-                            ? "/unit-quotation/" + full["id"]
+                            ? "/smart-quote/" + full["id"]
                             : route("quotation.show", full["id"]);
                         var badge = full["row_type"] === "unit"
                             ? ' <span class="badge bg-label-danger ms-1">Unit</span>'

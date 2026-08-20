@@ -37,7 +37,7 @@
                                     </span>
                                 </div>
                                 <p class="mb-1 fw-bolder" style="font-size: 15px">PT Reftech Jaya Optima</p>
-                                <div style="font-size: 12px; color: #555;">
+                                <div class="text-muted" style="font-size: 12px;">
                                     <p class="mb-0">Taman Kopo Indah V, Ruko Sommerville No. 31</p>
                                     <p class="mb-0">Bandung – Jawa Barat 40218</p>
                                     <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>admin@reftech.id &nbsp;|&nbsp; <i class="mdi mdi-web me-1" style="font-size:11px;"></i>www.reftech.id</p>
@@ -51,7 +51,7 @@
                                     </span>
                                 </div>
                                 <p class="mb-1 fw-bolder" style="font-size: 15px">PT Kojisha Innotiv Indonesia</p>
-                                <div style="font-size: 12px; color: #555;">
+                                <div class="text-muted" style="font-size: 12px;">
                                     <p class="mb-0">Jl. Nancep No. 45A, Setu</p>
                                     <p class="mb-0">Cibitung - Kab. Bekasi 17320</p>
                                     <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>+62 812-1000-0997 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>admin@kojisha.com</p>
@@ -71,24 +71,24 @@
 
                     {{-- BAST Title & Intro --}}
                     <div class="text-center mb-4">
-                        <h5 class="fw-bold mb-1 text-uppercase text-dark" style="letter-spacing:0.5px;">Berita Acara Serah Terima Pekerjaan</h5>
+                        <h5 class="fw-bold mb-1 text-uppercase" style="letter-spacing:0.5px;">Berita Acara Serah Terima Pekerjaan</h5>
                         <span class="badge bg-label-primary px-3 py-1 fs-6 fw-semibold">{{ $bast->no_bast }}</span>
                     </div>
 
-                    <p class="mb-3 text-dark" style="font-size: 13.5px; line-height: 1.6;">
+                    <p class="mb-3" style="font-size: 13.5px; line-height: 1.6;">
                         Bersama dengan ini kami <strong>{{ $entityFullName }}</strong>, telah menyelesaikan pekerjaan hingga
                         <strong class="text-success">SELESAI</strong> untuk pekerjaan sbb :
                     </p>
 
                     <div class="border rounded-3 p-3 text-center fw-bold text-uppercase mb-4 shadow-sm"
-                        style="font-size: 15px; background: #f8f9fa; border-left: 4px solid #696cff !important; color: #2c3e50;">
+                        style="font-size: 15px; border-left: 4px solid #696cff !important;">
                         {{ $bast->work_title }}
                     </div>
 
                     {{-- Metadata Details --}}
-                    <div class="card border mb-4 bg-light shadow-none">
+                    <div class="card border mb-4 shadow-none">
                         <div class="card-body p-3">
-                            <table class="table table-borderless table-sm mb-0" style="font-size: 13px; color: #333;">
+                            <table class="table table-borderless table-sm mb-0" style="font-size: 13px;">
                                 <tr>
                                     <td style="width: 220px;" class="fw-semibold text-muted">Tanggal Pekerjaan</td>
                                     <td style="width: 20px;">:</td>
@@ -109,10 +109,10 @@
                     </div>
 
                     {{-- Units Table --}}
-                    <h6 class="fw-bold mb-2 text-dark" style="font-size: 13px;">Terhadap unit-unit sebagai berikut:</h6>
+                    <h6 class="fw-bold mb-2" style="font-size: 13px;">Terhadap unit-unit sebagai berikut:</h6>
                     <div class="table-responsive mb-4">
                         <table class="table table-bordered align-middle mb-0" style="font-size: 13px;">
-                            <thead class="table-light">
+                            <thead>
                                 <tr>
                                     <th style="width: 8%;" class="text-center">No.</th>
                                     <th>Unit</th>
@@ -124,7 +124,7 @@
                                 @forelse ($bast->units as $index => $unit)
                                     <tr>
                                         <td class="text-center fw-semibold">{{ $index + 1 }}</td>
-                                        <td class="fw-bold text-dark">{{ $unit->unit_name }}</td>
+                                        <td class="fw-bold">{{ $unit->unit_name }}</td>
                                         <td>{{ $unit->serial_no ?: '-' }}</td>
                                         <td class="text-center fw-semibold">{{ $unit->qty }}</td>
                                     </tr>

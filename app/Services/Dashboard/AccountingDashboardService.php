@@ -16,6 +16,7 @@ use App\Models\Expense;
 use App\Models\FixedAsset;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class AccountingDashboardService
@@ -275,9 +276,52 @@ class AccountingDashboardService
 
         $nodueCount = Payment::where('type', 'Tempo')->whereNull('due_date')->count();
 
+        // Daily Welcome Alert for Accounting
+        $showAccountingWelcomeAlert = false;
+        $dateNow = Carbon::today();
+        $acctUserId = Auth::id();
+        if ($acctUserId) {
+            $welcomeAlertKey = 'accounting_welcome_alert_' . $acctUserId . '_' . $dateNow->toDateString();
+            if (!Cache::has($welcomeAlertKey)) {
+                Cache::put($welcomeAlertKey, true, $dateNow->copy()->endOfDay());
+                $showAccountingWelcomeAlert = true;
+            }
+        }
+
+        // 1. Approval Invoice
+        $acctPendingInvoiceCount = $requestInvoice;
+
+        // 2. Approval Selling Contract
+        $acctPendingContractCount = Contract::where('level', '0')->count();
+
+        // 3. Approval Payment (Unconfirmed Payment)
+        $acctPendingPaymentCount = Payment::where('level', 0)->count();
+
+        // 4. Overdue Invoices (Jatuh Tempo)
+        $spOverdueQuery = Payment::join('quotation as q', 'q.id', '=', 'payment.id_quotation')
+            ->where('payment.type', 'Tempo')
+            ->where('payment.level', 0)
+            ->whereNotNull('payment.due_date')
+            ->whereDate('payment.due_date', '<=', $dateNow);
+
+        $uqOverdueQuery = Payment::join('unit_quotation as uq', 'uq.id', '=', 'payment.id_unit_quotation')
+            ->where('payment.type', 'Tempo')
+            ->where('payment.level', 0)
+            ->whereNotNull('payment.due_date')
+            ->whereDate('payment.due_date', '<=', $dateNow);
+
+        $acctOverduePaymentCount = (clone $spOverdueQuery)->count() + (clone $uqOverdueQuery)->count();
+        $acctOverduePaymentNominal = (clone $spOverdueQuery)->sum('payment.amount') + (clone $uqOverdueQuery)->sum('payment.amount');
+
         $accountingWidgets = $this->getAccountingDashboardData($requestInvoice);
 
         return array_merge(compact(
+            'showAccountingWelcomeAlert',
+            'acctPendingInvoiceCount',
+            'acctPendingContractCount',
+            'acctPendingPaymentCount',
+            'acctOverduePaymentCount',
+            'acctOverduePaymentNominal',
             'requestContract',
             'requestInvoice',
             'newCount',

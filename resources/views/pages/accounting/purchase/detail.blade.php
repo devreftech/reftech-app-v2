@@ -249,6 +249,70 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Riwayat Goods Receipt & Retur --}}
+            @if ($productIns->count())
+                <div class="card mt-4 border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-bottom py-3">
+                        <h5 class="card-title m-0 fw-bold text-dark d-flex align-items-center">
+                            <i class="mdi mdi-truck-check-outline me-2 text-primary fs-4"></i> Riwayat Goods Receipt &amp; Retur
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        @foreach ($productIns as $productIn)
+                            <div class="border rounded p-3 mb-3 {{ $loop->last ? 'mb-0' : '' }}">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                                    <div>
+                                        <a href="{{ route('product-in.show', $productIn->id) }}" class="fw-bold text-primary text-decoration-none">
+                                            {{ $productIn->no_product_in }}
+                                        </a>
+                                        <span class="text-muted small ms-2">No DO: {{ $productIn->no_do ?? '-' }}</span>
+                                    </div>
+                                    <span class="text-muted small">{{ \Carbon\Carbon::parse($productIn->date)->format('d-m-Y') }}</span>
+                                </div>
+
+                                @if ($productIn->detail->count())
+                                    <div class="mb-2">
+                                        <div class="text-muted small fw-bold mb-1">Item Diterima (masuk stok):</div>
+                                        @foreach ($productIn->detail as $d)
+                                            <span class="badge bg-label-success me-1 mb-1">
+                                                {{ $d->detailProduct->product->commodity ?? '-' }} ({{ $d->detailProduct->replacement ?? '-' }}) &times; {{ $d->qty }}
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @endif
+
+                                @foreach ($productIn->return as $retur)
+                                    <div class="mt-2 p-2 rounded bg-label-danger">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="fw-bold text-danger small">
+                                                <i class="mdi mdi-keyboard-return me-1"></i>Retur {{ $retur->no_return }}
+                                            </span>
+                                            @if ($retur->status == 1)
+                                                <span class="badge bg-label-success">Selesai</span>
+                                            @else
+                                                <span class="badge bg-label-warning">Menunggu Proses</span>
+                                            @endif
+                                        </div>
+                                        @foreach ($retur->detail as $rd)
+                                            <div class="small text-dark">
+                                                {{ $rd->replacement->product->commodity ?? '-' }} ({{ $rd->replacement->replacement ?? '-' }}) &times; {{ $rd->qty }}
+                                                @if ($rd->note)
+                                                    <span class="text-muted">&mdash; {{ $rd->note }}</span>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endforeach
+
+                                @if ($productIn->detail->isEmpty() && $productIn->return->isEmpty())
+                                    <span class="text-muted small">Tidak ada item.</span>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
 
         {{-- Sidebar Actions --}}
@@ -266,7 +330,7 @@
                             <div class="alert alert-success py-2 px-3 mb-3 small">
                                 <i class="mdi mdi-check-circle-outline me-1"></i> Info pengiriman untuk PO ini sudah dikirim.
                             </div>
-                        @elseif ((int) $sourcePr->status === 1)
+                        @else
                             <a href="#" class="btn btn-info text-white d-grid w-100 mb-3 waves-effect" id="btnPoDelivery">
                                 <i class="mdi mdi-truck-delivery me-1"></i> On Delivery
                             </a>
@@ -290,6 +354,28 @@
                     </button>
                 </div>
             </div>
+            <div class="card mb-3 shadow-sm border-0">
+                <div class="card-body">
+                    <h6 class="fw-bold text-dark mb-2"><i class="mdi mdi-receipt-text-outline me-1 text-primary"></i>Invoice Supplier</h6>
+                    @if ($purchase->no_invoice_supplier)
+                        <p class="mb-1 small text-muted">No. Invoice</p>
+                        <p class="fw-bold text-dark mb-2">{{ $purchase->no_invoice_supplier }}</p>
+                        @if ($purchase->invoice_file)
+                            <a href="{{ asset('storage/' . $purchase->invoice_file) }}" target="_blank" class="btn btn-label-secondary btn-sm d-grid w-100 mb-2 waves-effect">
+                                <i class="mdi mdi-file-eye-outline me-1"></i> Lihat File Invoice
+                            </a>
+                        @endif
+                        <a href="#" class="btn btn-label-info d-grid w-100 waves-effect" data-bs-toggle="modal" data-bs-target="#modalUploadInvoice">
+                            <i class="mdi mdi-pencil-outline me-1"></i> Ubah Invoice
+                        </a>
+                    @else
+                        <p class="small text-muted mb-2">Invoice dari supplier belum diinput.</p>
+                        <a href="#" class="btn btn-info text-white d-grid w-100 waves-effect" data-bs-toggle="modal" data-bs-target="#modalUploadInvoice">
+                            <i class="mdi mdi-upload me-1"></i> Upload Invoice
+                        </a>
+                    @endif
+                </div>
+            </div>
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     @if ($totalPph > 0)
@@ -309,7 +395,53 @@
     </div>
     @include('components.modal.purchase.pph')
 
-    @if ($sourcePr && !$prDeliveryDone && (int) $sourcePr->status === 1)
+    <div class="modal fade" id="modalUploadInvoice" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form action="{{ route('purchase.upload-invoice', $purchase->id) }}" method="post" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">Invoice Supplier — {{ $purchase->no_po }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        @if ($errors->any())
+                            <div class="alert alert-danger py-2 px-3 small mb-3">
+                                <ul class="mb-0 ps-3">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+                        <div class="mb-3">
+                            <label for="noInvoiceSupplier" class="form-label">No. Invoice <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="noInvoiceSupplier" name="no_invoice_supplier"
+                                value="{{ old('no_invoice_supplier', $purchase->no_invoice_supplier) }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="invoiceFile" class="form-label">
+                                File Invoice
+                                @if (!$purchase->invoice_file) <span class="text-danger">*</span> @endif
+                            </label>
+                            <input type="file" class="form-control" id="invoiceFile" name="invoice_file"
+                                accept=".pdf,.jpg,.jpeg,.png" {{ $purchase->invoice_file ? '' : 'required' }}>
+                            <div class="form-text">Maksimal 5MB, format PDF/JPG/PNG.</div>
+                            @if ($purchase->invoice_file)
+                                <div class="form-text">File saat ini: <a href="{{ asset('storage/' . $purchase->invoice_file) }}" target="_blank">lihat file</a> (biarkan kosong kalau tidak mau ganti).</div>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @if ($sourcePr && !$prDeliveryDone)
         <div class="modal fade" id="modalPoDelivery" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <form id="poDeliveryForm">
@@ -374,6 +506,12 @@
         $('#backButton').click(function() {
             window.history.back();
         });
+
+        @if ($errors->has('no_invoice_supplier') || $errors->has('invoice_file'))
+            document.addEventListener('DOMContentLoaded', function () {
+                new bootstrap.Modal(document.getElementById('modalUploadInvoice')).show();
+            });
+        @endif
 
         var poDeliveryModalEl = document.getElementById('modalPoDelivery');
         if (poDeliveryModalEl) {

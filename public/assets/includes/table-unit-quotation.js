@@ -5,7 +5,7 @@ $(function () {
         serverSide: true,
         order: [],
         ajax: {
-            url: '/db/unit-quotation',
+            url: '/db/smart-quote',
             type: 'GET',
             data: function (d) { d.year = window.quotationYearFilter || 'all'; return d; },
         },
@@ -19,7 +19,7 @@ $(function () {
         ],
         columnDefs: [
             { targets: 0, render: function (d, t, row) {
-                return '<a href="/unit-quotation/' + row.id + '">' + d + '</a>';
+                return '<a href="/smart-quote/' + row.id + '">' + d + '</a>';
             }},
             { targets: 4, className: 'text-center', render: function (d, t) {
                 if (t !== 'display') return d;

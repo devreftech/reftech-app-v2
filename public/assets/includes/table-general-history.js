@@ -13,6 +13,12 @@ $(function () {
                 headers: {
                     "Content-Type": "application/json",
                 },
+                dataSrc: function (json) {
+                    var count = (json.data || []).length;
+                    var $badge = $('#general-history-count-badge');
+                    $badge.text(count).toggleClass('d-none', count === 0);
+                    return json.data || [];
+                },
 
                 // success: function (hasil, Url) {
                 //     console.log("Url:", Url);

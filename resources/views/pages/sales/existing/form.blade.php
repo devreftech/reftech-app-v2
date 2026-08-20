@@ -6,9 +6,9 @@
     @if (@$existing)
         @method('patch')
     @endif
-    <div class="modal animate__animated animate__fadeIn"
+    <div class="modal fade"
         id="{{ @$existing ? 'updateExisting' . strval(@$existing->id) : 'createExisting' }}" tabindex="-1"
-        style="display: none;" aria-hidden="true">
+        aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">

@@ -72,7 +72,7 @@
                 <div class="card h-100 border-0 custom-stat-card">
                     <div class="card-body p-3">
                         <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="text-muted fw-semibold small text-uppercase tracking-wider">On Delivery</span>
+                            <span class="text-muted fw-semibold small text-uppercase tracking-wider">Delivery</span>
                             <div class="avatar avatar-sm">
                                 <span class="avatar-initial rounded-3 bg-label-info shadow-xs">
                                     <i class="mdi mdi-truck-delivery-outline mdi-20px"></i>
@@ -146,7 +146,7 @@
                         <button type="button" class="nav-link px-3 py-2 fw-semibold" role="tab" data-bs-toggle="tab"
                             data-bs-target="#navs-pills-top-delivery" aria-controls="navs-pills-top-delivery"
                             aria-selected="false">
-                            <i class="mdi mdi-truck-delivery-outline me-1"></i>On Delivery
+                            <i class="mdi mdi-truck-delivery-outline me-1"></i>Delivery
                             @if (@$deliveryCount >= 1)
                                 <span class="badge bg-info rounded-pill ms-1">{{ $deliveryCount }}</span>
                             @endif
@@ -157,7 +157,7 @@
                             class="nav-link px-3 py-2 fw-semibold {{ auth::user()->role == 'ServiceM' ? 'active' : '' }}"
                             role="tab" data-bs-toggle="tab" data-bs-target="#navs-pills-top-done"
                             aria-controls="navs-pills-top-done" aria-selected="false">
-                            <i class="mdi mdi-check-all me-1"></i>Done Purchase
+                            <i class="mdi mdi-check-all me-1"></i>Good Receipt
                             @if (@$doneCount >= 1)
                                 <span class="badge bg-success rounded-pill ms-1">{{ $doneCount }}</span>
                             @endif
@@ -179,6 +179,7 @@
                                     <th>Item</th>
                                     <th>Qty</th>
                                     <th>Date</th>
+                                    <th class="text-center">Payment</th>
                                     <th class="text-center">Sign</th>
                                 </tr>
                             </thead>
@@ -197,6 +198,7 @@
                                     <th>Item</th>
                                     <th>Qty</th>
                                     <th>Date</th>
+                                    <th class="text-center">Payment</th>
                                     <th class="text-center">Sign</th>
                                 </tr>
                             </thead>
@@ -210,6 +212,7 @@
                                 <tr>
                                     <th>No PO</th>
                                     <th>No PR</th>
+                                    <th>Sales Order</th>
                                     <th>Customer</th>
                                     <th>Item</th>
                                     <th>Date</th>
@@ -225,14 +228,12 @@
                             <thead>
                                 <tr>
                                     <th>No PR</th>
-                                    <th>No PO (Client)</th>
+                                    <th>No PO</th>
                                     <th>No SO</th>
                                     <th>Customer</th>
                                     <th>Item</th>
                                     <th>Qty</th>
-                                    <th>Date</th>
                                     <th>Pengiriman</th>
-                                    <th>Tgl Pembelian</th>
                                     <th class="text-center">Sign</th>
                                 </tr>
                             </thead>
@@ -244,6 +245,7 @@
                         <table class="datatable-purchase-request-done table table-bordered">
                             <thead>
                                 <tr>
+                                    <th>No GR</th>
                                     <th>No PR</th>
                                     <th>No PO</th>
                                     <th>No SO</th>
@@ -279,16 +281,15 @@
         .custom-main-card,
         .card,
         .modern-card {
-            border: 1px solid rgba(226, 232, 240, 0.8) !important;
-            box-shadow: 0 2px 6px 0 rgba(67, 89, 113, 0.06), 0 0 1px 0 rgba(67, 89, 113, 0.15) !important;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 2px 6px 0 rgba(67, 89, 113, 0.06), 0 0 1px 0 rgba(67, 89, 113, 0.15);
             border-radius: 0.75rem !important;
-            background-color: #ffffff;
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         }
 
         .custom-stat-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 14px 0 rgba(67, 89, 113, 0.1) !important;
+            box-shadow: 0 4px 14px 0 rgba(67, 89, 113, 0.1);
         }
 
         /* Refined tab header */
@@ -308,17 +309,6 @@
             color: #2563eb !important;
             background-color: transparent !important;
             border-bottom: 2px solid #2563eb !important;
-        }
-
-        /* Clean datatables headers & rows */
-        .table thead th {
-            background-color: #f8fafc !important;
-            color: #475569 !important;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            font-weight: 600;
-            border-bottom: 1px solid #e2e8f0 !important;
         }
 
         .table td {

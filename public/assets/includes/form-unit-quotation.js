@@ -606,8 +606,8 @@ $(function () {
                 $row.find('.field-price').val(formatRupiah(Math.round(eq.price)));
             }
 
-            $row.find('.stock-bdg').text(eq.warehouse_stock || 0);
-            $row.find('.stock-bks').text(eq.stock || 0);
+            $row.find('.stock-bdg').text(eq.stock || 0);
+            $row.find('.stock-bks').text(eq.warehouse_stock || 0);
             $row.find('.stock-pending').text(eq.pending_stock || 0);
             $row.find('.equivalent-stock-preview').show();
 
@@ -746,7 +746,7 @@ $(function () {
                 return;
             }
 
-            $.get('/unit-quotation/clients-by-sales/' + salesId, function (res) {
+            $.get('/smart-quote/clients-by-sales/' + salesId, function (res) {
                 (res.clients || []).forEach(function (c) {
                     var selected = (currentClientId && String(c.id) === String(currentClientId)) ? ' selected' : '';
                     $clientSelect.append('<option value="' + c.id + '" data-role="' + (c.role || '') + '"' + selected + '>' + c.company + '</option>');
@@ -771,7 +771,7 @@ $(function () {
 
         if (!clientId) return;
 
-        $.get('/unit-quotation/pics/' + clientId, function (data) {
+        $.get('/smart-quote/pics/' + clientId, function (data) {
             var pics     = Array.isArray(data) ? data : (data.pics || []);
             var mainAddr = !Array.isArray(data) ? (data.address || '') : '';
             var subAddr  = !Array.isArray(data) ? (data.subAddress || '') : '';

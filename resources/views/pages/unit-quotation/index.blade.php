@@ -1,9 +1,9 @@
 @extends('layouts.sales.app')
-@section('title', 'Penawaran Unit')
+@section('title', 'Smart Quote')
 @section('content')
     <div class="d-flex justify-content-between align-items-center py-3 mb-4">
         <h4 class="fw-bold mb-0">
-            <span class="text-muted fw-light">Sales /</span> Penawaran Unit
+            <span class="text-muted fw-light">Sales /</span> Smart Quote
         </h4>
         <a href="{{ route('unit-quotation.create') }}">
             <button class="btn btn-primary btn-sm">

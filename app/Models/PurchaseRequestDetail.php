@@ -11,7 +11,6 @@ class PurchaseRequestDetail extends Model
     protected $table = "purchase_request_detail";
     protected $date = [
         'purchase_date',
-        'gr_date',
         'created_at',
         'updated_at',
     ];
@@ -19,6 +18,7 @@ class PurchaseRequestDetail extends Model
         'id_purchase_request',
         'id_equivalent',
         'qty',
+        'qty_stock',
         'note',
         'price',
         'amount',
@@ -26,12 +26,6 @@ class PurchaseRequestDetail extends Model
         'cargo',
         'no_resi',
         'purchase_date',
-        'qty_received',
-        'gr_status',
-        'gr_note',
-        'no_do',
-        'gr_date',
-        'warehouse',
     ];
     public function header()
     {
@@ -49,8 +43,12 @@ class PurchaseRequestDetail extends Model
     {
         return $this->allocations->sum('qty');
     }
+    public function getTotalQtyAttribute()
+    {
+        return $this->qty + ($this->qty_stock ?? 0);
+    }
     public function getRemainingQtyAttribute()
     {
-        return max(0, $this->qty - $this->allocatedQty);
+        return max(0, $this->totalQty - $this->allocatedQty);
     }
 }

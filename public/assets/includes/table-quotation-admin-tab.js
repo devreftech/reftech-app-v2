@@ -7,8 +7,35 @@ $(function () {
             .clone(true)
             .appendTo(dt_table.find("thead"));
 
+        var typeFilterOptions = [
+            { value: "",         label: "Semua Type" },
+            { value: "Unit",     label: "Unit" },
+            { value: "Rental",   label: "Rental" },
+            { value: "Project",  label: "Project" },
+            { value: "Parts",    label: "Sparepart" },
+            { value: "Service",  label: "Service" },
+            { value: "Piping",   label: "Piping" },
+            { value: "Air Audit", label: "Air Audit" },
+            { value: "-",        label: "Format Lama (-)" },
+        ];
+
         dt_table.find("thead tr:eq(1) th").each(function (i) {
-            if (i === 6) { $(this).html(""); return; }
+            if (i === 7) { $(this).html(""); return; }
+
+            if (i === 3) {
+                var $select = $('<select class="form-select form-select-sm"></select>');
+                typeFilterOptions.forEach(function (o) {
+                    $select.append('<option value="' + o.value + '">' + o.label + '</option>');
+                });
+                $(this).html($select);
+                $select.on("change", function () {
+                    var val = this.value;
+                    var search = val ? "^" + val.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&") + "$" : "";
+                    dt_q_admin.column(i).search(search, true, false).draw();
+                });
+                return;
+            }
+
             var title = $(this).text();
             $(this).html(
                 '<input type="text" class="form-control form-control-sm" placeholder="Cari ' + title + '..." />'
@@ -31,13 +58,14 @@ $(function () {
                 { data: "no_quote" },
                 { data: "company" },
                 { data: "subtotal" },
+                { data: "type" },
                 { data: "title" },
                 { data: "estimated_date" },
                 { data: "status" },
                 { data: "sales_image" },
             ],
             columnDefs: [
-                { targets: [2, 3, 4, 5, 6], className: "text-center" },
+                { targets: [2, 3, 4, 5, 6, 7], className: "text-center" },
                 {
                     targets: 0,
                     className: "text-center text-nowrap",
@@ -49,7 +77,7 @@ $(function () {
                         var rowType = full["row_type"];
                         var url;
                         if (rowType === "unit") {
-                            url = "/unit-quotation/" + id;
+                            url = "/smart-quote/" + id;
                         } else if (qType == "Sparepart") {
                             url = route("quotation.show", id);
                         } else if (qType == "Service") {
@@ -86,16 +114,42 @@ $(function () {
                         return '<div class="d-flex justify-content-between px-2"><span>Rp.</span><span>' + formatted + "</span></div>";
                     },
                 },
-                { targets: 3, render: function (data) { return data || "-"; } },
                 {
-                    targets: 4,
+                    targets: 3,
+                    render: function (data, type, full) {
+                        var isLegacy = full["row_type"] !== "unit" || !data;
+                        if (type === "filter" || type === "sort") {
+                            return isLegacy ? "-" : data;
+                        }
+                        if (type !== "display") return data;
+                        if (isLegacy) {
+                            return '<span class="badge rounded-pill bg-label-secondary">-</span>';
+                        }
+                        var colors = {
+                            Unit:      "bg-label-primary",
+                            Rental:    "bg-label-info",
+                            Project:   "bg-label-dark",
+                            Parts:     "bg-label-warning",
+                            Service:   "bg-label-success",
+                            Piping:    "bg-label-secondary",
+                            "Air Audit": "bg-label-danger",
+                        };
+                        var labels = { Parts: "Sparepart" };
+                        var cls   = colors[data] || "bg-label-secondary";
+                        var label = labels[data] || data;
+                        return '<span class="badge rounded-pill ' + cls + '">' + label + "</span>";
+                    },
+                },
+                { targets: 4, render: function (data) { return data || "-"; } },
+                {
+                    targets: 5,
                     render: function (data, type) {
                         if (type !== "display") return data;
                         return data ? moment(data).format("DD-MM-YYYY") : "-";
                     },
                 },
                 {
-                    targets: 5,
+                    targets: 6,
                     render: function (data, type, full) {
                         if (type !== "display") return data;
                         var tip = full["tip"] || "Belum di update";
@@ -125,7 +179,7 @@ $(function () {
                     },
                 },
                 {
-                    targets: 6,
+                    targets: 7,
                     className: "text-center",
                     width: "48px",
                     orderable: false,
