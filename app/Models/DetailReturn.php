@@ -15,6 +15,7 @@ class DetailReturn extends Model
         // 'price',
         // 'amount',
         'note',
+        'date',
         'status',
     ];
 

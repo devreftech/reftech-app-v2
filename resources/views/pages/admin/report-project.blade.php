@@ -17,7 +17,7 @@
                 <span class="text-muted fw-semibold">{{ $year }}</span>
             </div>
             <h4 class="fw-bold mb-1 text-heading">Report Quotation — Admin / Sales Manager</h4>
-            <p class="text-muted mb-0 small">Akumulasi quotation & unit quotation yang dibuat langsung oleh Admin / Sales Manager (di luar quotation milik tim Sales reguler).</p>
+            <p class="text-muted mb-0 small">Akumulasi quotation & smart quote yang dibuat langsung oleh Admin / Sales Manager (di luar quotation milik tim Sales reguler).</p>
         </div>
         <div class="d-flex align-items-center gap-2">
             <a href="{{ route('quotation.index') }}" class="btn btn-label-secondary btn-sm">

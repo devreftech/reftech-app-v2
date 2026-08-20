@@ -90,10 +90,13 @@ class UnitQuotationControllerTest extends TestCase
 
         $pending = $controller->exposeCreatePendingPoForUnitQuotation($quote);
 
+        $romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+        $expectedNoPending = '001-SO/RJO/' . $romanMonths[(int) now()->format('n') - 1] . '/' . now()->format('Y');
+
         $this->assertInstanceOf(PendingPO::class, $pending);
         $this->assertSame($quote->id, $pending->id_unit_quotation);
         $this->assertSame('Unit Project', $pending->title);
-        $this->assertSame('PO-001', $pending->no_pending);
+        $this->assertSame($expectedNoPending, $pending->no_pending);
         $this->assertSame('Project', $pending->type);
         $this->assertSame('Unit', $pending->project_category);
         $this->assertSame(1, $pending->project_status_step);

@@ -27,7 +27,7 @@
                 <th class="text-end">Balance</th>
             </tr>
         </thead>
-        <tbody class="text-dark">
+        <tbody>
             <tr>
                 <td colspan="2" class="fw-medium"><span class="lvl-0">Ekuitas</span></td>
             </tr>

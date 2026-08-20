@@ -2,7 +2,7 @@
 @section('title', 'Product In')
 @section('content')
     <div class="container-fluid flex-grow-1 container-p-y p-0">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
             <div>
                 <h4 class="fw-bold mb-1 text-dark" style="font-family: 'Inter', sans-serif;">
                     {{ Auth::user()->role == 'Logistic' ? 'Good Receipt (Penerimaan Barang)' : 'Penerimaan Barang Masuk (Product In)' }}
@@ -11,41 +11,70 @@
                     {{ Auth::user()->role == 'Logistic' ? 'Kelola dan verifikasi penerimaan fisik barang berdasarkan Purchase Request.' : 'Kelola dan verifikasi surat jalan (DO) serta invoice barang masuk.' }}
                 </p>
             </div>
+            @if (Auth::user()->role == 'Logistic')
+                <a href="{{ route('product-in.create') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="mdi mdi-plus me-1"></i>GR Manual
+                </a>
+            @endif
         </div>
     @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
-        <div class="row">
-            <div class="col-12 col-md-6">
-                <div class="card mb-3">
+        <div class="card mb-3">
+            <div class="card-header py-2 bg-transparent border-bottom">
+                <ul class="nav nav-tabs card-header-tabs border-0 m-0" id="menungguInvoiceTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button type="button" class="nav-link active px-3 py-2 fw-semibold" role="tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-menunggu-invoice-lokal"
+                            aria-controls="tab-menunggu-invoice-lokal" aria-selected="true">
+                            Menunggu Invoice &mdash; Lokal
+                            <span class="badge bg-label-primary rounded-pill ms-1 d-none" id="menunggu-invoice-lokal-count-badge">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button type="button" class="nav-link px-3 py-2 fw-semibold" role="tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-menunggu-invoice-import"
+                            aria-controls="tab-menunggu-invoice-import" aria-selected="false">
+                            Menunggu Invoice &mdash; Import
+                            <span class="badge bg-label-info rounded-pill ms-1 d-none" id="menunggu-invoice-import-count-badge">0</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="tab-content p-0">
+                <div class="tab-pane fade show active" id="tab-menunggu-invoice-lokal" role="tabpanel">
                     <div class="card-datatable table-responsive pt-0">
                         <table class="datatable-product-in-req-lokal table table-bordered">
                             <thead>
                                 <tr>
-                                    <th></th>
                                     <th>ID</th>
+                                    <th>No. GR</th>
                                     <th>No. Product In</th>
+                                    <th>No PO</th>
+                                    <th>Supplier</th>
                                     <th>No DO</th>
-                                    <th>Date</th>
+                                    <th>Tgl Barang Diterima</th>
                                     <th>VAT</th>
                                     <th>Qty</th>
+                                    <th class="text-center">Penerima</th>
                                 </tr>
                             </thead>
                         </table>
                     </div>
                 </div>
-            </div>
-            <div class="col-12 col-md-6">
-                <div class="card mb-3">
+                <div class="tab-pane fade" id="tab-menunggu-invoice-import" role="tabpanel">
                     <div class="card-datatable table-responsive pt-0">
                         <table class="datatable-product-in-req-import table table-bordered">
                             <thead>
                                 <tr>
-                                    <th></th>
                                     <th>ID</th>
+                                    <th>No. GR</th>
                                     <th>No. Product In</th>
+                                    <th>No PO</th>
+                                    <th>Supplier</th>
                                     <th>No DO</th>
-                                    <th>Date</th>
+                                    <th>Tgl Barang Diterima</th>
                                     <th>VAT</th>
                                     <th>Qty</th>
+                                    <th class="text-center">Penerima</th>
                                 </tr>
                             </thead>
                         </table>
@@ -56,28 +85,110 @@
     @endif
     @if (Auth::user()->role == 'Logistic')
         <div class="card mb-3">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <div>
-                    <h5 class="card-title mb-0">PR Masuk (Sedang Dikirim)</h5>
-                    <small class="text-muted">Purchase Request yang sudah On Delivery, menunggu barang datang untuk di-GR.</small>
-                </div>
+            <div class="card-header py-2 bg-transparent border-bottom">
+                <ul class="nav nav-tabs card-header-tabs border-0 m-0" id="incomingGoodsTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button type="button" class="nav-link active px-3 py-2 fw-semibold" role="tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-menunggu-penerimaan"
+                            aria-controls="tab-menunggu-penerimaan" aria-selected="true">
+                            <i class="mdi mdi-truck-delivery-outline me-1"></i>Menunggu Penerimaan
+                            <span class="badge bg-label-warning rounded-pill ms-1 d-none" id="menunggu-penerimaan-count-badge">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button type="button" class="nav-link px-3 py-2 fw-semibold" role="tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-barang-diterima"
+                            aria-controls="tab-barang-diterima" aria-selected="false">
+                            <i class="mdi mdi-package-variant-closed me-1"></i>Barang Diterima
+                            <span class="badge bg-label-success rounded-pill ms-1 d-none" id="barang-diterima-count-badge">0</span>
+                        </button>
+                    </li>
+                </ul>
             </div>
-            <div class="card-datatable table-responsive pt-0">
-                <table class="datatable-pr-incoming table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>No PR</th>
-                            <th>No PO</th>
-                            <th>No SO</th>
-                            <th>Customer</th>
-                            <th>Item</th>
-                            <th>Tipe Pembelian</th>
-                            <th>Cargo</th>
-                            <th>Perkiraan Datang</th>
-                            <th class="text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                </table>
+            <div class="tab-content p-0">
+                {{-- Tab 1: Menunggu Penerimaan --}}
+                <div class="tab-pane fade show active p-3" id="tab-menunggu-penerimaan" role="tabpanel">
+                    <p class="text-muted small mb-2">Purchase Order yang belum diterima — baik yang sudah dalam pengiriman maupun yang masih menunggu info pengiriman diisi Admin.</p>
+                    <div class="card-datatable table-responsive pt-0">
+                        <table class="datatable-incoming-goods table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>No PO</th>
+                                    <th>No PR</th>
+                                    <th>No SO</th>
+                                    <th>Customer</th>
+                                    <th>Item</th>
+                                    <th>Vendor</th>
+                                    <th>Cargo</th>
+                                    <th>Tgl Order</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-center"></th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- Tab 2: Barang Diterima — dipecah per lokasi gudang --}}
+                <div class="tab-pane fade p-3" id="tab-barang-diterima" role="tabpanel">
+                    <p class="text-muted small mb-2">Item yang sudah masuk stok lewat Goods Receipt, dikelompokkan per gudang tujuan.</p>
+                    <ul class="nav nav-pills mb-3" id="receivedGoodsSubtabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button type="button" class="nav-link active fw-semibold" id="subtab-bdg-btn" data-bs-toggle="pill"
+                                data-bs-target="#subtab-bdg" type="button" role="tab" aria-controls="subtab-bdg" aria-selected="true">
+                                Bandung (BDG)
+                                <span class="badge bg-label-primary rounded-pill ms-1 d-none" id="bdg-count-badge">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button type="button" class="nav-link fw-semibold" id="subtab-bks-btn" data-bs-toggle="pill"
+                                data-bs-target="#subtab-bks" type="button" role="tab" aria-controls="subtab-bks" aria-selected="false">
+                                Bekasi (BKS)
+                                <span class="badge bg-label-primary rounded-pill ms-1 d-none" id="bks-count-badge">0</span>
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content p-0">
+                        <div class="tab-pane fade show active" id="subtab-bdg" role="tabpanel">
+                            <div class="card-datatable table-responsive pt-0">
+                                <table class="datatable-received-goods-bdg table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>No GR</th>
+                                            <th>No PO</th>
+                                            <th>No DO</th>
+                                            <th>Item</th>
+                                            <th class="text-center">Qty</th>
+                                            <th>Diterima Oleh</th>
+                                            <th>Tanggal</th>
+                                            <th class="text-center">Rusak</th>
+                                            <th class="text-center"></th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="subtab-bks" role="tabpanel">
+                            <div class="card-datatable table-responsive pt-0">
+                                <table class="datatable-received-goods-bks table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>No GR</th>
+                                            <th>No PO</th>
+                                            <th>No DO</th>
+                                            <th>Item</th>
+                                            <th class="text-center">Qty</th>
+                                            <th>Diterima Oleh</th>
+                                            <th>Tanggal</th>
+                                            <th class="text-center">Rusak</th>
+                                            <th class="text-center"></th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="row">
@@ -121,9 +232,11 @@
                                     <th>ID</th>
                                     <th>Invoice</th>
                                     <th>Supplier</th>
-                                    <th>Category</th>
+                                    <th>Product</th>
                                     <th>Qty</th>
+                                    <th>Total</th>
                                     <th>Date</th>
+                                    <th></th>
                                 </tr>
                             </thead>
                         </table>
@@ -134,47 +247,68 @@
     @endif
     @if (Auth::user()->role != 'Logistic')
         <div class="card mb-3">
-            <div class="card-datatable table-responsive pt-0">
-                <table class="datatable-product-in-lokal table table-bordered">
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th></th>
-                            <th>ID</th>
-                            <th>Invoice</th>
-                            <th>Supplier</th>
-                            <th>Product</th>
-                            <th>Qty</th>
-                            <th>Price</th>
-                            <th>VAT</th>
-                            <th>Date</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                </table>
+            <div class="card-header py-2 bg-transparent border-bottom">
+                <ul class="nav nav-tabs card-header-tabs border-0 m-0" id="productInTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button type="button" class="nav-link active px-3 py-2 fw-semibold" role="tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-product-in-lokal"
+                            aria-controls="tab-product-in-lokal" aria-selected="true">
+                            Product In &mdash; Lokal
+                            <span class="badge bg-label-primary rounded-pill ms-1 d-none" id="product-in-lokal-count-badge">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button type="button" class="nav-link px-3 py-2 fw-semibold" role="tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-product-in-import"
+                            aria-controls="tab-product-in-import" aria-selected="false">
+                            Product In &mdash; Import
+                            <span class="badge bg-label-info rounded-pill ms-1 d-none" id="product-in-import-count-badge">0</span>
+                        </button>
+                    </li>
+                </ul>
             </div>
-        </div>
-        <div class="card mb-3">
-            <div class="card-datatable table-responsive pt-0">
-                <table class="datatable-product-in-import table table-bordered">
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th></th>
-                            <th>ID</th>
-                            <th>Invoice</th>
-                            <th>Supplier</th>
-                            <th>Product</th>
-                            <th>Qty</th>
-                            <th>Price</th>
-                            <th>VAT</th>
-                            <th>Date</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                </table>
+            <div class="tab-content p-0">
+                <div class="tab-pane fade show active" id="tab-product-in-lokal" role="tabpanel">
+                    <div class="card-datatable table-responsive pt-0">
+                        <table class="datatable-product-in-lokal table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>ID</th>
+                                    <th>Invoice</th>
+                                    <th>Supplier</th>
+                                    <th>Product</th>
+                                    <th>Qty</th>
+                                    <th>Price</th>
+                                    <th>VAT</th>
+                                    <th>Date</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="tab-product-in-import" role="tabpanel">
+                    <div class="card-datatable table-responsive pt-0">
+                        <table class="datatable-product-in-import table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>ID</th>
+                                    <th>Invoice</th>
+                                    <th>Supplier</th>
+                                    <th>Product</th>
+                                    <th>Qty</th>
+                                    <th>Price</th>
+                                    <th>VAT</th>
+                                    <th>Date</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
             </div>
-        </div>
         </div>
     @endif
     </div>
@@ -346,5 +480,6 @@
     <script src="{{ asset('assets') }}/includes/table-product-in-req-import.js"></script>
     <script src="{{ asset('assets') }}/includes/table-product-in-req-logistic.js"></script>
     <script src="{{ asset('assets') }}/includes/table-product-in-logistic.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-pr-incoming.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-incoming-goods.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-received-goods.js"></script>
 @endpush

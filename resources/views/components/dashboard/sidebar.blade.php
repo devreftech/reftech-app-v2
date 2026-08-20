@@ -2647,7 +2647,7 @@
             </li>
         @endif
 
-        @if (auth::user()?->role == 'Developer')
+        @if (auth::user()?->isDeveloper())
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Developer Tools</span>
             </li>

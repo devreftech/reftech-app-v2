@@ -11,13 +11,13 @@
                     <div class="col-sm-6 col-lg-3">
                         <div class="d-flex justify-content-between align-items-start card-widget-1 border-end pb-3 pb-sm-0">
                             <div>
-                                <p class="mb-2">Comodity</p>
-                                <h4 class="mb-2">{{ $commodity }}</h4>
-                                <p class="mb-0"><span class="badge rounded-pill bg-label-success"></span></p>
+                                <p class="mb-1 text-muted">Fast Moving</p>
+                                <h4 class="mb-2 text-success fw-bold" id="kpi-fast-moving">0</h4>
+                                <p class="mb-0"><span class="badge rounded-pill bg-label-success">Keluar &le; 60 Hari</span></p>
                             </div>
                             <div class="avatar me-sm-4">
-                                <span class="avatar-initial rounded bg-label-secondary">
-                                    <i class="mdi mdi-home-outline mdi-24px"></i>
+                                <span class="avatar-initial rounded bg-label-success">
+                                    <i class="mdi mdi-flash mdi-24px"></i>
                                 </span>
                             </div>
                         </div>
@@ -26,13 +26,13 @@
                     <div class="col-sm-6 col-lg-3">
                         <div class="d-flex justify-content-between align-items-start card-widget-2 border-end pb-3 pb-sm-0">
                             <div>
-                                <p class="mb-2">Equivalent</p>
-                                <h4 class="mb-2">{{ $sproduct }}</h4>
-                                <p class="mb-0"><span class="badge rounded-pill bg-label-success"></span></p>
+                                <p class="mb-1 text-muted">Slow Moving</p>
+                                <h4 class="mb-2 text-warning fw-bold" id="kpi-slow-moving">0</h4>
+                                <p class="mb-0"><span class="badge rounded-pill bg-label-warning">61 &ndash; 180 Hari</span></p>
                             </div>
                             <div class="avatar me-lg-4">
-                                <span class="avatar-initial rounded bg-label-secondary">
-                                    <i class="mdi mdi-laptop mdi-24px"></i>
+                                <span class="avatar-initial rounded bg-label-warning">
+                                    <i class="mdi mdi-clock-outline mdi-24px"></i>
                                 </span>
                             </div>
                         </div>
@@ -41,13 +41,13 @@
                     <div class="col-sm-6 col-lg-3">
                         <div class="d-flex justify-content-between align-items-start border-end pb-3 pb-sm-0 card-widget-3">
                             <div>
-                                <p class="mb-2">Pruchase Order</p>
-                                <h4 class="mb-2">1</h4>
-                                <p class="mb-0"><span class="badge rounded-pill bg-label-success"></span></p>
+                                <p class="mb-1 text-muted">Dead Stock</p>
+                                <h4 class="mb-2 text-danger fw-bold" id="kpi-dead-stock">0</h4>
+                                <p class="mb-0"><span class="badge rounded-pill bg-label-danger">&gt; 180 Hari (Stok &gt; 0)</span></p>
                             </div>
                             <div class="avatar me-sm-4">
-                                <span class="avatar-initial rounded bg-label-secondary">
-                                    <i class="mdi mdi-wallet-giftcard mdi-24px"></i>
+                                <span class="avatar-initial rounded bg-label-danger">
+                                    <i class="mdi mdi-alert-circle-outline mdi-24px"></i>
                                 </span>
                             </div>
                         </div>
@@ -55,13 +55,13 @@
                     <div class="col-sm-6 col-lg-3">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <p class="mb-2">Loss Order</p>
-                                <h4 class="mb-2">2</h4>
-                                <p class="mb-0"><span class="badge rounded-pill bg-label-danger"></span></p>
+                                <p class="mb-1 text-muted">By Order / Indent</p>
+                                <h4 class="mb-2 text-info fw-bold" id="kpi-by-order">0</h4>
+                                <p class="mb-0"><span class="badge rounded-pill bg-label-info">Sesuai Kebutuhan</span></p>
                             </div>
                             <div class="avatar">
-                                <span class="avatar-initial rounded bg-label-secondary">
-                                    <i class="mdi mdi-currency-usd mdi-24px"></i>
+                                <span class="avatar-initial rounded bg-label-info">
+                                    <i class="mdi mdi-cart-arrow-down mdi-24px"></i>
                                 </span>
                             </div>
                         </div>
@@ -71,6 +71,20 @@
         </div>
     </div>
     <div class="card mb-3">
+        <div class="card-header pb-2">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fw-semibold text-muted"><i class="mdi mdi-filter-variant me-1"></i>Filter FSN:</span>
+                    <div class="btn-group btn-group-sm" role="group" id="fsn-filter-group">
+                        <button type="button" class="btn btn-outline-primary fsn-filter-btn active" data-filter="all">Semua</button>
+                        <button type="button" class="btn btn-outline-success fsn-filter-btn" data-filter="fast_moving">🟢 Fast Moving</button>
+                        <button type="button" class="btn btn-outline-warning fsn-filter-btn" data-filter="slow_moving">🟡 Slow Moving</button>
+                        <button type="button" class="btn btn-outline-danger fsn-filter-btn" data-filter="dead_stock">🔴 Dead Stock</button>
+                        <button type="button" class="btn btn-outline-info fsn-filter-btn" data-filter="by_order">🔵 By Order</button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="card-datatable table-responsive pt-0">
             <table class="datatable-master table table-bordered">
                 <thead>
@@ -81,6 +95,7 @@
                         <th rowspan="2">DESC</th>
                         <th rowspan="2">Dimension</th>
                         <th rowspan="2">Genuine / Replacement</th>
+                        <th rowspan="2">Status FSN</th>
                         <th colspan="3" class="text-center border-bottom">Stock</th>
                     </tr>
                     <tr>

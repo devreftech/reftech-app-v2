@@ -14,11 +14,10 @@ $(function () {
                 { data: "" },
                 { data: "id" },
                 { data: "no_product_in" },
-                { data: "no_do" },
+                { data: "supplier_name" },
                 { data: "info" },
-                { data: "date" },
                 { data: "total_qty" },
-                { data: "creator_name" },
+                { data: "date" },
             ],
             columnDefs: [
                 {
@@ -36,17 +35,19 @@ $(function () {
                     visible: false,
                 },
                 {
-                    // No DO, Category, Date, Qty, Assign — rata tengah
-                    targets: [3, 4, 5, 6, 7],
+                    // Supplier, Category, Qty, Date — rata tengah
+                    targets: [3, 4, 5, 6],
                     className: "text-center",
                 },
                 {
-                    // No. Product In — link ke detail
+                    // No. Product In — link ke detail. Badge "Manual" kalau id_purchase_order
+                    // null (GR Manual, gak lahir dari alur PO).
                     responsivePriority: 1,
                     targets: 2,
                     render: function (data, type, full, meta) {
-                        var $detailUrl = route("product-in.preview", full["id"]);
-                        return '<a href="' + $detailUrl + '">#' + (data ?? "-") + "</a>";
+                        var $detailUrl = route("product-in.show", full["id"]);
+                        var badge = full.id_purchase_order ? "" : ' <span class="badge bg-label-secondary">Manual</span>';
+                        return '<a href="' + $detailUrl + '">#' + (data ?? "-") + "</a>" + badge;
                     },
                 },
                 {
@@ -59,7 +60,7 @@ $(function () {
                     },
                 },
                 {
-                    targets: 5,
+                    targets: 6,
                     render: function (data, type, full, meta) {
                         if (!data) return "-";
                         var d = new Date(data);
@@ -71,22 +72,15 @@ $(function () {
                 },
             ],
             order: [[1, "desc"]],
-            dom: '<"card-header flex-column flex-md-row"<"head-label-delay text-center"><"dt-action-buttons text-end pt-3 pt-md-0"B>><"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
+            // Tombol "New Invoice Product"/"+ GR Manual" dipindah ke header card tab
+            // Incoming Goods (index.blade.php) biar gak dobel CTA yang membingungkan.
+            dom: '<"card-header flex-column flex-md-row"<"head-label-delay text-center">><"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             displayLength: 7,
             lengthMenu: [7, 10, 25, 50, 75, 100],
-            buttons: [
-                {
-                    text: '<i class="mdi mdi-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">New Invoice Product</span>',
-                    className: "btn btn-primary btn-new",
-                    action: function (e, dt, node, config) {
-                        window.location = route("product-in.create");
-                    },
-                },
-            ],
             initComplete: function () {
                 var api = this.api();
-                // Search input untuk: No. Product In(2), No DO(3), Category(4), Date(5), Qty(6), Assign(7)
-                var searchableCols = [2, 3, 4, 5, 6, 7];
+                // Search input untuk: No. Product In(2), Supplier(3), Category(4), Qty(5), Date(6)
+                var searchableCols = [2, 3, 4, 5, 6];
                 api.columns().every(function () {
                     var col = this;
                     var idx = col.index();

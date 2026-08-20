@@ -3,6 +3,7 @@
 namespace App\Services\Dashboard;
 
 use App\Models\PendingPO;
+use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\Suo;
 use App\Models\ProductIn;
@@ -31,7 +32,12 @@ class LogisticDashboardService
         $logSoBaruCount = PendingPO::where('status', 0)->where('type', 'Non Project')->count();
         $logPrPendingCount = PurchaseRequest::where('status', '0')->count();
         $logSuoPendingCount = Suo::where('status', 'submitted')->count();
-        $logIncomingPendingCount = ProductIn::where('accept', '0')->count();
+        // PO yang udah "On Delivery" (semua alokasinya ada info pengiriman) tapi GR-nya
+        // belum diverifikasi — gantiin flag ProductIn.accept yang udah gak relevan sejak
+        // alur GR baru: ProductIn sekarang dibuat OTOMATIS pas GR diverifikasi
+        // (lihat PurchaseController::storeGoodsReceipt()), jadi begitu ada baris ProductIn
+        // artinya barang itu udah pasti diterima, gak butuh langkah "Accept" manual lagi.
+        $logIncomingPendingCount = $this->onDeliveryPendingReceiptQuery()->count();
         $logLowStockCount = DetailProduct::whereRaw('(stock + warehouse_stock) > 0 AND (stock + warehouse_stock) < ?', [$lowStockThreshold])->count();
 
         // Status Sales Order (Non Project) breakdown
@@ -50,8 +56,8 @@ class LogisticDashboardService
             ->get();
 
         // Incoming Goods - Pending Receipt
-        $logIncomingPending = ProductIn::where('accept', '0')
-            ->with('supp')
+        $logIncomingPending = $this->onDeliveryPendingReceiptQuery()
+            ->with('supplier')
             ->orderByDesc('date')
             ->take(6)
             ->get();
@@ -70,7 +76,10 @@ class LogisticDashboardService
         for ($i = 6; $i >= 0; $i--) {
             $day = Carbon::now()->subDays($i);
             $logReceivingLabels[] = $day->format('d/m');
-            $logReceivingSeries[] = ProductIn::where('accept', '1')->whereDate('updated_at', $day->toDateString())->count();
+            // Setiap baris ProductIn = barang yang udah diterima (dibuat otomatis pas GR
+            // diverifikasi) — pakai kolom `date` (tanggal GR aktual), bukan `updated_at`,
+            // biar gak ikut kegeser kalau record-nya diedit belakangan (mis. konfirmasi invoice).
+            $logReceivingSeries[] = ProductIn::whereDate('date', $day->toDateString())->count();
         }
 
         // Aktivitas terbaru: gabungan PR dibuat, barang diterima, barang dikirim
@@ -83,10 +92,9 @@ class LogisticDashboardService
                 $pr->tipe = 'PR Dibuat';
                 return $pr;
             });
-        $logRecentIncoming = ProductIn::where('accept', '1')
-            ->orderByDesc('updated_at')
+        $logRecentIncoming = ProductIn::orderByDesc('date')
             ->limit(5)
-            ->get(['no_do as ref', 'updated_at as tanggal', 'supplier as ket', DB::raw("'Barang Diterima' as tipe")]);
+            ->get(['no_do as ref', 'date as tanggal', 'supplier as ket', DB::raw("'Barang Diterima' as tipe")]);
         $logRecentOutgoing = ProductOut::orderByDesc('created_at')
             ->limit(5)
             ->get([DB::raw("CONCAT('DO-', id) as ref"), 'created_at as tanggal', 'detail_client as ket', DB::raw("'Barang Dikirim' as tipe")]);
@@ -115,5 +123,18 @@ class LogisticDashboardService
             'logReceivingSeries',
             'logRecentActivity',
         );
+    }
+
+    // PO yang statusnya "Sedang Dikirim" (semua item alokasinya udah keisi info
+    // pengiriman lewat "On Delivery"/"Info Pengiriman") tapi belum "Diterima" (GR-nya
+    // belum diverifikasi lewat PurchaseController::storeGoodsReceipt()). Ini pengganti
+    // langsung dari query lama `ProductIn::where('accept', '0')` — sebelum ada alur GR,
+    // ProductIn dibuat manual duluan lalu di-"Accept" belakangan; sekarang ProductIn
+    // BARU ada setelah GR diverifikasi, jadi titik "pending"-nya pindah ke level PO.
+    private function onDeliveryPendingReceiptQuery()
+    {
+        return PurchaseOrder::where('receipt_status', '!=', 'Received')
+            ->whereHas('prAllocations')
+            ->whereDoesntHave('prAllocations', fn ($q) => $q->whereNull('purchase_type'));
     }
 }

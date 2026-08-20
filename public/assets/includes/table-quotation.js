@@ -54,7 +54,7 @@ $(function () {
                         var qType   = full["type"];
                         var detailRoute;
                         if (rowType === "unit") {
-                            detailRoute = "/unit-quotation/" + $dataId;
+                            detailRoute = "/smart-quote/" + $dataId;
                         } else if (qType == "Sparepart") {
                             detailRoute = route("quotation.show", $dataId);
                         } else if (qType == "Service") {

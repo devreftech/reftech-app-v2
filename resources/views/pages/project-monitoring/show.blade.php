@@ -504,7 +504,7 @@
                                                 <td>
                                                     <span class="badge bg-label-info">{{ $exp->category }}</span>
                                                 </td>
-                                                <td>{{ $exp->user->name }}</td>
+                                                <td>{{ $exp->user?->name ?? '-' }}</td>
                                                 <td class="text-end">Rp {{ number_format($exp->amount, 0, ',', '.') }}</td>
                                                 <td class="text-center">
                                                     @if ($exp->receipt)

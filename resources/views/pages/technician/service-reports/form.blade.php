@@ -5,15 +5,13 @@
     <style>
         .form-section-card {
             border-radius: 16px;
-            border: 1px solid #e5e7eb;
-            background: #ffffff;
+            border: 1px solid rgba(229, 231, 235, 0.5);
             box-shadow: 0 4px 16px rgba(0,0,0,0.02);
             transition: all 0.2s ease-in-out;
         }
         .form-section-title {
             font-size: 1.05rem;
             font-weight: 700;
-            color: #374151;
             display: flex;
             align-items: center;
             gap: 10px;

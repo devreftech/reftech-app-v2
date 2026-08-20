@@ -38,6 +38,19 @@ class AppServiceProvider extends ServiceProvider
                         ->get();
                     $view->with('pendingCancelQuotes', $pendingCancelQuotes);
                 }
+
+                if (in_array(Auth::user()->role, ['Accounting', 'Admin', 'Sales'])) {
+                    // Daftar ini menampilkan notifikasi terbaru terlepas dari status baca,
+                    // supaya klik "tandai dibaca" cuma menghilangkan penanda merahnya —
+                    // bukan menghapus notifikasi dari daftar. Badge merah tetap hitung dari unread saja.
+                    $paymentNotifications = \App\Models\UnitQuotationPaymentNotification::where('id_user', Auth::id())
+                        ->with(['unitQuotation.client', 'payment', 'invoice'])
+                        ->orderByDesc('created_at')
+                        ->take(15)
+                        ->get();
+                    $view->with('paymentNotifications', $paymentNotifications);
+                    $view->with('paymentUnreadCount', $paymentNotifications->where('is_read', false)->count());
+                }
             }
         });
 
@@ -45,7 +58,12 @@ class AppServiceProvider extends ServiceProvider
         // muncul di semua halaman untuk role Admin/Accounting, bukan cuma di Dashboard.
         View::composer('components.dashboard.sidebar', function ($view) {
             if (Auth::check() && in_array(Auth::user()->role, ['Admin', 'Accounting'])) {
-                $prCount = PurchaseRequest::where('status', '0')->count();
+                // Samakan dengan filter di PurchaseController::index() — PR dengan
+                // id_pending yatim (pending_po sudah terhapus) tidak akan pernah bisa
+                // ditampilkan di tabel manapun, jadi jangan ikut dihitung di badge juga.
+                $prCount = PurchaseRequest::where('status', '0')
+                    ->whereIn('id_pending', \App\Models\PendingPO::pluck('id'))
+                    ->count();
                 $view->with('prCount', $prCount);
             }
         });

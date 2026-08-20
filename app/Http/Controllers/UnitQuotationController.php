@@ -543,6 +543,7 @@ class UnitQuotationController extends Controller
     {
         $request->validate([
             'po_number'      => 'required|string|max:100',
+            'po_date'        => 'nullable|date',
             'po_file'        => 'required|file|mimes:pdf|max:5120',
             'invoice_type'   => 'required|in:DP,CT',
             'dp_percent'     => 'nullable|numeric|min:1|max:99',
@@ -553,13 +554,18 @@ class UnitQuotationController extends Controller
 
         $client = $quote->client;
         if (!$client) {
-            return redirect()->back()->with('error', 'Data client tidak ditemukan.');
+            $message = 'Data client tidak ditemukan.';
+            return $request->expectsJson()
+                ? response()->json(['error' => $message], 422)
+                : redirect()->back()->with('error', $message);
         }
 
         $npwpClean = preg_replace('/[^a-zA-Z0-9]/', '', $client->npwp ?? '');
         if (strlen($npwpClean) < 14) {
-            return redirect()->route('unit-quotation.show', $id)
-                ->with('error', 'NPWP client belum diisi or kurang dari 14 karakter. Pengajuan PO tidak dapat diproses.');
+            $message = 'NPWP client belum diisi or kurang dari 14 karakter. Pengajuan PO tidak dapat diproses.';
+            return $request->expectsJson()
+                ? response()->json(['error' => $message], 422)
+                : redirect()->route('unit-quotation.show', $id)->with('error', $message);
         }
 
         $year = now()->year;
@@ -570,7 +576,7 @@ class UnitQuotationController extends Controller
             'po_file'        => $path,
             'payment_method' => $request->payment_method,
             'status'         => 'po_received',
-            'po_received'    => now()->toDateString(),
+            'po_received'    => $request->po_date ?: now()->toDateString(),
             'type'           => 'Project',
         ]);
 
@@ -591,9 +597,33 @@ class UnitQuotationController extends Controller
         }
 
         $pending = $this->createPendingPoForUnitQuotation($quote);
-        $this->createInvoiceRecords($quote, $request->invoice_type, $request->dp_percent);
+        $invoice = $this->createInvoiceRecords($quote, $request->invoice_type, $request->dp_percent);
+        $this->notifyInvoiceRequested($quote, $invoice);
 
-        // After upload PO, show convert-to-SalesOrder modal on the unit quotation detail page
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success'     => 'PO berhasil diupload. Status diubah ke PO Received.',
+                'po_file_url' => Storage::url($path),
+                'quote'       => [
+                    'no_quote'  => $quote->no_quote,
+                    'po_number' => $quote->po_number,
+                    'total'     => $quote->total,
+                ],
+                'pendingPo'   => $pending ? [
+                    'id'                         => $pending->id,
+                    'no_pending'                 => $pending->no_pending,
+                    'title'                      => $pending->title,
+                    'delivery'                   => $pending->delivery,
+                    'combine_shipping_and_parts' => (bool) $pending->combine_shipping_and_parts,
+                    'shipping_address_manual'    => $pending->shipping_address_manual,
+                    'doc_address_manual'         => $pending->doc_address_manual,
+                    'shipping_recipient_id'      => $pending->shipping_recipient_id,
+                    'doc_recipient_id'           => $pending->doc_recipient_id,
+                ] : null,
+            ]);
+        }
+
+        // Fallback (non-AJAX): perilaku lama, modal dibuka via flash sekali pakai.
         $flashData = [
             'success' => 'PO berhasil diupload. Status diubah ke PO Received.',
             'open_convert_po' => true,
@@ -629,7 +659,7 @@ class UnitQuotationController extends Controller
         $remainingPercent = 100 - $issuedPercent;
         $percentOfTotal   = round($remainingPercent * floatval($request->percent) / 100, 2);
 
-        Invoice::create([
+        $invoice = Invoice::create([
             'id_unit_quotation' => $quote->id,
             'no_po'             => $quote->po_number,
             'flag'              => 'Reftech',
@@ -637,6 +667,7 @@ class UnitQuotationController extends Controller
             'type'              => $request->label,
             'percent'           => $percentOfTotal,
         ]);
+        $this->notifyInvoiceRequested($quote, $invoice);
 
         return redirect()->route('unit-quotation.show', $id)
             ->with('success', 'Invoice selanjutnya berhasil diajukan.');
@@ -673,6 +704,8 @@ class UnitQuotationController extends Controller
 
         $this->prService->evaluatePaymentGate($payment, Auth::id());
 
+        $targetInvoice = null;
+
         if ($isEscrow) {
             // Mark any invoice already issued through the normal flow as paid.
             Invoice::where('id_unit_quotation', $id)
@@ -683,7 +716,7 @@ class UnitQuotationController extends Controller
             // the invoice is issued immediately, using the quotation number as the
             // invoice number so it never consumes a slot in the normal invoice
             // numbering sequence.
-            Invoice::create([
+            $targetInvoice = Invoice::create([
                 'id_unit_quotation' => $id,
                 'no_po'             => $quote->po_number,
                 'flag'              => 'Reftech',
@@ -695,9 +728,74 @@ class UnitQuotationController extends Controller
                 'invoiceTo'         => '1',
                 'status_p'          => 1,
             ]);
+        } else {
+            // Payment biasa dicatat terhadap invoice yang sudah diterbitkan paling akhir
+            // (mis. DP/BP sebelumnya) — itu yang relevan buat Accounting cek/follow up.
+            $targetInvoice = Invoice::where('id_unit_quotation', $id)
+                ->whereNotNull('no_invoice')
+                ->latest('id')
+                ->first();
+        }
+
+        // Notifikasi Accounting: ada payment baru masuk, perlu di-follow up (mis. terbitkan invoice).
+        $accountingUsers = User::where('role', 'Accounting')->where('active', '1')->get(['id']);
+        foreach ($accountingUsers as $accUser) {
+            \App\Models\UnitQuotationPaymentNotification::create([
+                'id_payment' => $payment->id,
+                'id_invoice' => $targetInvoice->id ?? null,
+                'id_unit_quotation' => $id,
+                'id_user' => $accUser->id,
+                'type' => 'payment',
+                'is_read' => false,
+            ]);
         }
 
         return redirect()->route('unit-quotation.show', $id)->with('success', 'Payment berhasil ditambahkan.');
+    }
+
+    // Dipanggil polling navbar (role Accounting & Admin, plus Sales buat notifikasi
+    // invoice yang sudah di-acc) supaya notifikasi payment baru, PO menunggu invoice,
+    // dan invoice yang sudah terbit muncul tanpa reload halaman.
+    public function unreadPaymentNotifications()
+    {
+        if (!in_array(Auth::user()->role, ['Accounting', 'Admin', 'Sales'])) {
+            return response()->json(['count' => 0, 'items' => []]);
+        }
+
+        // Ambil notifikasi terbaru terlepas dari status baca — "tandai dibaca" cuma
+        // menghilangkan penanda merahnya, bukan menghapusnya dari daftar. Badge merah
+        // (count) tetap dihitung dari yang unread saja.
+        $notifs = \App\Models\UnitQuotationPaymentNotification::where('id_user', Auth::id())
+            ->with(['unitQuotation.client', 'payment', 'invoice'])
+            ->orderByDesc('created_at')
+            ->take(15)
+            ->get();
+
+        $items = $notifs->map(function ($n) {
+            return [
+                'id' => $n->id,
+                'type' => $n->type,
+                'is_read' => (bool) $n->is_read,
+                'no_quote' => $n->unitQuotation->no_quote ?? '-',
+                'company' => $n->unitQuotation->client->company ?? '-',
+                'amount' => $n->type === 'payment'
+                    ? (float) ($n->payment->amount ?? 0)
+                    : (float) ($n->unitQuotation->total ?? 0) * (float) ($n->invoice->percent ?? 100) / 100,
+                'url' => $this->resolveInvoiceNotificationUrl($n),
+                'created_at' => $n->created_at->diffForHumans(),
+            ];
+        });
+
+        return response()->json(['count' => $notifs->where('is_read', false)->count(), 'items' => $items]);
+    }
+
+    public function markPaymentNotificationRead($id)
+    {
+        \App\Models\UnitQuotationPaymentNotification::where('id', $id)
+            ->where('id_user', Auth::id())
+            ->update(['is_read' => true]);
+
+        return response()->json(['ok' => true]);
     }
 
     public function proofPayment(Request $request, $id)
@@ -743,9 +841,33 @@ class UnitQuotationController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function updatePayment(Request $request, $id)
+    {
+        $payment = Payment::findOrFail($id);
+
+        if ($payment->level == 1) {
+            return response()->json(['error' => 'Payment sudah dikonfirmasi Accounting, tidak bisa diubah lagi.'], 422);
+        }
+
+        $payment->amount  = $request->amount;
+        $payment->percent = $request->percent;
+        $payment->note    = $request->note;
+        $payment->type    = $request->type;
+        $payment->method  = $request->method;
+        $payment->tempo   = $request->type === 'Tempo' ? $request->tempo : null;
+        $payment->save();
+
+        return response()->json(1);
+    }
+
     public function deletePayment($id)
     {
         $payment = Payment::findOrFail($id);
+
+        if ($payment->level == 1) {
+            return response()->json(['error' => 'Payment sudah dikonfirmasi Accounting, tidak bisa dihapus.'], 422);
+        }
+
         $payment->delete();
         return response()->json(1);
     }
@@ -942,9 +1064,27 @@ class UnitQuotationController extends Controller
             ->with('success', 'Detail Sales Order berhasil diperbarui.');
     }
 
-    private function createInvoiceRecords(UnitQuotation $quote, string $invoiceType = 'CT', $dpPercent = null): void
+    // Tujuan klik notifikasi: 'invoice_requested' (menunggu diterbitkan) ke halaman
+    // terbitkan invoice, 'payment' (invoice sudah terbit, tinggal di-follow up) ke
+    // halaman detail invoice-nya. Fallback ke detail quotation kalau invoice-nya
+    // tidak ada/sudah terhapus (mis. quote-nya sempat di-cancel).
+    private function resolveInvoiceNotificationUrl(\App\Models\UnitQuotationPaymentNotification $n): string
     {
-        Invoice::create([
+        if ($n->id_invoice) {
+            if ($n->type === 'invoice_requested') {
+                return route('before.accept.unit', $n->id_invoice);
+            }
+            if ($n->type === 'payment' || $n->type === 'invoice_approved') {
+                return route('invoice.show_unit', $n->id_invoice);
+            }
+        }
+
+        return route('unit-quotation.show', $n->id_unit_quotation);
+    }
+
+    private function createInvoiceRecords(UnitQuotation $quote, string $invoiceType = 'CT', $dpPercent = null): Invoice
+    {
+        return Invoice::create([
             'id_unit_quotation' => $quote->id,
             'no_po'             => $quote->po_number,
             'flag'              => 'Reftech',
@@ -952,6 +1092,23 @@ class UnitQuotationController extends Controller
             'type'              => $invoiceType,
             'percent'           => $invoiceType === 'DP' ? floatval($dpPercent ?? 50) : 100,
         ]);
+    }
+
+    // Notifikasi Accounting & Admin: ada invoice yang menunggu diterbitkan (muncul di
+    // Invoice > tab Request), dipanggil setiap kali invoice baru dibuat lewat Upload PO
+    // maupun "Ajukan Invoice Selanjutnya" — supaya tidak perlu bolak-balik cek tab itu manual.
+    private function notifyInvoiceRequested(UnitQuotation $quote, Invoice $invoice): void
+    {
+        $notifyUsers = User::whereIn('role', ['Accounting', 'Admin'])->where('active', '1')->get(['id']);
+        foreach ($notifyUsers as $notifyUser) {
+            \App\Models\UnitQuotationPaymentNotification::create([
+                'id_invoice' => $invoice->id,
+                'id_unit_quotation' => $quote->id,
+                'id_user' => $notifyUser->id,
+                'type' => 'invoice_requested',
+                'is_read' => false,
+            ]);
+        }
     }
 
     private function saveDetails(int $quoteId, array $items): void
@@ -1000,7 +1157,7 @@ class UnitQuotationController extends Controller
             $pending->project_status_step = 1;
         }
         $pending->title = $quote->title ?: 'Unit Project';
-        $pending->no_pending = $quote->po_number ?: $quote->no_quote;
+        $pending->no_pending = $this->generateNoSo();
         $pending->delivery = $this->resolvePendingDeliveryValue($quote->delivery_process);
         $pending->combine_shipping_and_parts = false;
         $pending->doc_address_type = 'customer';
@@ -1110,6 +1267,27 @@ class UnitQuotationController extends Controller
         }
 
         return $pending;
+    }
+
+    /**
+     * Format: 001-SO/RJO/VIII/2026 — nomor urut reset tiap bulan, mengikuti pola
+     * penomoran PR (lihat PurchaseRequestService::generateNoPr()).
+     */
+    protected function generateNoSo(): string
+    {
+        $year = now()->format('Y');
+        $romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+        $roman = $romanMonths[(int) now()->format('n') - 1];
+        $suffix = "-SO/RJO/{$roman}/{$year}";
+
+        $last = PendingPO::where('no_pending', 'like', '%' . $suffix)
+            ->orderByDesc('no_pending')
+            ->value('no_pending');
+
+        $lastSeq = $last ? (int) substr($last, 0, 3) : 0;
+        $nextSeq = str_pad($lastSeq + 1, 3, '0', STR_PAD_LEFT);
+
+        return $nextSeq . $suffix;
     }
 
     protected function resolvePendingDeliveryValue($deliveryValue): int

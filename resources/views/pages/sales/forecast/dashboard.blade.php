@@ -25,7 +25,6 @@
         .metric-card {
             border-radius: 20px;
             border: 1px solid rgba(229, 231, 235, 0.5);
-            background: #ffffff;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
@@ -109,24 +108,20 @@
             border: 1px solid rgba(229, 231, 235, 0.5);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
             overflow: hidden;
-            background: #ffffff;
         }
         .custom-table-card .card-header {
-            background-color: #ffffff;
-            border-bottom: 1px solid #f3f4f6;
+            border-bottom: 1px solid rgba(229, 231, 235, 0.5);
             padding: 1.5rem;
         }
         .custom-table {
             margin-bottom: 0;
-            border: 1px solid #e5e7eb !important;
+            border: 1px solid rgba(229, 231, 235, 0.5) !important;
         }
         .custom-table th {
             text-transform: uppercase;
             font-size: 0.75rem;
             font-weight: 700;
             letter-spacing: 0.05em;
-            color: #374151;
-            background-color: #f8fafc;
             padding: 1rem 1.25rem;
             border-bottom: 2px solid #cbd5e1 !important;
             border-right: 1px solid #e2e8f0;
@@ -186,12 +181,12 @@
     <!-- Filters Row -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card border-0 shadow-sm" style="border-radius: 16px; background: #ffffff;">
+            <div class="card border-0 shadow-sm" style="border-radius: 16px;">
                 <div class="card-body p-3">
                     <form action="{{ route('forecast.index') }}" method="GET" class="row g-3 align-items-center">
                         <div class="col-md-auto d-flex align-items-center gap-2 px-3 border-end">
                             <i class="mdi mdi-filter-variant text-primary mdi-24px"></i>
-                            <h6 class="fw-bold mb-0" style="color: #374151;">Forecast Filters</h6>
+                            <h6 class="fw-bold mb-0">Forecast Filters</h6>
                         </div>
                         <div class="col-md-3">
                             <div class="d-flex align-items-center gap-2">
@@ -301,10 +296,10 @@
     <div class="row mb-4">
         <!-- Monthly Breakdown Table -->
         <div class="col-12">
-            <div class="card border-0 shadow-sm" style="border-radius: 20px; overflow: hidden; background: #ffffff;">
+            <div class="card border-0 shadow-sm" style="border-radius: 20px; overflow: hidden;">
                 <div class="card-header bg-transparent border-0 p-4 pb-2 d-flex justify-content-between align-items-center">
                     <div>
-                        <h5 class="fw-bold mb-1" style="color: #374151;">Monthly Performance Breakdown</h5>
+                        <h5 class="fw-bold mb-1">Monthly Performance Breakdown</h5>
                         <p class="text-muted small mb-0">Klik tombol detail di tiap bulan untuk melihat rincian unit forecast & PO yang berhasil diraih.</p>
                     </div>
                 </div>

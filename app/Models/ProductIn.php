@@ -20,6 +20,7 @@ class ProductIn extends Model
         'created_by',
         'no_do',
         'invoice',
+        'id_purchase_order',
         'supplier',
         'note',
         'subtotal',
@@ -34,6 +35,11 @@ class ProductIn extends Model
         return $this->belongsTo('App\Models\Supplier', 'id_supplier', 'id');
     }
 
+    public function purchaseOrder()
+    {
+        return $this->belongsTo('App\Models\PurchaseOrder', 'id_purchase_order', 'id');
+    }
+
     public function creator()
     {
         return $this->belongsTo('App\Models\User', 'created_by', 'id');
@@ -45,5 +51,9 @@ class ProductIn extends Model
     public function return()
     {
         return $this->hasMany('App\Models\Retur', 'id_product_in');
+    }
+    public function costs()
+    {
+        return $this->hasMany('App\Models\ProductInCost', 'id_product_in');
     }
 }

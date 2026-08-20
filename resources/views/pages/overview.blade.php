@@ -302,7 +302,9 @@
                                                         data-bs-toggle="modal" data-bs-target="#overviewPO{{ $DC['monthKey'] }}">
                                                         <i class="mdi mdi-eye-outline"></i>
                                                     </button>
-                                                    @include('components.modal.overview.totalPo')
+                                                    @push('modals')
+                                                        @include('components.modal.overview.totalPo')
+                                                    @endpush
                                                 </td>
                                             </tr>
                                         @endfor
@@ -405,7 +407,9 @@
                                             data-bs-toggle="modal" data-bs-target="#overviewPO{{ $DC['monthKey'] }}">
                                             <i class="mdi mdi-eye-outline me-1"></i> Rincian PO
                                         </button>
-                                        @include('components.modal.overview.totalPo')
+                                        @push('modals')
+                                            @include('components.modal.overview.totalPo')
+                                        @endpush
                                     </td>
                                 </tr>
                             @endforeach

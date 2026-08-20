@@ -136,7 +136,7 @@
                                         </p>
                                         <p class="mb-1 text-muted" style="line-height: 1.4;">Komp. Negia Kencana Residence Blok B, No.2 Pasanggrahan, Ujung Berung Kota Bandung - Jawa Barat 40199</p>
                                         <div class="px-2 py-0.5 rounded-0" style="background:#eef0ff; border:1px solid #d0d0ff; font-size:10.5px; font-weight:600; color:#3d3d8f; display:inline-block; border-radius:0 !important;">
-                                            <i class="mdi mdi-card-account-details-outline me-1"></i>NPWP: 73.728.571.8-429.000
+                                            <i class="mdi mdi-card-account-details-outline me-1"></i>NPWP: 0737285718429000
                                         </div>
                                     </div>
                                 </div>
@@ -228,11 +228,11 @@
                             </div>
                         </div>
 
-                        {{-- Card 2: Payment Terms & Info --}}
+                        {{-- Card 2: Payment Information --}}
                         <div style="min-width:240px; flex:1; display:flex; flex-direction:column; align-self:stretch; border:1px solid #e0e0e0; border-left:4px solid #8592a3; border-radius:4px; padding:12px 16px; background:#fcfcfc;">
                             <div class="mb-2 pb-1" style="border-bottom: 1px dashed #e4e4e4;">
                                 <span class="fw-bold text-uppercase" style="font-size:10.5px; letter-spacing:0.6px; color:#566a7f;">
-                                    <i class="mdi mdi-file-document-outline me-1"></i>Payment Terms &amp; Info
+                                    <i class="mdi mdi-file-document-outline me-1"></i>Payment Information
                                 </span>
                             </div>
 
@@ -738,11 +738,11 @@
                         @php
                             $invTotal = $quote->total;
                             if ($inv->type === 'DP' && $inv->term) {
-                                $pct      = floatval(filter_var($inv->term, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION));
+                                $pct      = preg_match('/^DP\s*(\d+(?:\.\d+)?)\s*%/i', $inv->term, $m) ? floatval($m[1]) : 0;
                                 $invTotal = round($quote->total * $pct / 100);
                             } elseif ($inv->type === 'BP') {
                                 $dpInv    = $allInvoices->firstWhere('type', 'DP');
-                                $pct      = $dpInv?->term ? floatval(filter_var($dpInv->term, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION)) : 0;
+                                $pct      = $dpInv?->term && preg_match('/^DP\s*(\d+(?:\.\d+)?)\s*%/i', $dpInv->term, $m) ? floatval($m[1]) : 0;
                                 $invTotal = $quote->total - round($quote->total * $pct / 100);
                             }
                         @endphp
@@ -1891,7 +1891,7 @@
     $(document).on('click', '.btn-upload-proof-inv', function () {
         var id = $(this).data('id');
         $uploadBtn = $(this);
-        $('#formUploadBuktiInv').data('payment-id', id).attr('action', '/unit-quotation/payment/' + id + '/proof');
+        $('#formUploadBuktiInv').data('payment-id', id).attr('action', '/smart-quote/payment/' + id + '/proof');
         $('#modalUploadBukti').modal('show');
     });
 
@@ -1950,7 +1950,7 @@
         }).then(function (result) {
             if (!result.isConfirmed) return;
             $.ajax({
-                url: '/unit-quotation/payment/' + id + '/proof',
+                url: '/smart-quote/payment/' + id + '/proof',
                 type: 'POST',
                 data: { _method: 'DELETE', _token: '{{ csrf_token() }}' },
                 success: function (res) {

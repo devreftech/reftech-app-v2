@@ -1,6 +1,6 @@
 @php use Illuminate\Support\Facades\Storage; @endphp
 @extends('layouts.sales.app')
-@section('title', 'Request Invoice — Unit Quotation')
+@section('title', 'Request Invoice — Smart Quote')
 @section('content')
     <div class="row invoice-preview">
         {{-- Invoice Preview --}}
@@ -31,7 +31,7 @@
                             <h3 class="fw-bold mb-1" style="letter-spacing:2px; color:#696cff;">INVOICE REQUEST</h3>
                             <p class="mb-1 fw-semibold" style="font-size:14px;">#{{ $quote->no_quote }}</p>
                             <div class="mb-1">
-                                <span class="badge bg-warning px-3 py-1 fs-6">Unit Quotation</span>
+                                <span class="badge bg-warning px-3 py-1 fs-6">Smart Quote</span>
                             </div>
                             <p class="mb-0 text-muted" style="font-size:12px;">{{ $quote->date?->format('d F Y') }}</p>
                             @if ($quote->no_pr)
@@ -307,10 +307,20 @@
                                    value="{{ now()->toDateString() }}" required>
                         </div>
 
+                        @php
+                            // Payment method disimpan sebagai kode singkat (CBD/COD) waktu upload PO
+                            // di halaman unit quotation — jabarkan jadi teks lengkap buat Term of Payment.
+                            $paymentMethodLabels = [
+                                'CBD' => 'Cash Before Delivery',
+                                'COD' => 'Cash On Delivery',
+                            ];
+                            $defaultTerm = $paymentMethodLabels[$quote->payment_method] ?? $quote->payment_method;
+                        @endphp
                         <div class="mb-3">
                             <label class="form-label fw-semibold small">Term of Payment</label>
                             <input type="text" name="term" class="form-control form-control-sm"
-                                   placeholder="misal: Cash, NET 30, NET 60..." required>
+                                   placeholder="misal: Cash, NET 30, NET 60..."
+                                   value="{{ old('term', $defaultTerm) }}" required>
                         </div>
 
                         @foreach ($allInvoices as $inv)

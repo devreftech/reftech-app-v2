@@ -15,9 +15,8 @@ $(function () {
             columns: [
                 { data: "" },
                 { data: "id" },
-                { data: "id" },
                 { data: "invoice" },
-                { data: "supplier" },
+                { data: "supplier_name" },
                 { data: "product" },
                 { data: "qty" },
                 { data: "total" },
@@ -37,48 +36,37 @@ $(function () {
                     },
                 },
                 {
-                    // For Checkboxes
                     targets: 1,
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 3,
-                    checkboxes: true,
-                    render: function () {
-                        return '<input type="checkbox" class="dt-checkboxes form-check-input">';
-                    },
-                    checkboxes: {
-                        selectAllRender:
-                            '<input type="checkbox" class="form-check-input">',
-                    },
-                },
-                {
-                    targets: 2,
                     searchable: true,
                     visible: false,
                 },
                 {
                     responsivePriority: 1,
-                    targets: 3,
+                    targets: 2,
                 },
                 {
-                    targets: 3,
+                    // Invoice — badge "Manual" kalau id_purchase_order null (GR Manual,
+                    // gak lahir dari alur PO).
+                    targets: 2,
                     render: function (data, type, full, meta) {
                         var $tip = full["tip"];
                         var $invoice = full["invoice"];
+                        var badge = full.id_purchase_order ? "" : ' <span class="badge bg-label-secondary">Manual</span>';
                         return (
                             '<span data-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="tooltip-primary"' +
                             ' title=" ' +
                             $tip +
                             '">' +
                             $invoice +
-                            "</span>"
+                            "</span>" +
+                            badge
                         );
                     },
                 },
                 {
-                    targets: 7,
+                    targets: 6,
                     render: function (data, type, row, meta) {
-                        return "*".repeat(data.toString().length);
+                        return data == null ? "-" : "*".repeat(data.toString().length);
                     },
                 },
                 {
@@ -107,7 +95,7 @@ $(function () {
                     },
                 },
             ],
-            order: [[2, "desc"]],
+            order: [[1, "desc"]],
             dom: '<"card-header flex-column flex-md-row"<"head-label text-center"><"dt-action-buttons text-end pt-3 pt-md-0"B>><"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             displayLength: 7,
             lengthMenu: [7, 10, 25, 50, 75, 100],
@@ -121,31 +109,31 @@ $(function () {
                             extend: "print",
                             text: '<i class="mdi mdi-printer-outline me-1" ></i>Print',
                             className: "dropdown-item",
-                            exportOptions: { columns: [3, 4, 5, 6, 7, 8, 9] },
+                            exportOptions: { columns: [2, 3, 4, 5, 6, 7, 8] },
                         },
                         {
                             extend: "csv",
                             text: '<i class="mdi mdi-file-document-outline me-1" ></i>Csv',
                             className: "dropdown-item",
-                            exportOptions: { columns: [3, 4, 5, 6, 7, 8, 9] },
+                            exportOptions: { columns: [2, 3, 4, 5, 6, 7, 8] },
                         },
                         {
                             extend: "excel",
                             text: '<i class="mdi mdi-file-excel-outline me-1"></i>Excel',
                             className: "dropdown-item",
-                            exportOptions: { columns: [3, 4, 5, 6, 7, 8, 9] },
+                            exportOptions: { columns: [2, 3, 4, 5, 6, 7, 8] },
                         },
                         {
                             extend: "pdf",
                             text: '<i class="mdi mdi-file-pdf-box me-1"></i>Pdf',
                             className: "dropdown-item",
-                            exportOptions: { columns: [3, 4, 5, 6, 7, 8, 9] },
+                            exportOptions: { columns: [2, 3, 4, 5, 6, 7, 8] },
                         },
                         {
                             extend: "copy",
                             text: '<i class="mdi mdi-content-copy me-1" ></i>Copy',
                             className: "dropdown-item",
-                            exportOptions: { columns: [3, 4, 5, 6, 7, 8, 9] },
+                            exportOptions: { columns: [2, 3, 4, 5, 6, 7, 8] },
                         },
                     ],
                 },

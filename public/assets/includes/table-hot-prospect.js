@@ -47,7 +47,7 @@ $(function () {
                         var rowType = full["row_type"];
                         var url;
                         if (rowType === 'unit') {
-                            url = '/unit-quotation/' + id;
+                            url = '/smart-quote/' + id;
                         } else if (qType == "Sparepart") {
                             url = route("quotation.show", id);
                         } else {

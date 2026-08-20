@@ -15,9 +15,11 @@ use App\Models\PendingPO;
 use App\Models\PurchaseRequest;
 use App\Models\Contract;
 use App\Models\Comment;
+use App\Models\Reports;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class AdminDashboardService
 {
@@ -27,6 +29,31 @@ class AdminDashboardService
     public function getDashboardData($sorted, $sales, $notulens, $yearNow, $monthNow, $dateNow)
     {
         $prCount = PurchaseRequest::where('status', '0')->count();
+
+        // Daily Welcome Alert for Admin
+        $showAdminWelcomeAlert = false;
+        $adminUserId = Auth::id();
+        if ($adminUserId) {
+            $welcomeAlertKey = 'admin_welcome_alert_' . $adminUserId . '_' . $dateNow->toDateString();
+            if (!Cache::has($welcomeAlertKey)) {
+                Cache::put($welcomeAlertKey, true, $dateNow->copy()->endOfDay());
+                $showAdminWelcomeAlert = true;
+            }
+        }
+
+        // 1. Review Pekerjaan Kemarin (Service Report)
+        // Jika login hari Senin -> review pekerjaan Jumat, Sabtu & Minggu
+        $isMonday = $dateNow->isMonday();
+        if ($isMonday) {
+            $srStartDate = $dateNow->copy()->subDays(3)->startOfDay(); // Jumat
+            $srEndDate = $dateNow->copy()->subDays(1)->endOfDay();     // Minggu
+            $yesterdayServiceReportCount = Reports::whereBetween('date', [$srStartDate->toDateString(), $srEndDate->toDateString()])->count();
+            $serviceReportPeriodLabel = 'Pekerjaan Jumat, Sabtu & Minggu';
+        } else {
+            $yesterdayDate = $dateNow->copy()->subDay()->toDateString();
+            $yesterdayServiceReportCount = Reports::whereDate('date', $yesterdayDate)->count();
+            $serviceReportPeriodLabel = 'Pekerjaan Kemarin (' . $dateNow->copy()->subDay()->isoFormat('dddd, D MMM') . ')';
+        }
 
         $requestContract = Contract::join('quotation as q', 'q.id', '=', 'contract.id_quotation')
             ->join('pic as p', 'p.id', '=', 'q.id_pic')
@@ -244,6 +271,9 @@ class AdminDashboardService
 
         return array_merge(
             compact(
+                'showAdminWelcomeAlert',
+                'yesterdayServiceReportCount',
+                'serviceReportPeriodLabel',
                 'sorted',
                 'requestContract',
                 'requestInvoice',

@@ -212,18 +212,19 @@ class QuotationController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+    // Form Quotation lama (Sparepart/Service/Overhaul/dst lewat dropdown Type) sudah
+    // disetop dari pembuatan BARU — bisnis konsolidasi ke Unit Quotation. Quotation lama
+    // yang statusnya masih berjalan (PO, request invoice, payment, dll) TETAP diproses
+    // normal lewat method lain yang gak disentuh di sini.
+    private function oldQuotationDisabled()
+    {
+        return redirect()->route('unit-quotation.create')
+            ->with('message', 'Pembuatan Quotation (Sparepart/Service/Overhaul) sudah tidak aktif — gunakan Unit Quotation.');
+    }
+
     public function create()
     {
-        $dateNow = Carbon::now();
-        $numberQ = Quotation::whereYear('estimated_date', $dateNow->year)->where('id_sales', Auth::user()->id)->count();
-        $formattedNumberQ = str_pad($numberQ + 1, 3, '0', STR_PAD_LEFT);
-        $monthNow = $dateNow->month;
-        $formattedMonthNow = $this->convertToRoman($monthNow);
-        // $pic = Pic::join('client as c', 'c.id', '=', 'pic.id_client')->where('c.id_sales', Auth::user()->id)->get('pic.*');
-        $pic = client::where('client.id_sales', Auth::user()->id)->get();
-        $sales = User::where('role', 'sales')->get();
-        $product = collect([]);
-        return view('pages.sales.quotation.form', compact('pic', 'sales', 'formattedNumberQ', 'formattedMonthNow', 'product'));
+        return $this->oldQuotationDisabled();
     }
 
     /**
@@ -234,6 +235,10 @@ class QuotationController extends Controller
      */
     public function store(StoreQuotationRequest $request)
     {
+        // Lihat oldQuotationDisabled() — logic asli di bawah ini sengaja dibiarkan
+        // (bukan dihapus) biar gampang di-restore kalau kebijakannya berubah lagi.
+        return $this->oldQuotationDisabled();
+
         $pic = Pic::find($request->pic);
         $client = Client::find($pic->id_client);
         $previousUrl = request()->create(url()->previous())->segment(2);
@@ -373,7 +378,7 @@ class QuotationController extends Controller
         $formattedNumberSNP = str_pad($numberSNP->count() + 1, 3, '0', STR_PAD_LEFT);
         $formattedNumberCP = str_pad($numberCP->count() + 1, 3, '0', STR_PAD_LEFT);
         $formattedNumberCNP = str_pad($numberCNP->count() + 1, 3, '0', STR_PAD_LEFT);
-        $quote = Quotation::find($id);
+        $quote = Quotation::findOrFail($id);
         $quotations = Quotation::where('primary_id', $quote->primary_id)->get();
         $lastQuote = Quotation::where('primary_id', $quote->primary_id)->orderByDesc('num_rev')->first();
         $primQuote = Quotation::where('primary_id', $quote->primary_id)->where('is_primary', '1')->first();
@@ -2711,7 +2716,7 @@ class QuotationController extends Controller
     {
         $totalAmount = 0;
         $dateNow = Carbon::now();
-        $quote = Quotation::find($id);
+        $quote = Quotation::findOrFail($id);
         $subQuote = SubtitleQuotation::with('detail')->where('id_quotation', $id)->get();
         $totalDisc = 0;
 
@@ -3121,7 +3126,7 @@ class QuotationController extends Controller
     {
         $totalAmount = 0;
         $dateNow = Carbon::now();
-        $quote = Quotation::find($id);
+        $quote = Quotation::findOrFail($id);
         $subQuote = SubtitleQuotation::with('detail')->where('id_quotation', $id)->get();
         $totalDisc = 0;
 

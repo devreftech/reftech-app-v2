@@ -190,14 +190,13 @@
                         </button>
                     @endif
 
-                    {{-- Sales: convert to quotation --}}
+                    {{-- Sales: convert to quotation — form Quotation lama sudah gak dipakai buat
+                    bikin baru (konsolidasi ke Smart Quote), jadi tombolnya diganti info aja
+                    biar gak dead-end. --}}
                     @if (($role == 'Sales' || $role == 'Admin') && $suo->status == 'goods_out' && !$suo->id_quotation)
-                        <div class="alert alert-success p-2 mb-0" style="font-size:12px;">
-                            Barang sudah keluar. Silahkan buat penawaran untuk melanjutkan proses.
+                        <div class="alert alert-secondary p-2 mb-0" style="font-size:12px;">
+                            Barang sudah keluar. Pembuatan penawaran otomatis dari SUO ini sudah tidak tersedia — silakan buat Smart Quote secara manual jika diperlukan.
                         </div>
-                        <a href="{{ route('suo.convert', $suo->id) }}" class="btn btn-primary waves-effect">
-                            <i class="mdi mdi-file-document-plus-outline me-1"></i> Buat Penawaran
-                        </a>
                     @endif
 
                     @if ($suo->id_quotation)

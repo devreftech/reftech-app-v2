@@ -6,10 +6,16 @@
     </h4>
     <div class="card">
         <div class="card-datatable table-responsive pt-0">
-            <table class="datatable-suo-sales table table-striped">
+            @php
+                $isSuoManager = in_array(Auth::user()->role, ['Admin', 'Sales Manager']);
+            @endphp
+            <table class="datatable-suo-sales table table-striped" data-is-manager="{{ $isSuoManager ? '1' : '0' }}">
                 <thead>
                     <tr>
                         <th>No. SUO</th>
+                        @if ($isSuoManager)
+                            <th>Sales</th>
+                        @endif
                         <th>Company</th>
                         <th>PIC</th>
                         <th>Status</th>
@@ -30,6 +36,7 @@
 @endpush
 
 @push('after-script')
+    <script src="{{ asset('assets') }}/vendor/libs/moment/moment.js"></script>
     <script src="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
     <script src="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.js"></script>
 @endpush

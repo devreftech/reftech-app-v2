@@ -21,7 +21,7 @@
                 <th class="text-end">Balance</th>
             </tr>
         </thead>
-        <tbody class="text-dark">
+        <tbody>
             <tr>
                 <td colspan="2"><span class="lvl-0">Aktiva</span></td>
             </tr>

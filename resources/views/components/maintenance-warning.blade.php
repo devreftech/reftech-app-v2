@@ -107,14 +107,24 @@
 
             const warnThresholdMs = warnMinutes * 60 * 1000;
 
+            let planningInterval = null;
+            let isRedirecting = false;
+
             function checkPlanningWindow() {
+                if (isRedirecting) return;
+
                 const now = new Date();
                 const diffMs = targetStartTime.getTime() - now.getTime();
 
                 // If time has arrived or passed (diff <= 0)
                 if (diffMs <= 0) {
-                    // Redirect to maintenance page
-                    window.location.href = '/maintenance';
+                    if (planningInterval) clearInterval(planningInterval);
+                    isRedirecting = true;
+
+                    if (autoActivate) {
+                        // Single smooth transition to maintenance page
+                        window.location.href = '/maintenance';
+                    }
                     return;
                 }
 
@@ -156,7 +166,7 @@
             }
 
             checkPlanningWindow();
-            setInterval(checkPlanningWindow, 1000);
+            planningInterval = setInterval(checkPlanningWindow, 1000);
         })();
     </script>
 @endif

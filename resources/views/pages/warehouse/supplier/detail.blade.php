@@ -97,7 +97,9 @@
                                     </a>
                                 </div>
                             </div>
-                            @include('components.modal.warehouse.supplier.pic-update')
+                            @push('modals')
+                                @include('components.modal.warehouse.supplier.pic-update')
+                            @endpush
                         @empty
                             <p class="text-muted mb-0">Belum ada PIC untuk supplier ini.</p>
                         @endforelse

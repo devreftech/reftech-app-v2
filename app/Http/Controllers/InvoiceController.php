@@ -558,8 +558,8 @@ class InvoiceController extends Controller
         $displayLastNPK = $getEffectiveLastDisplay($lastInvoiceNPKoj);
 
         $totalAmount = 0;
-        $invoice = Invoice::find($id);
-        $quote = Quotation::find($invoice->id_quotation);
+        $invoice = Invoice::findOrFail($id);
+        $quote = Quotation::findOrFail($invoice->id_quotation);
         if ($quote->type != 'Sparepart') {
             $subQuote = SubtitleQuotation::with('detail')->where('id_quotation', $invoice->id_quotation)->get();
         }
@@ -585,8 +585,8 @@ class InvoiceController extends Controller
     public function print_invoice($id)
     {
         $totalAmount = 0;
-        $invoice = Invoice::find($id);
-        $quote = Quotation::where('id', $invoice->id_quotation)->first();
+        $invoice = Invoice::findOrFail($id);
+        $quote = Quotation::where('id', $invoice->id_quotation)->firstOrFail();
         $dquote = DetailQuotation::where('id_quotation', $quote->id)->get();
         $payments = Payment::where('id_quotation', $quote->id)->get();
 
@@ -1308,6 +1308,19 @@ class InvoiceController extends Controller
         }
 
         $justIssued = $pendingInvoices->first();
+
+        // Notifikasi ke sales pemilik quotation: invoice yang diajukan sudah di-acc
+        // Accounting dan resmi terbit — supaya sales tidak perlu bolak-balik cek manual.
+        if ($quote->id_sales) {
+            \App\Models\UnitQuotationPaymentNotification::create([
+                'id_invoice' => $justIssued->id,
+                'id_unit_quotation' => $quote->id,
+                'id_user' => $quote->id_sales,
+                'type' => 'invoice_approved',
+                'is_read' => false,
+            ]);
+        }
+
         return redirect()->route('invoice.show_unit', $justIssued->id)
             ->with('success', 'Invoice berhasil diterbitkan.');
     }

@@ -1,22 +1,16 @@
 <?php
 
 use App\Http\Controllers\ActivitiesController;
-use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\ApiTableController;
-use App\Http\Controllers\ArchiveController;
 use App\Http\Controllers\AuditController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ChangeWarehouseController;
 use App\Http\Controllers\ContractController;
-use App\Http\Controllers\CrmController;
-use App\Http\Controllers\CustomersController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\EmployeeController;
-use App\Http\Controllers\ExistingController;
 use App\Http\Controllers\FixedController;
-use App\Http\Controllers\UnitQuotationController;
 use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\LibraryController;
 use App\Http\Controllers\MachineController;
 use App\Http\Controllers\MonitoringClientController;
 use App\Http\Controllers\ToolAssignmentController;
@@ -28,8 +22,6 @@ use App\Http\Controllers\ToolMasterController;
 use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\BastController;
 use App\Http\Controllers\MonitoringController;
-use App\Http\Controllers\NotulenController;
-use App\Http\Controllers\HelpdeskController;
 use App\Http\Controllers\OpnameController;
 use App\Http\Controllers\OverviewController;
 use App\Http\Controllers\ExpenseController;
@@ -46,7 +38,6 @@ use App\Http\Controllers\UnitProductInController;
 use App\Http\Controllers\UnitProductOutController;
 use App\Http\Controllers\ProductOutController;
 use App\Http\Controllers\ProductSetController;
-use App\Http\Controllers\ProspectController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ReqVisitController;
@@ -59,7 +50,6 @@ use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\CatalogUnitController;
 use App\Http\Controllers\SalesTargetController;
-use App\Http\Controllers\SuoController;
 use App\Http\Controllers\ProjectMonitoringController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WatermarkController;
@@ -74,7 +64,6 @@ use App\Models\DetailProduct;
 use App\Models\DetailStockOpname;
 use App\Models\FixedAsset;
 use App\Models\Invoice;
-use App\Models\Issues;
 use App\Models\LabaRugi;
 use App\Models\Library;
 use App\Models\Machine;
@@ -82,8 +71,6 @@ use App\Models\MachineTemplate;
 use App\Models\Mainlog;
 use App\Models\Monitoring;
 use App\Models\MonitoringWeekly;
-use App\Models\Notulen;
-use App\Models\HelpdeskTicket;
 use App\Models\Expanse;
 use App\Models\Expense;
 use App\Models\Payment;
@@ -110,8 +97,6 @@ use Carbon\Carbon;
 use FontLib\Table\Type\post;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\LeadsController;
-use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\ForecastController;
@@ -134,6 +119,7 @@ Route::get('/maintenance', [DeveloperMaintenanceController::class, 'showMaintena
 Route::get('/api/maintenance/status', [DeveloperMaintenanceController::class, 'status'])->name('maintenance.status');
 Route::get('/developer/maintenance', [DeveloperMaintenanceController::class, 'index'])->name('developer.maintenance.index');
 Route::post('/developer/maintenance/toggle', [DeveloperMaintenanceController::class, 'toggle'])->name('developer.maintenance.toggle');
+Route::post('/developer/maintenance/upload-chunk', [DeveloperMaintenanceController::class, 'uploadChunk'])->name('developer.maintenance.upload_chunk');
 
 // Route Dashboard
 // Route::get('/', function () {
@@ -158,7 +144,7 @@ Route::post('/watermark/upload', [WatermarkController::class, 'upload'])->name('
 Route::get('/watermark/download', [WatermarkController::class, 'downloadAll'])->name('watermark.download');
 Route::post('/watermark/reset', [WatermarkController::class, 'reset'])->name('watermark.reset');
 
-Route::get('/existing/yearly/{id}', [CrmController::class, 'detailPerYear'])->name('existing.yearly');
+require base_path('routes/modules/crm.php');
 
 Route::group(["middleware" => "auth"], function () {
     Route::get('/', [DashboardController::class, 'index'])->middleware('check.expired')->name('dashboard');
@@ -186,19 +172,6 @@ Route::group(["middleware" => "auth"], function () {
     // Route Overview
     // Route::get('/overview', [DashboardController::class, 'overviewIndex']);
 
-    // Route For Customers
-    Route::resource('/customers', CustomersController::class);
-    Route::get('/customers/detail/{id}', [CustomersController::class, 'show'])->name('detail.customers');
-    Route::get('/key-accounts', [CustomersController::class, 'keyAccounts'])->name('key-accounts.index');
-
-    // Route For Leads
-    Route::resource('/leads', LeadsController::class);
-    Route::get('/leads-by-sales', [LeadsController::class, 'indexBySales'])->name('index-sales.leads');
-    Route::get('/leads/detail/{id}', [LeadsController::class, 'show'])->name('detail.leads');
-    Route::post('/leads/action/{id}', [LeadsController::class, 'storeActionWithLeads'])->name('action.leads');
-    Route::post('/leads/visit/{id}', [LeadsController::class, 'storeVisitWithLeads'])->name('visit.leads');
-    Route::post('/leads/convert/{id}', [LeadsController::class, 'convertToCustomers'])->name('convert.leads');
-    Route::post('/leads/send-intro/{id}', [LeadsController::class, 'sendIntroEmail'])->name('leads.send-intro');
 
     // Route For Email Templates
     // Route::resource('/email-templates', EmailTemplateController::class);
@@ -221,91 +194,13 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/forecast/contracts/{id}/schedule', [ForecastController::class, 'storeContractSchedule'])->name('forecast.contracts.schedule');
     Route::delete('/forecast/contracts/{id}', [ForecastController::class, 'deleteContract'])->name('forecast.contracts.delete');
 
-    // Route untuk Quotation
-    Route::get('/quotation/products/search', [QuotationController::class, 'searchProducts'])->name('quotation.products.search');
-    Route::get('/quotation/card-stats', [QuotationController::class, 'cardStats'])->name('quotation.card-stats');
-    Route::resource('/quotation', QuotationController::class);
-    Route::get('/quotation/leads/create', [QuotationController::class, 'create'])->name('create.quotation');
-    Route::get('/prospect-quotation', [QuotationController::class, 'prospect_quote'])->name('quotation.prospect');
-    Route::get('/po', [QuotationController::class, 'po_quote'])->name('quotation.po');
-    Route::get('/loss', [QuotationController::class, 'loss_quote'])->name('quotation.loss');
-    Route::post('/quotation/{id}/change_status', [QuotationController::class, 'change_status'])->name('status.change.quotation');
-    Route::post('/quotation/{id}/add_comment', [QuotationController::class, 'add_comment'])->name('add-comment.quotation');
-    Route::post('/quotation/{id}/view_comment', [QuotationController::class, 'view_comment'])->name('view-comment.quotation');
-    Route::post('/quotation/{id}/change_po', [QuotationController::class, 'change_po'])->name('change-po.quotation');
-    Route::post('/quotation/{id}/cancel_po', [QuotationController::class, 'cancel_po'])->name('status.cancel.quotation');
-    Route::post('/quotation/{id}/convert_flag', [QuotationController::class, 'convert_flag'])->name('convert-flag.quotation');
-    Route::post('/quotation/{id}/convert_po', [QuotationController::class, 'convert_po'])->name('convert-po.quotation');
-    Route::post('/quotation/{id}/request_bp', [QuotationController::class, 'request_bp'])->name('request-bp.quotation');
-    Route::post('/quotation/{id}/request_next_invoice', [QuotationController::class, 'request_next_invoice'])->name('request_next_invoice.quotation');
-    Route::post('/quotation/{id}/upload_po', [QuotationController::class, 'upload_po'])->name('upload-po.quotation');
-    Route::post('/quotation/{id}/mentions', [QuotationController::class, 'add_mention'])->name('add_mention.quotation');
-    Route::get('/quotation/{id}/download_po', [QuotationController::class, 'download_po'])->name('download-po.quotation');
-    Route::delete('/quotation/{id}/delete_po', [QuotationController::class, 'delete_po'])->name('delete-po.quotation');
-    Route::post('/quotation/{id}/insert_fee', [QuotationController::class, 'insert_fee'])->name('insert_fee.quotation');
-    Route::post('/quotation/{id}/insert_fee_service', [QuotationController::class, 'insert_fee_service'])->name('insert_fee_service.quotation');
-    Route::post('/quotation/{id}/delete_fee', [QuotationController::class, 'delete_fee'])->name('delete_fee.quotation');
-    Route::post('/quotation/{id}/add_payment', [QuotationController::class, 'add_payment'])->name('add_payment.quotation');
-    Route::post('/quotation/{id}/proof_payment', [QuotationController::class, 'proof_payment'])->name('proof_payment.quotation');
-    Route::post('/quotation/{id}/change_primary', [QuotationController::class, 'change_primary'])->name('change_primary.quotation');
-    Route::get('/quotation/{id}/download_payment', [QuotationController::class, 'download_payment'])->name('download-payment.quotation');
-    Route::delete('/quotation/{id}/delete_payment', [QuotationController::class, 'delete_payment'])->name('delete-payment.quotation');
-    Route::post('/quotation/{id}/confirm_payment', [QuotationController::class, 'confirm_payment'])->name('confirm-payment.quotation');
-    Route::get('/quotation/revision/{id}', [QuotationController::class, 'edit_revisi'])->name('revisi.quotation');
-    Route::get('/quotation/edit-sparepart/{id}', [QuotationController::class, 'edit_parts'])->name('edit-sparepart.quotation');
-    Route::get('/quotation/edit-service/{id}', [QuotationController::class, 'edit_service'])->name('edit-service.quotation');
-    Route::patch('/quotation/edit-sparepart/{id}', [QuotationController::class, 'update_part'])->name('update-sparepart.quotation');
-    Route::patch('/quotation/edit-service/{id}', [QuotationController::class, 'update_service'])->name('edit-service.quotation');
-    Route::get('/quotation/revision-overhaul/{id}', [QuotationController::class, 'revisionService'])->name('revisi-overhaul.quotation');
-    Route::get('/quotation/print/{id}', [QuotationController::class, 'print_quote'])->name('print.quotation');
-    Route::get('/quotation/pdf/{id}', [QuotationController::class, 'pdf_quote'])->name('pdf.quotation');
-    Route::get('/quotation/sales/{id}', [QuotationController::class, 'sales_quotation'])->name('sales.quotation');
-    Route::get('/po/sales/{id}', [QuotationController::class, 'sales_po'])->name('sales.po');
-    Route::get('/quotation/sparepart/{id}', [QuotationController::class, 'replacementDetailSparepart'])->name('detail.replacement');
-    Route::get('/quotation/unit/{id}', [QuotationController::class, 'replacementDetailUnit'])->name('detail.replacement');
-    Route::get('/quotation/client/{id}', function ($id) {
-        $client = Client::find($id);
-        return response()->json($client);
-    });
-    Route::get('/quotation/pic/{id}', function ($id) {
-        $client = Pic::where('pic.id_client', $id)->get();
-        return response()->json($client);
-    });
-    Route::get('/quote/unit', [QuotationController::class, 'quotationUnit'])->name('index-unit.quotation');
-    Route::get('/quote/unit/create', [QuotationController::class, 'quotationCreateUnit'])->name('create-unit.quotation');
-    Route::get('/quote/unit-detail/{id}', [UnitController::class, 'quotationDetail'])->name('detail.quote-unit');
-    Route::get('/quote/service/create', [QuotationController::class, 'createService'])->name('create-service.quotation');
-    Route::post('/quote/service/store', [QuotationController::class, 'storeService'])->name('store-service.quotation');
-    Route::get('/quote/service-show/{id}', [QuotationController::class, 'showService'])->name('show-service.quotation');
-    Route::post('/quote/service-update/{id}', [QuotationController::class, 'updateService'])->name('update-service.quotation');
-    Route::delete('/quote/service-delete/{id}', [QuotationController::class, 'destroyService'])->name('delete-service.quotation');
-    Route::get('/quote/service-print/{id}', [QuotationController::class, 'printService'])->name('service-print.quotation');
-    Route::get('/quote/service-print-no-image/{id}', [QuotationController::class, 'printNoImageService'])->name('service-print-no-image.quotation');
-
-    Route::post('/quote/choose-machine', [QuotationController::class, 'chooseMachine'])->name('quotation.choose-machine');
-    Route::post('/quote/overhaul/store', [QuotationController::class, 'storeOverhaul'])->name('store-overhaul.quotation');
-    Route::get('/quote/overhaul-create/{id}', [QuotationController::class, 'createOverhaul'])->name('create-overhaul.quotation');
-    Route::get('/quote/overhaul-show/{id}', [QuotationController::class, 'showOverhaul'])->name('show-overhaul.quotation');
-    Route::get('/quote/overhaul-print/{id}', [QuotationController::class, 'printOverhaul'])->name('overhaul-print.quotation');
-    Route::get('/quote/overhaul-print-no-image/{id}', [QuotationController::class, 'printNoImageOverhaul'])->name('overhaul-print-no-image.quotation');
-    Route::get('/quote/overhaul-revision/{id}', [QuotationController::class, 'revisionOverhaul'])->name('overhaul-revision.quotation');
-    Route::post('/quote/overhaul-update/{id}', [QuotationController::class, 'updateOverhaul'])->name('overhaul-update.quotation');
-    Route::get('/quotation/edit-overhaul/{id}', [QuotationController::class, 'editOverhaul'])->name('edit-overhaul.quotation');
-    Route::patch('/quotation/edit-overhaul/{id}', [QuotationController::class, 'updateOverhaulDirect'])->name('edit-overhaul.quotation');
+    require base_path('routes/modules/quotations.php');
 
     // Route untuk Visit
     Route::get('/visits/leads', function () {
         return view('pages.sales.visits.index');
     });
 
-    // Route untuk existing
-    Route::resource('/existing', CrmController::class);
-    Route::get('/customer-by-sales', [CrmController::class, 'indexBySales'])->name('index-sales.customers');
-    Route::get('/customer-by-status', [CrmController::class, 'indexByStatus'])->name('index-status.customers');
-    Route::get('/existing-bangkrupt', [CrmController::class, 'indexBangkrupt'])->name('index.bangkrupt');
-    Route::post('/existing/action/{id}', [CrmController::class, 'storeActionWithCrm'])->name('action.crm');
-    Route::post('/existing/update-status/{id}', [CrmController::class, 'updateStatusAtDropdown'])->name('update-status.crm');
-    Route::get('/ru', [CrmController::class, 'ruIndex'])->name('ru.index');
 
     // Route untuk service Reports
     Route::resource('/service-reports', ServiceReportsController::class);
@@ -421,8 +316,12 @@ Route::group(["middleware" => "auth"], function () {
 
     // Route untuk Product In
     Route::resource('/product-in', ProductInController::class);
+    // Search on-demand buat dropdown "Commodity || Replacement" di form create — ganti render
+    // 3000+ <option> sekaligus yang bikin select2 lemot pas dibuka.
+    Route::get('/product-in/replacements/search', [ProductInController::class, 'searchReplacements'])->name('product-in.replacements.search');
     Route::get('/product-in/print/{id}', [ProductInController::class, 'productIn_print'])->name('productIn.print');
     Route::get('/product-in/preview/{id}', [ProductInController::class, 'preview'])->name('product-in.preview');
+    Route::get('/product-in/gr/{id}', [ProductInController::class, 'grDetail'])->name('product-in.gr-detail');
     Route::post('/product-in/logistic-update/{id}', [ProductInController::class, 'logistic_update'])->name('product-in.logistic-update');
     Route::delete('/product-in/detail/{id}', [ProductInController::class, 'destroyDetail'])->name('product-in.detail.destroy');
     Route::get('/product-in/replacement/{id}', function ($id) {
@@ -438,6 +337,10 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/product-in/accept/{id}', [ProductInController::class, 'acceptIn'])->name('product-in.accept');
     Route::post('/product-in/return/{id}', [ProductInController::class, 'return'])->name('product-in.return');
     Route::post('/product-in/clear-return/{id}', [ProductInController::class, 'clearReturn'])->name('product-in.clear-return');
+    // Tab "Biaya Tambahan" (landed cost dkk) di halaman detail Product In.
+    Route::post('/product-in/{id}/costs', [ProductInController::class, 'addCost'])->name('product-in.costs.store');
+    Route::delete('/product-in/costs/{costId}', [ProductInController::class, 'deleteCost'])->name('product-in.costs.destroy');
+    Route::post('/product-in/{id}/apply-hpp', [ProductInController::class, 'applyHpp'])->name('product-in.apply-hpp');
     Route::get('/product-out/replacement/{id}', function ($id) {
         $product = DetailProduct::findOrFail($id);
         return response()->json($product);
@@ -1297,8 +1200,8 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/contract/confirm-order/{id}', [ContractController::class, 'create_confirm_order'])->name('confirm.order');
     Route::post('/request/selling-contract/{id}', [ContractController::class, 'request_selling_contract'])->name('request.selling');
     Route::post('/request/confirm-order/{id}', [ContractController::class, 'request_confirm_order'])->name('request.order');
-    Route::post('/unit-quotation/{id}/request-selling-contract', [ContractController::class, 'request_selling_contract_unit'])->name('unit-quotation.request-selling-contract');
-    Route::post('/unit-quotation/{id}/selling-contract', [ContractController::class, 'create_selling_contract_unit'])->name('unit-quotation.selling-contract');
+    Route::post('/smart-quote/{id}/request-selling-contract', [ContractController::class, 'request_selling_contract_unit'])->name('unit-quotation.request-selling-contract');
+    Route::post('/smart-quote/{id}/selling-contract', [ContractController::class, 'create_selling_contract_unit'])->name('unit-quotation.selling-contract');
     Route::get('/contract/print/{id}', [ContractController::class, 'contract_print'])->name('contract.print');
     Route::get('/selling/contract', [ContractController::class, 'index_selling'])->name('index.selling');
     Route::get('/order/contract', [ContractController::class, 'index_order'])->name('index.order');
@@ -1505,97 +1408,9 @@ Route::group(["middleware" => "auth"], function () {
     });
 
 
-    Route::get('/archive/quotation', [ArchiveController::class, 'archive_quotation'])->name('archive.quotation');
-    Route::post('/un-archive/quotation/{id}', [ArchiveController::class, 'unarchive_quotation'])->name('unarchive.quotation');
-    Route::delete('/delete-archive/quotation/{id}', [ArchiveController::class, 'delete_archive_quotation'])->name('delete-archive.quotation');
 
-    Route::resource('/prospect', ProspectController::class);
-    Route::post('/prospect/add_sales/{id}', [ProspectController::class, 'add_sales'])->name('add_sales.prospect');
-    Route::post('/prospect/without_quotation/{id}', [ProspectController::class, 'without_quotation'])->name('without_quotation.prospect');
-    Route::post('/prospect/with_quotation/{id}', [ProspectController::class, 'with_quotation'])->name('with_quotation.prospect');
-    Route::post('/prospect/onProcessFU/{id}', [ProspectController::class, 'onProcessFU'])->name('onProcessFU.prospect');
-    Route::post('/prospect/no_respond/{id}', [ProspectController::class, 'no_respond'])->name('no_respond.prospect');
-    Route::post('/prospect/no_provide/{id}', [ProspectController::class, 'no_provide'])->name('no_provide.prospect');
-    Route::get('/prospect/create_quotation/{id}', [ProspectController::class, 'create_quotation'])->name('create_quotation.prospect');
-    Route::post('/prospect/store_quotation/{id}', [ProspectController::class, 'store_quotation'])->name('store_quotation.prospect');
-    Route::post('/prospect/choose_quotation/{id}', [ProspectController::class, 'choose_quotation'])->name('choose_quotation.prospect');
-    Route::post('/prospect/add_comment/{id}', [ProspectController::class, 'add_comment'])->name('add_comment.prospect');
-    Route::post('/prospect/{id}/view_comment', [ProspectController::class, 'view_comment'])->name('view_comment.prospect');
-    Route::get('/prospect/monthly-leads/{sales}', [ProspectController::class, 'monthlyLeads'])->name('monthly_leads.prospect');
 
-    Route::resource('/library', LibraryController::class);
-    Route::get('/library/index/marktool', [LibraryController::class, 'index_marktool'])->name(name: 'marktool.index');
-    Route::get('/library/index/brosur', [LibraryController::class, 'index_brosur'])->name(name: 'brosur.index');
-    Route::get('/library/index/partlist', [LibraryController::class, 'index_partlist'])->name(name: 'partlist.index');
-    Route::get('/library/index/manbook', [LibraryController::class, 'index_manbook'])->name(name: 'manbook.index');
-    Route::post('/library/store/marktool', [LibraryController::class, 'store_marktool'])->name(name: 'store_marktool.library');
-    Route::post('/library/store/brosur', [LibraryController::class, 'store_brosur'])->name(name: 'store_brosur.library');
-    Route::post('/library/store/partlist', [LibraryController::class, 'store_partlist'])->name(name: 'store_partlist.library');
-    Route::post('/library/store/manbook', [LibraryController::class, 'store_manbook'])->name(name: 'store_manbook.library');
-
-    Route::resource('/notulen', NotulenController::class);
-
-    // Helpdesk
-    Route::get('/helpdesk', [HelpdeskController::class, 'index'])->name('helpdesk.index');
-    Route::post('/helpdesk', [HelpdeskController::class, 'store'])->name('helpdesk.store');
-    Route::patch('/helpdesk/status/{id}', [HelpdeskController::class, 'updateStatus'])->name('helpdesk.update-status');
-
-    // Activity Log & System Audit
-    Route::get('/activity-log', [ActivityLogController::class, 'index'])->name('activity-log.index');
-
-    Route::get('/db/helpdesk', function () {
-        $tickets = HelpdeskTicket::where('id_user', Auth::id())->latest()->get();
-        $tickets->each(function ($ticket) {
-            $ticket->created_at = $ticket->created_at?->clone()->timezone('Asia/Jakarta');
-            $ticket->updated_at = $ticket->updated_at?->clone()->timezone('Asia/Jakarta');
-        });
-        return response()->json(['data' => $tickets]);
-    });
-    Route::get('/db/helpdesk/admin', function () {
-        $category = request()->query('category', 'user_report');
-        $query = HelpdeskTicket::leftJoin('users as u', 'u.id', '=', 'helpdesk_tickets.id_user');
-
-        if ($category === 'system_error') {
-            $query->where('helpdesk_tickets.category', 'system_error');
-        } else {
-            $query->where(function ($q) {
-                $q->where('helpdesk_tickets.category', 'user_report')
-                  ->orWhereNull('helpdesk_tickets.category');
-            });
-        }
-
-        $tickets = $query->latest('helpdesk_tickets.created_at')
-            ->get(['helpdesk_tickets.*', 'u.name', 'u.image as user_image']);
-        $tickets->each(function ($ticket) {
-            $ticket->created_at = $ticket->created_at?->clone()->timezone('Asia/Jakarta');
-            $ticket->updated_at = $ticket->updated_at?->clone()->timezone('Asia/Jakarta');
-        });
-
-        return response()->json(['data' => $tickets]);
-    });
-
-    // SUO (Sales Urgent Order)
-    Route::get('/suo', [SuoController::class, 'index'])->name('suo.index');
-    Route::get('/suo/create', [SuoController::class, 'create'])->name('suo.create');
-    Route::post('/suo', [SuoController::class, 'store'])->name('suo.store');
-    Route::get('/suo/{id}', [SuoController::class, 'show'])->name('suo.show');
-    Route::post('/suo/{id}/check-stock', [SuoController::class, 'checkStock'])->name('suo.checkStock');
-    Route::post('/suo/{id}/approve', [SuoController::class, 'approve'])->name('suo.approve');
-    Route::get('/suo/{id}/suggest-booking', [SuoController::class, 'suggestBookingNumber'])->name('suo.suggestBooking');
-    Route::post('/suo/{id}/delivery', [SuoController::class, 'storeDelivery'])->name('suo.storeDelivery');
-    Route::get('/suo/{id}/convert', [SuoController::class, 'convert'])->name('suo.convert');
-    Route::post('/suo/{id}/mark-converted', [SuoController::class, 'markConverted'])->name('suo.markConverted');
-    Route::get('/suo/{id}/linkable-quotations', [SuoController::class, 'linkableQuotations'])->name('suo.linkableQuotations');
-    Route::post('/suo/{id}/link-quotation', [SuoController::class, 'linkQuotation'])->name('suo.linkQuotation');
-    Route::post('/suo/from-quotation/{quotationId}', [SuoController::class, 'storeFromQuotation'])->name('suo.storeFromQuotation');
-    Route::post('/suo/from-unit-quotation/{unitQuotationId}', [SuoController::class, 'storeFromUnitQuotation'])->name('suo.storeFromUnitQuotation');
-    // AJAX data
-    Route::get('/db/suo/sales', [SuoController::class, 'dataSales'])->name('suo.data.sales');
-    Route::get('/db/suo/logistic', [SuoController::class, 'dataLogistic'])->name('suo.data.logistic');
-    Route::get('/db/suo/accounting', [SuoController::class, 'dataAccounting'])->name('suo.data.accounting');
-    // Logistic & Accounting index pages
-    Route::get('/suo-logistic', [SuoController::class, 'logisticIndex'])->name('suo.logistic.index');
-    Route::get('/suo-accounting', [SuoController::class, 'accountingIndex'])->name('suo.accounting.index');
+    require base_path('routes/modules/helpdesk.php');
 
     // Project Monitoring
     Route::get('/project-monitoring', function (\Illuminate\Http\Request $request) {
@@ -1693,6 +1508,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/purchase-request/{id}', [PurchaseController::class, 'show'])->name('purchase-request.show');
     Route::delete('/purchase-request/delete/{id}', [PurchaseController::class, 'delete'])->name('purchase-request.delete');
     Route::patch('/purchase-request/acc/{id}', [PurchaseController::class, 'acc'])->name('purchase-request.acc');
+    Route::patch('/purchase-request/reject/{id}', [PurchaseController::class, 'reject'])->name('purchase-request.reject');
     Route::patch('/purchase-request/delivery/{id}', [PurchaseController::class, 'delivery'])->name('purchase-request.delivery');
     Route::patch('/purchase-request/delivery-info/{id}', [PurchaseController::class, 'updateDeliveryInfo'])->name('purchase-request.update-delivery-info');
     Route::get('/purchase-request/done-all/{id}', [PurchaseController::class, 'done_all'])->name('purchase-request.done-all');
@@ -1702,9 +1518,6 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/purchase-request/mention/{id}/read', [PurchaseController::class, 'readPrMention'])->name('purchase-request.mention-read');
     Route::patch('/purchase-request/update/{id}', [PurchaseController::class, 'update'])->name('purchase-request.update');
     
-    // Goods Receipt routes for Logistics
-    Route::get('/purchase-request/{id}/goods-receipt', [PurchaseController::class, 'goodsReceiptForm'])->name('purchase-request.goods-receipt');
-    Route::post('/purchase-request/{id}/goods-receipt', [PurchaseController::class, 'storeGoodsReceipt'])->name('purchase-request.store-goods-receipt');
 
     // Dashboard Function
     // Ajax Sales Kanan
@@ -1848,35 +1661,16 @@ Route::group(["middleware" => "auth"], function () {
     // Tools — Kelengkapan data Finance (role Finance Manager + Admin), reuse form edit Fixed Asset yang sudah ada
     Route::get('/tool-finance', [ToolFinanceController::class, 'index'])->name('tool-finance.index');
 
-    // Unit Quotation
-    Route::resource('/unit-quotation', UnitQuotationController::class);
-    Route::get('/unit-quotation/{id}/print', [UnitQuotationController::class, 'print'])->name('unit-quotation.print');
-    Route::get('/unit-quotation/pics/{clientId}', [UnitQuotationController::class, 'getPics'])->name('unit-quotation.pics');
-    Route::get('/unit-quotation/clients-by-sales/{salesId}', [UnitQuotationController::class, 'getClientsBySales'])->name('unit-quotation.clients-by-sales');
-    Route::post('/unit-quotation/{id}/change-status', [UnitQuotationController::class, 'changeStatus'])->name('unit-quotation.change-status');
-    Route::post('/unit-quotation/{id}/revise', [UnitQuotationController::class, 'revise'])->name('unit-quotation.revise');
-    Route::post('/unit-quotation/{id}/upload-po', [UnitQuotationController::class, 'uploadPO'])->name('unit-quotation.upload-po');
-    Route::post('/unit-quotation/{id}/request-next-invoice', [UnitQuotationController::class, 'requestNextInvoice'])->name('unit-quotation.request-next-invoice');
-    Route::post('/unit-quotation/{id}/add-payment', [UnitQuotationController::class, 'addPayment'])->name('unit-quotation.add-payment');
-    Route::post('/unit-quotation/payment/{id}/proof', [UnitQuotationController::class, 'proofPayment'])->name('unit-quotation.proof-payment');
-    Route::delete('/unit-quotation/payment/{id}/proof', [UnitQuotationController::class, 'deleteProof'])->name('unit-quotation.delete-proof');
-    Route::delete('/unit-quotation/payment/{id}', [UnitQuotationController::class, 'deletePayment'])->name('unit-quotation.delete-payment');
-    Route::post('/unit-quotation/{id}/cancel-po', [UnitQuotationController::class, 'cancelPO'])->name('unit-quotation.cancel-po');
-    Route::post('/unit-quotation/{id}/toggle-hide-title', [UnitQuotationController::class, 'toggleHideTitle'])->name('unit-quotation.toggle-hide-title');
-    Route::post('/unit-quotation/{id}/approve-cancel', [UnitQuotationController::class, 'approveCancelPO'])->name('unit-quotation.approve-cancel');
-    Route::post('/unit-quotation/{id}/reject-cancel', [UnitQuotationController::class, 'rejectCancelPO'])->name('unit-quotation.reject-cancel');
-    Route::post('/unit-quotation/{id}/update-pending', [UnitQuotationController::class, 'updatePendingPo'])->name('unit-quotation.update-pending');
-    Route::post('/unit-quotation/{id}/delivery', [UnitQuotationController::class, 'storeDelivery'])->name('unit-quotation.storeDelivery');
-    Route::post('/unit-quotation/{id}/comment', [UnitQuotationController::class, 'storeComment'])->name('unit-quotation.storeComment');
-    Route::post('/unit-quotation/comments/{id}/update', [UnitQuotationController::class, 'updateComment'])->name('unit-quotation.updateComment');
-    Route::delete('/unit-quotation/comments/{id}', [UnitQuotationController::class, 'destroyComment'])->name('unit-quotation.destroyComment');
-
     // Purchase Order
     Route::resource('/purchase', POController::class);
     Route::get('/purchase/print/{id}', [POController::class, 'show_print'])->name('purchase.show_print');
     Route::post('/purchase/pph/{id}', [POController::class, 'add_pph'])->name('purchase.add_pph');
     Route::patch('/purchase/delete-pph/{id}', [POController::class, 'delete_pph'])->name('purchase.delete_pph');
     Route::patch('/purchase/{id}/delivery', [POController::class, 'delivery'])->name('purchase.delivery');
+    Route::post('/purchase/{id}/invoice', [POController::class, 'uploadInvoice'])->name('purchase.upload-invoice');
+    Route::get('/purchase/{id}/goods-receipt', [PurchaseController::class, 'goodsReceiptForm'])->name('purchase.goods-receipt');
+    Route::post('/purchase/{id}/goods-receipt', [PurchaseController::class, 'storeGoodsReceipt'])->name('purchase.store-goods-receipt');
+    Route::post('/purchase-order-type/quick-store', [POController::class, 'quickStoreType'])->name('purchase-order-type.quick-store');
 
     // Purchase Order
     Route::resource('/product-set', ProductSetController::class);
@@ -2318,91 +2112,6 @@ Route::group(["middleware" => "auth"], function () {
     });
     Route::get('/db/crm/admin', function () {
         require_once base_path('app/api/crm/connectionAdmin.php');
-    });
-    Route::get('/db/quotation', function () {
-        require_once base_path('app/api/quotation/connection.php');
-    });
-    Route::get('/db/quotation/admin', function () {
-        require_once base_path('app/api/quotation/connectionAdmin.php');
-    });
-    Route::get('/db/quotation/unit', function () {
-        require_once base_path('app/api/quotation/connectionUnit.php');
-    });
-    Route::get('/db/quotation/admin/unit', function () {
-        require_once base_path('app/api/quotation/connectionAdminUnit.php');
-    });
-    Route::get('/db/quotation/archive', function () {
-        require_once base_path('app/api/quotation/connectionArchive.php');
-    });
-    Route::get('/db/quotation/hot', function () {
-        require_once base_path('app/api/quotation/connectionHotProspect.php');
-    });
-    Route::get('/db/quotation/hot/admin', function () {
-        require_once base_path('app/api/quotation/connectionHotProspectAdmin.php');
-    });
-    Route::get('/db/quotation/admin/tab', function () {
-        require_once base_path('app/api/quotation/connectionAdminTab.php');
-    });
-    Route::get('/db/quotation/admin/project', function () {
-        require_once base_path('app/api/quotation/connectionAdminProject.php');
-    });
-    Route::get('/db/quotation/prospect', function () {
-        require_once base_path('app/api/quotation/connectionProspect.php');
-    });
-    Route::get('/db/quotation/prospect/sales', function () {
-        require_once base_path('app/api/quotation/connectionProspectSales.php');
-    });
-    Route::get('/db/quotation/sales/{id}', function ($id) {
-        $dateNow = Carbon::now();
-        $monthNow = $dateNow->month;
-        $quotation = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')->join('client', 'client.id', '=', 'pic.id_client')->whereMonth('estimated_date', $monthNow)->where('quotation.id_sales', $id)->where('quotation.level', '1')->where('quotation.is_primary', '1')->get(['quotation.*', 'client.company']);
-        return response()->json(['data' => $quotation]);
-    });
-    Route::get('/db/quotation/mentions/{id}', function ($id) {
-        $dateNow = Carbon::now();
-        $monthNow = $dateNow->month;
-        $quotation = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')->join('client', 'client.id', '=', 'pic.id_client')->whereMonth('estimated_date', $monthNow)->where('quotation.id_sales', $id)->where('quotation.level', '1')->where('quotation.is_primary', '1')->get(['quotation.*', 'client.company']);
-        return response()->json(['data' => $quotation]);
-    });
-    Route::get('/db/po/sales/{id}', function ($id) {
-        $dateNow = Carbon::now();
-        $monthNow = $dateNow->month;
-        $quotation = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')->join('client', 'client.id', '=', 'pic.id_client')->whereMonth('po_date', $monthNow)->where('quotation.id_sales', $id)->where('status', '100')->orderBy('po_date', 'asc')->where('quotation.level', '1')->where('quotation.is_primary', '1')->get(['quotation.*', 'client.company']);
-        return response()->json(['data' => $quotation]);
-    });
-    Route::get('/db/quotation/invoice', function () {
-        // Regular quotation requests
-        $service = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')
-            ->join('client', 'client.id', '=', 'pic.id_client')
-            ->join('invoice', 'invoice.id_quotation', '=', 'quotation.id')
-            ->join('users', 'users.id', '=', 'quotation.id_sales')
-            ->where('status', '100')
-            ->whereNotNull('client.npwp')
-            ->whereNotNull('quotation.po_file')
-            ->whereNull('invoice.no_invoice')
-            ->get([
-                'quotation.no_quote', 'invoice.no_po', 'quotation.po_date',
-                'quotation.harga_total', 'client.company', 'users.name', 'users.image as sales_image',
-                'invoice.id', 'invoice.type',
-                \DB::raw("'service' AS row_type"),
-            ]);
-
-        // Unit quotation requests
-        $unit = \App\Models\Invoice::join('unit_quotation as uq', 'uq.id', '=', 'invoice.id_unit_quotation')
-            ->join('client', 'client.id', '=', 'uq.id_client')
-            ->join('users', 'users.id', '=', 'uq.id_sales')
-            ->whereNull('invoice.no_invoice')
-            ->whereNotNull('invoice.id_unit_quotation')
-            ->whereNull('invoice.rejected_at')
-            ->get([
-                'uq.no_quote', 'uq.po_number as no_po',
-                \DB::raw('uq.created_at AS po_date'),
-                'uq.total as harga_total', 'client.company', 'users.name', 'users.image as sales_image',
-                'invoice.id', 'invoice.type',
-                \DB::raw("'unit' AS row_type"),
-            ]);
-
-        return response()->json(['data' => $service->merge($unit)->values()]);
     });
     Route::get('/db/comment/sales', function () {
         $comment = Comment::join('users', 'users.id', '=', 'comment.id_user')
@@ -4227,10 +3936,10 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/db/unit/global/search', function () {
         require_once base_path('app/api/product/connectionUnitGlobalSearch.php');
     });
-    Route::get('/db/unit-quotation', function () {
+    Route::get('/db/smart-quote', function () {
         require_once base_path('app/api/product/connectionUnitQuotation.php');
     });
-    Route::get('/db/unit-quotation/admin', function () {
+    Route::get('/db/smart-quote/admin', function () {
         require_once base_path('app/api/product/connectionUnitQuotationAdmin.php');
     });
     Route::get('/db/catalog-unit', function () {
@@ -4490,8 +4199,19 @@ Route::group(["middleware" => "auth"], function () {
     });
     Route::get('/db/product/in/logistik/lokal', function () {
         $products = DB::table('product_in as p')
-            ->select('p.*', DB::raw('SUM(d.qty) as total_qty'))
+            ->select(
+                'p.*',
+                DB::raw('SUM(d.qty) as total_qty'),
+                DB::raw('MAX(po.no_po) as no_po'),
+                DB::raw('MAX(po.no_gr) as no_gr'),
+                DB::raw('MAX(s.supplier) as supplier_name'),
+                DB::raw('MAX(u.name) as creator_name'),
+                DB::raw('MAX(u.image) as creator_image')
+            )
             ->leftJoin('detail_product_in as d', 'd.id_product_in', '=', 'p.id')
+            ->leftJoin('purchase_order as po', 'po.id', '=', 'p.id_purchase_order')
+            ->leftJoin('supplier as s', 's.id', '=', 'p.id_supplier')
+            ->leftJoin('users as u', 'u.id', '=', 'p.created_by')
             ->where('p.info', 'Lokal')
             ->whereNull('p.invoice')
             ->groupBy('p.id')
@@ -4500,8 +4220,19 @@ Route::group(["middleware" => "auth"], function () {
     });
     Route::get('/db/product/in/logistik/import', function () {
         $products = DB::table('product_in as p')
-            ->select('p.*', DB::raw('SUM(d.qty) as total_qty'))
+            ->select(
+                'p.*',
+                DB::raw('SUM(d.qty) as total_qty'),
+                DB::raw('MAX(po.no_po) as no_po'),
+                DB::raw('MAX(po.no_gr) as no_gr'),
+                DB::raw('MAX(s.supplier) as supplier_name'),
+                DB::raw('MAX(u.name) as creator_name'),
+                DB::raw('MAX(u.image) as creator_image')
+            )
             ->leftJoin('detail_product_in as d', 'd.id_product_in', '=', 'p.id')
+            ->leftJoin('purchase_order as po', 'po.id', '=', 'p.id_purchase_order')
+            ->leftJoin('supplier as s', 's.id', '=', 'p.id_supplier')
+            ->leftJoin('users as u', 'u.id', '=', 'p.created_by')
             ->where('p.info', 'Import')
             ->whereNull('p.invoice')
             ->groupBy('p.id')
@@ -5220,18 +4951,6 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
     Route::get('/db/library/manbook', function () {
         $library = Library::where('type', 'Manual Book')->get();
         return response()->json(['data' => $library]);
-    });
-    Route::get('/db/notulen/mention', function () {
-        $notulen = Notulen::join('mention_notulen as m', 'm.id_notulen', '=', 'notulen.id')->join('users as u', 'm.id_mention', '=', 'u.id')->where('id_notuler', Auth::id())->get(['notulen.*', 'u.name', 'm.level']);
-        return response()->json(['data' => $notulen]);
-    });
-    Route::get('/db/notulen/mention/admin', function () {
-        $notulen = Notulen::join('mention_notulen as m', 'm.id_notulen', '=', 'notulen.id')->join('users as u', 'm.id_mention', '=', 'u.id')->get(['notulen.*', 'u.name', 'm.level', 'm.id as mId']);
-        return response()->json(['data' => $notulen]);
-    });
-    Route::get('/db/notulen', function () {
-        $notulen = Notulen::join('mention_notulen as m', 'm.id_notulen', '=', 'notulen.id')->join('users as u', 'm.id_mention', '=', 'u.id')->where('m.id_mention', Auth::id())->get(['notulen.*', 'u.name', 'm.level']);
-        return response()->json(['data' => $notulen]);
     });
     Route::get('/db/machine/monitoring/{id}', function ($id) {
         $data = Monitoring::join('machine as m', 'm.id', '=', 'monitoring.id_machine')
@@ -6957,6 +6676,10 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         return response()->json(['data' => $expanse]);
     });
     $purchaseRequestListQuery = function (string $status) {
+        // GROUP_CONCAT default-nya kepotong di 1024 byte — dinaikkan biar rincian
+        // item (items_detail) tidak kepotong untuk PR dengan banyak item.
+        DB::statement('SET SESSION group_concat_max_len = 20000');
+
         // Sejak PR digabung jadi 1 baris per PO (bukan per item lagi), tabel ini
         // meng-agregat detail item lewat GROUP BY: 1 item -> tampilkan detailnya,
         // >1 item -> diringkas ("N item"); field pengiriman yang beda-beda antar
@@ -6964,24 +6687,48 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         // Info pengiriman (purchase_type/cargo/no_resi/purchase_date) sekarang melekat
         // di level alokasi (purchase_request_detail_allocation), bukan di baris item PR
         // langsung — satu item bisa split ke beberapa PO dengan info pengiriman beda-beda.
-        $columns = [
+        $baseColumns = [
             'p.id',
             'purchase_request.no_pr',
             'purchase_request.date',
             'p.no_pending',
-            'i.no_po',
             'c.company',
             'u.image as user_image',
             'u.name as user_name',
             DB::raw('COUNT(DISTINCT d.id) as item_count'),
             DB::raw("CASE WHEN COUNT(DISTINCT d.id) = 1 THEN MAX(CONCAT(d.qty, ' ', pr.unit)) ELSE CONCAT(COUNT(DISTINCT d.id), ' item') END as qty_full"),
             DB::raw("CASE WHEN COUNT(DISTINCT d.id) = 1 THEN MAX(CONCAT(s.brand, ' ', s.pn, ' (', SUBSTRING(pr.go, 1, 1) , ')')) ELSE CONCAT(COUNT(DISTINCT d.id), ' item') END as item"),
+            // Rincian tiap item — dipakai buat expand row di tabel, biar N item bisa dibuka tanpa pindah halaman.
+            DB::raw("GROUP_CONCAT(DISTINCT CONCAT(s.brand, ' ', s.pn, ' (', pr.go, ') x', d.qty, ' ', pr.unit) SEPARATOR '||') as items_detail"),
             DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(pda.purchase_type, '')) <= 1 THEN MAX(pda.purchase_type) ELSE 'Campuran' END as purchase_type"),
             DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(pda.cargo, '')) <= 1 THEN MAX(pda.cargo) ELSE 'Campuran' END as cargo"),
             DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(pda.no_resi, '')) <= 1 THEN MAX(pda.no_resi) ELSE 'Campuran' END as no_resi"),
             DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(pda.purchase_date, '')) <= 1 THEN MAX(pda.purchase_date) ELSE NULL END as purchase_date"),
+            // No PO = PO yang sudah diterbitkan Admin dari PR ini (purchase_order.no_po),
+            // bukan no PO customer di invoice — satu PR bisa pecah ke beberapa PO.
+            DB::raw("CASE WHEN COUNT(DISTINCT po.id) = 0 THEN NULL WHEN COUNT(DISTINCT po.id) = 1 THEN MAX(po.no_po) ELSE CONCAT(COUNT(DISTINCT po.id), ' PO') END as no_po"),
+            // id PO-nya (cuma keisi kalau persis 1 PO) — dipakai bikin No PO bisa diklik
+            // ke halaman detail PO-nya, sama seperti No SO. Kalau pecah ke beberapa PO,
+            // tetap ditampilkan sebagai teks ringkas "N PO" tanpa link (gak ada target tunggal).
+            DB::raw("CASE WHEN COUNT(DISTINCT po.id) = 1 THEN MAX(po.id) ELSE NULL END as id_po"),
+            // No GR = nomor dokumen goods receipt yang tersimpan di purchase_order.no_gr
+            // (dikunci sekali pas GR pertama kali diverifikasi, lihat PurchaseController::
+            // storeGoodsReceipt()) — dipakai di tab Good Receipt.
+            DB::raw("CASE WHEN COUNT(DISTINCT po.id) = 0 THEN NULL WHEN COUNT(DISTINCT po.id) = 1 THEN MAX(po.no_gr) ELSE CONCAT(COUNT(DISTINCT po.id), ' PO') END as no_gr"),
+            // id record product_in (Barang Masuk) pertama dari PO tsb — dipakai buat
+            // link "No GR" ke halaman detail product-in-nya (product-in.show).
+            DB::raw("CASE WHEN COUNT(DISTINCT po.id) = 1 THEN (SELECT pi.id FROM product_in pi WHERE pi.id_purchase_order = MAX(po.id) ORDER BY pi.id ASC LIMIT 1) ELSE NULL END as id_gr"),
         ];
-        $groupBy = ['purchase_request.id', 'p.id', 'purchase_request.no_pr', 'purchase_request.date', 'p.no_pending', 'i.no_po', 'c.company', 'u.image', 'u.name'];
+        $groupBy = ['purchase_request.id', 'p.id', 'purchase_request.no_pr', 'purchase_request.date', 'p.no_pending', 'c.company', 'u.image', 'u.name'];
+
+        // Status pembayaran yang memicu PR ini — diambil dari payment terakhir
+        // (tempo dianggap otomatis "gate lolos" tanpa perlu konfirmasi, sama seperti
+        // logika PurchaseRequestService::evaluatePaymentGate()).
+        $paymentStatusCase = "CASE
+                WHEN pay.type = 'Tempo' THEN 'tempo'
+                WHEN pay.date_confirm IS NOT NULL OR pay.level = 1 THEN 'confirmed'
+                ELSE 'unconfirmed'
+            END";
 
         // PR yang berasal dari quotation biasa (pending_po.id_quotation)
         $fromQuotation = PurchaseRequest::join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
@@ -6990,13 +6737,15 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             ->join('product as pr', 'pr.id', '=', 's.id_product')
             ->leftJoin('purchase_request_detail_allocation as pda', 'pda.id_purchase_request_detail', '=', 'd.id')
             ->join('quotation as q', 'p.id_quotation', '=', 'q.id')
-            ->leftJoin('invoice as i', 'i.id_quotation', '=', 'q.id')
             ->join('pic as pi', 'pi.id', '=', 'q.id_pic')
             ->join('client as c', 'c.id', '=', 'pi.id_client')
             ->leftJoin('users as u', 'u.id', '=', 'q.id_sales')
+            ->leftJoin('purchase_order as po', 'po.id_purchase_request', '=', 'purchase_request.id')
             ->where('purchase_request.status', $status)
             ->groupBy($groupBy)
-            ->select($columns);
+            ->select(array_merge($baseColumns, [
+                DB::raw("(SELECT $paymentStatusCase FROM payment pay WHERE pay.id_quotation = q.id ORDER BY pay.id DESC LIMIT 1) AS payment_status"),
+            ]));
 
         // PR yang berasal dari unit quotation (pending_po.id_unit_quotation)
         $fromUnitQuotation = PurchaseRequest::join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
@@ -7005,13 +6754,15 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             ->join('product as pr', 'pr.id', '=', 's.id_product')
             ->leftJoin('purchase_request_detail_allocation as pda', 'pda.id_purchase_request_detail', '=', 'd.id')
             ->join('unit_quotation as uq', 'p.id_unit_quotation', '=', 'uq.id')
-            ->leftJoin('invoice as i', 'i.id_unit_quotation', '=', 'uq.id')
             ->join('pic as pi', 'pi.id', '=', 'uq.id_pic')
             ->join('client as c', 'c.id', '=', 'pi.id_client')
             ->leftJoin('users as u', 'u.id', '=', 'uq.id_sales')
+            ->leftJoin('purchase_order as po', 'po.id_purchase_request', '=', 'purchase_request.id')
             ->where('purchase_request.status', $status)
             ->groupBy($groupBy)
-            ->select($columns);
+            ->select(array_merge($baseColumns, [
+                DB::raw("(SELECT $paymentStatusCase FROM payment pay WHERE pay.id_unit_quotation = uq.id ORDER BY pay.id DESC LIMIT 1) AS payment_status"),
+            ]));
 
         return $fromQuotation->unionAll($fromUnitQuotation)->orderByDesc('date');
     };
@@ -7025,13 +6776,195 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
     Route::get('/db/purchase-request/delivery', function () use ($purchaseRequestListQuery) {
         return response()->json(['data' => $purchaseRequestListQuery('2')->get()]);
     });
-    Route::get('/db/purchase-request/done', function () use ($purchaseRequestListQuery) {
-        return response()->json(['data' => $purchaseRequestListQuery('3')->get()]);
+    Route::get('/db/purchase-request/done', function () {
+        // Tab Good Receipt beda dari tab lain: di-root dari purchase_order (bukan
+        // purchase_request), jadi satu baris = satu PO. Kalau 1 PR pecah ke beberapa PO,
+        // tiap PO tampil di baris sendiri lengkap dengan No GR-nya masing-masing —
+        // gak digabung jadi "N PO" seperti tab lain, karena tiap PO punya GR sendiri.
+        DB::statement('SET SESSION group_concat_max_len = 20000');
+
+        $doneColumns = [
+            'purchase_order.id as id_po',
+            'purchase_order.no_po',
+            'purchase_order.no_gr',
+            'purchase_request.no_pr',
+            'p.id',
+            'p.no_pending',
+            'c.company',
+            'u.image as user_image',
+            'u.name as user_name',
+            'purchase_request.date',
+            DB::raw('COUNT(dpo.id) as item_count'),
+            DB::raw("CASE WHEN COUNT(dpo.id) = 1 THEN MAX(CONCAT(dpo.product, ' (', dpo.info_qty, ')')) ELSE CONCAT(COUNT(dpo.id), ' item') END as item"),
+            DB::raw("CASE WHEN COUNT(dpo.id) = 1 THEN MAX(CONCAT(dpo.qty, ' ', dpo.info_qty)) ELSE CONCAT(COUNT(dpo.id), ' item') END as qty_full"),
+            DB::raw("GROUP_CONCAT(DISTINCT CONCAT(dpo.product, ' x', dpo.qty, ' ', dpo.info_qty) SEPARATOR '||') as items_detail"),
+            // Id record product_in (Barang Masuk) pertama utk PO ini — dipakai buat link No GR.
+            DB::raw('(SELECT pi.id FROM product_in pi WHERE pi.id_purchase_order = purchase_order.id ORDER BY pi.id ASC LIMIT 1) as id_gr'),
+        ];
+        $doneGroupBy = [
+            'purchase_order.id', 'purchase_order.no_po', 'purchase_order.no_gr',
+            'purchase_request.no_pr', 'p.id', 'p.no_pending', 'c.company',
+            'u.image', 'u.name', 'purchase_request.date',
+        ];
+
+        $doneFromQuotation = PurchaseOrder::whereNotNull('purchase_order.id_purchase_request')
+            ->join('purchase_request', 'purchase_request.id', '=', 'purchase_order.id_purchase_request')
+            ->where('purchase_request.status', '3')
+            ->join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
+            ->join('quotation as q', 'p.id_quotation', '=', 'q.id')
+            ->join('pic as pi', 'pi.id', '=', 'q.id_pic')
+            ->join('client as c', 'c.id', '=', 'pi.id_client')
+            ->leftJoin('users as u', 'u.id', '=', 'q.id_sales')
+            ->leftJoin('detail_purchase_order as dpo', 'dpo.id_purchase_order', '=', 'purchase_order.id')
+            ->groupBy($doneGroupBy)
+            ->select($doneColumns);
+
+        $doneFromUnitQuotation = PurchaseOrder::whereNotNull('purchase_order.id_purchase_request')
+            ->join('purchase_request', 'purchase_request.id', '=', 'purchase_order.id_purchase_request')
+            ->where('purchase_request.status', '3')
+            ->join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
+            ->join('unit_quotation as uq', 'p.id_unit_quotation', '=', 'uq.id')
+            ->join('pic as pi', 'pi.id', '=', 'uq.id_pic')
+            ->join('client as c', 'c.id', '=', 'pi.id_client')
+            ->leftJoin('users as u', 'u.id', '=', 'uq.id_sales')
+            ->leftJoin('detail_purchase_order as dpo', 'dpo.id_purchase_order', '=', 'purchase_order.id')
+            ->groupBy($doneGroupBy)
+            ->select($doneColumns);
+
+        $data = $doneFromQuotation->unionAll($doneFromUnitQuotation)->orderByDesc('date')->get();
+        return response()->json(['data' => $data]);
+    });
+    Route::get('/db/purchase-order/incoming', function () {
+        // "Incoming Goods" buat role Logistic: satu baris per PO (bukan per PR),
+        // karena satu PR bisa pecah ke beberapa PO yang datang di waktu berbeda-beda.
+        // Menampilkan SEMUA PO yang belum diterima (receipt_status != Received), baik
+        // yang info pengirimannya sudah lengkap diisi (siap/lagi jalan) maupun yang
+        // belum (masih nunggu Admin isi delivery info per-PO) — bedanya ditandai lewat
+        // kolom is_on_delivery, bukan status purchase_request level-PR (yang di alur
+        // sekarang gak pernah ke-set lagi karena UI-nya udah pindah ke pengisian
+        // delivery info per-PO).
+        DB::statement('SET SESSION group_concat_max_len = 20000');
+
+        $columns = [
+            'po.id',
+            'po.no_po',
+            'po.no_gr',
+            'po.receipt_status',
+            'po.company as supplier',
+            'po.date as po_date',
+            'purchase_request.no_pr',
+            'p.id as id_pending',
+            'p.no_pending',
+            'c.company',
+            DB::raw('COUNT(DISTINCT d.id) as item_count'),
+            DB::raw("CASE WHEN COUNT(DISTINCT d.id) = 1 THEN MAX(CONCAT(pda.qty, ' ', pr.unit)) ELSE CONCAT(COUNT(DISTINCT d.id), ' item') END as qty_full"),
+            // Selalu "N item" (termasuk kalau cuma 1) biar tampilannya konsisten pakai
+            // format expand row yang sama di kolom Item, lihat itemCol() di table-incoming-goods.js.
+            DB::raw("CONCAT(COUNT(DISTINCT d.id), ' item') as item"),
+            // Rincian tiap item — dipakai buat expand row di tabel, sama seperti tab Purchase Request.
+            // Qty alokasi (pda.qty) di-clamp ke kebutuhan PR, bisa lebih kecil dari qty asli
+            // yang dibeli di PO (dpo.qty) kalau Logistic sengaja beli lebih banyak buat nambah
+            // stok — selisihnya ("+N stok") disertakan. Status Genuine/Replacement disertakan
+            // juga, dipisah '::' dari deskripsinya.
+            DB::raw("GROUP_CONCAT(DISTINCT CONCAT(
+                s.brand, ' ', s.pn, ' x', pda.qty, ' ', pr.unit,
+                '::', IF(dpo.qty > pda.qty, dpo.qty - pda.qty, ''),
+                '::', COALESCE(pr.go, '-')
+            ) SEPARATOR '||') as items_detail"),
+            DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(pda.purchase_type, '')) <= 1 THEN MAX(pda.purchase_type) ELSE 'Campuran' END as purchase_type"),
+            DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(pda.cargo, '')) <= 1 THEN MAX(pda.cargo) ELSE 'Campuran' END as cargo"),
+            DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(pda.purchase_date, '')) <= 1 THEN MAX(pda.purchase_date) ELSE NULL END as purchase_date"),
+            // 1 kalau semua item di PO ini sudah diisi info pengiriman (purchase_type),
+            // 0 kalau masih ada yang kosong (Admin belum isi delivery info-nya).
+            DB::raw('CASE WHEN SUM(CASE WHEN pda.purchase_type IS NULL THEN 1 ELSE 0 END) = 0 THEN 1 ELSE 0 END as is_on_delivery'),
+        ];
+        $groupBy = ['po.id', 'po.no_po', 'po.no_gr', 'po.receipt_status', 'po.company', 'po.date', 'purchase_request.no_pr', 'p.id', 'p.no_pending', 'c.company'];
+
+        $notReceived = function ($q) {
+            $q->whereNull('po.receipt_status')->orWhere('po.receipt_status', '!=', 'Received');
+        };
+
+        $fromQuotation = DB::table('purchase_order as po')
+            ->join('purchase_request', 'purchase_request.id', '=', 'po.id_purchase_request')
+            ->join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
+            ->join('purchase_request_detail_allocation as pda', 'pda.id_purchase_order', '=', 'po.id')
+            ->join('purchase_request_detail as d', 'd.id', '=', 'pda.id_purchase_request_detail')
+            ->join('serial_product as s', 'd.id_equivalent', '=', 's.id')
+            ->join('product as pr', 'pr.id', '=', 's.id_product')
+            ->join('quotation as q', 'p.id_quotation', '=', 'q.id')
+            ->join('pic as pi', 'pi.id', '=', 'q.id_pic')
+            ->join('client as c', 'c.id', '=', 'pi.id_client')
+            ->leftJoin('detail_purchase_order as dpo', function ($j) {
+                $j->on('dpo.id_purchase_order', '=', 'po.id')->on('dpo.id_product', '=', 'pr.id');
+            })
+            ->where($notReceived)
+            ->groupBy($groupBy)
+            ->select($columns);
+
+        $fromUnitQuotation = DB::table('purchase_order as po')
+            ->join('purchase_request', 'purchase_request.id', '=', 'po.id_purchase_request')
+            ->join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
+            ->join('purchase_request_detail_allocation as pda', 'pda.id_purchase_order', '=', 'po.id')
+            ->join('purchase_request_detail as d', 'd.id', '=', 'pda.id_purchase_request_detail')
+            ->join('serial_product as s', 'd.id_equivalent', '=', 's.id')
+            ->join('product as pr', 'pr.id', '=', 's.id_product')
+            ->join('unit_quotation as uq', 'p.id_unit_quotation', '=', 'uq.id')
+            ->join('pic as pi', 'pi.id', '=', 'uq.id_pic')
+            ->join('client as c', 'c.id', '=', 'pi.id_client')
+            ->leftJoin('detail_purchase_order as dpo', function ($j) {
+                $j->on('dpo.id_purchase_order', '=', 'po.id')->on('dpo.id_product', '=', 'pr.id');
+            })
+            ->where($notReceived)
+            ->groupBy($groupBy)
+            ->select($columns);
+
+        $data = $fromQuotation->unionAll($fromUnitQuotation)->orderByDesc('id')->get();
+        return response()->json(['data' => $data]);
+    });
+    Route::get('/db/product-in/received/{warehouse}', function ($warehouse) {
+        // Tab "Barang Diterima" di card Incoming Goods — per ITEM (bukan per PO/GR
+        // event), karena satu GR bisa kesebar ke dua gudang sekaligus (qty per item
+        // dicatat per baris di detail_product_in). Nyertain GR dari alur PO maupun
+        // GR Manual (id_purchase_order null) — GR Manual ditandain lewat kolom
+        // id_purchase_order yang null (no_gr/no_po ikut null lewat leftJoin di bawah),
+        // biar tetep kelihatan di ledger utama ini, bukan cuma nambah stok diam-diam.
+        if (!in_array($warehouse, ['BDG', 'BKS'])) {
+            return response()->json(['data' => []]);
+        }
+
+        $data = DB::table('detail_product_in as dpi')
+            ->join('product_in as pi', 'pi.id', '=', 'dpi.id_product_in')
+            ->join('detail_product as dp', 'dp.id', '=', 'dpi.id_detail_product')
+            ->join('product as p', 'p.id', '=', 'dp.id_product')
+            ->leftJoin('purchase_order as po', 'po.id', '=', 'pi.id_purchase_order')
+            ->leftJoin('users as u', 'u.id', '=', 'pi.created_by')
+            ->where('dpi.warehouse', $warehouse)
+            ->select([
+                'pi.id as product_in_id',
+                'pi.id_purchase_order',
+                'po.no_gr',
+                'pi.no_product_in',
+                'pi.date',
+                'pi.no_do',
+                'po.no_po',
+                DB::raw("CONCAT(p.commodity, ' (', dp.replacement, ')') as item"),
+                'dpi.qty',
+                'u.name as received_by',
+                // Jumlah item yang di-retur (rusak/tidak sesuai) dari GR event yang sama,
+                // biar keliatan langsung tanpa harus buka detail.
+                DB::raw('(SELECT COUNT(*) FROM `return` r JOIN detail_return dr ON dr.id_retur = r.id WHERE r.id_product_in = pi.id) as damaged_count'),
+            ])
+            ->orderByDesc('pi.id')
+            ->get();
+
+        return response()->json(['data' => $data]);
     });
     Route::get('/db/purchase-request/po', function () {
         // Tab ini fokus ke sisi customer (siapa yang pesan), bukan supplier (siapa yang
         // dibelikan) — join balik ke pending_po -> quotation/unit_quotation -> pic -> client,
         // sama seperti tab PR lainnya, supaya konsisten.
+        DB::statement('SET SESSION group_concat_max_len = 20000');
+
         $poColumns = [
             'purchase_order.id',
             'purchase_order.no_po',
@@ -7039,10 +6972,12 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             'purchase_order.receipt_status',
             'purchase_request.no_pr',
             'purchase_request.id_pending',
+            'p.no_pending',
             'c.company',
             DB::raw('COUNT(dpo.id) as item_count'),
+            DB::raw("GROUP_CONCAT(DISTINCT CONCAT(dpo.product, ' x', dpo.qty) SEPARATOR '||') as items_detail"),
         ];
-        $poGroupBy = ['purchase_order.id', 'purchase_order.no_po', 'purchase_order.date', 'purchase_order.receipt_status', 'purchase_request.no_pr', 'purchase_request.id_pending', 'c.company'];
+        $poGroupBy = ['purchase_order.id', 'purchase_order.no_po', 'purchase_order.date', 'purchase_order.receipt_status', 'purchase_request.no_pr', 'purchase_request.id_pending', 'p.no_pending', 'c.company'];
 
         // PO cuma nongol di sini selama PR-nya masih status Acc(1) — begitu PR sudah
         // pindah ke On Delivery/Done, "tugas" bikin PO untuk item itu sudah selesai.
@@ -7353,6 +7288,18 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             ->where('id_sales', Auth::user()->id)
             ->get();
         return response()->json(['data' => $data]);
+    });
+
+    // ------------------------------------------------------------------------
+    // Chat Internal Messenger Routes
+    // ------------------------------------------------------------------------
+    Route::prefix('chat')->name('chat.')->group(function () {
+        Route::get('/unread-count', [ChatController::class, 'getUnreadCount'])->name('unread-count');
+        Route::get('/contacts', [ChatController::class, 'getContacts'])->name('contacts');
+        Route::get('/messages/{userId}', [ChatController::class, 'getMessages'])->name('messages');
+        Route::post('/send', [ChatController::class, 'sendMessage'])->name('send');
+        Route::post('/mark-read/{userId}', [ChatController::class, 'markAsRead'])->name('mark-read');
+        Route::get('/poll', [ChatController::class, 'poll'])->name('poll');
     });
 });
 Auth::routes();

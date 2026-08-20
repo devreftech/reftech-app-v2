@@ -16,6 +16,7 @@ class ProductOut extends Model
     ];
     protected $fillable = [
         'id_user',
+        'no_product_out',
         'detail_client',
         'invoice',
         'po',

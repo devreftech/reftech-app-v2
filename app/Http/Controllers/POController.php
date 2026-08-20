@@ -8,6 +8,7 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestDetail;
 use App\Models\PurchaseRequestDetailAllocation;
+use App\Models\PurchaseOrderType;
 use App\Models\Supplier;
 use App\Services\PurchaseRequestService;
 use Illuminate\Http\Request;
@@ -42,6 +43,7 @@ class POController extends Controller
         $previewNoPo = $this->generateNoPo();
         $units = \App\Models\Unit::where('type', 'global')->orderBy('brand')->get();
         $products = Product::orderBy('commodity')->get();
+        $poTypes = PurchaseOrderType::orderBy('name')->get();
 
         $sourcePr = null;
         $prefillItems = [];
@@ -65,8 +67,11 @@ class POController extends Controller
                         $requestedQty = !empty($selectedItems)
                             ? (int) ($selectedItems[(string) $detail->id] ?? 0)
                             : $detail->remainingQty;
-                        // Clamp: tidak boleh minta lebih dari sisa yang belum teralokasi.
-                        $qty = min($requestedQty > 0 ? $requestedQty : $detail->remainingQty, $detail->remainingQty);
+                        // Qty PO boleh lebih dari sisa kebutuhan PR — kelebihannya jadi
+                        // tambahan stok, bukan dibatasi ke remainingQty. Alokasi ke PR
+                        // (yang menentukan status "Lunas") tetap di-clamp terpisah saat
+                        // store(), lihat PurchaseRequestDetailAllocation di bawah.
+                        $qty = $requestedQty > 0 ? $requestedQty : $detail->remainingQty;
                         if ($qty <= 0) {
                             continue;
                         }
@@ -75,13 +80,30 @@ class POController extends Controller
                             'label' => $product->commodity . ' — ' . $product->description,
                             'qty' => $qty,
                             'pr_detail_id' => $detail->id,
+                            'pr_remaining' => $detail->remainingQty,
                         ];
                     }
                 }
             }
         }
 
-        return view('pages.accounting.purchase.form', compact('suppliers', 'previewNoPo', 'units', 'products', 'sourcePr', 'prefillItems'));
+        return view('pages.accounting.purchase.form', compact('suppliers', 'previewNoPo', 'units', 'products', 'sourcePr', 'prefillItems', 'poTypes'));
+    }
+
+    public function quickStoreType(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255|unique:purchase_order_types,name',
+        ]);
+
+        $type = PurchaseOrderType::create([
+            'name' => $request->name,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $type->only('id', 'name'),
+        ]);
     }
 
     private function generateNoPo(): string
@@ -120,7 +142,7 @@ class POController extends Controller
         $purchase->id_supplier = $request->supplier;
         $purchase->id_purchase_request = $request->id_purchase_request ?: null;
         $purchase->no_po = $request->no_po;
-        $purchase->category = in_array('Unit', $itemCategories) ? 'Unit' : 'Sparepart';
+        $purchase->category = $request->category ?: (in_array('Unit', $itemCategories) ? 'Unit' : 'Sparepart');
         $purchase->company = $supplier->supplier;
         $purchase->attn = $request->attn ?? '';
         $purchase->mobile = $request->mobile ?? '';
@@ -200,7 +222,15 @@ class POController extends Controller
             $prDeliveryDone = $poAllocations->isNotEmpty() && $poAllocations->every(fn ($a) => !is_null($a->purchase_type));
         }
 
-        return view('pages.accounting.purchase.detail', compact('purchase', 'dPurchase', 'tax', 'totalPph', 'sourcePr', 'prDeliveryDone', 'prDeliveryType'));
+        // Riwayat Goods Receipt (barang masuk) & Retur (item rusak/dikembalikan)
+        // yang lahir dari GR PO ini, biar kelihatan di halaman detail PO — bukan cuma
+        // nyangkut di halaman /product-in yang jarang dibuka dari sini.
+        $productIns = \App\Models\ProductIn::where('id_purchase_order', $purchase->id)
+            ->with(['detail.detailProduct.product', 'return.detail.replacement.product'])
+            ->orderByDesc('id')
+            ->get();
+
+        return view('pages.accounting.purchase.detail', compact('purchase', 'dPurchase', 'tax', 'totalPph', 'sourcePr', 'prDeliveryDone', 'prDeliveryType', 'productIns'));
     }
 
     private function resolvePurchaseType(?string $supplierInfo): string
@@ -255,6 +285,42 @@ class POController extends Controller
     }
 
     /**
+     * Simpan No. Invoice & file invoice dari supplier untuk PO ini. Nomor invoice ikut
+     * disinkronkan ke ProductIn (barang masuk) yang sudah lahir dari GR PO ini — supaya
+     * GR-nya kebaca di tabel "Product In — Lokal/Import" (yang mensyaratkan invoice
+     * terisi) tanpa harus diinput ulang manual.
+     */
+    public function uploadInvoice(Request $request, $id)
+    {
+        $rule = [
+            'no_invoice_supplier' => 'required|string|max:255',
+            'invoice_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ];
+        $this->validate($request, $rule);
+
+        $purchase = PurchaseOrder::findOrFail($id);
+
+        if ($request->hasFile('invoice_file')) {
+            if ($purchase->invoice_file && \Illuminate\Support\Facades\Storage::disk('public')->exists($purchase->invoice_file)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($purchase->invoice_file);
+            }
+            $year = now()->year;
+            $purchase->invoice_file = $request->file('invoice_file')->store("purchase-order/invoice/{$year}", 'public');
+        }
+
+        $purchase->no_invoice_supplier = $request->no_invoice_supplier;
+        $purchase->save();
+
+        // Sinkron ke ProductIn yang sudah ada (kalau GR-nya sudah pernah diverifikasi
+        // sebelum invoice-nya diupload) — biar langsung kebaca di tabel Invoice.
+        \App\Models\ProductIn::where('id_purchase_order', $purchase->id)
+            ->update(['invoice' => $purchase->no_invoice_supplier]);
+
+        return redirect()->route('purchase.show', $purchase->id)
+            ->with('success', 'Invoice supplier berhasil disimpan.');
+    }
+
+    /**
      * Show the form for editing the specified resource.
      *
      * @param  int  $id
@@ -267,7 +333,8 @@ class POController extends Controller
         $suppliers = Supplier::all();
         $units = \App\Models\Unit::where('type', 'global')->orderBy('brand')->get();
         $products = Product::orderBy('commodity')->get();
-        return view('pages.accounting.purchase.form', compact('suppliers', 'purchase', 'dPurchase', 'units', 'products'));
+        $poTypes = PurchaseOrderType::orderBy('name')->get();
+        return view('pages.accounting.purchase.form', compact('suppliers', 'purchase', 'dPurchase', 'units', 'products', 'poTypes'));
     }
 
     /**
@@ -287,7 +354,7 @@ class POController extends Controller
         $purchase = PurchaseOrder::find($id);
         $purchase->id_supplier = $request->supplier;
         $purchase->no_po = $request->no_po;
-        $purchase->category = in_array('Unit', $itemCategories) ? 'Unit' : 'Sparepart';
+        $purchase->category = $request->category ?: (in_array('Unit', $itemCategories) ? 'Unit' : 'Sparepart');
         $purchase->company = $supplier->supplier;
         $purchase->attn = $request->attn ?? '';
         $purchase->mobile = $request->mobile ?? '';

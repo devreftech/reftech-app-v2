@@ -168,6 +168,10 @@
         <div class="drag-target"></div>
     </div>
 
+    {{-- Modals pushed here render outside any transformed/hover-animated ancestor,
+         so their position:fixed backdrop/dialog isn't trapped by a card's hover transform. --}}
+    @stack('modals')
+
     {{--  javascript --}}
     @stack('before-script')
 
@@ -177,6 +181,16 @@
 
     {{-- Main JS --}}
     <script src="{{ asset('assets') }}/js/main.js"></script>
+
+    @if (Auth::check() && in_array(Auth::user()->role, ['Accounting', 'Admin', 'Sales']))
+        {{-- Polling notifikasi payment & PO menunggu invoice (Unit Quotation) — bell bergerak + suara tanpa reload --}}
+        <script>
+            window.paymentNotifUnreadUrl = '{{ route('notifications.payment.unread') }}';
+            window.paymentNotifReadUrlTemplate = '{{ url('notifications/payment/__ID__/read') }}';
+            window.csrfToken = '{{ csrf_token() }}';
+        </script>
+        <script src="{{ asset('assets') }}/includes/navbar-payment-notif.js"></script>
+    @endif
 
     {{-- Patch setStyle so icon updates on click without page reload --}}
     <script>
@@ -304,6 +318,10 @@
             </div>
         </div>
     </div>
+
+    {{-- Floating Chat Bubble Component (Preview View) --}}
+    @include('includes.sales.chat-bubble')
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // General / Parts / Service / Overhaul / Unit-Sales

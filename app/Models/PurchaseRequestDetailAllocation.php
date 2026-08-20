@@ -9,6 +9,12 @@ class PurchaseRequestDetailAllocation extends Model
 {
     use HasFactory;
     protected $table = "purchase_request_detail_allocation";
+    protected $date = [
+        'purchase_date',
+        'gr_date',
+        'created_at',
+        'updated_at',
+    ];
     protected $fillable = [
         'id_purchase_request_detail',
         'id_purchase_order',
@@ -17,6 +23,12 @@ class PurchaseRequestDetailAllocation extends Model
         'cargo',
         'no_resi',
         'purchase_date',
+        'qty_received',
+        'gr_status',
+        'gr_note',
+        'no_do',
+        'gr_date',
+        'warehouse',
     ];
     public function detail()
     {

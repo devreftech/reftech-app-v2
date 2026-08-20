@@ -37,7 +37,7 @@
                                         style="font-size: 10px; font-family: Inter, sans-serif; max-width: 250px; overflow-x: auto; white-space: pre-wrap;">Komp. Negla Kencana Residence Blok B, No.2 Pasanggrahan, Ujung Berung Kota Bandung - Jawa Barat 40199</pre>
                                     <p class="mb-1 text-black fw-medium p-1"
                                         style="background-color: rgb(224, 221, 255); font-size :10px;">
-                                        NPWP : 73.728.571.8-429.000</p>
+                                        NPWP : 0737285718429000</p>
                                 </div>
                             </div>
                         </div>

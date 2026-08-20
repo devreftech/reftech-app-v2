@@ -397,9 +397,22 @@ class SuoController extends Controller
 
     public function dataSales()
     {
-        $data = Suo::where('id_sales', Auth::id())
-            ->orderByDesc('created_at')
-            ->get(['id', 'no_suo', 'company', 'pic', 'status', 'no_invoice_booking', 'created_at']);
+        $isManager = in_array(Auth::user()->role, ['Admin', 'Sales Manager']);
+
+        $query = Suo::query()->with('sales:id,name');
+
+        // Sama seperti UnitQuotationController: Admin & Sales Manager lihat SUO
+        // seluruh tim, sales biasa cuma lihat punya sendiri.
+        if (!$isManager) {
+            $query->where('id_sales', Auth::id());
+        }
+
+        $data = $query->orderByDesc('created_at')
+            ->get(['id', 'no_suo', 'company', 'pic', 'status', 'no_invoice_booking', 'created_at', 'id_sales'])
+            ->map(function ($suo) {
+                $suo->sales_name = $suo->sales->name ?? '-';
+                return $suo;
+            });
 
         return response()->json(['data' => $data]);
     }

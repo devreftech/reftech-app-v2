@@ -16,9 +16,14 @@ class PurchaseRequest extends Model
     ];
     protected $fillable = [
         'no_pr',
+        'no_gr',
         'id_pending',
         'id_user',
         'status',
+        'gr_sent_at',
+        'rejected_at',
+        'rejected_reason',
+        'rejected_by',
         'date',
     ];
     public function pending()
@@ -36,5 +41,9 @@ class PurchaseRequest extends Model
     public function purchaseOrders()
     {
         return $this->hasMany('App\Models\PurchaseOrder', 'id_purchase_request');
+    }
+    public function rejector()
+    {
+        return $this->belongsTo('App\Models\User', 'rejected_by', 'id');
     }
 }

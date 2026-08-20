@@ -28,11 +28,11 @@ $(function () {
                 { data: "commodity" },
                 { data: "brand" },
                 { data: "pn" },
-                { data: "price" },
                 { data: "description" },
                 { data: "stock" },
                 { data: "warehouse_stock" },
                 { data: "pending_stock" },
+                { data: "price" },
             ],
             columnDefs: [
                 {
@@ -80,7 +80,7 @@ $(function () {
                     },
                 },
                 {
-                    targets: 5,
+                    targets: 9,
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             // Ambil nilai last_modal
@@ -96,23 +96,23 @@ $(function () {
                                 data === null || data === undefined
                                     ? "-"
                                     : $.fn.dataTable.render
-                                           .number(".", ",", 0, "Rp.")
+                                           .number(".", ",", 0)
                                            .display(data);
 
-                            // Buat tooltip dan konten yang ditampilkan
+                            // Rp rata kiri, nominal rata kanan; tooltip nunjukin Last HPP
                             return (
-                                '<span data-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="tooltip-primary" title="Last HPP ' +
+                                '<div class="d-flex justify-content-between px-2" data-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="tooltip-primary" title="Last HPP ' +
                                 formattedModal +
-                                '">' +
+                                '"><span>Rp.</span><span>' +
                                 formattedData +
-                                "</span>"
+                                "</span></div>"
                             );
                         }
                         return data;
                     },
                 },
                 {
-                    targets: 6, // description
+                    targets: 5, // description
                     render: function (data, type, full, row) {
                         if (!data) return "-";
                         if (type === "display") {
@@ -134,7 +134,7 @@ $(function () {
                     }
                 },
                 {
-                    targets: [7, 8, 9],
+                    targets: [6, 7, 8],
                     render: function (data, type, row) {
                         return data !== null && data !== undefined ? data : 0;
                     },

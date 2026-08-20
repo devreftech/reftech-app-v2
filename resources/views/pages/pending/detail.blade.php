@@ -51,7 +51,7 @@
                         @endphp
                         <span class="badge {{ $statusBadge }} fw-bold"><i class="mdi mdi-checkbox-marked-circle-outline me-1"></i> {{ $statusName }}</span>
                     </div>
-                    <h3 class="fw-bold mb-1 text-white">{{ $quotation->pic->client->company }}</h3>
+                    <h3 class="fw-bold mb-1 text-white">{{ $quotation->pic?->client?->company }}</h3>
                     <p class="mb-0 opacity-80 small">
                         <i class="mdi mdi-tag-outline me-1"></i> No SO: <span class="fw-semibold text-white">{{ $pending->no_pending }}</span>
                         <span class="mx-2">|</span>
@@ -153,7 +153,7 @@
                                 </div>
                                 <div>
                                     <small class="text-muted d-block" style="font-size: 11px;">Klien</small>
-                                    <span class="fw-semibold text-dark">{{ $quotation->pic->client->company }}</span>
+                                    <span class="fw-semibold text-dark">{{ $quotation->pic?->client?->company }}</span>
                                 </div>
                             </div>
                             <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
@@ -162,7 +162,7 @@
                                 </div>
                                 <div>
                                     <small class="text-muted d-block" style="font-size: 11px;">PIC Klien</small>
-                                    <span class="fw-semibold text-dark">{{ $quotation->pic->name_pic }}</span>
+                                    <span class="fw-semibold text-dark">{{ $quotation->pic?->name_pic }}</span>
                                 </div>
                             </div>
                             <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
@@ -171,7 +171,7 @@
                                 </div>
                                 <div>
                                     <small class="text-muted d-block" style="font-size: 11px;">Flag Info</small>
-                                    <span class="badge bg-label-info fw-semibold">{{ $quotation->pic->client->info ?? '-' }}</span>
+                                    <span class="badge bg-label-info fw-semibold">{{ $quotation->pic?->client?->info ?? '-' }}</span>
                                 </div>
                             </div>
 
@@ -196,7 +196,7 @@
                                     <small class="text-muted d-block" style="font-size: 11px;">Alamat Dokumen / Invoice</small>
                                     @if (($pending->doc_address_type ?? 'customer') === 'customer')
                                         <span class="badge bg-label-secondary mb-1 btn-xs" style="font-size: 9px; padding: 2px 4px;">Sesuai Customer</span>
-                                        <span class="fw-semibold text-dark d-block" style="font-size: 12px; line-height: 1.4;">{{ $quotation->pic->client->address }}</span>
+                                        <span class="fw-semibold text-dark d-block" style="font-size: 12px; line-height: 1.4;">{{ $quotation->pic?->client?->address }}</span>
                                     @else
                                         <span class="badge bg-label-warning mb-1 btn-xs" style="font-size: 9px; padding: 2px 4px;">Manual</span>
                                         <span class="fw-semibold text-dark d-block" style="font-size: 12px; line-height: 1.4;">{{ $pending->doc_address_manual }}</span>
@@ -219,7 +219,7 @@
                                     <small class="text-muted d-block" style="font-size: 11px;">Alamat Pengiriman Barang</small>
                                     @if (($pending->shipping_address_type ?? 'customer') === 'customer')
                                         <span class="badge bg-label-secondary mb-1 btn-xs" style="font-size: 9px; padding: 2px 4px;">Sesuai Customer</span>
-                                        <span class="fw-semibold text-dark d-block" style="font-size: 12px; line-height: 1.4;">{{ $quotation->pic->client->address }}</span>
+                                        <span class="fw-semibold text-dark d-block" style="font-size: 12px; line-height: 1.4;">{{ $quotation->pic?->client?->address }}</span>
                                     @else
                                         <span class="badge bg-label-warning mb-1 btn-xs" style="font-size: 9px; padding: 2px 4px;">Manual</span>
                                         <span class="fw-semibold text-dark d-block" style="font-size: 12px; line-height: 1.4;">{{ $pending->shipping_address_manual }}</span>
@@ -347,14 +347,10 @@
                         <div class="card-body pt-3 d-flex flex-column" style="max-height: 450px; overflow-y: auto;">
                             @php
                                 switch ($pending->delivery) {
-                                    case 1: $kurir = 'Reftech (Internal)'; break;
-                                    case 2: $kurir = 'Sicepat'; break;
-                                    case 3: $kurir = 'JNE'; break;
-                                    case 4: $kurir = 'Lalamove'; break;
-                                    case 5: $kurir = 'Indah Cargo'; break;
-                                    case 6: $kurir = 'Deliveree'; break;
-                                    case 7: $kurir = 'Gojek / Grab'; break;
-                                    case 8: $kurir = 'J&T'; break;
+                                    case 1: $kurir = 'JNE / J&T / Cargo'; break;
+                                    case 2: $kurir = 'Send By Technician'; break;
+                                    case 3: $kurir = 'Taken Directly'; break;
+                                    case 4: $kurir = 'Other'; break;
                                     default: $kurir = 'Belum Ada Kurir'; break;
                                 }
                             @endphp
@@ -596,11 +592,20 @@
                             <tbody>
                                 @php
                                     $no = 1;
-                                    switch ($purchase->status ?? null) {
-                                        case '1': $status_pr = 'Sudah di ACC'; $color_pr = 'bg-label-primary'; break;
-                                        case '2': $status_pr = 'Dalam Pengiriman'; $color_pr = 'bg-label-warning'; break;
-                                        case '3': $status_pr = 'Done'; $color_pr = 'bg-label-success'; break;
-                                        default: $status_pr = 'Belum Di ACC'; $color_pr = 'bg-label-secondary'; break;
+                                    // Samakan label & warna dengan tab status di halaman /purchase-request.
+                                    // Status 1 (Approved) yang PO-nya sudah terbit dianggap sudah masuk
+                                    // tahap "Purchase Order" (lihat poCount di PurchaseController::index),
+                                    // jadi labelnya diganti biar jelas tinggal nunggu barang dari supplier.
+                                    if (($purchase->status ?? null) == '1' && ($purchase->purchaseOrders->count() ?? 0) > 0) {
+                                        $status_pr = 'Menunggu Pengiriman Supplier';
+                                        $color_pr = 'bg-label-dark';
+                                    } else {
+                                        switch ($purchase->status ?? null) {
+                                            case '1': $status_pr = 'Approved'; $color_pr = 'bg-label-warning'; break;
+                                            case '2': $status_pr = 'Delivery'; $color_pr = 'bg-label-info'; break;
+                                            case '3': $status_pr = 'Good Receipt'; $color_pr = 'bg-label-success'; break;
+                                            default: $status_pr = 'New Purchase'; $color_pr = 'bg-label-primary'; break;
+                                        }
                                     }
                                 @endphp
                                 @forelse (($purchase->details ?? collect()) as $pr)
@@ -769,11 +774,20 @@
                             <tbody>
                                 @php
                                     $no = 1;
-                                    switch ($purchase->status ?? null) {
-                                        case '1': $status_pr = 'Sudah di ACC'; $color_pr = 'bg-label-primary'; break;
-                                        case '2': $status_pr = 'Dalam Pengiriman'; $color_pr = 'bg-label-warning'; break;
-                                        case '3': $status_pr = 'Done'; $color_pr = 'bg-label-success'; break;
-                                        default: $status_pr = 'Belum Di ACC'; $color_pr = 'bg-label-secondary'; break;
+                                    // Samakan label & warna dengan tab status di halaman /purchase-request.
+                                    // Status 1 (Approved) yang PO-nya sudah terbit dianggap sudah masuk
+                                    // tahap "Purchase Order" (lihat poCount di PurchaseController::index),
+                                    // jadi labelnya diganti biar jelas tinggal nunggu barang dari supplier.
+                                    if (($purchase->status ?? null) == '1' && ($purchase->purchaseOrders->count() ?? 0) > 0) {
+                                        $status_pr = 'Menunggu Pengiriman Supplier';
+                                        $color_pr = 'bg-label-dark';
+                                    } else {
+                                        switch ($purchase->status ?? null) {
+                                            case '1': $status_pr = 'Approved'; $color_pr = 'bg-label-warning'; break;
+                                            case '2': $status_pr = 'Delivery'; $color_pr = 'bg-label-info'; break;
+                                            case '3': $status_pr = 'Good Receipt'; $color_pr = 'bg-label-success'; break;
+                                            default: $status_pr = 'New Purchase'; $color_pr = 'bg-label-primary'; break;
+                                        }
                                     }
                                 @endphp
                                 @forelse (($purchase->details ?? collect()) as $pr)
@@ -1173,11 +1187,11 @@
                                 <div class="mb-3">
                                     <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Alamat Pengiriman (Dokumen & Barang)</label>
                                     <select class="form-select mb-2" id="detail_combined_address_select" onchange="onAddressSelectChange('detail', 'combined')">
-                                        <option value="customer" {{ ($pending->shipping_address_type ?? 'customer') === 'customer' ? 'selected' : '' }}>Main Address: {{ $quotation->pic->client->address }}</option>
-                                        @foreach ($quotation->pic->client->plants as $plant)
+                                        <option value="customer" {{ ($pending->shipping_address_type ?? 'customer') === 'customer' ? 'selected' : '' }}>Main Address: {{ $quotation->pic?->client?->address }}</option>
+                                        @foreach ($quotation->pic?->client?->plants ?? [] as $plant)
                                             <option value="{{ $plant->address }}" {{ ($pending->shipping_address_type === 'manual' && $pending->shipping_address_manual === $plant->address) ? 'selected' : '' }}>Plant: {{ $plant->name }} ({{ $plant->address }})</option>
                                         @endforeach
-                                        <option value="manual" {{ ($pending->shipping_address_type === 'manual' && !in_array($pending->shipping_address_manual, $quotation->pic->client->plants->pluck('address')->toArray())) ? 'selected' : '' }}>-- Alamat Lain (Isi Manual) --</option>
+                                        <option value="manual" {{ ($pending->shipping_address_type === 'manual' && !in_array($pending->shipping_address_manual, ($quotation->pic?->client?->plants->pluck('address')->toArray() ?? []))) ? 'selected' : '' }}>-- Alamat Lain (Isi Manual) --</option>
                                     </select>
                                     
                                     <div id="detail_combined_manual_wrapper" class="d-none mt-2">
@@ -1187,7 +1201,7 @@
                                     <div class="mt-3">
                                         <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Penerima (Dokumen & Barang)</label>
                                         <select class="form-select" id="detail_combined_recipient_select">
-                                            @foreach ($quotation->pic->client->pic as $c_pic)
+                                            @foreach ($quotation->pic?->client?->pic ?? [] as $c_pic)
                                                 <option value="{{ $c_pic->id }}" {{ $pending->shipping_recipient_id == $c_pic->id ? 'selected' : '' }}>
                                                     {{ $c_pic->name_pic }} {{ $c_pic->posisi ? '(' . $c_pic->posisi . ')' : '' }}
                                                 </option>
@@ -1204,11 +1218,11 @@
                                     <div class="col-md-6 pe-md-3 border-end">
                                         <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Alamat Pengiriman Dokumen / Invoice</label>
                                         <select class="form-select mb-2" id="detail_doc_address_select" onchange="onAddressSelectChange('detail', 'doc')">
-                                            <option value="customer" {{ ($pending->doc_address_type ?? 'customer') === 'customer' ? 'selected' : '' }}>Main Address: {{ $quotation->pic->client->address }}</option>
-                                            @foreach ($quotation->pic->client->plants as $plant)
+                                            <option value="customer" {{ ($pending->doc_address_type ?? 'customer') === 'customer' ? 'selected' : '' }}>Main Address: {{ $quotation->pic?->client?->address }}</option>
+                                            @foreach ($quotation->pic?->client?->plants ?? [] as $plant)
                                                 <option value="{{ $plant->address }}" {{ ($pending->doc_address_type === 'manual' && $pending->doc_address_manual === $plant->address) ? 'selected' : '' }}>Plant: {{ $plant->name }} ({{ $plant->address }})</option>
                                             @endforeach
-                                            <option value="manual" {{ ($pending->doc_address_type === 'manual' && !in_array($pending->doc_address_manual, $quotation->pic->client->plants->pluck('address')->toArray())) ? 'selected' : '' }}>-- Alamat Lain (Isi Manual) --</option>
+                                            <option value="manual" {{ ($pending->doc_address_type === 'manual' && !in_array($pending->doc_address_manual, ($quotation->pic?->client?->plants->pluck('address')->toArray() ?? []))) ? 'selected' : '' }}>-- Alamat Lain (Isi Manual) --</option>
                                         </select>
                                         
                                         <div id="detail_doc_manual_wrapper" class="d-none mt-2">
@@ -1218,7 +1232,7 @@
                                         <div class="mt-3">
                                             <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Penerima Dokumen / Invoice</label>
                                             <select class="form-select" id="detail_doc_recipient_select">
-                                                @foreach ($quotation->pic->client->pic as $c_pic)
+                                                @foreach ($quotation->pic?->client?->pic ?? [] as $c_pic)
                                                     <option value="{{ $c_pic->id }}" {{ $pending->doc_recipient_id == $c_pic->id ? 'selected' : '' }}>
                                                         {{ $c_pic->name_pic }} {{ $c_pic->posisi ? '(' . $c_pic->posisi . ')' : '' }}
                                                     </option>
@@ -1231,11 +1245,11 @@
                                     <div class="col-md-6 ps-md-3">
                                         <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Alamat Pengiriman Barang</label>
                                         <select class="form-select mb-2" id="detail_shipping_address_select" onchange="onAddressSelectChange('detail', 'shipping')">
-                                            <option value="customer" {{ ($pending->shipping_address_type ?? 'customer') === 'customer' ? 'selected' : '' }}>Main Address: {{ $quotation->pic->client->address }}</option>
-                                            @foreach ($quotation->pic->client->plants as $plant)
+                                            <option value="customer" {{ ($pending->shipping_address_type ?? 'customer') === 'customer' ? 'selected' : '' }}>Main Address: {{ $quotation->pic?->client?->address }}</option>
+                                            @foreach ($quotation->pic?->client?->plants ?? [] as $plant)
                                                 <option value="{{ $plant->address }}" {{ ($pending->shipping_address_type === 'manual' && $pending->shipping_address_manual === $plant->address) ? 'selected' : '' }}>Plant: {{ $plant->name }} ({{ $plant->address }})</option>
                                             @endforeach
-                                            <option value="manual" {{ ($pending->shipping_address_type === 'manual' && !in_array($pending->shipping_address_manual, $quotation->pic->client->plants->pluck('address')->toArray())) ? 'selected' : '' }}>-- Alamat Lain (Isi Manual) --</option>
+                                            <option value="manual" {{ ($pending->shipping_address_type === 'manual' && !in_array($pending->shipping_address_manual, ($quotation->pic?->client?->plants->pluck('address')->toArray() ?? []))) ? 'selected' : '' }}>-- Alamat Lain (Isi Manual) --</option>
                                         </select>
                                         
                                         <div id="detail_shipping_manual_wrapper" class="d-none mt-2">
@@ -1245,7 +1259,7 @@
                                         <div class="mt-3">
                                             <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Penerima Barang</label>
                                             <select class="form-select" id="detail_shipping_recipient_select">
-                                                @foreach ($quotation->pic->client->pic as $c_pic)
+                                                @foreach ($quotation->pic?->client?->pic ?? [] as $c_pic)
                                                     <option value="{{ $c_pic->id }}" {{ $pending->shipping_recipient_id == $c_pic->id ? 'selected' : '' }}>
                                                         {{ $c_pic->name_pic }} {{ $c_pic->posisi ? '(' . $c_pic->posisi . ')' : '' }}
                                                     </option>

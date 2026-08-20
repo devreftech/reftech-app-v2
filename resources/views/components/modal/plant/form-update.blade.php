@@ -1,8 +1,8 @@
 <form action="{{ route('plant.crm.update', $plant->id) }}" method="post">
     @csrf
     @method('patch')
-    <div class="modal animate__animated animate__fadeIn" id="{{ 'updatePlant-' . strval($plant->id) }}"
-        tabindex="-1" style="display: none;" aria-hidden="true">
+    <div class="modal fade" id="{{ 'updatePlant-' . strval($plant->id) }}"
+        tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
