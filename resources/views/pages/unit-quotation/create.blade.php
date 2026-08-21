@@ -651,7 +651,8 @@
         <script>window.EDIT_PAYMENT = @json(old('payment'));</script>
     @endif
     <script>window.TRANSPORT_PRICES = @json($transportationPrices);</script>
-    <script src="{{ asset('assets') }}/includes/form-unit-quotation.js"></script>
+    <script src="{{ asset('assets') }}/includes/form-unit-quotation.js?v={{ filemtime(public_path('assets/includes/form-unit-quotation.js')) }}"></script>
+
 @endpush
 
 @push('page-script')
