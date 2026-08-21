@@ -608,7 +608,8 @@
         window.EDIT_PAYMENT = @json($quote->payment ?? '');
         window.TRANSPORT_PRICES = @json($transportationPrices);
     </script>
-    <script src="{{ asset('assets') }}/includes/form-unit-quotation.js"></script>
+    <script src="{{ asset('assets') }}/includes/form-unit-quotation.js?v={{ filemtime(public_path('assets/includes/form-unit-quotation.js')) }}"></script>
+
     <script>
         (function () {
             const inputDate   = document.getElementById('input-date');
