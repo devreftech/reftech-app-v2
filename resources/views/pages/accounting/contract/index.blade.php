@@ -43,7 +43,7 @@
                     </select>
                 </div>
                 <div class="card-datatable table-responsive pt-0">
-                    <table class="datatable-request-contract table table-striped">
+                    <table class="datatable-request-contract table">
                         <thead>
                             <tr>
                                 <th></th>
@@ -77,13 +77,14 @@
                     </select>
                 </div>
                 <div class="card-datatable table-responsive pt-0">
-                    <table class="datatable-selling-contract-tab table table-striped">
+                    <table class="datatable-selling-contract-tab table">
                         <thead>
                             <tr>
                                 <th></th>
                                 <th>ID</th>
                                 <th>Selling No.</th>
                                 <th>Company</th>
+                                <th>PPN</th>
                                 <th>Total Price</th>
                                 <th>Date</th>
                                 <th>Sales</th>
@@ -111,13 +112,14 @@
                     </select>
                 </div>
                 <div class="card-datatable table-responsive pt-0">
-                    <table class="datatable-confirm-order-tab table table-striped">
+                    <table class="datatable-confirm-order-tab table">
                         <thead>
                             <tr>
                                 <th></th>
                                 <th>ID</th>
                                 <th>Order No.</th>
                                 <th>Company</th>
+                                <th>PPN</th>
                                 <th>Total Price</th>
                                 <th>Date</th>
                                 <th>Sales</th>

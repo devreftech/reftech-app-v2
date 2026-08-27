@@ -2020,7 +2020,7 @@ Route::group(["middleware" => "auth"], function () {
         if ($year && $year !== 'all') $serviceQuery->whereYear('contract.date', $year);
         if ($tax === 'ppn')     $serviceQuery->where('q.tax', '11');
         elseif ($tax === 'non-ppn') $serviceQuery->where('q.tax', '0');
-        $service = $serviceQuery->get(['contract.id','contract.no_contract','contract.type','contract.date','q.harga_total','u.name','c.company']);
+        $service = $serviceQuery->get(['contract.id','contract.no_contract','contract.type','contract.date','q.harga_total','u.name','c.company',DB::raw("CASE WHEN q.tax = '11' THEN 1 ELSE 0 END AS ppn")]);
 
         $unitQuery = Contract::join('unit_quotation as uq', 'uq.id', '=', 'contract.id_unit_quotation')
             ->join('client as c', 'c.id', '=', 'uq.id_client')
@@ -2030,7 +2030,7 @@ Route::group(["middleware" => "auth"], function () {
         if ($year && $year !== 'all') $unitQuery->whereYear('contract.date', $year);
         if ($tax === 'ppn')     $unitQuery->where('uq.tax', 1);
         elseif ($tax === 'non-ppn') $unitQuery->where('uq.tax', 0);
-        $unit = $unitQuery->get(['contract.id','contract.no_contract','contract.type','contract.date',DB::raw('uq.total AS harga_total'),'u.name','c.company']);
+        $unit = $unitQuery->get(['contract.id','contract.no_contract','contract.type','contract.date',DB::raw('uq.total AS harga_total'),'u.name','c.company',DB::raw("CASE WHEN uq.tax = 1 THEN 1 ELSE 0 END AS ppn")]);
 
         $combined = $service->merge($unit)->sortByDesc('id')->values();
         return response()->json(['data' => $combined]);
@@ -2050,7 +2050,7 @@ Route::group(["middleware" => "auth"], function () {
         if ($tax === 'ppn')     $query->where('q.tax', '11');
         elseif ($tax === 'non-ppn') $query->where('q.tax', '0');
 
-        $contract = $query->get(['contract.id','contract.no_contract','contract.type','contract.date','q.harga_total','u.name','c.company']);
+        $contract = $query->get(['contract.id','contract.no_contract','contract.type','contract.date','q.harga_total','u.name','c.company',DB::raw("CASE WHEN q.tax = '11' THEN 1 ELSE 0 END AS ppn")]);
         return response()->json(['data' => $contract]);
     });
 
