@@ -86,6 +86,7 @@
                         <th>Quote No.</th>
                         <th>Company</th>
                         <th>Total Price</th>
+                        <th>Type</th>
                         <th>Description</th>
                         <th>Date Quotation</th>
                         <th>Status</th>

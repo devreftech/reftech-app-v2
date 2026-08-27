@@ -17,38 +17,9 @@
             <div class="alert alert-success">{{ session('success') }}</div>
         @endif
 
-        @if ($pendingUnitPo->count())
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">PO Unit Menunggu Diterima (Goods Receipt)</h5>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-bordered mb-0">
-                        <thead>
-                            <tr>
-                                <th>No PO</th>
-                                <th>Supplier</th>
-                                <th>Tanggal</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($pendingUnitPo as $po)
-                                <tr>
-                                    <td>{{ $po->no_po }}</td>
-                                    <td>{{ $po->company }}</td>
-                                    <td>{{ \Carbon\Carbon::parse($po->date)->format('d-m-Y') }}</td>
-                                    <td>
-                                        <a href="{{ route('unit-product-in.goods-receipt-form', $po->id) }}"
-                                            class="btn btn-sm btn-outline-primary">Terima Barang</a>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        @endif
+        {{-- Card "PO Unit Menunggu Diterima (Goods Receipt)" dihapus — sudah terwakili
+             oleh /product-in (role Logistic) tab Menunggu Penerimaan > sub-tab Non-PR,
+             yang tombol GR-nya juga ngarah ke form yang sama (unit-product-in.goods-receipt-form). --}}
 
         <div class="card mb-3">
             <div class="card-header">
@@ -59,6 +30,7 @@
                     <thead>
                         <tr>
                             <th>No Transaksi</th>
+                            <th>No PO</th>
                             <th>Tipe Transaksi</th>
                             <th>Supplier / Customer</th>
                             <th>Tanggal</th>
@@ -69,6 +41,13 @@
                         @forelse ($unitProductIns as $item)
                             <tr>
                                 <td>{{ $item->no_transaksi }}</td>
+                                <td>
+                                    @if ($item->po)
+                                        <a href="{{ route('purchase.show', $item->po->id) }}">{{ $item->po->no_po }}</a>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
                                 <td>
                                     @switch($item->transaction_type)
                                         @case('purchase_new')
@@ -90,7 +69,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center text-muted">Belum ada data</td>
+                                <td colspan="6" class="text-center text-muted">Belum ada data</td>
                             </tr>
                         @endforelse
                     </tbody>

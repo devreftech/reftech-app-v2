@@ -26,7 +26,7 @@
                                 </div> --}}
                                 <div class="col-6 mb-3">
                                     <div class="form-floating form-floating-outline">
-                                        <select class="form-select" id="selectType" aria-label="Default select example"
+                                        <select class="form-select" id="selectMethod" aria-label="Default select example"
                                             name="method">
                                             <option disabled>---Method---</option>
                                             <option value="Transfer">
@@ -43,6 +43,17 @@
                                             </option>
                                         </select>
                                         <label for="exampleFormControlSelect1">Type</label>
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-3" id="escrow-channel-group" style="display:none;">
+                                    <div class="form-floating form-floating-outline">
+                                        <select class="form-select" id="selectEscrowChannel" name="escrow_channel">
+                                            <option value="" disabled selected>-- Pilih Akun --</option>
+                                            <option value="Airend Center">Airend Center</option>
+                                            <option value="Parts Compressor">Parts Compressor</option>
+                                            <option value="Kojisha Filter">Kojisha Filter</option>
+                                        </select>
+                                        <label for="selectEscrowChannel">Akun Marketplace</label>
                                     </div>
                                 </div>
                                 <div class="col-6 mb-3">
@@ -125,6 +136,14 @@
                 $('#tempo').prop('disabled', false); // enable
             } else {
                 $('#tempo').prop('disabled', true).val(''); // disable + kosongin
+            }
+        });
+        $('#selectMethod').on('change', function () {
+            var isEscrow = $(this).val() === 'Escrow';
+            $('#escrow-channel-group').toggle(isEscrow);
+            $('#selectEscrowChannel').prop('required', isEscrow);
+            if (!isEscrow) {
+                $('#selectEscrowChannel').val('');
             }
         });
     </script>

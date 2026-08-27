@@ -36,21 +36,25 @@ class ProductOutController extends Controller
      */
     public function create()
     {
-        $product = SerialProduct::join('product', 'serial_product.id_product', '=', 'product.id')->get('serial_product.*');
+        $product = SerialProduct::join('product', 'serial_product.id_product', '=', 'product.id')
+            ->where(function ($q) {
+                $q->whereNull('product.category')
+                    ->orWhere('product.category', '!=', 'Unit');
+            })
+            ->get('serial_product.*');
         return view('pages.warehouse.product-out.form', compact('product'));
     }
 
-    // Format: 001-BK/VIII/BDG/2026 — sama polanya dengan No. Product In (BM), cuma
-    // prefix-nya BK (Barang Keluar) biar sekilas kebaca beda dokumen masuk/keluar.
-    // Nomor urut per gudang (BDG/BKS) tiap bulan.
+    // Format: 001-P/BK/VIII/2026 — sama polanya dengan No. Product In (BM), cuma
+    // BM diganti BK (Barang Keluar) biar sekilas kebaca beda dokumen masuk/keluar.
+    // Nomor urut per bulan, gak lagi dibedain per gudang (BDG/BKS).
     private function generateNoProductOut(string $warehouse = 'BDG'): string
     {
         $now = now();
         $year = $now->format('Y');
         $romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
         $roman = $romanMonths[(int) $now->format('n') - 1];
-        $wh = in_array($warehouse, ['BDG', 'BKS']) ? $warehouse : 'BDG';
-        $suffix = "-BK/{$roman}/{$wh}/{$year}";
+        $suffix = "-P/BK/{$roman}/{$year}";
 
         $last = ProductOut::where('no_product_out', 'like', '%' . $suffix)
             ->orderByDesc('no_product_out')

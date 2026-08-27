@@ -663,6 +663,16 @@
     padding: 24px;
     text-align: center;
 }
+
+@media print {
+    .rf-chat-widget-wrapper,
+    #rfChatWidget,
+    .rf-chat-bubble-btn,
+    #rfChatBox {
+        display: none !important;
+        visibility: hidden !important;
+    }
+}
 </style>
 
 <div class="rf-chat-widget-wrapper" id="rfChatWidget">
@@ -1216,10 +1226,20 @@ function loadConversationMessages(userId) {
     .then(function(res) { return res.json(); })
     .then(function(data) {
         if (data.status === 'success') {
-            if (data.target_user && data.target_user.presence) {
+            if (data.target_user) {
                 if (activeChatUser && activeChatUser.id === userId) {
-                    activeChatUser.presence = data.target_user.presence;
-                    updateRoomPresenceHeader(data.target_user.presence);
+                    if (data.target_user.presence) {
+                        activeChatUser.presence = data.target_user.presence;
+                        updateRoomPresenceHeader(data.target_user.presence);
+                    }
+                    if (data.target_user.avatar_url && activeChatUser.avatar_url !== data.target_user.avatar_url) {
+                        activeChatUser.avatar_url = data.target_user.avatar_url;
+                        var avatarContainer = document.getElementById('rfRoomAvatarWrap');
+                        if (avatarContainer) {
+                            avatarContainer.innerHTML = `<img src="${data.target_user.avatar_url}" alt="${escapeHtml(data.target_user.name)}" class="rounded-circle w-100 h-100" style="object-fit: cover;">`;
+                            updateRoomPresenceHeader(activeChatUser.presence);
+                        }
+                    }
                 }
             }
             var msgs = data.messages || [];
@@ -1279,7 +1299,7 @@ function generateMessageItemHtml(m) {
     var avatarHtml = '';
     if (!isOut && activeChatUser) {
         var av = activeChatUser.avatar_url 
-            ? `<img src="${activeChatUser.avatar_url}" alt="${escapeHtml(activeChatUser.name)}" style="width: 28px; height: 28px; border-radius: 50%;">`
+            ? `<img src="${activeChatUser.avatar_url}" alt="${escapeHtml(activeChatUser.name)}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">`
             : `<div class="rf-avatar-placeholder" style="background-color: ${activeChatUser.avatar_color}22; color: ${activeChatUser.avatar_color}; font-size: 11px;">${activeChatUser.avatar_text}</div>`;
         avatarHtml = `<div class="rf-chat-avatar-wrap" style="width: 28px; height: 28px;">${av}</div>`;
     }

@@ -319,11 +319,31 @@
         <div class="col-xl-3 col-md-4 col-12 invoice-actions">
             <div class="card mb-3 shadow-sm border-0">
                 <div class="card-body">
-                    @if ($purchase->category == 'Unit' && $purchase->receipt_status == 'Pending')
-                        <a class="btn btn-success d-grid w-100 mb-3 waves-effect"
-                            href="{{ route('unit-product-in.goods-receipt-form', $purchase->id) }}">
-                            Terima Barang (Unit)
-                        </a>
+                    @if (!$purchase->id_purchase_request && $purchase->receipt_status == 'Pending')
+                        @if (!$purchase->on_delivery_at)
+                            <a href="#" class="btn btn-info text-white d-grid w-100 mb-3 waves-effect" id="btnUnitDelivery">
+                                <i class="mdi mdi-truck-delivery me-1"></i> On Delivery
+                            </a>
+                        @else
+                            <div class="alert alert-success py-2 px-3 mb-3 small">
+                                <i class="mdi mdi-check-circle-outline me-1"></i> On Delivery
+                                ({{ \Carbon\Carbon::parse($purchase->on_delivery_at)->format('d-m-Y') }})
+                                @if ($purchase->on_delivery_cargo)
+                                    <br>{{ $purchase->on_delivery_cargo }}{{ $purchase->on_delivery_no_resi ? ' — Resi: ' . $purchase->on_delivery_no_resi : '' }}
+                                @endif
+                            </div>
+                            @if ($purchase->category == 'Unit')
+                                <a class="btn btn-success d-grid w-100 mb-3 waves-effect"
+                                    href="{{ route('unit-product-in.goods-receipt-form', $purchase->id) }}">
+                                    Terima Barang (Unit)
+                                </a>
+                            @else
+                                <a class="btn btn-success d-grid w-100 mb-3 waves-effect"
+                                    href="{{ route('purchase.goods-receipt-direct', $purchase->id) }}">
+                                    Terima Barang (GR)
+                                </a>
+                            @endif
+                        @endif
                     @endif
                     @if ($sourcePr)
                         @if ($prDeliveryDone)
@@ -441,6 +461,35 @@
         </div>
     </div>
 
+    @if (!$purchase->id_purchase_request && $purchase->receipt_status == 'Pending' && !$purchase->on_delivery_at)
+        <div class="modal fade" id="modalUnitDelivery" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form id="unitDeliveryForm">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold">Info Pengiriman — {{ $purchase->no_po }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="unitDeliveryCargo" class="form-label">Cargo / Ekspedisi</label>
+                                <input type="text" class="form-control" id="unitDeliveryCargo" name="cargo" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="unitDeliveryNoResi" class="form-label">No. Resi</label>
+                                <input type="text" class="form-control" id="unitDeliveryNoResi" name="no_resi">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary">On Delivery</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
     @if ($sourcePr && !$prDeliveryDone)
         <div class="modal fade" id="modalPoDelivery" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
@@ -512,6 +561,60 @@
                 new bootstrap.Modal(document.getElementById('modalUploadInvoice')).show();
             });
         @endif
+
+        var unitDeliveryModalEl = document.getElementById('modalUnitDelivery');
+        if (unitDeliveryModalEl) {
+            var unitDeliveryModal = new bootstrap.Modal(unitDeliveryModalEl);
+
+            $('#btnUnitDelivery').on('click', function(e) {
+                e.preventDefault();
+                unitDeliveryModal.show();
+            });
+
+            $('#unitDeliveryForm').on('submit', function(e) {
+                e.preventDefault();
+                $.ajax({
+                    'url': '{{ route('purchase.delivery-unit', $purchase->id) }}',
+                    'type': 'POST',
+                    'data': {
+                        '_method': 'PATCH',
+                        '_token': '{{ csrf_token() }}',
+                        'cargo': $('#unitDeliveryCargo').val(),
+                        'no_resi': $('#unitDeliveryNoResi').val(),
+                    },
+                    success: function(response) {
+                        if (response == 1) {
+                            unitDeliveryModal.hide();
+                            Swal.fire({
+                                icon: "success",
+                                title: "Delivery succed!",
+                                text: "Info pengiriman berhasil disimpan.",
+                                customClass: {
+                                    confirmButton: "btn btn-success waves-effect",
+                                },
+                            })
+                            window.setTimeout(function() {
+                                window.location.reload();
+                            }, 1500);
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Oops...',
+                                text: 'Gagal menyimpan info pengiriman.'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        var message = 'Gagal menyimpan info pengiriman.';
+                        if (xhr.status === 422 && xhr.responseJSON) {
+                            if (xhr.responseJSON.message) message = xhr.responseJSON.message;
+                            else if (xhr.responseJSON.errors) message = Object.values(xhr.responseJSON.errors).flat().join('\n');
+                        }
+                        Swal.fire({ icon: 'error', title: 'Oops...', text: message });
+                    }
+                });
+            });
+        }
 
         var poDeliveryModalEl = document.getElementById('modalPoDelivery');
         if (poDeliveryModalEl) {

@@ -81,10 +81,35 @@
                                 @endphp
                                 <span
                                     class="badge fs-6 rounded-pill bg-label-{{ $badgeClass }}">{{ $label }}</span>
+                                @php
+                                    $apprMap = [
+                                        'pending' => ['warning', 'Menunggu Approval'],
+                                        'approved' => ['success', 'Disetujui'],
+                                        'rejected' => ['danger', 'Ditolak'],
+                                    ];
+                                    [$apprClass, $apprLabel] = $apprMap[$service->approval_status] ?? ['secondary', ucfirst((string) $service->approval_status)];
+                                @endphp
+                                <span class="badge fs-6 rounded-pill bg-label-{{ $apprClass }} ms-1">{{ $apprLabel }}</span>
                             </div>
                         </div>
                     </div>
                     <hr class="my-2">
+
+                    @if ($service->approval_status === 'rejected' && $service->reject_note)
+                        <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
+                            <i class="mdi mdi-alert-circle-outline mt-1"></i>
+                            <div>
+                                <strong>Report ditolak oleh ServiceM.</strong>
+                                <div class="mt-1" style="white-space: pre-wrap;">{{ $service->reject_note }}</div>
+                                <div class="small text-muted mt-1">Perbaiki lewat tombol Edit, report otomatis diajukan ulang.</div>
+                            </div>
+                        </div>
+                    @elseif ($service->approval_status === 'pending')
+                        <div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+                            <i class="mdi mdi-clock-outline"></i>
+                            <div>Report masih menunggu approval ServiceM. Belum tampil di sisi Sales.</div>
+                        </div>
+                    @endif
 
                     <style>
                         @media (min-width: 992px) {
@@ -209,7 +234,7 @@
                             @foreach ($pict as $picture)
                                 <div class="col-md-4 col-6 text-center">
                                     <div class="border rounded p-1 mx-auto position-relative" style="max-width: 220px;">
-                                        <img src="{{ url('') . '/' . $picture->picture }}" alt="" srcset=""
+                                        <img src="{{ $picture->url }}" alt="" srcset=""
                                             style="width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 4px;">
                                         @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Technician')
                                             <div class="position-absolute top-0 end-0 p-1 d-flex gap-1">
@@ -255,7 +280,7 @@
                             <p class="mb-4">{{ $service->pic->client->company }}</p>
                             <div class="d-flex align-items-end justify-content-center mb-1" style="height: 70px;">
                                 @if (isset($service->sign_client))
-                                    <img src="{{ url('') . '/' . $service->sign_client }}" alt="" srcset=""
+                                    <img src="{{ $service->sign_client_url }}" alt="" srcset=""
                                         height="70">
                                 @endif
                             </div>
@@ -271,12 +296,15 @@
         <div class="col-xl-3 col-md-4 col-12 invoice-actions">
             <div class="card mb-3">
                 <div class="card-body">
-                    <a class="btn btn-primary btn-outline-secondary d-grid w-100 mb-3 waves-effect" target="_blank"
-                        href="{{ route('service-reports.print', $service->id) }}">
-                        Download
-                    </a>
-                    <button id="buttonShare" data-id="{{ $service->id }}"
-                        class="btn btn-success d-grid w-100 waves-effect mb-3">Bagikan</button>
+                    {{-- ServiceM belum boleh Download/Bagikan sebelum report di-approve --}}
+                    @unless (Auth::user()->role === 'ServiceM' && $service->approval_status !== 'approved')
+                        <a class="btn btn-primary btn-outline-secondary d-grid w-100 mb-3 waves-effect" target="_blank"
+                            href="{{ route('service-reports.print', $service->id) }}">
+                            Download
+                        </a>
+                        <button id="buttonShare" data-id="{{ $service->id }}"
+                            class="btn btn-success d-grid w-100 waves-effect mb-3">Bagikan</button>
+                    @endunless
                     <a href="{{ route('service-reports.edit', $service->id) }}"
                         class="btn btn-outline-warning d-grid w-100 waves-effect mb-3">Edit</a>
                     @if (Auth::user()->role == 'Technician' || Auth::user()->role == 'Coordinator')
@@ -300,6 +328,21 @@
                                 @endif
                             </ul>
                         </div>
+                    @endif
+                    @if (in_array(Auth::user()->role, ['ServiceM', 'Admin']) && $service->approval_status !== 'approved')
+                        <form action="{{ route('service-reports.approve', $service->id) }}" method="POST" class="mb-2">
+                            @csrf
+                            <button type="submit" class="btn btn-success d-grid w-100 waves-effect">
+                                <span><i class="mdi mdi-check-circle-outline me-1"></i>Approve Report</span>
+                            </button>
+                        </form>
+                        <button type="button" class="btn btn-outline-danger d-grid w-100 mb-3 waves-effect" id="rejectReportBtn">
+                            <span><i class="mdi mdi-close-circle-outline me-1"></i>Reject Report</span>
+                        </button>
+                        <form action="{{ route('service-reports.reject', $service->id) }}" method="POST" id="rejectReportForm" class="d-none">
+                            @csrf
+                            <input type="hidden" name="reject_note" id="rejectReportNote">
+                        </form>
                     @endif
                     <button class="btn btn-outline-secondary d-grid w-100 mb-3 waves-effect" id="backButton">
                         Back
@@ -938,6 +981,62 @@
             //         });
             //     }
             // });
+        });
+    </script>
+    @if (session('success') && session('success') !== 'Data Has been created')
+        <script>
+            $(function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: @json(session('success')),
+                    customClass: { confirmButton: 'btn btn-success waves-effect' },
+                    buttonsStyling: false,
+                });
+            });
+        </script>
+    @endif
+    @if ($errors->any())
+        <script>
+            $(function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: @json($errors->first()),
+                    customClass: { confirmButton: 'btn btn-danger waves-effect' },
+                    buttonsStyling: false,
+                });
+            });
+        </script>
+    @endif
+    <script>
+        $(function() {
+            $('#rejectReportBtn').on('click', function() {
+                Swal.fire({
+                    title: 'Tolak Service Report',
+                    input: 'textarea',
+                    inputLabel: 'Alasan penolakan (dikirim ke teknisi)',
+                    inputPlaceholder: 'Contoh: jobdesc & deskripsi tidak jelas, foto kurang, running/load kosong...',
+                    showCancelButton: true,
+                    confirmButtonText: 'Tolak Report',
+                    cancelButtonText: 'Batal',
+                    customClass: {
+                        confirmButton: 'btn btn-danger me-3 waves-effect waves-light',
+                        cancelButton: 'btn btn-label-secondary waves-effect',
+                    },
+                    buttonsStyling: false,
+                    inputValidator: function(value) {
+                        if (!value || !value.trim()) {
+                            return 'Alasan penolakan wajib diisi!';
+                        }
+                    }
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        $('#rejectReportNote').val(result.value);
+                        $('#rejectReportForm').trigger('submit');
+                    }
+                });
+            });
         });
     </script>
 @endpush

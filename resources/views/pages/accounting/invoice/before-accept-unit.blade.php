@@ -10,22 +10,38 @@
                     {{-- Header --}}
                     <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column mb-0">
                         <div class="mb-xl-0 pb-1">
-                            <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
-                                <span class="app-brand-logo demo">
-                                    <span style="color: var(--bs-primary)">
-                                        <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="" width="60%">
+                            @if ($quote->client?->info === 'Kojisha')
+                                <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
+                                    <span class="app-brand-logo demo">
+                                        <span style="color: var(--bs-primary)">
+                                            <img src="{{ asset('/asset') }}/logo/Logo-update-size.png" alt="" width="60%">
+                                        </span>
                                     </span>
-                                </span>
-                            </div>
-                            <p class="mb-1 fw-bolder" style="font-size: 15px">PT Reftech Jaya Optima</p>
-                            <div style="font-size: 12px; color: #555;">
-                                <p class="mb-0">Taman Kopo Indah V, Soho Sommerville No. 31</p>
-                                <p class="mb-0">Bandung – Jawa Barat 40218</p>
-                                <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>accounting@reftech.id &nbsp;|&nbsp; <i class="mdi mdi-web me-1" style="font-size:11px;"></i>www.reftech.id</p>
-                                <p class="mb-0 mt-1" style="font-size:10.5px; color:#444; font-weight:500;">
-                                    <i class="mdi mdi-certificate-outline me-1 text-primary"></i><span class="fw-bold" style="color:#696cff;">ISO Certified:</span> ISO 9001:2015 &nbsp;|&nbsp; ISO 14001:2015 &nbsp;|&nbsp; ISO 45001:2018
-                                </p>
-                            </div>
+                                </div>
+                                <p class="mb-1 fw-bolder" style="font-size: 15px">PT Kojisha Innotiv Indonesia</p>
+                                <div style="font-size: 12px; color: #555;">
+                                    <p class="mb-0">Jl. Nancep No. 45A, Setu</p>
+                                    <p class="mb-0">Cibitung - Kab. Bekasi 17320</p>
+                                    <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>+62 812-1000-0997 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>admin@kojisha.com</p>
+                                </div>
+                            @else
+                                <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
+                                    <span class="app-brand-logo demo">
+                                        <span style="color: var(--bs-primary)">
+                                            <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="" width="60%">
+                                        </span>
+                                    </span>
+                                </div>
+                                <p class="mb-1 fw-bolder" style="font-size: 15px">PT Reftech Jaya Optima</p>
+                                <div style="font-size: 12px; color: #555;">
+                                    <p class="mb-0">Taman Kopo Indah V, Soho Sommerville No. 31</p>
+                                    <p class="mb-0">Bandung – Jawa Barat 40218</p>
+                                    <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>accounting@reftech.id &nbsp;|&nbsp; <i class="mdi mdi-web me-1" style="font-size:11px;"></i>www.reftech.id</p>
+                                    <p class="mb-0 mt-1" style="font-size:10.5px; color:#444; font-weight:500;">
+                                        <i class="mdi mdi-certificate-outline me-1 text-primary"></i><span class="fw-bold" style="color:#696cff;">ISO Certified:</span> ISO 9001:2015 &nbsp;|&nbsp; ISO 14001:2015 &nbsp;|&nbsp; ISO 45001:2018
+                                    </p>
+                                </div>
+                            @endif
                         </div>
                         <div class="text-end">
                             <h3 class="fw-bold mb-1" style="letter-spacing:2px; color:#696cff;">INVOICE REQUEST</h3>

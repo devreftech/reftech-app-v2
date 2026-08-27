@@ -89,6 +89,7 @@
                             <th rowspan="2">Desc</th>
                             <th colspan="3" class="border-bottom">Stock</th>
                             <th rowspan="2">Price</th>
+                            <th rowspan="2">Last Update Price</th>
                         </tr>
                         <tr>
                             <th>BDG</th>

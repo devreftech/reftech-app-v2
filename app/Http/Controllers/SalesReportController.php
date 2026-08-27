@@ -114,6 +114,8 @@ class SalesReportController extends Controller
                 'required',
             'semester' =>
                 'required',
+            'target' =>
+                'nullable|numeric',
         ];
 
         $message = [
@@ -124,6 +126,7 @@ class SalesReportController extends Controller
         $report = new SalesReports;
         $report->year = $request->year;
         $report->semester = $request->semester;
+        $report->target = $request->target;
         $reportSave = $report->save();
         if ($reportSave) {
             return redirect('/sale-report')->with('message', 'data telah ditambahkan');
@@ -163,7 +166,22 @@ class SalesReportController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        $rule = [
+            'year' => 'required',
+            'semester' => 'required',
+            'target' => 'nullable|numeric',
+        ];
+        $this->validate($request, $rule);
+
+        $report = SalesReports::findOrFail($id);
+        $report->year = $request->year;
+        $report->semester = $request->semester;
+        $report->target = $request->target;
+        $reportSave = $report->save();
+
+        if ($reportSave) {
+            return redirect('/sale-report')->with('message', 'Data telah diperbarui');
+        }
     }
 
     /**
@@ -192,6 +210,56 @@ class SalesReportController extends Controller
     }
 
     public function yearly($year)
+    {
+        $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
+
+        // Ringkasan buat stat card di atas tabel — dihitung dari hasil yang sama
+        // dengan yang dipakai DataTable (yearlyData), biar angkanya konsisten.
+        $result = $this->buildYearlyResult($year);
+        $summary = [
+            'totalSku' => count($result),
+            'totalActive' => collect($result)->where('total_movement', '>', 0)->count(),
+            'totalIn' => collect($result)->sum(fn ($r) => $r['pIn1'] + $r['pIn2']),
+            'totalOut' => collect($result)->sum(fn ($r) => $r['pOut1'] + $r['pOut2']),
+            'totalStock' => collect($result)->sum('AllStock'),
+        ];
+
+        $availableYears = $this->getAvailableReportYears();
+
+        return view('pages.warehouse.reports.inout', compact('noSaleProspect', 'year', 'summary', 'availableYears'));
+    }
+
+    /**
+     * Tahun yang muncul di dropdown filter — diambil dari tahun-tahun yang beneran
+     * ada transaksi product in/out, plus tahun berjalan (walau belum ada transaksi).
+     * Tahun yang belum berjalan (masa depan) sengaja gak dimasukin.
+     */
+    private function getAvailableReportYears()
+    {
+        $currentYear = (int) now()->year;
+
+        $years = DB::table('product_in')->selectRaw('DISTINCT YEAR(date) as y')->pluck('y')
+            ->merge(DB::table('product_out')->selectRaw('DISTINCT YEAR(date) as y')->pluck('y'))
+            ->push($currentYear)
+            ->map(fn ($y) => (int) $y)
+            ->filter(fn ($y) => $y > 0 && $y <= $currentYear)
+            ->unique()
+            ->sortDesc()
+            ->values();
+
+        return $years;
+    }
+
+    /**
+     * Data JSON buat DataTable di halaman Report Product In-Out per tahun
+     * (dipanggil dari table-sales-reports-year.js).
+     */
+    public function yearlyData($year)
+    {
+        return response()->json(['data' => $this->buildYearlyResult($year)]);
+    }
+
+    private function buildYearlyResult($year)
     {
         $startDate1 = Carbon::createFromDate($year, 1)->startOfMonth()->toDateString();
         $endDate1 = Carbon::createFromDate($year, 6)->endOfMonth()->toDateString();
@@ -234,7 +302,9 @@ class SalesReportController extends Controller
             ->select('p.id', 'p.commodity', DB::raw('SUM(dpi.qty) as total_keluar'))
             ->groupBy('p.id', 'p.commodity')
             ->get();
-        $products = Product::all();
+        // Halaman ini cuma buat Consumable & Non-Consumable Part — Jasa, Unit, dan
+        // produk tanpa category ("-") gak relevan buat report movement gudang ini.
+        $products = Product::where('category', 'like', '%Consumable%')->get();
         $pIn1 = $pInSemester1->keyBy('id');
         $pOut1 = $pOutSemester1->keyBy('id');
         $pIn2 = $pInSemester2->keyBy('id');
@@ -245,24 +315,29 @@ class SalesReportController extends Controller
         foreach ($products as $product) {
             $id = $product->id;
 
-            $in1 = $pIn1[$id]->total_keluar ?? 0;
-            $out1 = $pOut1[$id]->total_keluar ?? 0;
-            $in2 = $pIn2[$id]->total_keluar ?? 0;
-            $out2 = $pOut2[$id]->total_keluar ?? 0;
+            $in1 = (int) ($pIn1[$id]->total_keluar ?? 0);
+            $out1 = (int) ($pOut1[$id]->total_keluar ?? 0);
+            $in2 = (int) ($pIn2[$id]->total_keluar ?? 0);
+            $out2 = (int) ($pOut2[$id]->total_keluar ?? 0);
 
             $result[] = [
                 'id' => $product->id,
                 'commodity' => $product->commodity,
+                'description' => $product->description,
                 'GO' => $product->go,
                 'pIn1' => $in1,
                 'pOut1' => $out1,
                 'pIn2' => $in2,
                 'pOut2' => $out2,
-                'AllStock' => $product->stock + $product->warehouse_stock,
+                'totalIn' => $in1 + $in2,
+                'totalOut' => $out1 + $out2,
+                'AllStock' => (int) ($product->stock + $product->warehouse_stock),
+                // Total pergerakan (in+out kedua semester) — dipakai buat urutan default
+                // di tabel, biar item yang aktif kelihatan duluan, bukan item mati semua.
+                'total_movement' => $in1 + $out1 + $in2 + $out2,
             ];
         }
-        // dd($result);
-        $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
-        return view('pages.warehouse.reports.inout', compact('noSaleProspect', 'year'));
+
+        return $result;
     }
 }

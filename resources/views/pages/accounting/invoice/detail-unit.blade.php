@@ -112,44 +112,83 @@
 
                 {{-- Header --}}
                 <div class="card-body p-4" style="position: relative; z-index: 1;">
+                    @php $isKojisha = $quote->client?->info === 'Kojisha'; @endphp
                     <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column {{ !$quote->tax ? 'justify-content-end' : '' }} gap-3 mb-0">
                         @if ($quote->tax)
                             <div class="mb-xl-0 pb-1">
-                                <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
-                                    <span class="app-brand-logo demo">
-                                        <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="Reftech Logo" width="180">
-                                    </span>
-                                </div>
-                                <div class="d-flex flex-row align-items-start gap-4 mt-2" style="font-size: 11px;">
-                                    <div class="info" style="max-width: 260px;">
-                                        <p class="mb-1 fw-bold text-dark" style="font-size: 11.5px;">
-                                            <i class="mdi mdi-office-building-outline me-1 text-primary"></i><span class="i18n" data-en="Office Address :">Alamat Kantor :</span>
-                                        </p>
-                                        <p class="mb-1 text-muted" style="line-height: 1.4;">Taman Kopo Indah V, Soho Sommerville No. 31, Bandung – Jawa Barat 40218</p>
-                                        <p class="mb-0 text-muted">
-                                            <i class="mdi mdi-phone-outline me-1 text-primary"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1 text-primary"></i>accounting@reftech.id
-                                        </p>
+                                @if ($isKojisha)
+                                    <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
+                                        <span class="app-brand-logo demo">
+                                            <img src="{{ asset('/asset') }}/logo/Logo-update-size.png" alt="Kojisha Logo" width="180">
+                                        </span>
                                     </div>
-                                    <div class="npwp_add" style="max-width: 280px;">
-                                        <p class="mb-1 fw-bold text-dark" style="font-size: 11.5px;">
-                                            <i class="mdi mdi-file-document-outline me-1 text-primary"></i><span class="i18n" data-en="NPWP Address :">Alamat NPWP :</span>
-                                        </p>
-                                        <p class="mb-1 text-muted" style="line-height: 1.4;">Komp. Negia Kencana Residence Blok B, No.2 Pasanggrahan, Ujung Berung Kota Bandung - Jawa Barat 40199</p>
-                                        <div class="px-2 py-0.5 rounded-0" style="background:#eef0ff; border:1px solid #d0d0ff; font-size:10.5px; font-weight:600; color:#3d3d8f; display:inline-block; border-radius:0 !important;">
-                                            <i class="mdi mdi-card-account-details-outline me-1"></i>NPWP: 0737285718429000
+                                    <div class="d-flex flex-row align-items-start gap-4 mt-2" style="font-size: 11px;">
+                                        <div class="info" style="max-width: 260px;">
+                                            <p class="mb-1 fw-bold text-dark" style="font-size: 11.5px;">
+                                                <i class="mdi mdi-office-building-outline me-1 text-primary"></i><span class="i18n" data-en="Office Address :">Alamat Kantor :</span>
+                                            </p>
+                                            <p class="mb-1 text-muted" style="line-height: 1.4;">Jl. Nancep No. 45A, Setu, Cibitung - Kab. Bekasi 17320</p>
+                                            <p class="mb-0 text-muted">
+                                                <i class="mdi mdi-phone-outline me-1 text-primary"></i>+62 812-1000-0997 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1 text-primary"></i>admin@kojisha.com
+                                            </p>
+                                        </div>
+                                        <div class="npwp_add" style="max-width: 280px;">
+                                            <p class="mb-1 fw-bold text-dark" style="font-size: 11.5px;">
+                                                <i class="mdi mdi-file-document-outline me-1 text-primary"></i><span class="i18n" data-en="NPWP Address :">Alamat NPWP :</span>
+                                            </p>
+                                            <p class="mb-1 text-muted" style="line-height: 1.4;">Jl. Nancep No. 45, Setu Cisaat RT. 001 RW. 003 Cibening, Setu</p>
+                                            <div class="px-2 py-0.5 rounded-0" style="background:#fff0e0; border:1px solid #ffd8b0; font-size:10.5px; font-weight:600; color:#7a4a10; display:inline-block; border-radius:0 !important;">
+                                                <i class="mdi mdi-card-account-details-outline me-1"></i>NPWP: 96.484.859.2-413.000
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                @else
+                                    <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
+                                        <span class="app-brand-logo demo">
+                                            <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="Reftech Logo" width="180">
+                                        </span>
+                                    </div>
+                                    <div class="d-flex flex-row align-items-start gap-4 mt-2" style="font-size: 11px;">
+                                        <div class="info" style="max-width: 260px;">
+                                            <p class="mb-1 fw-bold text-dark" style="font-size: 11.5px;">
+                                                <i class="mdi mdi-office-building-outline me-1 text-primary"></i><span class="i18n" data-en="Office Address :">Alamat Kantor :</span>
+                                            </p>
+                                            <p class="mb-1 text-muted" style="line-height: 1.4;">Taman Kopo Indah V, Soho Sommerville No. 31, Bandung – Jawa Barat 40218</p>
+                                            <p class="mb-0 text-muted">
+                                                <i class="mdi mdi-phone-outline me-1 text-primary"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1 text-primary"></i>accounting@reftech.id
+                                            </p>
+                                        </div>
+                                        <div class="npwp_add" style="max-width: 280px;">
+                                            <p class="mb-1 fw-bold text-dark" style="font-size: 11.5px;">
+                                                <i class="mdi mdi-file-document-outline me-1 text-primary"></i><span class="i18n" data-en="NPWP Address :">Alamat NPWP :</span>
+                                            </p>
+                                            <p class="mb-1 text-muted" style="line-height: 1.4;">Komp. Negia Kencana Residence Blok B, No.2 Pasanggrahan, Ujung Berung Kota Bandung - Jawa Barat 40199</p>
+                                            <div class="px-2 py-0.5 rounded-0" style="background:#eef0ff; border:1px solid #d0d0ff; font-size:10.5px; font-weight:600; color:#3d3d8f; display:inline-block; border-radius:0 !important;">
+                                                <i class="mdi mdi-card-account-details-outline me-1"></i>NPWP: 0737285718429000
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                         @else
                             <div class="mb-xl-0 pb-1">
-                                <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
-                                    <span class="app-brand-logo demo">
-                                        <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="Reftech Logo" width="180">
-                                    </span>
-                                </div>
-                                <p class="mb-1 fw-bold text-dark" style="font-size:14px;">PT Reftech Jaya Optima</p>
-                                <p class="mb-0 text-muted" style="font-size:11px;">Taman Kopo Indah V, Soho Sommerville No. 31, Bandung – Jawa Barat 40218</p>
+                                @if ($isKojisha)
+                                    <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
+                                        <span class="app-brand-logo demo">
+                                            <img src="{{ asset('/asset') }}/logo/Logo-update-size.png" alt="Kojisha Logo" width="180">
+                                        </span>
+                                    </div>
+                                    <p class="mb-1 fw-bold text-dark" style="font-size:14px;">PT Kojisha Innotiv Indonesia</p>
+                                    <p class="mb-0 text-muted" style="font-size:11px;">Jl. Nancep No. 45A, Setu, Cibitung - Kab. Bekasi 17320</p>
+                                @else
+                                    <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
+                                        <span class="app-brand-logo demo">
+                                            <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="Reftech Logo" width="180">
+                                        </span>
+                                    </div>
+                                    <p class="mb-1 fw-bold text-dark" style="font-size:14px;">PT Reftech Jaya Optima</p>
+                                    <p class="mb-0 text-muted" style="font-size:11px;">Taman Kopo Indah V, Soho Sommerville No. 31, Bandung – Jawa Barat 40218</p>
+                                @endif
                             </div>
                         @endif
 
@@ -497,35 +536,65 @@
                                 </p>
                                 <table style="width:100%; border-collapse:collapse;">
                                     @if ($quote->tax)
-                                        <tr>
-                                            <td style="padding:2px 0; color:#555; width:90px;">Nama Bank</td>
-                                            <td style="padding:2px 0; font-weight:600; color:#111;">: Bank BCA (IDR)</td>
-                                        </tr>
-                                        <tr>
-                                            <td style="padding:2px 0; color:#555;">Nama Akun</td>
-                                            <td style="padding:2px 0; font-weight:700; color:#696cff;">: PT. REFTECH JAYA OPTIMA</td>
-                                        </tr>
-                                        <tr>
-                                            <td style="padding:2px 0; color:#555;">No. Rekening</td>
-                                            <td style="padding:2px 0; font-weight:700; color:#111;">: 008 - 6289 - 789</td>
-                                        </tr>
-                                        <tr>
-                                            <td style="padding:2px 0; color:#555;">Swift Code</td>
-                                            <td style="padding:2px 0; font-weight:500; color:#333;">: CENAIDJA</td>
-                                        </tr>
+                                        @if ($isKojisha)
+                                            <tr>
+                                                <td style="padding:2px 0; color:#555; width:90px;">Nama Bank</td>
+                                                <td style="padding:2px 0; font-weight:600; color:#111;">: Bank BCA (IDR)</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:2px 0; color:#555;">Nama Akun</td>
+                                                <td style="padding:2px 0; font-weight:700; color:#696cff;">: KOJISHA INNOTIV INDONESIA PT</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:2px 0; color:#555;">No. Rekening</td>
+                                                <td style="padding:2px 0; font-weight:700; color:#111;">: 5223876543</td>
+                                            </tr>
+                                        @else
+                                            <tr>
+                                                <td style="padding:2px 0; color:#555; width:90px;">Nama Bank</td>
+                                                <td style="padding:2px 0; font-weight:600; color:#111;">: Bank BCA (IDR)</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:2px 0; color:#555;">Nama Akun</td>
+                                                <td style="padding:2px 0; font-weight:700; color:#696cff;">: PT. REFTECH JAYA OPTIMA</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:2px 0; color:#555;">No. Rekening</td>
+                                                <td style="padding:2px 0; font-weight:700; color:#111;">: 008 - 6289 - 789</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:2px 0; color:#555;">Swift Code</td>
+                                                <td style="padding:2px 0; font-weight:500; color:#333;">: CENAIDJA</td>
+                                            </tr>
+                                        @endif
                                     @else
-                                        <tr>
-                                            <td style="padding:2px 0; color:#555; width:90px;">Bank Name</td>
-                                            <td style="padding:2px 0; font-weight:600; color:#111;">: Bank BCA (IDR)</td>
-                                        </tr>
-                                        <tr>
-                                            <td style="padding:2px 0; color:#555;">Acc Name</td>
-                                            <td style="padding:2px 0; font-weight:700; color:#696cff;">: ARIEP RACHMAN</td>
-                                        </tr>
-                                        <tr>
-                                            <td style="padding:2px 0; color:#555;">Acc No.</td>
-                                            <td style="padding:2px 0; font-weight:700; color:#111;">: 166 - 2242 - 271</td>
-                                        </tr>
+                                        @if ($isKojisha)
+                                            <tr>
+                                                <td style="padding:2px 0; color:#555; width:90px;">Bank Name</td>
+                                                <td style="padding:2px 0; font-weight:600; color:#111;">: Bank BCA (IDR)</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:2px 0; color:#555;">Acc Name</td>
+                                                <td style="padding:2px 0; font-weight:700; color:#696cff;">: REGITA DWI MELINDA</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:2px 0; color:#555;">Acc No.</td>
+                                                <td style="padding:2px 0; font-weight:700; color:#111;">: 1560239137</td>
+                                            </tr>
+                                        @else
+                                            <tr>
+                                                <td style="padding:2px 0; color:#555; width:90px;">Bank Name</td>
+                                                <td style="padding:2px 0; font-weight:600; color:#111;">: Bank BCA (IDR)</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:2px 0; color:#555;">Acc Name</td>
+                                                <td style="padding:2px 0; font-weight:700; color:#696cff;">: ARIEP RACHMAN</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:2px 0; color:#555;">Acc No.</td>
+                                                <td style="padding:2px 0; font-weight:700; color:#111;">: 166 - 2242 - 271</td>
+                                            </tr>
+                                        @endif
                                     @endif
                                 </table>
                             </div>
@@ -536,9 +605,9 @@
                                 $signDateId   = $signDateBase->copy()->locale('id')->translatedFormat('d F Y');
                                 $signDateEn   = $signDateBase->copy()->locale('en')->translatedFormat('d F Y');
                             @endphp
-                            <p class="mb-1 text-muted" style="font-size:11.5px;">Bandung, <span class="i18n" data-en="{{ $signDateEn }}">{{ $signDateId }}</span></p>
+                            <p class="mb-1 text-muted" style="font-size:11.5px;">{{ $isKojisha ? 'Bekasi' : 'Bandung' }}, <span class="i18n" data-en="{{ $signDateEn }}">{{ $signDateId }}</span></p>
                             @if ($quote->tax)
-                                <p class="fw-bold mb-1 text-dark" style="font-size:12px;">PT. Reftech Jaya Optima</p>
+                                <p class="fw-bold mb-1 text-dark" style="font-size:12px;">{{ $isKojisha ? 'PT. Kojisha Innotiv Indonesia' : 'PT. Reftech Jaya Optima' }}</p>
                             @endif
                             @if (isset($invoice->sign))
                                 <div class="my-2">

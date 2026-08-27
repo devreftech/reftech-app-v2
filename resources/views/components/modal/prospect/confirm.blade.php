@@ -166,8 +166,11 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary waves-effect waves-light" id="withQuote"
-                data-id="{{ $prospect->id }}">With Quote</button>
+                    <button type="button" class="btn btn-outline-secondary waves-effect" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary waves-effect waves-light shadow-sm" id="withQuote"
+                        data-id="{{ $prospect->id }}">
+                        <i class="mdi mdi-lightning-bolt me-1"></i> Smart Quote
+                    </button>
                 </div>
             </div>
         </div>

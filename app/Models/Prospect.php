@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Prospect extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
     
     protected $table = "prospect";
     protected $date = [

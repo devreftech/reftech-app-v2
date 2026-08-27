@@ -287,7 +287,23 @@ class PendingController extends Controller
         foreach ($dPending as $detail) {
             $cekstock += $detail->bdg + $detail->bks;
         }
-        if ($cekstock == 0 && !$pending->id_unit_quotation) {
+        if ($pending->id_unit_quotation) {
+            if ($cekstock != 0) {
+                foreach ($dPending as $item) {
+                    $product = Product::join('serial_product as sp', 'sp.id_product', '=', 'product.id')->where('sp.id', $item->id_equivalent)->select('product.*')->first();
+                    if (!$product) {
+                        continue;
+                    }
+                    $product->stock += $item->bdg;
+                    $product->warehouse_stock += $item->bks;
+                    $product->pending_stock -= $item->bdg + $item->bks;
+                    $product->save();
+                    $item->bdg = 0;
+                    $item->bks = 0;
+                    $item->save();
+                }
+            }
+        } elseif ($cekstock == 0) {
             $quote = Quotation::findOrFail($pending->id_quotation);
             $dQuote = DetailQuotation::where('id_quotation', $quote->id)->get();
             foreach ($dQuote as $item) {
@@ -348,38 +364,52 @@ class PendingController extends Controller
     }
     public function projectEdit(Request $request, $id)
     {
-        // dd($request->all());
         $pending = PendingPO::findOrFail($id);
-        $quote = Quotation::findOrFail($pending->id_quotation);
-        $dQuote = DetailQuotation::where('id_quotation', $quote->id)->get();
         $dPending = DetailPendingPO::where('id_pending', $id)->get();
-        // dd($dPending);
-        foreach ($request->status as $key => $value) {
-            $product = Product::join('serial_product as sp', 'sp.id_product', '=', 'product.id')->where('sp.id', $request->equivalent[$key])->select('product.*')->first();
-            if (!$product) {
-                continue;
-            }
-            // if ($dPending[$key]->bdg != 0 || $dPending[$key]->bks != 0) {
-            $product->stock += $dPending[$key]->bdg;
-            $product->warehouse_stock += $dPending[$key]->bks;
-            $product->pending_stock -= $dPending[$key]->bdg + $dPending[$key]->bks;
-            $dPending[$key]->bdg = 0;
-            $dPending[$key]->bks = 0;
-            // }
-            $dPending[$key]->id_equivalent = $request->equivalent[$key];
-            $dPending[$key]->status = $value;
-            $dPending[$key]->bdg = $request->bdg[$key];
-            $dPending[$key]->bks = $request->bks[$key];
-            $dPending[$key]->note = $request->note[$key];
-            $dPending[$key]->save();
-            // dd($item->id_equivalent);
-            if ($value == 2) {
-                $product->stock -= $request->bdg[$key];
-                $product->warehouse_stock -= $request->bks[$key];
-                $product->pending_stock += $request->bdg[$key] + $request->bks[$key];
-            }
-            $product->save();
+
+        try {
+            DB::transaction(function () use ($request, $dPending) {
+                foreach ($request->status as $key => $value) {
+                    if (!isset($dPending[$key])) {
+                        continue;
+                    }
+                    $product = Product::join('serial_product as sp', 'sp.id_product', '=', 'product.id')->where('sp.id', $request->equivalent[$key])->select('product.*')->first();
+                    if (!$product) {
+                        continue;
+                    }
+
+                    // Release this row's current reservation first, so the availability check
+                    // below and the re-allocation below it are both against the true stock.
+                    $product->stock += $dPending[$key]->bdg;
+                    $product->warehouse_stock += $dPending[$key]->bks;
+                    $product->pending_stock -= $dPending[$key]->bdg + $dPending[$key]->bks;
+
+                    $newBdg = (int) ($request->bdg[$key] ?? 0);
+                    $newBks = (int) ($request->bks[$key] ?? 0);
+
+                    if ($value == 2 && ($newBdg > $product->stock || $newBks > $product->warehouse_stock)) {
+                        throw new \RuntimeException('Alokasi stok melebihi stok tersedia untuk ' . ($product->commodity ?? 'produk') . " (BDG tersedia: {$product->stock}, BKS tersedia: {$product->warehouse_stock}).");
+                    }
+
+                    $dPending[$key]->id_equivalent = $request->equivalent[$key];
+                    $dPending[$key]->status = $value;
+                    $dPending[$key]->bdg = $newBdg;
+                    $dPending[$key]->bks = $newBks;
+                    $dPending[$key]->note = $request->note[$key] ?? null;
+                    $dPending[$key]->save();
+
+                    if ($value == 2) {
+                        $product->stock -= $newBdg;
+                        $product->warehouse_stock -= $newBks;
+                        $product->pending_stock += $newBdg + $newBks;
+                    }
+                    $product->save();
+                }
+            });
+        } catch (\RuntimeException $e) {
+            return back()->withErrors(['bdg' => $e->getMessage()])->withInput();
         }
+
         if (str_contains(request()->header('referer'), 'project-monitoring')) {
             return redirect()->route('project-monitoring.show', $id)
                 ->with('success', 'Pengecekan logistik / status barang proyek berhasil diperbarui.');
@@ -427,19 +457,36 @@ class PendingController extends Controller
         $status->date = Carbon::now();
         $status->save();
         if ($request->status == '7') {
-            $Dquote = DetailQuotation::where('id_quotation', $pending->id_quotation)->get();
-            foreach ($Dquote as $item) {
-                $product = Product::join('serial_product as sp', 'sp.id', '=', 'product.id')->where('sp.id', $item->id_equivalent)->select('product.*')->first();
-                if (!$product) {
-                    continue;
+            if ($pending->id_unit_quotation) {
+                $dPendingCancel = DetailPendingPO::where('id_pending', $pending->id)->get();
+                foreach ($dPendingCancel as $item) {
+                    $product = Product::join('serial_product as sp', 'sp.id_product', '=', 'product.id')->where('sp.id', $item->id_equivalent)->select('product.*')->first();
+                    if (!$product) {
+                        continue;
+                    }
+                    $product->stock += $item->bdg;
+                    $product->warehouse_stock += $item->bks;
+                    $product->pending_stock -= $item->bdg + $item->bks;
+                    $product->save();
+                    $item->bdg = 0;
+                    $item->bks = 0;
+                    $item->save();
                 }
-                $product->stock += $item->qty;
-                $product->pending_stock -= $item->qty;
-                $product->save();
+            } else {
+                $Dquote = DetailQuotation::where('id_quotation', $pending->id_quotation)->get();
+                foreach ($Dquote as $item) {
+                    $product = Product::join('serial_product as sp', 'sp.id', '=', 'product.id')->where('sp.id', $item->id_equivalent)->select('product.*')->first();
+                    if (!$product) {
+                        continue;
+                    }
+                    $product->stock += $item->qty;
+                    $product->pending_stock -= $item->qty;
+                    $product->save();
+                }
             }
         }
         if ($request->status == '6') {
-            if ($pending->type == 'Project') {
+            if ($pending->id_unit_quotation) {
                 return redirect('/pending-po/product-out-project/' . $id)->with('message', 'Status Product Pending PO telah diedit');
             } else {
                 return redirect('/pending-po/product-out/' . $id)->with('message', 'Status Product Pending PO telah diedit');

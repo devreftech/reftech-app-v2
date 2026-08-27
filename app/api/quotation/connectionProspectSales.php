@@ -21,11 +21,14 @@ if (Auth::check()) {
         $pdo->exec("SET SESSION sql_mode = ''");
 
         // Query database for data
-        $query = "SELECT q.*,CONCAT(c.ru, ' - ', c.company) as client, CONCAT(q.note, ' (', q.status_date, ')') AS tip, c.company, c.ru, u.name FROM quotation q 
+        $year = request()->get('year');
+        $yearFilter = ($year && $year !== 'all') ? " AND YEAR(q.estimated_date) = " . intval($year) : "";
+
+        $query = "SELECT q.*,CONCAT(c.ru, ' - ', c.company) as client, CONCAT(q.note, ' (', q.status_date, ')') AS tip, c.company, c.ru, u.name, u.image AS sales_image FROM quotation q
         LEFT JOIN pic p on p.id = q.id_pic
         LEFT JOIN client c on c.id = p.id_client
         INNER JOIN users u on u.id = q.id_sales
-        WHERE u.id = $user->id AND q.status IN (20,30,40,60,80) AND q.level = '1' AND q.is_primary = '1' AND q.type != 'Unit' AND q.id_support IS NOT NULL
+        WHERE u.id = $user->id AND q.status IN (20,30,40,60,80) AND q.level = '1' AND q.is_primary = '1' AND q.type != 'Unit' AND q.id_support IS NOT NULL$yearFilter
         GROUP BY q.primary_id ORDER BY q.expired_date ASC";
 
         $stmt = $pdo->prepare($query);

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Invoice extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $table = "invoice";
     protected $fillable = [
@@ -40,7 +41,20 @@ class Invoice extends Model
     {
         return $query->whereNotNull('id_unit_quotation')
             ->whereNull('no_invoice')
-            ->whereNull('rejected_at');
+            ->whereNull('rejected_at')
+            ->whereDoesntHave('unitQuote.payments', fn ($q) => $q->where('method', 'Escrow'));
+    }
+
+    /**
+     * Invoice unit quotation yang dibayar via Escrow — masuk tab Marketplace,
+     * bukan tab Request (lihat scopePendingUnitRequest).
+     */
+    public function scopeEscrowUnitRequest($query)
+    {
+        return $query->whereNotNull('id_unit_quotation')
+            ->whereNull('no_invoice')
+            ->whereNull('rejected_at')
+            ->whereHas('unitQuote.payments', fn ($q) => $q->where('method', 'Escrow'));
     }
 
     public function quote()

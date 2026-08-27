@@ -11,23 +11,13 @@ $(function () {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                // success: function (hasil, Url) {
-                //     console.log("Url:", Url);
-                //     console.log(hasil);
-                // },
-                // error: function (error) {
-                //     console.log("Url:", Url);
-                //     console.error("Error:", error);
-                //     console.log("error disini");
-                // },
             },
             columns: [
                 { data: "" },
-                { data: "id" },
-                { data: "id" },
                 { data: "year" },
                 { data: "semester" },
                 { data: "total" },
+                { data: "target" },
                 { data: "" },
             ],
             columnDefs: [
@@ -43,42 +33,42 @@ $(function () {
                     },
                 },
                 {
-                    // For Checkboxes
+                    responsivePriority: 1,
                     targets: 1,
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 3,
-                    checkboxes: true,
-                    render: function () {
-                        return '<input type="checkbox" class="dt-checkboxes form-check-input">';
-                    },
-                    checkboxes: {
-                        selectAllRender:
-                            '<input type="checkbox" class="form-check-input">',
-                    },
                 },
                 {
                     targets: 2,
-                    searchable: true,
-                    visible: false,
-                },
-                {
-                    responsivePriority: 1,
-                    targets: 3,
-                },
-                {
-                    targets: 4,
                     render: function (data, type, full, row) {
                         if (type === "display") {
+                            var period = data == "1" ? "Jan &ndash; Jun" : "Jul &ndash; Des";
                             return (
-                                'Semester ' +
-                                data
+                                'Semester ' + data +
+                                ' <small class="text-muted">(' + period + ')</small>'
                             );
                         }
                         return data;
                     },
                 },
-
+                {
+                    targets: 3,
+                    render: function (data, type, full, row) {
+                        if (type === "display") {
+                            return Number(data || 0).toLocaleString("id-ID");
+                        }
+                        return data;
+                    },
+                },
+                {
+                    targets: 4,
+                    render: function (data, type, full, row) {
+                        if (type === "display") {
+                            return data
+                                ? "Rp " + Number(data).toLocaleString("id-ID")
+                                : '<span class="text-muted">Belum diisi</span>';
+                        }
+                        return data;
+                    },
+                },
                 {
                     // Actions
                     targets: -1,
@@ -95,13 +85,20 @@ $(function () {
                             '<li><a href="' +
                             $detailQUrl +
                             '" class="dropdown-item">Details</a></li>' +
+                            '<li><a href="javascript:;" class="dropdown-item edit-report" ' +
+                            'data-bs-toggle="modal" data-bs-target="#editReport" ' +
+                            'data-id="' + full["id"] + '" data-year="' + full["year"] + '" ' +
+                            'data-semester="' + full["semester"] + '" data-target="' + (full["target"] || "") + '">Edit</a></li>' +
                             "</ul>" +
                             "</div>"
                         );
                     },
                 },
             ],
-            order: [[2, "asc"]],
+            order: [
+                [1, "desc"],
+                [2, "asc"],
+            ],
             dom: '<"card-header flex-column flex-md-row"<"head-label-online text-center"><"dt-action-buttons text-end pt-3 pt-md-0"B>><"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             displayLength: 7,
             lengthMenu: [7, 10, 25, 50, 75, 100],
@@ -116,36 +113,7 @@ $(function () {
                             text: '<i class="mdi mdi-printer-outline me-1" ></i>Print',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
+                                columns: [1, 2, 3, 4],
                             },
                             customize: function (win) {
                                 //customize print view for dark
@@ -172,36 +140,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-document-outline me-1" ></i>Csv',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
+                                columns: [1, 2, 3, 4],
                             },
                         },
                         {
@@ -209,36 +148,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-excel-outline me-1"></i>Excel',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
+                                columns: [1, 2, 3, 4],
                             },
                         },
                         {
@@ -246,36 +156,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-pdf-box me-1"></i>Pdf',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
+                                columns: [1, 2, 3, 4],
                             },
                         },
                         {
@@ -283,36 +164,7 @@ $(function () {
                             text: '<i class="mdi mdi-content-copy me-1" ></i>Copy',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
+                                columns: [1, 2, 3, 4],
                             },
                         },
                     ],
@@ -334,13 +186,13 @@ $(function () {
                     display: $.fn.dataTable.Responsive.display.modal({
                         header: function (row) {
                             var data = row.data();
-                            return "Details of " + data["company"];
+                            return "Details of Year " + data["year"];
                         },
                     }),
                     type: "column",
                     renderer: function (api, rowIdx, columns) {
                         var data = $.map(columns, function (col, i) {
-                            return col.title !== "" // ? Do not show row in modal popup if title is blank (for check box)
+                            return col.title !== ""
                                 ? '<tr data-dt-row="' +
                                       col.rowIndex +
                                       '" data-dt-column="' +
@@ -364,9 +216,6 @@ $(function () {
                 },
             },
         });
-        $("div.head-label-online").html(
-            '<h5 class="card-title mb-0">Table Product Out Online</h5>'
-        );
     }
     dt_table_sales_reports_online.on("draw", function () {
         $('[data-toggle="tooltip"]').tooltip();

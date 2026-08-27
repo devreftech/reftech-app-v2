@@ -158,4 +158,44 @@ class User extends Authenticatable
     {
         return $this->hasMany(ChatMessage::class, 'receiver_id');
     }
+
+    /**
+     * User aktif yang perlu muncul di tabel/leaderboard per-sales — role Sales
+     * beneran (satu baris per orang, `id_sales_list` = [id sendiri]), PLUS semua
+     * role Admin yang ternyata pernah bikin quotation sendiri (kayak Regita)
+     * DIGABUNG jadi SATU baris "Sales Project" (`id_sales_list` = id semua Admin
+     * itu). Konsumennya query pakai whereIn('id_sales', $user->id_sales_list)
+     * bukan where('id_sales', $user->id), biar yang gabungan ikut ke-agregat benar.
+     */
+    public static function activeSalesAndProjectAdmins()
+    {
+        $adminAuthorIds = \Illuminate\Support\Facades\DB::table('quotation')
+            ->whereNotNull('id_sales')
+            ->pluck('id_sales')
+            ->merge(
+                \Illuminate\Support\Facades\DB::table('unit_quotation')
+                    ->whereNotNull('id_sales')
+                    ->pluck('id_sales')
+            )
+            ->unique();
+
+        $salesUsers = static::where('role', 'Sales')->where('active', '1')->get();
+        $salesUsers->each(function ($user) {
+            $user->id_sales_list = [$user->id];
+        });
+
+        $projectAdmins = static::where('role', 'Admin')
+            ->where('active', '1')
+            ->whereIn('id', $adminAuthorIds)
+            ->get();
+
+        if ($projectAdmins->isNotEmpty()) {
+            $projectRow = clone $projectAdmins->first();
+            $projectRow->name = 'Sales Project';
+            $projectRow->id_sales_list = $projectAdmins->pluck('id')->all();
+            $salesUsers->push($projectRow);
+        }
+
+        return $salesUsers;
+    }
 }

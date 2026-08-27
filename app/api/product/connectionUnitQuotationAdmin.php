@@ -25,7 +25,7 @@ try {
 
     $salesId = intval(request()->get('sales_id', 0));
     $year = request()->get('year');
-    $where  = "WHERE uq.is_latest = 1 AND uq.status NOT IN ('hot_prospect','po_received')" . ($salesId ? " AND uq.id_sales = $salesId" : "");
+    $where  = "WHERE uq.is_latest = 1 AND uq.status NOT IN ('hot_prospect','po_received','loss','cancel')" . ($salesId ? " AND uq.id_sales = $salesId" : "");
     if ($year && $year !== 'all') {
         $where .= " AND YEAR(uq.date) = " . intval($year);
     }

@@ -13,7 +13,7 @@
 
                     <div class="onboarding-content mb-0">
                         <h4 class="onboarding-title text-body">
-                            {{ $pending->quote->invoice[0]?->no_invoice ?? $pending->quote->pic->client->company }}</h4>
+                            {{ $pending->quote?->invoice[0]?->no_invoice ?? $pending->quote?->pic?->client?->company ?? $pending->unitQuotation?->client?->company ?? $pending->no_pending }}</h4>
                         <form>
                             <div class="card">
                                 <div class="table text-nowrap h-100" style="height: fit-content">

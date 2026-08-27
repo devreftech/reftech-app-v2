@@ -146,6 +146,7 @@
                                     <th>Quote No.</th>
                                     <th>Company</th>
                                     <th>Total Price</th>
+                                    <th>Type</th>
                                     <th>Description</th>
                                     <th>Date</th>
                                     <th>Status</th>
@@ -164,6 +165,7 @@
                                     <th>Quote No.</th>
                                     <th>Company</th>
                                     <th>Total Price</th>
+                                    <th>Type</th>
                                     <th>Description</th>
                                     <th>Date</th>
                                     <th>Status</th>
@@ -182,6 +184,7 @@
                                     <th>Quote No.</th>
                                     <th>Company</th>
                                     <th>Total Price</th>
+                                    <th>Type</th>
                                     <th>Description</th>
                                     <th>Date PO</th>
                                     <th>PO Number</th>
@@ -201,6 +204,7 @@
                                     <th>Quote No.</th>
                                     <th>Company</th>
                                     <th>Total Price</th>
+                                    <th>Type</th>
                                     <th>Description</th>
                                     <th>Date</th>
                                     <th>Status</th>
@@ -219,6 +223,7 @@
                                     <th>Quote No.</th>
                                     <th>Company</th>
                                     <th>Total Price</th>
+                                    <th>Type</th>
                                     <th>Description</th>
                                     <th>Date</th>
                                     <th>Status</th>
@@ -327,6 +332,7 @@
                                     <th>Quote No.</th>
                                     <th>Company</th>
                                     <th>Total Price</th>
+                                    <th>Type</th>
                                     <th>Description</th>
                                     <th>Date</th>
                                     <th>Status</th>
@@ -366,6 +372,7 @@
                                     <th>Quote No.</th>
                                     <th>Company</th>
                                     <th>Total Price</th>
+                                    <th>Type</th>
                                     <th>Date PO</th>
                                     <th>PO Number</th>
                                     <th>Invoice Number</th>

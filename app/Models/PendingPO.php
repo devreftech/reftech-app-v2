@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PendingPO extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
     protected $table = "pending_po";
     protected $fillable = [
         'id_quotation',

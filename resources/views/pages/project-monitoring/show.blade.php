@@ -174,7 +174,7 @@
 
         <div class="row">
             <!-- Project Information & KPI Column -->
-            <div class="col-12 {{ in_array(Auth::user()->role, ['Admin', 'Finance', 'Accounting']) ? 'col-lg-4' : 'col-lg-12' }} mb-4">
+            <div class="col-12 {{ $hasFinancialAccess ? 'col-lg-4' : 'col-lg-12' }} mb-4">
                 <!-- Info Card -->
                 <div class="card mb-4 shadow-sm border-0">
                     <div class="card-header pb-2 border-bottom py-3">
@@ -263,7 +263,7 @@
             </div>
 
             <!-- Tabs Section Column -->
-            @if(in_array(Auth::user()->role, ['Admin', 'Finance', 'Accounting']))
+            @if($hasFinancialAccess)
             <div class="col-12 col-lg-8 mb-4">
                 <div class="nav-align-top mb-4">
                     <ul class="nav nav-tabs" role="tablist">
@@ -491,7 +491,7 @@
                                             <th>Oleh</th>
                                             <th class="text-end">Nominal</th>
                                             <th class="text-center">Nota</th>
-                                            @if(in_array(Auth::user()->role, ['Admin', 'Accounting', 'Finance']))
+                                            @if($hasFinancialAccess)
                                                 <th class="text-center">Aksi</th>
                                             @endif
                                         </tr>
@@ -509,13 +509,13 @@
                                                 <td class="text-center">
                                                     @if ($exp->receipt)
                                                         <a href="{{ asset($exp->receipt) }}" target="_blank" class="text-primary fs-4">
-                                                            <i class="mdi mdi-file-image-outline"></i>
+                                                             <i class="mdi mdi-file-image-outline"></i>
                                                         </a>
                                                     @else
                                                         -
                                                     @endif
                                                 </td>
-                                                @if(in_array(Auth::user()->role, ['Admin', 'Accounting', 'Finance']))
+                                                @if($hasFinancialAccess || $exp->id_user == Auth::id())
                                                     <td class="text-center">
                                                         <form action="{{ route('project-monitoring.destroy-expense', $exp->id) }}" method="post" onsubmit="return confirm('Apakah Anda yakin ingin menghapus biaya ini?')">
                                                             @csrf

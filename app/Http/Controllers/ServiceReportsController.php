@@ -22,6 +22,7 @@ use Carbon\Carbon;
 use File;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\Facades\Image as Image;
 
@@ -39,6 +40,7 @@ class ServiceReportsController extends Controller
             ->join('client as c', 'c.id', '=', 'm.id_client')
             ->join('users as u', 'u.id', '=', 'c.id_sales')
             ->where('u.id', Auth::user()->id)
+            ->where('reports.approval_status', 'approved')
             ->where('reports.viewed', 0)->count();
         return view('pages.technician.service-reports.index', compact('reportsCount', 'noSaleProspect', ));
     }
@@ -50,26 +52,30 @@ class ServiceReportsController extends Controller
      */
     public function create()
     {
-        $sales = User::where('role', 'Sales')->select('id', 'name')->get();
-        $clients = Client::select('id', 'company', 'id_sales')->with('sales:id,name')->get();
+        // $clients dulu di-load penuh (semua client + relasi sales) padahal gak
+        // dipakai sama sekali di form.blade.php — Client/PIC/Machine-nya emang udah
+        // AJAX cascade (select2 kosong di awal), jadi query ini cuma beban loading
+        // doang tanpa manfaat. Dihapus.
+        $sales = User::where('role', 'Sales')->whereNotIn('id', [23, 41])->select('id', 'name')->get();
         $dateNow = Carbon::now();
         $numberS = Reports::whereYear('date', $dateNow)->where('id_technician', Auth::user()->id)->count();
         $formattedNumberS = str_pad($numberS + 1, 3, '0', STR_PAD_LEFT);
         $monthNow = $dateNow->month;
         $formattedMonthNow = $this->convertToRoman($monthNow);
-        
-        $selectedSalesId = 23;
-        $selectedClientId = 5568;
+
+        // Dulu default ke sales/client tertentu (id 23/5568) biar form-nya kepre-fill
+        // — sekarang dibiarin kosong, user pilih sendiri dari awal.
+        $selectedSalesId = null;
+        $selectedClientId = null;
         $selectedPICId = null;
         $selectedMachineId = null;
 
-        return view('pages.technician.service-reports.form', compact('sales', 'clients', 'formattedNumberS', 'formattedMonthNow', 'selectedSalesId', 'selectedClientId', 'selectedPICId', 'selectedMachineId'));
+        return view('pages.technician.service-reports.form', compact('sales', 'formattedNumberS', 'formattedMonthNow', 'selectedSalesId', 'selectedClientId', 'selectedPICId', 'selectedMachineId'));
     }
 
     public function createByUnit($id_unit)
     {
-        $sales = User::where('role', 'Sales')->select('id', 'name')->get();
-        $clients = Client::select('id', 'company', 'id_sales')->with('sales:id,name')->get();
+        $sales = User::where('role', 'Sales')->whereNotIn('id', [23, 41])->select('id', 'name')->get();
         $dateNow = Carbon::now();
         $numberS = Reports::whereYear('date', $dateNow)->where('id_technician', Auth::user()->id)->count();
         $formattedNumberS = str_pad($numberS + 1, 3, '0', STR_PAD_LEFT);
@@ -88,7 +94,6 @@ class ServiceReportsController extends Controller
 
         return view('pages.technician.service-reports.form', compact(
             'sales',
-            'clients',
             'formattedNumberS',
             'formattedMonthNow',
             'selectedSalesId',
@@ -100,8 +105,7 @@ class ServiceReportsController extends Controller
 
     public function createByUnitMachine($id_unit, $id_machine)
     {
-        $sales = User::where('role', 'Sales')->select('id', 'name')->get();
-        $clients = Client::select('id', 'company', 'id_sales')->with('sales:id,name')->get();
+        $sales = User::where('role', 'Sales')->whereNotIn('id', [23, 41])->select('id', 'name')->get();
         $dateNow = Carbon::now();
         $numberS = Reports::whereYear('date', $dateNow)->where('id_technician', Auth::user()->id)->count();
         $formattedNumberS = str_pad($numberS + 1, 3, '0', STR_PAD_LEFT);
@@ -127,7 +131,6 @@ class ServiceReportsController extends Controller
 
         return view('pages.technician.service-reports.form', compact(
             'sales',
-            'clients',
             'formattedNumberS',
             'formattedMonthNow',
             'selectedSalesId',
@@ -150,8 +153,7 @@ class ServiceReportsController extends Controller
 
     public function createByMachine($id_machine)
     {
-        $sales = User::where('role', 'Sales')->select('id', 'name')->get();
-        $clients = Client::select('id', 'company', 'id_sales')->with('sales:id,name')->get();
+        $sales = User::where('role', 'Sales')->whereNotIn('id', [23, 41])->select('id', 'name')->get();
         $dateNow = Carbon::now();
         $numberS = Reports::whereYear('date', $dateNow)->where('id_technician', Auth::user()->id)->count();
         $formattedNumberS = str_pad($numberS + 1, 3, '0', STR_PAD_LEFT);
@@ -170,7 +172,6 @@ class ServiceReportsController extends Controller
 
         return view('pages.technician.service-reports.form', compact(
             'sales',
-            'clients',
             'formattedNumberS',
             'formattedMonthNow',
             'selectedSalesId',
@@ -178,6 +179,71 @@ class ServiceReportsController extends Controller
             'selectedPICId',
             'selectedMachineId'
         ));
+    }
+
+    /**
+     * Quick-add PIC langsung dari form Service Report (AJAX) — dipakai teknisi pas
+     * ketemu penanggung jawab baru di client yang UDAH dipilih (bukan bikin client
+     * baru), jadi cukup id_client dari dropdown Client yang lagi kepilih.
+     */
+    public function storeQuickPic(Request $request)
+    {
+        $rule = [
+            'id_client' => 'required|exists:client,id',
+            'name_pic' => 'required|string|max:255',
+            'phone_pic' => 'nullable|string|max:50',
+            'email_pic' => 'nullable|email|max:255',
+        ];
+        $this->validate($request, $rule);
+
+        $pic = Pic::create([
+            'id_client' => $request->id_client,
+            'name_pic' => $request->name_pic,
+            'phone_pic' => $request->phone_pic,
+            'email_pic' => $request->email_pic,
+        ]);
+
+        return response()->json([
+            'id' => $pic->id,
+            'name_pic' => $pic->name_pic,
+        ]);
+    }
+
+    /**
+     * Quick-add Machine "Dummy" langsung dari form Service Report (AJAX) — dipakai
+     * teknisi pas ketemu unit di lapangan yang belum tercatat di Machine. Sengaja
+     * gak di-link ke katalog Unit (id_unit dibiarkan null) karena cuma input bebas
+     * brand/model, bukan pilih dari master data — makanya ditandai "Dummy" (badge-nya
+     * dibaca dari is_dummy = id_unit IS NULL, lihat /machine/dropdown/{id}).
+     */
+    public function storeQuickMachine(Request $request)
+    {
+        $rule = [
+            'id_client' => 'required|exists:client,id',
+            'brand' => 'required|string|max:255',
+            'model' => 'required|string|max:255',
+            'serial' => 'required|string|max:255',
+            'location' => 'nullable|string|max:255',
+            'tag' => 'nullable|string|max:255',
+        ];
+        $this->validate($request, $rule);
+
+        $machine = \App\Models\Machine::create([
+            'id_client' => $request->id_client,
+            'id_unit' => null,
+            'desc' => trim($request->brand . ' ' . $request->model),
+            'serial' => $request->serial,
+            'location' => $request->location,
+            'tag' => $request->tag,
+            'status' => 'Ready',
+        ]);
+
+        return response()->json([
+            'id' => $machine->id,
+            'text' => $machine->desc . ' || ' . ($machine->location ?: '-') . ' - ' . ($machine->tag ?: '-') . ' - ' . $machine->serial,
+            'unit_category' => '',
+            'is_dummy' => 1,
+        ]);
     }
 
     public function dataByMachine($id_machine)
@@ -239,6 +305,8 @@ class ServiceReportsController extends Controller
         $reports->desc = $request->desc;
         $reports->recomendation = $request->recomendation;
         $reports->sign_client = NULL;
+        // Alur approval: report baru selalu masuk antrian ServiceM dulu.
+        $reports->approval_status = 'pending';
         $status = $reports->save();
         // dd($reports);
         if ($status) {
@@ -269,8 +337,7 @@ class ServiceReportsController extends Controller
      */
     public function edit($id)
     {
-        $sales = User::where('role', 'Sales')->select('id', 'name')->get();
-        $clients = Client::select('id', 'company', 'id_sales')->with('sales:id,name')->get();
+        $sales = User::where('role', 'Sales')->whereNotIn('id', [23, 41])->select('id', 'name')->get();
         $report = Reports::find($id);
         $image = ReportsPict::where('id_reports', $id)->get();
         $dateNow = Carbon::now();
@@ -278,8 +345,8 @@ class ServiceReportsController extends Controller
         $formattedNumberS = str_pad($numberS + 1, 3, '0', STR_PAD_LEFT);
         $monthNow = $dateNow->month;
         $formattedMonthNow = $this->convertToRoman($monthNow);
-        
-        return view('pages.technician.service-reports.form', compact('sales', 'clients', 'formattedNumberS', 'formattedMonthNow', 'report', 'image'));
+
+        return view('pages.technician.service-reports.form', compact('sales', 'formattedNumberS', 'formattedMonthNow', 'report', 'image'));
     }
 
     /**
@@ -320,6 +387,8 @@ class ServiceReportsController extends Controller
         $reports->date = $request->date;
         $reports->desc = $request->desc;
         $reports->recomendation = $request->recomendation;
+        // Isi report berubah => wajib di-approve ulang ServiceM.
+        $this->resetApproval($reports);
         $status = $reports->save();
         // dd($reports);
         if ($status) {
@@ -369,7 +438,7 @@ class ServiceReportsController extends Controller
             $image_ext = $foto->getClientOriginalExtension();
             $image_name = Str::random(8);
 
-            $upload_path = 'asset/reports';
+            $upload_path = 'service-reports/signatures/' . date('Y') . '/' . date('m') . '/' . $id;
             $imagename = $upload_path . '/' . $image_name . '.' . $image_ext;
 
             // Pemrosesan gambar
@@ -377,7 +446,7 @@ class ServiceReportsController extends Controller
             $img->fit(800, 500, function ($constraint) {
                 $constraint->aspectRatio();
             });
-            $img->save($imagename);
+            Storage::disk('public')->put($imagename, (string) $img->encode());
 
             $photo['sign_client'] = $imagename;
         }
@@ -392,7 +461,11 @@ class ServiceReportsController extends Controller
     {
         $reports = Reports::find($id);
 
-        $delsign = File::delete($reports->sign_client);
+        if ($reports->sign_client && str_starts_with($reports->sign_client, 'service-reports/')) {
+            $delsign = Storage::disk('public')->delete($reports->sign_client);
+        } else {
+            $delsign = File::delete($reports->sign_client);
+        }
         if ($delsign) {
             $reports->sign_client = NULL;
         }
@@ -419,7 +492,7 @@ class ServiceReportsController extends Controller
                 $image_ext = $foto->getClientOriginalExtension();
                 $image_name = Str::random(8);
 
-                $upload_path = 'asset/reports';
+                $upload_path = 'service-reports/photos/' . date('Y') . '/' . date('m') . '/' . $id;
                 $imagename = $upload_path . '/' . $image_name . '.' . $image_ext;
 
                 // Pemrosesan gambar
@@ -427,7 +500,7 @@ class ServiceReportsController extends Controller
                 $img->fit(500, 800, function ($constraint) {
                     $constraint->aspectRatio();
                 });
-                $img->save($imagename);
+                Storage::disk('public')->put($imagename, (string) $img->encode());
 
                 $photo['picture'] = $imagename;
             }
@@ -453,13 +526,13 @@ class ServiceReportsController extends Controller
             $image_ext = $foto->getClientOriginalExtension();
             $image_name = Str::random(8);
 
-            $upload_path = 'asset/reports';
+            $upload_path = 'service-reports/photos/' . date('Y') . '/' . date('m') . '/' . $id;
             $imagename = $upload_path . '/' . $image_name . '.' . $image_ext;
 
             // Crop otomatis jadi square, portrait/landscape apapun mengikuti
             $img = Image::make($foto->path());
             $img->fit(600, 600);
-            $img->save($imagename);
+            Storage::disk('public')->put($imagename, (string) $img->encode());
 
             $photo->picture = $imagename;
             $status = $photo->save();
@@ -493,7 +566,11 @@ class ServiceReportsController extends Controller
             return 0;
         }
 
-        File::delete($picture->picture);
+        if ($picture->picture && str_starts_with($picture->picture, 'service-reports/')) {
+            Storage::disk('public')->delete($picture->picture);
+        } else {
+            File::delete($picture->picture);
+        }
         $status = $picture->delete();
 
         if ($status) {
@@ -535,6 +612,8 @@ class ServiceReportsController extends Controller
         }
 
         $reports->{$request->field} = $request->value;
+        // Edit inline jobdesc/desc/recomendation juga men-trigger approval ulang.
+        $this->resetApproval($reports);
         $status = $reports->save();
 
         if ($status) {
@@ -542,6 +621,60 @@ class ServiceReportsController extends Controller
         } else {
             return 0;
         }
+    }
+
+    /**
+     * Balikin report ke antrian approval ServiceM. Report lama yang belum punya
+     * kolom approval (harusnya sudah keisi 'approved' via migration) ikut ke-reset
+     * ke 'pending' begitu isinya diedit.
+     */
+    protected function resetApproval(Reports $reports)
+    {
+        $reports->approval_status = 'pending';
+        $reports->approved_by = null;
+        $reports->approved_at = null;
+        $reports->reject_note = null;
+    }
+
+    public function approve($id)
+    {
+        if (!in_array(Auth::user()->role, ['ServiceM', 'Admin'])) {
+            abort(403);
+        }
+
+        $report = Reports::findOrFail($id);
+        $report->approval_status = 'approved';
+        $report->approved_by = Auth::id();
+        $report->approved_at = Carbon::now();
+        $report->reject_note = null;
+        // Reset viewed biar badge "baru" di sisi Sales muncul sejak di-approve,
+        // bukan sejak report dibuat.
+        $report->viewed = 0;
+        $report->save();
+
+        return redirect()->back()->with('success', 'Service report disetujui.');
+    }
+
+    public function reject(Request $request, $id)
+    {
+        if (!in_array(Auth::user()->role, ['ServiceM', 'Admin'])) {
+            abort(403);
+        }
+
+        $this->validate($request, [
+            'reject_note' => 'required|string|max:2000',
+        ], [
+            'reject_note.required' => 'Alasan penolakan wajib diisi!',
+        ]);
+
+        $report = Reports::findOrFail($id);
+        $report->approval_status = 'rejected';
+        $report->reject_note = $request->reject_note;
+        $report->approved_by = null;
+        $report->approved_at = null;
+        $report->save();
+
+        return redirect()->back()->with('success', 'Service report ditolak dan dikembalikan ke teknisi.');
     }
 
     public function markViewed(Request $request)
@@ -578,6 +711,15 @@ class ServiceReportsController extends Controller
         $visits = ReqVisit::whereNull('date')->get();
         $notulens = Notulen::join('mention_notulen as m', 'm.id_notulen', '=', 'notulen.id')->join('users as u', 'm.id_mention', '=', 'u.id')->get(['notulen.*', 'u.name', 'm.level']);
         $visited = ReqVisit::whereNotNull('date')->whereNull('visit_date')->get();
+
+        // Antrian approval: report yang masih 'pending' + yang barusan 'rejected'
+        // (biar ServiceM tetap kelihatan history singkat penolakannya).
+        $pendingReports = Reports::with(['technician', 'pic.client', 'machine', 'approver'])
+            ->whereIn('approval_status', ['pending', 'rejected'])
+            ->orderByRaw("FIELD(approval_status, 'pending', 'rejected')")
+            ->orderByDesc('id')
+            ->get();
+
         return view(
             "pages.support.serviceM.reports",
             compact(
@@ -590,7 +732,8 @@ class ServiceReportsController extends Controller
                 'dproduct',
                 'sproduct',
                 'visits',
-                'visited'
+                'visited',
+                'pendingReports'
             )
         );
     }

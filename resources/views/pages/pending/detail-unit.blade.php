@@ -213,6 +213,27 @@
                                     @endforelse
                                 </div>
                             </div>
+                            @php
+                                $isPaymentConfirmed = $invoices->contains(fn ($i) => $i->status_p == 1);
+                                $isTempoPayment = stripos($quote->payment_method ?? '', 'Tempo') !== false;
+                            @endphp
+                            <div class="d-flex align-items-center mb-1 p-2 rounded hover-light">
+                                <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(255, 62, 29, 0.08); color: #ff3e1d;">
+                                    <i class="mdi mdi-checkbox-marked-circle-outline fs-5"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block" style="font-size: 11px;">Status Pembayaran</small>
+                                    @if ($isPaymentConfirmed)
+                                        @if ($isTempoPayment)
+                                            <span class="badge bg-label-info fw-semibold">Credit</span>
+                                        @else
+                                            <span class="badge bg-label-success fw-semibold">Paid</span>
+                                        @endif
+                                    @else
+                                        <span class="badge bg-label-danger fw-semibold">Unpaid</span>
+                                    @endif
+                                </div>
+                            </div>
                 </div>
 
                 <!-- Shipping / Resi Info -->
@@ -276,7 +297,7 @@
             @if ($pending->status != '6' && $pending->status != '8')
                 <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal"
                     data-bs-target="#replacementEditUnit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
-                    <i class="mdi mdi-list-status me-1"></i> Update Status Barang
+                    <i class="mdi mdi-list-status me-1"></i> Update Status &amp; Gudang
                 </button>
             @endif
         </div>
@@ -287,6 +308,7 @@
                                 <th style="width: 50px;">No</th>
                                 <th>Item</th>
                                 <th>Qty</th>
+                                <th>Gudang</th>
                                 <th>Status</th>
                                 <th>Note</th>
                             </tr>
@@ -343,6 +365,17 @@
                                     </td>
                                     <td>{{ $orderedQty !== null ? (float) $orderedQty : ($item->bdg + $item->bks) }}</td>
                                     <td>
+                                        @if ($item->bdg > 0)
+                                            <span class="badge bg-label-primary" style="font-size: 10px;">BDG: {{ $item->bdg }}</span>
+                                        @endif
+                                        @if ($item->bks > 0)
+                                            <span class="badge bg-label-info" style="font-size: 10px;">BKS: {{ $item->bks }}</span>
+                                        @endif
+                                        @if (!$item->bdg && !$item->bks)
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td>
                                         <span class="badge {{ $pending->status == '6' ? 'bg-label-success' : $badge }}">
                                             {{ $pending->status == '6' ? 'Done' : $status }}
                                         </span>
@@ -352,7 +385,7 @@
                                 @php $no++; @endphp
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-center py-4 text-muted">Tidak ada data barang</td>
+                                    <td colspan="6" class="text-center py-4 text-muted">Tidak ada data barang</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -434,49 +467,47 @@
                 </div>
             </div>
 
-            <!-- Returns Section -->
-            <div class="card mb-4 shadow-sm border">
-                <div class="card-header bg-light py-3 border-bottom d-flex justify-content-between align-items-center">
-                    <h5 class="m-0 fw-bold"><i class="mdi mdi-arrow-u-left-bottom text-primary me-1"></i> Retur Barang</h5>
-                    <a href="#" class="btn btn-sm btn-outline-danger clear-return-unit waves-effect" data-id="{{ $pending->id }}">
-                        <i class="mdi mdi-eraser-variant me-1"></i> Clear Return
-                    </a>
-                </div>
-                <div class="table-responsive text-nowrap">
-                    <table class="table table-bordered table-striped mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width: 50px;">No</th>
-                                <th>No Return</th>
-                                <th>No DO</th>
-                                <th>Tanggal Return</th>
-                                <th>Tanggal Selesai</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @php $no = 1; @endphp
-                            @forelse ($return as $retur)
+            <!-- Returns Section (hidden kalau belum ada return sama sekali — modul retur lebih lengkap menyusul) -->
+            @if ($return->isNotEmpty())
+                <div class="card mb-4 shadow-sm border">
+                    <div class="card-header bg-light py-3 border-bottom d-flex justify-content-between align-items-center">
+                        <h5 class="m-0 fw-bold"><i class="mdi mdi-arrow-u-left-bottom text-primary me-1"></i> Retur Barang</h5>
+                        <a href="#" class="btn btn-sm btn-outline-danger clear-return-unit waves-effect" data-id="{{ $pending->id }}">
+                            <i class="mdi mdi-eraser-variant me-1"></i> Clear Return
+                        </a>
+                    </div>
+                    <div class="table-responsive text-nowrap">
+                        <table class="table table-bordered table-striped mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <td class="text-center">{{ $no }}</td>
-                                    <td>
-                                        <a href="{{ route('return.show', $retur->id) }}" class="fw-bold text-primary">
-                                            {{ $retur->no_return }}
-                                        </a>
-                                    </td>
-                                    <td>{{ $retur->product_in->no_do ?? 'Belum Ada Product In' }}</td>
-                                    <td>{{ $retur->date }}</td>
-                                    <td>{{ $retur->date_done ?? '-' }}</td>
+                                    <th style="width: 50px;">No</th>
+                                    <th>No Return</th>
+                                    <th>No DO</th>
+                                    <th>Tanggal Return</th>
+                                    <th>Tanggal Selesai</th>
                                 </tr>
-                                @php $no++; @endphp
-                            @empty
-                                <tr>
-                                    <td colspan="5" class="text-center py-4 text-muted">Tidak ada return di invoice ini</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @php $no = 1; @endphp
+                                @foreach ($return as $retur)
+                                    <tr>
+                                        <td class="text-center">{{ $no }}</td>
+                                        <td>
+                                            <a href="{{ route('return.show', $retur->id) }}" class="fw-bold text-primary">
+                                                {{ $retur->no_return }}
+                                            </a>
+                                        </td>
+                                        <td>{{ $retur->product_in->no_do ?? 'Belum Ada Product In' }}</td>
+                                        <td>{{ $retur->date }}</td>
+                                        <td>{{ $retur->date_done ?? '-' }}</td>
+                                    </tr>
+                                    @php $no++; @endphp
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
+            @endif
 
             <!-- Finished Product Out Invoice -->
             @if ($pending->status == '6' && $pending->id_product_out != null && $product)
@@ -697,6 +728,7 @@
                     <div class="modal-body p-0">
                         <div class="onboarding-content mb-0">
                             <h4 class="onboarding-title text-body">{{ $quote->client->company ?? '-' }}</h4>
+                            <p class="text-muted mb-3" style="font-size: 12.5px;">Ubah angka BDG / BKS untuk memindahkan alokasi stok item ke gudang lain — sistem otomatis melepas alokasi lama dan mengecek ketersediaan stok gudang tujuan sebelum menyimpan.</p>
                             <div class="card">
                                 <div class="table-responsive text-nowrap h-100">
                                     <table class="table table-striped">

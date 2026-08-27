@@ -314,57 +314,79 @@
 
 {{-- Product In & Product Out --}}
 <div class="row g-3 mb-3">
-    <div class="col-lg-6">
-        <div class="card border-0 shadow-sm h-100 overflow-hidden">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm overflow-hidden">
             <div class="card-header bg-body-tertiary border-bottom py-3 px-4">
-                <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
-                    <i class="mdi mdi-arrow-down-bold-box-outline text-primary"></i> Product In
-                    <span class="badge rounded-pill bg-label-secondary" id="badge-product-in">0</span>
-                </h6>
+                <ul class="nav nav-tabs card-header-tabs" id="productInOutTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-product-in-tab" data-bs-toggle="tab"
+                            data-bs-target="#tab-product-in" type="button" role="tab">
+                            <i class="mdi mdi-arrow-down-bold-box-outline text-primary me-1"></i> Product In
+                            <span class="badge rounded-pill bg-label-secondary" id="badge-product-in">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-product-out-tab" data-bs-toggle="tab"
+                            data-bs-target="#tab-product-out" type="button" role="tab">
+                            <i class="mdi mdi-arrow-up-bold-box-outline text-primary me-1"></i> Product Out
+                            <span class="badge rounded-pill bg-label-secondary" id="badge-product-out">0</span>
+                        </button>
+                    </li>
+                </ul>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="datatable-product-in-detail table">
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th></th>
-                                <th>No. Invoice</th>
-                                <th>Supplier</th>
-                                <th>Item / Replacement</th>
-                                <th>Qty</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-                    </table>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="tab-product-in" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="datatable-product-in-detail table">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th></th>
+                                        <th>No. Invoice</th>
+                                        <th>Supplier</th>
+                                        <th>Item / Replacement</th>
+                                        <th>Qty</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="tab-product-out" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="datatable-product-out-detail table">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th></th>
+                                        <th>No. Invoice</th>
+                                        <th>Client</th>
+                                        <th>Item / Replacement</th>
+                                        <th>Qty</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-lg-6">
-        <div class="card border-0 shadow-sm h-100 overflow-hidden">
+</div>
+
+{{-- Grafik Barang Masuk & Keluar per bulan --}}
+<div class="row g-3 mb-3">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm overflow-hidden">
             <div class="card-header bg-body-tertiary border-bottom py-3 px-4">
                 <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
-                    <i class="mdi mdi-arrow-up-bold-box-outline text-primary"></i> Product Out
-                    <span class="badge rounded-pill bg-label-secondary" id="badge-product-out">0</span>
+                    <i class="mdi mdi-chart-bar text-primary"></i> Barang Masuk & Keluar per Bulan
                 </h6>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="datatable-product-out-detail table">
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th></th>
-                                <th>No. Invoice</th>
-                                <th>Client</th>
-                                <th>Item / Replacement</th>
-                                <th>Qty</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-                    </table>
-                </div>
+            <div class="card-body p-4">
+                <div id="productInOutMonthlyChart"></div>
             </div>
         </div>
     </div>
@@ -425,6 +447,7 @@
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/animate-css/animate.css">
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-rowgroup-bs5/rowgroup.bootstrap5.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/formvalidation/dist/css/formValidation.min.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/apex-charts/apex-charts.css" />
 @endpush
 @push('after-script')
     <script src="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.js"></script>
@@ -436,6 +459,7 @@
     <script src="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
 @endpush
 @push('page-script')
+    <script src="{{ asset('assets') }}/vendor/libs/apex-charts/apexcharts.js"></script>
     <script src="{{ asset('assets') }}/js/tables-datatables-basic.js"></script>
     <script src="{{ asset('assets') }}/js/extended-ui-sweetalert2.js"></script>
     <script src="{{ asset('assets') }}/includes/table-equivalent.js"></script>
@@ -443,6 +467,40 @@
     <script src="{{ asset('assets') }}/includes/table-product-in-detail.js"></script>
     <script src="{{ asset('assets') }}/includes/table-product-out-detail.js"></script>
     <script src="{{ asset('assets') }}/includes/table-quotation-product.js"></script>
+    <script>
+        (function () {
+            const isDark = document.documentElement.classList.contains('dark-style');
+            const labelColor = isDark ? '#a8aaae' : '#6d6b77';
+            const borderColor = isDark ? '#404152' : '#dbdade';
+
+            const monthlyLabels = @json($monthlyLabels);
+            const monthlyIn = @json($monthlyIn);
+            const monthlyOut = @json($monthlyOut);
+
+            const chartEl = document.querySelector('#productInOutMonthlyChart');
+            if (chartEl) {
+                new ApexCharts(chartEl, {
+                    chart: { type: 'bar', height: 300, toolbar: { show: false }, stacked: false },
+                    series: [
+                        { name: 'Barang Masuk', data: monthlyIn },
+                        { name: 'Barang Keluar', data: monthlyOut },
+                    ],
+                    colors: ['#696cff', '#ff3e1d'],
+                    plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
+                    dataLabels: { enabled: false },
+                    legend: { position: 'top', labels: { colors: labelColor } },
+                    grid: { borderColor: borderColor },
+                    xaxis: {
+                        categories: monthlyLabels,
+                        labels: { style: { colors: labelColor, fontSize: '12px' } },
+                        axisBorder: { show: false },
+                        axisTicks: { show: false },
+                    },
+                    yaxis: { labels: { style: { colors: labelColor, fontSize: '11px' } } },
+                }).render();
+            }
+        })();
+    </script>
 @endpush
 @push('script')
     <script></script>

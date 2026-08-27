@@ -1,20 +1,80 @@
 @extends('layouts.sales.app')
-@section('title', 'My Reports')
+@section('title', 'Service Reports')
 @section('content')
-    <div class="card mb-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <h4 class="fw-bold mb-0">
+            <span class="text-muted fw-light">Service Department /</span> Service Reports
+        </h4>
+        <a href="{{ route('service-reports.create') }}" class="btn btn-primary shadow-sm">
+            <i class="mdi mdi-plus me-1"></i> Buat Service Report
+        </a>
+    </div>
+    <div class="card mb-4 border-warning">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0">
+                <i class="mdi mdi-clipboard-check-outline me-1"></i>Pending Approval
+            </h5>
+            <span class="badge bg-warning rounded-pill">
+                {{ $pendingReports->where('approval_status', 'pending')->count() }} menunggu
+            </span>
+        </div>
         <div class="card-datatable table-responsive pt-0">
-            <table class="datatable-reports-monitor table table-striped">
+            <table class="table table-bordered mb-0">
                 <thead>
                     <tr>
-                        <th></th>
-                        <th></th>
-                        <th>No Service</th>
-                        <th>Company</th>
-                        <th>Job Desc</th>
-                        <th>Unit Type</th>
-                        <th>Date</th>
-                        <th>Sales</th>
-                        <th>Technician</th>
+                        <th class="text-center">No Service</th>
+                        <th class="text-center">Company</th>
+                        <th class="text-center">Job Desc</th>
+                        <th class="text-center">Date</th>
+                        <th class="text-center">Technician</th>
+                        <th class="text-center">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($pendingReports as $r)
+                        <tr>
+                            <td class="text-nowrap">
+                                <a class="fw-bold text-primary" href="{{ route('service-reports.show', $r->id) }}">
+                                    {{ $r->no_service }}
+                                </a>
+                            </td>
+                            <td>{{ optional(optional($r->pic)->client)->company ?? '-' }}</td>
+                            <td>{{ \Illuminate\Support\Str::limit($r->jobdesc, 60) }}</td>
+                            <td class="text-center text-nowrap">{{ \Carbon\Carbon::parse($r->date)->format('d-m-Y') }}</td>
+                            <td>{{ optional($r->technician)->name ?? '-' }}</td>
+                            <td class="text-center">
+                                @if ($r->approval_status === 'rejected')
+                                    <span class="badge bg-label-danger" data-bs-toggle="tooltip"
+                                        title="{{ $r->reject_note }}">Ditolak</span>
+                                @else
+                                    <span class="badge bg-label-warning">Belum Dicek</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">Tidak ada report yang menunggu approval.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-datatable table-responsive pt-0">
+            <table class="datatable-reports-admin table table-bordered">
+                <thead>
+                    <tr>
+                        <th class="text-center">No Service</th>
+                        <th class="text-center">Company</th>
+                        <th class="text-center">Job Desc</th>
+                        <th class="text-center">Brand Type</th>
+                        <th class="text-center">Serial / Tag</th>
+                        <th class="text-center">Date</th>
+                        <th class="text-center">Sales</th>
+                        <th class="text-center">Technician</th>
+                        <th class="text-center">Status</th>
                     </tr>
                 </thead>
             </table>
@@ -44,22 +104,32 @@
 @endpush
 
 @push('page-script')
-    <script src="{{ asset('assets') }}/js/extended-ui-sweetalert2.js"></script>
-    <script src="{{ asset('assets') }}/js/tables-datatables-basic.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-prospect-support.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-prospect-support-admin.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-prospect-support-sales.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-prospect-support-fu-sales.js"></script>
-
-    <script src="{{ asset('assets') }}/includes/table-reports.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-reports-monitor.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-notulen.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-reports-admin.js"></script>
 @endpush
 
 @push('script')
     <script>
         $(document).ready(function() {
             $('[data-bs-toggle="tooltip"]').tooltip();
+
+            @if (session('success'))
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: @json(session('success')),
+                    customClass: { confirmButton: 'btn btn-success waves-effect' },
+                    buttonsStyling: false,
+                });
+            @endif
+            @if ($errors->any())
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: @json($errors->first()),
+                    customClass: { confirmButton: 'btn btn-danger waves-effect' },
+                    buttonsStyling: false,
+                });
+            @endif
 
             $(document).on('click', '.accept-issue', function() {
                 var id = $(this).data('id');

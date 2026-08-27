@@ -298,13 +298,11 @@
                                                 <td class="text-center">{{ $monthQuote }}</td>
                                                 <td class="text-center fw-bold text-success">{{ $monthPOCount }}</td>
                                                 <td class="text-center">
-                                                    <button type="button" class="btn btn-xs btn-primary rounded-pill px-2 py-1"
-                                                        data-bs-toggle="modal" data-bs-target="#overviewPO{{ $DC['monthKey'] }}">
-                                                        <i class="mdi mdi-eye-outline"></i>
-                                                    </button>
-                                                    @push('modals')
-                                                        @include('components.modal.overview.totalPo')
-                                                    @endpush
+                                                    <a href="{{ url('/reports') }}?month={{ $item }}&year={{ $report->year }}{{ isset($user) && $user ? '&sales=' . $user->id : '' }}"
+                                                        class="btn btn-xs btn-primary rounded-pill px-2 py-1 shadow-xs"
+                                                        data-bs-toggle="tooltip" title="Buka Detail Laporan & Rincian PO Bulan {{ $DC['month'] }}">
+                                                        <i class="mdi mdi-chart-box-outline"></i>
+                                                    </a>
                                                 </td>
                                             </tr>
                                         @endfor
@@ -356,7 +354,7 @@
                                 <th class="text-center">Quotation</th>
                                 <th class="text-center">PO Closed</th>
                                 <th class="text-center">% Target</th>
-                                <th class="text-center">Rincian PO</th>
+                                <th class="text-center">Rincian Bulanan</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -403,13 +401,11 @@
                                         </span>
                                     </td>
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-xs btn-primary rounded-pill px-3 py-1"
-                                            data-bs-toggle="modal" data-bs-target="#overviewPO{{ $DC['monthKey'] }}">
-                                            <i class="mdi mdi-eye-outline me-1"></i> Rincian PO
-                                        </button>
-                                        @push('modals')
-                                            @include('components.modal.overview.totalPo')
-                                        @endpush
+                                        <a href="{{ url('/reports') }}?month={{ $item }}&year={{ $report->year }}{{ isset($user) && $user ? '&sales=' . $user->id : '' }}"
+                                            class="btn btn-xs btn-primary rounded-pill px-3 py-1 shadow-xs"
+                                            data-bs-toggle="tooltip" title="Buka Detail Laporan & Rincian PO Bulan {{ $DC['month'] }}">
+                                            <i class="mdi mdi-chart-box-outline me-1"></i> Rincian PO
+                                        </a>
                                     </td>
                                 </tr>
                             @endforeach

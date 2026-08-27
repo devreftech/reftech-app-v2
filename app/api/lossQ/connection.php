@@ -41,7 +41,8 @@ if (Auth::check()) {
         LEFT JOIN pic p on p.id = q.id_pic
         LEFT JOIN client c on c.id = p.id_client
         INNER JOIN users u on u.id = q.id_sales
-        WHERE u.id = $user->id AND q.status = '0' AND q.level = '1'$yearFilter
+        WHERE u.id = $user->id AND q.status = '0' AND q.level = '1' AND q.is_primary = '1'$yearFilter
+        AND NOT EXISTS (SELECT 1 FROM payment pay WHERE pay.id_quotation = q.id AND pay.method = 'Escrow')
         GROUP BY q.id
 
         UNION ALL
@@ -53,6 +54,7 @@ if (Auth::check()) {
         LEFT JOIN client c2 ON c2.id = NULLIF(uq.id_client,'')
         INNER JOIN users u2 ON u2.id = uq.id_sales
         WHERE uq.id_sales = $user->id AND uq.status IN ('loss','cancel') AND uq.is_latest = 1$yearFilterU
+        AND NOT EXISTS (SELECT 1 FROM payment pay2 WHERE pay2.id_unit_quotation = uq.id AND pay2.method = 'Escrow')
 
         ORDER BY estimated_date DESC";
 

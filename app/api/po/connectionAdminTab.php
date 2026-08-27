@@ -36,6 +36,7 @@ try {
     INNER JOIN users u ON u.id = q.id_sales
     LEFT JOIN invoice inv ON inv.id_quotation = q.id
     WHERE q.status = '100' AND q.level = '1' AND q.is_primary = '1' $salesFilter $yearFilter
+    AND NOT EXISTS (SELECT 1 FROM payment pay WHERE pay.id_quotation = q.id AND pay.method = 'Escrow')
     GROUP BY q.id
 
     UNION ALL
@@ -56,12 +57,13 @@ try {
            (SELECT invU.no_invoice FROM invoice invU
             WHERE invU.id_unit_quotation = uq.id AND invU.no_invoice IS NOT NULL
             ORDER BY invU.id DESC LIMIT 1) AS no_invoice,
-           'unit' AS row_type, NULL AS type,
+           'unit' AS row_type, uq.type,
            u2.name AS sales_name, u2.image AS sales_image
     FROM unit_quotation uq
     LEFT JOIN client cl ON cl.id = NULLIF(uq.id_client,'')
     LEFT JOIN users u2 ON u2.id = uq.id_sales
     WHERE uq.status = 'po_received' AND (uq.is_latest = 1 OR uq.is_latest IS NULL) $salesFilter2
+    AND NOT EXISTS (SELECT 1 FROM payment pay2 WHERE pay2.id_unit_quotation = uq.id AND pay2.method = 'Escrow')
     AND EXISTS (
         SELECT 1 FROM unit_quotation_status_history sh2
         WHERE sh2.id_unit_quotation = uq.id AND sh2.status = 'po_received'$yearFilterU

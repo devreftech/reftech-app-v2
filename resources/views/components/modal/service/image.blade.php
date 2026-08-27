@@ -36,7 +36,7 @@
                                     @if (@$image)
                                         @foreach ($image as $item)
                                             <div class="photo-container">
-                                                <img src="{{ url('') . '/' . $item->picture }}" alt=""
+                                                <img src="{{ $item->url }}" alt=""
                                                     srcset="">
                                                 <p>Photo {{ $i }} - {{ $item->keterangan }}</p>
                                             </div>

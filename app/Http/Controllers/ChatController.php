@@ -205,7 +205,7 @@ class ChatController extends Controller
                 if (str_starts_with($user->image, 'http://') || str_starts_with($user->image, 'https://')) {
                     $avatarUrl = $user->image;
                 } else {
-                    $avatarUrl = asset('storage/' . $user->image);
+                    $avatarUrl = asset(ltrim($user->image, '/'));
                 }
             }
 
@@ -270,9 +270,18 @@ class ChatController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
         }
 
-        $targetUser = User::select('id', 'name', 'role')->find($userId);
+        $targetUser = User::select('id', 'name', 'role', 'image')->find($userId);
         if (!$targetUser) {
             return response()->json(['status' => 'error', 'message' => 'User not found'], 404);
+        }
+
+        $targetAvatarUrl = null;
+        if ($targetUser->image) {
+            if (str_starts_with($targetUser->image, 'http://') || str_starts_with($targetUser->image, 'https://')) {
+                $targetAvatarUrl = $targetUser->image;
+            } else {
+                $targetAvatarUrl = asset(ltrim($targetUser->image, '/'));
+            }
         }
 
         // Fast mark incoming messages from targetUser as read
@@ -321,6 +330,7 @@ class ChatController extends Controller
                 'id' => $targetUser->id,
                 'name' => $targetUser->name,
                 'role' => $targetUser->role ?: 'Staff',
+                'avatar_url' => $targetAvatarUrl,
                 'presence' => self::getUserPresence($targetUser->id),
             ],
             'messages' => $formattedMessages,

@@ -709,6 +709,7 @@
                                     <th>Quote No.</th>
                                     <th>Company</th>
                                     <th>Total Price</th>
+                                    <th>Type</th>
                                     <th>Description</th>
                                     <th>Date</th>
                                     <th>Status</th>
@@ -1948,6 +1949,7 @@
 
         $('.change-sales').on('click', function(ev) {
             var id = $(this).data('id');
+            if (id === 'project') return; // Sales Project di-render server-side, gak butuh AJAX per-tab.
             console.log('sales ini ber id : ' + id);
             var $pane = $('#navs-sales-' + id);
 

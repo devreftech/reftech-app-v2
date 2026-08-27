@@ -319,8 +319,10 @@
         </div>
     </div>
 
-    {{-- Floating Chat Bubble Component (Preview View) --}}
-    @include('includes.sales.chat-bubble')
+    {{-- Floating Chat Bubble Component (Disabled on Print Smart Quote and Print Views) --}}
+    @unless(request()->routeIs('unit-quotation.print') || request()->is('smart-quote/*/print') || request()->is('*print*'))
+        @include('includes.sales.chat-bubble')
+    @endunless
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {

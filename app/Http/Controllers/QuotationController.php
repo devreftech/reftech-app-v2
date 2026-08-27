@@ -1123,7 +1123,42 @@ class QuotationController extends Controller
     }
     public function prospect_quote()
     {
-        return view('pages.sales.quotation.prospect.index');
+        $userId = Auth::id();
+        $isAdmin = Auth::user()->role == 'Admin';
+
+        // Base query for prospect quotations (status 20, 30, 40, 60, 80 with id_support NOT NULL)
+        $baseQuery = Quotation::whereIn('status', ['20', '30', '40', '60', '80'])
+            ->where('level', '1')
+            ->where('is_primary', '1')
+            ->where('type', '!=', 'Unit')
+            ->whereNotNull('id_support');
+
+        if (!$isAdmin) {
+            $baseQuery = $baseQuery->where('id_sales', $userId);
+        }
+
+        $totalQuotesCount = (clone $baseQuery)->count();
+        $totalQuotesSum = (clone $baseQuery)->sum('harga_total');
+
+        $hotQuotesCount = (clone $baseQuery)->where('status', '80')->count();
+        $hotQuotesSum = (clone $baseQuery)->where('status', '80')->sum('harga_total');
+
+        $negotiationCount = (clone $baseQuery)->where('status', '60')->count();
+        $negotiationSum = (clone $baseQuery)->where('status', '60')->sum('harga_total');
+
+        $progressCount = (clone $baseQuery)->whereIn('status', ['20', '30', '40'])->count();
+        $progressSum = (clone $baseQuery)->whereIn('status', ['20', '30', '40'])->sum('harga_total');
+
+        return view('pages.sales.quotation.prospect.index', compact(
+            'totalQuotesCount',
+            'totalQuotesSum',
+            'hotQuotesCount',
+            'hotQuotesSum',
+            'negotiationCount',
+            'negotiationSum',
+            'progressCount',
+            'progressSum'
+        ));
     }
     public function po_quote()
     {
@@ -1807,8 +1842,10 @@ class QuotationController extends Controller
         $payment->method = $request->method;
         if ($request->method == 'Escrow') {
             $payment->level = 1;
+            $payment->escrow_channel = $request->escrow_channel;
         } else {
             $payment->level = 0;
+            $payment->escrow_channel = null;
         }
         $payment->percent = $request->percent;
         if ($request->type == 'Tempo') {

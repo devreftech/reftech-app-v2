@@ -22,7 +22,8 @@ if (Auth::check()) {
 
         // Query database for data
         $query = "SELECT r.id, r.no_service, c.company, r.jobdesc, CONCAT(sp.brand, ' ', un.model) AS brand_type,
-        COALESCE(NULLIF(CONCAT_WS(' / ', m.serial, m.tag), ''), '-') AS serial_tag, r.date
+        COALESCE(NULLIF(CONCAT_WS(' / ', m.serial, m.tag), ''), '-') AS serial_tag, r.date,
+        r.approval_status, r.reject_note
         FROM reports r
         JOIN machine m on r.id_machine = m.id
         LEFT JOIN pic p on p.id = r.id_pic

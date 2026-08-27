@@ -183,7 +183,7 @@
                 <div class="card-body d-grid gap-2">
 
                     {{-- Sales: link ke penawaran yang sudah ada --}}
-                    @if ($role == 'Sales' && !$suo->id_quotation)
+                    @if ($role == 'Sales' && !$suo->id_quotation && !$suo->id_unit_quotation)
                         <button type="button" class="btn btn-outline-primary waves-effect"
                             data-bs-toggle="modal" data-bs-target="#modalLinkQuotation">
                             <i class="mdi mdi-link-variant me-1"></i> Hubungkan ke Penawaran
@@ -193,7 +193,7 @@
                     {{-- Sales: convert to quotation — form Quotation lama sudah gak dipakai buat
                     bikin baru (konsolidasi ke Smart Quote), jadi tombolnya diganti info aja
                     biar gak dead-end. --}}
-                    @if (($role == 'Sales' || $role == 'Admin') && $suo->status == 'goods_out' && !$suo->id_quotation)
+                    @if (($role == 'Sales' || $role == 'Admin') && $suo->status == 'goods_out' && !$suo->id_quotation && !$suo->id_unit_quotation)
                         <div class="alert alert-secondary p-2 mb-0" style="font-size:12px;">
                             Barang sudah keluar. Pembuatan penawaran otomatis dari SUO ini sudah tidak tersedia — silakan buat Smart Quote secara manual jika diperlukan.
                         </div>
@@ -205,6 +205,18 @@
                         </div>
                         <a href="{{ route('quotation.show', $suo->id_quotation) }}" class="btn btn-outline-primary">
                             <i class="mdi mdi-eye-outline me-1"></i> Lihat Penawaran
+                        </a>
+                        @if ($invoice)
+                            <a href="{{ url('invoice/' . $invoice->id) }}" class="btn btn-outline-success">
+                                <i class="mdi mdi-file-document-outline me-1"></i> Lihat Invoice
+                            </a>
+                        @endif
+                    @elseif ($suo->id_unit_quotation)
+                        <div class="alert alert-primary p-2 mb-0" style="font-size:12px;">
+                            SUO sudah terhubung ke Smart Quote.
+                        </div>
+                        <a href="{{ route('unit-quotation.show', $suo->id_unit_quotation) }}" class="btn btn-outline-primary">
+                            <i class="mdi mdi-eye-outline me-1"></i> Lihat Smart Quote
                         </a>
                         @if ($invoice)
                             <a href="{{ url('invoice/' . $invoice->id) }}" class="btn btn-outline-success">
@@ -359,7 +371,7 @@
     @endif
 
     {{-- Modal Hubungkan ke Penawaran --}}
-    @if ($role == 'Sales' && !$suo->id_quotation)
+    @if ($role == 'Sales' && !$suo->id_quotation && !$suo->id_unit_quotation)
     <div class="modal fade" id="modalLinkQuotation" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
@@ -453,8 +465,11 @@ function renderQuotationLinkList(data) {
     }
     var html = '<div class="list-group">';
     data.forEach(function (q) {
-        html += '<button type="button" class="list-group-item list-group-item-action btn-pick-quotation" data-id="' + q.id + '" data-no="' + (q.no_quote || '-') + '">'
-            + '<div class="d-flex justify-content-between"><strong>' + (q.no_quote || '-') + '</strong>'
+        var badge = q.source === 'unit_quotation'
+            ? '<span class="badge bg-label-info me-1">Smart Quote</span>'
+            : '<span class="badge bg-label-secondary me-1">Penawaran</span>';
+        html += '<button type="button" class="list-group-item list-group-item-action btn-pick-quotation" data-id="' + q.id + '" data-no="' + (q.no_quote || '-') + '" data-source="' + q.source + '">'
+            + '<div class="d-flex justify-content-between"><strong>' + badge + (q.no_quote || '-') + '</strong>'
             + '<small class="text-muted">' + new Date(q.created_at).toLocaleDateString('id-ID') + '</small></div>'
             + '<div style="font-size:12px;">' + (q.title || '') + '</div>'
             + '<div class="text-muted" style="font-size:12px;">' + (q.company || '') + '</div>'
@@ -489,9 +504,11 @@ $(function () {
     $(document).on('click', '.btn-pick-quotation', function () {
         var idQuotation = $(this).data('id');
         var noQuote = $(this).data('no');
+        var source = $(this).data('source');
+        var label = source === 'unit_quotation' ? 'Smart Quote' : 'penawaran';
         Swal.fire({
             icon: 'question',
-            title: 'Hubungkan ke penawaran ' + noQuote + '?',
+            title: 'Hubungkan ke ' + label + ' ' + noQuote + '?',
             showCancelButton: true,
             confirmButtonText: 'Ya, Hubungkan',
             cancelButtonText: 'Batal',
@@ -502,7 +519,7 @@ $(function () {
             $.ajax({
                 url: '{{ route('suo.linkQuotation', $suo->id) }}',
                 type: 'POST',
-                data: { _token: '{{ csrf_token() }}', id_quotation: idQuotation },
+                data: { _token: '{{ csrf_token() }}', id_quotation: idQuotation, source: source },
                 success: function (res) {
                     if (res.success) {
                         Swal.fire({

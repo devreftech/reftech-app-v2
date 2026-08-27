@@ -10,6 +10,7 @@ class UnitQuotationDetail extends Model
 
     protected $fillable = [
         'id_unit_quotation',
+        'id_option',
         'type',
         'id_unit',
         'id_fixed_asset',
@@ -25,6 +26,11 @@ class UnitQuotationDetail extends Model
         'pph',
         'sort_order',
     ];
+
+    public function option()
+    {
+        return $this->belongsTo(UnitQuotationOption::class, 'id_option');
+    }
 
     public function unit()
     {

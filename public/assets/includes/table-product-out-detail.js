@@ -4,7 +4,14 @@ $(function () {
     var path = window.location.pathname;
     var id = path.substring(path.lastIndexOf('/') + 1);
 
-    if (dt_table_product_out_detail.length) {
+    if (!dt_table_product_out_detail.length) return;
+
+    var initialized = false;
+
+    function initTable() {
+        if (initialized) return;
+        initialized = true;
+
         $('[data-toggle="tooltip"]').tooltip();
         var dt_product_out_detail = dt_table_product_out_detail.DataTable({
             ajax: {
@@ -115,8 +122,15 @@ $(function () {
                 },
             },
         });
+
+        dt_table_product_out_detail.on("draw", function () {
+            $('[data-toggle="tooltip"]').tooltip();
+        });
     }
-    dt_table_product_out_detail.on("draw", function () {
-        $('[data-toggle="tooltip"]').tooltip();
-    });
+
+    // Tab "Product Out" bukan tab aktif default — DataTable-nya baru dibuat
+    // begitu tabnya pertama kali dibuka, biar lebar kolom kehitung benar
+    // (nggak dihitung 0 gara-gara containernya masih display:none).
+    $('[data-bs-target="#tab-product-out"]').on("shown.bs.tab", initTable);
+    if ($("#tab-product-out").hasClass("active")) initTable();
 });

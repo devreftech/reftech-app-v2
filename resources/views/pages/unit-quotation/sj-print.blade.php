@@ -5,6 +5,7 @@
     $client = $unitQuote->client ?? null;
     $address = $client ? ($delivery->destination == '1' ? $client->address : $client->subAddress) : '-';
     $doNumber = $invoice->no_invoice ?? $unitQuote->no_quote;
+    $isKojisha = $client?->info === 'Kojisha';
 @endphp
 <div class="invoice-print p-4">
     @if ($isEkspedisi)
@@ -12,19 +13,32 @@
             {{-- Header --}}
             <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column mb-0">
                 <div class="mb-xl-0 pb-1">
-                    <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
-                        <span class="app-brand-logo demo">
-                            <span style="color: var(--bs-primary)">
-                                <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="" width="60%">
+                    @if ($isKojisha)
+                        <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
+                            <span class="app-brand-logo demo">
+                                <img src="{{ asset('/asset') }}/logo/Logo-update-size.png" alt="Kojisha Logo" width="180">
                             </span>
-                        </span>
-                    </div>
-                    <p class="mb-1 fw-bolder" style="font-size: 15px">PT Reftech Jaya Optima</p>
-                    <div style="font-size: 12px; color: #555;">
-                        <p class="mb-0">Taman Kopo Indah V, Soho Sommerville No. 31</p>
-                        <p class="mb-0">Bandung – Jawa Barat 40218</p>
-                        <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>accounting@reftech.id &nbsp;|&nbsp; <i class="mdi mdi-web me-1" style="font-size:11px;"></i>www.reftech.id</p>
-                    </div>
+                        </div>
+                        <p class="mb-1 fw-bolder" style="font-size: 15px">PT Kojisha Innotiv Indonesia</p>
+                        <div style="font-size: 12px; color: #555;">
+                            <p class="mb-0">Jl. Nancep No. 45A, Setu</p>
+                            <p class="mb-0">Cibitung - Kab. Bekasi 17320</p>
+                        </div>
+                    @else
+                        <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
+                            <span class="app-brand-logo demo">
+                                <span style="color: var(--bs-primary)">
+                                    <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="" width="60%">
+                                </span>
+                            </span>
+                        </div>
+                        <p class="mb-1 fw-bolder" style="font-size: 15px">PT Reftech Jaya Optima</p>
+                        <div style="font-size: 12px; color: #555;">
+                            <p class="mb-0">Taman Kopo Indah V, Soho Sommerville No. 31</p>
+                            <p class="mb-0">Bandung – Jawa Barat 40218</p>
+                            <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>accounting@reftech.id &nbsp;|&nbsp; <i class="mdi mdi-web me-1" style="font-size:11px;"></i>www.reftech.id</p>
+                        </div>
+                    @endif
                 </div>
                 <div class="text-end">
                     <h3 class="fw-bold mb-1" style="letter-spacing:2px; color:#696cff;">DELIVERY ORDER</h3>
@@ -96,7 +110,7 @@
             <div class="row">
                 <div class="col-4 mt-4 text-center">
                     <div style="height:56px;"></div>
-                    <p class="fw-bold mx-3 mb-0" style="border-top:1px solid #000; padding-top:4px;">PT. Reftech Jaya Optima</p>
+                    <p class="fw-bold mx-3 mb-0" style="border-top:1px solid #000; padding-top:4px;">{{ $isKojisha ? 'PT. Kojisha Innotiv Indonesia' : 'PT. Reftech Jaya Optima' }}</p>
                     <p class="text-muted small mb-0">Shipper</p>
                 </div>
                 <div class="col-4"></div>
@@ -131,24 +145,39 @@
                                     <div class="col-6">
                                         <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column">
                                             <div class="mb-xl-0 pb-1">
-                                                <div class="d-flex svg-illustration align-items-center gap-2">
-                                                    <span class="app-brand-logo demo">
-                                                        <span style="color: var(--bs-primary)">
+                                                @if ($isKojisha)
+                                                    <div class="d-flex svg-illustration align-items-center gap-2">
+                                                        <span class="app-brand-logo demo">
                                                             <img class="text-md"
-                                                                src="{{ asset('/asset') }}/logo/Reftech-Log.png"
-                                                                alt="" srcset="" width="60%">
+                                                                src="{{ asset('/asset') }}/logo/Logo-update-size.png"
+                                                                alt="Kojisha Logo" srcset="" width="140">
                                                         </span>
-                                                    </span>
-                                                </div>
-                                                <p class="mb-1 mx-2 fw-bolder">PT Reftech Jaya Optima</p>
-                                                <div class="mx-2" style="font-size: 10px">
-                                                    <p class="mb-1">Taman Kopo Indah V, Ruko Sommerville No. 31</p>
-                                                    <p class="mb-1">Bandung – Jawa Barat 40218</p>
-                                                    <p class="mb-1">
-                                                        <i class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-14px"></i>022 54417653
-                                                        {{ '   ' }}<i class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px"></i>accounting@reftech.id
-                                                    </p>
-                                                </div>
+                                                    </div>
+                                                    <p class="mb-1 mx-2 fw-bolder">PT Kojisha Innotiv Indonesia</p>
+                                                    <div class="mx-2" style="font-size: 10px">
+                                                        <p class="mb-1">Jl. Nancep No. 45A, Setu</p>
+                                                        <p class="mb-1">Cibitung - Kab. Bekasi 17320</p>
+                                                    </div>
+                                                @else
+                                                    <div class="d-flex svg-illustration align-items-center gap-2">
+                                                        <span class="app-brand-logo demo">
+                                                            <span style="color: var(--bs-primary)">
+                                                                <img class="text-md"
+                                                                    src="{{ asset('/asset') }}/logo/Reftech-Log.png"
+                                                                    alt="" srcset="" width="60%">
+                                                            </span>
+                                                        </span>
+                                                    </div>
+                                                    <p class="mb-1 mx-2 fw-bolder">PT Reftech Jaya Optima</p>
+                                                    <div class="mx-2" style="font-size: 10px">
+                                                        <p class="mb-1">Taman Kopo Indah V, Ruko Sommerville No. 31</p>
+                                                        <p class="mb-1">Bandung – Jawa Barat 40218</p>
+                                                        <p class="mb-1">
+                                                            <i class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-14px"></i>022 54417653
+                                                            {{ '   ' }}<i class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px"></i>accounting@reftech.id
+                                                        </p>
+                                                    </div>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>
@@ -209,7 +238,7 @@
                                         <p class="fw-bold mx-3 mb-0" style="border-top: 1px solid black ">Recieved</p>
                                     </div>
                                 </div>
-                                <p class="mb-0">Distribusi : Putih dan Pink → Pelanggan, <span class="fw-bold">Kuning → Accounting PT. Reftech</span></p>
+                                <p class="mb-0">Distribusi : Putih dan Pink → Pelanggan, <span class="fw-bold">Kuning → Accounting {{ $isKojisha ? 'PT. Kojisha' : 'PT. Reftech' }}</span></p>
                             </td>
                         </tr>
                     </tbody>

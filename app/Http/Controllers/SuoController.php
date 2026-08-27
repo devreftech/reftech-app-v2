@@ -249,37 +249,77 @@ class SuoController extends Controller
     {
         $suo = Suo::findOrFail($id);
 
-        $linkedIds = Suo::whereNotNull('id_quotation')->pluck('id_quotation');
+        $linkedQuotationIds     = Suo::whereNotNull('id_quotation')->pluck('id_quotation');
+        $linkedUnitQuotationIds = Suo::whereNotNull('id_unit_quotation')->pluck('id_unit_quotation');
 
         $quotations = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')
             ->join('client', 'client.id', '=', 'pic.id_client')
             ->where('quotation.id_sales', $suo->id_sales)
             ->where('quotation.level', '1')
             ->where('quotation.is_primary', '1')
-            ->whereNotIn('quotation.id', $linkedIds)
-            ->orderByDesc('quotation.created_at')
-            ->get(['quotation.id', 'quotation.no_quote', 'quotation.title', 'quotation.created_at', 'client.company']);
+            ->whereNotIn('quotation.id', $linkedQuotationIds)
+            ->get(['quotation.id', 'quotation.no_quote', 'quotation.title', 'quotation.created_at', 'client.company'])
+            ->map(function ($q) {
+                $q->source = 'quotation';
+                return $q;
+            });
 
-        return response()->json(['data' => $quotations]);
+        $unitQuotations = UnitQuotation::join('client', 'client.id', '=', 'unit_quotation.id_client')
+            ->where('unit_quotation.id_sales', $suo->id_sales)
+            ->where('unit_quotation.is_latest', '1')
+            ->whereNotIn('unit_quotation.id', $linkedUnitQuotationIds)
+            ->get(['unit_quotation.id', 'unit_quotation.no_quote', 'unit_quotation.title', 'unit_quotation.created_at', 'client.company'])
+            ->map(function ($q) {
+                $q->source = 'unit_quotation';
+                return $q;
+            });
+
+        $data = $quotations->concat($unitQuotations)->sortByDesc('created_at')->values();
+
+        return response()->json(['data' => $data]);
     }
 
     public function linkQuotation(Request $request, $id)
     {
-        $request->validate(['id_quotation' => 'required|exists:quotation,id']);
+        $request->validate([
+            'id_quotation' => 'required|integer',
+            'source'       => 'required|in:quotation,unit_quotation',
+        ]);
 
         $suo = Suo::findOrFail($id);
 
-        $alreadyLinked = Suo::whereNotNull('id_quotation')
-            ->where('id_quotation', $request->id_quotation)
-            ->where('id', '!=', $suo->id)
-            ->exists();
+        if ($request->source === 'unit_quotation') {
+            UnitQuotation::findOrFail($request->id_quotation);
 
-        if ($alreadyLinked) {
-            return response()->json(['success' => false, 'message' => 'Penawaran ini sudah dihubungkan ke SUO lain.'], 422);
+            $alreadyLinked = Suo::whereNotNull('id_unit_quotation')
+                ->where('id_unit_quotation', $request->id_quotation)
+                ->where('id', '!=', $suo->id)
+                ->exists();
+
+            if ($alreadyLinked) {
+                return response()->json(['success' => false, 'message' => 'Smart Quote ini sudah dihubungkan ke SUO lain.'], 422);
+            }
+
+            $suo->status            = 'converted';
+            $suo->id_unit_quotation  = $request->id_quotation;
+            $suo->id_quotation       = null;
+        } else {
+            Quotation::findOrFail($request->id_quotation);
+
+            $alreadyLinked = Suo::whereNotNull('id_quotation')
+                ->where('id_quotation', $request->id_quotation)
+                ->where('id', '!=', $suo->id)
+                ->exists();
+
+            if ($alreadyLinked) {
+                return response()->json(['success' => false, 'message' => 'Penawaran ini sudah dihubungkan ke SUO lain.'], 422);
+            }
+
+            $suo->status            = 'converted';
+            $suo->id_quotation       = $request->id_quotation;
+            $suo->id_unit_quotation  = null;
         }
 
-        $suo->status       = 'converted';
-        $suo->id_quotation = $request->id_quotation;
         $suo->save();
 
         return response()->json(['success' => true]);

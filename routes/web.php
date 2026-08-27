@@ -166,7 +166,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/sales-payment-templates/{id}/set-default', [SalesPaymentTemplateController::class, 'setDefault'])->name('sales-payment-templates.set-default');
 
     // Route Reports
-    Route::get('/reports', [ReportsController::class, 'index']);
+    Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
     Route::get('/reports/support/{year?}/{month?}', [OverviewController::class, 'supportReport'])->name('reports.support');
 
     // Route Overview
@@ -209,6 +209,11 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/db/service-reports/machine/{id_machine}', [ServiceReportsController::class, 'dataByMachine'])->name('service-reports.data.machine');
     Route::get('/service-reports/unit/{id_unit}', [ServiceReportsController::class, 'createByUnit'])->name('service-reports.unit');
     Route::get('/service-reports/unit/{id_unit}/machine/{id_machine}', [ServiceReportsController::class, 'createByUnitMachine'])->name('service-reports.unit.machine');
+    // Quick-add PIC/machine langsung dari form Service Report (AJAX, gak reload
+    // halaman) — dipakai teknisi pas ketemu penanggung jawab/mesin baru di client
+    // yang UDAH dipilih, yang belum ada di master data.
+    Route::post('/service-reports/quick-pic', [ServiceReportsController::class, 'storeQuickPic'])->name('service-reports.quick-pic');
+    Route::post('/service-reports/quick-machine', [ServiceReportsController::class, 'storeQuickMachine'])->name('service-reports.quick-machine');
     Route::post('/service-reports/sign/{id}', [ServiceReportsController::class, 'hand_sign'])->name('service-reports.sign');
     Route::post('/service-reports/image/{id}', [ServiceReportsController::class, 'inputImage'])->name('service-reports.image');
     Route::post('/service-reports/image-v2/{id}', [ServiceReportsController::class, 'inputImageV2'])->name('service-reports.image-v2');
@@ -219,6 +224,10 @@ Route::group(["middleware" => "auth"], function () {
     Route::patch('/service-reports/field/{id}', [ServiceReportsController::class, 'updateField'])->name('service-reports.field.update');
     Route::post('/service-reports-viewed', [ServiceReportsController::class, 'markViewed']);
     Route::get('/service-reports-servicem', [ServiceReportsController::class, 'serviceMer'])->name('service-reports.manager');
+    // Approval ServiceM: teknisi submit => pending => ServiceM approve/reject.
+    // Baru setelah approve report kehitung di badge Sales.
+    Route::post('/service-reports/{id}/approve', [ServiceReportsController::class, 'approve'])->name('service-reports.approve');
+    Route::post('/service-reports/{id}/reject', [ServiceReportsController::class, 'reject'])->name('service-reports.reject');
 
     // Route untuk audit
     Route::resource('/audit-tools', AuditController::class);
@@ -370,12 +379,17 @@ Route::group(["middleware" => "auth"], function () {
             ->leftJoin('product_out as p', 'p.invoice', '=', 'invoice.no_invoice')  // Menggunakan left join
             ->join('detail_quotation as dq', 'dq.id_quotation', '=', 'q.id')
             ->join('serial_product as s', 's.id', '=', 'dq.id_equivalent')
+            ->join('product as pr', 'pr.id', '=', 's.id_product')
             ->join('pic', 'pic.id', '=', 'q.id_pic')
             ->join('client', 'client.id', '=', 'pic.id_client')
             ->where('q.status', '100')
             ->whereNotNull('q.po_file')
             ->whereNotNull('invoice.no_invoice')
             ->whereNull('p.id')  // Kondisi untuk mengecek invoice yang tidak memiliki product_out
+            ->where(function ($q) {
+                $q->whereNull('pr.category')
+                    ->orWhere('pr.category', '!=', 'Unit');
+            })
             ->groupBy('invoice.id')  // Mengelompokkan hasil per invoice
             ->orderByDesc('invoice.no_invoice')
             ->get([
@@ -396,6 +410,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/sale-report/online/{id}', [SalesReportController::class, 'detailOnline'])->name('reports.online');
     Route::get('/sale-report/offline/{id}', [SalesReportController::class, 'detailOffline'])->name('reports.offline');
     Route::get('/sales-report/yearly/{year}', [SalesReportController::class, 'yearly'])->name('reports.yearly');
+    Route::get('/db/reports/year/{year}', [SalesReportController::class, 'yearlyData'])->name('reports.yearly.data');
 
     // Route untuk Employee
     Route::resource('/employee', EmployeeController::class);
@@ -406,16 +421,57 @@ Route::group(["middleware" => "auth"], function () {
     Route::resource('/machine', MachineController::class);
     Route::post('/machine/technician/store', [MachineController::class, 'storeTechnician'])->name('store.machine-technician');
     Route::get('/machine/dropdown/{id}', function ($id) {
+        // Cuma select kolom yang beneran dipakai frontend (lihat machine-dropdown
+        // di service-reports/form.blade.php) — machine.* narik semua kolom termasuk
+        // yang gak perlu (last_service_date, visit_1..4_date/type, dst).
+        //
+        // serial_product/unit di-LEFT JOIN (bukan INNER) — mesin "Dummy" hasil quick-add
+        // teknisi (lihat ServiceReportsController::storeQuickMachine) sengaja gak
+        // di-link ke katalog Unit (id_unit null), jadi INNER JOIN bakal nge-hide
+        // mereka sama sekali dari dropdown ini.
         $machine = Machine::join('client as c', 'c.id', '=', 'machine.id_client')
             ->join('pic as p', 'p.id_client', '=', 'c.id')
-            ->join('serial_product as s', 's.id', '=', 'machine.id_unit')
-            ->join('unit as u', 'u.id', '=', 's.id_product')
+            ->leftJoin('serial_product as s', 's.id', '=', 'machine.id_unit')
+            ->leftJoin('unit as u', 'u.id', '=', 's.id_product')
             ->where('p.id', $id)
             ->groupBy('machine.id', 'u.id')
             ->select(
-                'machine.*',
+                'machine.id',
+                'machine.location',
+                'machine.tag',
+                'machine.serial',
+                'machine.desc',
                 'u.bar',
-                // 'u.voltage',
+                'u.sku',
+                'u.model',
+                'u.unit as unit_category',
+                's.brand',
+                DB::raw('CASE WHEN u.id IS NULL THEN 1 ELSE 0 END as is_dummy'),
+            )
+            ->get();
+        return response()->json($machine);
+    });
+    Route::get('/db/machine/internal-fleet', function () {
+        // Dipakai Unit Mesin di Service Report pas Service Type = Rental — bukan
+        // mesin milik client, tapi unit internal Reftech (fixed_asset type=Mesin
+        // yang udah lolos QC). Lookup-nya lewat fixed_asset.id_machine, BUKAN
+        // Machine.id_client == 5387 — id_client itu kecampur baris Machine lain yang
+        // gak ada hubungannya sama fixed_asset (dari alur stok Unit biasa).
+        $machineIds = FixedAsset::where('type', 'Mesin')
+            ->where('qc_status', 'ok')
+            ->where('is_disposed', false)
+            ->whereNotNull('id_machine')
+            ->pluck('id_machine');
+
+        $machine = Machine::whereIn('machine.id', $machineIds)
+            ->leftJoin('serial_product as s', 's.id', '=', 'machine.id_unit')
+            ->leftJoin('unit as u', 'u.id', '=', 's.id_product')
+            ->select(
+                'machine.id',
+                'machine.location',
+                'machine.tag',
+                'machine.serial',
+                'u.bar',
                 'u.sku',
                 'u.model',
                 'u.unit as unit_category',
@@ -425,11 +481,11 @@ Route::group(["middleware" => "auth"], function () {
         return response()->json($machine);
     });
     Route::get('/client/dropdown/{id}', function ($id) {
-        $client = Client::where('id_sales', $id)->get();
+        $client = Client::where('id_sales', $id)->orderBy('company')->get(['id', 'company']);
         return response()->json($client);
     });
     Route::get('/pic/dropdown/{id}', function ($id) {
-        $pic = Pic::where('id_client', $id)->get();
+        $pic = Pic::where('id_client', $id)->orderBy('name_pic')->get(['id', 'name_pic']);
         return response()->json($pic);
     });
     Route::get('/kota/search', function (\Illuminate\Http\Request $request) {
@@ -1615,10 +1671,22 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/unit-acquisition/{id}/status', [FixedController::class, 'updateStatusUnit'])->name('unit-acquisition.status');
     Route::post('/unit-acquisition/{id}/harga-jual', [FixedController::class, 'updateHargaJual'])->name('unit-acquisition.harga-jual');
 
+    // Aksi scan barcode/QR unit Fixed Asset — ubah status jadi Rental (scan out)
+    // atau terima kembali jadi OK (scan in). QR-nya (barcodeImage()) encode URL ke
+    // unit-acquisition.show langsung — formnya nempel di halaman detail unit itu,
+    // gak ada halaman "scan" terpisah lagi.
+    Route::post('/fixed-asset/{id}/scan/out', [FixedController::class, 'scanStoreOut'])->name('fixed-asset.scan.out');
+    Route::post('/fixed-asset/{id}/scan/in', [FixedController::class, 'scanStoreIn'])->name('fixed-asset.scan.in');
+    Route::get('/fixed-asset/{id}/barcode', [FixedController::class, 'barcodeImage'])->name('fixed-asset.barcode');
+
     // Unit Product In (barang masuk unit) — satu pintu masuk semua transaksi unit:
     // purchase_new -> unit_inventory, purchase_used/trade_in -> fixed_asset (Mesin).
     Route::get('/unit-product-in/goods-receipt/{po}', [UnitProductInController::class, 'goodsReceiptForm'])->name('unit-product-in.goods-receipt-form');
     Route::post('/unit-product-in/goods-receipt/{po}', [UnitProductInController::class, 'storeGoodsReceipt'])->name('unit-product-in.store-goods-receipt');
+    Route::get('/unit-inventory/{id}', [UnitProductInController::class, 'showInventory'])->name('unit-inventory.show');
+    Route::post('/unit-inventory/{id}/harga-jual', [UnitProductInController::class, 'updateHargaJualUnit'])->name('unit-inventory.harga-jual');
+    Route::post('/unit-inventory/item/{inventoryId}/rebranding-cost', [UnitProductInController::class, 'storeRebrandingCost'])->name('unit-inventory.rebranding-cost.store');
+    Route::delete('/unit-inventory/rebranding-cost/{costId}', [UnitProductInController::class, 'destroyRebrandingCost'])->name('unit-inventory.rebranding-cost.destroy');
     Route::resource('/unit-product-in', UnitProductInController::class)->only(['index', 'create', 'store']);
 
     // Unit Product Out (barang keluar unit) — jual unit baru (unit_inventory) atau
@@ -1667,9 +1735,15 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/purchase/pph/{id}', [POController::class, 'add_pph'])->name('purchase.add_pph');
     Route::patch('/purchase/delete-pph/{id}', [POController::class, 'delete_pph'])->name('purchase.delete_pph');
     Route::patch('/purchase/{id}/delivery', [POController::class, 'delivery'])->name('purchase.delivery');
+    Route::patch('/purchase/{id}/delivery-unit', [POController::class, 'deliveryUnit'])->name('purchase.delivery-unit');
     Route::post('/purchase/{id}/invoice', [POController::class, 'uploadInvoice'])->name('purchase.upload-invoice');
     Route::get('/purchase/{id}/goods-receipt', [PurchaseController::class, 'goodsReceiptForm'])->name('purchase.goods-receipt');
     Route::post('/purchase/{id}/goods-receipt', [PurchaseController::class, 'storeGoodsReceipt'])->name('purchase.store-goods-receipt');
+    // GR buat PO Parts yang dibeli langsung tanpa Purchase Request — sumber itemnya
+    // detail_purchase_order langsung (bukan purchase_request_detail_allocation),
+    // karena gak ada PR yang dialokasikan.
+    Route::get('/purchase/{id}/goods-receipt-direct', [PurchaseController::class, 'goodsReceiptFormDirect'])->name('purchase.goods-receipt-direct');
+    Route::post('/purchase/{id}/goods-receipt-direct', [PurchaseController::class, 'storeGoodsReceiptDirect'])->name('purchase.store-goods-receipt-direct');
     Route::post('/purchase-order-type/quick-store', [POController::class, 'quickStoreType'])->name('purchase-order-type.quick-store');
 
     // Purchase Order
@@ -2107,6 +2181,42 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/db/client/reseller/admin', function () {
         require_once base_path('app/api/customers/connectionResellerAdmin.php');
     });
+    Route::get('/db/client/search', function () {
+        // Select2 AJAX buat pilih customer di form Unit Keluar — cuma client yang
+        // role-nya udah "Customers" (bukan Leads) yang di-load, dan cuma pas diketik
+        // (bukan dump semua client sekaligus) biar loadingnya ringan.
+        $q = trim(request()->get('q', ''));
+        $like = '%' . $q . '%';
+
+        $results = \App\Models\Client::where('role', 'Customers')
+            ->where(function ($query) use ($like) {
+                $query->where('company', 'like', $like)
+                    ->orWhere('email', 'like', $like)
+                    ->orWhere('phone', 'like', $like)
+                    ->orWhere('mobile', 'like', $like);
+            })
+            ->orderBy('company')
+            ->limit(20)
+            ->get(['id', 'company', 'email', 'phone', 'mobile', 'area']);
+
+        return response()->json($results);
+    });
+    Route::get('/db/client/search-all', function () {
+        // Select2 AJAX buat pilih client di modal "Create New Machine" (form-technician
+        // modal) — semua client (Leads maupun Customers, beda dari /db/client/search
+        // yang cuma Customers), tapi cuma di-load pas diketik biar gak dump ribuan
+        // baris ke DOM kayak sebelumnya.
+        $q = trim(request()->get('q', ''));
+        $like = '%' . $q . '%';
+
+        $results = \App\Models\Client::with('sales:id,name')
+            ->where('company', 'like', $like)
+            ->orderBy('company')
+            ->limit(20)
+            ->get(['id', 'company', 'id_sales']);
+
+        return response()->json($results);
+    });
     Route::get('/db/crm', function () {
         require_once base_path('app/api/crm/connection.php');
     });
@@ -2143,6 +2253,7 @@ Route::group(["middleware" => "auth"], function () {
             ->join('users', 'users.id', '=', 'unit_quotation.id_sales')
             ->where('invoice.flag', 'Reftech')
             ->whereNotNull('invoice.no_invoice')
+            ->where('invoice.type', '!=', 'Escrow') // Escrow tampil di tab Marketplace, bukan di sini
             ->whereYear('invoice.date', $year)
             ->get([
                 'invoice.*', 'client.company', 'users.name', 'users.image as sales_image',
@@ -4239,41 +4350,39 @@ Route::group(["middleware" => "auth"], function () {
             ->get();
         return response()->json(['data' => $products]);
     });
-    Route::get('/db/product/in/lokal', function () {
-        $products = DB::table('product_in as p')
-            ->select(
-                'p.*',
+    $productInLokalImportQuery = function (string $info) {
+        return DB::table('product_in as p')
+            ->select([
+                'p.id',
+                'p.invoice',
+                'p.date',
+                'p.total',
+                'p.tax',
+                'p.id_purchase_order',
                 DB::raw("CONCAT(pr.commodity, ' - ', dp.replacement) AS product"),
                 DB::raw("CONCAT(d.qty, ' ', pr.unit) AS qty"),
-                DB::raw("s.supplier AS supplier_name")
-            )
+                DB::raw('s.supplier AS supplier_name'),
+            ])
             ->leftJoin('supplier as s', 'p.id_supplier', '=', 's.id')
             ->leftJoin('detail_product_in as d', 'd.id_product_in', '=', 'p.id')
             ->leftJoin('detail_product as dp', 'd.id_detail_product', '=', 'dp.id')
             ->leftJoin('product as pr', 'dp.id_product', '=', 'pr.id')
-            ->where('p.info', 'Lokal')
+            ->where('p.info', $info)
             ->whereNotNull('p.invoice')
+            ->where(function ($q) {
+                $q->whereNull('pr.category')
+                    ->orWhere('pr.category', '!=', 'Unit');
+            })
             ->groupBy('p.id')
+            ->orderByDesc('p.id')
             ->get();
-        return response()->json(['data' => $products]);
+    };
+
+    Route::get('/db/product/in/lokal', function () use ($productInLokalImportQuery) {
+        return response()->json(['data' => $productInLokalImportQuery('Lokal')]);
     });
-    Route::get('/db/product/in/import', function () {
-        $products = DB::table('product_in as p')
-            ->select(
-                'p.*',
-                DB::raw("CONCAT(pr.commodity, ' - ', dp.replacement) AS product"),
-                DB::raw("CONCAT(d.qty, ' ', pr.unit) AS qty"),
-                DB::raw("s.supplier AS supplier_name")
-            )
-            ->leftJoin('supplier as s', 'p.id_supplier', '=', 's.id')
-            ->leftJoin('detail_product_in as d', 'd.id_product_in', '=', 'p.id')
-            ->leftJoin('detail_product as dp', 'd.id_detail_product', '=', 'dp.id')
-            ->leftJoin('product as pr', 'dp.id_product', '=', 'pr.id')
-            ->where('p.info', 'Import')
-            ->whereNotNull('p.invoice')
-            ->groupBy('p.id')
-            ->get();
-        return response()->json(['data' => $products]);
+    Route::get('/db/product/in/import', function () use ($productInLokalImportQuery) {
+        return response()->json(['data' => $productInLokalImportQuery('Import')]);
     });
     Route::get('/db/product/out/detail/{id}', function ($id) {
         $products = DB::table('product_out as p')
@@ -4653,7 +4762,44 @@ AND u.id = ' . Auth::user()->id . ') AS price'), DB::raw('(SELECT COALESCE(COUNT
         return response()->json(['data' => $supplier]);
     });
     Route::get('/db/productOut', function () {
-        require_once base_path('app/api/product/out/connection.php');
+        DB::statement('SET SESSION group_concat_max_len = 15000');
+
+        $data = DB::table('product_out as p')
+            ->select([
+                'p.id',
+                'p.no_product_out',
+                'p.invoice',
+                'p.po',
+                'p.detail_client',
+                'p.vers',
+                'p.date',
+                'p.note',
+                'p.shipping',
+                'p.total',
+                DB::raw('COUNT(d.id) AS total_items'),
+                DB::raw('COALESCE(SUM(d.qty), 0) AS total_qty'),
+                DB::raw("GROUP_CONCAT(
+                    CONCAT(
+                        IFNULL(pr.commodity, ''), ' - ', 
+                        IFNULL(dp.replacement, ''), '::', 
+                        IFNULL(s.pn, '-'), '::', 
+                        d.qty, ' ', IFNULL(pr.unit, 'pcs')
+                    ) SEPARATOR '||'
+                ) AS items_detail")
+            ])
+            ->leftJoin('detail_product_out as d', 'd.id_product_out', '=', 'p.id')
+            ->leftJoin('serial_product as s', 'd.id_serial_product', '=', 's.id')
+            ->leftJoin('product as pr', 's.id_product', '=', 'pr.id')
+            ->leftJoin('detail_product as dp', 'd.id_detail_product', '=', 'dp.id')
+            ->where(function ($q) {
+                $q->whereNull('pr.category')
+                    ->orWhere('pr.category', '!=', 'Unit');
+            })
+            ->groupBy('p.id')
+            ->orderByDesc('p.id')
+            ->get();
+
+        return response()->json(['data' => $data]);
     });
     Route::get('/db/product/sales', function () {
         require_once base_path('app/api/product/connectionSales.php');
@@ -4892,7 +5038,24 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             ->leftJoin('quotation', 'quotation.id', '=', 'prospect.id_quotation')
             ->where('sale.id', Auth::id())
             ->whereNull('prospect.level')
-            ->get(['prospect.id', 'prospect.kebutuhan', 'prospect.date', 'client.company', 'supp.name', 'pic.name_pic', 'quotation.status', 'quotation.nett']);
+            ->orderByDesc('prospect.id')
+            ->get([
+                'prospect.id',
+                'prospect.category',
+                'prospect.kebutuhan',
+                'prospect.date',
+                'client.company',
+                'client.source',
+                'client.area',
+                'supp.name as support_name',
+                'supp.image as support_image',
+                'pic.name_pic',
+                'pic.phone_pic',
+                'quotation.id as quotation_id',
+                'quotation.no_quote',
+                'quotation.status',
+                'quotation.nett'
+            ]);
         return response()->json(['data' => $prospect]);
     });
     Route::get('/db/prospect/sales/fu', function () {
@@ -4903,7 +5066,24 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             ->leftJoin('quotation', 'quotation.id', '=', 'prospect.id_quotation')
             ->where('sale.id', Auth::id())
             ->where('prospect.level', '9')
-            ->get(['prospect.id', 'prospect.kebutuhan', 'prospect.date', 'client.company', 'supp.name', 'pic.name_pic', 'quotation.status', 'quotation.nett']);
+            ->orderByDesc('prospect.id')
+            ->get([
+                'prospect.id',
+                'prospect.category',
+                'prospect.kebutuhan',
+                'prospect.date',
+                'client.company',
+                'client.source',
+                'client.area',
+                'supp.name as support_name',
+                'supp.image as support_image',
+                'pic.name_pic',
+                'pic.phone_pic',
+                'quotation.id as quotation_id',
+                'quotation.no_quote',
+                'quotation.status',
+                'quotation.nett'
+            ]);
         return response()->json(['data' => $prospect]);
     });
     Route::get('/db/prospect/admin', function () {
@@ -4927,7 +5107,28 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                 $query->whereYear('prospect.date', request('year'));
             })
             ->orderByDesc('prospect.id')
-            ->get(['prospect.id', 'prospect.category', 'prospect.kebutuhan', 'prospect.provide', 'prospect.date', 'client.company', 'supp.name as support', 'sale.name as sales', 'pic.name_pic', 'sale.image', 'quotation.status', 'quotation.nett']);
+            ->get([
+                'prospect.id',
+                'prospect.category',
+                'prospect.kebutuhan',
+                'prospect.provide',
+                'prospect.date',
+                'prospect.level',
+                'client.company',
+                'client.area',
+                'client.source',
+                'supp.name as support',
+                'supp.image as support_image',
+                'sale.id as sales_id',
+                'sale.name as sales',
+                'sale.image as sales_image',
+                'pic.name_pic',
+                'pic.phone_pic',
+                'quotation.id as quotation_id',
+                'quotation.no_quote',
+                'quotation.status',
+                'quotation.nett'
+            ]);
         return response()->json(['data' => $prospect]);
     });
 
@@ -6834,7 +7035,17 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         $data = $doneFromQuotation->unionAll($doneFromUnitQuotation)->orderByDesc('date')->get();
         return response()->json(['data' => $data]);
     });
-    Route::get('/db/purchase-order/incoming', function () {
+    // Dua endpoint terpisah buat sub-tab "Menunggu Penerimaan": PO yang lahir dari
+    // Purchase Request (Parts, lewat PurchaseRequestDetailAllocation) vs PO yang
+    // dibeli langsung tanpa PR (saat ini selalu kategori Unit, lewat kolom
+    // on_delivery_* di purchase_order). Dipisah supaya masing-masing tabel cuma
+    // nampilin kolom yang relevan — PO tanpa PR gak punya No PR/No SO/Customer,
+    // jadi gak perlu maksa nampilin kolom kosong.
+    $notReceived = function ($q) {
+        $q->whereNull('po.receipt_status')->orWhere('po.receipt_status', '!=', 'Received');
+    };
+
+    Route::get('/db/purchase-order/incoming/pr', function () use ($notReceived) {
         // "Incoming Goods" buat role Logistic: satu baris per PO (bukan per PR),
         // karena satu PR bisa pecah ke beberapa PO yang datang di waktu berbeda-beda.
         // Menampilkan SEMUA PO yang belum diterima (receipt_status != Received), baik
@@ -6859,7 +7070,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             DB::raw('COUNT(DISTINCT d.id) as item_count'),
             DB::raw("CASE WHEN COUNT(DISTINCT d.id) = 1 THEN MAX(CONCAT(pda.qty, ' ', pr.unit)) ELSE CONCAT(COUNT(DISTINCT d.id), ' item') END as qty_full"),
             // Selalu "N item" (termasuk kalau cuma 1) biar tampilannya konsisten pakai
-            // format expand row yang sama di kolom Item, lihat itemCol() di table-incoming-goods.js.
+            // format expand row yang sama di kolom Item, lihat itemCol() di table-incoming-goods-pr.js.
             DB::raw("CONCAT(COUNT(DISTINCT d.id), ' item') as item"),
             // Rincian tiap item — dipakai buat expand row di tabel, sama seperti tab Purchase Request.
             // Qty alokasi (pda.qty) di-clamp ke kebutuhan PR, bisa lebih kecil dari qty asli
@@ -6879,10 +7090,6 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             DB::raw('CASE WHEN SUM(CASE WHEN pda.purchase_type IS NULL THEN 1 ELSE 0 END) = 0 THEN 1 ELSE 0 END as is_on_delivery'),
         ];
         $groupBy = ['po.id', 'po.no_po', 'po.no_gr', 'po.receipt_status', 'po.company', 'po.date', 'purchase_request.no_pr', 'p.id', 'p.no_pending', 'c.company'];
-
-        $notReceived = function ($q) {
-            $q->whereNull('po.receipt_status')->orWhere('po.receipt_status', '!=', 'Received');
-        };
 
         $fromQuotation = DB::table('purchase_order as po')
             ->join('purchase_request', 'purchase_request.id', '=', 'po.id_purchase_request')
@@ -6919,6 +7126,56 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             ->select($columns);
 
         $data = $fromQuotation->unionAll($fromUnitQuotation)->orderByDesc('id')->get();
+        return response()->json(['data' => $data]);
+    });
+
+    Route::get('/db/purchase-order/incoming/direct', function () use ($notReceived) {
+        // PO yang dibeli langsung tanpa Purchase Request — bisa kategori Unit maupun
+        // Parts (Logistic bisa beli part langsung buat nambah stok tanpa PR). Gak
+        // lewat PurchaseRequestDetailAllocation sama sekali, info pengirimannya
+        // nempel langsung di kolom on_delivery_* punya purchase_order (lihat
+        // POController::deliveryUnit()). Kolom "category" dipakai frontend buat
+        // nentuin tombol GR-nya ngarah ke form Unit atau form Parts-tanpa-PR.
+        DB::statement('SET SESSION group_concat_max_len = 20000');
+
+        $columns = [
+            'po.id',
+            'po.no_po',
+            'po.no_gr',
+            'po.receipt_status',
+            'po.category',
+            'po.company as supplier',
+            'po.date as po_date',
+            DB::raw('COUNT(DISTINCT dpo.id) as item_count'),
+            DB::raw("CASE WHEN COUNT(DISTINCT dpo.id) = 1 THEN MAX(CONCAT(dpo.qty, ' ', COALESCE(NULLIF(dpo.info_qty, ''), 'pcs'))) ELSE CONCAT(COUNT(DISTINCT dpo.id), ' item') END as qty_full"),
+            DB::raw("CONCAT(COUNT(DISTINCT dpo.id), ' item') as item"),
+            // Deskripsi item pakai brand+model unit-nya kalau ke-link (id_unit terisi),
+            // fallback ke teks bebas dpo.product kalau enggak — dipakai juga buat item
+            // Parts (yang emang gak punya id_unit sama sekali, jadi selalu fallback).
+            DB::raw("GROUP_CONCAT(DISTINCT CONCAT(
+                COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.brand, ''), ' ', COALESCE(u.model, ''))), ''), dpo.product),
+                ' x', dpo.qty,
+                '::', '',
+                '::', '-'
+            ) SEPARATOR '||') as items_detail"),
+            DB::raw("MAX(CASE WHEN s.info LIKE '%import%' OR s.info LIKE '%impor%' THEN 'Impor' ELSE 'Lokal' END) as purchase_type"),
+            'po.on_delivery_cargo as cargo',
+            DB::raw('MAX(DATE(po.on_delivery_at)) as purchase_date'),
+            DB::raw('CASE WHEN MAX(po.on_delivery_at) IS NOT NULL THEN 1 ELSE 0 END as is_on_delivery'),
+        ];
+        $groupBy = ['po.id', 'po.no_po', 'po.no_gr', 'po.receipt_status', 'po.category', 'po.company', 'po.date', 'po.on_delivery_cargo'];
+
+        $data = DB::table('purchase_order as po')
+            ->leftJoin('supplier as s', 's.id', '=', 'po.id_supplier')
+            ->leftJoin('detail_purchase_order as dpo', 'dpo.id_purchase_order', '=', 'po.id')
+            ->leftJoin('unit as u', 'u.id', '=', 'dpo.id_unit')
+            ->whereNull('po.id_purchase_request')
+            ->where($notReceived)
+            ->groupBy($groupBy)
+            ->select($columns)
+            ->orderByDesc('po.id')
+            ->get();
+
         return response()->json(['data' => $data]);
     });
     Route::get('/db/product-in/received/{warehouse}', function ($warehouse) {
@@ -7188,18 +7445,150 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         return response()->json(['data' => $data]);
     });
     Route::get('/db/fixed-asset', [FixedController::class, 'data']);
-    Route::get('/db/unit-acquisition', function () {
-        $data = FixedAsset::leftJoin('unit as u', 'u.id', '=', 'fixed_asset.id_unit')
+    Route::get('/db/unit-acquisition', function (\Illuminate\Http\Request $request) {
+        // Tab "Unit Second" — unit bekas/trade-in yang didaftarkan sebagai Fixed Asset
+        // (butuh QC dulu sebelum dipakai/dijual). Lihat juga /db/unit-inventory buat
+        // tab "Unit Baru" (stok jual langsung, gak lewat QC/penyusutan).
+        //
+        // ?group= buat sub-tab per kategori unit (unit.unit), sama pemetaannya kayak
+        // /db/unit-inventory biar susunan tab-nya konsisten sama tab "Unit Baru".
+        $groups = [
+            'screw' => ['AIR COMPRESSOR SCREW', 'PISTON COMPRESSOR', 'BOOSTER COMPRESSOR'],
+            'dryer' => ['REFRIGERANT AIR DRYER', 'DESICANT DRYER'],
+            'filter' => ['FILTRATION SYSTEM'],
+            'chiller' => ['WATER CHILLER'],
+            'tank' => ['AIR RECEIVER TANK'],
+        ];
+
+        $query = FixedAsset::leftJoin('unit as u', 'u.id', '=', 'fixed_asset.id_unit')
             ->leftJoin('supplier as sup', 'sup.id', '=', 'fixed_asset.id_supplier')
-            ->where('fixed_asset.type', 'Mesin')
+            ->where('fixed_asset.type', 'Mesin');
+
+        if ($request->filled('group') && isset($groups[$request->group])) {
+            $query->whereIn('u.unit', $groups[$request->group]);
+        }
+
+        $data = $query
             ->select(
                 'fixed_asset.*',
                 'u.brand as unit_brand',
                 'u.model as unit_model',
+                'u.unit as unit_category',
+                'u.type_unit as lubricant',
+                'u.power',
+                'u.air_cap',
+                'u.pdp',
+                'u.grade',
+                'u.connect',
+                'u.capacity',
+                'u.material',
                 'sup.supplier as supplier_name',
                 DB::raw("DATE_FORMAT(fixed_asset.beli, '%d-%m-%Y') as tanggal_beli")
             )
             ->orderByDesc('fixed_asset.id')
+            ->get();
+        return response()->json(['data' => $data]);
+    });
+    Route::get('/db/unit-inventory', function (\Illuminate\Http\Request $request) {
+        // Tab "Unit Baru" di halaman /unit-acquisition — stok unit baru yang lahir
+        // dari GR PO kategori Unit dengan kondisi Baru (lihat
+        // UnitProductInController::storeGoodsReceipt), murni stok jual bukan aset.
+        // Digrup per model (id_unit) — cuma yang statusnya available yang dihitung
+        // "stok" (yang sold udah bukan stok lagi, riwayatnya ada di tab Riwayat
+        // Barang Keluar pada halaman detail). Harga jual sekarang satu per model
+        // (unit.harga_jual), bukan per serial lagi. Tiap serial number di-expand di
+        // frontend lewat items_detail, tombol Detail ngarah ke unit-inventory.show.
+        //
+        // ?group= buat sub-tab per kategori unit (unit.unit) — cuma kategori yang
+        // ada sub-tabnya di frontend yang dipetakan di sini, sisanya (mis. Air
+        // Receiver Tank, High Pressure Compressor) sengaja gak ketampung sub-tab
+        // manapun. Sub-tab "screw" sekarang label-nya "Compressor" di frontend dan
+        // nampung 3 jenis kompresor sekaligus (Screw/Piston/Booster) — u.unit dipakai
+        // sebagai kolom "Type" buat bedain jenisnya di tabel.
+        $groups = [
+            'screw' => ['AIR COMPRESSOR SCREW', 'PISTON COMPRESSOR', 'BOOSTER COMPRESSOR'],
+            'dryer' => ['REFRIGERANT AIR DRYER', 'DESICANT DRYER'],
+            'filter' => ['FILTRATION SYSTEM'],
+            'chiller' => ['WATER CHILLER'],
+        ];
+
+        DB::statement('SET SESSION group_concat_max_len = 20000');
+
+        $query = DB::table('unit_inventory as ui')
+            ->leftJoin('unit as u', 'u.id', '=', 'ui.id_unit')
+            ->where('ui.status', 'available');
+
+        if ($request->filled('group') && isset($groups[$request->group])) {
+            $query->whereIn('u.unit', $groups[$request->group]);
+        }
+
+        $data = $query
+            ->groupBy('ui.id_unit', 'u.brand', 'u.model', 'u.sku', 'u.harga_jual', 'u.unit', 'u.type_unit', 'u.power', 'u.air_cap', 'u.pdp', 'u.grade', 'u.connect', 'u.capacity')
+            ->orderBy('u.brand')
+            ->orderBy('u.model')
+            ->select(
+                'ui.id_unit',
+                'u.brand as unit_brand',
+                'u.model as unit_model',
+                'u.sku as unit_sku',
+                'u.harga_jual',
+                'u.unit as unit_category',
+                'u.type_unit as lubricant',
+                'u.pdp',
+                'u.power',
+                'u.air_cap',
+                'u.grade',
+                'u.connect',
+                'u.capacity',
+                DB::raw('COUNT(*) as stock'),
+                DB::raw("GROUP_CONCAT(CONCAT(ui.serial_number, '::', ui.id) SEPARATOR '||') as items_detail")
+            )
+            ->get();
+        return response()->json(['data' => $data]);
+    });
+    Route::get('/db/unit-inventory/{unitId}/in', function ($unitId) {
+        // "Riwayat Barang Masuk" di halaman detail unit-inventory — SEMUA serial
+        // number dengan Unit (brand+model) yang sama, bukan cuma unit fisik yang
+        // sedang dibuka. Serial number beda-beda per transaksi masuk, tapi qty stok
+        // model ini bertambah tiap kali ada baris baru di sini.
+        $data = DB::table('unit_inventory as ui')
+            ->leftJoin('unit_product_in as upi', 'upi.id', '=', 'ui.id_unit_product_in')
+            ->leftJoin('supplier as sup', 'sup.id', '=', 'upi.id_supplier')
+            ->where('ui.id_unit', $unitId)
+            ->select(
+                'ui.id',
+                'ui.serial_number',
+                'ui.harga_modal',
+                'ui.biaya_rebranding',
+                'ui.total_modal',
+                'ui.status',
+                'upi.no_transaksi',
+                'sup.supplier as supplier_name',
+                DB::raw("DATE_FORMAT(upi.date, '%d-%m-%Y') as tanggal_masuk")
+            )
+            ->orderByDesc('ui.id')
+            ->get();
+        return response()->json(['data' => $data]);
+    });
+    Route::get('/db/unit-inventory/{unitId}/out', function ($unitId) {
+        // "Riwayat Barang Keluar" di halaman detail unit-inventory — semua penjualan
+        // unit dengan model yang sama (lewat unit_inventory, bukan fixed_asset).
+        $data = DB::table('detail_unit_product_out as dupo')
+            ->join('unit_product_out as upo', 'upo.id', '=', 'dupo.id_unit_product_out')
+            ->join('unit_inventory as ui', 'ui.id', '=', 'dupo.id_unit_inventory')
+            ->where('dupo.source_type', 'unit_inventory')
+            ->where('ui.id_unit', $unitId)
+            ->select(
+                'dupo.id',
+                'ui.serial_number',
+                'upo.no_transaksi',
+                'upo.customer',
+                'dupo.harga_jual',
+                'dupo.nilai_pokok',
+                'dupo.selisih',
+                DB::raw("DATE_FORMAT(upo.date, '%d-%m-%Y') as tanggal_keluar")
+            )
+            ->orderByDesc('dupo.id')
             ->get();
         return response()->json(['data' => $data]);
     });

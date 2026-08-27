@@ -1,207 +1,232 @@
 @extends('layouts.sales.app')
-@section('title', 'My Prospect')
+@section('title', 'Marketing Prospects & Pipeline')
 @section('content')
     @if (Auth::user()->role != 'Sales')
+        {{-- ===== ADMIN / SUPPORT VIEW (MODERN & CLEAN REDESIGN) ===== --}}
+
+        {{-- Hero Card Banner --}}
+        <div class="card border-0 shadow-sm mb-4 prospect-hero-card">
+            <div class="card-body p-4">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-label-primary px-3 py-1 rounded-pill fw-semibold">
+                                <i class="mdi mdi-shield-crown-outline me-1"></i> Admin & Support Overview
+                            </span>
+                            <span class="text-muted small">&bull;</span>
+                            <span class="text-muted small">Marketing Leads & Pipeline Allocation</span>
+                        </div>
+                        <h3 class="fw-bold text-heading mb-1">Prospect & Lead Pipeline</h3>
+                        <p class="text-muted mb-0">
+                            Monitoring seluruh leads dari tim marketing, distribusi penugasan sales, dan tracking pipeline penawaran (quotation).
+                        </p>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="badge bg-label-primary fs-6 px-3 py-2 rounded-pill">
+                            <i class="mdi mdi-account-group-outline me-1"></i> {{ count($salesList ?? []) }} Sales Team
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Executive KPI Summary Cards --}}
         <div class="row g-3 mb-4">
-            <div class="col-sm-6 col-lg-3">
-                <div class="card h-100 shadow-sm kpi-tile" style="border-left: 4px solid var(--bs-primary);">
-                    <div class="card-body d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="mb-2 text-muted">Quotation</p>
-                            <h4 class="mb-2">Rp
-                                {{ number_format(Auth::user()->role == 'Admin' ? $forecastAdmin : $forecast, 2, ',', '.') }}
-                            </h4>
-                            <span
-                                class="badge rounded-pill bg-label-primary">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->whereIn('status', ['20', '30', '40', '60', '80'])->count() }}</span>
+            {{-- Quotation Pipeline --}}
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card h-100 border-0 shadow-sm prospect-kpi-card border-start-primary">
+                    <div class="card-body p-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex align-items-start justify-content-between mb-2">
+                            <div class="avatar avatar-md">
+                                <div class="avatar-initial bg-label-primary rounded-3 shadow-xs">
+                                    <i class="mdi mdi-file-document-outline fs-4"></i>
+                                </div>
+                            </div>
+                            <span class="badge bg-label-primary rounded-pill small px-2 py-1">Pipeline</span>
                         </div>
-                        <div class="avatar">
-                            <span class="avatar-initial rounded-circle bg-label-primary">
-                                <i class="mdi mdi-home-outline mdi-24px"></i>
-                            </span>
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Quotation Forecast</span>
+                            <h4 class="fw-bold mb-1 text-primary">Rp {{ number_format(Auth::user()->role == 'Admin' ? $forecastAdmin : $forecast, 0, ',', '.') }}</h4>
+                            <small class="text-muted">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->whereIn('status', ['20', '30', '40', '60', '80'])->count() }} Dokumen Penawaran</small>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-sm-6 col-lg-3">
-                <div class="card h-100 shadow-sm kpi-tile" style="border-left: 4px solid var(--bs-warning);">
-                    <div class="card-body d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="mb-2 text-muted">Hot Prospect</p>
-                            <h4 class="mb-2">Rp
-                                {{ number_format(Auth::user()->role == 'Admin' ? $prospectAdmin : $prospect, 2, ',', '.') }}
-                            </h4>
-                            <span
-                                class="badge rounded-pill bg-label-warning">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->where('status', '80')->count() }}</span>
+
+            {{-- Hot Prospects --}}
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card h-100 border-0 shadow-sm prospect-kpi-card border-start-warning">
+                    <div class="card-body p-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex align-items-start justify-content-between mb-2">
+                            <div class="avatar avatar-md">
+                                <div class="avatar-initial bg-label-warning rounded-3 shadow-xs">
+                                    <i class="mdi mdi-fire fs-4"></i>
+                                </div>
+                            </div>
+                            <span class="badge bg-label-warning rounded-pill small px-2 py-1">Hot 80%</span>
                         </div>
-                        <div class="avatar">
-                            <span class="avatar-initial rounded-circle bg-label-warning">
-                                <i class="mdi mdi-laptop mdi-24px"></i>
-                            </span>
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Hot Prospects</span>
+                            <h4 class="fw-bold mb-1 text-warning">Rp {{ number_format(Auth::user()->role == 'Admin' ? $prospectAdmin : $prospect, 0, ',', '.') }}</h4>
+                            <small class="text-muted">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->where('status', '80')->count() }} Prospek Probabilitas Tinggi</small>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-sm-6 col-lg-3">
-                <div class="card h-100 shadow-sm kpi-tile" style="border-left: 4px solid var(--bs-success);">
-                    <div class="card-body d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="mb-2 text-muted">Purchase Order</p>
-                            <h4 class="mb-2">Rp
-                                {{ number_format(Auth::user()->role == 'Admin' ? $poAdmin : $po, 2, ',', '.') }}
-                            </h4>
-                            <span
-                                class="badge rounded-pill bg-label-success">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->where('status', '100')->count() }}</span>
+
+            {{-- Purchase Orders (PO) --}}
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card h-100 border-0 shadow-sm prospect-kpi-card border-start-success">
+                    <div class="card-body p-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex align-items-start justify-content-between mb-2">
+                            <div class="avatar avatar-md">
+                                <div class="avatar-initial bg-label-success rounded-3 shadow-xs">
+                                    <i class="mdi mdi-cart-check fs-4"></i>
+                                </div>
+                            </div>
+                            <span class="badge bg-label-success rounded-pill small px-2 py-1">Closed Win</span>
                         </div>
-                        <div class="avatar">
-                            <span class="avatar-initial rounded-circle bg-label-success">
-                                <i class="mdi mdi-wallet-giftcard mdi-24px"></i>
-                            </span>
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Purchase Order (PO)</span>
+                            <h4 class="fw-bold mb-1 text-success">Rp {{ number_format(Auth::user()->role == 'Admin' ? $poAdmin : $po, 0, ',', '.') }}</h4>
+                            <small class="text-muted">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->where('status', '100')->count() }} Transaksi Sukses PO</small>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-sm-6 col-lg-3">
-                <div class="card h-100 shadow-sm kpi-tile" style="border-left: 4px solid var(--bs-danger);">
-                    <div class="card-body d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="mb-2 text-muted">Loss Order</p>
-                            <h4 class="mb-2">Rp
-                                {{ number_format(Auth::user()->role == 'Admin' ? $lossAdmin : $loss, 2, ',', '.') }}
-                            </h4>
-                            <span
-                                class="badge rounded-pill bg-label-danger">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->where('status', '0')->count() }}</span>
+
+            {{-- Loss Orders --}}
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card h-100 border-0 shadow-sm prospect-kpi-card border-start-danger">
+                    <div class="card-body p-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex align-items-start justify-content-between mb-2">
+                            <div class="avatar avatar-md">
+                                <div class="avatar-initial bg-label-danger rounded-3 shadow-xs">
+                                    <i class="mdi mdi-close-circle-outline fs-4"></i>
+                                </div>
+                            </div>
+                            <span class="badge bg-label-danger rounded-pill small px-2 py-1">Loss</span>
                         </div>
-                        <div class="avatar">
-                            <span class="avatar-initial rounded-circle bg-label-danger">
-                                <i class="mdi mdi-currency-usd mdi-24px"></i>
-                            </span>
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Loss Orders</span>
+                            <h4 class="fw-bold mb-1 text-danger">Rp {{ number_format(Auth::user()->role == 'Admin' ? $lossAdmin : $loss, 0, ',', '.') }}</h4>
+                            <small class="text-muted">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->where('status', '0')->count() }} Penawaran Tidak Deal</small>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        @if (Auth::user()->role != 'Sales')
-            <div class="card mb-4 shadow-sm border-0">
-                <div class="card-body px-4 py-4">
-
-                    <!-- Header -->
-                    <div class="mb-4 d-flex justify-content-between align-items-center">
-                        <div class="header-content">
-                            <h5 class="fw-semibold mb-1">Monthly Leads Distribution</h5>
-                            <p class="text-muted">Akumulasi leads bulan berjalan · detail per minggu via dropdown</p>
-                        </div>
-                        <div class="dropdown">
-                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button"
-                                    data-bs-toggle="dropdown" aria-expanded="false">
-                                Week {{ $selectedWeekNum }}
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                @foreach ($availableWeeks as $week)
-                                    <li>
-                                        <a class="dropdown-item {{ $week['week'] == $selectedWeekNum ? 'active' : '' }}"
-                                           href="{{ route('prospect.index', ['week' => $week['week']]) }}">
-                                            {{ $week['label'] }}
-                                        </a>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
+        {{-- Monthly Leads Distribution Section (Sales Workload) --}}
+        <div class="card mb-4 shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4 pb-2 border-bottom">
+                    <div>
+                        <h6 class="fw-bold mb-1 text-heading d-flex align-items-center">
+                            <i class="mdi mdi-account-switch-outline me-2 text-primary fs-5"></i> Distribusi Beban Leads Sales (Workload)
+                        </h6>
+                        <small class="text-muted">Akumulasi leads masuk bulan berjalan & per minggu. Klik kartu sales untuk melihat rincian.</small>
                     </div>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle rounded-pill shadow-xs" type="button"
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="mdi mdi-calendar-week-outline me-1"></i> Week {{ $selectedWeekNum }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            @foreach ($availableWeeks as $week)
+                                <li>
+                                    <a class="dropdown-item {{ $week['week'] == $selectedWeekNum ? 'active' : '' }}"
+                                       href="{{ route('prospect.index', ['week' => $week['week']]) }}">
+                                        {{ $week['label'] }}
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
 
+                <div class="row g-3 row-cols-1 row-cols-sm-2 row-cols-lg-5">
+                    @foreach ($salesLeads as $sales)
+                        @php
+                            $count = $sales->monthly_leads;
+                            $weekCount = $sales->weekly_leads;
 
-                    <div class="row g-4 row-cols-1 row-cols-sm-2 row-cols-lg-5">
+                            if ($count <= 20) {
+                                $color = 'success';
+                            } elseif ($count <= 40) {
+                                $color = 'warning';
+                            } else {
+                                $color = 'danger';
+                            }
+                            $workloadLabel = $count <= 20 ? 'Aman' : ($count <= 40 ? 'Waspada' : 'Tinggi');
+                        @endphp
 
-                        @foreach ($salesLeads as $sales)
-                            @php
-                                $count = $sales->monthly_leads;
-                                $weekCount = $sales->weekly_leads;
+                        <div class="col">
+                            <div class="p-3 rounded-3 border h-100 transition-hover sales-lead-card position-relative bg-white shadow-xs"
+                                data-sales-id="{{ $sales->id }}" data-sales-name="{{ $sales->name }}"
+                                style="cursor: pointer; border-left: 4px solid var(--bs-{{ $color }}) !important;">
 
-                                if ($count <= 20) {
-                                    $color = 'success';
-                                } elseif ($count <= 40) {
-                                    $color = 'warning';
-                                } else {
-                                    $color = 'danger';
-                                }
-                            @endphp
+                                <span class="badge rounded-pill bg-label-{{ $color }} position-absolute top-0 end-0 m-2"
+                                    style="font-size:0.68rem;">
+                                    {{ $workloadLabel }}
+                                </span>
 
-                            @php
-                                $workloadLabel = $count <= 20 ? 'Aman' : ($count <= 40 ? 'Waspada' : 'Tinggi');
-                            @endphp
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar avatar-md me-3 flex-shrink-0" data-bs-toggle="tooltip" data-bs-placement="top"
+                                        title="{{ $sales->name }}">
+                                        @if ($sales->image)
+                                            <img src="{{ url('') . '/' . $sales->image }}" class="rounded-circle shadow-xs"
+                                                width="42" height="42" style="object-fit:cover;"
+                                                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                            <div class="rounded-circle bg-label-primary align-items-center justify-content-center"
+                                                style="width:42px;height:42px;display:none;">
+                                                <span class="fw-bold text-primary">
+                                                    {{ strtoupper(substr($sales->name, 0, 1)) }}
+                                                </span>
+                                            </div>
+                                        @else
+                                            <div class="rounded-circle bg-label-primary d-flex align-items-center justify-content-center shadow-xs"
+                                                style="width:42px;height:42px;">
+                                                <span class="fw-bold text-primary">
+                                                    {{ strtoupper(substr($sales->name, 0, 1)) }}
+                                                </span>
+                                            </div>
+                                        @endif
+                                    </div>
 
-                            <div class="col">
-                                <div
-                                    class="p-3 rounded-3 border h-100 transition-hover sales-lead-card position-relative"
-                                    data-sales-id="{{ $sales->id }}" data-sales-name="{{ $sales->name }}"
-                                    style="cursor: pointer; border-left: 4px solid var(--bs-{{ $color }});">
-
-                                    <span
-                                        class="badge rounded-pill bg-label-{{ $color }} position-absolute top-0 end-0 m-2"
-                                        style="font-size:0.65rem;">
-                                        {{ $workloadLabel }}
-                                    </span>
-
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar me-3" data-bs-toggle="tooltip" data-bs-placement="top"
-                                            title="{{ $sales->name }}" style="cursor: default;">
-
-                                            @if ($sales->image)
-                                                <img src="{{ url('') . '/' . $sales->image }}" class="rounded-circle"
-                                                    width="46" height="46" style="object-fit:cover;"
-                                                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                <div class="rounded-circle bg-label-primary align-items-center justify-content-center"
-                                                    style="width:46px;height:46px;display:none;">
-                                                    <span class="fw-bold text-primary">
-                                                        {{ strtoupper(substr($sales->name, 0, 1)) }}
-                                                    </span>
-                                                </div>
-                                            @else
-                                                <div class="rounded-circle bg-label-primary d-flex align-items-center justify-content-center"
-                                                    style="width:46px;height:46px;">
-                                                    <span class="fw-bold text-primary">
-                                                        {{ strtoupper(substr($sales->name, 0, 1)) }}
-                                                    </span>
-                                                </div>
-                                            @endif
-
-                                        </div>
-
-                                        <div>
-                                            <p class="mb-1 text-dark medium fw-medium">
-                                                {{ $sales->name }}
-                                            </p>
-
-                                            <h4 class="mb-0 fw-bold text-{{ $color }}">
-                                                {{ $count }}
-                                                <span class="fs-6 fw-normal text-muted">Leads/Bulan</span>
-                                            </h4>
-
-                                            <p class="mb-0 text-muted" style="font-size:0.78rem;">
-                                                Week {{ $selectedWeekNum }}: {{ $weekCount }} leads
-                                            </p>
-                                        </div>
+                                    <div class="overflow-hidden">
+                                        <p class="mb-1 text-dark fw-semibold small text-truncate">
+                                            {{ $sales->name }}
+                                        </p>
+                                        <h4 class="mb-0 fw-bold text-{{ $color }} fs-5">
+                                            {{ $count }}
+                                            <span class="fs-6 fw-normal text-muted" style="font-size: 0.75rem !important;">Leads</span>
+                                        </h4>
+                                        <small class="text-muted" style="font-size:0.75rem;">
+                                            Wk {{ $selectedWeekNum }}: {{ $weekCount }} leads
+                                        </small>
                                     </div>
                                 </div>
                             </div>
-                        @endforeach
-
-                    </div>
+                        </div>
+                    @endforeach
                 </div>
             </div>
-        @endif
+        </div>
 
+        {{-- Sales Leads Modal --}}
         <div class="modal animate__animated animate__fadeIn" id="salesLeadsModal" tabindex="-1" style="display: none;"
             aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered modal-xl" role="document" style="max-width: 90%;">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="salesLeadsModalTitle">Prospect List</h5>
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header border-bottom py-3">
+                        <h5 class="modal-title fw-bold text-dark" id="salesLeadsModalTitle">Prospect List</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body p-0">
                         <div class="table-responsive">
-                            <table class="table">
+                            <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Company</th>
@@ -214,7 +239,7 @@
                                 </thead>
                                 <tbody id="salesLeadsModalBody">
                                     <tr>
-                                        <td colspan="6" class="text-center">Loading...</td>
+                                        <td colspan="6" class="text-center py-4">Memuat data prospek...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -224,108 +249,274 @@
             </div>
         </div>
 
-        <div class="d-flex align-items-center justify-content-end mb-3 gap-2 flex-wrap">
-            @if (Auth::user()->role == 'Admin')
-                <label class="form-label mb-0 text-muted" style="white-space:nowrap;">Filter Sales:</label>
-                <select class="form-select form-select-sm" id="prospect-sales-filter" style="max-width:220px;">
-                    <option value="">Semua Sales</option>
-                    @foreach ($salesList as $s)
-                        <option value="{{ $s->id }}">{{ $s->name }}</option>
-                    @endforeach
-                </select>
-            @endif
-            <label class="form-label mb-0 text-muted" style="white-space:nowrap;">Filter Tahun:</label>
-            <select class="form-select form-select-sm" id="prospect-year-filter" style="max-width:150px;">
-                <option value="">Semua Tahun</option>
-                @foreach ($availableYears as $year)
-                    <option value="{{ $year }}" {{ $year == now()->year ? 'selected' : '' }}>{{ $year }}</option>
-                @endforeach
-            </select>
-        </div>
+        {{-- Filter Toolbar & Admin DataTable --}}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom py-3">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar avatar-sm bg-label-primary rounded p-1">
+                            <i class="mdi mdi-table-account fs-4"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0 text-heading">Data Master Prospek Marketing</h6>
+                            <small class="text-muted">Daftar seluruh prospek dan alokasi tim sales</small>
+                        </div>
+                    </div>
 
-        <script>
-            // Must run before the page-script datatable init below so the first ajax call already carries the default year.
-            window.prospectSalesFilter = '';
-            window.prospectYearFilter = '{{ now()->year }}';
-        </script>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        @if (Auth::user()->role == 'Admin')
+                            <div class="d-flex align-items-center gap-1">
+                                <label class="form-label mb-0 text-muted small text-nowrap"><i class="mdi mdi-filter-variant me-1"></i>Sales:</label>
+                                <select class="form-select form-select-sm" id="prospect-sales-filter" style="min-width: 180px;">
+                                    <option value="">Semua Sales</option>
+                                    @foreach ($salesList as $s)
+                                        <option value="{{ $s->id }}">{{ $s->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+                        <div class="d-flex align-items-center gap-1">
+                            <label class="form-label mb-0 text-muted small text-nowrap"><i class="mdi mdi-calendar-outline me-1"></i>Tahun:</label>
+                            <select class="form-select form-select-sm" id="prospect-year-filter" style="min-width: 120px;">
+                                <option value="">Semua Tahun</option>
+                                @foreach ($availableYears as $year)
+                                    <option value="{{ $year }}" {{ $year == now()->year ? 'selected' : '' }}>{{ $year }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-        <div class="card mb-3">
+            <script>
+                window.prospectSalesFilter = '';
+                window.prospectYearFilter = '{{ now()->year }}';
+            </script>
+
             <div class="card-datatable table-responsive pt-0">
-                <table
-                    class="datatable{{ Auth::user()->role == 'Admin' ? '-prospect-admin' : '-prospect' }} table table-bordered">
-                    <thead>
+                <table class="datatable{{ Auth::user()->role == 'Admin' ? '-prospect-admin' : '-prospect' }} table table-hover align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <th>Company</th>
-                            <th>Category</th>
-                            <th>Kebutuhan</th>
-                            <th class="text-center">Value</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center">Info</th>
-                            <th class="text-center">Sales</th>
+                            <th style="min-width: 220px;">Company & PIC</th>
+                            <th style="min-width: 220px;">Category & Kebutuhan</th>
+                            <th style="min-width: 140px;">Date & Source</th>
+                            <th style="min-width: 140px;">Marketing Support</th>
+                            <th style="min-width: 140px;">Assigned Sales</th>
+                            <th style="min-width: 160px;">Quotation Status</th>
+                            <th class="text-center" style="min-width: 110px;">Status & Aksi</th>
                         </tr>
                     </thead>
                 </table>
             </div>
         </div>
     @elseif (Auth::user()->role == 'Sales')
-        <div class="card mb-3">
+        {{-- ===== SALES ROLE VIEW (MODERN & CLEAN REDESIGN) ===== --}}
+
+        {{-- Hero Card Banner --}}
+        <div class="card border-0 shadow-sm mb-4 prospect-hero-card">
+            <div class="card-body p-4">
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-label-primary px-3 py-1 rounded-pill fw-semibold">
+                                <i class="mdi mdi-account-tie-outline me-1"></i> Sales Dashboard
+                            </span>
+                            <span class="text-muted small">&bull;</span>
+                            <span class="text-muted small">Marketing Prospect Allocation</span>
+                        </div>
+                        <h3 class="fw-bold text-heading mb-1">My Prospect Pipeline</h3>
+                        <p class="text-muted mb-0">
+                            Kelola prospek dari tim marketing, proses penawaran (quotation), dan tindak lanjuti prospek calon klien.
+                        </p>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="badge bg-label-primary fs-6 px-3 py-2 rounded-pill">
+                            <i class="mdi mdi-inbox-arrow-down me-1"></i> {{ $salesNewProspectCount ?? 0 }} New
+                        </span>
+                        <span class="badge bg-label-warning fs-6 px-3 py-2 rounded-pill">
+                            <i class="mdi mdi-progress-clock me-1"></i> {{ $salesFuProspectCount ?? 0 }} Follow-Up
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Executive KPI Summary Cards for Sales --}}
+        <div class="row g-3 mb-4">
+            {{-- Total Assigned --}}
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card h-100 border-0 shadow-sm prospect-kpi-card border-start-primary">
+                    <div class="card-body p-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex align-items-start justify-content-between mb-2">
+                            <div class="avatar avatar-md">
+                                <div class="avatar-initial bg-label-primary rounded-3 shadow-xs">
+                                    <i class="mdi mdi-inbox-multiple-outline fs-4"></i>
+                                </div>
+                            </div>
+                            <span class="badge bg-label-primary rounded-pill small px-2 py-1">Assigned</span>
+                        </div>
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Total Prospects</span>
+                            <h4 class="fw-bold mb-1 text-primary">{{ $salesTotalAssigned ?? 0 }}</h4>
+                            <small class="text-muted">{{ $salesNewProspectCount ?? 0 }} Baru &bull; {{ $salesFuProspectCount ?? 0 }} Follow-Up</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Quotation Pipeline --}}
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card h-100 border-0 shadow-sm prospect-kpi-card border-start-info">
+                    <div class="card-body p-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex align-items-start justify-content-between mb-2">
+                            <div class="avatar avatar-md">
+                                <div class="avatar-initial bg-label-info rounded-3 shadow-xs">
+                                    <i class="mdi mdi-file-document-outline fs-4"></i>
+                                </div>
+                            </div>
+                            <span class="badge bg-label-info rounded-pill small px-2 py-1">Pipeline</span>
+                        </div>
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Quotation Value</span>
+                            <h4 class="fw-bold mb-1 text-info">Rp {{ number_format($salesQuoteForecast ?? 0, 0, ',', '.') }}</h4>
+                            <small class="text-muted">{{ $salesQuoteForecastCount ?? 0 }} Transaksi Quote Aktif</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Hot Prospects --}}
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card h-100 border-0 shadow-sm prospect-kpi-card border-start-warning">
+                    <div class="card-body p-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex align-items-start justify-content-between mb-2">
+                            <div class="avatar avatar-md">
+                                <div class="avatar-initial bg-label-warning rounded-3 shadow-xs">
+                                    <i class="mdi mdi-fire fs-4"></i>
+                                </div>
+                            </div>
+                            <span class="badge bg-label-warning rounded-pill small px-2 py-1">Hot 80%</span>
+                        </div>
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Hot Prospects</span>
+                            <h4 class="fw-bold mb-1 text-warning">Rp {{ number_format($salesHotProspect ?? 0, 0, ',', '.') }}</h4>
+                            <small class="text-muted">{{ $salesHotProspectCount ?? 0 }} Hot Prospect (80%)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Purchase Orders --}}
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card h-100 border-0 shadow-sm prospect-kpi-card border-start-success">
+                    <div class="card-body p-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex align-items-start justify-content-between mb-2">
+                            <div class="avatar avatar-md">
+                                <div class="avatar-initial bg-label-success rounded-3 shadow-xs">
+                                    <i class="mdi mdi-cart-check fs-4"></i>
+                                </div>
+                            </div>
+                            <span class="badge bg-label-success rounded-pill small px-2 py-1">Closed Win</span>
+                        </div>
+                        <div>
+                            <span class="text-muted small text-uppercase fw-semibold">Done PO</span>
+                            <h4 class="fw-bold mb-1 text-success">Rp {{ number_format($salesPo ?? 0, 0, ',', '.') }}</h4>
+                            <small class="text-muted">{{ $salesPoCount ?? 0 }} Transaksi Closed PO</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Table 1: New Assigned Prospects --}}
+        <div class="card border-0 shadow-sm mb-4">
             <div class="card-datatable table-responsive pt-0">
-                <table class="datatable-prospect-sales table table-striped">
-                    <thead>
+                <table class="datatable-prospect-sales table table-hover align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <th></th>
-                            <th></th>
-                            <th>ID</th>
-                            <th>Company</th>
-                            <th>Prospect</th>
-                            <th>Date</th>
-                            <th>Support</th>
+                            <th style="width: 25px;"></th>
+                            <th style="display:none;">ID</th>
+                            <th style="min-width: 220px;">Company & PIC</th>
+                            <th style="min-width: 220px;">Category & Kebutuhan</th>
+                            <th style="min-width: 140px;">Date & Source</th>
+                            <th style="min-width: 140px;">Marketing Support</th>
+                            <th style="min-width: 150px;">Quotation Status</th>
+                            <th class="text-center" style="min-width: 120px;">Action</th>
                         </tr>
                     </thead>
                 </table>
             </div>
         </div>
-        <div class="card mb-3">
+
+        {{-- Table 2: Follow Up Prospects In Progress --}}
+        <div class="card border-0 shadow-sm mb-4">
             <div class="card-datatable table-responsive pt-0">
-                <table class="datatable-prospect-fu-sales table table-striped">
-                    <thead>
+                <table class="datatable-prospect-fu-sales table table-hover align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <th></th>
-                            <th></th>
-                            <th>ID</th>
-                            <th>Company</th>
-                            <th>Prospect</th>
-                            <th>Date</th>
-                            <th>Support</th>
+                            <th style="width: 25px;"></th>
+                            <th style="display:none;">ID</th>
+                            <th style="min-width: 220px;">Company & PIC</th>
+                            <th style="min-width: 220px;">Category & Kebutuhan</th>
+                            <th style="min-width: 140px;">Date & Source</th>
+                            <th style="min-width: 140px;">Marketing Support</th>
+                            <th style="min-width: 150px;">Quotation Status</th>
+                            <th class="text-center" style="min-width: 120px;">Action</th>
                         </tr>
                     </thead>
                 </table>
             </div>
         </div>
+
+        {{-- Confirmation Modals for Prospects --}}
         @foreach ($prospects as $prospect)
             @include('components.modal.prospect.confirm')
         @endforeach
     @endif
-    </div>
+
     @include('components.modal.client.support.form')
-@endsection()
+@endsection
 
 @push('after-style')
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/select2/select2.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
-    <link rel="stylesheet"
-        href="{{ asset('assets') }}/vendor/libs/datatables-checkboxes-jquery/datatables.checkboxes.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/animate-css/animate.css">
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-rowgroup-bs5/rowgroup.bootstrap5.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/formvalidation/dist/css/formValidation.min.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css" />
     <style>
+        .prospect-hero-card {
+            background: linear-gradient(135deg, rgba(var(--bs-primary-rgb), 0.04) 0%, rgba(var(--bs-primary-rgb), 0.01) 100%);
+            border: 1px solid rgba(var(--bs-primary-rgb), 0.12) !important;
+            border-radius: 14px;
+        }
+
+        .prospect-kpi-card {
+            border-radius: 12px;
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        .prospect-kpi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+        }
+        .border-start-primary   { border-left: 4px solid var(--bs-primary) !important; }
+        .border-start-success   { border-left: 4px solid var(--bs-success) !important; }
+        .border-start-warning   { border-left: 4px solid var(--bs-warning) !important; }
+        .border-start-danger    { border-left: 4px solid var(--bs-danger) !important; }
+        .border-start-info      { border-left: 4px solid var(--bs-info) !important; }
+
+        .text-primary-hover:hover {
+            color: var(--bs-primary) !important;
+            text-decoration: underline;
+        }
+
         .transition-hover {
             transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
-
         .transition-hover:hover {
             transform: translateY(-2px);
             box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.08);
@@ -334,17 +525,17 @@
         .kpi-tile {
             transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
-
         .kpi-tile:hover {
             transform: translateY(-2px);
         }
 
-        table.datatable-prospect-admin td,
-        table.datatable-prospect-admin th,
-        table.datatable-prospect td,
-        table.datatable-prospect th {
-            font-size: 14px;
-            vertical-align: middle;
+        /* Dark Mode */
+        .dark-style .prospect-hero-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        }
+        .dark-style .prospect-kpi-card {
+            border-color: rgba(255, 255, 255, 0.08);
         }
     </style>
 @endpush
@@ -371,7 +562,6 @@
 
 @push('script')
     <script>
-        // Initialize Bootstrap tooltips using jQuery
         $(document).ready(function() {
             $('[data-bs-toggle="tooltip"]').tooltip();
 
@@ -454,19 +644,20 @@
                             var status = statusLabel[item.status];
                             var statusHtml = status ?
                                 '<span class="badge rounded-pill ' + status.class + '">' + status.title + '</span>' :
-                                '-';
-                            var value = item.nett ? 'Rp ' + Number(item.nett).toLocaleString('id-ID') : '-';
+                                '<span class="badge rounded-pill bg-label-secondary">New / Unquoted</span>';
+                            var value = item.nett ? '<span class="fw-bold text-success">Rp ' + Number(item.nett).toLocaleString('id-ID') + '</span>' : '<span class="text-muted">—</span>';
+                            var dateFmt = item.date ? moment(item.date).format('DD MMM YYYY') : '—';
                             rows += '<tr>' +
-                                '<td>' + (item.company ?? '-') + '</td>' +
-                                '<td>' + (item.category ?? '-') + '</td>' +
-                                '<td>' + (item.kebutuhan ?? '-') + '</td>' +
-                                '<td>' + (item.date ?? '-') + '</td>' +
+                                '<td><a href="/prospect/' + item.id + '" class="fw-bold text-primary">' + (item.company ?? '—') + '</a></td>' +
+                                '<td><span class="badge bg-label-primary rounded-pill small">' + (item.category ?? 'General') + '</span></td>' +
+                                '<td class="small text-truncate" style="max-width:200px;">' + (item.kebutuhan ?? '—') + '</td>' +
+                                '<td class="small">' + dateFmt + '</td>' +
                                 '<td>' + statusHtml + '</td>' +
                                 '<td>' + value + '</td>' +
                                 '</tr>';
                         });
                     } else {
-                        rows = '<tr><td colspan="6" class="text-center">Belum ada prospect bulan ini</td></tr>';
+                        rows = '<tr><td colspan="6" class="text-center py-4 text-muted">Belum ada prospek untuk sales ini pada bulan berjalan.</td></tr>';
                     }
                     $('#salesLeadsModalBody').html(rows);
                 },
@@ -479,11 +670,12 @@
         $(document).on('click', '#withQuote', function() {
             var id = $(this).data('id');
             Swal.fire({
-                title: "Are you sure With Quotation?",
-                text: "You won't be able to revert this!",
-                icon: "warning",
+                title: "Create Smart Quote?",
+                text: "Konversi prospek ini menjadi Smart Quotation resmi?",
+                icon: "question",
                 showCancelButton: true,
-                confirmButtonText: "Yes, With Quotation!",
+                confirmButtonText: "Ya, Buat Smart Quote!",
+                cancelButtonText: "Batal",
                 customClass: {
                     confirmButton: "btn btn-primary me-3 waves-effect waves-light",
                     cancelButton: "btn btn-label-secondary waves-effect",
@@ -492,9 +684,9 @@
             }).then(function(result) {
                 if (result.value) {
                     $.ajax({
-                        'url': '{{ url('prospect') }}/' + 'with_quotation/' + id,
-                        'type': 'POST',
-                        'data': {
+                        url: '{{ url('prospect') }}/' + 'with_quotation/' + id,
+                        type: 'POST',
+                        data: {
                             '_method': 'POST',
                             '_token': '{{ csrf_token() }}'
                         },
@@ -502,45 +694,39 @@
                             if (response == 1) {
                                 Swal.fire({
                                     icon: "success",
-                                    title: "Converted!",
-                                    text: "Your file has been converted.",
+                                    title: "Berhasil!",
+                                    text: "Prospek berhasil dialihkan ke pembuatan Smart Quote.",
                                     customClass: {
                                         confirmButton: "btn btn-success waves-effect",
                                     },
-                                })
+                                    showConfirmButton: false,
+                                    timer: 1000
+                                });
                                 window.setTimeout(function() {
-                                    window.location.href =
-                                        '/prospect/create_quotation/' + id;
-                                }, 2000);
+                                    window.location.href = '/smart-quote/create?prospect_id=' + id;
+                                }, 1000);
                             } else {
                                 Swal.fire({
                                     icon: 'error',
                                     title: 'Oops...',
-                                    text: 'Data Failed With Quotation!'
+                                    text: 'Gagal membuat penawaran!'
                                 });
                             }
                         }
-                    });
-                } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    Swal.fire({
-                        title: "Cancelled",
-                        text: "You cancelled :)",
-                        icon: "error",
-                        customClass: {
-                            confirmButton: "btn btn-success waves-effect",
-                        },
                     });
                 }
             });
         });
+
         $(document).on('click', '#withoutQuote', function() {
             var id = $(this).data('id');
             Swal.fire({
-                title: "Are you sure without Quotation?",
-                text: "You won't be able to revert this!",
+                title: "Without Quotation?",
+                text: "Lanjutkan prospek tanpa membuat quotation?",
                 icon: "warning",
                 showCancelButton: true,
-                confirmButtonText: "Yes, without Quotation!",
+                confirmButtonText: "Ya, Lanjutkan!",
+                cancelButtonText: "Batal",
                 customClass: {
                     confirmButton: "btn btn-primary me-3 waves-effect waves-light",
                     cancelButton: "btn btn-label-secondary waves-effect",
@@ -549,9 +735,9 @@
             }).then(function(result) {
                 if (result.value) {
                     $.ajax({
-                        'url': '{{ url('prospect') }}/' + 'without_quotation/' + id,
-                        'type': 'POST',
-                        'data': {
+                        url: '{{ url('prospect') }}/' + 'without_quotation/' + id,
+                        type: 'POST',
+                        data: {
                             '_method': 'POST',
                             '_token': '{{ csrf_token() }}'
                         },
@@ -559,32 +745,23 @@
                             if (response == 1) {
                                 Swal.fire({
                                     icon: "success",
-                                    title: "Converted!",
-                                    text: "Your file has been converted.",
+                                    title: "Berhasil!",
+                                    text: "Status prospek berhasil diperbarui.",
                                     customClass: {
                                         confirmButton: "btn btn-success waves-effect",
                                     },
-                                })
+                                });
                                 window.setTimeout(function() {
                                     window.location.href = '/leads/detail/' + id;
-                                }, 2000);
+                                }, 1200);
                             } else {
                                 Swal.fire({
                                     icon: 'error',
                                     title: 'Oops...',
-                                    text: 'Data Failed With Quotation!'
+                                    text: 'Gagal memperbarui status prospek!'
                                 });
                             }
                         }
-                    });
-                } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    Swal.fire({
-                        title: "Cancelled",
-                        text: "You cancelled :)",
-                        icon: "error",
-                        customClass: {
-                            confirmButton: "btn btn-success waves-effect",
-                        },
                     });
                 }
             });

@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class FixedAsset extends Model
 {
+    use LogsActivity;
+
     protected $table = "fixed_asset";
     protected $date = [
         'date',
@@ -121,5 +124,9 @@ class FixedAsset extends Model
     public function pic()
     {
         return $this->belongsTo('App\Models\User', 'id_pic', 'id');
+    }
+    public function rentalScans()
+    {
+        return $this->hasMany('App\Models\FixedAssetRentalScan', 'id_fixed_asset')->orderByDesc('id');
     }
 }

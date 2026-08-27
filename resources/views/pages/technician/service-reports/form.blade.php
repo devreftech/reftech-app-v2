@@ -7,7 +7,24 @@
             border-radius: 16px;
             border: 1px solid rgba(229, 231, 235, 0.5);
             box-shadow: 0 4px 16px rgba(0,0,0,0.02);
-            transition: all 0.2s ease-in-out;
+            transition: box-shadow 0.2s ease-in-out;
+        }
+
+        /* Global .card:hover (demo.css) nge-lift semua card 2px + bayangannya
+           dibesarin — cocok buat grid dashboard, tapi di form ini card-nya ditumpuk
+           vertikal penuh selebar layar, jadi begitu hover/klik field di dalamnya,
+           card ke-lift dan nabrak/tumpang-tindih sama card di bawahnya. Dimatikan
+           efeknya khusus di sini. */
+        .form-section-card:hover {
+            transform: none !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.02) !important;
+        }
+
+        .select2-container--open {
+            z-index: 9999 !important;
+        }
+        .select2-dropdown {
+            z-index: 9999 !important;
         }
         .form-section-title {
             font-size: 1.05rem;
@@ -86,8 +103,8 @@
                         <i class="mdi mdi-domain"></i>
                     </div>
                     <div>
-                        <span>Pelanggan & Unit Mesin</span>
-                        <small class="text-muted d-block fw-normal" style="font-size: 0.8rem;">Pilih sales, klien, PIC penanggung jawab, dan unit mesin terkait.</small>
+                        <span>Pelanggan & Jenis Layanan</span>
+                        <small class="text-muted d-block fw-normal" style="font-size: 0.8rem;">Pilih sales, klien, PIC penanggung jawab, dan jenis layanan.</small>
                     </div>
                 </div>
             </div>
@@ -134,41 +151,37 @@
                             </div>
                         </div>
                         <div class="col-12 col-md-3">
-                            <div class="form-floating form-floating-outline">
-                                <select id="pic-dropdown" class="select2 form-select invoice-item-pic" data-id="1"
-                                    data-allow-clear="true" name="id_pic" disabled>
-                                    <option selected disabled> ---- Choose PIC ---- </option>
-                                    @if (@$report && isset($report->pic))
-                                        <option data-id="{{ $report->pic->id }}" value="{{ $report->pic->id }}" selected>
-                                            {{ $report->pic->name_pic }}</option>
-                                    @endif
-                                </select>
-                                <label for="pic-dropdown">PIC Klien</label>
+                            <div class="d-flex gap-2 align-items-start">
+                                <div class="form-floating form-floating-outline flex-grow-1">
+                                    <select id="pic-dropdown" class="select2 form-select invoice-item-pic" data-id="1"
+                                        data-allow-clear="true" name="id_pic" disabled>
+                                        <option selected disabled> ---- Choose PIC ---- </option>
+                                        @if (@$report && isset($report->pic))
+                                            <option data-id="{{ $report->pic->id }}" value="{{ $report->pic->id }}" selected>
+                                                {{ $report->pic->name_pic }}</option>
+                                        @endif
+                                    </select>
+                                    <label for="pic-dropdown">PIC Klien</label>
+                                </div>
+                                <button type="button" class="btn btn-icon btn-label-primary mt-1" id="btnQuickPic" title="Tambah PIC Baru">
+                                    <i class="mdi mdi-plus"></i>
+                                </button>
                             </div>
                         </div>
                     @endif
 
                     <div class="col-12 col-md-3">
                         <div class="form-floating form-floating-outline">
-                            <select id="machine-dropdown" class="select2 form-select invoice-item-machine" data-id="1"
-                                data-allow-clear="true" name="machine"
-                                {{ isset($isInternalStock) && $isInternalStock ? '' : 'disabled' }}>
-                                <option selected disabled> ---- Choose Machine ---- </option>
-                                @if (isset($isInternalStock) && $isInternalStock && isset($machine))
-                                    <option value="{{ $machine->id }}" data-unit-category="{{ optional(optional($machine->unit)->unit)->unit ?? '' }}" selected>
-                                        {{ optional($machine->unit)->brand ?? '-' }} {{ optional($machine->unit)->pn ?? '' }} ||
-                                        {{ $machine->location }} - {{ $machine->tag }} - {{ $machine->serial }}
-                                    </option>
-                                @elseif (@$report && isset($report->machine))
-                                    <option data-id="{{ $report->machine->id }}" value="{{ $report->machine->id }}" data-unit-category="{{ optional(optional(optional($report->machine)->unit)->unit)->unit ?? '' }}"
-                                        selected>
-                                        {{ optional($report->machine->unit)->brand ?? '-' }} {{ optional($report->machine->unit)->pn ?? '' }} ||
-                                        {{ $report->machine->location }} - {{ $report->machine->tag }} -
-                                        {{ $report->machine->serial }}
-                                    </option>
-                                @endif
+                            <select class="form-select" id="service-type-select" aria-label="Service Type" name="type">
+                                <option selected="" disabled>---- Choose Service Type ----</option>
+                                <option value="Visit" {{ @$report->type == 'Visit' ? 'Selected' : '' }}>Visit</option>
+                                <option value="Service" {{ @$report->type == 'Service' ? 'Selected' : '' }}>Service</option>
+                                <option value="General" {{ @$report->type == 'General' ? 'Selected' : '' }}>General Check</option>
+                                <option value="Rental" {{ @$report->type == 'Rental' ? 'Selected' : '' }}>Rental</option>
+                                <option value="Cleaning" {{ @$report->type == 'Cleaning' ? 'Selected' : '' }}>Cleaning</option>
+                                <option value="Commissioning" {{ @$report->type == 'Commissioning' ? 'Selected' : '' }}>Commissioning</option>
                             </select>
-                            <label for="machine-dropdown">Unit Mesin</label>
+                            <label for="service-type-select">Service Type</label>
                         </div>
                     </div>
                 </div>
@@ -184,24 +197,40 @@
                     </div>
                     <div>
                         <span>Parameter & Jenis Pekerjaan</span>
-                        <small class="text-muted d-block fw-normal" style="font-size: 0.8rem;">Tentukan tanggal servis, jenis laporan, jam kerja mesin (running/load), dan job description.</small>
+                        <small class="text-muted d-block fw-normal" style="font-size: 0.8rem;">Pilih unit mesin, tentukan tanggal servis, jam kerja mesin (running/load), dan job description.</small>
                     </div>
                 </div>
             </div>
             <div class="card-body p-4">
                 <div class="row g-3">
                     <div class="col-12 col-md-4">
-                        <div class="form-floating form-floating-outline">
-                            <select class="form-select" id="service-type-select" aria-label="Service Type" name="type">
-                                <option selected="" disabled>---- Choose Service Type ----</option>
-                                <option value="Visit" {{ @$report->type == 'Visit' ? 'Selected' : '' }}>Visit</option>
-                                <option value="Service" {{ @$report->type == 'Service' ? 'Selected' : '' }}>Service</option>
-                                <option value="General" {{ @$report->type == 'General' ? 'Selected' : '' }}>General Check</option>
-                                <option value="Rental" {{ @$report->type == 'Rental' ? 'Selected' : '' }}>Rental</option>
-                                <option value="Cleaning" {{ @$report->type == 'Cleaning' ? 'Selected' : '' }}>Cleaning</option>
-                                <option value="Commissioning" {{ @$report->type == 'Commissioning' ? 'Selected' : '' }}>Commissioning</option>
-                            </select>
-                            <label for="service-type-select">Service Type</label>
+                        <div class="d-flex gap-2 align-items-start">
+                            <div class="form-floating form-floating-outline flex-grow-1">
+                                <select id="machine-dropdown" class="form-select invoice-item-machine" data-id="1"
+                                    data-allow-clear="true" name="machine"
+                                    {{ isset($isInternalStock) && $isInternalStock ? '' : 'disabled' }}>
+                                    <option selected disabled> ---- Choose Machine ---- </option>
+                                    @if (isset($isInternalStock) && $isInternalStock && isset($machine))
+                                        <option value="{{ $machine->id }}" data-unit-category="{{ optional(optional($machine->unit)->unit)->unit ?? '' }}"
+                                            data-dummy="{{ $machine->id_unit ? 0 : 1 }}" selected>
+                                            {{ optional($machine->unit)->brand ?? '-' }} {{ optional($machine->unit)->pn ?? '' }} ||
+                                            {{ $machine->location }} - {{ $machine->tag }} - {{ $machine->serial }}
+                                        </option>
+                                    @elseif (@$report && isset($report->machine))
+                                        <option data-id="{{ $report->machine->id }}" value="{{ $report->machine->id }}" data-unit-category="{{ optional(optional(optional($report->machine)->unit)->unit)->unit ?? '' }}"
+                                            data-dummy="{{ $report->machine->id_unit ? 0 : 1 }}" selected>
+                                            {{ optional($report->machine->unit)->brand ?? '-' }} {{ optional($report->machine->unit)->pn ?? '' }} ||
+                                            {{ $report->machine->location }} - {{ $report->machine->tag }} -
+                                            {{ $report->machine->serial }}
+                                        </option>
+                                    @endif
+                                </select>
+                                <label for="machine-dropdown">Unit Mesin</label>
+                            </div>
+                            <button type="button" class="btn btn-icon btn-label-primary mt-1" id="btnQuickMachine"
+                                title="Tambah Mesin Baru (Dummy)">
+                                <i class="mdi mdi-plus"></i>
+                            </button>
                         </div>
                     </div>
 
@@ -298,6 +327,87 @@
             </button>
         </div>
     </form>
+
+    {{-- Modal: Quick-add PIC buat Client yang UDAH dipilih, langsung dari form ini
+         tanpa reload halaman. --}}
+    <div class="modal fade" id="modalQuickPic" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Tambah PIC Baru</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger d-none" id="quickPicError"></div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted mb-1">Nama PIC</label>
+                        <input type="text" class="form-control" id="quickPicName" placeholder="Nama penanggung jawab">
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-1">No. HP (opsional)</label>
+                            <input type="text" class="form-control" id="quickPicPhone">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-1">Email (opsional)</label>
+                            <input type="email" class="form-control" id="quickPicEmail">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveQuickPic">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal: Quick-add Machine "Dummy" — input bebas, gak di-link ke katalog Unit. --}}
+    <div class="modal fade" id="modalQuickMachine" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Tambah Mesin Baru <span class="badge bg-label-warning ms-1">Dummy</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info border-0 py-2 mb-3" style="border-radius: 10px;">
+                        <i class="mdi mdi-information-outline me-1"></i> Input bebas, gak lewat katalog Unit — cuma buat unit di lapangan yang belum tercatat. Ditandai badge <span class="badge bg-label-warning">Dummy</span> di dropdown.
+                    </div>
+                    <div class="alert alert-danger d-none" id="quickMachineError"></div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-1">Brand</label>
+                            <input type="text" class="form-control" id="quickMachineBrand" placeholder="KAESER">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-1">Model / Type</label>
+                            <input type="text" class="form-control" id="quickMachineModel" placeholder="CSD 130">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted mb-1">Serial Number</label>
+                        <input type="text" class="form-control" id="quickMachineSerial">
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-1">Lokasi (opsional)</label>
+                            <input type="text" class="form-control" id="quickMachineLocation">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted mb-1">Tag (opsional)</label>
+                            <input type="text" class="form-control" id="quickMachineTag">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveQuickMachine">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @include('components.modal.machine.form-technician')
 </div>
 @endsection
@@ -336,7 +446,134 @@
             var selectedClientId = '{{ $selectedClientId ?? (isset($report->pic) ? $report->pic->id_client : '') }}';
             var selectedPICId = '{{ $selectedPICId ?? $report->id_pic ?? '' }}';
             var isInternalStock = {{ isset($isInternalStock) && $isInternalStock ? 'true' : 'false' }};
+            var csrfToken = '{{ csrf_token() }}';
             initNumericInput();
+
+            // Unit Mesin dilepas dari auto-init select2 generic (lihat class-nya di
+            // markup, gak ada "select2" lagi) biar bisa dikasih templateResult sendiri
+            // buat nampilin badge "Dummy" di opsi yang id_unit-nya null.
+            function machineOptionTemplate(item) {
+                if (!item.id) return item.text;
+                var isDummy = item.element && $(item.element).attr('data-dummy') == '1';
+                if (!isDummy) return item.text;
+                return $('<span>' + item.text + ' <span class="badge bg-label-warning">Dummy</span></span>');
+            }
+            function refreshMachineSelect2() {
+                var $el = $('#machine-dropdown');
+                if ($el.data('select2')) {
+                    $el.select2('destroy');
+                }
+                $el.select2({
+                    width: '100%',
+                    templateResult: machineOptionTemplate,
+                    templateSelection: machineOptionTemplate,
+                });
+            }
+            refreshMachineSelect2();
+
+            // Quick-add PIC — buat Client yang UDAH dipilih, biar teknisi gak perlu
+            // buka halaman lain buat nambahin penanggung jawab baru.
+            var modalQuickPic = new bootstrap.Modal(document.getElementById('modalQuickPic'));
+            $('#btnQuickPic').on('click', function() {
+                var currentClient = $('#client-dropdown').val();
+                if (!currentClient) {
+                    Swal.fire('Pilih Client dulu', 'Client / Company wajib dipilih sebelum menambah PIC baru.', 'warning');
+                    return;
+                }
+                $('#quickPicError').addClass('d-none').text('');
+                modalQuickPic.show();
+            });
+            $('#btnSaveQuickPic').on('click', function() {
+                var $btn = $(this);
+                var payload = {
+                    id_client: $('#client-dropdown').val(),
+                    name_pic: $('#quickPicName').val(),
+                    phone_pic: $('#quickPicPhone').val(),
+                    email_pic: $('#quickPicEmail').val(),
+                    _token: csrfToken,
+                };
+                if (!payload.id_client || !payload.name_pic) {
+                    $('#quickPicError').removeClass('d-none').text('Client dan Nama PIC wajib diisi.');
+                    return;
+                }
+                $btn.prop('disabled', true);
+                $.ajax({
+                    url: '{{ route('service-reports.quick-pic') }}',
+                    type: 'POST',
+                    data: payload,
+                    success: function(res) {
+                        var opt = $('<option></option>').attr('value', res.id).text(res.name_pic);
+                        $('#pic-dropdown').append(opt).prop('disabled', false)
+                            .val(res.id).trigger('change');
+
+                        $('#quickPicName, #quickPicPhone, #quickPicEmail').val('');
+                        modalQuickPic.hide();
+                    },
+                    error: function(xhr) {
+                        var msg = (xhr.responseJSON && xhr.responseJSON.errors)
+                            ? Object.values(xhr.responseJSON.errors).flat().join(' ')
+                            : 'Gagal menyimpan PIC baru.';
+                        $('#quickPicError').removeClass('d-none').text(msg);
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false);
+                    }
+                });
+            });
+
+            // Quick-add Machine "Dummy" — butuh Client udah kepilih dulu.
+            var modalQuickMachine = new bootstrap.Modal(document.getElementById('modalQuickMachine'));
+            $('#btnQuickMachine').on('click', function() {
+                if (!$('#client-dropdown').val()) {
+                    Swal.fire('Pilih Client dulu', 'Client / Company wajib dipilih sebelum menambah mesin baru.', 'warning');
+                    return;
+                }
+                $('#quickMachineError').addClass('d-none').text('');
+                modalQuickMachine.show();
+            });
+            $('#btnSaveQuickMachine').on('click', function() {
+                var $btn = $(this);
+                var payload = {
+                    id_client: $('#client-dropdown').val(),
+                    brand: $('#quickMachineBrand').val(),
+                    model: $('#quickMachineModel').val(),
+                    serial: $('#quickMachineSerial').val(),
+                    location: $('#quickMachineLocation').val(),
+                    tag: $('#quickMachineTag').val(),
+                    _token: csrfToken,
+                };
+                if (!payload.id_client || !payload.brand || !payload.model || !payload.serial) {
+                    $('#quickMachineError').removeClass('d-none').text('Client, Brand, Model, dan Serial Number wajib diisi.');
+                    return;
+                }
+                $btn.prop('disabled', true);
+                $.ajax({
+                    url: '{{ route('service-reports.quick-machine') }}',
+                    type: 'POST',
+                    data: payload,
+                    success: function(res) {
+                        var opt = $('<option></option>').attr('value', res.id)
+                            .attr('data-unit-category', res.unit_category || '')
+                            .attr('data-dummy', res.is_dummy || 0)
+                            .text(res.text);
+                        $('#machine-dropdown').append(opt).prop('disabled', false);
+                        refreshMachineSelect2();
+                        $('#machine-dropdown').val(res.id).trigger('change');
+
+                        $('#quickMachineBrand, #quickMachineModel, #quickMachineSerial, #quickMachineLocation, #quickMachineTag').val('');
+                        modalQuickMachine.hide();
+                    },
+                    error: function(xhr) {
+                        var msg = (xhr.responseJSON && xhr.responseJSON.errors)
+                            ? Object.values(xhr.responseJSON.errors).flat().join(' ')
+                            : 'Gagal menyimpan mesin baru.';
+                        $('#quickMachineError').removeClass('d-none').text(msg);
+                    },
+                    complete: function() {
+                        $btn.prop('disabled', false);
+                    }
+                });
+            });
             $('#formFileMultiple').on('change', function() {
                 var files = this.files;
                 var dynamicInputsContainer = $('#dynamicInputsContainer');
@@ -443,12 +680,21 @@
                 });
             });
 
-            $('#pic-dropdown').on('change', function() {
-                var clientId = $(this).find(':selected').val();
-                var Url = '/machine/dropdown/' + clientId;
+            // Unit Mesin baru ke-load setelah Service Type dipilih. Kalau Service
+            // Type = Rental, sumbernya BUKAN mesin milik client (PIC-nya diabaikan),
+            // tapi daftar unit internal Reftech (Fixed Asset) — selain itu tetap
+            // sesuai unit yang dimiliki client (perlu PIC dulu buat tau client-nya).
+            function resetMachineDropdown(placeholder) {
+                var machineDropdown = $('#machine-dropdown');
+                machineDropdown.empty();
+                machineDropdown.append('<option selected disabled>' + placeholder + '</option>');
+                machineDropdown.prop('disabled', true);
+                refreshMachineSelect2();
+            }
 
+            function populateMachineDropdown(url) {
                 $.ajax({
-                    url: Url,
+                    url: url,
                     type: 'GET',
                     success: function(response) {
                         var machineDropdown = $('#machine-dropdown');
@@ -458,21 +704,59 @@
                         );
 
                         $.each(response, function(key, value) {
+                            // Mesin "Dummy" (id_unit null) gak punya brand/model dari
+                            // katalog — fallback ke machine.desc (yang diisi bebas pas
+                            // quick-add) biar labelnya tetap kebaca.
+                            var label = (value.brand || value.model)
+                                ? ((value.brand || '') + " " + (value.model || '')).trim()
+                                : (value.desc || '-');
                             var option = $('<option></option>').attr('value', value.id)
                                 .attr('data-unit-category', value.unit_category || '')
-                                .text(value.brand + " " + value.model +
+                                .attr('data-dummy', value.is_dummy || 0)
+                                .text(label +
                                     " || " + value.location + " - " + value.tag +
                                     " - " + value.serial);
                             machineDropdown.append(option);
                         });
 
                         machineDropdown.prop('disabled', false);
+                        refreshMachineSelect2();
 
                         if (selectedMachineId) {
                             machineDropdown.val(selectedMachineId).trigger('change');
                         }
                     }
                 });
+            }
+
+            function loadMachineDropdown() {
+                if (isInternalStock) return; // Machine udah dikunci dari server
+
+                var serviceType = $('#service-type-select').val();
+                if (!serviceType) {
+                    resetMachineDropdown('---- Pilih Service Type dulu ----');
+                    return;
+                }
+
+                if (serviceType === 'Rental') {
+                    populateMachineDropdown('/db/machine/internal-fleet');
+                    return;
+                }
+
+                var picId = $('#pic-dropdown').val();
+                if (!picId) {
+                    resetMachineDropdown('---- Pilih PIC dulu ----');
+                    return;
+                }
+                populateMachineDropdown('/machine/dropdown/' + picId);
+            }
+
+            $('#pic-dropdown').on('change', function() {
+                loadMachineDropdown();
+            });
+
+            $('#service-type-select').on('change', function() {
+                loadMachineDropdown();
             });
 
             function checkPmLevelVisibility() {

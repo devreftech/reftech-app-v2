@@ -24,12 +24,15 @@ $(function () {
             },
             columns: [
                 { data: "" },
-                { data: "id" },
-                { data: "id" },
-                { data: "nip" },
                 { data: "name" },
-                { data: "date_in" },
+                { data: "nip" },
+                { data: "email" },
+                { data: "phone" },
+                { data: "position" },
+                { data: "area" },
                 { data: "role" },
+                { data: "active" },
+                { data: "date_in" },
             ],
             columnDefs: [
                 {
@@ -44,44 +47,75 @@ $(function () {
                     },
                 },
                 {
-                    // For Checkboxes
-                    targets: 1,
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 3,
-                    checkboxes: true,
-                    render: function () {
-                        return '<input type="checkbox" class="dt-checkboxes form-check-input">';
-                    },
-                    checkboxes: {
-                        selectAllRender:
-                            '<input type="checkbox" class="form-check-input">',
-                    },
-                },
-                {
-                    targets: 2,
-                    searchable: true,
-                    visible: false,
-                },
-                {
+                    // Employee: avatar + name, link ke detail
                     responsivePriority: 1,
-                    targets: 3,
+                    targets: 1,
+                    render: function (data, type, full, row) {
+                        if (type !== "display") return data;
+                        var detailRoute = route("employee.show", full["id"]);
+                        var img = full["image"]
+                            ? "/" + full["image"]
+                            : "/assets/img/avatars/1.png";
+                        var name = data || "-";
+                        return (
+                            '<div class="d-flex justify-content-start align-items-center user-name">' +
+                            '<div class="avatar avatar-sm me-2">' +
+                            '<img src="' + img + '" alt="Avatar" class="rounded-circle">' +
+                            "</div>" +
+                            '<div class="d-flex flex-column">' +
+                            '<a href="' + detailRoute + '" class="text-body text-truncate">' +
+                            '<span class="fw-medium">' + name + "</span>" +
+                            "</a>" +
+                            "</div>" +
+                            "</div>"
+                        );
+                    },
                 },
                 {
-                    targets: 3,
+                    targets: [5, 6],
                     render: function (data, type, full, row) {
-                        if (type === "display") {
-                            var $dataId = full["id"];
-                            var detailRoute = route("employee.show", $dataId);
-                            return (
-                                '<a class="text-dark" href="' + detailRoute + '">' + data + "</a>"
-                            );
-                        }
-                        return data;
+                        if (type !== "display") return data;
+                        return data || '<span class="text-muted">-</span>';
+                    },
+                },
+                {
+                    // Role badge
+                    targets: 7,
+                    render: function (data, type, full, row) {
+                        if (type !== "display") return data;
+                        var colors = {
+                            Admin: "primary",
+                            Sales: "success",
+                            "Sales Manager": "success",
+                            Accounting: "warning",
+                            "Finance Manager": "warning",
+                            Logistic: "info",
+                            Technician: "dark",
+                            ServiceM: "dark",
+                            Support: "secondary",
+                            Client: "secondary",
+                        };
+                        var color = colors[data] || "secondary";
+                        return (
+                            '<span class="badge bg-label-' + color + '">' +
+                            (data || "-") +
+                            "</span>"
+                        );
+                    },
+                },
+                {
+                    // Status badge
+                    targets: 8,
+                    render: function (data, type, full, row) {
+                        if (type !== "display") return data;
+                        var isActive = String(data) === "1";
+                        return isActive
+                            ? '<span class="badge bg-label-success">Active</span>'
+                            : '<span class="badge bg-label-secondary">Non Active</span>';
                     },
                 },
             ],
-            order: [[6, "asc"]],
+            order: [[1, "asc"]],
             dom: '<"card-header flex-column flex-md-row"<"head-label text-center"><"dt-action-buttons text-end pt-3 pt-md-0"B>><"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             displayLength: 7,
             lengthMenu: [7, 10, 25, 50, 75, 100],
@@ -96,7 +130,7 @@ $(function () {
                             text: '<i class="mdi mdi-printer-outline me-1" ></i>Print',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
+                                columns: [1, 2, 3, 4, 5, 6, 7, 8, 9],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -152,7 +186,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-document-outline me-1" ></i>Csv',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
+                                columns: [1, 2, 3, 4, 5, 6, 7, 8, 9],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -189,7 +223,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-excel-outline me-1"></i>Excel',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
+                                columns: [1, 2, 3, 4, 5, 6, 7, 8, 9],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -226,7 +260,7 @@ $(function () {
                             text: '<i class="mdi mdi-file-pdf-box me-1"></i>Pdf',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
+                                columns: [1, 2, 3, 4, 5, 6, 7, 8, 9],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {
@@ -263,7 +297,7 @@ $(function () {
                             text: '<i class="mdi mdi-content-copy me-1" ></i>Copy',
                             className: "dropdown-item",
                             exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
+                                columns: [1, 2, 3, 4, 5, 6, 7, 8, 9],
                                 // prevent avatar to be display
                                 format: {
                                     body: function (inner, coldex, rowdex) {

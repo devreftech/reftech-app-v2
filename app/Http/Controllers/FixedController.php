@@ -537,13 +537,108 @@ class FixedController extends Controller
 
     public function showUnitAcquisition($id)
     {
-        $fixed = FixedAsset::find($id);
+        $fixed = FixedAsset::with('unit', 'rentalScans.client', 'rentalScans.picInternal', 'rentalScans.scannedBy')
+            ->find($id);
         $services = FixedAssetService::where('id_fixed_asset', $id)->with('detailProduct.product')->get();
 
         $hitung = $fixed->hitungNilaiBuku();
         $totalPenyusutan = $hitung['total_penyusutan'];
         $nilaiBuku = $hitung['nilai_buku'];
 
-        return view('pages.warehouse.unit-acquisition.show', compact('fixed', 'totalPenyusutan', 'nilaiBuku', 'services'));
+        // Data buat aksi scan Rental (Jadikan Rental / Terima Kembali) — halaman ini
+        // JUGA yang dibuka pas QR barcode unit di-scan, lihat barcodeImage().
+        $lastOutScan = $fixed->rentalScans->firstWhere('action', 'out');
+        // 'details' di-eager-load KHUSUS baris yang nyebut unit ini aja (bukan semua
+        // item quotation) — dipakai buat nampilin nilai item unitnya doang, bukan
+        // total keseluruhan quotation (yang bisa kecampur item lain kayak dryer dst).
+        $confirmedOffers = \App\Models\UnitQuotation::where('status', 'po_received')
+            ->whereHas('details', fn ($q) => $q->where('id_fixed_asset', $fixed->id))
+            ->with(['client', 'details' => fn ($q) => $q->where('id_fixed_asset', $fixed->id)])
+            ->orderByDesc('id')
+            ->get();
+
+        return view('pages.warehouse.unit-acquisition.show', compact('fixed', 'totalPenyusutan', 'nilaiBuku', 'services', 'lastOutScan', 'confirmedOffers'));
+    }
+
+    /**
+     * Aksi scan barcode/QR unit Fixed Asset (Jadikan Rental) — QR-nya encode URL
+     * ke halaman detail unit (unit-acquisition.show, lihat barcodeImage()), formnya
+     * nempel di situ juga, jadi setelah submit balik lagi ke halaman yang sama.
+     */
+    public function scanStoreOut(Request $request, $id)
+    {
+        $fixed = FixedAsset::where('type', 'Mesin')->findOrFail($id);
+
+        if ($fixed->status_unit !== 'OK') {
+            return redirect()->back()->with('error', 'Unit ini statusnya bukan OK, gak bisa dijadikan Rental dari sini.');
+        }
+
+        $this->validate($request, [
+            'id_client' => 'required|exists:client,id',
+            'note' => 'nullable|string|max:255',
+        ]);
+
+        \App\Models\FixedAssetRentalScan::create([
+            'id_fixed_asset' => $fixed->id,
+            'action' => 'out',
+            'id_client' => $request->id_client,
+            // PIC Internal = akun yang lagi login pas scan, bukan dropdown pilihan.
+            'id_pic_internal' => Auth::id(),
+            'scanned_by' => Auth::id(),
+            'note' => $request->note,
+        ]);
+
+        $fixed->status_unit = 'Rental';
+        $fixed->save();
+
+        return redirect()->route('unit-acquisition.show', $fixed->id)->with('success', 'Unit berhasil dijadikan Rental.');
+    }
+
+    public function scanStoreIn(Request $request, $id)
+    {
+        $fixed = FixedAsset::where('type', 'Mesin')->findOrFail($id);
+
+        if ($fixed->status_unit !== 'Rental') {
+            return redirect()->back()->with('error', 'Unit ini statusnya bukan Rental, gak bisa diterima kembali dari sini.');
+        }
+
+        // Client/PIC internal-nya nyalin dari baris "out" terakhir — gak perlu
+        // dipilih ulang, cuma konfirmasi unit fisiknya udah balik.
+        $lastOutScan = \App\Models\FixedAssetRentalScan::where('id_fixed_asset', $fixed->id)
+            ->where('action', 'out')
+            ->orderByDesc('id')
+            ->first();
+
+        \App\Models\FixedAssetRentalScan::create([
+            'id_fixed_asset' => $fixed->id,
+            'action' => 'in',
+            'id_client' => $lastOutScan->id_client ?? null,
+            'id_pic_internal' => $lastOutScan->id_pic_internal ?? null,
+            'scanned_by' => Auth::id(),
+            'note' => $request->note,
+        ]);
+
+        $fixed->status_unit = 'OK';
+        $fixed->save();
+
+        return redirect()->route('unit-acquisition.show', $fixed->id)->with('success', 'Unit berhasil diterima kembali, status jadi OK.');
+    }
+
+    /**
+     * Generate QR code (PNG) yang encode URL ke scanForm() — ini yang di-print
+     * jadi label barcode fisik nempel di unit-nya.
+     */
+    public function barcodeImage($id)
+    {
+        $fixed = FixedAsset::where('type', 'Mesin')->findOrFail($id);
+        $url = route('unit-acquisition.show', $fixed->id);
+
+        $result = (new \Endroid\QrCode\Builder\Builder())->build(
+            data: $url,
+            size: 320,
+            margin: 10,
+        );
+
+        return response($result->getString(), 200)->header('Content-Type', $result->getMimeType());
     }
 }

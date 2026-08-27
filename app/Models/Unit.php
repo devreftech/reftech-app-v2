@@ -51,6 +51,7 @@ class Unit extends Model
         'status',
         'type',
         'generation',
+        'harga_jual',
     ];
     
     public function detail()

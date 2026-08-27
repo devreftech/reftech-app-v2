@@ -30,6 +30,7 @@ $(function () {
                 { data: "brand_type", defaultContent: '-' },
                 { data: "serial_tag", defaultContent: '-' },
                 { data: "date", defaultContent: '-' },
+                { data: "approval_status", defaultContent: '-' },
             ],
             columnDefs: [
                 {
@@ -72,6 +73,24 @@ $(function () {
                             return data && data.length ? data : '-';
                         }
                         return data;
+                    },
+                },
+                {
+                    targets: 8,
+                    render: function (data, type, full, meta) {
+                        if (type !== "display") return data;
+                        var map = {
+                            pending: ["warning", "Menunggu Approval"],
+                            approved: ["success", "Disetujui"],
+                            rejected: ["danger", "Ditolak"],
+                        };
+                        var m = map[data] || ["secondary", data || "-"];
+                        var badge = '<span class="badge bg-label-' + m[0] + '">' + m[1] + "</span>";
+                        if (data === "rejected" && full["reject_note"]) {
+                            badge += '<div class="small text-danger mt-1">' +
+                                $("<div>").text(full["reject_note"]).html() + "</div>";
+                        }
+                        return badge;
                     },
                 },
             ],

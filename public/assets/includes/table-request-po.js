@@ -9,6 +9,7 @@ $(function () {
             .appendTo(dt_table_request_invoice.find("thead"));
 
         dt_table_request_invoice.find("thead tr:eq(1) th").each(function (i) {
+            if (i === 6) { $(this).html(""); return; }
             var title = $(this).text();
             $(this).html(
                 '<input type="text" class="form-control form-control-sm" placeholder="Cari ' + title + '..." />'
@@ -45,13 +46,10 @@ $(function () {
                     targets: 0,
                     render: function (data, type, full) {
                         if (type !== "display") return data;
-                        var badge = full["row_type"] === "unit"
-                            ? ' <span class="badge bg-label-danger ms-1">Unit</span>'
-                            : "";
                         var detailUrl = full["row_type"] === "unit"
                             ? route("before.accept.unit", full["id"])
                             : route("before.accept", full["id"]);
-                        return '<a class="fw-bold text-primary" href="' + detailUrl + '">' + data + "</a>" + badge;
+                        return '<a class="fw-bold text-primary" href="' + detailUrl + '">' + data + "</a>";
                     },
                 },
                 {
@@ -89,6 +87,20 @@ $(function () {
                 {
                     targets: 6,
                     className: "text-center",
+                    width: "48px",
+                    orderable: false,
+                    searchable: false,
+                    render: function (data, type, full) {
+                        if (type !== "display") return full.name || "";
+                        var name = full.name || "-";
+                        var initials = name.split(" ").map(function (w) { return w.charAt(0); }).slice(0, 2).join("").toUpperCase();
+                        var colors = ["bg-label-primary","bg-label-success","bg-label-warning","bg-label-danger","bg-label-info","bg-label-secondary"];
+                        var colorClass = colors[name.charCodeAt(0) % colors.length];
+                        var av = full.sales_image
+                            ? '<img src="/' + full.sales_image + '" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;" alt="' + name + '">'
+                            : '<div class="avatar-initial rounded-circle ' + colorClass + '" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;font-size:11px;font-weight:700;">' + initials + '</div>';
+                        return '<span data-bs-toggle="tooltip" data-bs-placement="top" title="' + name + '">' + av + '</span>';
+                    },
                 },
             ],
             orderCellsTop: true,

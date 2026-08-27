@@ -255,6 +255,7 @@ class DashboardController extends Controller
                 ->join('client as c', 'c.id', '=', 'm.id_client')
                 ->join('users as u', 'u.id', '=', 'c.id_sales')
                 ->where('u.id', Auth::user()->id)
+                ->where('reports.approval_status', 'approved')
                 ->where('reports.viewed', 0)->count();
 
             $salesCharts = $this->getSalesDashboardCharts(Auth::id(), $leads->count(), $quotation->count(), $po->count());

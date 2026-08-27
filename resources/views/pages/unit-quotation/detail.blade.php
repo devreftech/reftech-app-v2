@@ -41,22 +41,38 @@
                 {{-- Header --}}
                 <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column mb-0">
                     <div class="mb-xl-0 pb-1">
-                        <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
-                            <span class="app-brand-logo demo">
-                                <span style="color: var(--bs-primary)">
-                                    <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="" width="60%">
+                        @if ($quote->client?->info === 'Kojisha')
+                            <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
+                                <span class="app-brand-logo demo">
+                                    <span style="color: var(--bs-primary)">
+                                        <img src="{{ asset('/asset') }}/logo/Kojisha-Log.png" alt="" width="60%">
+                                    </span>
                                 </span>
-                            </span>
-                        </div>
-                        <p class="mb-1 fw-bolder" style="font-size: 15px">PT Reftech Jaya Optima</p>
-                        <div style="font-size: 12px; color: #555;">
-                            <p class="mb-0">Taman Kopo Indah V, Soho Sommerville No. 31</p>
-                            <p class="mb-0">Bandung – Jawa Barat 40218</p>
-                            <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>info@reftech.id &nbsp;|&nbsp; <i class="mdi mdi-web me-1" style="font-size:11px;"></i>www.reftech.id</p>
-                            <p class="mb-0 mt-1" style="font-size:10.5px; color:#444; font-weight:500;">
-                                <i class="mdi mdi-certificate-outline me-1 text-primary"></i><span class="fw-bold" style="color:#696cff;">ISO Certified:</span> ISO 9001:2015 &nbsp;|&nbsp; ISO 14001:2015 &nbsp;|&nbsp; ISO 45001:2018
-                            </p>
-                        </div>
+                            </div>
+                            <p class="mb-1 fw-bolder" style="font-size: 15px">PT Kojisha Innotiv Indonesia</p>
+                            <div style="font-size: 12px; color: #555;">
+                                <p class="mb-0">Jl. Nancep No. 45A, Setu</p>
+                                <p class="mb-0">Cibitung - Kab. Bekasi 17320</p>
+                                <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>+62 812-1000-0997 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>admin@kojisha.com</p>
+                            </div>
+                        @else
+                            <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
+                                <span class="app-brand-logo demo">
+                                    <span style="color: var(--bs-primary)">
+                                        <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="" width="60%">
+                                    </span>
+                                </span>
+                            </div>
+                            <p class="mb-1 fw-bolder" style="font-size: 15px">PT Reftech Jaya Optima</p>
+                            <div style="font-size: 12px; color: #555;">
+                                <p class="mb-0">Taman Kopo Indah V, Soho Sommerville No. 31</p>
+                                <p class="mb-0">Bandung – Jawa Barat 40218</p>
+                                <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>info@reftech.id &nbsp;|&nbsp; <i class="mdi mdi-web me-1" style="font-size:11px;"></i>www.reftech.id</p>
+                                <p class="mb-0 mt-1" style="font-size:10.5px; color:#444; font-weight:500;">
+                                    <i class="mdi mdi-certificate-outline me-1 text-primary"></i><span class="fw-bold" style="color:#696cff;">ISO Certified:</span> ISO 9001:2015 &nbsp;|&nbsp; ISO 14001:2015 &nbsp;|&nbsp; ISO 45001:2018
+                                </p>
+                            </div>
+                        @endif
                     </div>
                     <div class="text-end">
                         <h3 class="fw-bold mb-1" style="letter-spacing:2px; color:#696cff;">QUOTATION</h3>
@@ -146,213 +162,33 @@
                     Dear Sir/Madam, Please find bellow our price quotation for the following :
                 </p>
 
-                {{-- Items Table --}}
-                @php
-                    $specLabels = [
-                        'brand'=>'Brand','model'=>'Model','type_unit'=>'Type',
-                        'bar'=>'Max Pressure','air_cap'=>'Air Capacity','power'=>'Motor Power',
-                        'voltage'=>'Voltage','connect'=>'Drive','cooling'=>'Cooling Method',
-                        'exhaust'=>'Connection','refrigerant_type'=>'Refrigerant Type','pdp'=>'PDP',
-                        'filtration'=>'Filtration','oil_content'=>'Oil Content','grade'=>'Grade',
-                        'capacity'=>'Capacity','material'=>'Material','test_pressure'=>'Test Pressure',
-                        'inlet_pressure'=>'Inlet Pressure','outlet_pressure'=>'Outlet Pressure',
-                        'inlet_cap'=>'Inlet Capacity (LP)','outlet_cap'=>'Outlet Capacity (HP)',
-                        'dimension'=>'Dimension','weight'=>'Weight',
-                    ];
-                    $specUnits = [
-                        'bar'=>' Bar','air_cap'=>' m³/min','test_pressure'=>' Bar',
-                        'inlet_pressure'=>' Bar','outlet_pressure'=>' Bar',
-                        'inlet_cap'=>' m³/min','outlet_cap'=>' m³/min',
-                        'weight'=>' Kg','capacity'=>' Liter',
-                    ];
-                    $hasDisc = $quote->details->where('disc', '>', 0)->count() > 0;
-                @endphp
-                <div class="table-responsive rounded border mb-3">
-                    <table class="table table-bordered items-top-align-table m-0" style="width:100%; font-size:12px;">
-                        <thead style="font-size:11px; background:#eeeeff; color:#3d3d8f;">
-                            <tr>
-                                <th class="text-center py-2" style="width:4%; font-weight:700; border-color:#d0d0ff;">No.</th>
-                                <th class="text-center py-2" style="width:{{ $hasDisc ? '44%' : '49%' }}; font-weight:700; border-color:#d0d0ff;">Item Description</th>
-                                <th class="text-center py-2" style="width:10%; font-weight:700; border-color:#d0d0ff;">Qty</th>
-                                <th class="text-center py-2" style="width:18%; font-weight:700; border-color:#d0d0ff;">Price (IDR)</th>
-                                @if ($hasDisc)
-                                    <th class="text-center py-2" style="width:7%; font-weight:700; border-color:#d0d0ff;">Disc</th>
-                                @endif
-                                <th class="text-center py-2" style="width:{{ $hasDisc ? '17%' : '19%' }}; font-weight:700; border-color:#d0d0ff;">Total (IDR)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @php
-                                $itemNo = 1;
-                                $headerCount = 0;
-                            @endphp
-                            @foreach ($quote->details as $item)
-                                @if ($item->type === 'header' || $item->type === 'heading')
-                                    @php
-                                        $lbl = trim($item->label ?? '');
-                                        if (!preg_match('/^[A-Z0-9][\.\)]/i', $lbl)) {
-                                            $lbl = chr(65 + ($headerCount % 26)) . '. ' . $lbl;
-                                        }
-                                        $headerCount++;
-                                    @endphp
-                                    <tr style="background:#f0f0ff;">
-                                        <td colspan="{{ $hasDisc ? '6' : '5' }}" class="fw-bold text-primary text-uppercase px-3" style="padding: 5px 10px; font-size:11.5px; border-top:1px solid #d0d0ff; border-bottom:1px solid #d0d0ff;">
-                                            <i class="mdi mdi-bookmark-outline me-1"></i>{{ $lbl }}
-                                        </td>
-                                    </tr>
-                                @else
-                                    <tr style="font-size: 12px">
-                                        <td class="text-center align-top py-2">{{ $itemNo++ }}</td>
-                                        <td class="align-top py-2">
-                                            @if ($item->type === 'unit' && $item->unit)
-                                                <p class="mb-1 fw-semibold" style="font-size: 12px">
-                                                    {{ $item->label ?: ($item->unit->brand . ' ' . $item->unit->sku . ($item->unit->model ? ' — ' . $item->unit->model : '')) }}
-                                                </p>
-                                                @php $specs = $item->getSpecVisibleArray(); @endphp
-                                                @if (!empty($specs))
-                                                    <div style="font-size:11px; color:#777; margin-top:4px;">
-                                                        @foreach ($specs as $field)
-                                                            @if ($field === 'unit') @continue @endif
-                                                            @php $val = $item->unit->$field ?? null; @endphp
-                                                            @if ($val && isset($specLabels[$field]))
-                                                                <div style="display:flex; padding:1px 0;">
-                                                                    <span style="min-width:110px; flex-shrink:0;">{{ $specLabels[$field] }}</span>
-                                                                    <span>: {{ $val }}{{ $specUnits[$field] ?? '' }}</span>
-                                                                </div>
-                                                            @endif
-                                                        @endforeach
-                                                    </div>
-                                                @endif
-                                            @elseif ($item->type === 'equivalent' || $item->type === 'sparepart' || $item->id_equivalent || $item->equivalent)
-                                                 @if ($item->equivalent)
-                                                     @php
-                                                         $brandPn = trim(($item->equivalent->brand ?? '') . ($item->equivalent->pn ? ' - ' . $item->equivalent->pn : ''));
-                                                         $subDesc = preg_replace('/^[\s\-\*\•]+/u', '', $item->label);
-                                                         if (empty($subDesc) || $subDesc === $brandPn) {
-                                                             $subDesc = optional($item->equivalent->product)->description ?? optional($item->equivalent->product)->name;
-                                                         }
-                                                         $prod = optional($item->equivalent)->product;
-                                                         $stkBdg = (int) ($prod->stock ?? 0);
-                                                         $stkBks = (int) ($prod->warehouse_stock ?? 0);
-                                                         $stkPend = (int) ($prod->pending_stock ?? 0);
-                                                         $totalStk = $stkBdg + $stkBks;
-                                                         $popoverContent = "<div class='text-start small p-1'><div><span class='badge bg-label-primary me-1'>BDG: $stkBdg</span> Stok Bandung</div><div class='mt-1'><span class='badge bg-label-info me-1'>BKS: $stkBks</span> Stok Bekasi</div><div class='mt-1'><span class='badge bg-label-warning me-1'>Pend: $stkPend</span> Pending PO</div></div>";
-                                                     @endphp
-                                                     <div class="d-inline-flex align-items-center flex-wrap gap-1">
-                                                         <p class="mb-0 fw-bold text-dark" style="font-size: 12px">{{ $brandPn ?: preg_replace('/^[\s\-\*\•]+/u', '', $item->label) }}</p>
-                                                         @if ($prod)
-                                                             <span class="badge bg-label-info ms-2 cursor-pointer stock-popover"
-                                                                   data-bs-toggle="tooltip"
-                                                                   data-bs-placement="top"
-                                                                   data-bs-html="true"
-                                                                   title="<b>BDG:</b> {{ $stkBdg }} &nbsp;|&nbsp; <b>BKS:</b> {{ $stkBks }} &nbsp;|&nbsp; <b>Pend:</b> {{ $stkPend }}"
-                                                                   data-bs-trigger="hover focus"
-                                                                   style="font-size: 9.5px; font-weight: 600; padding: 2px 6px;">
-                                                                 <i class="mdi mdi-cube-outline me-1"></i>Stok: {{ $totalStk }}
-                                                             </span>
-                                                         @endif
-                                                     </div>
-                                                     @if ($subDesc && $subDesc !== $brandPn)
-                                                         <div style="font-size: 12px; color: #333333; font-weight: 500; margin-top: 2px; line-height: 1.4;">{{ preg_replace('/^[\s\-\*\•]+/u', '', $subDesc) }}</div>
-                                                     @endif
-                                                 @else
-                                                     <p class="mb-0 fw-bold text-dark" style="font-size: 12px">{{ preg_replace('/^[\s\-\*\•]+/u', '', $item->label) }}</p>
-                                                 @endif
-                                            @else
-                                                <p class="mb-0 fw-bold text-dark" style="font-size: 12px">{{ preg_replace('/^[\s\-\*\•]+/u', '', $item->label) }}</p>
-                                                @if ($item->description)
-                                                     @php
-                                                         $descLines = explode("\n", str_replace("\r", "", $item->description));
-                                                     @endphp
-                                                     <div class="text-muted" style="font-size:11px; margin-top:3px; line-height:1.4;">
-                                                         @foreach ($descLines as $dLine)
-                                                             @php
-                                                                 $trimmedDLine = trim($dLine);
-                                                             @endphp
-                                                             @if (empty($trimmedDLine))
-                                                                 <div style="height:2px;"></div>
-                                                             @else
-                                                                 @php
-                                                                     $hasBullet = preg_match('/^([•\-\*]|\d+[\.\)])\s*(.*)/u', $trimmedDLine, $dMatches);
-                                                                 @endphp
-                                                                 @if ($hasBullet && !empty($dMatches[1]) && !empty($dMatches[2]))
-                                                                     <div style="display:flex; align-items:flex-start; margin-bottom:2px;">
-                                                                         <span style="flex-shrink:0; min-width:14px; color:#696cff; font-weight:600;">{{ $dMatches[1] }}</span>
-                                                                         <span style="flex:1;">{{ $dMatches[2] }}</span>
-                                                                     </div>
-                                                                 @else
-                                                                     <div style="margin-bottom:2px; font-weight:600; color:#222;">{{ $dLine }}</div>
-                                                                 @endif
-                                                             @endif
-                                                         @endforeach
-                                                     </div>
-                                                 @endif
-                                            @endif
-                                        </td>
-                                        <td class="text-center align-top py-2">{{ (int) $item->qty }} {{ $item->info_qty ?? 'Unit' }}</td>
-                                        <td class="text-end align-top py-2">{{ number_format($item->price, 0, '', '.') }}</td>
-                                        @if ($hasDisc)
-                                            <td class="text-center align-top py-2">{{ $item->disc > 0 ? (int) $item->disc . '%' : '-' }}</td>
-                                        @endif
-                                        <td class="text-end align-top py-2 fw-semibold">{{ number_format($item->amount, 0, '', '.') }}</td>
-                                    </tr>
-                                @endif
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-
-                {{-- Financial Summary (Right Aligned Box) --}}
-                @php
-                    $afterDisc = $quote->diskon > 0
-                        ? $quote->subtotal - $quote->discount_amount
-                        : $quote->subtotal;
-                @endphp
-                <div class="d-flex justify-content-end mb-3">
-                    <div style="min-width:270px; font-size:12px; border:1px solid #d0d0ff; border-left:4px solid #696cff; border-radius:6px; overflow:hidden; background:#fff;">
-                        <table style="width:100%; border-collapse:collapse;">
-                            <tr>
-                                <td style="padding:6px 16px 6px 14px; color:#555;">Subtotal</td>
-                                <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($quote->subtotal, 0, '', '.') }}</td>
-                            </tr>
-                            @if ($quote->diskon > 0)
-                                <tr style="border-top:1px solid #eeeeff;">
-                                    <td style="padding:6px 16px 6px 14px; color:#555;">Discount{{ $quote->discount_label ? ' ' . $quote->discount_label : '' }}</td>
-                                    <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#dc3545;">- Rp {{ number_format($quote->discount_amount, 0, '', '.') }}</td>
-                                </tr>
-                                <tr style="border-top:1px solid #eeeeff;">
-                                    <td style="padding:6px 16px 6px 14px; color:#555;">After Discount</td>
-                                    <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($afterDisc, 0, '', '.') }}</td>
-                                </tr>
-                            @endif
-                            <tr style="border-top:1px solid #eeeeff;">
-                                <td style="padding:6px 16px 6px 14px; color:#555;">Tax {{ $quote->tax ? '(12%)' : '' }}</td>
-                                <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">
-                                    {{ $quote->tax ? 'Rp ' . number_format($quote->tax_amount, 0, '', '.') : '-' }}
-                                </td>
-                            </tr>
-                            @if ($quote->shipping > 0)
-                                <tr style="border-top:1px solid #eeeeff;">
-                                    <td style="padding:6px 16px 6px 14px; color:#555;">Shipping Cost</td>
-                                    <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($quote->shipping, 0, '', '.') }}</td>
-                                </tr>
-                            @endif
-                            <tr style="border-top:2px solid #d0d0ff; background:#f0f0ff;">
-                                <td style="padding:9px 16px 9px 14px; font-weight:700; font-size:13px; color:#3d3d8f;">TOTAL PRICE</td>
-                                <td style="padding:9px 14px 9px 0; text-align:right; font-weight:700; font-size:13px; color:#696cff;">Rp {{ number_format($quote->total, 0, '', '.') }}</td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
+                {{-- Items Table + Financial Summary — per Opsi kalau quotation ini
+                     punya >1 opsi perbandingan harga, atau 1x aja kalau biasa. --}}
+                @if ($quote->options->isNotEmpty())
+                    @foreach ($quote->options as $i => $option)
+                        @if ($i > 0)
+                            <div style="border-top:2px dashed #d0d0ff; margin:28px 0 20px;"></div>
+                        @endif
+                        @if ($quote->options->count() > 1)
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-primary" style="font-size:11px;">Opsi {{ $i + 1 }}</span>
+                            <h6 class="mb-0 fw-bold text-dark" style="font-size:13px;">{{ $option->title }}</h6>
+                        </div>
+                        @endif
+                        @include('pages.unit-quotation.partials.option-table', ['items' => $option->details, 'optTotals' => $option])
+                    @endforeach
+                @else
+                    @include('pages.unit-quotation.partials.option-table', ['items' => $quote->details, 'optTotals' => $quote])
+                @endif
 
                 {{-- Note (Remarks) --}}
                 @if ($quote->note)
-                <div style="border:1px solid #e0e0e0; border-left:3px solid #696cff; border-radius:6px; padding:10px 14px; font-size:11px; color:#333; margin-bottom:14px; background:#fafafa;">
+                <div style="border:1px solid #e0e0e0; border-left:3px solid #696cff; border-radius:6px; padding:10px 14px; font-size:12px; color:#333; margin-bottom:14px; background:#fafafa;">
                     <p class="mb-1 fw-semibold text-uppercase" style="font-size:10px; color:#888; letter-spacing:.5px;">Remarks / Note</p>
                     @php
                         $noteLines = explode("\n", str_replace("\r", "", $quote->note));
                     @endphp
-                    <div style="font-size:11px; color:#222; line-height:1.5;">
+                    <div style="font-size:12px; color:#222; line-height:1.5;">
                         @foreach ($noteLines as $line)
                             @php
                                 $trimmed = trim($line);
@@ -476,8 +312,21 @@
                 </div>
                 @endif
 
+                {{-- Banner: quotation masih punya >1 opsi, belum bisa lanjut ke PO --}}
+                @if ($quote->has_multiple_options)
+                    <div class="p-3 rounded-3 mb-3 bg-label-warning border shadow-sm">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="mdi mdi-alert-outline fs-5"></i>
+                            <div style="font-size:12px;">
+                                <strong>Quotation ini masih punya {{ $quote->options->count() }} opsi.</strong>
+                                Hapus opsi yang tidak dipilih customer dulu (lewat Edit) sebelum lanjut ke PO/Invoice/Contract.
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
                 {{-- 3. Workflow Sub-section: Purchase Order & Contract --}}
-                @if ((Auth::user()->role === 'Sales' && $quote->status !== 'po_received') || $quote->po_file || $sellingContract || $requestedSellingContract || (Auth::user()->role === 'Admin' || Auth::user()->role === 'Accounting'))
+                @if (!$quote->has_multiple_options && ((Auth::user()->role === 'Sales' && $quote->status !== 'po_received') || $quote->po_file || $sellingContract || $requestedSellingContract || (Auth::user()->role === 'Admin' || Auth::user()->role === 'Accounting')))
                 <div class="p-3 rounded-3 mb-3 bg-white border shadow-sm">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <span class="text-uppercase fw-bold text-primary" style="font-size: 10px; letter-spacing: 0.5px;">
@@ -487,7 +336,7 @@
                             <span class="badge bg-label-success" style="font-size:9px;">PO ATTACHED</span>
                         @endif
                     </div>
-                    
+
                     {{-- Upload / View PO --}}
                     @if (Auth::user()->role === 'Sales' || $isOwnerAdmin)
                         <button type="button" id="btn-upload-po-wrap" class="btn btn-sm btn-label-success d-flex align-items-center justify-content-center w-100 mb-2 btn-upload-po-unit fw-semibold {{ $quote->status === 'po_received' ? 'd-none' : '' }}"
@@ -760,6 +609,25 @@
             </div>
         </div>
         @endif
+
+        {{-- Kanban Action Card --}}
+        <div class="card mb-3">
+            <div class="card-header py-3">
+                <h5 class="mb-0">Action</h5>
+            </div>
+            <div class="card-body">
+                @if ($kanbanTask)
+                    <a href="{{ route('kanban.boards.show', $kanbanTask->board_id) }}?task_id={{ $kanbanTask->id }}"
+                        class="btn btn-outline-success w-100">
+                        <i class="mdi mdi-view-column-outline me-1"></i> Monitoring Project
+                    </a>
+                @else
+                    <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#modalPostToKanban">
+                        <i class="mdi mdi-view-column-outline me-1"></i> Post to Kanban
+                    </button>
+                @endif
+            </div>
+        </div>
 
         {{-- Payment Card --}}
         @if ($payments->isNotEmpty() || $quote->status === 'po_received')
@@ -1096,6 +964,51 @@
 </div>
 @endif
 
+{{-- Modal Post to Kanban --}}
+<div class="modal fade" id="modalPostToKanban" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="{{ route('unit-quotation.post-to-kanban', $quote->id) }}" method="POST">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="mdi mdi-view-column-outline me-1"></i> Post to Kanban</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    @if ($kanbanBoards->isEmpty())
+                        <p class="text-muted mb-0">Anda belum jadi anggota board Kanban manapun.</p>
+                    @else
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Board / Project <span class="text-danger">*</span></label>
+                            <select class="form-select" name="board_id" id="kanban-board-select" required>
+                                <option value="">-- Pilih Board --</option>
+                                @foreach ($kanbanBoards as $board)
+                                    <option value="{{ $board->id }}">{{ $board->title }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Kolom <span class="text-danger">*</span></label>
+                            <select class="form-select" name="column_id" id="kanban-column-select" required disabled>
+                                <option value="">-- Pilih Board dulu --</option>
+                            </select>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            Kartu akan dibuat dengan judul "{{ $quote->no_quote }} — {{ $quote->client?->company }}" dan langsung tautkan ke quotation ini.
+                        </p>
+                    @endif
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary" @if ($kanbanBoards->isEmpty()) disabled @endif>
+                        <i class="mdi mdi-send-outline me-1"></i> Post
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {{-- Modal Add Payment --}}
 <div class="modal fade" id="modalAddPayment" tabindex="-1">
     <div class="modal-dialog">
@@ -1134,12 +1047,21 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Metode Pembayaran <span class="text-danger">*</span></label>
-                        <select class="form-select" name="method" required>
+                        <select class="form-select" name="method" id="add-payment-method" required>
                             <option value="">-- Pilih Metode --</option>
                             <option value="Transfer">Transfer</option>
                             <option value="Cash">Cash</option>
                             <option value="Giro">Giro</option>
                             <option value="Escrow">Escrow</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="add-payment-escrow-channel-group" style="display:none;">
+                        <label class="form-label fw-semibold">Akun Marketplace <span class="text-danger">*</span></label>
+                        <select class="form-select" name="escrow_channel" id="add-payment-escrow-channel">
+                            <option value="">-- Pilih Akun --</option>
+                            <option value="Airend Center">Airend Center</option>
+                            <option value="Parts Compressor">Parts Compressor</option>
+                            <option value="Kojisha Filter">Kojisha Filter</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -1291,7 +1213,7 @@
                             <option value="negotiation"  {{ $quote->status === 'negotiation'  ? 'selected' : '' }}>Negotiation</option>
                             <option value="revision"     {{ $quote->status === 'revision'     ? 'selected' : '' }}>Revisi</option>
                             <option value="hot_prospect" {{ $quote->status === 'hot_prospect' ? 'selected' : '' }}>Hot Prospect</option>
-                            <option value="po_received"  {{ $quote->status === 'po_received'  ? 'selected' : '' }}>PO Received</option>
+                            <option value="po_received"  {{ $quote->status === 'po_received'  ? 'selected' : '' }} {{ $quote->has_multiple_options ? 'disabled' : '' }}>PO Received{{ $quote->has_multiple_options ? ' (hapus opsi lain dulu)' : '' }}</option>
                             <option value="loss"         {{ $quote->status === 'loss'         ? 'selected' : '' }}>Loss</option>
                         </select>
                         <label>Status</label>
@@ -1344,13 +1266,13 @@
             background-color: #2b2c40 !important;
             border-color: rgba(255,255,255,0.08) !important;
         }
-        html.dark-style .invoice-preview-card thead[style*="background:#eeeeff"] {
-            background-color: #3f3b77 !important;
-            color: #e7e6fc !important;
+        html.dark-style .invoice-preview-card thead[style*="background:#f2f2f2"] {
+            background-color: #3a3b52 !important;
+            color: #e0e0e0 !important;
         }
-        html.dark-style .invoice-preview-card thead[style*="background:#eeeeff"] th {
-            border-color: #5650a8 !important;
-            color: #e7e6fc !important;
+        html.dark-style .invoice-preview-card thead[style*="background:#f2f2f2"] th {
+            border-color: #55566e !important;
+            color: #e0e0e0 !important;
         }
         html.dark-style .invoice-preview-card p[style*="color:#111"],
         html.dark-style .invoice-preview-card span[style*="color:#222"],
@@ -1469,8 +1391,41 @@
         }
     });
     $('#add-payment-percent').on('input', syncAddPaymentAmount);
+    $('#add-payment-method').on('change', function () {
+        var isEscrow = $(this).val() === 'Escrow';
+        $('#add-payment-escrow-channel-group').toggle(isEscrow);
+        $('#add-payment-escrow-channel').prop('required', isEscrow);
+        if (!isEscrow) {
+            $('#add-payment-escrow-channel').val('');
+        }
+    });
+    // Post to Kanban — kolom cuma bisa dipilih setelah board-nya dipilih, karena
+    // tiap board punya set kolom sendiri-sendiri (fetch via kanban.boards.data).
+    $('#kanban-board-select').on('change', function () {
+        var boardId = $(this).val();
+        var $columnSelect = $('#kanban-column-select');
+        $columnSelect.prop('disabled', true).html('<option value="">Memuat...</option>');
+        if (!boardId) {
+            $columnSelect.html('<option value="">-- Pilih Board dulu --</option>');
+            return;
+        }
+        $.get('/kanban/boards/' + boardId + '/data', function (columns) {
+            var options = '<option value="">-- Pilih Kolom --</option>';
+            (columns || []).forEach(function (col) {
+                options += '<option value="' + col.id + '">' + col.title + '</option>';
+            });
+            $columnSelect.html(options).prop('disabled', false);
+        }).fail(function () {
+            $columnSelect.html('<option value="">Gagal memuat kolom</option>');
+        });
+    });
+    $('#modalPostToKanban').on('hidden.bs.modal', function () {
+        $('#kanban-board-select').val('').trigger('change');
+    });
+
     $('#modalAddPayment').on('show.bs.modal', function () {
         $('#add-payment-type').trigger('change');
+        $('#add-payment-method').trigger('change');
     });
     $('#modalAddPayment form').on('submit', function () {
         $('#add-payment-amount').val($('#add-payment-amount').val().replace(/\D/g, ''));

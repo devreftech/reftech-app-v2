@@ -3,7 +3,6 @@ $(function () {
     var Url = "/db/prospect/sales/fu";
 
     if (dt_table_prospect_sales_fu.length) {
-        $('[data-toggle="tooltip"]').tooltip();
         var dt_prospect_sales = dt_table_prospect_sales_fu.DataTable({
             ajax: {
                 type: "GET",
@@ -11,341 +10,290 @@ $(function () {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                // success: function (hasil, Url) {
-                //     console.log("Url:", Url);
-                //     console.log(hasil);
-                // },
-                // error: function (error) {
-                //     console.log("Url:", Url);
-                //     console.error("Error:", error);
-                //     console.log("error disini");
-                // },
             },
             columns: [
-                { data: "" },
-                { data: "id" },
-                { data: "id" },
-                { data: "company" },
-                { data: "kebutuhan" },
-                { data: "date" },
-                { data: "name" },
+                { data: "id" }, // 0: responsive control
+                { data: "id" }, // 1: hidden id
+                { data: "company" }, // 2: company & pic
+                { data: "kebutuhan" }, // 3: category & kebutuhan
+                { data: "date" }, // 4: date & source
+                { data: "support_name" }, // 5: marketing support
+                { data: "status" }, // 6: quote status & value
+                { data: "id" }, // 7: actions
             ],
             columnDefs: [
                 {
-                    // For Responsive
+                    // Control for responsive
                     className: "control",
                     orderable: false,
                     searchable: false,
                     responsivePriority: 2,
                     targets: 0,
-                    render: function (data, type, full, meta) {
+                    render: function () {
                         return "";
                     },
                 },
                 {
-                    // For Checkboxes
+                    // Hidden ID column for sorting
                     targets: 1,
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 3,
-                    checkboxes: true,
-                    render: function () {
-                        return '<input type="checkbox" class="dt-checkboxes form-check-input">';
-                    },
-                    checkboxes: {
-                        selectAllRender:
-                            '<input type="checkbox" class="form-check-input">',
-                    },
-                },
-                {
-                    targets: 2,
                     searchable: true,
                     visible: false,
                 },
                 {
+                    // Company & PIC
+                    targets: 2,
                     responsivePriority: 1,
-                    targets: 4,
+                    render: function (data, type, full) {
+                        if (type === "display") {
+                            var companyName = data ? data : "—";
+                            var picName = full.name_pic ? full.name_pic : "—";
+                            var phoneClean = full.phone_pic ? full.phone_pic.replace(/[^0-9]/g, "") : "";
+                            var phoneBadge = full.phone_pic
+                                ? `<a href="https://wa.me/${phoneClean}" target="_blank" class="badge bg-label-success text-decoration-none py-1 px-2" data-bs-toggle="tooltip" title="Chat WhatsApp">
+                                     <i class="mdi mdi-whatsapp me-1"></i>${full.phone_pic}
+                                   </a>`
+                                : "";
+                            var areaBadge = full.area
+                                ? `<span class="badge bg-label-secondary small py-0 px-2 text-truncate" style="max-width:140px;">
+                                     <i class="mdi mdi-map-marker-outline me-1"></i>${full.area}
+                                   </span>`
+                                : "";
+
+                            return `
+                                <div class="d-flex flex-column gap-1 py-1">
+                                     <a href="/prospect/${full.id}" class="fw-bold text-heading text-primary-hover mb-0" style="font-size: 0.95rem;">
+                                         ${companyName}
+                                     </a>
+                                     <div class="d-flex align-items-center gap-2 flex-wrap text-muted small">
+                                         <span class="d-flex align-items-center text-secondary">
+                                             <i class="mdi mdi-account-outline me-1"></i> ${picName}
+                                         </span>
+                                         ${phoneBadge}
+                                     </div>
+                                     ${areaBadge ? `<div>${areaBadge}</div>` : ""}
+                                </div>
+                            `;
+                        }
+                        return data;
+                    },
                 },
                 {
+                    // Category & Kebutuhan
                     targets: 3,
-                    render: function (data, type, full, row) {
+                    responsivePriority: 3,
+                    render: function (data, type, full) {
                         if (type === "display") {
-                            var $dataId = full["id"];
-                            var detailRoute = route("prospect.show", $dataId);
-                            return (
-                                // '<a class="text-dark" data-bs-toggle="modal" data-bs-target="#confirmProspect'+ $dataId +'">'+
-                                // data +
-                                // "</a>"
-                                '<a class="text-dark" href="' +
-                                detailRoute +
-                                '">' +
-                                data +
-                                "</a>"
-                            );
+                            var category = full.category ? full.category : "General";
+                            var kebutuhan = full.kebutuhan ? full.kebutuhan : "—";
+                            var escapedKebutuhan = $("<div>").text(kebutuhan).html();
+
+                            return `
+                                <div class="d-flex flex-column gap-1 py-1" style="max-width: 280px;">
+                                    <span class="badge bg-label-info rounded-pill align-self-start fw-semibold" style="font-size: 0.72rem;">
+                                        ${category}
+                                    </span>
+                                    <p class="mb-0 text-muted small text-truncate" style="max-width: 270px;" data-bs-toggle="tooltip" title="${escapedKebutuhan}">
+                                        ${kebutuhan}
+                                    </p>
+                                </div>
+                            `;
+                        }
+                        return data;
+                    },
+                },
+                {
+                    // Date & Source
+                    targets: 4,
+                    responsivePriority: 4,
+                    render: function (data, type, full) {
+                        if (type === "display") {
+                            var dateVal = full.date ? full.date : "—";
+                            var sourceVal = full.source ? full.source : "Direct";
+
+                            var sourceColor = "info";
+                            if (sourceVal.toLowerCase().includes("whatsapp")) sourceColor = "success";
+                            if (sourceVal.toLowerCase().includes("web")) sourceColor = "primary";
+                            if (sourceVal.toLowerCase().includes("instagram")) sourceColor = "danger";
+
+                            return `
+                                <div class="d-flex flex-column gap-1 py-1">
+                                    <span class="small fw-semibold text-heading">
+                                        <i class="mdi mdi-calendar-blank-outline me-1 text-muted"></i>${dateVal}
+                                    </span>
+                                    <span class="badge bg-label-${sourceColor} rounded-pill align-self-start small">
+                                        <i class="mdi mdi-bullhorn-outline me-1"></i>${sourceVal}
+                                    </span>
+                                </div>
+                            `;
+                        }
+                        return data;
+                    },
+                },
+                {
+                    // Marketing Support PIC
+                    targets: 5,
+                    responsivePriority: 5,
+                    render: function (data, type, full) {
+                        if (type === "display") {
+                            var suppName = full.support_name ? full.support_name : "Marketing";
+                            var initial = suppName.charAt(0).toUpperCase();
+                            var avatarHtml = full.support_image
+                                ? `<img src="/${full.support_image}" class="rounded-circle shadow-xs" width="30" height="30" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'avatar-initial rounded-circle bg-label-info small\\'>${initial}</span>'">`
+                                : `<span class="avatar-initial rounded-circle bg-label-info small fw-bold">${initial}</span>`;
+
+                            return `
+                                <div class="d-flex align-items-center gap-2 py-1">
+                                    <div class="avatar avatar-sm flex-shrink-0">
+                                        ${avatarHtml}
+                                    </div>
+                                    <span class="small fw-medium text-heading text-truncate" style="max-width: 110px;">
+                                        ${suppName}
+                                    </span>
+                                </div>
+                            `;
+                        }
+                        return data;
+                    },
+                },
+                {
+                    // Quotation Status & Value
+                    targets: 6,
+                    responsivePriority: 2,
+                    render: function (data, type, full) {
+                        if (type === "display") {
+                            var statusMap = {
+                                100: { label: "Done PO", color: "success", icon: "mdi-cart-check" },
+                                80:  { label: "Hot Prospect", color: "warning", icon: "mdi-fire" },
+                                60:  { label: "Negotiation", color: "primary", icon: "mdi-handshake" },
+                                40:  { label: "Progress FU", color: "info", icon: "mdi-progress-clock" },
+                                30:  { label: "Inquiry Accepted", color: "dark", icon: "mdi-check-all" },
+                                20:  { label: "Send WA/Email", color: "secondary", icon: "mdi-email-outline" },
+                                0:   { label: "Loss", color: "danger", icon: "mdi-close-circle-outline" },
+                            };
+
+                            if (full.quotation_id || full.status !== null) {
+                                var st = statusMap[full.status] || { label: "Quoted", color: "primary", icon: "mdi-file-document-outline" };
+                                var quoteLink = full.no_quote
+                                    ? `<a href="/unit-quotation/detail/${full.quotation_id}" class="small fw-bold text-primary d-block mb-1 text-decoration-none">
+                                         <i class="mdi mdi-file-outline me-1"></i>${full.no_quote}
+                                       </a>`
+                                    : "";
+                                var statusBadge = `<span class="badge bg-label-${st.color} rounded-pill px-2 py-1 small">
+                                                     <i class="mdi ${st.icon} me-1"></i>${st.label}
+                                                   </span>`;
+                                var nettVal = full.nett
+                                    ? `<div class="small fw-bold text-success mt-1">Rp ${Number(full.nett).toLocaleString("id-ID")}</div>`
+                                    : "";
+
+                                return `<div class="d-flex flex-column gap-1 py-1">${quoteLink}${statusBadge}${nettVal}</div>`;
+                            } else {
+                                return `<span class="badge bg-label-secondary rounded-pill small px-2 py-1">Belum ada Quote</span>`;
+                            }
+                        }
+                        return data;
+                    },
+                },
+                {
+                    // Actions
+                    targets: 7,
+                    orderable: false,
+                    searchable: false,
+                    responsivePriority: 1,
+                    className: "text-center",
+                    render: function (data, type, full) {
+                        if (type === "display") {
+                            if (full.quotation_id) {
+                                return `
+                                    <div class="d-flex align-items-center gap-1 justify-content-center">
+                                        <a href="/unit-quotation/detail/${full.quotation_id}" class="btn btn-icon btn-sm btn-outline-primary waves-effect rounded-pill" data-bs-toggle="tooltip" title="Lihat Quotation">
+                                            <i class="mdi mdi-file-document-outline"></i>
+                                        </a>
+                                        <a href="/prospect/${full.id}" class="btn btn-icon btn-sm btn-outline-secondary waves-effect rounded-pill" data-bs-toggle="tooltip" title="Detail Prospect">
+                                            <i class="mdi mdi-eye-outline"></i>
+                                        </a>
+                                    </div>
+                                `;
+                            } else {
+                                return `
+                                    <div class="d-flex align-items-center gap-1 justify-content-center">
+                                        <button type="button" class="btn btn-sm btn-primary waves-effect py-1 px-3 text-nowrap fw-semibold shadow-xs" id="withQuote" data-id="${full.id}">
+                                            <i class="mdi mdi-lightning-bolt me-1"></i> Smart Quote
+                                        </button>
+                                        <a href="/prospect/${full.id}" class="btn btn-icon btn-sm btn-outline-secondary waves-effect rounded-pill" data-bs-toggle="tooltip" title="Detail Prospect">
+                                            <i class="mdi mdi-eye-outline"></i>
+                                        </a>
+                                    </div>
+                                `;
+                            }
                         }
                         return data;
                     },
                 },
             ],
-            drawCallback: function (settings) {
-                console.log("drawCallback");
-                $('[data-toggle="tooltip"]').tooltip();
+            drawCallback: function () {
+                $('[data-bs-toggle="tooltip"]').tooltip();
             },
-            order: [[2, "desc"]],
-            dom: '<"card-header flex-column flex-md-row"<"head-label-prospect hl-1 title-follup text-center"><"dt-action-buttons text-end pt-3 pt-md-0"B>><"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
-            displayLength: 7,
-            lengthMenu: [7, 10, 25, 50, 75, 100],
+            order: [[1, "desc"]],
+            dom: '<"card-header d-flex flex-column flex-md-row align-items-md-center justify-content-between border-bottom pb-3"<"head-label-prospect title-follup"><"dt-action-buttons text-end pt-3 pt-md-0"B>><"row mx-2 my-2"<"col-sm-12 col-md-6 d-flex align-items-center"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row mx-2 my-2"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"p>>',
+            displayLength: 10,
+            lengthMenu: [10, 25, 50, 100],
             buttons: [
                 {
                     extend: "collection",
-                    className: "btn btn-label-primary dropdown-toggle me-2",
-                    text: '<i class="mdi mdi-export-variant me-sm-1"></i> <span class="d-none d-sm-inline-block">Export</span>',
+                    className: "btn btn-outline-secondary dropdown-toggle waves-effect shadow-xs",
+                    text: '<i class="mdi mdi-export-variant me-1"></i> Export',
                     buttons: [
                         {
-                            extend: "print",
-                            text: '<i class="mdi mdi-printer-outline me-1" ></i>Print',
+                            extend: "excel",
+                            text: '<i class="mdi mdi-file-excel-outline me-1"></i> Excel',
                             className: "dropdown-item",
-                            exportOptions: {
-                                columns: [3, 4, 5, 6, 7],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
-                            },
-                            customize: function (win) {
-                                //customize print view for dark
-                                $(win.document.body)
-                                    .css("color", config.colors.headingColor)
-                                    .css(
-                                        "border-color",
-                                        config.colors.borderColor
-                                    )
-                                    .css(
-                                        "background-color",
-                                        config.colors.bodyBg
-                                    );
-                                $(win.document.body)
-                                    .find("table")
-                                    .addClass("compact")
-                                    .css("color", "inherit")
-                                    .css("border-color", "inherit")
-                                    .css("background-color", "inherit");
-                            },
+                            exportOptions: { columns: [2, 3, 4, 5, 6] },
                         },
                         {
                             extend: "csv",
-                            text: '<i class="mdi mdi-file-document-outline me-1" ></i>Csv',
+                            text: '<i class="mdi mdi-file-document-outline me-1"></i> CSV',
                             className: "dropdown-item",
-                            exportOptions: {
-                                columns: [3, 4, 5, 6, 7],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
-                            },
+                            exportOptions: { columns: [2, 3, 4, 5, 6] },
                         },
                         {
-                            extend: "excel",
-                            text: '<i class="mdi mdi-file-excel-outline me-1"></i>Excel',
+                            extend: "print",
+                            text: '<i class="mdi mdi-printer-outline me-1"></i> Print',
                             className: "dropdown-item",
-                            exportOptions: {
-                                columns: [3, 4, 5, 6, 7],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
-                            },
-                        },
-                        {
-                            extend: "pdf",
-                            text: '<i class="mdi mdi-file-pdf-box me-1"></i>Pdf',
-                            className: "dropdown-item",
-                            exportOptions: {
-                                columns: [3, 4, 5, 6, 7],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
-                            },
-                        },
-                        {
-                            extend: "copy",
-                            text: '<i class="mdi mdi-content-copy me-1" ></i>Copy',
-                            className: "dropdown-item",
-                            exportOptions: {
-                                columns: [3, 4, 5, 6, 7],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
-                            },
+                            exportOptions: { columns: [2, 3, 4, 5, 6] },
                         },
                     ],
                 },
             ],
             responsive: {
                 details: {
-                    display: $.fn.dataTable.Responsive.display.modal({
-                        header: function (row) {
-                            var data = row.data();
-                            return "Details of " + data["full_name"];
-                        },
-                    }),
                     type: "column",
                     renderer: function (api, rowIdx, columns) {
-                        var data = $.map(columns, function (col, i) {
-                            return col.title !== "" // ? Do not show row in modal popup if title is blank (for check box)
-                                ? '<tr data-dt-row="' +
-                                      col.rowIndex +
-                                      '" data-dt-column="' +
-                                      col.columnIndex +
-                                      '">' +
-                                      "<td>" +
-                                      col.title +
-                                      ":" +
-                                      "</td> " +
-                                      "<td>" +
-                                      col.data +
-                                      "</td>" +
-                                      "</tr>"
+                        var data = $.map(columns, function (col) {
+                            return col.title !== ""
+                                ? `<tr>
+                                     <td class="fw-semibold">${col.title}:</td>
+                                     <td>${col.data}</td>
+                                   </tr>`
                                 : "";
                         }).join("");
 
-                        return data
-                            ? $('<table class="table"/><tbody />').append(data)
-                            : false;
+                        return data ? $('<table class="table table-sm mb-0"/><tbody />').append(data) : false;
                     },
                 },
             },
         });
-        $("div.hl-1.title-follup").html('<h5 class="card-title mb-0">Table Prospects On Process Follow Up</h5>');
+
+        $("div.title-follup").html(`
+            <div>
+                <h5 class="card-title mb-0 fw-bold text-heading">
+                    <i class="mdi mdi-progress-clock me-2 text-warning"></i>Follow Up In Progress
+                </h5>
+                <small class="text-muted">Daftar prospek yang sedang dalam proses follow-up intensif</small>
+            </div>
+        `);
     }
+
     dt_table_prospect_sales_fu.on("draw", function () {
-        $('[data-toggle="tooltip"]').tooltip();
+        $('[data-bs-toggle="tooltip"]').tooltip();
     });
 });

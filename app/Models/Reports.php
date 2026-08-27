@@ -26,7 +26,35 @@ class Reports extends Model
         'jobdesc',
         'desc',
         'sign_client',
+        'approval_status',
+        'approved_by',
+        'approved_at',
+        'reject_note',
     ];
+
+    protected $casts = [
+        'approved_at' => 'datetime',
+    ];
+
+    public function approver()
+    {
+        return $this->belongsTo('App\Models\User', 'approved_by', 'id');
+    }
+
+    public function isPendingApproval()
+    {
+        return $this->approval_status === 'pending';
+    }
+
+    public function isApproved()
+    {
+        return $this->approval_status === 'approved';
+    }
+
+    public function isRejected()
+    {
+        return $this->approval_status === 'rejected';
+    }
 
     // Connection Table
     public function pic()
@@ -52,5 +80,17 @@ class Reports extends Model
     {
         return $this->hasMany('App\Models\ReportsPict', 'id_reports');
     }
-    
+
+    public function getSignClientUrlAttribute()
+    {
+        if (!$this->sign_client) {
+            return null;
+        }
+
+        if (str_starts_with($this->sign_client, 'service-reports/')) {
+            return \Illuminate\Support\Facades\Storage::disk('public')->url($this->sign_client);
+        }
+
+        return url('/' . $this->sign_client);
+    }
 }

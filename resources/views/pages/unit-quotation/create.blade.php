@@ -21,6 +21,7 @@
 
     <form action="{{ route('unit-quotation.store') }}" method="POST" id="form-unit-quotation">
         @csrf
+        <input type="hidden" name="id_prospect" value="{{ $selectedProspect ?? '' }}">
 
         {{-- Hero Quotation Header Card --}}
         <div class="card mb-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%); border-left: 5px solid #696cff !important;">
@@ -78,7 +79,7 @@
                             <select class="select2 form-select" name="id_client" id="client-select">
                                 <option value="">-- Select Client --</option>
                                 @foreach ($clients as $c)
-                                    <option value="{{ $c->id }}" data-role="{{ $c->role }}">{{ $c->company }}</option>
+                                    <option value="{{ $c->id }}" data-role="{{ $c->role }}" {{ (old('id_client', $selectedClient ?? '') == $c->id) ? 'selected' : '' }}>{{ $c->company }}</option>
                                 @endforeach
                             </select>
                             <label>Client *</label>
@@ -153,8 +154,21 @@
                                 <option value="Service">Service</option>
                                 <option value="Piping">Piping</option>
                                 <option value="Air Audit">Air Audit</option>
+                                <option value="General Check / Visit">General Check / Visit</option>
+                                <option value="HVAC">HVAC</option>
+                                <option value="Fire System">Fire System</option>
                             </select>
                             <label>Type</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2" id="unit-condition-wrapper" style="display:none;">
+                        <div class="form-floating form-floating-outline">
+                            <select class="form-select" id="select-unit-condition" name="unit_condition">
+                                <option value="" disabled selected>-- Kondisi --</option>
+                                <option value="Baru">Unit Baru</option>
+                                <option value="Second">Unit Second</option>
+                            </select>
+                            <label>Kondisi Unit</label>
                         </div>
                     </div>
                     <div class="col-md-2">
@@ -174,42 +188,16 @@
             </div>
         </div>
 
-        {{-- LINE ITEMS --}}
+        {{-- QUOTATION OPTIONS (Opsi 1, Opsi 2, dst — buat perbandingan harga) --}}
         <div class="card mb-4 border-0 shadow-sm">
-            <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center justify-content-between">
-                <h6 class="card-title mb-0 fw-bold text-dark">
-                    <i class="mdi mdi-cube-outline me-2 text-primary fs-5"></i> Quotation Line Items
-                </h6>
-                <span class="badge bg-label-secondary" id="items-count-badge">0 Items</span>
+            <div class="card-header bg-transparent border-bottom py-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <ul class="nav nav-pills flex-wrap gap-2 mb-0" id="options-tab-nav" role="tablist"></ul>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-option">
+                    <i class="mdi mdi-plus me-1"></i> Tambah Opsi
+                </button>
             </div>
-            <div class="card-body p-0">
-                <div id="line-items-container">
-                    {{-- rows injected by JS --}}
-                </div>
-                <div id="empty-state" class="text-center text-muted py-5 my-2">
-                    <div class="avatar avatar-md bg-label-primary mx-auto mb-3" style="width: 54px; height: 54px;">
-                        <i class="mdi mdi-package-variant-closed fs-3" style="line-height: 54px;"></i>
-                    </div>
-                    <h6 class="fw-bold mb-1">No Line Items Added Yet</h6>
-                    <p class="text-muted small mb-0">Click the buttons below to add Spare Parts/Units from catalog, Custom Items, or Head Titles.</p>
-                </div>
-                <div class="d-flex flex-wrap gap-2 p-3 border-top bg-light-subtle">
-                    <button type="button" class="btn btn-sm btn-primary shadow-sm" id="btn-add-unit">
-                        <i class="mdi mdi-plus me-1"></i> Add Item
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-add-custom">
-                        <i class="mdi mdi-format-list-bulleted me-1"></i> Add Custom Item
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-info" id="btn-add-header">
-                        <i class="mdi mdi-format-header-1 me-1"></i> Add Head Title
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-transport">
-                        <i class="mdi mdi-truck-outline me-1"></i> Add Transport
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-success ms-md-auto" data-bs-toggle="modal" data-bs-target="#modal-load-pm-template">
-                        <i class="mdi mdi-file-document-multiple-outline me-1"></i> Load Template PM
-                    </button>
-                </div>
+            <div class="tab-content" id="options-tab-content">
+                {{-- option panes injected by JS --}}
             </div>
         </div>
 
@@ -253,14 +241,14 @@
             </div>
         </div>
 
-        {{-- SUMMARY + TERMS --}}
+        {{-- NOTE + TERMS & CONDITIONS (shared, gak per-opsi) --}}
         <div class="card mb-4 border-0 shadow-sm">
             <div class="card-body">
                 <div class="row g-4">
-                    {{-- Note + Terms & Conditions (Kiri) --}}
-                    <div class="col-lg-7">
+                    <div class="col-lg-10 col-xl-9 mx-auto">
+                        <div class="row g-4">
                         {{-- Note --}}
-                        <div class="mb-4 pb-3 border-bottom">
+                        <div class="col-md-6 mb-4 mb-md-0">
                             <h6 class="fw-bold mb-2 text-dark">
                                 <i class="mdi mdi-notebook-edit-outline me-1 text-primary"></i> Note / Quotation Remarks
                             </h6>
@@ -271,7 +259,7 @@
                         </div>
 
                         {{-- Terms & Conditions --}}
-                        <div>
+                        <div class="col-md-6">
                             <h6 class="fw-bold mb-3 text-dark">
                                 <i class="mdi mdi-shield-check-outline me-1 text-primary"></i> Terms & Conditions
                             </h6>
@@ -333,77 +321,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    {{-- Summary Card (Kanan) --}}
-                    <div class="col-lg-5">
-                        <div class="card border-0 shadow-sm overflow-hidden" style="border: 1px solid rgba(105, 108, 255, 0.2) !important; border-radius: 12px;">
-                            {{-- Header --}}
-                            <div class="card-header py-3 px-4 bg-light border-bottom d-flex align-items-center justify-content-between">
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar avatar-xs bg-label-primary rounded me-2 d-flex align-items-center justify-content-center" style="width:28px; height:28px;">
-                                        <i class="mdi mdi-calculator text-primary fs-6"></i>
-                                    </div>
-                                    <h6 class="fw-bold mb-0">Total Summary</h6>
-                                </div>
-                                <span class="badge bg-label-primary px-2 py-1" style="font-size:10px;">IDR SUMMARY</span>
-                            </div>
-
-                            <div class="card-body p-4">
-                                {{-- Subtotal --}}
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <span class="text-muted small">Subtotal</span>
-                                    <span class="fw-bold text-dark fs-6" id="display-subtotal">Rp 0</span>
-                                </div>
-
-                                {{-- Discount --}}
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <span class="text-muted small">Discount</span>
-                                    <div style="width: 160px;">
-                                        <div class="input-group input-group-sm">
-                                            <select class="form-select flex-grow-0" id="select-diskon-type" name="diskon_type" style="max-width:65px; font-size:11px;">
-                                                <option value="percent" selected>%</option>
-                                                <option value="amount">Rp</option>
-                                            </select>
-                                            <input type="text" class="form-control text-end fw-semibold" name="diskon" id="input-diskon" value="0" autocomplete="off">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- PPN 12% --}}
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="text-muted small">PPN 12%</span>
-                                        <div class="form-check form-switch mb-0">
-                                            <input class="form-check-input" type="checkbox" name="tax" id="toggle-tax" value="1" checked>
-                                        </div>
-                                    </div>
-                                    <span id="display-tax" class="fw-semibold text-muted small">Rp 0</span>
-                                </div>
-
-                                {{-- Shipping Cost (Optional, Non-taxable) --}}
-                                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
-                                    <div>
-                                        <span class="text-muted small d-block">Shipping Cost</span>
-                                        <span class="text-muted" style="font-size: 10px;">( Non-taxable )</span>
-                                    </div>
-                                    <div style="width: 160px;">
-                                        <div class="input-group input-group-sm">
-                                            <span class="input-group-text fw-semibold" style="font-size:11px;">Rp</span>
-                                            <input type="text" class="form-control text-end fw-semibold rupiah-input" name="shipping" id="input-shipping" value="{{ old('shipping', '0') }}" placeholder="0" autocomplete="off">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- Total Penawaran Hero Box --}}
-                                <div class="p-3 rounded-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #f0f2ff 0%, #e8ebff 100%); border: 1px dashed #696cff;">
-                                    <div>
-                                        <div class="text-uppercase fw-bold text-primary" style="font-size: 10px; letter-spacing: 0.8px;">Total Amount</div>
-                                        <div class="text-muted" style="font-size: 10px;">( Inclusive of Tax &amp; Discount )</div>
-                                    </div>
-                                    <div class="fw-bolder text-primary fs-3" id="display-total" style="letter-spacing: -0.5px;">Rp 0</div>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -620,6 +537,7 @@
                     <input type="text" class="form-control form-control-sm fw-bold text-primary field-label"
                         name="items[__IDX__][label]" placeholder="Head Title (e.g. A. SCOPE OF WORK, B. PIPING SYSTEM) *" required>
                 </div>
+                <span class="badge bg-label-primary section-subtotal-badge text-nowrap" style="font-size:11px;"></span>
                 <div class="d-flex align-items-center gap-1">
                     <div class="btn-group btn-group-sm" role="group">
                         <button type="button" class="btn btn-xs btn-outline-secondary btn-move-up" title="Geser ke atas"><i class="mdi mdi-arrow-up"></i></button>
@@ -628,6 +546,107 @@
                     <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-remove-row" title="Hapus Baris">
                         <i class="mdi mdi-delete-outline"></i>
                     </button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    {{-- Tab nav-item untuk 1 Opsi --}}
+    <template id="tmpl-option-tab">
+        <li class="nav-item" data-option-idx="__OPT__">
+            <a class="nav-link" data-bs-toggle="pill" href="#option-pane-__OPT__" role="tab">
+                <i class="mdi mdi-file-document-outline me-1"></i>
+                <span class="tab-title-display">Opsi</span>
+            </a>
+        </li>
+    </template>
+
+    {{-- Pane untuk 1 Opsi: judul, line items sendiri, summary sendiri --}}
+    <template id="tmpl-option-pane">
+        <div class="option-pane tab-pane fade" id="option-pane-__OPT__" data-option-idx="__OPT__">
+            <div class="p-3 border-bottom bg-light-subtle d-flex align-items-center gap-2 flex-wrap">
+                <label class="fw-semibold small text-muted mb-0">Judul Opsi:</label>
+                <input type="text" class="form-control form-control-sm fw-bold option-title-input" style="max-width:320px;"
+                    name="options[__OPT__][title]" placeholder="Judul Opsi (mis. Unit Baru, Unit Second)">
+                <span class="badge bg-label-secondary items-count-badge">0 Items</span>
+                <button type="button" class="btn btn-sm btn-outline-danger ms-auto btn-remove-option">
+                    <i class="mdi mdi-delete-outline me-1"></i> Hapus Opsi Ini
+                </button>
+            </div>
+
+            <div class="line-items-container">
+                {{-- rows injected by JS --}}
+            </div>
+            <div class="empty-state text-center text-muted py-5 my-2">
+                <div class="avatar avatar-md bg-label-primary mx-auto mb-3" style="width: 54px; height: 54px;">
+                    <i class="mdi mdi-package-variant-closed fs-3" style="line-height: 54px;"></i>
+                </div>
+                <h6 class="fw-bold mb-1">No Line Items Added Yet</h6>
+                <p class="text-muted small mb-0">Click the buttons below to add Spare Parts/Units from catalog, Custom Items, or Head Titles.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2 p-3 border-top border-bottom bg-light-subtle">
+                <button type="button" class="btn btn-sm btn-primary shadow-sm btn-add-unit">
+                    <i class="mdi mdi-plus me-1"></i> Add Item
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-add-custom">
+                    <i class="mdi mdi-format-list-bulleted me-1"></i> Add Custom Item
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-info btn-add-header">
+                    <i class="mdi mdi-format-header-1 me-1"></i> Add Head Title
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-primary btn-add-transport">
+                    <i class="mdi mdi-truck-outline me-1"></i> Add Transport
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-success ms-md-auto" data-bs-toggle="modal" data-bs-target="#modal-load-pm-template">
+                    <i class="mdi mdi-file-document-multiple-outline me-1"></i> Load Template PM
+                </button>
+            </div>
+
+            {{-- Summary (subtotal/diskon/tax/shipping/total) khusus opsi ini --}}
+            <div class="p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted small">Subtotal</span>
+                    <span class="fw-bold text-dark fs-6 display-subtotal">Rp 0</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted small">Discount</span>
+                    <div style="width: 160px;">
+                        <div class="input-group input-group-sm">
+                            <select class="form-select flex-grow-0 select-diskon-type" name="options[__OPT__][diskon_type]" style="max-width:65px; font-size:11px;">
+                                <option value="percent" selected>%</option>
+                                <option value="amount">Rp</option>
+                            </select>
+                            <input type="text" class="form-control text-end fw-semibold input-diskon" name="options[__OPT__][diskon]" value="0" autocomplete="off">
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-muted small">PPN 12%</span>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input toggle-tax" type="checkbox" name="options[__OPT__][tax]" value="1" checked>
+                        </div>
+                    </div>
+                    <span class="display-tax fw-semibold text-muted small">Rp 0</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                    <div>
+                        <span class="text-muted small d-block">Shipping Cost</span>
+                        <span class="text-muted" style="font-size: 10px;">( Non-taxable )</span>
+                    </div>
+                    <div style="width: 160px;">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text fw-semibold" style="font-size:11px;">Rp</span>
+                            <input type="text" class="form-control text-end fw-semibold rupiah-input input-shipping" name="options[__OPT__][shipping]" value="0" placeholder="0" autocomplete="off">
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3 rounded-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #f0f2ff 0%, #e8ebff 100%); border: 1px dashed #696cff;">
+                    <div>
+                        <div class="text-uppercase fw-bold text-primary" style="font-size: 10px; letter-spacing: 0.8px;">Total Amount</div>
+                        <div class="text-muted" style="font-size: 10px;">( Inclusive of Tax &amp; Discount )</div>
+                    </div>
+                    <div class="fw-bolder text-primary fs-3 display-total" style="letter-spacing: -0.5px;">Rp 0</div>
                 </div>
             </div>
         </div>
@@ -650,9 +669,20 @@
     @if(old('payment'))
         <script>window.EDIT_PAYMENT = @json(old('payment'));</script>
     @endif
+    @if(isset($selectedPic) && $selectedPic)
+        <script>window.EDIT_PIC_ID = @json($selectedPic);</script>
+    @endif
     <script>window.TRANSPORT_PRICES = @json($transportationPrices);</script>
     <script src="{{ asset('assets') }}/includes/form-unit-quotation.js?v={{ filemtime(public_path('assets/includes/form-unit-quotation.js')) }}"></script>
-
+    @if(isset($selectedClient) && $selectedClient)
+        <script>
+            $(document).ready(function() {
+                setTimeout(function() {
+                    $('#client-select').val(@json($selectedClient)).trigger('change');
+                }, 150);
+            });
+        </script>
+    @endif
 @endpush
 
 @push('page-script')

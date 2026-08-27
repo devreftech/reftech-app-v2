@@ -21,6 +21,7 @@ class KanbanTask extends Model
         'priority',
         'pending_po_id',
         'service_report_id',
+        'id_unit_quotation',
     ];
 
     protected $casts = [
@@ -70,6 +71,11 @@ class KanbanTask extends Model
     public function pendingPo()
     {
         return $this->belongsTo(PendingPO::class, 'pending_po_id');
+    }
+
+    public function unitQuotation()
+    {
+        return $this->belongsTo(UnitQuotation::class, 'id_unit_quotation');
     }
 
     public function bast()

@@ -95,6 +95,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/smart-quote/{id}/upload-po', [UnitQuotationController::class, 'uploadPO'])->name('unit-quotation.upload-po');
     Route::post('/smart-quote/{id}/request-next-invoice', [UnitQuotationController::class, 'requestNextInvoice'])->name('unit-quotation.request-next-invoice');
     Route::post('/smart-quote/{id}/add-payment', [UnitQuotationController::class, 'addPayment'])->name('unit-quotation.add-payment');
+    Route::post('/smart-quote/{id}/post-to-kanban', [UnitQuotationController::class, 'postToKanban'])->name('unit-quotation.post-to-kanban');
     Route::get('/notifications/payment/unread', [UnitQuotationController::class, 'unreadPaymentNotifications'])->name('notifications.payment.unread');
     Route::post('/notifications/payment/{id}/read', [UnitQuotationController::class, 'markPaymentNotificationRead'])->name('notifications.payment.read');
     Route::post('/smart-quote/payment/{id}/proof', [UnitQuotationController::class, 'proofPayment'])->name('unit-quotation.proof-payment');
@@ -192,7 +193,7 @@ Route::middleware(['auth'])->group(function () {
         return response()->json(['data' => $quotation]);
     });
     Route::get('/db/quotation/invoice', function () {
-        // Regular quotation requests
+        // Regular quotation requests (escrow payment excluded — those go to Marketplace tab)
         $service = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')
             ->join('client', 'client.id', '=', 'pic.id_client')
             ->join('invoice', 'invoice.id_quotation', '=', 'quotation.id')
@@ -201,6 +202,7 @@ Route::middleware(['auth'])->group(function () {
             ->whereNotNull('client.npwp')
             ->whereNotNull('quotation.po_file')
             ->whereNull('invoice.no_invoice')
+            ->whereDoesntHave('payment', fn ($q) => $q->where('method', 'Escrow'))
             ->get([
                 'quotation.no_quote', 'invoice.no_po', 'quotation.po_date',
                 'quotation.harga_total', 'client.company', 'users.name', 'users.image as sales_image',
@@ -208,13 +210,14 @@ Route::middleware(['auth'])->group(function () {
                 \DB::raw("'service' AS row_type"),
             ]);
 
-        // Unit quotation requests
+        // Unit quotation requests (escrow payment excluded — those go to Marketplace tab)
         $unit = \App\Models\Invoice::join('unit_quotation as uq', 'uq.id', '=', 'invoice.id_unit_quotation')
             ->join('client', 'client.id', '=', 'uq.id_client')
             ->join('users', 'users.id', '=', 'uq.id_sales')
             ->whereNull('invoice.no_invoice')
             ->whereNotNull('invoice.id_unit_quotation')
             ->whereNull('invoice.rejected_at')
+            ->whereDoesntHave('unitQuote.payments', fn ($q) => $q->where('method', 'Escrow'))
             ->get([
                 'uq.no_quote', 'uq.po_number as no_po',
                 \DB::raw('uq.created_at AS po_date'),
@@ -222,6 +225,63 @@ Route::middleware(['auth'])->group(function () {
                 'invoice.id', 'invoice.type',
                 \DB::raw("'unit' AS row_type"),
             ]);
+
+        return response()->json(['data' => $service->merge($unit)->values()]);
+    });
+
+    Route::get('/db/quotation/invoice/marketplace', function () {
+        $year = request('year');
+
+        // Quotations/unit quotations paid via Escrow — never shown in Request tab
+        $service = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')
+            ->join('client', 'client.id', '=', 'pic.id_client')
+            ->join('invoice', 'invoice.id_quotation', '=', 'quotation.id')
+            ->join('users', 'users.id', '=', 'quotation.id_sales')
+            ->where('status', '100')
+            ->whereNotNull('client.npwp')
+            ->whereNotNull('quotation.po_file')
+            ->whereNull('invoice.no_invoice')
+            ->whereHas('payment', fn ($q) => $q->where('method', 'Escrow'))
+            ->when($year, fn ($q) => $q->whereYear('quotation.po_date', $year))
+            ->select([
+                'quotation.no_quote', 'invoice.no_po', 'quotation.po_date',
+                'quotation.harga_total', 'client.company', 'users.name', 'users.image as sales_image',
+                'invoice.id', 'invoice.type',
+                \DB::raw("'service' AS row_type"),
+            ])
+            ->addSelect(['escrow_channel' => \App\Models\Payment::selectRaw('escrow_channel')
+                ->whereColumn('id_quotation', 'quotation.id')
+                ->where('method', 'Escrow')
+                ->latest('id')
+                ->limit(1),
+            ])
+            ->get();
+
+        // Unit quotation Escrow diterbitkan langsung (no_invoice terisi otomatis, lihat
+        // UnitQuotationController::addPayment) — jadi row-nya diambil dari invoice yang
+        // sudah terbit itu, bukan invoice shell (yang otomatis ditutup/rejected_at saat
+        // Escrow masuk supaya tidak nyangkut di halaman before-accept).
+        $unit = \App\Models\Invoice::join('unit_quotation as uq', 'uq.id', '=', 'invoice.id_unit_quotation')
+            ->join('client', 'client.id', '=', 'uq.id_client')
+            ->join('users', 'users.id', '=', 'uq.id_sales')
+            ->where('invoice.type', 'Escrow')
+            ->whereNotNull('invoice.id_unit_quotation')
+            ->when($year, fn ($q) => $q->whereYear('invoice.date', $year))
+            ->select([
+                'uq.no_quote', 'uq.po_number as no_po',
+                \DB::raw('invoice.date AS po_date'),
+                \DB::raw('ROUND(uq.total * IFNULL(invoice.percent, 100) / 100) AS harga_total'),
+                'client.company', 'users.name', 'users.image as sales_image',
+                'invoice.id', 'invoice.type',
+                \DB::raw("'unit' AS row_type"),
+            ])
+            ->addSelect(['escrow_channel' => \App\Models\Payment::selectRaw('escrow_channel')
+                ->whereColumn('id_unit_quotation', 'uq.id')
+                ->where('method', 'Escrow')
+                ->latest('id')
+                ->limit(1),
+            ])
+            ->get();
 
         return response()->json(['data' => $service->merge($unit)->values()]);
     });

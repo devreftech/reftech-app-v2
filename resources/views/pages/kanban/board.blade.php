@@ -15,12 +15,18 @@
 @section('content')
     <div class="app-kanban">
         <!-- Board Header -->
-        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center py-3 mb-4 gap-2 border-bottom">
-            <div class="d-flex align-items-center flex-wrap gap-3">
-                <h4 class="fw-bold mb-0 text-primary">{{ $board->title }}</h4>
-                <div class="dropdown">
-                    <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" id="boardSwitcher" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        Switch Board
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center py-3 mb-4 gap-3 border-bottom">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar avatar-sm bg-label-primary rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                        <i class="mdi mdi-view-week-outline" style="font-size: 19px;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-0 text-heading" style="font-size: 1.15rem; letter-spacing: -0.2px;">{{ $board->title }}</h4>
+                </div>
+                
+                <div class="dropdown ms-1">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle rounded-pill" type="button" id="boardSwitcher" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="font-size: 12px; font-weight: 600; padding: 5px 12px;">
+                        <i class="mdi mdi-swap-horizontal me-1"></i> Switch Board
                     </button>
                     <div class="dropdown-menu" aria-labelledby="boardSwitcher">
                         @foreach ($myBoards as $mb)
@@ -30,28 +36,36 @@
                         @endforeach
                     </div>
                 </div>
+
                 <!-- Search Box -->
-                <div class="input-group input-group-merge input-group-sm ms-2" style="width: 220px;">
-                    <span class="input-group-text"><i class="mdi mdi-magnify"></i></span>
-                    <input type="text" class="form-control" id="kanbanSearchInput" placeholder="Cari kartu tugas...">
+                <div class="input-group input-group-merge input-group-sm ms-sm-2" style="width: 240px;">
+                    <span class="input-group-text bg-white border-end-0"><i class="mdi mdi-magnify text-muted"></i></span>
+                    <input type="text" class="form-control border-start-0 ps-0" id="kanbanSearchInput" placeholder="{{ $board->type === 'monitoring' ? 'Cari PO, Client, RJO, KII...' : 'Cari kartu tugas...' }}">
                 </div>
+
                 @if ($board->type === 'monitoring')
-                    <select class="form-select form-select-sm ms-2" id="kanbanAccountingFilter" style="width: 200px;">
-                        <option value="">-- Semua Accounting --</option>
+                    <!-- Accounting Multi-Toggle Tab Switcher -->
+                    <div class="accounting-filter-tabs d-inline-flex align-items-center p-1 bg-white border rounded-pill shadow-xs ms-sm-2" style="border-color: #e2e8f0 !important;">
                         @foreach ($accountingUsers ?? [] as $accountingUser)
-                            <option value="{{ $accountingUser->id }}">{{ $accountingUser->name }}</option>
+                            @php
+                                $firstName = explode(' ', trim($accountingUser->name))[0];
+                            @endphp
+                            <button type="button" class="btn btn-xs rounded-pill accounting-tab-btn active px-3 py-1 fw-bold" data-accounting-id="{{ $accountingUser->id }}" style="font-size: 12px; transition: all 0.2s ease;" title="{{ $accountingUser->name }}">
+                                <i class="mdi mdi-account-outline me-1"></i> {{ $firstName }}
+                            </button>
                         @endforeach
-                    </select>
+                    </div>
                 @endif
             </div>
+
             <div class="d-flex gap-2 align-items-center">
-                <a href="{{ route('kanban.index') }}" class="btn btn-outline-secondary btn-sm">
+                <a href="{{ route('kanban.index') }}" class="btn btn-outline-secondary btn-sm rounded-pill" style="font-size: 12px;">
                     <i class="mdi mdi-arrow-left me-1"></i> Portal
                 </a>
                 @if (auth()->user()->role === 'Admin' || auth()->id() == $board->created_by)
                     <!-- Notification Bell Dropdown for Delete Requests -->
                     <div class="dropdown">
-                        <button class="btn btn-outline-primary btn-sm position-relative dropdown-toggle hide-arrow" type="button" id="deleteRequestsDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false" style="padding-right: 12px; padding-left: 12px;">
+                        <button class="btn btn-outline-secondary btn-sm position-relative dropdown-toggle hide-arrow rounded-circle" type="button" id="deleteRequestsDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false" style="width: 32px; height: 32px; padding: 0;">
                             <i class="mdi mdi-bell-outline"></i>
                             <span class="badge bg-danger rounded-circle position-absolute top-0 start-100 translate-middle" id="deleteRequestsBadge" style="display: none; padding: 3px 6px; font-size: 9px; line-height: 1; transform: translate(-25%, -25%) !important;">0</span>
                         </button>
@@ -65,12 +79,12 @@
                     </div>
                 @endif
                 @if (auth()->user()->role === 'Admin' || (auth()->user()->role === 'Accounting' && $board->type === 'monitoring'))
-                    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#boardSettingsModal">
-                        <i class="mdi mdi-cog me-1"></i>
+                    <button class="btn btn-outline-secondary btn-sm rounded-circle" data-bs-toggle="modal" data-bs-target="#boardSettingsModal" style="width: 32px; height: 32px; padding: 0;" title="Pengaturan Papan">
+                        <i class="mdi mdi-cog"></i>
                     </button>
                 @endif
-                <button class="btn btn-outline-primary btn-sm" type="button" id="btnToggleFullscreen">
-                    <i class="mdi mdi-fullscreen me-1" id="fsIcon"></i>
+                <button class="btn btn-outline-secondary btn-sm rounded-circle" type="button" id="btnToggleFullscreen" style="width: 32px; height: 32px; padding: 0;" title="Mode Layar Penuh">
+                    <i class="mdi mdi-fullscreen" id="fsIcon"></i>
                 </button>
             </div>
         </div>
@@ -163,6 +177,9 @@
                                 </button>
                                 <ul class="dropdown-menu" aria-labelledby="dropdownTaskStatus" id="dropdownTaskStatusMenu">
                                     @foreach ($board->columns as $column)
+                                        @if ($board->type === 'monitoring' && auth()->user()->role === 'ServiceM' && (in_array(strtoupper(trim($column->title)), ['INVOICE', 'CANCEL PO']) || str_contains(strtoupper($column->title), 'PO MENYUSUL')))
+                                            @continue
+                                        @endif
                                         <li><a class="dropdown-item btn-change-status-top" href="javascript:void(0);" data-column-id="column_{{ $column->id }}">{{ $column->title }}</a></li>
                                     @endforeach
                                 </ul>
@@ -174,9 +191,11 @@
 
                     <!-- Quick Actions Row right under title -->
                     <div class="d-flex flex-wrap gap-2 mt-3 mb-1">
-                        <button type="button" class="btn btn-xs btn-outline-secondary btn-quick-member" id="btnQuickMember">
-                            <i class="mdi mdi-account-outline me-1"></i>+ Members
-                        </button>
+                        @if ($board->type !== 'monitoring')
+                            <button type="button" class="btn btn-xs btn-outline-secondary btn-quick-member" id="btnQuickMember">
+                                <i class="mdi mdi-account-outline me-1"></i>+ Members
+                            </button>
+                        @endif
                         <button type="button" class="btn btn-xs btn-outline-secondary btn-quick-date" id="btnQuickDate">
                             <i class="mdi mdi-calendar-blank-outline me-1"></i>+ Dates
                         </button>
@@ -207,6 +226,10 @@
                                                  <strong id="soPoNumber" class="text-dark" style="font-size: 13.5px;"></strong>
                                              </div>
                                              <div class="col-sm-6">
+                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Entity / Tipe Invoice</span>
+                                                 <span id="soEntityType" class="badge" style="font-size: 11px; font-weight: 700; padding: 3px 8px;">-</span>
+                                             </div>
+                                             <div class="col-sm-6">
                                                  <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Client / Perusahaan</span>
                                                  <strong id="soClientName" class="text-dark" style="font-size: 13.5px;"></strong>
                                              </div>
@@ -214,23 +237,28 @@
                                                  <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Nomor Penawaran (Quote)</span>
                                                  <span id="soQuoteNumber" style="font-size: 13px;"></span>
                                              </div>
+                                             @if (auth()->user()->role !== 'ServiceM')
                                              <div class="col-sm-6">
                                                  <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Total Nett</span>
                                                  <span id="soQuoteNett" class="fw-bold text-primary" style="font-size: 13.5px;"></span>
                                              </div>
+                                             @endif
                                              <div class="col-sm-6">
                                                  <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Sales Person</span>
                                                  <span id="soSalesPerson" class="text-dark" style="font-size: 13px;"></span>
                                              </div>
-                                             
+
                                              <!-- Invoices & Payments status -->
+                                             @if (auth()->user()->role !== 'ServiceM')
                                              <div class="col-sm-12 mt-2">
                                                  <span class="text-muted d-block mb-1.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Invoice & Status Pembayaran</span>
                                                  <div id="soInvoicesContainer" class="d-flex flex-column gap-1.5 mt-1">
                                                      <!-- Dynamically populated via JS -->
                                                  </div>
                                              </div>
+                                             @endif
  
+                                             @if ($board->type === 'monitoring')
                                              <!-- Delivery / Surat Jalan -->
                                              <div class="col-sm-12 mt-2">
                                                  <span class="text-muted d-block mb-1.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Surat Jalan (Delivery Order)</span>
@@ -273,6 +301,7 @@
                                                      </div>
                                                  </div>
                                              </div>
+                                             @endif
 
                                              <!-- BAST -->
                                              <div class="col-sm-12 mt-3 pt-2 border-top">
@@ -287,6 +316,55 @@
                                                          <i class="mdi mdi-file-sign"></i> Buat BAST
                                                      </button>
                                                  </div>
+                                             </div>
+
+                                             <!-- Detail Project (Project Monitoring / Sales Order) — cuma
+                                                  muncul kalau card Ringkasan Kesehatan Keuangan gak ada
+                                                  (belum ada PendingPO), soalnya link-nya sama, biar gak dobel. -->
+                                             <div class="col-sm-12 mt-3 pt-2 border-top" id="soDetailProjectContainer">
+                                                 <a id="soDetailProjectLink" href="#" target="_blank" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1">
+                                                     <i class="mdi mdi-open-in-new"></i> Detail Project
+                                                 </a>
+                                             </div>
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
+
+                             <!-- Ringkasan Kesehatan Keuangan (data sama kayak halaman Project Monitoring) -->
+                             <div id="financialHealthContainer" class="mb-4" style="display: none;">
+                                 <div class="card border border-light-subtle shadow-sm" style="background-color: #fbfbfc; border-radius: 12px; border: 1px solid #eef0f4 !important;">
+                                     <div class="card-body p-3.5">
+                                         <h6 class="fw-bold mb-3 text-dark d-flex align-items-center pb-2" style="font-size: 14.5px; border-bottom: 2px solid #71dd37;">
+                                             <i class="mdi mdi-chart-line me-2 text-success" style="font-size: 18px;"></i> Ringkasan Kesehatan Keuangan
+                                         </h6>
+                                         <div class="row g-3" style="font-size: 13px;">
+                                             <div class="col-4">
+                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Revenue</span>
+                                                 <strong id="fhRevenue" class="text-success" style="font-size: 13.5px;"></strong>
+                                             </div>
+                                             <div class="col-4">
+                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Total Biaya</span>
+                                                 <strong id="fhTotalCost" class="text-danger" style="font-size: 13.5px;"></strong>
+                                             </div>
+                                             <div class="col-4">
+                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Net Profit</span>
+                                                 <strong id="fhProfit" style="font-size: 13.5px;"></strong>
+                                             </div>
+                                             <div class="col-sm-12 mt-1">
+                                                 <div class="d-flex justify-content-between mb-1">
+                                                     <span class="text-muted small">Rasio Pengeluaran vs Margin</span>
+                                                     <span class="badge" id="fhMarginBadge" style="font-size: 10.5px; font-weight: 700; padding: 3px 8px; background-color: rgba(113, 221, 55, 0.15); color: #71dd37;"></span>
+                                                 </div>
+                                                 <div class="progress rounded-pill" style="height: 10px; overflow: hidden; background-color: rgba(0,0,0,0.05);">
+                                                     <div class="progress-bar bg-danger" role="progressbar" id="fhCostBar" style="width: 0%"></div>
+                                                     <div class="progress-bar bg-success" role="progressbar" id="fhProfitBar" style="width: 0%"></div>
+                                                 </div>
+                                             </div>
+                                             <div class="col-sm-12">
+                                                 <a id="fhDetailLink" href="#" target="_blank" class="small">
+                                                     <i class="mdi mdi-open-in-new me-1"></i>Lihat rincian di Project Monitoring
+                                                 </a>
                                              </div>
                                          </div>
                                      </div>
@@ -319,7 +397,7 @@
 
                             <!-- Metadata row (Assignee, Due Date, and Priority dropdowns) -->
                             <div class="row mb-4">
-                                <div class="col-sm-6">
+                                <div class="col-sm-6 {{ $board->type === 'monitoring' ? 'd-none' : '' }}">
                                     <label for="editTaskAssignee" class="form-label text-muted fw-semibold" style="font-size: 11px;">Ditugaskan Kepada</label>
                                     <div class="w-100">
                                         <select class="form-select select2-edit" id="editTaskAssignee" name="assignees[]" multiple="multiple" data-placeholder="Pilih Penerima" style="width: 100%;">
@@ -329,11 +407,11 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="col-sm-3">
+                                <div class="col-sm-6">
                                     <label for="editTaskDueDate" class="form-label text-muted fw-semibold" style="font-size: 11px;">Tanggal Batas Waktu</label>
                                     <input type="text" class="form-control flatpickr" id="editTaskDueDate" placeholder="YYYY-MM-DD">
                                 </div>
-                                <div class="col-sm-3">
+                                <div class="col-sm-6">
                                     <label for="editTaskPriority" class="form-label text-muted fw-semibold" style="font-size: 11px;">Prioritas</label>
                                     <select class="form-select" id="editTaskPriority">
                                         <option value="low">Rendah</option>
@@ -664,18 +742,64 @@
         }
         .kanban-board {
             min-height: 480px;
-            background-color: #f5f6f8;
-            border-radius: 8px;
-            padding: 10px;
+            background-color: #f8fafc;
+            border-radius: 12px;
+            padding: 10px 10px 14px 10px;
             cursor: default;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+            transition: all 0.2s ease;
+        }
+        .kanban-board:hover {
+            border-color: #cbd5e1;
         }
         .kanban-board header {
-            padding: 10px 5px;
-            border-bottom: 2px solid #ebedf2;
+            padding: 8px 10px;
+            background: linear-gradient(135deg, #666cff 0%, #545be8 100%);
+            border-radius: 8px;
             margin-bottom: 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: 0 2px 6px rgba(102, 108, 255, 0.25);
+            border: none;
+        }
+        .kanban-col-header-custom {
+            user-select: none;
+        }
+        .btn-add-task-custom {
+            opacity: 0.9;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        .kanban-board:hover .btn-add-task-custom {
+            opacity: 1;
+        }
+        .btn-add-task-custom:hover {
+            background-color: #ffffff !important;
+            border-color: #ffffff !important;
+            color: #666cff !important;
+            transform: scale(1.08);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+        }
+        /* Segmented Control / Tab Switcher for Accounting Filter */
+        .accounting-filter-tabs {
+            gap: 2px;
+        }
+        .accounting-tab-btn {
+            border: none;
+            color: #64748b;
+            background: transparent;
+            cursor: pointer;
+            line-height: 1.4;
+        }
+        .accounting-tab-btn:hover {
+            color: #1e293b;
+            background-color: #f1f5f9;
+        }
+        .accounting-tab-btn.active {
+            background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%) !important;
+            color: #ffffff !important;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
         }
         .kanban-title-board {
             font-size: 15px;
@@ -755,6 +879,7 @@
             const boardId = "{{ $board->id }}";
             const csrfToken = $('meta[name="csrf-token"]').attr('content');
             const boardType = "{{ $board->type }}";
+            const userRole = "{{ auth()->user()->role }}";
             let kanbanBoardInstance = null;
             const boardLabels = @json($board->labels ?? (object)[]);
             const accountingSalesMap = @json(($accountingUsers ?? collect())->mapWithKeys(function ($acc) {
@@ -827,6 +952,20 @@
                 return 'bg-label-secondary'; // Safe
             }
 
+            function getColumnHeaderTheme(title) {
+                const t = (title || '').toUpperCase();
+                if (t.includes('REFTECH')) return { color: '#4f46e5', bgSoft: '#eef2ff', icon: 'mdi-file-document-outline' };
+                if (t.includes('E-COMMERCE') || t.includes('ECOMMERCE')) return { color: '#7c3aed', bgSoft: '#f5f3ff', icon: 'mdi-shopping-outline' };
+                if (t.includes('JADWAL') || t.includes('DRAFT') || t.includes('SPK')) return { color: '#0284c7', bgSoft: '#f0f9ff', icon: 'mdi-calendar-clock-outline' };
+                if (t.includes('PROCESS') || t.includes('PROSES')) return { color: '#d97706', bgSoft: '#fffbeb', icon: 'mdi-progress-clock' };
+                if (t.includes('DONE') || t.includes('PAID') || t.includes('COMPLETED') || t.includes('SELESAI')) return { color: '#059669', bgSoft: '#ecfdf5', icon: 'mdi-check-decagram-outline' };
+                if (t.includes('KEMBALI')) return { color: '#0d9488', bgSoft: '#f0fdfa', icon: 'mdi-keyboard-return' };
+                if (t.includes('INVOICE')) return { color: '#2563eb', bgSoft: '#eff6ff', icon: 'mdi-receipt-text-outline' };
+                if (t.includes('CANCEL') || t.includes('BATAL')) return { color: '#dc2626', bgSoft: '#fef2f2', icon: 'mdi-close-circle-outline' };
+                if (t.includes('MENYUSUL') || t.includes('GANTI')) return { color: '#ea580c', bgSoft: '#fff7ed', icon: 'mdi-swap-horizontal' };
+                return { color: '#475569', bgSoft: '#f1f5f9', icon: 'mdi-view-dashboard-outline' };
+            }
+
             let lastTaskId = 0;
 
             // Fetch and render Kanban data
@@ -864,16 +1003,25 @@
                         
                         // Map items for jKanban rendering
                         const boards = data.map(function(column) {
+                            const colTheme = getColumnHeaderTheme(column.title);
+                            const count = column.item ? column.item.length : 0;
                             return {
                                 id: column.id,
                                 title: `
-                                    <div class="d-flex justify-content-between align-items-center w-100 pe-2" style="gap: 10px;">
-                                        <div class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-between flex-grow-1 py-1 px-2 bg-white" style="border-color: #eef0f4; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); pointer-events: none; max-width: calc(100% - 30px); min-width: 0;">
-                                            <span class="kanban-title-board text-truncate" style="font-size: 13px; font-weight: 700; color: #4f5157; margin-right: 5px;" title="${column.title}">${column.title}</span>
-                                            <span class="badge bg-primary rounded-pill" style="font-size: 10px; padding: 2.5px 6.5px; flex-shrink: 0;">${column.item ? column.item.length : 0}</span>
+                                    <div class="kanban-col-header-custom d-flex align-items-center justify-content-between w-100" style="user-select: none;">
+                                        <div class="d-flex align-items-center gap-2 min-width-0 flex-grow-1 pe-1">
+                                            <div class="col-indicator-pill d-flex align-items-center justify-content-center" style="width: 26px; height: 26px; border-radius: 6px; background: rgba(255, 255, 255, 0.2); color: #ffffff; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.06);">
+                                                <i class="mdi ${colTheme.icon}" style="font-size: 15px;"></i>
+                                            </div>
+                                            <span class="kanban-col-title text-truncate fw-bold" style="font-size: 12.5px; color: #ffffff; letter-spacing: 0.2px;" title="${column.title}">
+                                                ${column.title}
+                                            </span>
+                                            <span class="badge rounded-pill" style="background: rgba(255, 255, 255, 0.22); color: #ffffff; font-size: 10.5px; font-weight: 700; padding: 2px 7px; flex-shrink: 0; border: 1px solid rgba(255, 255, 255, 0.35);">
+                                                ${count}
+                                            </span>
                                         </div>
-                                        <button class="btn btn-xs btn-text-primary btn-icon rounded-circle btn-add-task-custom" data-column-id="${column.id}" style="width: 24px; height: 24px; min-width: 24px; padding: 0;" type="button">
-                                            <i class="mdi mdi-plus" style="font-size: 16px;"></i>
+                                        <button class="btn btn-xs btn-icon btn-add-task-custom" data-column-id="${column.id}" style="width: 26px; height: 26px; min-width: 26px; border-radius: 6px; color: #ffffff; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); transition: all 0.2s ease;" type="button" title="Tambah Tugas ke ${column.title}">
+                                            <i class="mdi mdi-plus" style="font-size: 15px;"></i>
                                         </button>
                                     </div>
                                 `,
@@ -921,9 +1069,19 @@
                                         `;
                                     }
 
+                                    let entityBadgeHtml = '';
+                                    if (boardType === 'monitoring' && task.entity_type) {
+                                        if (task.entity_type === 'KII') {
+                                            entityBadgeHtml = `<span class="badge bg-danger text-white fw-bold" style="font-size: 10px; padding: 3px 7px; border-radius: 4px; line-height: 1; letter-spacing: 0.3px;" title="Invoice Kojisha (KII)">KII</span>`;
+                                        } else {
+                                            entityBadgeHtml = `<span class="badge bg-primary text-white fw-bold" style="font-size: 10px; padding: 3px 7px; border-radius: 4px; line-height: 1; letter-spacing: 0.3px;" title="Invoice Reftech (RJO)">RJO</span>`;
+                                        }
+                                    }
+
                                     let footerHtml = `
                                         <div class="d-flex justify-content-between align-items-center mt-3">
-                                            <div class="d-flex align-items-center gap-1">
+                                            <div class="d-flex align-items-center flex-wrap gap-1">
+                                                ${entityBadgeHtml}
                                                 ${task.due_date ? `<span class="badge ${getDateUrgencyClass(task.due_date)}" style="font-size:10px;"><i class="mdi mdi-calendar-blank-outline me-1"></i>${formatDateDisplay(task.due_date)}</span>` : ''}
                                                 ${checklistBadgeHtml}
                                             </div>
@@ -950,21 +1108,49 @@
                                     }
                                     labelsHtml += '</div>';
 
-                                    let displayTitleHtml = `<div class="text-heading fw-semibold" style="font-size: 13px; white-space: normal; word-break: break-word;">${task.title}</div>`;
-                                    const poMatch = task.title.match(/^\[(.*?)\]\s*-\s*(.*)$/);
-                                    if (poMatch) {
-                                        const poNum = poMatch[1];
-                                        const company = poMatch[2];
-                                        displayTitleHtml = `
-                                            <div class="text-primary fw-bold text-truncate" style="font-size: 13.5px;" title="${poNum}">[${poNum}]</div>
-                                            <div class="text-heading fw-semibold mt-1" style="font-size: 12.5px; line-height: 1.35; white-space: normal; word-break: break-word;">${company}</div>
-                                        `;
+                                    let poNum = '';
+                                    let companyName = '';
+
+                                    if (task.no_po) {
+                                        poNum = task.no_po.startsWith('[') ? task.no_po : `[${task.no_po}]`;
+                                        companyName = task.company || '';
+                                        if (!companyName) {
+                                            const emDashMatch = task.title.match(/^(.*?)\s*—\s*(.*)$/);
+                                            const dashMatch = task.title.match(/^(.*?)\s+-\s+(.*)$/);
+                                            if (emDashMatch) companyName = emDashMatch[2];
+                                            else if (dashMatch) companyName = dashMatch[2];
+                                        }
+                                    } else {
+                                        const bracketMatch = task.title.match(/^\[(.*?)\]\s*-\s*(.*)$/);
+                                        const emDashMatch = task.title.match(/^(.*?)\s*—\s*(.*)$/);
+                                        const dashMatch = task.title.match(/^(.*?)\s+-\s+(.*)$/);
+
+                                        if (bracketMatch) {
+                                            poNum = `[${bracketMatch[1]}]`;
+                                            companyName = bracketMatch[2];
+                                        } else if (emDashMatch) {
+                                            poNum = '-';
+                                            companyName = emDashMatch[2];
+                                        } else if (dashMatch) {
+                                            poNum = dashMatch[1];
+                                            companyName = dashMatch[2];
+                                        } else {
+                                            poNum = task.title;
+                                            companyName = task.company || '';
+                                        }
                                     }
 
+                                    const poTextColor = (task.entity_type === 'KII') ? 'text-danger' : 'text-primary';
+                                    let displayTitleHtml = `
+                                        <div class="${poTextColor} fw-bold" style="font-size: 13px; line-height: 1.35; word-break: break-word;" title="${poNum}">${poNum}</div>
+                                        ${companyName ? `<div class="text-heading fw-semibold mt-1" style="font-size: 12.5px; line-height: 1.35; word-break: break-word;">${companyName}</div>` : ''}
+                                    `;
+
                                     let nettHtml = '';
-                                    if (task.nett && task.nett > 0 && boardType === 'monitoring') {
+                                    if (task.nett && task.nett > 0 && boardType === 'monitoring' && userRole !== 'ServiceM') {
                                         const formattedVal = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(task.nett);
-                                        nettHtml = `<div class="mt-1"><span class="badge bg-label-primary" style="font-size: 10px; font-weight: 600; padding: 3px 6px;">${formattedVal}</span></div>`;
+                                        const nettBadgeClass = (task.entity_type === 'KII') ? 'bg-label-danger' : 'bg-label-primary';
+                                        nettHtml = `<div class="mt-1"><span class="badge ${nettBadgeClass}" style="font-size: 10px; font-weight: 600; padding: 3px 6px;">${formattedVal}</span></div>`;
                                     }
 
                                     return {
@@ -972,9 +1158,11 @@
                                         title: `
                                             <div class="kanban-item-content" data-task-id="${task.id}" data-task='${JSON.stringify(task).replace(/'/g, "&#39;")}'>
                                                 ${labelsHtml}
-                                                <div class="mb-1" style="line-height: 1.4;">${displayTitleHtml}</div>
+                                                <div class="mb-1" style="line-height: 1.4;">
+                                                    ${displayTitleHtml}
+                                                    ${task.description ? `<div class="text-muted mt-1" style="font-size: 11.5px; line-height: 1.35; word-break: break-word;">${task.description}</div>` : ''}
+                                                </div>
                                                 ${nettHtml}
-                                                <small class="text-muted d-block text-truncate mt-1" style="max-width: 200px;">${task.description ? task.description : ''}</small>
                                                 ${progressBarHtml}
                                                 ${footerHtml}
                                             </div>
@@ -1011,10 +1199,12 @@
                             }
                         });
                         
-                        // Apply custom border colors to cards based on active labels
+                        // Apply custom border colors to cards based on active labels or KII entity
                         $('.kanban-item-content').each(function() {
                             const taskData = $(this).data('task');
-                            if (taskData && taskData.labels && taskData.labels.length > 0) {
+                            if (boardType === 'monitoring' && taskData && taskData.entity_type === 'KII') {
+                                $(this).closest('.kanban-item').addClass('border-left-danger');
+                            } else if (taskData && taskData.labels && taskData.labels.length > 0) {
                                 const firstColor = taskData.labels[0];
                                 $(this).closest('.kanban-item').addClass('border-left-' + firstColor);
                             }
@@ -1085,7 +1275,8 @@
                             if (response.success) {
                                 let html = '<option value="">-- Pilih PO + Perusahaan --</option>';
                                 response.pos.forEach(function(po) {
-                                    html += `<option value="${po.id}" data-no-po="${po.no_po}" data-company="${po.company}" data-sales="${po.sales}">[${po.no_po}] - ${po.company} (Sales: ${po.sales})</option>`;
+                                    const entityTag = po.entity_type ? `[${po.entity_type}] ` : '';
+                                    html += `<option value="${po.id}" data-no-po="${po.no_po}" data-company="${po.company}" data-sales="${po.sales}">[${po.no_po}] ${entityTag}- ${po.company} (Sales: ${po.sales})</option>`;
                                 });
                                 $('#createTaskTitleSelect').html(html).trigger('change');
                             }
@@ -1225,18 +1416,31 @@
                             if (response.so_details) {
                                 $('#soPoNumber').text(response.so_details.no_po);
                                 $('#soClientName').text(response.so_details.company);
+
+                                if (response.so_details.entity_type === 'KII') {
+                                    $('#soEntityType').removeClass('bg-primary text-white').addClass('bg-danger text-white').text('KII (Kojisha)');
+                                } else {
+                                    $('#soEntityType').removeClass('bg-danger text-white').addClass('bg-primary text-white').text('RJO (Reftech)');
+                                }
                                 
-                                // Render Quotation as a Link
+                                // Render Quotation as a Link or Plain text for ServiceM
                                 if (response.so_details.quote_no !== 'N/A') {
-                                    $('#soQuoteNumber').html(`<a href="${response.so_details.quote_link}" target="_blank" class="fw-semibold text-primary"><i class="mdi mdi-open-in-new me-1" style="font-size:12px;"></i>${response.so_details.quote_no}</a>`);
+                                    if (userRole === 'ServiceM' || !response.so_details.quote_link) {
+                                        $('#soQuoteNumber').text(response.so_details.quote_no);
+                                    } else {
+                                        $('#soQuoteNumber').html(`<a href="${response.so_details.quote_link}" target="_blank" class="fw-semibold text-primary"><i class="mdi mdi-open-in-new me-1" style="font-size:12px;"></i>${response.so_details.quote_no}</a>`);
+                                    }
                                 } else {
                                     $('#soQuoteNumber').text('N/A');
                                 }
                                 
-                                $('#soQuoteNett').text('Rp ' + response.so_details.quote_nett);
+                                if (userRole !== 'ServiceM' && response.so_details.quote_nett) {
+                                    const quoteNettClass = (response.so_details.entity_type === 'KII') ? 'text-danger' : 'text-primary';
+                                    $('#soQuoteNett').removeClass('text-primary text-danger').addClass(quoteNettClass).text('Rp ' + response.so_details.quote_nett);
+                                }
                                 $('#soSalesPerson').text(response.so_details.sales_name);
 
-                                // Render Invoices and associate their payments sequentially
+                                // Render Invoices & Payments
                                 let invoicesHtml = '';
                                 if (response.so_details.invoices && response.so_details.invoices.length > 0) {
                                     response.so_details.invoices.forEach(function(inv) {
@@ -1306,17 +1510,51 @@
                                     $('#bastCreateContainer').show();
                                 }
 
+                                // Tombol Detail Project — ke Project Monitoring kalau kartunya udah
+                                // punya PendingPO, fallback ke halaman quotation kalau belum.
+                                $('#soDetailProjectLink').attr('href', response.so_details.project_monitoring_link || response.so_details.quote_link);
+                                $('#soDetailProjectContainer').show();
+
                                 $('#soDetailsContainer').show();
+
+                                // Ringkasan Kesehatan Keuangan: Sembunyikan di monitoring document, tapi tampilkan di kanban lain (seperti board 2) jika datanya ada
+                                if (boardType !== 'monitoring' && response.so_details.financial_health) {
+                                    var fh = response.so_details.financial_health;
+                                    var fmtRp = function (n) { return 'Rp ' + Number(n).toLocaleString('id-ID'); };
+                                    $('#fhRevenue').text(fmtRp(fh.revenue));
+                                    $('#fhTotalCost').text(fmtRp(fh.total_cost));
+                                    $('#fhProfit')
+                                        .text(fmtRp(fh.profit))
+                                        .removeClass('text-primary text-danger')
+                                        .addClass(fh.profit >= 0 ? 'text-primary' : 'text-danger');
+
+                                    var costRatio = fh.revenue > 0 ? (fh.total_cost / fh.revenue) * 100 : 0;
+                                    var profitRatio = fh.revenue > 0 ? (fh.profit / fh.revenue) * 100 : 0;
+                                    $('#fhCostBar').css('width', costRatio + '%');
+                                    $('#fhProfitBar').css('width', profitRatio + '%');
+                                    $('#fhMarginBadge').text(fh.margin + '% Margin');
+                                    $('#fhDetailLink').attr('href', response.so_details.project_monitoring_link || response.so_details.quote_link);
+
+                                    $('#financialHealthContainer').show();
+                                } else {
+                                    $('#financialHealthContainer').hide();
+                                }
                             } else {
                                 $('#soDetailsContainer').hide();
+                                $('#financialHealthContainer').hide();
                             }
                             
                             isProgrammaticChange = true;
                             // Set fields if changed
                             const titleRaw = currentTaskData.title || '';
-                            const titleMatch = titleRaw.match(/^\[(.*?)\]\s*-\s*(.*)$/);
-                            if (titleMatch) {
-                                $('#taskDetailsModalLabel').html(`<span class="badge bg-label-primary px-3 py-2 me-2" style="font-size: 13.5px; font-weight: 600;"><i class="mdi mdi-receipt-text-outline me-1"></i>${titleMatch[1]}</span> <span class="text-dark fw-bold" style="font-size: 16px;">${titleMatch[2]}</span>`);
+                            if (boardType === 'monitoring') {
+                                const titleMatch = titleRaw.match(/^\[(.*?)\]\s*-\s*(.*)$/);
+                                if (titleMatch) {
+                                    const modalBadgeClass = (response.so_details && response.so_details.entity_type === 'KII') ? 'bg-label-danger' : 'bg-label-primary';
+                                    $('#taskDetailsModalLabel').html(`<span class="badge ${modalBadgeClass} px-3 py-2 me-2" style="font-size: 13.5px; font-weight: 600;"><i class="mdi mdi-receipt-text-outline me-1"></i>${titleMatch[1]}</span> <span class="text-dark fw-bold" style="font-size: 16px;">${titleMatch[2]}</span>`);
+                                } else {
+                                    $('#taskDetailsModalLabel').text(titleRaw);
+                                }
                             } else {
                                 $('#taskDetailsModalLabel').text(titleRaw);
                             }
@@ -1374,29 +1612,6 @@
                     }
                 });
             }
-
-            $(document).on('click', '#btnCreateBastFromCard', function() {
-                const taskId = $('#editTaskId').val();
-                const prefill = currentBastPrefill || {};
-                window.openBastModal({
-                    idKanbanTask: taskId,
-                    idQuotation: prefill.id_quotation || '',
-                    entity: prefill.entity || 'Reftech',
-                    customerName: prefill.customer_name || '',
-                    workTitle: prefill.work_title || '',
-                    poNumber: prefill.po_number || '',
-                });
-            });
-
-            $(document).on('bast:saved', function(e, response) {
-                const taskId = $('#editTaskId').val();
-                if (taskId) {
-                    loadTaskDetails(taskId);
-                }
-                if (response && response.bast && response.bast.print_link) {
-                    window.open(response.bast.print_link, '_blank');
-                }
-            });
 
             // Labels Rendering
             function renderLabels(labels) {
@@ -2211,7 +2426,6 @@
                         assigned_to: assignee,
                         due_date: dueDate,
                         column_id: columnId,
-                        service_report_id: $('#editTaskServiceReport').val(),
                         _token: csrfToken
                     },
                     success: function(response) {
@@ -2265,7 +2479,7 @@
             $(document).on('click', '.btn-unlink-report', function(e) {
                 e.preventDefault();
                 const taskId = $('#editTaskId').val();
-                if (!taskId) return;
+                if (!taskId || !currentTaskData) return;
                 if (confirm('Apakah Anda yakin ingin memutuskan hubungan dengan Service Report ini?')) {
                     $.ajax({
                         url: `/kanban/tasks/${taskId}/update`,
@@ -2283,11 +2497,40 @@
                         success: function() {
                             loadTaskDetails(taskId);
                             loadKanbanBoard();
+                        },
+                        error: function() {
+                            alert('Gagal memutuskan Service Report.');
                         }
                     });
                 }
             });
- 
+
+            // Handle Create BAST click
+            $(document).on('click', '#btnCreateBastFromCard', function() {
+                const taskId = $('#editTaskId').val();
+                const prefill = currentBastPrefill || {};
+                if (typeof window.openBastModal === 'function') {
+                    window.openBastModal({
+                        idKanbanTask: taskId,
+                        idQuotation: prefill.id_quotation || '',
+                        entity: prefill.entity || 'Reftech',
+                        customerName: prefill.customer_name || '',
+                        workTitle: prefill.work_title || '',
+                        poNumber: prefill.po_number || '',
+                    });
+                }
+            });
+
+            $(document).on('bast:saved', function(e, response) {
+                const taskId = $('#editTaskId').val();
+                if (taskId) {
+                    loadTaskDetails(taskId);
+                }
+                if (response && response.bast && response.bast.print_link) {
+                    window.open(response.bast.print_link, '_blank');
+                }
+            });
+
             // Handle Delete Task
             $('#deleteTaskBtn').click(function() {
                 const taskId = $('#editTaskId').val();
@@ -2620,19 +2863,39 @@
                 });
             @endif
 
-            // Client-side Card Search + Accounting filter
+            // Client-side Card Search + Accounting multi-toggle filter
             function applyKanbanFilters() {
                 const query = $('#kanbanSearchInput').val().toLowerCase().trim();
-                const accountingFilter = $('#kanbanAccountingFilter').val();
-                const allowedSalesIds = accountingFilter ? (accountingSalesMap[accountingFilter] || []) : null;
+                
+                let allowedSalesIds = null;
+                if (boardType === 'monitoring') {
+                    const activeButtons = $('.accounting-tab-btn.active');
+                    const totalButtons = $('.accounting-tab-btn').length;
+                    
+                    // If only a subset of accounting tabs is active, collect allowed sales IDs
+                    if (activeButtons.length > 0 && activeButtons.length < totalButtons) {
+                        allowedSalesIds = [];
+                        activeButtons.each(function() {
+                            const accId = String($(this).data('accounting-id'));
+                            const salesList = accountingSalesMap[accId] || [];
+                            salesList.forEach(function(sId) {
+                                if (!allowedSalesIds.includes(String(sId))) {
+                                    allowedSalesIds.push(String(sId));
+                                }
+                            });
+                        });
+                    }
+                }
 
                 $('.kanban-item').each(function() {
                     const titleText = $(this).find('.text-heading, .text-primary').text().toLowerCase();
                     const descText = $(this).find('.text-muted').text().toLowerCase();
                     const taskData = $(this).find('.kanban-item-content').data('task') || {};
+                    const entityText = (taskData.entity_type || '').toLowerCase();
+                    const entityFullName = (taskData.entity_type === 'KII' ? 'kojisha' : (taskData.entity_type === 'RJO' ? 'reftech' : ''));
 
-                    const matchesSearch = !query || titleText.includes(query) || descText.includes(query);
-                    const matchesAccounting = !allowedSalesIds || allowedSalesIds.includes(String(taskData.id_sales));
+                    const matchesSearch = !query || titleText.includes(query) || descText.includes(query) || (boardType === 'monitoring' && (entityText.includes(query) || entityFullName.includes(query)));
+                    const matchesAccounting = (boardType !== 'monitoring') || !allowedSalesIds || allowedSalesIds.includes(String(taskData.id_sales));
 
                     if (matchesSearch && matchesAccounting) {
                         $(this).show();
@@ -2640,10 +2903,41 @@
                         $(this).hide();
                     }
                 });
+
+                // Update column badge counters to reflect visible cards
+                $('.kanban-board').each(function() {
+                    const visibleCount = $(this).find('.kanban-item:visible').length;
+                    $(this).find('.kanban-col-header-custom .badge').text(visibleCount);
+                });
             }
 
             $(document).on('keyup', '#kanbanSearchInput', applyKanbanFilters);
-            $(document).on('change', '#kanbanAccountingFilter', applyKanbanFilters);
+
+            // Accounting Filter Multi-Toggle Tab Switcher click
+            $(document).on('click', '.accounting-tab-btn', function() {
+                const isCurrentlyActive = $(this).hasClass('active');
+                const totalActive = $('.accounting-tab-btn.active').length;
+                const totalButtons = $('.accounting-tab-btn').length;
+
+                if (totalActive === totalButtons) {
+                    // When all are currently active, clicking one isolates that specific tab
+                    $('.accounting-tab-btn').removeClass('active').addClass('text-muted fw-semibold').removeClass('fw-bold');
+                    $(this).addClass('active fw-bold').removeClass('text-muted fw-semibold');
+                } else if (isCurrentlyActive && totalActive === 1) {
+                    // Clicking the only active tab re-enables all tabs
+                    $('.accounting-tab-btn').addClass('active fw-bold').removeClass('text-muted fw-semibold');
+                } else {
+                    // Toggle normal state
+                    $(this).toggleClass('active');
+                    if ($(this).hasClass('active')) {
+                        $(this).removeClass('text-muted fw-semibold').addClass('fw-bold');
+                    } else {
+                        $(this).addClass('text-muted fw-semibold').removeClass('fw-bold');
+                    }
+                }
+
+                applyKanbanFilters();
+            });
 
             // Handle test sound click in Board Settings
             $(document).on('click', '#btnTestSound', function(e) {

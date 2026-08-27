@@ -54,7 +54,7 @@ class OverviewService
      */
     public function getActiveSalesList()
     {
-        return User::where('role', 'Sales')->where('active', '1')->get();
+        return User::activeSalesAndProjectAdmins();
     }
 
     /**

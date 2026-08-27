@@ -8,6 +8,8 @@ use App\Models\Delivery;
 use App\Models\DetailDelivery;
 use App\Models\DetailPendingPO;
 use App\Models\Invoice;
+use App\Models\KanbanBoard;
+use App\Models\KanbanTask;
 use App\Models\Payment;
 use App\Models\PendingPO;
 use App\Models\Pic;
@@ -16,6 +18,7 @@ use App\Models\PurchaseRequest;
 use App\Models\Unit;
 use App\Models\UnitQuotation;
 use App\Models\UnitQuotationDetail;
+use App\Models\UnitQuotationOption;
 use App\Models\User;
 use App\Services\PurchaseRequestService;
 use Illuminate\Http\Request;
@@ -38,7 +41,7 @@ class UnitQuotationController extends Controller
         return view('pages.unit-quotation.index');
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $defaultNoQuote = $this->generateNoQuote();
         $isManager = in_array(Auth::user()->role, ['Admin', 'Sales Manager']);
@@ -51,6 +54,18 @@ class UnitQuotationController extends Controller
             ? Client::orderBy('company')->get()
             : Client::where('id_sales', Auth::id())->orderBy('company')->get();
 
+        $selectedClient   = $request->get('client_id');
+        $selectedPic      = $request->get('pic_id');
+        $selectedProspect = $request->get('prospect_id');
+
+        if ($selectedProspect && !$selectedClient) {
+            $prospect = \App\Models\Prospect::with('pic.client')->find($selectedProspect);
+            if ($prospect && $prospect->pic) {
+                $selectedClient = $prospect->pic->id_client;
+                $selectedPic    = $prospect->id_pic;
+            }
+        }
+
         $paymentTemplates = $isManager
             ? collect()
             : \App\Models\SalesPaymentTemplate::with('client')
@@ -61,7 +76,7 @@ class UnitQuotationController extends Controller
 
         $transportationPrices = \App\Models\TransportationPrice::orderBy('city')->get(['id', 'city', 'price']);
 
-        return view('pages.unit-quotation.create', compact('clients', 'defaultNoQuote', 'paymentTemplates', 'isManager', 'salesUsers', 'transportationPrices'));
+        return view('pages.unit-quotation.create', compact('clients', 'defaultNoQuote', 'paymentTemplates', 'isManager', 'salesUsers', 'transportationPrices', 'selectedClient', 'selectedPic', 'selectedProspect'));
     }
 
     public function getClientsBySales($salesId)
@@ -100,28 +115,12 @@ class UnitQuotationController extends Controller
 
     public function store(Request $request)
     {
-        $subtotal = 0;
-        $items    = $request->input('items', []);
+        $processedOptions = $this->processOptionsInput($request->input('options', []));
+        $first = $processedOptions[0] ?? $this->emptyOptionTotals();
 
-        foreach ($items as $item) {
-            if (($item['type'] ?? '') === 'header' || ($item['type'] ?? '') === 'heading') {
-                continue;
-            }
-            $qty    = floatval($item['qty']   ?? 1);
-            $price  = floatval($item['price'] ?? 0);
-            $disc   = floatval($item['disc']  ?? 0);
-            $subtotal += $qty * $price * (1 - $disc / 100);
-        }
-
-        $diskonType  = $request->diskon_type === 'amount' ? 'amount' : 'percent';
-        $diskon      = floatval($request->diskon ?? 0);
-        $afterDiskon = $diskonType === 'amount' ? ($subtotal - $diskon) : ($subtotal - ($subtotal * $diskon / 100));
-        $tax         = $request->boolean('tax');
-        $tax_amount  = $tax ? round($afterDiskon * 0.11) : 0;
-        $shipping    = floatval(str_replace('.', '', $request->shipping ?? 0));
-        $total       = $afterDiskon + $tax_amount + $shipping;
-
-        $client = $request->id_client ? Client::find($request->id_client) : null;
+        $client   = $request->id_client ? Client::find($request->id_client) : null;
+        $prospect = $request->id_prospect ? \App\Models\Prospect::find($request->id_prospect) : null;
+        $idSupport = $prospect ? ($prospect->id_support ?: ($client->id_support ?? null)) : ($client->id_support ?? null);
 
         $quote = UnitQuotation::create([
             'id_client'        => $request->id_client ?: null,
@@ -129,7 +128,7 @@ class UnitQuotationController extends Controller
             'id_plant'         => $request->id_plant ?: null,
             'address'          => $request->address ?: null,
             'id_sales'         => Auth::id(),
-            'id_support'       => $client->id_support ?? null,
+            'id_support'       => $idSupport,
             'no_quote'         => $request->no_quote ?: $this->generateNoQuote($request->type),
             'attn'             => $request->attn,
             'no_pr'            => $request->no_pr ?: null,
@@ -137,14 +136,15 @@ class UnitQuotationController extends Controller
             'expired_date'     => $request->expired_date ?: \Carbon\Carbon::parse($request->date)->addMonth()->format('Y-m-d'),
             'title'            => $request->title,
             'type'             => $request->type,
+            'unit_condition'   => $request->type === 'Unit' ? $request->unit_condition : null,
             'week'             => $request->week,
-            'subtotal'         => $subtotal,
-            'diskon'           => $diskon,
-            'diskon_type'      => $diskonType,
-            'tax'              => $tax,
-            'tax_amount'       => $tax_amount,
-            'shipping'         => $shipping,
-            'total'            => $total,
+            'subtotal'         => $first['subtotal'],
+            'diskon'           => $first['diskon'],
+            'diskon_type'      => $first['diskon_type'],
+            'tax'              => $first['tax'],
+            'tax_amount'       => $first['tax_amount'],
+            'shipping'         => $first['shipping'],
+            'total'            => $first['total'],
             'note'             => $request->note,
             'validity'         => $request->validity,
             'pricing'          => $request->pricing,
@@ -156,7 +156,13 @@ class UnitQuotationController extends Controller
             'is_latest'        => 1,
         ]);
 
-        $this->saveDetails($quote->id, $items);
+        $this->saveOptions($quote->id, $processedOptions);
+
+        if ($prospect) {
+            $prospect->id_quotation = $quote->id;
+            $prospect->level = '1';
+            $prospect->save();
+        }
 
         $quote->statusHistory()->create(['status' => 'draft', 'note' => null]);
 
@@ -166,7 +172,11 @@ class UnitQuotationController extends Controller
 
     public function show($id)
     {
-        $quote       = UnitQuotation::with(['client', 'pic', 'plant', 'sales', 'details.unit', 'details.equivalent.product', 'statusHistory', 'comments.user'])->findOrFail($id);
+        $quote       = UnitQuotation::with([
+            'client', 'pic', 'plant', 'sales', 'statusHistory', 'comments.user',
+            'details.unit', 'details.equivalent.product',
+            'options.details.unit', 'options.details.equivalent.product',
+        ])->findOrFail($id);
         $allVersions = $quote->allVersions();
         $invoices    = Invoice::where('id_unit_quotation', $quote->id)->orderByRaw("FIELD(type,'DP','BP','CT')")->get();
         $contracts   = Contract::where('id_unit_quotation', $quote->id)->get();
@@ -183,7 +193,53 @@ class UnitQuotationController extends Controller
         $payments  = Payment::where('id_unit_quotation', $quote->id)->orderBy('id')->get();
         $pendingPo = PendingPO::where('id_unit_quotation', $quote->id)->first();
 
-        return view('pages.unit-quotation.detail', compact('quote', 'allVersions', 'invoices', 'contracts', 'payments', 'thisYear', 'formattedNumberSC', 'pendingPo'));
+        $user = Auth::user();
+        $kanbanBoards = $user->role === 'Admin'
+            ? KanbanBoard::where('type', '!=', 'monitoring')->orderBy('title')->get()
+            : $user->kanbanBoards()->where('type', '!=', 'monitoring')->orderBy('title')->get();
+        // Kalau quotation ini udah pernah di-post ke Kanban, tombol Action-nya ganti
+        // jadi link "Monitoring Project" langsung ke kartunya, bukan modal Post lagi.
+        $kanbanTask = KanbanTask::where('id_unit_quotation', $quote->id)->latest()->first();
+
+        return view('pages.unit-quotation.detail', compact('quote', 'allVersions', 'invoices', 'contracts', 'payments', 'thisYear', 'formattedNumberSC', 'pendingPo', 'kanbanBoards', 'kanbanTask'));
+    }
+
+    /**
+     * "Post to Kanban" — bikin kartu baru di board & kolom pilihan user, ditautkan
+     * balik ke quotation ini lewat id_unit_quotation (beda dari pending_po_id yang
+     * cuma keisi kalau quotation-nya udah punya PO/SO — post-to-kanban bisa dipakai
+     * dari status manapun).
+     */
+    public function postToKanban(Request $request, $id)
+    {
+        $quote = UnitQuotation::with('client')->findOrFail($id);
+
+        $request->validate([
+            'board_id' => 'required|exists:kanban_boards,id',
+            'column_id' => 'required|string',
+        ]);
+
+        $board = KanbanBoard::findOrFail($request->board_id);
+        if (Auth::user()->role !== 'Admin' && !$board->members->contains(Auth::id())) {
+            abort(403, 'Anda bukan anggota board ini.');
+        }
+
+        $columnId = (int) str_replace('column_', '', $request->column_id);
+        $maxPos = KanbanTask::where('column_id', $columnId)->max('position');
+        $position = is_null($maxPos) ? 0 : $maxPos + 1;
+
+        KanbanTask::create([
+            'board_id' => $board->id,
+            'column_id' => $columnId,
+            'title' => $quote->no_quote . ' — ' . ($quote->client->company ?? '-'),
+            'description' => $quote->title,
+            'position' => $position,
+            'priority' => 'medium',
+            'id_unit_quotation' => $quote->id,
+        ]);
+
+        return redirect()->route('unit-quotation.show', $quote->id)
+            ->with('success', 'Quotation berhasil di-post ke board "' . $board->title . '".');
     }
 
     public function storeComment(Request $request, $id)
@@ -234,7 +290,11 @@ class UnitQuotationController extends Controller
 
     public function edit($id)
     {
-        $quote   = UnitQuotation::with(['client', 'pic', 'plant', 'details.unit', 'details.fixedAsset', 'details.equivalent.product'])->findOrFail($id);
+        $quote   = UnitQuotation::with([
+            'client', 'pic', 'plant',
+            'options.details.unit', 'options.details.fixedAsset', 'options.details.equivalent.product',
+            'details.unit', 'details.fixedAsset', 'details.equivalent.product',
+        ])->findOrFail($id);
         $clients = Client::orderBy('company')->get();
         $paymentTemplates = \App\Models\SalesPaymentTemplate::with('client')
             ->where('id_sales', Auth::id())
@@ -242,7 +302,7 @@ class UnitQuotationController extends Controller
             ->orderBy('name')
             ->get();
 
-        $editItems = $quote->details->map(function ($d) {
+        $mapItem = function ($d) {
             return [
                 'type'          => $d->type,
                 'id_unit'       => $d->id_unit,
@@ -269,36 +329,43 @@ class UnitQuotationController extends Controller
                 'price'       => (float) $d->price,
                 'disc'        => (float) $d->disc,
             ];
-        })->values();
+        };
+
+        if ($quote->options->isEmpty()) {
+            // Quotation lama (dibuat sebelum fitur multi-opsi ada) — bungkus detail
+            // yang sudah ada jadi 1 opsi virtual, biar form edit tetap konsisten.
+            $editOptions = [[
+                'title'       => 'Opsi 1',
+                'diskon'      => (float) $quote->diskon,
+                'diskon_type' => $quote->diskon_type ?? 'percent',
+                'tax'         => (bool) $quote->tax,
+                'shipping'    => (float) $quote->shipping,
+                'items'       => $quote->details->map($mapItem)->values(),
+            ]];
+        } else {
+            $editOptions = $quote->options->map(function ($opt) use ($mapItem) {
+                return [
+                    'title'       => $opt->title,
+                    'diskon'      => (float) $opt->diskon,
+                    'diskon_type' => $opt->diskon_type,
+                    'tax'         => (bool) $opt->tax,
+                    'shipping'    => (float) $opt->shipping,
+                    'items'       => $opt->details->map($mapItem)->values(),
+                ];
+            })->values();
+        }
 
         $transportationPrices = \App\Models\TransportationPrice::orderBy('city')->get(['id', 'city', 'price']);
 
-        return view('pages.unit-quotation.edit', compact('quote', 'clients', 'editItems', 'paymentTemplates', 'transportationPrices'));
+        return view('pages.unit-quotation.edit', compact('quote', 'clients', 'editOptions', 'paymentTemplates', 'transportationPrices'));
     }
 
     public function update(Request $request, $id)
     {
-        $quote    = UnitQuotation::findOrFail($id);
-        $subtotal = 0;
-        $items    = $request->input('items', []);
+        $quote = UnitQuotation::findOrFail($id);
 
-        foreach ($items as $item) {
-            if (($item['type'] ?? '') === 'header' || ($item['type'] ?? '') === 'heading') {
-                continue;
-            }
-            $qty    = floatval($item['qty']   ?? 1);
-            $price  = floatval($item['price'] ?? 0);
-            $disc   = floatval($item['disc']  ?? 0);
-            $subtotal += $qty * $price * (1 - $disc / 100);
-        }
-
-        $diskonType  = $request->diskon_type === 'amount' ? 'amount' : 'percent';
-        $diskon      = floatval($request->diskon ?? 0);
-        $afterDiskon = $diskonType === 'amount' ? ($subtotal - $diskon) : ($subtotal - ($subtotal * $diskon / 100));
-        $tax         = $request->boolean('tax');
-        $tax_amount  = $tax ? round($afterDiskon * 0.11) : 0;
-        $shipping    = floatval(str_replace('.', '', $request->shipping ?? 0));
-        $total       = $afterDiskon + $tax_amount + $shipping;
+        $processedOptions = $this->processOptionsInput($request->input('options', []));
+        $first = $processedOptions[0] ?? $this->emptyOptionTotals();
 
         $quote->update([
             'id_client'        => $request->id_client ?: null,
@@ -312,14 +379,15 @@ class UnitQuotationController extends Controller
             'expired_date'     => $request->expired_date ?: \Carbon\Carbon::parse($request->date)->addMonth()->format('Y-m-d'),
             'title'            => $request->title,
             'type'             => $request->type,
+            'unit_condition'   => $request->type === 'Unit' ? $request->unit_condition : null,
             'week'             => $request->week,
-            'subtotal'         => $subtotal,
-            'diskon'           => $diskon,
-            'diskon_type'      => $diskonType,
-            'tax'              => $tax,
-            'tax_amount'       => $tax_amount,
-            'shipping'         => $shipping,
-            'total'            => $total,
+            'subtotal'         => $first['subtotal'],
+            'diskon'           => $first['diskon'],
+            'diskon_type'      => $first['diskon_type'],
+            'tax'              => $first['tax'],
+            'tax_amount'       => $first['tax_amount'],
+            'shipping'         => $first['shipping'],
+            'total'            => $first['total'],
             'note'             => $request->note,
             'validity'         => $request->validity,
             'pricing'          => $request->pricing,
@@ -328,8 +396,11 @@ class UnitQuotationController extends Controller
             'payment'          => $request->payment,
         ]);
 
-        $quote->details()->delete();
-        $this->saveDetails($quote->id, $items);
+        // Hapus semua detail & opsi lama, baru dibuat ulang dari input —
+        // sama seperti cara detail biasa disimpan ulang sebelum fitur opsi ada.
+        UnitQuotationDetail::where('id_unit_quotation', $quote->id)->delete();
+        UnitQuotationOption::where('id_unit_quotation', $quote->id)->delete();
+        $this->saveOptions($quote->id, $processedOptions);
 
         return redirect()->route('unit-quotation.show', $quote->id)
             ->with('success', 'Quotation updated successfully.');
@@ -337,7 +408,7 @@ class UnitQuotationController extends Controller
 
     public function revise($id)
     {
-        $source = UnitQuotation::with('details')->findOrFail($id);
+        $source = UnitQuotation::with(['details', 'options.details'])->findOrFail($id);
 
         $rootId  = $source->root_id ?? $source->id;
         $nextRev = UnitQuotation::where(function ($q) use ($rootId) {
@@ -369,12 +440,14 @@ class UnitQuotationController extends Controller
             'expired_date'     => $source->expired_date ? $source->expired_date->format('Y-m-d') : \Carbon\Carbon::now()->addMonth()->format('Y-m-d'),
             'title'            => $source->title,
             'type'             => $source->type,
+            'unit_condition'   => $source->unit_condition,
             'week'             => $source->week,
             'subtotal'         => $source->subtotal,
             'diskon'           => $source->diskon,
             'diskon_type'      => $source->diskon_type,
             'tax'              => $source->tax,
             'tax_amount'       => $source->tax_amount,
+            'shipping'         => $source->shipping,
             'total'            => $source->total,
             'note'             => $source->note,
             'validity'         => $source->validity,
@@ -385,9 +458,10 @@ class UnitQuotationController extends Controller
             'status'           => 'revision',
         ]);
 
-        foreach ($source->details as $d) {
+        $duplicateDetail = function ($d, $newQuoteId, $newOptionId = null) {
             UnitQuotationDetail::create([
-                'id_unit_quotation' => $newQuote->id,
+                'id_unit_quotation' => $newQuoteId,
+                'id_option'         => $newOptionId,
                 'type'              => $d->type,
                 'id_unit'           => $d->id_unit,
                 'id_fixed_asset'    => $d->id_fixed_asset,
@@ -402,6 +476,30 @@ class UnitQuotationController extends Controller
                 'amount'            => $d->amount,
                 'sort_order'        => $d->sort_order,
             ]);
+        };
+
+        if ($source->options->isEmpty()) {
+            foreach ($source->details as $d) {
+                $duplicateDetail($d, $newQuote->id);
+            }
+        } else {
+            foreach ($source->options as $opt) {
+                $newOption = UnitQuotationOption::create([
+                    'id_unit_quotation' => $newQuote->id,
+                    'title'             => $opt->title,
+                    'sort_order'        => $opt->sort_order,
+                    'subtotal'          => $opt->subtotal,
+                    'diskon'            => $opt->diskon,
+                    'diskon_type'       => $opt->diskon_type,
+                    'tax'               => $opt->tax,
+                    'tax_amount'        => $opt->tax_amount,
+                    'shipping'          => $opt->shipping,
+                    'total'             => $opt->total,
+                ]);
+                foreach ($opt->details as $d) {
+                    $duplicateDetail($d, $newQuote->id, $newOption->id);
+                }
+            }
         }
 
         return redirect()->route('unit-quotation.show', $newQuote->id)
@@ -505,6 +603,13 @@ class UnitQuotationController extends Controller
         $newStatus  = $request->status;
         $updateData = ['status' => $newStatus];
 
+        // Quotation dengan >1 opsi belum "final" — customer belum memutuskan mana
+        // yang dipilih, jadi belum boleh lanjut ke PO Received (hitung PO dari
+        // opsi yang mana?). Sales harus hapus opsi yang kalah dulu lewat edit.
+        if ($newStatus === 'po_received' && $quote->has_multiple_options) {
+            return redirect()->back()->with('error', 'Quotation ini masih punya lebih dari 1 opsi. Hapus opsi yang tidak dipilih customer dulu (lewat Edit) sebelum menandai PO Received.');
+        }
+
         // Reset expired_date +1 month from today on every active status update
         // Exception: 'loss' and 'cancel' are final — do not extend
         $finalStatuses = ['loss', 'cancel'];
@@ -551,6 +656,13 @@ class UnitQuotationController extends Controller
         ]);
 
         $quote = UnitQuotation::findOrFail($id);
+
+        if ($quote->has_multiple_options) {
+            $message = 'Quotation ini masih punya lebih dari 1 opsi. Hapus opsi yang tidak dipilih customer dulu (lewat Edit) sebelum upload PO.';
+            return $request->expectsJson()
+                ? response()->json(['error' => $message], 422)
+                : redirect()->back()->with('error', $message);
+        }
 
         $client = $quote->client;
         if (!$client) {
@@ -692,6 +804,7 @@ class UnitQuotationController extends Controller
         $payment->type              = $request->type;
         $payment->method            = $request->method;
         $isEscrow                   = ($request->method === 'Escrow');
+        $payment->escrow_channel    = $isEscrow ? $request->escrow_channel : null;
         $payment->level             = $isEscrow ? 1 : 0;
         $payment->date              = now()->toDateString();
         if ($isEscrow) {
@@ -728,6 +841,19 @@ class UnitQuotationController extends Controller
                 'invoiceTo'         => '1',
                 'status_p'          => 1,
             ]);
+
+            // Tutup otomatis invoice shell yang masih pending (dibuat waktu PO
+            // diproses, belum sempat di-nomori) — supaya tidak nyangkut minta
+            // di-approve manual lewat halaman before.accept.unit padahal invoice
+            // Escrow-nya (di atas) sudah terbit.
+            Invoice::where('id_unit_quotation', $id)
+                ->whereNull('no_invoice')
+                ->whereNull('rejected_at')
+                ->where('id', '!=', $targetInvoice->id)
+                ->update([
+                    'rejected_at'     => now(),
+                    'rejected_reason' => 'Auto-closed: dibayar via Escrow',
+                ]);
         } else {
             // Payment biasa dicatat terhadap invoice yang sudah diterbitkan paling akhir
             // (mis. DP/BP sebelumnya) — itu yang relevan buat Accounting cek/follow up.
@@ -1111,7 +1237,7 @@ class UnitQuotationController extends Controller
         }
     }
 
-    private function saveDetails(int $quoteId, array $items): void
+    private function saveDetails(int $quoteId, array $items, ?int $optionId = null): void
     {
         $sortOrder = 0;
         foreach ($items as $item) {
@@ -1123,6 +1249,7 @@ class UnitQuotationController extends Controller
 
             UnitQuotationDetail::create([
                 'id_unit_quotation' => $quoteId,
+                'id_option'         => $optionId,
                 'type'              => $item['type'],
                 'id_unit'           => $item['id_unit'] ?? null,
                 'id_fixed_asset'    => $item['id_fixed_asset'] ?? null,
@@ -1137,6 +1264,86 @@ class UnitQuotationController extends Controller
                 'amount'            => $amount,
                 'sort_order'        => $sortOrder++,
             ]);
+        }
+    }
+
+    /**
+     * Hitung subtotal/diskon/tax/shipping/total per opsi dari input mentah
+     * request "options[]" (dari form create/edit Smart Quote).
+     */
+    private function processOptionsInput(array $optionsInput): array
+    {
+        $result = [];
+        foreach (array_values($optionsInput) as $i => $opt) {
+            $items    = $opt['items'] ?? [];
+            $subtotal = 0;
+            foreach ($items as $item) {
+                if (in_array($item['type'] ?? '', ['header', 'heading'], true)) {
+                    continue;
+                }
+                $qty   = floatval($item['qty']   ?? 1);
+                $price = floatval($item['price'] ?? 0);
+                $disc  = floatval($item['disc']  ?? 0);
+                $subtotal += $qty * $price * (1 - $disc / 100);
+            }
+
+            $diskonType  = ($opt['diskon_type'] ?? 'percent') === 'amount' ? 'amount' : 'percent';
+            $diskon      = floatval($opt['diskon'] ?? 0);
+            $afterDiskon = $diskonType === 'amount' ? ($subtotal - $diskon) : ($subtotal - ($subtotal * $diskon / 100));
+            $tax         = filter_var($opt['tax'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $taxAmount   = $tax ? round($afterDiskon * 0.11) : 0;
+            $shipping    = floatval(str_replace('.', '', (string) ($opt['shipping'] ?? 0)));
+            $total       = $afterDiskon + $taxAmount + $shipping;
+
+            $result[] = [
+                'title'       => trim($opt['title'] ?? '') ?: ('Opsi ' . ($i + 1)),
+                'items'       => $items,
+                'subtotal'    => $subtotal,
+                'diskon'      => $diskon,
+                'diskon_type' => $diskonType,
+                'tax'         => $tax,
+                'tax_amount'  => $taxAmount,
+                'shipping'    => $shipping,
+                'total'       => $total,
+            ];
+        }
+
+        return $result;
+    }
+
+    private function emptyOptionTotals(): array
+    {
+        return [
+            'subtotal' => 0, 'diskon' => 0, 'diskon_type' => 'percent',
+            'tax' => false, 'tax_amount' => 0, 'shipping' => 0, 'total' => 0,
+        ];
+    }
+
+    /**
+     * Simpan opsi-opsi (hasil processOptionsInput) + detail item masing-masing.
+     * Kolom subtotal/diskon/dst di unit_quotation sendiri (parent) dibiarkan
+     * mengikuti opsi pertama — supaya semua fitur lain yang baca $quote->total
+     * langsung (PO, Invoice, Contract, Delivery) tetap jalan tanpa perlu tahu
+     * soal opsi, asalkan quotation-nya cuma py 1 opsi saat itu dieksekusi.
+     */
+    private function saveOptions(int $quoteId, array $processedOptions): void
+    {
+        $sortOrder = 0;
+        foreach ($processedOptions as $opt) {
+            $option = UnitQuotationOption::create([
+                'id_unit_quotation' => $quoteId,
+                'title'             => $opt['title'],
+                'sort_order'        => $sortOrder++,
+                'subtotal'          => $opt['subtotal'],
+                'diskon'            => $opt['diskon'],
+                'diskon_type'       => $opt['diskon_type'],
+                'tax'               => $opt['tax'],
+                'tax_amount'        => $opt['tax_amount'],
+                'shipping'          => $opt['shipping'],
+                'total'             => $opt['total'],
+            ]);
+
+            $this->saveDetails($quoteId, $opt['items'], $option->id);
         }
     }
 
@@ -1327,14 +1534,17 @@ class UnitQuotationController extends Controller
     private function getTypePrefix(?string $type): string
     {
         return match ($type) {
-            'Unit'      => 'U',
-            'Rental'    => 'R',
-            'Project'   => 'PR',
-            'Parts'     => 'P',
-            'Service'   => 'S',
-            'Piping'    => 'PIP',
-            'Air Audit' => 'AA',
-            default     => 'PU',
+            'Unit'                  => 'U',
+            'Rental'                => 'R',
+            'Project'               => 'PR',
+            'Parts'                 => 'P',
+            'Service'               => 'S',
+            'Piping'                => 'PIP',
+            'Air Audit'             => 'AA',
+            'General Check / Visit' => 'GC',
+            'HVAC'                  => 'HVAC',
+            'Fire System'           => 'FS',
+            default                 => 'PU',
         };
     }
 

@@ -109,23 +109,60 @@
                 {{-- Tab 1: Menunggu Penerimaan --}}
                 <div class="tab-pane fade show active p-3" id="tab-menunggu-penerimaan" role="tabpanel">
                     <p class="text-muted small mb-2">Purchase Order yang belum diterima — baik yang sudah dalam pengiriman maupun yang masih menunggu info pengiriman diisi Admin.</p>
-                    <div class="card-datatable table-responsive pt-0">
-                        <table class="datatable-incoming-goods table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>No PO</th>
-                                    <th>No PR</th>
-                                    <th>No SO</th>
-                                    <th>Customer</th>
-                                    <th>Item</th>
-                                    <th>Vendor</th>
-                                    <th>Cargo</th>
-                                    <th>Tgl Order</th>
-                                    <th class="text-center">Status</th>
-                                    <th class="text-center"></th>
-                                </tr>
-                            </thead>
-                        </table>
+                    <ul class="nav nav-pills mb-3" id="incomingGoodsSubtabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button type="button" class="nav-link active fw-semibold" id="subtab-incoming-pr-btn" data-bs-toggle="pill"
+                                data-bs-target="#subtab-incoming-pr" type="button" role="tab" aria-controls="subtab-incoming-pr" aria-selected="true">
+                                PR
+                                <span class="badge bg-label-primary rounded-pill ms-1 d-none" id="menunggu-penerimaan-pr-count-badge">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button type="button" class="nav-link fw-semibold" id="subtab-incoming-direct-btn" data-bs-toggle="pill"
+                                data-bs-target="#subtab-incoming-direct" type="button" role="tab" aria-controls="subtab-incoming-direct" aria-selected="false">
+                                Non-PR
+                                <span class="badge bg-label-warning rounded-pill ms-1 d-none" id="menunggu-penerimaan-direct-count-badge">0</span>
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content p-0">
+                        <div class="tab-pane fade show active" id="subtab-incoming-pr" role="tabpanel">
+                            <div class="card-datatable table-responsive pt-0">
+                                <table class="datatable-incoming-goods-pr table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>No PO</th>
+                                            <th>No PR</th>
+                                            <th>Customer</th>
+                                            <th>Item</th>
+                                            <th>Vendor</th>
+                                            <th>Cargo</th>
+                                            <th>Tgl Order</th>
+                                            <th class="text-center">Status</th>
+                                            <th class="text-center"></th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="subtab-incoming-direct" role="tabpanel">
+                            <div class="card-datatable table-responsive pt-0">
+                                <table class="datatable-incoming-goods-direct table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>No PO</th>
+                                            <th class="text-center">Type</th>
+                                            <th>Item</th>
+                                            <th>Vendor</th>
+                                            <th>Cargo</th>
+                                            <th>Tgl Order</th>
+                                            <th class="text-center">Status</th>
+                                            <th class="text-center"></th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -450,6 +487,23 @@
             box-shadow: none !important;
         }
 
+        /* Main Movement Navigation Tabs Styling */
+        #sparepartMovementMainTabs .nav-link {
+            color: #566a7f;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+        #sparepartMovementMainTabs .nav-link:hover {
+            color: #7367F0;
+            background-color: rgba(115, 103, 240, 0.08);
+        }
+        #sparepartMovementMainTabs .nav-link.active {
+            background-color: #7367F0 !important;
+            color: #ffffff !important;
+            box-shadow: 0 2px 6px rgba(115, 103, 240, 0.3) !important;
+        }
+
         .btn-new {
             background-color: #7367F0 !important;
             color: #FFFFFF !important;
@@ -480,6 +534,7 @@
     <script src="{{ asset('assets') }}/includes/table-product-in-req-import.js"></script>
     <script src="{{ asset('assets') }}/includes/table-product-in-req-logistic.js"></script>
     <script src="{{ asset('assets') }}/includes/table-product-in-logistic.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-incoming-goods.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-incoming-goods-pr.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-incoming-goods-direct.js"></script>
     <script src="{{ asset('assets') }}/includes/table-received-goods.js"></script>
 @endpush

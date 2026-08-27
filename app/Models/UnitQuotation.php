@@ -26,6 +26,7 @@ class UnitQuotation extends Model
         'title',
         'hide_title',
         'type',
+        'unit_condition',
         'week',
         'subtotal',
         'diskon',
@@ -78,6 +79,17 @@ class UnitQuotation extends Model
     public function details()
     {
         return $this->hasMany(UnitQuotationDetail::class, 'id_unit_quotation')->orderBy('sort_order');
+    }
+
+    public function options()
+    {
+        return $this->hasMany(UnitQuotationOption::class, 'id_unit_quotation')->orderBy('sort_order');
+    }
+
+    /** True kalau quotation ini punya lebih dari 1 opsi perbandingan harga yang belum diputuskan. */
+    public function getHasMultipleOptionsAttribute(): bool
+    {
+        return $this->options()->count() > 1;
     }
 
     public function statusHistory()
