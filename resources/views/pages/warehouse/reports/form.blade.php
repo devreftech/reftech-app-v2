@@ -43,6 +43,16 @@
                                 <label for="selectSemester">Semester</label>
                             </div>
                         </div>
+                        <div class="col-12 mb-2">
+                            <label for="targetLabel">Target Tim (Rp)</label>
+                            <div class="input-group form-floating form-floating-outline">
+                                <span class="input-group-text">Rp.</span>
+                                <input type="text" class="form-control total-label" id="targetLabel"
+                                    placeholder="Target penjualan tim untuk semester ini">
+                                <input type="number" class="form-control" name="target" id="target" hidden>
+                            </div>
+                            <small class="text-muted">Opsional &mdash; dipakai untuk hitung pencapaian target di halaman Overview.</small>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">

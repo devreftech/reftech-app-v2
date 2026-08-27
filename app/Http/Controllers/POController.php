@@ -168,6 +168,7 @@ class POController extends Controller
                 $dPurchase->product = $value;
                 $dPurchase->category = $itemCategory;
                 $dPurchase->id_unit = $itemCategory == 'Unit' ? ($request->id_unit[$key] ?? null) : null;
+                $dPurchase->kondisi = $itemCategory == 'Unit' ? ($request->kondisi[$key] ?? 'Baru') : null;
                 $dPurchase->id_product = $itemCategory == 'Sparepart' ? ($request->id_product[$key] ?? null) : null;
                 $dPurchase->qty = $request->qty[$key];
                 $dPurchase->info_qty = $request->info_qty[$key];
@@ -285,6 +286,36 @@ class POController extends Controller
     }
 
     /**
+     * Tandai PO yang dibeli langsung tanpa Purchase Request sebagai "On Delivery"
+     * (barang sudah dikirim supplier) — berlaku buat kategori Unit maupun Parts,
+     * bedanya cuma di kolom on_delivery_* punya purchase_order (bukan lewat
+     * PurchaseRequestDetailAllocation kayak delivery() di atas yang khusus PO hasil
+     * Purchase Request). Setelah ini disubmit, tombol "Terima Barang" (GR) baru
+     * muncul di halaman detail PO — Unit ke UnitProductInController, Parts ke
+     * PurchaseController::goodsReceiptFormDirect().
+     */
+    public function deliveryUnit(Request $request, $id)
+    {
+        $rule = [
+            'cargo' => 'required|string|max:255',
+            'no_resi' => 'nullable|string|max:255',
+        ];
+        $this->validate($request, $rule);
+
+        $purchase = PurchaseOrder::find($id);
+        if (!$purchase || $purchase->id_purchase_request) {
+            return response()->json(['message' => 'Purchase Order ini dibeli lewat Purchase Request, gunakan alur delivery biasa.'], 422);
+        }
+
+        $purchase->on_delivery_at = now();
+        $purchase->on_delivery_cargo = $request->cargo;
+        $purchase->on_delivery_no_resi = $request->no_resi;
+        $purchase->save();
+
+        return 1;
+    }
+
+    /**
      * Simpan No. Invoice & file invoice dari supplier untuk PO ini. Nomor invoice ikut
      * disinkronkan ke ProductIn (barang masuk) yang sudah lahir dari GR PO ini — supaya
      * GR-nya kebaca di tabel "Product In — Lokal/Import" (yang mensyaratkan invoice
@@ -385,6 +416,7 @@ class POController extends Controller
                 $dPurchase->product = $value;
                 $dPurchase->category = $itemCategory;
                 $dPurchase->id_unit = $itemCategory == 'Unit' ? ($request->id_unit[$key] ?? null) : null;
+                $dPurchase->kondisi = $itemCategory == 'Unit' ? ($request->kondisi[$key] ?? 'Baru') : null;
                 $dPurchase->id_product = $itemCategory == 'Sparepart' ? ($request->id_product[$key] ?? null) : null;
                 $dPurchase->qty = $request->qty[$key];
                 $dPurchase->info_qty = $request->info_qty[$key];

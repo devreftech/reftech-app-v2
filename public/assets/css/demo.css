@@ -277,7 +277,7 @@ html.dark-style .unit-info-card,
 html.dark-style .quote-filter-card {
   background-color: #2b2c40 !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.04) !important;
   color: #cfcde4;
 }
 
@@ -287,7 +287,7 @@ html.dark-style .custom-stat-card:hover,
 html.dark-style .metric-card:hover,
 html.dark-style .form-section-card:hover {
   border-color: rgba(105, 108, 255, 0.4) !important;
-  box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.35) !important;
+  box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.08) !important;
 }
 
 html.dark-style .card-header {
@@ -406,7 +406,7 @@ html.dark-style .kanban-title-board {
 html.dark-style .kanban-item {
   background-color: #2b2c40 !important;
   color: #cfcde4 !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
 }
 
 html.dark-style .kanban-item:hover {

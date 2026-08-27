@@ -25,8 +25,7 @@
                                     <i class="mdi mdi-dots-vertical mdi-24px"></i>
                                 </button>
                                 <div class="dropdown-menu dropdown-menu-end" aria-labelledby="salesOverview" style="">
-                                    <a class="dropdown-item waves-effect" data-bs-toggle="modal"
-                                        data-bs-target="#overviewPO{{ $DC['monthKey'] }}">Detail</a>
+                                    <a class="dropdown-item waves-effect" href="{{ url('/reports') }}?month={{ $item }}&year={{ $report->year }}{{ isset($user) && $user ? '&sales=' . $user->id : '' }}">Detail Bulanan</a>
                                 </div>
                             </div>
                         </div>

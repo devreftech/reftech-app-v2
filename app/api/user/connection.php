@@ -21,7 +21,11 @@ if (Auth::check()) {
         $pdo->exec("SET SESSION sql_mode = ''");
 
         // Query database for data
-        $query = "SELECT * FROM users";
+        $query = "SELECT u.*,
+            (SELECT du.position FROM detail_users du WHERE du.id_users = u.id ORDER BY du.id DESC LIMIT 1) AS position,
+            (SELECT du.area FROM detail_users du WHERE du.id_users = u.id ORDER BY du.id DESC LIMIT 1) AS area
+            FROM users u
+            ORDER BY u.name ASC";
 
         $stmt = $pdo->prepare($query);
         // $stmt->bindParam(':user_id', $user->id, PDO::PARAM_INT);

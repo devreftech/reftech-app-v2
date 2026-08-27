@@ -9,7 +9,7 @@
                 </div>
                 <div class="modal-body p-0">
                     <div class="onboarding-content mb-0">
-                        <h4 class="onboarding-title text-body"> Confirm Payment {{ $invoice->no_invoice }}</h4>
+                        <h4 class="onboarding-title text-body"> Confirm Payment {{ $invoice->no_invoice ?? ($quote->no_quote ?? '') }}</h4>
                         <form>
                             <div class="row">
                                 <div class="col-12 mb-3">

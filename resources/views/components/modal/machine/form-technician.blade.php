@@ -25,14 +25,8 @@
                     <div class="row g-2 mb-3">
                         <div class="col mb-2">
                             <div class="form-floating form-floating-outline">
-                                <select class="select2 form-select form-select-lg invoice-item-client"
+                                <select class="form-select form-select-lg select2-machine-client-search"
                                     data-allow-clear="true" name="id_client" id="selectclient">
-                                    <option selected>----- Select Client -----</option>
-                                    @foreach ($clients as $client)
-                                        <option value="{{ $client->id }}">
-                                            {{ $client->company }} ||
-                                            {{ $client->sales->name }}</option>
-                                    @endforeach
                                 </select>
                                 <label for="select2Basic">Client</label>
                             </div>
@@ -88,3 +82,30 @@
         </div>
     </div>
 </form>
+
+<script>
+    $(function () {
+        // Select2 AJAX — dulu dropdown ini nge-dump SEMUA client (ribuan baris)
+        // langsung ke DOM tiap kali modal ke-render, sekarang cuma di-load pas diketik.
+        $('#selectclient').select2({
+            dropdownParent: $('#createMachine'),
+            placeholder: '----- Select Client -----',
+            allowClear: true,
+            minimumInputLength: 2,
+            ajax: {
+                url: '/db/client/search-all',
+                dataType: 'json',
+                delay: 300,
+                data: function (params) { return { q: params.term }; },
+                processResults: function (data) {
+                    return {
+                        results: $.map(data, function (c) {
+                            var text = c.company + (c.sales ? ' || ' + c.sales.name : '');
+                            return { id: c.id, text: text };
+                        })
+                    };
+                },
+            },
+        });
+    });
+</script>

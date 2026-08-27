@@ -10,12 +10,15 @@
                 <thead>
                     <tr>
                         <th></th>
-                        <th></th>
-                        <th>ID</th>
+                        <th>Employee</th>
                         <th>NIP</th>
-                        <th>Name</th>
-                        <th>Entry Date</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Position</th>
+                        <th>Area</th>
                         <th>Role</th>
+                        <th>Status</th>
+                        <th>Entry Date</th>
                     </tr>
                 </thead>
             </table>
@@ -27,7 +30,6 @@
 @push('after-style')
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-checkboxes-jquery/datatables.checkboxes.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/animate-css/animate.css">
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-rowgroup-bs5/rowgroup.bootstrap5.css" />

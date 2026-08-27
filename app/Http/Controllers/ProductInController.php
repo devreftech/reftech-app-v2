@@ -51,7 +51,11 @@ class ProductInController extends Controller
         $search = $request->input('q');
 
         $query = DetailProduct::join('product', 'detail_product.id_product', '=', 'product.id')
-            ->select('detail_product.id', 'detail_product.replacement', 'product.commodity', 'product.detail_desc', 'product.go');
+            ->select('detail_product.id', 'detail_product.replacement', 'product.commodity', 'product.detail_desc', 'product.go')
+            ->where(function ($q) {
+                $q->whereNull('product.category')
+                    ->orWhere('product.category', '!=', 'Unit');
+            });
 
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
@@ -84,16 +88,16 @@ class ProductInController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    // Format: 001-BM/VIII/BDG/2026 — nomor urut per gudang (BDG/BKS) tiap bulan,
-    // biar keliatan langsung barangnya masuk ke gudang mana dari nomornya.
+    // Format: 001-P/BM/VIII/2026 — P (Parts/Sparepart) beda sama U (Unit) yang
+    // dipakai UnitProductInController, biar sekilas kebaca dari nomornya kategori
+    // barangnya apa. Nomor urut per bulan, gak lagi dibedain per gudang (BDG/BKS).
     private function generateNoProductIn(string $warehouse = 'BDG'): string
     {
         $now = now();
         $year = $now->format('Y');
         $romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
         $roman = $romanMonths[(int) $now->format('n') - 1];
-        $wh = in_array($warehouse, ['BDG', 'BKS']) ? $warehouse : 'BDG';
-        $suffix = "-BM/{$roman}/{$wh}/{$year}";
+        $suffix = "-P/BM/{$roman}/{$year}";
 
         $last = ProductIn::where('no_product_in', 'like', '%' . $suffix)
             ->orderByDesc('no_product_in')

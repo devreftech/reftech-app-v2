@@ -46,8 +46,22 @@ $(function () {
                 },
                 { data: "sales" },
                 { data: "technician" },
+                { data: "approval_status", defaultContent: "-" },
             ],
             columnDefs: [
+                {
+                    targets: 8,
+                    render: function (data, type, full) {
+                        if (type !== "display") return data;
+                        var map = {
+                            pending: ["warning", "Pending"],
+                            approved: ["success", "Approved"],
+                            rejected: ["danger", "Rejected"],
+                        };
+                        var m = map[data] || ["secondary", data || "-"];
+                        return '<span class="badge bg-label-' + m[0] + '">' + m[1] + "</span>";
+                    },
+                },
                 {
                     responsivePriority: 1,
                     targets: 0,

@@ -30,12 +30,13 @@ $(function () {
                 { data: "no_quote" },
                 { data: "company" },
                 { data: "subtotal" },
+                { data: "type" },
                 { data: "title" },
                 { data: "estimated_date" },
                 { data: "status" },
             ],
             columnDefs: [
-                { targets: [2, 3, 4, 5], className: "text-center" },
+                { targets: [2, 3, 4, 5, 6], className: "text-center" },
                 {
                     targets: 0,
                     className: "text-center text-nowrap",
@@ -68,16 +69,38 @@ $(function () {
                         return '<div class="d-flex justify-content-between px-2"><span>Rp.</span><span>' + formatted + "</span></div>";
                     },
                 },
-                { targets: 3, render: function (data) { return data || "-"; } },
                 {
-                    targets: 4,
+                    // Type quotation (Sparepart/Service/Overhaul/Rental).
+                    targets: 3,
+                    render: function (data, type) {
+                        if (type === "filter" || type === "sort") return data || "-";
+                        if (type !== "display") return data;
+                        if (!data) {
+                            return '<span class="badge rounded-pill bg-label-secondary">-</span>';
+                        }
+                        var colors = {
+                            Sparepart: "bg-label-warning",
+                            Service:   "bg-label-success",
+                            Overhaul:  "bg-label-danger",
+                            Rental:    "bg-label-info",
+                            "General Check / Visit": "bg-label-info",
+                            HVAC:      "bg-label-primary",
+                            "Fire System": "bg-label-danger",
+                        };
+                        var cls = colors[data] || "bg-label-secondary";
+                        return '<span class="badge rounded-pill ' + cls + '">' + data + "</span>";
+                    },
+                },
+                { targets: 4, render: function (data) { return data || "-"; } },
+                {
+                    targets: 5,
                     render: function (data, type) {
                         if (type !== "display") return data;
                         return data ? moment(data).format("DD-MM-YYYY") : "-";
                     },
                 },
                 {
-                    targets: 5,
+                    targets: 6,
                     render: function (data, type, full) {
                         if (type !== "display") return data;
                         var tip = full["tip"] || "";

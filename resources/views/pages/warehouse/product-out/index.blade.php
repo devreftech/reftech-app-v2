@@ -10,8 +10,8 @@
                 <thead>
                     <tr>
                         <th></th>
-                        <th></th>
                         <th>ID</th>
+                        <th>No BK</th>
                         <th>No Invoice</th>
                         <th>No po</th>
                         <th>Client</th>
@@ -19,7 +19,6 @@
                         <th>Note</th>
                         <th>Qty</th>
                         <th>Date</th>
-                        <th>No BK</th>
                     </tr>
                 </thead>
             </table>

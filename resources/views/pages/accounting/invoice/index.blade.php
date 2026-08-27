@@ -29,6 +29,13 @@
                         <span class="badge rounded-pill bg-info ms-1" id="badge-invoice-kojisha">-</span>
                     </button>
                 </li>
+                <li class="nav-item">
+                    <button class="nav-link {{ $activeTab == 'marketplace' ? 'active' : '' }}" data-bs-toggle="tab"
+                        data-bs-target="#tab-invoice-marketplace" type="button">
+                        <i class="mdi mdi-cart-outline me-1"></i>Marketplace
+                        <span class="badge rounded-pill bg-warning ms-1" id="badge-invoice-marketplace">-</span>
+                    </button>
+                </li>
             </ul>
         </div>
 
@@ -97,6 +104,26 @@
                     </div>
                 </div>
 
+                {{-- Tab 4: Marketplace (quotation/unit quotation dgn payment Escrow) --}}
+                <div class="tab-pane fade {{ $activeTab == 'marketplace' ? 'show active' : '' }}" id="tab-invoice-marketplace">
+                    <div class="table-responsive">
+                        <table id="tbl-invoice-marketplace" class="datatable-invoice-marketplace table table-bordered"
+                            data-badge="badge-invoice-marketplace">
+                            <thead>
+                                <tr>
+                                    <th class="text-center">Seller Invoice</th>
+                                    <th class="text-center">No PO</th>
+                                    <th class="text-center">Company</th>
+                                    <th class="text-center">Marketplace</th>
+                                    <th class="text-center">Total Price</th>
+                                    <th class="text-center">Date</th>
+                                    <th class="text-center">Sales</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+
             </div>{{-- /tab-content --}}
         </div>
     </div>
@@ -126,6 +153,7 @@
 @push('page-script')
     <script src="{{ asset('assets') }}/js/tables-datatables-basic.js"></script>
     <script src="{{ asset('assets') }}/includes/table-request-po.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-invoice-marketplace.js"></script>
     <script src="{{ asset('assets') }}/includes/table-invoice-reftech.js"></script>
     <script src="{{ asset('assets') }}/includes/table-invoice-kojisha.js"></script>
     <script src="{{ asset('assets') }}/js/extended-ui-sweetalert2.js"></script>

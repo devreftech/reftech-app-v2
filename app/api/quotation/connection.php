@@ -53,7 +53,7 @@ if (Auth::check()) {
                'unit' AS row_type
         FROM unit_quotation uq
         LEFT JOIN client c2 ON c2.id = NULLIF(uq.id_client,'')
-        WHERE uq.id_sales = $userId AND uq.status NOT IN ('hot_prospect','po_received') AND uq.is_latest = 1$yearFilterU
+        WHERE uq.id_sales = $userId AND uq.status NOT IN ('hot_prospect','po_received','loss','cancel') AND uq.is_latest = 1$yearFilterU
 
         ORDER BY estimated_date DESC";
 

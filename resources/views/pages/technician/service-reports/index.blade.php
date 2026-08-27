@@ -18,6 +18,7 @@
                             <th>Unit Type</th>
                             <th>Serial / Tag</th>
                             <th>Date</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                 </table>
@@ -40,6 +41,7 @@
                             <th class="text-center">Date</th>
                             <th class="text-center">Sales</th>
                             <th class="text-center">Technician</th>
+                            <th class="text-center">Status</th>
                         </tr>
                     </thead>
                 </table>

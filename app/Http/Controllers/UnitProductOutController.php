@@ -25,25 +25,32 @@ class UnitProductOutController extends Controller
             ->where('is_disposed', false)
             ->where('qc_status', '!=', 'checking')
             ->with('unit')
-            ->get();
+            ->get()
+            // Nilai buku (nilai_pokok) dihitung di sini, bukan di store(), biar bisa
+            // ditampilkan sebagai preview per baris pas Sales pilih unitnya di form.
+            ->each(fn ($fa) => $fa->nilai_buku_preview = $fa->hitungNilaiBuku()['nilai_buku']);
         $nextNoTransaksi = $this->generateNoTransaksi();
         return view('pages.warehouse.unit-product-out.form', compact('unitInventories', 'fixedAssets', 'nextNoTransaksi'));
     }
 
+    // Format: 001-U/BK/VIII/2026 — sama polanya dengan No. Barang Masuk Unit (BM),
+    // cuma BM diganti BK (Barang Keluar). Nomor urut per bulan.
     private function generateNoTransaksi(): string
     {
-        $year = now()->format('Y');
-        $month = now()->format('m');
-        $prefix = "UOUT/{$year}/{$month}/";
+        $now = now();
+        $year = $now->format('Y');
+        $romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+        $roman = $romanMonths[(int) $now->format('n') - 1];
+        $suffix = "-U/BK/{$roman}/{$year}";
 
-        $last = UnitProductOut::where('no_transaksi', 'like', $prefix . '%')
+        $last = UnitProductOut::where('no_transaksi', 'like', '%' . $suffix)
             ->orderByDesc('no_transaksi')
             ->value('no_transaksi');
 
-        $lastSeq = $last ? (int) substr($last, -3) : 0;
+        $lastSeq = $last ? (int) substr($last, 0, 3) : 0;
         $nextSeq = str_pad($lastSeq + 1, 3, '0', STR_PAD_LEFT);
 
-        return $prefix . $nextSeq;
+        return $nextSeq . $suffix;
     }
 
     public function store(Request $request)

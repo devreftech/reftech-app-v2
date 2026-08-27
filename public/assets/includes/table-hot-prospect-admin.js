@@ -12,11 +12,15 @@ $(function () {
             { value: "Unit",     label: "Unit" },
             { value: "Rental",   label: "Rental" },
             { value: "Project",  label: "Project" },
-            { value: "Parts",    label: "Sparepart" },
+            { value: "Parts",    label: "Sparepart (Smart Quote)" },
+            { value: "Sparepart", label: "Sparepart" },
             { value: "Service",  label: "Service" },
+            { value: "Overhaul", label: "Overhaul" },
             { value: "Piping",   label: "Piping" },
             { value: "Air Audit", label: "Air Audit" },
-            { value: "-",        label: "Format Lama (-)" },
+            { value: "General Check / Visit", label: "General Check / Visit" },
+            { value: "HVAC",     label: "HVAC" },
+            { value: "Fire System", label: "Fire System" },
         ];
 
         dt_table.find("thead tr:eq(1) th").each(function (i) {
@@ -117,14 +121,13 @@ $(function () {
                     },
                 },
                 {
+                    // Type quotation (Sparepart/Service/Overhaul/Rental untuk quotation biasa,
+                    // Unit/Rental/Project/Parts/Service untuk Smart Quote).
                     targets: 3,
-                    render: function (data, type, full) {
-                        var isLegacy = full["row_type"] !== "unit" || !data;
-                        if (type === "filter" || type === "sort") {
-                            return isLegacy ? "-" : data;
-                        }
+                    render: function (data, type) {
+                        if (type === "filter" || type === "sort") return data || "-";
                         if (type !== "display") return data;
-                        if (isLegacy) {
+                        if (!data) {
                             return '<span class="badge rounded-pill bg-label-secondary">-</span>';
                         }
                         var colors = {
@@ -132,9 +135,14 @@ $(function () {
                             Rental:    "bg-label-info",
                             Project:   "bg-label-dark",
                             Parts:     "bg-label-warning",
+                            Sparepart: "bg-label-warning",
                             Service:   "bg-label-success",
                             Piping:    "bg-label-secondary",
                             "Air Audit": "bg-label-danger",
+                            Overhaul:  "bg-label-danger",
+                            "General Check / Visit": "bg-label-info",
+                            HVAC:      "bg-label-primary",
+                            "Fire System": "bg-label-danger",
                         };
                         var labels = { Parts: "Sparepart" };
                         var cls   = colors[data] || "bg-label-secondary";

@@ -257,7 +257,11 @@
                         </h5>
                     </div>
                     <div class="card-body p-0">
-                        @php $showAllocationUi = $purchase && $purchase->status == 1; @endphp
+                        @php
+                            $showAllocationUi = $purchase && $purchase->status == 1;
+                            $canEditPrQty = in_array(Auth::user()->role, ['Logistic', 'Admin']);
+                            $prColspan = 5 + ($showAllocationUi ? 2 : 0) + ($canEditPrQty ? 1 : 0);
+                        @endphp
                         <div class="table-responsive text-nowrap">
                             <table class="table table-bordered align-middle mb-0" id="prItemsTable">
                                 <thead>
@@ -275,6 +279,9 @@
                                             <th class="text-center" style="width: 110px;">Qty ke PO</th>
                                         @endif
                                         <th>Catatan / Note</th>
+                                        @if ($canEditPrQty)
+                                            <th class="text-center" style="width: 60px;"></th>
+                                        @endif
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -356,11 +363,20 @@
                                                     <span class="text-muted">-</span>
                                                 @endif
                                             </td>
+                                            @if ($canEditPrQty)
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-icon btn-outline-primary btn-sm edit-purchase-item"
+                                                        data-id="{{ $pr->id }}" data-qty="{{ $pr->qty }}" data-qty-stock="{{ $pr->qty_stock }}"
+                                                        data-note="{{ $pr->note }}" title="Edit Qty Purchase Request">
+                                                        <i class="mdi mdi-pencil-outline"></i>
+                                                    </button>
+                                                </td>
+                                            @endif
                                         </tr>
                                         @php $no++; @endphp
                                     @empty
                                         <tr>
-                                            <td colspan="{{ $showAllocationUi ? 7 : 5 }}" class="text-center text-muted py-4">Tidak Ada Purchase Request</td>
+                                            <td colspan="{{ $prColspan }}" class="text-center text-muted py-4">Tidak Ada Purchase Request</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

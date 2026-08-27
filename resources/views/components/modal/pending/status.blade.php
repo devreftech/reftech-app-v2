@@ -12,7 +12,7 @@
                 <div class="modal-body p-0">
 
                     <div class="onboarding-content mb-0">
-                        <h4 class="onboarding-title text-body">{{ $pending->quote->invoice[0]->no_invoice ?? $pending->quote->pic->client->company }}</h4>
+                        <h4 class="onboarding-title text-body">{{ $pending->quote?->invoice[0]?->no_invoice ?? $pending->quote?->pic?->client?->company ?? $pending->unitQuotation?->client?->company ?? $pending->no_pending }}</h4>
                             <div class="row">
                                 <div class="col">
                                     <div class="form-floating form-floating-outline mb-3">

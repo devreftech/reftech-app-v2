@@ -28,7 +28,7 @@ try {
 
     $user = Auth::user();
 
-    $where  = "WHERE uq.id_sales = :uid AND uq.is_latest = 1 AND uq.status NOT IN ('hot_prospect','po_received')";
+    $where  = "WHERE uq.id_sales = :uid AND uq.is_latest = 1 AND uq.status NOT IN ('hot_prospect','po_received','loss','cancel')";
     $params = [':uid' => $user->id];
 
     $year = request()->get('year');

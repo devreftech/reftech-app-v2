@@ -24,23 +24,28 @@
         {{-- LEFT: Document Preview Card --}}
         <div class="col-xl-9 col-md-8 col-12 mb-md-0 mb-4">
             <div class="card invoice-preview-card mb-3 shadow-sm border-0">
-                <div class="card-body p-4">
+                <div class="card-body" style="padding: 30px;">
                     {{-- Header Logo & Company Info --}}
-                    <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column mb-0">
-                        <div class="mb-xl-0 pb-1">
+                    <div class="d-flex justify-content-between align-items-start mb-0" style="display: flex !important; flex-direction: row !important; justify-content: space-between !important; align-items: flex-start !important;">
+                        <div class="mb-0 pb-1">
                             @if ($isReftech)
-                                <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
+                                <div class="d-flex svg-illustration align-items-center gap-2 mb-1">
                                     <span class="app-brand-logo demo">
                                         <span style="color: var(--bs-primary)">
                                             <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="Reftech Logo" width="60%">
                                         </span>
                                     </span>
                                 </div>
-                                <p class="mb-1 fw-bolder" style="font-size: 15px">PT Reftech Jaya Optima</p>
-                                <div class="text-muted" style="font-size: 12px;">
-                                    <p class="mb-0">Taman Kopo Indah V, Ruko Sommerville No. 31</p>
-                                    <p class="mb-0">Bandung – Jawa Barat 40218</p>
-                                    <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>admin@reftech.id &nbsp;|&nbsp; <i class="mdi mdi-web me-1" style="font-size:11px;"></i>www.reftech.id</p>
+                                <p class="mb-0 text-uppercase fw-bold" style="font-size: 13.5px; color: #4f46e5; letter-spacing: 0.5px; line-height: 1.2;">
+                                    COMPRESSED AIR SOLUTION
+                                </p>
+                                <p class="mb-1" style="font-size: 11px; font-weight: 600; color: #475569;">
+                                    Sales &nbsp;|&nbsp; Service &nbsp;|&nbsp; Rental &nbsp;|&nbsp; Measurement Air Audit
+                                </p>
+                                <div class="d-flex align-items-center gap-1" style="font-size: 10.5px; color: #475569; font-weight: 500;">
+                                    <i class="mdi mdi-certificate-outline me-1 text-primary"></i>
+                                    <span class="fw-bold" style="color: #696cff;">ISO Certified:</span> 
+                                    ISO 9001:2015 &nbsp;|&nbsp; ISO 14001:2015 &nbsp;|&nbsp; ISO 45001:2018
                                 </div>
                             @else
                                 <div class="d-flex svg-illustration align-items-center gap-2 mb-2">
@@ -50,19 +55,24 @@
                                         </span>
                                     </span>
                                 </div>
-                                <p class="mb-1 fw-bolder" style="font-size: 15px">PT Kojisha Innotiv Indonesia</p>
-                                <div class="text-muted" style="font-size: 12px;">
-                                    <p class="mb-0">Jl. Nancep No. 45A, Setu</p>
-                                    <p class="mb-0">Cibitung - Kab. Bekasi 17320</p>
-                                    <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>+62 812-1000-0997 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>admin@kojisha.com</p>
-                                </div>
                             @endif
                         </div>
-                        <div class="text-end">
-                            <h3 class="fw-bold mb-1" style="letter-spacing:1px; color:#696cff;">BAST</h3>
-                            <p class="mb-1 fw-semibold" style="font-size:14px;">#{{ $bast->no_bast }}</p>
-                            <p class="mb-1 text-muted" style="font-size:12px;"><i class="mdi mdi-calendar-outline me-1"></i>{{ $bast->work_date->format('d F Y') }}</p>
-                            <p class="mb-0 text-muted" style="font-size:11px;">Dibuat oleh: {{ $bast->creator->name ?? '-' }}</p>
+                        <div class="text-end" style="padding-top: 10px;">
+                            @if ($isReftech)
+                                <p class="fw-bolder text-uppercase" style="font-size: 16px; color: #4f46e5; letter-spacing: 0.5px; line-height: 1.2; margin-bottom: 6px !important;">PT REFTECH JAYA OPTIMA</p>
+                                <div style="font-size: 12px; line-height: 1.35; color: #334155; font-weight: 500;">
+                                    <p class="mb-0">Taman Kopo Indah V, Ruko Sommerville No. 31</p>
+                                    <p class="mb-0">Bandung – Jawa Barat 40218</p>
+                                    <p class="mb-0 text-nowrap" style="font-size: 11px; white-space: nowrap;"><i class="mdi mdi-phone-outline me-1 text-primary"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1 text-primary"></i>admin@reftech.id &nbsp;|&nbsp; <i class="mdi mdi-web me-1 text-primary"></i>www.reftech.id</p>
+                                </div>
+                            @else
+                                <p class="fw-bolder text-uppercase" style="font-size: 16px; color: #4f46e5; letter-spacing: 0.5px; line-height: 1.2; margin-bottom: 6px !important;">PT KOJISHA INNOTIV INDONESIA</p>
+                                <div style="font-size: 12px; line-height: 1.35; color: #334155; font-weight: 500;">
+                                    <p class="mb-0">Jl. Nancep No. 45A, Setu</p>
+                                    <p class="mb-0">Cibitung - Kab. Bekasi 17320</p>
+                                    <p class="mb-0 text-nowrap" style="font-size: 11px; white-space: nowrap;"><i class="mdi mdi-phone-outline me-1 text-primary"></i>+62 812-1000-0997 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1 text-primary"></i>admin@kojisha.com</p>
+                                </div>
+                            @endif
                         </div>
                     </div>
 
@@ -71,45 +81,45 @@
 
                     {{-- BAST Title & Intro --}}
                     <div class="text-center mb-4">
-                        <h5 class="fw-bold mb-1 text-uppercase" style="letter-spacing:0.5px;">Berita Acara Serah Terima Pekerjaan</h5>
-                        <span class="badge bg-label-primary px-3 py-1 fs-6 fw-semibold">{{ $bast->no_bast }}</span>
+                        <h4 class="fw-bold mb-1 text-uppercase" style="letter-spacing: 0.5px; color: #4f46e5; font-size: 18px;">Berita Acara Serah Terima Pekerjaan</h4>
+                        <div class="fw-bold" style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 18px; color: #4f46e5; letter-spacing: 0.5px;">{{ $bast->no_bast }}</div>
                     </div>
 
-                    <p class="mb-3" style="font-size: 13.5px; line-height: 1.6;">
-                        Bersama dengan ini kami <strong>{{ $entityFullName }}</strong>, telah menyelesaikan pekerjaan hingga
+                    <p class="mb-3" style="font-size: 13.5px; line-height: 1.6; color: #1e293b;">
+                        Bersama dengan ini kami <strong class="text-uppercase">{{ $entityFullName }}</strong>, telah menyelesaikan pekerjaan hingga
                         <strong class="text-success">SELESAI</strong> untuk pekerjaan sbb :
                     </p>
 
                     <div class="border rounded-3 p-3 text-center fw-bold text-uppercase mb-4 shadow-sm"
-                        style="font-size: 15px; border-left: 4px solid #696cff !important;">
+                        style="font-size: 18px; border-left: 4px solid #696cff !important;">
                         {{ $bast->work_title }}
                     </div>
 
                     {{-- Metadata Details --}}
                     <div class="card border mb-4 shadow-none">
-                        <div class="card-body p-3">
-                            <table class="table table-borderless table-sm mb-0" style="font-size: 13px;">
+                        <div class="card-body p-3.5">
+                            <table class="table table-borderless mb-0" style="font-size: 13.5px;">
                                 <tr>
-                                    <td style="width: 220px;" class="fw-semibold text-muted">Tanggal Pekerjaan</td>
-                                    <td style="width: 20px;">:</td>
-                                    <td class="fw-bold">{{ $bast->work_date->format('d-m-Y') }}</td>
+                                    <td style="width: 240px; padding: 8px 4px; color: #475569;" class="fw-semibold">Tanggal Pekerjaan</td>
+                                    <td style="width: 20px; padding: 8px 4px; color: #475569;">:</td>
+                                    <td style="padding: 8px 4px;" class="fw-bold text-dark">{{ $bast->work_date->format('d-m-Y') }}</td>
                                 </tr>
                                 <tr>
-                                    <td class="fw-semibold text-muted">Pemberi Pekerjaan / Customer</td>
-                                    <td>:</td>
-                                    <td class="fw-bold">{{ $bast->customer_name }}</td>
+                                    <td style="padding: 8px 4px; color: #475569;" class="fw-semibold">Pemberi Pekerjaan / Customer</td>
+                                    <td style="padding: 8px 4px; color: #475569;">:</td>
+                                    <td style="padding: 8px 4px;" class="fw-bold text-dark">{{ $bast->customer_name }}</td>
                                 </tr>
                                 <tr>
-                                    <td class="fw-semibold text-muted">Sesuai PO / Kontrak No.</td>
-                                    <td>:</td>
-                                    <td class="fw-bold">{{ $bast->po_number ?: '-' }}</td>
+                                    <td style="padding: 8px 4px; color: #475569;" class="fw-semibold">Sesuai PO / Kontrak No.</td>
+                                    <td style="padding: 8px 4px; color: #475569;">:</td>
+                                    <td style="padding: 8px 4px;" class="fw-bold text-dark">{{ $bast->po_number ?: '-' }}</td>
                                 </tr>
                             </table>
                         </div>
                     </div>
 
                     {{-- Units Table --}}
-                    <h6 class="fw-bold mb-2" style="font-size: 13px;">Terhadap unit-unit sebagai berikut:</h6>
+                    <h6 class="fw-bold mb-3 mt-3" style="font-size: 13.5px;">Terhadap unit-unit sebagai berikut:</h6>
                     <div class="table-responsive mb-4">
                         <table class="table table-bordered align-middle mb-0" style="font-size: 13px;">
                             <thead>
@@ -138,16 +148,26 @@
                     </div>
 
                     {{-- Test Running Result --}}
-                    <h6 class="fw-bold mb-2 text-dark" style="font-size: 13px;">Hasil pengecekan pada saat test running:</h6>
-                    <div class="border rounded-3 p-3 mb-4 bg-light" style="min-height: 80px; white-space: pre-wrap; font-size: 13px; color: #333; line-height: 1.6;">{{ $bast->test_running_result ?: '-' }}</div>
+                    <label class="form-label fw-bold mb-2 text-dark" style="font-size: 13.5px;">Hasil pengecekan pada saat test running :</label>
+                    <div class="mb-4">
+                        <textarea class="form-control" rows="4" style="font-size: 13.5px; background-color: #fff; border: 1px solid #d9dee3; resize: vertical;" readonly placeholder="Hasil pengecekan pada saat test running...">{{ $bast->test_running_result }}</textarea>
+                    </div>
 
                     <p class="mb-2 text-dark" style="font-size: 13px;">
                         Demikian <strong>BERITA ACARA SERAH TERIMA PEKERJAAN</strong> ini ditandatangani oleh kedua belah pihak:
                     </p>
-                    <ul class="mb-3 text-dark" style="font-size: 13px;">
-                        <li>Pelaksana pekerjaan&nbsp; : <strong>{{ $entityFullName }}</strong></li>
-                        <li>Pemberi pekerjaan&nbsp; : <strong>{{ $bast->customer_name }}</strong></li>
-                    </ul>
+                    <table class="table table-borderless table-sm mb-3 ms-2 text-dark" style="font-size: 13px; width: auto;">
+                        <tr>
+                            <td style="width: 170px; padding: 2px 0;">• Pelaksana pekerjaan</td>
+                            <td style="width: 15px; padding: 2px 0;">:</td>
+                            <td style="padding: 2px 0;"><strong>{{ $entityFullName }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 2px 0;">• Pemberi pekerjaan</td>
+                            <td style="padding: 2px 0;">:</td>
+                            <td style="padding: 2px 0;"><strong>{{ $bast->customer_name }}</strong></td>
+                        </tr>
+                    </table>
                     <p class="mb-4 text-dark" style="font-size: 13px;">
                         Dengan ini segala hal yang berhubungan dengan pekerjaan tersebut di atas dinyatakan
                         <strong class="text-success">SELESAI</strong>.
@@ -157,12 +177,18 @@
                     <div class="border rounded-3 p-4 bg-light mt-4">
                         <div class="row text-center">
                             <div class="col-6">
-                                <p class="fw-bold text-muted small text-uppercase mb-5">Pelaksana Pekerjaan<br><span class="text-dark">{{ $entityFullName }}</span></p>
+                                <p class="fw-bold text-muted small text-uppercase mb-1">Pelaksana Pekerjaan</p>
+                                <p class="fw-bold text-dark text-uppercase mb-0" style="font-size: 13.5px;">{{ $entityFullName }}</p>
+                                <div style="height: 95px;"></div>
                                 <div class="border-top border-dark mx-auto" style="width: 70%;"></div>
+                                <small class="text-muted d-block mt-1">Project / Service Dept.</small>
                             </div>
                             <div class="col-6">
-                                <p class="fw-bold text-muted small text-uppercase mb-5">Pemberi Pekerjaan<br><span class="text-dark">{{ $bast->customer_name }}</span></p>
+                                <p class="fw-bold text-muted small text-uppercase mb-1">Pemberi Pekerjaan</p>
+                                <p class="fw-bold text-dark text-uppercase mb-0" style="font-size: 13.5px;">{{ $bast->customer_name }}</p>
+                                <div style="height: 95px;"></div>
                                 <div class="border-top border-dark mx-auto" style="width: 70%;"></div>
+                                <small class="text-muted d-block mt-1">Authorized Representative</small>
                             </div>
                         </div>
                     </div>

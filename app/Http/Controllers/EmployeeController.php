@@ -139,8 +139,9 @@ class EmployeeController extends Controller
     {
         $users = User::findOrFail($id);
         $detail = DetailUser::where('id_users', $id)->orderByDesc('id')->get();
-        // dd($detail);
-        return view('pages.admin.employee.user.detail', compact('users', 'detail'));
+        $target = $users->role === 'Sales' ? Target::where('id_sales', $id)->first() : null;
+
+        return view('pages.admin.employee.user.detail', compact('users', 'detail', 'target'));
     }
 
     /**

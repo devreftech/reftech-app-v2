@@ -31,6 +31,11 @@ class QuotationService
             ->where('q.level', '1')
             ->where('q.is_primary', '1');
 
+        $uqForecast = DB::table('unit_quotation as uq')
+            ->join('users as u2', 'u2.id', '=', 'uq.id_sales')
+            ->whereIn('uq.status', ['draft', 'sent', 'negotiation', 'revision', 'hot_prospect'])
+            ->where('uq.is_latest', 1);
+
         // 2. Hot Prospect
         $qProspect = DB::table('quotation as q')
             ->join('users as u', 'u.id', '=', 'q.id_sales')
@@ -49,52 +54,88 @@ class QuotationService
             ->join('users as u', 'u.id', '=', 'q.id_sales')
             ->where('q.status', '100')
             ->where('q.level', '1')
-            ->where('q.is_primary', '1');
+            ->where('q.is_primary', '1')
+            ->whereNotExists(function ($sub) {
+                $sub->select(DB::raw(1))
+                    ->from('payment as pay')
+                    ->whereColumn('pay.id_quotation', 'q.id')
+                    ->where('pay.method', 'Escrow');
+            });
 
         $uqPo = DB::table('unit_quotation as uq')
             ->join('users as u2', 'u2.id', '=', 'uq.id_sales')
             ->where('uq.status', 'po_received')
-            ->where('uq.is_latest', 1);
+            ->where('uq.is_latest', 1)
+            ->whereNotExists(function ($sub) {
+                $sub->select(DB::raw(1))
+                    ->from('payment as pay2')
+                    ->whereColumn('pay2.id_unit_quotation', 'uq.id')
+                    ->where('pay2.method', 'Escrow');
+            });
 
         // 4. Loss Order
         $qLoss = DB::table('quotation as q')
             ->join('users as u', 'u.id', '=', 'q.id_sales')
             ->where('q.status', '0')
-            ->where('q.level', '1');
+            ->where('q.level', '1')
+            ->where('q.is_primary', '1')
+            ->whereNotExists(function ($sub) {
+                $sub->select(DB::raw(1))
+                    ->from('payment as pay')
+                    ->whereColumn('pay.id_quotation', 'q.id')
+                    ->where('pay.method', 'Escrow');
+            });
+
+        $uqLoss = DB::table('unit_quotation as uq')
+            ->join('users as u2', 'u2.id', '=', 'uq.id_sales')
+            ->whereIn('uq.status', ['loss', 'cancel'])
+            ->where('uq.is_latest', 1)
+            ->whereNotExists(function ($sub) {
+                $sub->select(DB::raw(1))
+                    ->from('payment as pay2')
+                    ->whereColumn('pay2.id_unit_quotation', 'uq.id')
+                    ->where('pay2.method', 'Escrow');
+            });
 
         // Apply sales filter
         if ($isAdmin) {
             if (!empty($salesId)) {
                 $qForecast->where('q.id_sales', $salesId);
+                $uqForecast->where('uq.id_sales', $salesId);
                 $qProspect->where('q.id_sales', $salesId);
                 $uqProspect->where('uq.id_sales', $salesId);
                 $qPo->where('q.id_sales', $salesId);
                 $uqPo->where('uq.id_sales', $salesId);
                 $qLoss->where('q.id_sales', $salesId);
+                $uqLoss->where('uq.id_sales', $salesId);
             }
         } else {
             $effectiveSalesId = $salesId ?? Auth::id();
             $qForecast->where('q.id_sales', $effectiveSalesId);
+            $uqForecast->where('uq.id_sales', $effectiveSalesId);
             $qProspect->where('q.id_sales', $effectiveSalesId);
             $uqProspect->where('uq.id_sales', $effectiveSalesId);
             $qPo->where('q.id_sales', $effectiveSalesId);
             $uqPo->where('uq.id_sales', $effectiveSalesId);
             $qLoss->where('q.id_sales', $effectiveSalesId);
+            $uqLoss->where('uq.id_sales', $effectiveSalesId);
         }
 
         // Apply year filter
-        if ($year) {
+        if ($year && $year !== 'all') {
             $qForecast->whereYear('q.status_date', $year);
+            $uqForecast->whereYear('uq.date', $year);
             $qProspect->whereYear('q.status_date', $year);
             $uqProspect->whereYear('uq.date', $year);
             $qPo->whereYear('q.po_date', $year);
             $uqPo->whereYear('uq.po_received', $year);
             $qLoss->whereYear('q.status_date', $year);
+            $uqLoss->whereYear('uq.date', $year);
         }
 
         // Forecast total & count
-        $forecastSum = (float) $qForecast->sum('q.nett');
-        $forecastCount = (int) $qForecast->count();
+        $forecastSum = (float) $qForecast->sum('q.nett') + (float) $uqForecast->sum('uq.total');
+        $forecastCount = (int) $qForecast->count() + (int) $uqForecast->count();
 
         // Prospect total & count
         $prospectSum = (float) $qProspect->sum('q.nett') + (float) $uqProspect->sum('uq.total');
@@ -105,8 +146,8 @@ class QuotationService
         $poCount = (int) $qPo->count() + (int) $uqPo->count();
 
         // Loss total & count
-        $lossSum = (float) $qLoss->sum('q.nett');
-        $lossCount = (int) $qLoss->count();
+        $lossSum = (float) $qLoss->sum('q.nett') + (float) $uqLoss->sum('uq.total');
+        $lossCount = (int) $qLoss->count() + (int) $uqLoss->count();
 
         return [
             'forecast_sum' => $forecastSum,

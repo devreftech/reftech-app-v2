@@ -139,9 +139,15 @@
                                     <i class="mdi mdi-alert-circle-outline me-1"></i> NPWP Belum Diisi
                                 </span>
                             @endif
-                            <a href="{{ $isUnitQuotation ? route('invoice.show_unit', $invoice->id) : route('invoice.show', $invoice->id) }}" target="_blank" class="badge bg-label-primary rounded-pill px-3 py-1 text-decoration-none">
-                                <i class="mdi mdi-file-document-outline me-1"></i> Invoice: {{ $invoice->no_invoice }}
-                            </a>
+                            @if ($invoice)
+                                <a href="{{ $isUnitQuotation ? route('invoice.show_unit', $invoice->id) : route('invoice.show', $invoice->id) }}" target="_blank" class="badge bg-label-primary rounded-pill px-3 py-1 text-decoration-none">
+                                    <i class="mdi mdi-file-document-outline me-1"></i> Invoice: {{ $invoice->no_invoice }}
+                                </a>
+                            @else
+                                <span class="badge bg-label-secondary rounded-pill px-3 py-1">
+                                    <i class="mdi mdi-file-document-outline me-1"></i> Invoice: Belum Dibuat
+                                </span>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -367,7 +373,7 @@
 </div>
 
 @endsection()
-@include('components.modal.payment.date ')
+@include('components.modal.payment.date')
 @include('components.modal.payment.pph')
 @include('components.modal.payment.cost')
 @include('components.modal.payment.confirm')

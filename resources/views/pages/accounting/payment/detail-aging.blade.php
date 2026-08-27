@@ -179,7 +179,7 @@
                 <div class="row g-3" style="font-size: 13px;">
                     <div class="col-md-6">
                         <small class="text-muted d-block mb-1">Invoice Date</small>
-                        <span class="fw-semibold text-dark">{{ $invoice->date ? \Carbon\Carbon::parse($invoice->date)->format('d M Y') : '-' }}</span>
+                        <span class="fw-semibold text-dark">{{ ($invoice && $invoice->date) ? \Carbon\Carbon::parse($invoice->date)->format('d M Y') : '-' }}</span>
                     </div>
                     <div class="col-md-6">
                         <small class="text-muted d-block mb-1">Invoice Due Date</small>

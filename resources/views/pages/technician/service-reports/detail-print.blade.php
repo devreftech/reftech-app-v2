@@ -166,7 +166,7 @@
                 @foreach ($pict as $picture)
                     <div class="col-4 text-center">
                         <div class="border rounded p-1 mx-auto" style="max-width: 220px;">
-                            <img src="{{ url('') . '/' . $picture->picture }}" alt="" srcset=""
+                            <img src="{{ $picture->url }}" alt="" srcset=""
                                 style="width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 4px;"
                                 class="img-reports">
                         </div>
@@ -196,7 +196,7 @@
                 <p class="mb-4">{{ $service->pic->client->company }}</p>
                 <div class="d-flex align-items-end justify-content-center mb-1" style="height: 70px;">
                     @if (isset($service->sign_client))
-                        <img src="{{ url('') . '/' . $service->sign_client }}" alt="" srcset="" height="70">
+                        <img src="{{ $service->sign_client_url }}" alt="" srcset="" height="70">
                     @endif
                 </div>
                 <div style="border-top: 1px solid #333; width: 70%; margin: 0 auto;"></div>

@@ -206,30 +206,30 @@
 @push('script')
     <script>
         const yearSelect = document.getElementById('yearSelect');
-        const currentYear = new Date().getFullYear();
+        if (yearSelect) {
+            const currentYear = new Date().getFullYear();
+            for (let y = currentYear - 5; y <= currentYear + 5; y++) {
+                const option = document.createElement('option');
+                option.value = y;
+                option.textContent = y;
+                if (y === currentYear) option.selected = true;
+                yearSelect.appendChild(option);
+            }
 
-        // generate year -5 sampai +5
-        for (let y = currentYear - 5; y <= currentYear + 5; y++) {
-            const option = document.createElement('option');
-            option.value = y;
-            option.textContent = y;
-            if (y === currentYear) option.selected = true;
-            yearSelect.appendChild(option);
+            yearSelect.addEventListener('change', function() {
+                if (!this.value) return;
+                window.open(`/income-print/${this.value}`, '_blank');
+            });
         }
 
-        yearSelect.addEventListener('change', function() {
-            if (!this.value) return;
-
-            window.open(`/income-print/${this.value}`, '_blank');
-        });
-
-        document.getElementById('html5-month-input').addEventListener('change', function() {
-            if (!this.value) return;
-
-            const [year, month] = this.value.split('-');
-
-            window.open(`/income-print/${month}/${year}`, '_blank');
-        });
+        const monthInput = document.getElementById('html5-month-input');
+        if (monthInput) {
+            monthInput.addEventListener('change', function() {
+                if (!this.value) return;
+                const [year, month] = this.value.split('-');
+                window.open(`/income-print/${month}/${year}`, '_blank');
+            });
+        }
 
         function formatNumber(n) {
             return n.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".")

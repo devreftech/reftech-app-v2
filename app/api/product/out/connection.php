@@ -25,7 +25,8 @@ if (Auth::check()) {
         LEFT JOIN detail_product_out AS d ON d.id_product_out = p.id 
         LEFT JOIN serial_product AS s ON d.id_serial_product = s.id 
         LEFT JOIN product AS pr ON s.id_product = pr.id 
-        LEFT JOIN detail_product AS dp ON d.id_detail_product = dp.id";
+        LEFT JOIN detail_product AS dp ON d.id_detail_product = dp.id
+        WHERE (pr.category IS NULL OR pr.category != 'Unit')";
 
         $stmt = $pdo->prepare($query);
         // $stmt->bindParam(':user_id', $user->id, PDO::PARAM_INT);

@@ -14,6 +14,7 @@ use App\Models\Invoice;
 use App\Models\SerialProduct;
 use App\Models\DetailPendingPO;
 use App\Models\UnitQuotation;
+use App\Models\UnitQuotationDetail;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -170,49 +171,74 @@ class ProjectMonitoringController extends Controller
     public function show($id)
     {
         $pendingRow = PendingPO::findOrFail($id);
-        if ($pendingRow->id_unit_quotation) {
-            return redirect()->route('unit-quotation.show', $pendingRow->id_unit_quotation);
-        }
+        $isUnit = (bool) $pendingRow->id_unit_quotation;
 
-        $project = PendingPO::join('quotation as q', 'pending_po.id_quotation', '=', 'q.id')
-            ->join('pic as p', 'q.id_pic', '=', 'p.id')
-            ->join('client as c', 'p.id_client', '=', 'c.id')
-            ->join('users as u', 'q.id_sales', '=', 'u.id')
-            ->where('pending_po.id', $id)
-            ->select(
-                'pending_po.*',
-                'c.company',
-                'p.name_pic as pic_name',
-                'u.name as sales_name',
-                'q.nett as revenue',
-                'q.no_quote',
-                'q.type as quote_type'
-            )
-            ->firstOrFail();
+        if ($isUnit) {
+            // Project lahir dari Smart Quote (UnitQuotation) — beda skema dari Quotation
+            // lama (gak ada pic/client lewat join, revenue-nya dari unit_quotation.total,
+            // item-nya dari unit_quotation_detail bukan detail_quotation/subtitle_quotation).
+            $uq = UnitQuotation::with('client', 'pic', 'sales')->findOrFail($pendingRow->id_unit_quotation);
 
-        // Quotation Items (Revenue Details)
-        $quoteItems = collect();
-        if ($project->quote_type === 'Service') {
-            $quoteItems = SubtitleQuotation::with('detail')
-                ->where('id_quotation', $project->id_quotation)
+            $project = $pendingRow;
+            $project->company = $uq->client->company ?? '-';
+            $project->pic_name = $uq->pic->name_pic ?? '-';
+            $project->sales_name = $uq->sales->name ?? '-';
+            $project->revenue = $uq->total ?? 0;
+            $project->no_quote = $uq->no_quote;
+            $project->quote_type = 'Unit';
+            $project->id_quotation = null;
+
+            $quoteItems = UnitQuotationDetail::where('id_unit_quotation', $uq->id)
+                ->whereNotIn('type', ['header', 'heading'])
+                ->orderBy('sort_order')
                 ->get()
-                ->flatMap(fn($subtitle) => $subtitle->detail)
                 ->map(fn($item) => (object) [
-                    'item_name' => $item->product ?: $item->detail,
+                    'item_name' => $item->label,
                     'qty' => $item->qty,
                     'unit' => $item->info_qty,
                     'price' => $item->price,
-                    'amount' => $item->qty * $item->price
+                    'amount' => $item->amount,
                 ]);
         } else {
-            $quoteItems = DetailQuotation::where('id_quotation', $project->id_quotation)->get()
-                ->map(fn($item) => (object) [
-                    'item_name' => $item->detail_product,
-                    'qty' => $item->qty,
-                    'unit' => $item->info_qty,
-                    'price' => $item->modal, // selling price is modal in this schema
-                    'amount' => $item->amount
-                ]);
+            $project = PendingPO::join('quotation as q', 'pending_po.id_quotation', '=', 'q.id')
+                ->join('pic as p', 'q.id_pic', '=', 'p.id')
+                ->join('client as c', 'p.id_client', '=', 'c.id')
+                ->join('users as u', 'q.id_sales', '=', 'u.id')
+                ->where('pending_po.id', $id)
+                ->select(
+                    'pending_po.*',
+                    'c.company',
+                    'p.name_pic as pic_name',
+                    'u.name as sales_name',
+                    'q.nett as revenue',
+                    'q.no_quote',
+                    'q.type as quote_type'
+                )
+                ->firstOrFail();
+
+            // Quotation Items (Revenue Details)
+            if ($project->quote_type === 'Service') {
+                $quoteItems = SubtitleQuotation::with('detail')
+                    ->where('id_quotation', $project->id_quotation)
+                    ->get()
+                    ->flatMap(fn($subtitle) => $subtitle->detail)
+                    ->map(fn($item) => (object) [
+                        'item_name' => $item->product ?: $item->detail,
+                        'qty' => $item->qty,
+                        'unit' => $item->info_qty,
+                        'price' => $item->price,
+                        'amount' => $item->qty * $item->price
+                    ]);
+            } else {
+                $quoteItems = DetailQuotation::where('id_quotation', $project->id_quotation)->get()
+                    ->map(fn($item) => (object) [
+                        'item_name' => $item->detail_product,
+                        'qty' => $item->qty,
+                        'unit' => $item->info_qty,
+                        'price' => $item->modal, // selling price is modal in this schema
+                        'amount' => $item->amount
+                    ]);
+            }
         }
 
         // Purchases (PR & Costs)
@@ -239,11 +265,28 @@ class ProjectMonitoringController extends Controller
         $profit = $project->revenue - $totalCost;
         $margin = $project->revenue > 0 ? ($profit / $project->revenue) * 100 : 0;
 
-        // Load relationships for logistic check tab
-        $subQuote = SubtitleQuotation::with('detail.pending')
-            ->where('id_quotation', $project->id_quotation)
-            ->get();
+        // Load relationships for logistic check tab — item Smart Quote gak dipetakan
+        // ke serial_product/equivalent, jadi tab ini gak relevan buat project Unit.
+        $subQuote = $isUnit
+            ? collect()
+            : SubtitleQuotation::with('detail.pending')->where('id_quotation', $project->id_quotation)->get();
         $serial = SerialProduct::all();
+
+        // Check financial access based on Role OR Kanban Board Membership / Assignees
+        $user = Auth::user();
+        $hasFinancialAccess = in_array($user->role, ['Admin', 'Finance', 'Finance Manager', 'Accounting'], true);
+        if (!$hasFinancialAccess) {
+            $relatedTasks = \App\Models\KanbanTask::where(function ($q) use ($project) {
+                $q->where('pending_po_id', $project->id);
+                if (!empty($project->id_unit_quotation)) {
+                    $q->orWhere('id_unit_quotation', $project->id_unit_quotation);
+                }
+            })->with('board.members', 'assignees')->get();
+
+            $hasFinancialAccess = $relatedTasks->contains(function ($task) use ($user) {
+                return ($task->board && $task->board->members->contains($user->id)) || $task->assignees->contains($user->id);
+            });
+        }
 
         return view('pages.project-monitoring.show', compact(
             'project',
@@ -258,7 +301,8 @@ class ProjectMonitoringController extends Controller
             'profit',
             'margin',
             'subQuote',
-            'serial'
+            'serial',
+            'hasFinancialAccess'
         ));
     }
 
@@ -310,8 +354,21 @@ class ProjectMonitoringController extends Controller
      */
     public function destroyExpense($id)
     {
+        $user = Auth::user();
         $expense = ProjectExpense::findOrFail($id);
         $projectId = $expense->id_pending;
+
+        $hasFinancialAccess = in_array($user->role, ['Admin', 'Finance', 'Finance Manager', 'Accounting'], true) || ($expense->id_user == $user->id);
+        if (!$hasFinancialAccess) {
+            $relatedTasks = \App\Models\KanbanTask::where('pending_po_id', $projectId)->with('board.members', 'assignees')->get();
+            $hasFinancialAccess = $relatedTasks->contains(function ($task) use ($user) {
+                return ($task->board && $task->board->members->contains($user->id)) || $task->assignees->contains($user->id);
+            });
+        }
+
+        if (!$hasFinancialAccess) {
+            abort(403, 'Akses ditolak.');
+        }
 
         // Delete receipt file if exists
         if ($expense->receipt && file_exists(public_path($expense->receipt))) {

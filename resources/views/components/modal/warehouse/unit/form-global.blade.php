@@ -142,6 +142,7 @@
                                         <option value="22kW | 30Hp"    {{ @$product->power == '22kW | 30Hp'    ? 'selected' : '' }}>22kW | 30Hp</option>
                                         <option value="30kW | 40Hp"    {{ @$product->power == '30kW | 40Hp'    ? 'selected' : '' }}>30kW | 40Hp</option>
                                         <option value="37kW | 50Hp"    {{ @$product->power == '37kW | 50Hp'    ? 'selected' : '' }}>37kW | 50Hp</option>
+                                        <option value="45kW | 60Hp"    {{ @$product->power == '45kW | 60Hp'    ? 'selected' : '' }}>45kW | 60Hp</option>
                                         <option value="55kW | 75Hp"    {{ @$product->power == '55kW | 75Hp'    ? 'selected' : '' }}>55kW | 75Hp</option>
                                         <option value="75kW | 100Hp"   {{ @$product->power == '75kW | 100Hp'   ? 'selected' : '' }}>75kW | 100Hp</option>
                                         <option value="90kW | 120Hp"   {{ @$product->power == '90kW | 120Hp'   ? 'selected' : '' }}>90kW | 120Hp</option>
@@ -298,6 +299,7 @@
                                         <option value="22kW | 30Hp"    {{ @$product->power == '22kW | 30Hp'    ? 'selected' : '' }}>22kW | 30Hp</option>
                                         <option value="30kW | 40Hp"    {{ @$product->power == '30kW | 40Hp'    ? 'selected' : '' }}>30kW | 40Hp</option>
                                         <option value="37kW | 50Hp"    {{ @$product->power == '37kW | 50Hp'    ? 'selected' : '' }}>37kW | 50Hp</option>
+                                        <option value="45kW | 60Hp"    {{ @$product->power == '45kW | 60Hp'    ? 'selected' : '' }}>45kW | 60Hp</option>
                                         <option value="55kW | 75Hp"    {{ @$product->power == '55kW | 75Hp'    ? 'selected' : '' }}>55kW | 75Hp</option>
                                         <option value="75kW | 100Hp"   {{ @$product->power == '75kW | 100Hp'   ? 'selected' : '' }}>75kW | 100Hp</option>
                                         <option value="90kW | 120Hp"   {{ @$product->power == '90kW | 120Hp'   ? 'selected' : '' }}>90kW | 120Hp</option>

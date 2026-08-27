@@ -1,6 +1,7 @@
 $(function () {
 
     var rowIndex = 0;
+    var optionIndex = 0;
 
     // Textarea deskripsi custom-row rows="2" fixed — template PM (mis. Scope of Work
     // PM4) bisa puluhan baris, jadi harus auto-expand supaya gak keliatan "kepotong".
@@ -73,37 +74,67 @@ $(function () {
         recalcSummary();
     }
 
-    // ── Recalc subtotal / tax / total ─────────────────────────────────────
+    // ── Recalc subtotal / tax / total — dihitung per Opsi (option-pane) ────
     function recalcSummary() {
-        var subtotal = 0;
-        $('.unit-row').each(function () {
-            var qty   = parseFloat($(this).find('.field-qty').val()) || 0;
-            var price = parseRupiah($(this).find('.field-price').val());
-            var disc  = parseFloat($(this).find('.field-disc').val()) || 0;
-            subtotal += qty * price * (1 - disc / 100);
+        $('.option-pane').each(function () {
+            var $pane = $(this);
+            var subtotal = 0;
+            $pane.find('.line-items-container .unit-row').each(function () {
+                var qty   = parseFloat($(this).find('.field-qty').val()) || 0;
+                var price = parseRupiah($(this).find('.field-price').val());
+                var disc  = parseFloat($(this).find('.field-disc').val()) || 0;
+                subtotal += qty * price * (1 - disc / 100);
+            });
+
+            var diskonType  = $pane.find('.select-diskon-type').val() || 'percent';
+            var diskon      = diskonType === 'amount'
+                ? parseRupiah($pane.find('.input-diskon').val())
+                : (parseFloat($pane.find('.input-diskon').val()) || 0);
+            var afterDiskon = diskonType === 'amount' ? (subtotal - diskon) : (subtotal - (subtotal * diskon / 100));
+            var tax         = $pane.find('.toggle-tax').is(':checked');
+            var taxAmount   = tax ? Math.round(afterDiskon * 0.11) : 0;
+            var shipping    = parseRupiah($pane.find('.input-shipping').val());
+            var total       = afterDiskon + taxAmount + shipping;
+
+            $pane.find('.display-subtotal').text('Rp ' + formatRupiah(Math.round(subtotal)));
+            $pane.find('.display-tax').text('Rp ' + formatRupiah(taxAmount));
+            $pane.find('.display-total').text('Rp ' + formatRupiah(Math.round(total)));
         });
 
-        var diskonType  = $('#select-diskon-type').val() || 'percent';
-        var diskon      = diskonType === 'amount'
-            ? parseRupiah($('#input-diskon').val())
-            : (parseFloat($('#input-diskon').val()) || 0);
-        var afterDiskon = diskonType === 'amount' ? (subtotal - diskon) : (subtotal - (subtotal * diskon / 100));
-        var tax         = $('#toggle-tax').is(':checked');
-        var taxAmount   = tax ? Math.round(afterDiskon * 0.11) : 0;
-        var shipping    = parseRupiah($('#input-shipping').val());
-        var total       = afterDiskon + taxAmount + shipping;
-
-        $('#display-subtotal').text('Rp ' + formatRupiah(Math.round(subtotal)));
-        $('#display-tax').text('Rp ' + formatRupiah(taxAmount));
-        $('#display-total').text('Rp ' + formatRupiah(Math.round(total)));
-
+        recalcSectionSubtotals();
         toggleEmptyState();
     }
 
-    function toggleEmptyState() {
-        var count = $('.unit-row').length;
-        $('#empty-state').toggle(count === 0);
-        $('#items-count-badge').text(count + (count === 1 ? ' Item' : ' Items'));
+    // ── Subtotal per Head Title (sub-grouping DI DALAM 1 Opsi — beda dari
+    // Opsi itu sendiri). Semua item di bawah 1 Head Title sampai Head Title
+    // berikutnya (dalam Opsi yang sama) dijumlah, ditampilkan di baris itu.
+    function recalcSectionSubtotals() {
+        $('.line-items-container .unit-row[data-type="header"]').each(function () {
+            var subtotal = 0;
+            var $next = $(this).next('.unit-row');
+            while ($next.length && $next.attr('data-type') !== 'header') {
+                var qty   = parseFloat($next.find('.field-qty').val()) || 0;
+                var price = parseRupiah($next.find('.field-price').val());
+                var disc  = parseFloat($next.find('.field-disc').val()) || 0;
+                subtotal += qty * price * (1 - disc / 100);
+                $next = $next.next('.unit-row');
+            }
+            $(this).find('.section-subtotal-badge').text('Subtotal: Rp ' + formatRupiah(Math.round(subtotal)));
+        });
+    }
+
+    // ── Empty-state & item counter — di-scope ke option-pane masing2 ───────
+    function toggleEmptyState($container) {
+        function updatePane($pane) {
+            var count = $pane.find('.line-items-container .unit-row').length;
+            $pane.find('.empty-state').toggle(count === 0);
+            $pane.find('.items-count-badge').text(count + (count === 1 ? ' Item' : ' Items'));
+        }
+        if ($container && $container.length) {
+            updatePane($container.closest('.option-pane'));
+        } else {
+            $('.option-pane').each(function () { updatePane($(this)); });
+        }
     }
 
     // ── Category-specific label overrides ────────────────────────────────
@@ -181,12 +212,12 @@ $(function () {
     }
 
     // ── Add unit row ──────────────────────────────────────────────────────
-    function addUnitRow() {
+    function addUnitRow($container) {
         var idx  = rowIndex++;
         var html = $('#tmpl-unit-row').html().replace(/__IDX__/g, idx);
         var $row = $(html);
-        $('#line-items-container').append($row);
-        toggleEmptyState();
+        $container.append($row);
+        toggleEmptyState($container);
         initUnitRowSelect2($row);
         initFixedAssetRowSelect2($row);
         initEquivalentRowSelect2($row);
@@ -197,12 +228,12 @@ $(function () {
     }
 
     // ── Add unit row pre-populated from edit data ─────────────────────────
-    function addUnitRowFromData(item) {
+    function addUnitRowFromData($container, item) {
         var idx  = rowIndex++;
         var html = $('#tmpl-unit-row').html().replace(/__IDX__/g, idx);
         var $row = $(html);
-        $('#line-items-container').append($row);
-        toggleEmptyState();
+        $container.append($row);
+        toggleEmptyState($container);
 
         var $sel = initUnitRowSelect2($row);
         var $selFixedAsset = initFixedAssetRowSelect2($row);
@@ -260,22 +291,22 @@ $(function () {
     }
 
     // ── Add custom row ────────────────────────────────────────────────────
-    function addCustomRow() {
+    function addCustomRow($container) {
         var idx  = rowIndex++;
         var html = $('#tmpl-custom-row').html().replace(/__IDX__/g, idx);
         var $row = $(html);
-        $('#line-items-container').append($row);
-        toggleEmptyState();
+        $container.append($row);
+        toggleEmptyState($container);
         bindRowEvents($row);
     }
 
     // ── Add custom row pre-populated from edit data ───────────────────────
-    function addCustomRowFromData(item) {
+    function addCustomRowFromData($container, item) {
         var idx  = rowIndex++;
         var html = $('#tmpl-custom-row').html().replace(/__IDX__/g, idx);
         var $row = $(html);
-        $('#line-items-container').append($row);
-        toggleEmptyState();
+        $container.append($row);
+        toggleEmptyState($container);
 
         $row.find('input[name*="[label]"]').val(item.label || '');
         $row.find('textarea[name*="[description]"], input[name*="[description]"]').val(item.description || '');
@@ -298,29 +329,29 @@ $(function () {
     }
 
     // ── Add header row ────────────────────────────────────────────────────
-    function getNextHeaderPrefix() {
-        var headerCount = $('#line-items-container .unit-row[data-type="header"]').length;
+    function getNextHeaderPrefix($container) {
+        var headerCount = $container.find('.unit-row[data-type="header"]').length;
         var letter = String.fromCharCode(65 + (headerCount % 26));
         return letter + '. ';
     }
 
-    function addHeaderRow() {
+    function addHeaderRow($container) {
         var idx    = rowIndex++;
-        var prefix = getNextHeaderPrefix();
+        var prefix = getNextHeaderPrefix($container);
         var html   = $('#tmpl-header-row').html().replace(/__IDX__/g, idx);
         var $row   = $(html);
         $row.find('.field-label').val(prefix);
-        $('#line-items-container').append($row);
-        toggleEmptyState();
+        $container.append($row);
+        toggleEmptyState($container);
         bindRowEvents($row);
     }
 
-    function addHeaderRowFromData(item) {
+    function addHeaderRowFromData($container, item) {
         var idx  = rowIndex++;
         var html = $('#tmpl-header-row').html().replace(/__IDX__/g, idx);
         var $row = $(html);
-        $('#line-items-container').append($row);
-        toggleEmptyState();
+        $container.append($row);
+        toggleEmptyState($container);
         $row.find('.field-label').val(item.label || '');
         bindRowEvents($row);
     }
@@ -382,24 +413,24 @@ $(function () {
         return $row;
     }
 
-    function addTransportRow() {
+    function addTransportRow($container) {
         var idx  = rowIndex++;
         var $row = buildTransportRow(idx, null, null);
-        $('#line-items-container').append($row);
-        toggleEmptyState();
+        $container.append($row);
+        toggleEmptyState($container);
         bindRowEvents($row);
         bindTransportRowEvents($row);
     }
 
-    function addTransportRowFromData(item) {
+    function addTransportRowFromData($container, item) {
         var idx = rowIndex++;
         var matchedType = null;
         $.each(TRANSPORT_TYPES, function (i, t) {
             if (t.text === item.label) { matchedType = t.text; return false; }
         });
         var $row = buildTransportRow(idx, matchedType, null);
-        $('#line-items-container').append($row);
-        toggleEmptyState();
+        $container.append($row);
+        toggleEmptyState($container);
 
         $row.find('.field-label').val(item.label || '');
         $row.find('.field-qty').val(item.qty || 1);
@@ -410,6 +441,160 @@ $(function () {
         bindRowEvents($row);
         bindTransportRowEvents($row);
     }
+
+    // ── Opsi (Opsi 1, Opsi 2, dst) — tiap opsi punya line items + summary sendiri ──
+    function getActiveOptionPane() {
+        var $active = $('.option-pane.active');
+        return $active.length ? $active : $('.option-pane').first();
+    }
+
+    // Tombol "Hapus Opsi Ini" disembunyikan kalau cuma tersisa 1 opsi — minimal 1 opsi harus ada.
+    function updateOptionRemoveButtons() {
+        var multi = $('.option-pane').length > 1;
+        $('.btn-remove-option').toggle(multi);
+    }
+
+    function initSortableForContainer(container) {
+        if (container && typeof Sortable !== 'undefined') {
+            Sortable.create(container, {
+                handle: '.btn-drag-handle',
+                animation: 150,
+                ghostClass: 'bg-light-primary',
+                onEnd: function () {
+                    reindexRows();
+                    recalcHeaderPrefixes();
+                    recalcSummary();
+                }
+            });
+        }
+    }
+
+    // Bikin 1 opsi baru (tab + pane), opsional prefill dari data edit-mode.
+    // optData: { title, diskon, diskon_type, tax, shipping } — semua opsional.
+    function addOption(optData) {
+        optData = optData || {};
+        var opt = optionIndex++;
+        var isFirst = opt === 0;
+        var title = optData.title || ('Opsi ' + (opt + 1));
+
+        var tabHtml = $('#tmpl-option-tab').html().replace(/__OPT__/g, opt);
+        var $tab = $(tabHtml);
+        $tab.find('.nav-link').toggleClass('active', isFirst).attr('aria-selected', isFirst ? 'true' : 'false');
+        if (isFirst) $tab.find('.nav-link').addClass('active');
+        $tab.find('.tab-title-display').text(title);
+        $('#options-tab-nav').append($tab);
+
+        var paneHtml = $('#tmpl-option-pane').html().replace(/__OPT__/g, opt);
+        var $pane = $(paneHtml);
+        $pane.toggleClass('show active', isFirst);
+        $pane.find('.option-title-input').val(title);
+        $pane.find('.select-diskon-type').val(optData.diskon_type || 'percent');
+        $pane.find('.input-diskon').val(
+            (optData.diskon_type === 'amount')
+                ? formatRupiah(Math.round(optData.diskon || 0))
+                : (optData.diskon || 0)
+        );
+        $pane.find('.toggle-tax').prop('checked', optData.tax !== undefined ? !!optData.tax : true);
+        $pane.find('.input-shipping').val(formatRupiah(Math.round(optData.shipping || 0)));
+        $('#options-tab-content').append($pane);
+
+        initSortableForContainer($pane.find('.line-items-container')[0]);
+        toggleEmptyState($pane.find('.line-items-container'));
+        updateOptionRemoveButtons();
+
+        return $pane;
+    }
+
+    $(document).on('click', '#btn-add-option', function () {
+        var $pane = addOption({});
+        $('.option-pane').removeClass('show active');
+        $('.nav-link', '#options-tab-nav').removeClass('active').attr('aria-selected', 'false');
+        $pane.addClass('show active');
+        var opt = $pane.data('option-idx');
+        $('#options-tab-nav .nav-item[data-option-idx="' + opt + '"] .nav-link').addClass('active').attr('aria-selected', 'true');
+        $('html, body').animate({ scrollTop: $pane.offset().top - 100 }, 300);
+    });
+
+    $(document).on('input', '.option-title-input', function () {
+        var opt = $(this).closest('.option-pane').data('option-idx');
+        var text = $(this).val() || ('Opsi ' + (parseInt(opt, 10) + 1));
+        $('#options-tab-nav .nav-item[data-option-idx="' + opt + '"] .tab-title-display').text(text);
+    });
+
+    $(document).on('click', '.btn-remove-option', function () {
+        if ($('.option-pane').length <= 1) return;
+        var $pane = $(this).closest('.option-pane');
+        var opt = $pane.data('option-idx');
+        var wasActive = $pane.hasClass('active');
+
+        function doRemove() {
+            $('#options-tab-nav .nav-item[data-option-idx="' + opt + '"]').remove();
+            $pane.remove();
+            if (wasActive) {
+                var $firstTab = $('#options-tab-nav .nav-item').first();
+                var $firstPane = $('.option-pane').first();
+                $('.nav-link', '#options-tab-nav').removeClass('active').attr('aria-selected', 'false');
+                $firstTab.find('.nav-link').addClass('active').attr('aria-selected', 'true');
+                $('.option-pane').removeClass('show active');
+                $firstPane.addClass('show active');
+            }
+            updateOptionRemoveButtons();
+            recalcSummary();
+        }
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Hapus opsi ini?',
+                text: 'Semua item di opsi ini akan ikut terhapus.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Hapus',
+                cancelButtonText: 'Batal',
+                customClass: { confirmButton: 'btn btn-danger me-3 waves-effect waves-light', cancelButton: 'btn btn-label-secondary waves-effect' },
+                buttonsStyling: false,
+            }).then(function (result) {
+                if (result.isConfirmed) doRemove();
+            });
+        } else if (confirm('Hapus opsi ini? Semua item di opsi ini akan ikut terhapus.')) {
+            doRemove();
+        }
+    });
+
+    // ── Add-item button handlers — delegated, target = opsi tempat tombolnya berada ──
+    $(document).on('click', '.btn-add-unit', function () {
+        addUnitRow($(this).closest('.option-pane').find('.line-items-container'));
+    });
+    $(document).on('click', '.btn-add-custom', function () {
+        addCustomRow($(this).closest('.option-pane').find('.line-items-container'));
+    });
+    $(document).on('click', '.btn-add-header', function () {
+        addHeaderRow($(this).closest('.option-pane').find('.line-items-container'));
+    });
+    $(document).on('click', '.btn-add-transport', function () {
+        addTransportRow($(this).closest('.option-pane').find('.line-items-container'));
+    });
+
+    // ── Summary input handlers — delegated per opsi ─────────────────────────
+    $(document).on('input', '.input-diskon', function () {
+        var $pane = $(this).closest('.option-pane');
+        if ($pane.find('.select-diskon-type').val() === 'amount') {
+            var raw = $(this).val().replace(/\D/g, '');
+            $(this).val(formatRupiah(raw));
+        }
+        recalcSummary();
+    });
+    $(document).on('change', '.select-diskon-type', function () {
+        // Format ulang tampilan diskon sesuai tipe baru; nilai di-reset
+        // supaya angka % tidak salah dibaca sebagai nominal Rp (atau sebaliknya).
+        $(this).closest('.option-pane').find('.input-diskon').val('0');
+        recalcSummary();
+    });
+    $(document).on('input', '.input-shipping', function () {
+        var raw = $(this).val().replace(/\D/g, '');
+        $(this).val(formatRupiah(raw));
+        recalcSummary();
+    });
+    $(document).on('change', '.toggle-tax', recalcSummary);
 
     // ── Init Select2 AJAX for unit row ────────────────────────────────────
     function initUnitRowSelect2($row) {
@@ -979,32 +1164,6 @@ $(function () {
     // Set week on page load based on current date value
     syncWeekFromDate($('#input-date').val());
 
-    // ── Button handlers ───────────────────────────────────────────────────
-    $('#btn-add-unit').on('click', addUnitRow);
-    $('#btn-add-custom').on('click', addCustomRow);
-    $('#btn-add-header').on('click', addHeaderRow);
-    $('#btn-add-transport').on('click', addTransportRow);
-
-    $('#input-diskon').on('input', function () {
-        if ($('#select-diskon-type').val() === 'amount') {
-            var raw = $(this).val().replace(/\D/g, '');
-            $(this).val(formatRupiah(raw));
-        }
-        recalcSummary();
-    });
-    $('#select-diskon-type').on('change', function () {
-        // Format ulang tampilan diskon sesuai tipe baru; nilai di-reset
-        // supaya angka % tidak salah dibaca sebagai nominal Rp (atau sebaliknya).
-        $('#input-diskon').val('0');
-        recalcSummary();
-    });
-    $('#input-shipping').on('input', function () {
-        var raw = $(this).val().replace(/\D/g, '');
-        $(this).val(formatRupiah(raw));
-        recalcSummary();
-    });
-    $('#toggle-tax').on('change', recalcSummary);
-
     // ── Pre-submit: convert rupiah field to raw number for server & show loader ──
     $('#form-unit-quotation').on('submit', function () {
         reindexRows();
@@ -1014,15 +1173,18 @@ $(function () {
             $(this).val(parseRupiah($(this).val()));
         });
 
-        var $diskon = $('#input-diskon');
-        $diskon.val($('#select-diskon-type').val() === 'amount'
-            ? parseRupiah($diskon.val())
-            : (parseFloat($diskon.val()) || 0));
+        $('.option-pane').each(function () {
+            var $pane = $(this);
+            var $diskon = $pane.find('.input-diskon');
+            $diskon.val($pane.find('.select-diskon-type').val() === 'amount'
+                ? parseRupiah($diskon.val())
+                : (parseFloat($diskon.val()) || 0));
 
-        var $shipping = $('#input-shipping');
-        if ($shipping.length) {
-            $shipping.val(parseRupiah($shipping.val()));
-        }
+            var $shipping = $pane.find('.input-shipping');
+            if ($shipping.length) {
+                $shipping.val(parseRupiah($shipping.val()));
+            }
+        });
 
         // Show smooth saving loader
         if (typeof Swal !== 'undefined') {
@@ -1039,24 +1201,30 @@ $(function () {
         }
     });
 
-    // ── Hydrate existing items for edit mode ──────────────────────────────
-    if (window.EDIT_ITEMS && window.EDIT_ITEMS.length > 0) {
-        $.each(window.EDIT_ITEMS, function (i, item) {
-            if (item.type === 'unit') {
-                addUnitRowFromData(item);
-            } else if (item.type === 'header' || item.type === 'heading') {
-                addHeaderRowFromData(item);
-            } else if (item.type === 'transport') {
-                addTransportRowFromData(item);
-            } else {
-                addCustomRowFromData(item);
-            }
+    // ── Hydrate opsi + item untuk edit mode (atau seed 1 opsi kosong buat create) ──
+    if (window.EDIT_OPTIONS && window.EDIT_OPTIONS.length > 0) {
+        $.each(window.EDIT_OPTIONS, function (i, optData) {
+            var $pane = addOption(optData);
+            var $container = $pane.find('.line-items-container');
+            $.each(optData.items || [], function (j, item) {
+                if (item.type === 'unit') {
+                    addUnitRowFromData($container, item);
+                } else if (item.type === 'header' || item.type === 'heading') {
+                    addHeaderRowFromData($container, item);
+                } else if (item.type === 'transport') {
+                    addTransportRowFromData($container, item);
+                } else {
+                    addCustomRowFromData($container, item);
+                }
+            });
         });
 
         // Trigger client change to load PICs (with pre-selected PIC)
         if (window.EDIT_CLIENT_ID) {
             $('#client-select').trigger('change');
         }
+    } else {
+        addOption({});
     }
 
     // ── Load Template PM (Unit Global) — dipanggil dari modal, bukan sessionStorage lagi ──
@@ -1192,15 +1360,18 @@ $(function () {
                 return label;
             }
 
+            // Template PM selalu ditambahkan ke opsi yang lagi aktif/kelihatan.
+            var $pmContainer = getActiveOptionPane().find('.line-items-container');
+
             $.each(pmLoadPreviewData.items, function (i, item) {
                 if (item.type === 'header') {
-                    addHeaderRowFromData({ label: pmMaybeAppendTransportToHeader(pmSimplifyLevelLabel(item.label)) });
+                    addHeaderRowFromData($pmContainer, { label: pmMaybeAppendTransportToHeader(pmSimplifyLevelLabel(item.label)) });
                 } else if (item.type === 'part' && item.id_equivalent && item.equivalent) {
                     // Judul "Brand - PN" sudah otomatis direkonstruksi halaman detail quotation
                     // dari relasi equivalent, jadi field label di sini diisi DESKRIPSI produk
                     // (konvensi yang sama dipakai saat pilih Spare Part manual) — bukan "Brand PN"
                     // lagi, supaya gak dobel nongol jadi "judul" pas ditampilkan.
-                    addUnitRowFromData({
+                    addUnitRowFromData($pmContainer, {
                         id_equivalent: item.id_equivalent,
                         equivalent: item.equivalent,
                         label: item.description || item.equivalent.product_desc || item.label || 'Item',
@@ -1210,7 +1381,7 @@ $(function () {
                         disc: 0
                     });
                 } else {
-                    addCustomRowFromData({
+                    addCustomRowFromData($pmContainer, {
                         label: pmSimplifyLevelLabel(item.label) || 'Item',
                         description: pmFormatNoteBullets(item.description || ''),
                         qty: item.qty,
@@ -1222,7 +1393,7 @@ $(function () {
             });
 
             // Selalu tambahkan 1 baris Transportation — Tipe & Kota sengaja dikosongkan, dipilih manual oleh sales.
-            addTransportRow();
+            addTransportRow($pmContainer);
 
             // Note master per level (dari power_service_prices.note_pmX) — selalu timpa isi
             // textarea Note yang ada saat ini, diformat ber-bullet biar selaras sama gaya
@@ -1253,7 +1424,10 @@ $(function () {
         'Parts':     'P',
         'Service':   'S',
         'Piping':    'PIP',
-        'Air Audit': 'AA'
+        'Air Audit': 'AA',
+        'General Check / Visit': 'GC',
+        'HVAC':        'HVAC',
+        'Fire System': 'FS'
     };
 
     $('#select-type').on('change', function () {
@@ -1270,49 +1444,47 @@ $(function () {
         }
     });
 
-    if ($('#select-diskon-type').val() === 'amount') {
-        var initialDiskon = parseFloat($('#input-diskon').val()) || 0;
-        $('#input-diskon').val(formatRupiah(Math.round(initialDiskon)));
+    // Kondisi Unit (Baru/Second) cuma relevan kalau Type = Unit.
+    function toggleUnitCondition() {
+        var isUnit = $('#select-type').val() === 'Unit';
+        $('#unit-condition-wrapper').toggle(isUnit);
+        if (!isUnit) $('#select-unit-condition').val('');
     }
+    $('#select-type').on('change', toggleUnitCondition);
+    toggleUnitCondition();
 
     // ── Reorder Items Logic (Drag & Drop + Up/Down Buttons) ──────────────
+    // Nama field item di-rewrite jadi options[optIdx][items][itemIdx][...] tiap
+    // kali dipanggil — optIdx diambil dari data-option-idx opsi (.option-pane)
+    // yang menaungi baris itu, itemIdx dari urutan baris di dalam opsi itu.
     function reindexRows() {
-        $('#line-items-container .unit-row').each(function (newIdx) {
-            var $row = $(this);
-            $row.find('input, select, textarea').each(function () {
-                var name = $(this).attr('name');
-                if (name) {
-                    var updatedName = name.replace(/^items\[\d+\]/, 'items[' + newIdx + ']')
-                                          .replace(/^unit_source_\d+$/, 'unit_source_' + newIdx);
+        $('.option-pane').each(function () {
+            var opt = $(this).data('option-idx');
+            $(this).find('.line-items-container .unit-row').each(function (newIdx) {
+                var $row = $(this);
+                $row.find('input, select, textarea').each(function () {
+                    var name = $(this).attr('name');
+                    if (!name) return;
+                    var updatedName = name
+                        .replace(/^(?:items\[\d+\]|options\[\d+\]\[items\]\[\d+\])/, 'options[' + opt + '][items][' + newIdx + ']')
+                        .replace(/^unit_source_(?:\d+|\d+_\d+)$/, 'unit_source_' + opt + '_' + newIdx);
                     $(this).attr('name', updatedName);
-                }
+                });
             });
         });
     }
 
     function recalcHeaderPrefixes() {
-        var headerCount = 0;
-        $('#line-items-container .unit-row[data-type="header"]').each(function () {
-            var $input = $(this).find('.field-label');
-            var val = $input.val() || '';
-            var prefix = String.fromCharCode(65 + (headerCount % 26)) + '. ';
-            var cleanVal = val.replace(/^[A-Z]\.\s*/i, '');
-            $input.val(prefix + cleanVal);
-            headerCount++;
-        });
-    }
-
-    var lineItemsContainer = document.getElementById('line-items-container');
-    if (lineItemsContainer && typeof Sortable !== 'undefined') {
-        Sortable.create(lineItemsContainer, {
-            handle: '.btn-drag-handle',
-            animation: 150,
-            ghostClass: 'bg-light-primary',
-            onEnd: function () {
-                reindexRows();
-                recalcHeaderPrefixes();
-                recalcSummary();
-            }
+        $('.option-pane').each(function () {
+            var headerCount = 0;
+            $(this).find('.line-items-container .unit-row[data-type="header"]').each(function () {
+                var $input = $(this).find('.field-label');
+                var val = $input.val() || '';
+                var prefix = String.fromCharCode(65 + (headerCount % 26)) + '. ';
+                var cleanVal = val.replace(/^[A-Z]\.\s*/i, '');
+                $input.val(prefix + cleanVal);
+                headerCount++;
+            });
         });
     }
 

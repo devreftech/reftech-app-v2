@@ -39,7 +39,7 @@ class LoginController extends Controller
      */
     public function showLoginForm()
     {
-        return view('components.modal.login');
+        return view('auth.login');
     }
 
     /**

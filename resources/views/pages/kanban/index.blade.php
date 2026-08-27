@@ -46,8 +46,8 @@
                             {{ $board->description ?: 'No description provided.' }}
                         </p>
                         <div class="border-top pt-3 d-flex justify-content-between align-items-center mt-auto">
-                            <small class="text-muted">Created by: {{ $board->creator->name }}</small>
-                            <a href="{{ route('kanban.boards.show', $board->id) }}" class="btn btn-sm btn-outline-primary">
+                            <small class="text-muted">Created by: {{ $board->creator ? $board->creator->name : 'System' }}</small>
+                            <a href="{{ $board->type === 'monitoring' ? route('kanban.monitoring-document') : route('kanban.boards.show', $board->id) }}" class="btn btn-sm btn-outline-primary">
                                 Open Board <i class="mdi mdi-arrow-right ms-1"></i>
                             </a>
                         </div>

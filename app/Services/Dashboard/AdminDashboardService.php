@@ -24,6 +24,24 @@ use Illuminate\Support\Facades\Cache;
 class AdminDashboardService
 {
     /**
+     * Ambil data mingguan (per week_num) buat satu "sale" dari $allData yang udah
+     * di-groupBy('id_sales') — baris "Sales Project" gabungan punya beberapa id
+     * sekaligus ($sale->id_sales_list), jadi datanya perlu dijumlahin per minggu
+     * dari semua id itu, bukan lookup satu id doang kayak sales individu biasa.
+     */
+    private function weeklyDataForSale($allData, $sale)
+    {
+        $ids = $sale->id_sales_list ?? [$sale->id];
+        $merged = collect();
+        foreach ($ids as $id) {
+            foreach ($allData->get($id, collect()) as $week => $total) {
+                $merged[$week] = ($merged[$week] ?? 0) + $total;
+            }
+        }
+        return $merged;
+    }
+
+    /**
      * Get dashboard data payload for Admin role
      */
     public function getDashboardData($sorted, $sales, $notulens, $yearNow, $monthNow, $dateNow)
@@ -117,80 +135,107 @@ class AdminDashboardService
             return $target ? collect([$target]) : collect();
         });
 
-        $totalProspectSupport = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)
-            ->where('id_sales', $firstSalesId)->whereIn('status', ['20', '30', '40', '60', '80'])->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $firstDayOfMonth = "{$yearNow}-{$monthNow}-01";
+        $lastDayOfMonth = date('Y-m-t', strtotime($firstDayOfMonth));
 
-        $totalForecast = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)
-            ->where('id_sales', $firstSalesId)->where('status', '80')->where('level', '1')->where('is_primary', '1')->sum('nett');
+        // Quotation stats untuk firstSalesId, digabung jadi satu query pakai
+        // conditional aggregation (sebelumnya 5 query terpisah: totalProspectSupport,
+        // totalForecast, totalQuotation, totalHotProspect, totalLoss, filteredQuote).
+        $quoteAgg = Quotation::whereBetween('estimated_date', [$firstDayOfMonth, $lastDayOfMonth])
+            ->where('id_sales', $firstSalesId)
+            ->where('level', '1')
+            ->where('is_primary', '1')
+            ->selectRaw("
+                COUNT(*) as filtered_quote,
+                COALESCE(SUM(nett), 0) as total_quotation,
+                COALESCE(SUM(CASE WHEN status IN ('20','30','40','60','80') THEN nett ELSE 0 END), 0) as total_prospect_support,
+                COALESCE(SUM(CASE WHEN status = '80' THEN nett ELSE 0 END), 0) as total_forecast,
+                COALESCE(SUM(CASE WHEN status IN ('80','90') THEN nett ELSE 0 END), 0) as total_hot_prospect,
+                COALESCE(SUM(CASE WHEN status = '0' THEN nett ELSE 0 END), 0) as total_loss
+            ")
+            ->first();
 
-        $totalQuotation = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)
-            ->where('id_sales', $firstSalesId)->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $filteredQuote = (int) $quoteAgg->filtered_quote;
+        $totalQuotation = (float) $quoteAgg->total_quotation;
+        $totalProspectSupport = (float) $quoteAgg->total_prospect_support;
+        $totalForecast = (float) $quoteAgg->total_forecast;
+        $totalHotProspect = (float) $quoteAgg->total_hot_prospect;
+        $totalLoss = (float) $quoteAgg->total_loss;
 
         $totalProspect = Quotation::join('prospect as p', 'quotation.id', '=', 'p.id_quotation')
             ->whereNotNull('id_quotation')->whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)
             ->where('quotation.id_sales', $firstSalesId)->whereIn('status', ['80', '90'])->where('quotation.level', '1')->where('is_primary', '1')->sum('nett');
 
-        $totalHotProspect = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)
-            ->where('id_sales', $firstSalesId)->whereIn('status', ['80', '90'])->where('level', '1')->where('is_primary', '1')->sum('nett');
-
-        $totalLoss = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)
-            ->where('id_sales', $firstSalesId)->where('status', '0')->where('level', '1')->where('is_primary', '1')->sum('nett');
-
-        $totalPO = Quotation::whereYear('po_date', $yearNow)
-            ->whereMonth('po_date', $monthNow)
+        // totalPO & filteredPO (sum + count dari filter yang sama) digabung jadi
+        // 1 query per tabel (Quotation, UnitQuotation) — sebelumnya 4 query.
+        $poQuotationAgg = Quotation::whereBetween('po_date', [$firstDayOfMonth, $lastDayOfMonth])
             ->where('id_sales', $firstSalesId)
             ->where('status', '100')
             ->where('level', '1')
             ->where('is_primary', '1')
-            ->sum('nett')
-            + UnitQuotation::where('status', 'po_received')
-                ->where('is_latest', 1)
-                ->whereYear('po_received', $yearNow)
-                ->whereMonth('po_received', $monthNow)
-                ->where('id_sales', $firstSalesId)
-                ->sum(DB::raw('total - tax_amount'));
+            ->selectRaw('COALESCE(SUM(nett), 0) as total_nett, COUNT(*) as cnt')
+            ->first();
 
-        $filteredLeads = Client::whereYear('created_at', $yearNow)->whereMonth('created_at', $monthNow)->where('id_sales', $firstSalesId)->count();
+        $poUnitAgg = UnitQuotation::where('status', 'po_received')
+            ->where('is_latest', 1)
+            ->whereYear('po_received', $yearNow)
+            ->whereMonth('po_received', $monthNow)
+            ->where('id_sales', $firstSalesId)
+            ->selectRaw('COALESCE(SUM(total - tax_amount), 0) as total_nett, COUNT(*) as cnt')
+            ->first();
 
-        $filteredDC = Activities::join('client as c', 'activities.id_client', '=', 'c.id')
-            ->whereYear('date', $yearNow)->whereMonth('date', $monthNow)->where('c.id_sales', $firstSalesId)
-            ->where('status', 'Responded')->whereIn('activities.name', ['Daily Call', 'Follow Up'])->count();
+        $totalPO = (float) $poQuotationAgg->total_nett + (float) $poUnitAgg->total_nett;
+        $filteredPO = (int) $poQuotationAgg->cnt + (int) $poUnitAgg->cnt;
+
+        $filteredLeads = Client::whereBetween('created_at', [$firstDayOfMonth . ' 00:00:00', $lastDayOfMonth . ' 23:59:59'])->where('id_sales', $firstSalesId)->count();
+
+        // filteredDC & filteredVisit sama-sama Activities join client dengan filter
+        // identik kecuali nama activity — digabung jadi 1 query (sebelumnya 2 query).
+        $dcVisitAgg = Activities::join('client as c', 'activities.id_client', '=', 'c.id')
+            ->whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])->where('c.id_sales', $firstSalesId)
+            ->where('status', 'Responded')
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN activities.name IN ('Daily Call','Follow Up') THEN 1 ELSE 0 END), 0) as filtered_dc,
+                COALESCE(SUM(CASE WHEN activities.name = 'Visit' THEN 1 ELSE 0 END), 0) as filtered_visit
+            ")
+            ->first();
+        $filteredDC = (int) $dcVisitAgg->filtered_dc;
+        $filteredVisit = (int) $dcVisitAgg->filtered_visit;
 
         $filteredCRM = Activities::join('client as c', 'activities.id_client', '=', 'c.id')
             ->join(DB::raw('(SELECT id_client, status FROM crm_status WHERE id IN (SELECT MAX(id) FROM crm_status GROUP BY id_client)) as cs'), 'c.id', '=', 'cs.id_client')
             ->whereYear('date', $yearNow)->whereMonth('date', $monthNow)->where('c.id_sales', $firstSalesId)
             ->where('activities.status', 'Responded')->where('activities.name', 'CRM')->where('cs.status', '2')->count(DB::raw('DISTINCT c.id'));
 
-        $filteredQuote = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)
-            ->where('id_sales', $firstSalesId)->where('level', '1')->where('is_primary', '1')->count();
-
         $filteredProspect = Prospect::whereNotNull('id_quotation')->whereMonth('date', $monthNow)->whereYear('date', $yearNow)->count();
 
         $allProspect = Prospect::whereMonth('date', $monthNow)->whereYear('date', $yearNow)->count();
 
-        $filteredPO = Quotation::whereYear('po_date', $yearNow)
-            ->whereMonth('po_date', $monthNow)
-            ->where('id_sales', $firstSalesId)
-            ->where('status', '100')
-            ->where('level', '1')
-            ->where('is_primary', '1')
-            ->count()
-            + UnitQuotation::where('status', 'po_received')
-                ->where('is_latest', 1)
-                ->whereYear('po_received', $yearNow)
-                ->whereMonth('po_received', $monthNow)
-                ->where('id_sales', $firstSalesId)
-                ->count();
+        // "Sales Project" — quotation yang dibuat oleh Admin/Sales Manager (bukan Sales individu),
+        // digabung jadi satu angka karena project cuma nerima & ngolah data, gak punya target sendiri.
+        $projectSalesIds = User::whereIn('role', ['Admin', 'Sales Manager'])->where('active', '1')->pluck('id');
 
-        $filteredVisit = Activities::join('client as c', 'activities.id_client', '=', 'c.id')
-            ->whereYear('date', $yearNow)->whereMonth('date', $monthNow)->where('c.id_sales', $firstSalesId)
-            ->where('status', 'Responded')->where('name', 'Visit')->count();
+        // projectQuoteCount & projectQuoteNominal (count + sum dari filter yang sama)
+        // digabung jadi 1 query per tabel — sebelumnya 4 query.
+        $projectQuoteAgg = Quotation::whereBetween('estimated_date', [$firstDayOfMonth, $lastDayOfMonth])
+            ->whereIn('id_sales', $projectSalesIds)->where('level', '1')->where('is_primary', '1')
+            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(nett), 0) as total_nett')
+            ->first();
 
-        $weekDataSales = User::where('role', 'sales')->get();
+        $projectUnitAgg = UnitQuotation::whereYear('date', $yearNow)->whereMonth('date', $monthNow)
+            ->whereIn('id_sales', $projectSalesIds)->where('is_latest', 1)
+            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(total), 0) as total_nett')
+            ->first();
 
-        $dataDc = $this->getWeekDataDC($weekDataSales);
-        $dataCRM = $this->getWeekDataCRM($weekDataSales);
-        $dataVisit = $this->getWeekDataVisit($weekDataSales);
+        $projectQuoteCount = (int) $projectQuoteAgg->cnt + (int) $projectUnitAgg->cnt;
+        $projectQuoteNominal = (float) $projectQuoteAgg->total_nett + (float) $projectUnitAgg->total_nett;
+
+        $weekDataSales = User::activeSalesAndProjectAdmins();
+
+        $weekActivities = $this->getWeekDataActivitiesCombined($weekDataSales);
+        $dataDc = $weekActivities['dc'];
+        $dataCRM = $weekActivities['crm'];
+        $dataVisit = $weekActivities['visit'];
         $dataQuote = $this->getWeekDataQuote($weekDataSales);
         $dataOverview = $this->getDataOverview();
 
@@ -316,6 +361,8 @@ class AdminDashboardService
                 'prCount',
                 'adminView',
                 'firstSales',
+                'projectQuoteCount',
+                'projectQuoteNominal',
             ),
             $adminExtraData,
             $forecastData,
@@ -340,7 +387,12 @@ class AdminDashboardService
         return $formattedAngka . ' ' . $satuan[$i];
     }
 
-    protected function getWeekDataDC($sales)
+    /**
+     * Gabungan getWeekDataDC + getWeekDataCRM + getWeekDataVisit — ketiganya query
+     * tabel & join yang sama (Activities join client), cuma beda filter nama
+     * activity. Sebelumnya 3 query terpisah, sekarang 1 query lalu dipecah di PHP.
+     */
+    protected function getWeekDataActivitiesCombined($sales)
     {
         $dateNow = Carbon::now();
         $yearNow = $dateNow->year;
@@ -353,100 +405,40 @@ class AdminDashboardService
         $endWeek = date('W', strtotime($lastDayOfMonth));
         $weekStart = $firstDayOfWeek > 1 ? $weekEnd + 1 : $weekEnd;
 
-        $allData = Activities::select('c.id_sales', DB::raw('WEEK(date, 4) as week_num'), DB::raw('COUNT(*) as total'))
+        $rows = Activities::select('c.id_sales', DB::raw('WEEK(date, 4) as week_num'), 'activities.name', DB::raw('COUNT(*) as total'))
             ->join('client as c', 'activities.id_client', '=', 'c.id')
             ->whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
-            ->whereIn('activities.name', ['Daily Call', 'Follow Up'])
+            ->whereIn('activities.name', ['Daily Call', 'Follow Up', 'Crm', 'Visit'])
             ->where('status', 'Responded')
-            ->groupBy('c.id_sales', DB::raw('WEEK(date, 4)'))
-            ->get()
+            ->groupBy('c.id_sales', DB::raw('WEEK(date, 4)'), 'activities.name')
+            ->get();
+
+        $dcData = $rows->whereIn('name', ['Daily Call', 'Follow Up'])
             ->groupBy('id_sales')
-            ->map(fn($items) => $items->pluck('total', 'week_num'));
-
-        $fullMonthData = [];
-        foreach ($sales as $sale) {
-            $weeklyData = [];
-            $salesData = $allData->get($sale->id, collect());
-
-            for ($week = $weekStart; $week <= $endWeek; $week++) {
-                $weekKey = "{$week}";
-                $weekDays = date('t', strtotime("{$yearNow}-W{$weekKey}"));
-                if ($weekDays >= 4) {
-                    $weeklyData[$weekKey] = $salesData->get($week, 0);
+            ->map(function ($items) {
+                $merged = collect();
+                foreach ($items as $item) {
+                    $merged[$item->week_num] = ($merged[$item->week_num] ?? 0) + $item->total;
                 }
-            }
-            $fullMonthData[$sale->name] = $weeklyData;
-        }
-        return $fullMonthData;
+                return $merged;
+            });
+
+        $crmData = $rows->where('name', 'Crm')->groupBy('id_sales')->map(fn($items) => $items->pluck('total', 'week_num'));
+        $visitData = $rows->where('name', 'Visit')->groupBy('id_sales')->map(fn($items) => $items->pluck('total', 'week_num'));
+
+        return [
+            'dc' => $this->buildWeeklyFullMonth($sales, $dcData, $weekStart, $endWeek, $yearNow),
+            'crm' => $this->buildWeeklyFullMonth($sales, $crmData, $weekStart, $endWeek, $yearNow),
+            'visit' => $this->buildWeeklyFullMonth($sales, $visitData, $weekStart, $endWeek, $yearNow),
+        ];
     }
 
-    protected function getWeekDataCRM($sales)
+    private function buildWeeklyFullMonth($sales, $allData, $weekStart, $endWeek, $yearNow)
     {
-        $dateNow = Carbon::now();
-        $yearNow = $dateNow->year;
-        $monthNow = $dateNow->month;
-        $firstDayOfMonth = "{$yearNow}-{$monthNow}-01";
-        $lastDayOfMonth = date('Y-m-t', strtotime($firstDayOfMonth));
-
-        $firstDayOfWeek = date('N', strtotime($firstDayOfMonth));
-        $weekEnd = date('W', strtotime($firstDayOfMonth));
-        $endWeek = date('W', strtotime($lastDayOfMonth));
-        $weekStart = $firstDayOfWeek > 1 ? $weekEnd + 1 : $weekEnd;
-
-        $allData = Activities::select('c.id_sales', DB::raw('WEEK(date, 4) as week_num'), DB::raw('COUNT(*) as total'))
-            ->join('client as c', 'activities.id_client', '=', 'c.id')
-            ->whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
-            ->where('activities.name', 'Crm')
-            ->where('status', 'Responded')
-            ->groupBy('c.id_sales', DB::raw('WEEK(date, 4)'))
-            ->get()
-            ->groupBy('id_sales')
-            ->map(fn($items) => $items->pluck('total', 'week_num'));
-
         $fullMonthData = [];
         foreach ($sales as $sale) {
             $weeklyData = [];
-            $salesData = $allData->get($sale->id, collect());
-
-            for ($week = $weekStart; $week <= $endWeek; $week++) {
-                $weekKey = "{$week}";
-                $weekDays = date('t', strtotime("{$yearNow}-W{$weekKey}"));
-                if ($weekDays >= 4) {
-                    $weeklyData[$weekKey] = $salesData->get($week, 0);
-                }
-            }
-            $fullMonthData[$sale->name] = $weeklyData;
-        }
-        return $fullMonthData;
-    }
-
-    protected function getWeekDataVisit($sales)
-    {
-        $dateNow = Carbon::now();
-        $yearNow = $dateNow->year;
-        $monthNow = $dateNow->month;
-        $firstDayOfMonth = "{$yearNow}-{$monthNow}-01";
-        $lastDayOfMonth = date('Y-m-t', strtotime($firstDayOfMonth));
-
-        $firstDayOfWeek = date('N', strtotime($firstDayOfMonth));
-        $weekEnd = date('W', strtotime($firstDayOfMonth));
-        $endWeek = date('W', strtotime($lastDayOfMonth));
-        $weekStart = $firstDayOfWeek > 1 ? $weekEnd + 1 : $weekEnd;
-
-        $allData = Activities::select('c.id_sales', DB::raw('WEEK(date, 4) as week_num'), DB::raw('COUNT(*) as total'))
-            ->join('client as c', 'activities.id_client', '=', 'c.id')
-            ->whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
-            ->where('activities.name', 'Visit')
-            ->where('status', 'Responded')
-            ->groupBy('c.id_sales', DB::raw('WEEK(date, 4)'))
-            ->get()
-            ->groupBy('id_sales')
-            ->map(fn($items) => $items->pluck('total', 'week_num'));
-
-        $fullMonthData = [];
-        foreach ($sales as $sale) {
-            $weeklyData = [];
-            $salesData = $allData->get($sale->id, collect());
+            $salesData = $this->weeklyDataForSale($allData, $sale);
 
             for ($week = $weekStart; $week <= $endWeek; $week++) {
                 $weekKey = "{$week}";
@@ -482,21 +474,7 @@ class AdminDashboardService
             ->groupBy('id_sales')
             ->map(fn($items) => $items->pluck('total', 'week_num'));
 
-        $fullMonthData = [];
-        foreach ($sales as $sale) {
-            $weeklyData = [];
-            $salesData = $allData->get($sale->id, collect());
-
-            for ($week = $weekStart; $week <= $endWeek; $week++) {
-                $weekKey = "{$week}";
-                $weekDays = date('t', strtotime("{$yearNow}-W{$weekKey}"));
-                if ($weekDays >= 4) {
-                    $weeklyData[$weekKey] = $salesData->get($week, 0);
-                }
-            }
-            $fullMonthData[$sale->name] = $weeklyData;
-        }
-        return $fullMonthData;
+        return $this->buildWeeklyFullMonth($sales, $allData, $weekStart, $endWeek, $yearNow);
     }
 
     protected function getWeekDataPO($sales)
@@ -522,21 +500,7 @@ class AdminDashboardService
             ->groupBy('id_sales')
             ->map(fn($items) => $items->pluck('total', 'week_num'));
 
-        $fullMonthData = [];
-        foreach ($sales as $sale) {
-            $weeklyData = [];
-            $salesData = $allData->get($sale->id, collect());
-
-            for ($week = $weekStart; $week <= $endWeek; $week++) {
-                $weekKey = "{$week}";
-                $weekDays = date('t', strtotime("{$yearNow}-W{$weekKey}"));
-                if ($weekDays >= 4) {
-                    $weeklyData[$weekKey] = $salesData->get($week, 0);
-                }
-            }
-            $fullMonthData[$sale->name] = $weeklyData;
-        }
-        return $fullMonthData;
+        return $this->buildWeeklyFullMonth($sales, $allData, $weekStart, $endWeek, $yearNow);
     }
 
     protected function getWeekDataLeads($sales)
@@ -559,58 +523,42 @@ class AdminDashboardService
             ->groupBy('id_sales')
             ->map(fn($items) => $items->pluck('total', 'week_num'));
 
-        $fullMonthData = [];
-        foreach ($sales as $sale) {
-            $weeklyData = [];
-            $salesData = $allData->get($sale->id, collect());
-
-            for ($week = $weekStart; $week <= $endWeek; $week++) {
-                $weekKey = "{$week}";
-                $weekDays = date('t', strtotime("{$yearNow}-W{$weekKey}"));
-                if ($weekDays >= 4) {
-                    $weeklyData[$weekKey] = $salesData->get($week, 0);
-                }
-            }
-            $fullMonthData[$sale->name] = $weeklyData;
-        }
-        return $fullMonthData;
+        return $this->buildWeeklyFullMonth($sales, $allData, $weekStart, $endWeek, $yearNow);
     }
 
     protected function getDataOverview()
     {
         $month = Carbon::now()->month;
         $year = Carbon::now()->year;
+        $firstDayOfMonth = "{$year}-{$month}-01";
+        $lastDayOfMonth = date('Y-m-t', strtotime($firstDayOfMonth));
 
-        $users = User::with('clients')->where('role', 'Sales')->get();
+        $users = User::activeSalesAndProjectAdmins();
+        $users->load('clients');
 
         $allDC = Activities::join('client as c', 'activities.id_client', '=', 'c.id')
-            ->whereMonth('date', $month)
-            ->whereYear('date', $year)
+            ->whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
             ->where('status', 'Responded')
             ->whereIn('name', ['Daily Call', 'Follow Up'])
             ->groupBy('c.id')
             ->get();
 
         $allActivities = Activities::join('client as c', 'activities.id_client', '=', 'c.id')
-            ->whereMonth('date', $month)
-            ->whereYear('date', $year)
+            ->whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
             ->where('status', 'Responded')
             ->where('name', 'CRM')
             ->groupBy('c.id')
             ->get();
 
-        $allLeads = Client::whereMonth('created_at', $month)
-            ->whereYear('created_at', $year)
+        $allLeads = Client::whereBetween('created_at', [$firstDayOfMonth . ' 00:00:00', $lastDayOfMonth . ' 23:59:59'])
             ->get();
 
-        $allQuotes = Quotation::whereMonth('estimated_date', $month)
-            ->whereYear('estimated_date', $year)
+        $allQuotes = Quotation::whereBetween('estimated_date', [$firstDayOfMonth, $lastDayOfMonth])
             ->where('level', '1')
             ->where('is_primary', '1')
             ->get();
 
-        $allPOs = Quotation::whereMonth('po_date', $month)
-            ->whereYear('po_date', $year)
+        $allPOs = Quotation::whereBetween('po_date', [$firstDayOfMonth, $lastDayOfMonth])
             ->where('status', '100')
             ->where('level', '1')
             ->where('is_primary', '1')
@@ -625,12 +573,18 @@ class AdminDashboardService
             $quoteCounts = collect([1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0]);
             $poCounts = collect([1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0]);
 
-            $clientIds = $user->clients->pluck('id');
-            $userDC = $allDC->where('id_sales', $user->id);
+            // Baris "Sales Project" gabungan punya beberapa id_sales sekaligus
+            // ($user->id_sales_list) — filter di bawah pakai whereIn, bukan cuma
+            // id satu user, biar datanya beneran teragregat dari semua Admin itu.
+            $ids = $user->id_sales_list ?? [$user->id];
+            $clientIds = count($ids) > 1
+                ? Client::whereIn('id_sales', $ids)->pluck('id')
+                : $user->clients->pluck('id');
+            $userDC = $allDC->whereIn('id_sales', $ids);
             $userCRM = $allActivities->whereIn('id_client', $clientIds);
-            $userLeads = $allLeads->where('id_sales', $user->id);
-            $userQuotes = $allQuotes->where('id_sales', $user->id);
-            $userPOs = $allPOs->where('id_sales', $user->id);
+            $userLeads = $allLeads->whereIn('id_sales', $ids);
+            $userQuotes = $allQuotes->whereIn('id_sales', $ids);
+            $userPOs = $allPOs->whereIn('id_sales', $ids);
 
             foreach ($userCRM as $activity) {
                 $week = Carbon::parse($activity->date)->weekOfMonth;

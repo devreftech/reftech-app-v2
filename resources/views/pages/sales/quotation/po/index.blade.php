@@ -15,6 +15,7 @@
                         <th>Quote No.</th>
                         <th>Company</th>
                         <th>Total Price</th>
+                        <th>Type</th>
                         <th>Description</th>
                         <th>Date PO</th>
                         <th>Status</th>

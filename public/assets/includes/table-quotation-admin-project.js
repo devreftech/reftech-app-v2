@@ -8,7 +8,7 @@ $(function () {
             .appendTo(dt_table.find("thead"));
 
         dt_table.find("thead tr:eq(1) th").each(function (i) {
-            if (i === 6) { $(this).html(""); return; }
+            if (i === 7) { $(this).html(""); return; }
             var title = $(this).text();
             $(this).html(
                 '<input type="text" class="form-control form-control-sm" placeholder="Cari ' + title + '..." />'
@@ -30,13 +30,14 @@ $(function () {
                 { data: "no_quote" },
                 { data: "company" },
                 { data: "subtotal" },
+                { data: "type" },
                 { data: "title" },
                 { data: "estimated_date" },
                 { data: "status" },
                 { data: "sales_image" },
             ],
             columnDefs: [
-                { targets: [2, 3, 4, 5, 6], className: "text-center" },
+                { targets: [2, 3, 4, 5, 6, 7], className: "text-center" },
                 {
                     targets: 0,
                     className: "text-center text-nowrap",
@@ -85,16 +86,46 @@ $(function () {
                         return '<div class="d-flex justify-content-between px-2"><span>Rp.</span><span>' + formatted + "</span></div>";
                     },
                 },
-                { targets: 3, render: function (data) { return data || "-"; } },
                 {
-                    targets: 4,
+                    // Type quotation (Sparepart/Service/Overhaul/Rental untuk quotation biasa,
+                    // Unit/Rental/Project/Parts/Service untuk Smart Quote).
+                    targets: 3,
+                    render: function (data, type) {
+                        if (type === "filter" || type === "sort") return data || "-";
+                        if (type !== "display") return data;
+                        if (!data) {
+                            return '<span class="badge rounded-pill bg-label-secondary">-</span>';
+                        }
+                        var colors = {
+                            Unit:      "bg-label-primary",
+                            Rental:    "bg-label-info",
+                            Project:   "bg-label-dark",
+                            Parts:     "bg-label-warning",
+                            Sparepart: "bg-label-warning",
+                            Service:   "bg-label-success",
+                            Piping:    "bg-label-secondary",
+                            "Air Audit": "bg-label-danger",
+                            Overhaul:  "bg-label-danger",
+                            "General Check / Visit": "bg-label-info",
+                            HVAC:      "bg-label-primary",
+                            "Fire System": "bg-label-danger",
+                        };
+                        var labels = { Parts: "Sparepart" };
+                        var cls   = colors[data] || "bg-label-secondary";
+                        var label = labels[data] || data;
+                        return '<span class="badge rounded-pill ' + cls + '">' + label + "</span>";
+                    },
+                },
+                { targets: 4, render: function (data) { return data || "-"; } },
+                {
+                    targets: 5,
                     render: function (data, type) {
                         if (type !== "display") return data;
                         return data ? moment(data).format("DD-MM-YYYY") : "-";
                     },
                 },
                 {
-                    targets: 5,
+                    targets: 6,
                     render: function (data, type, full) {
                         if (type !== "display") return data;
                         var tip = full["tip"] || "Belum di update";
@@ -124,7 +155,7 @@ $(function () {
                     },
                 },
                 {
-                    targets: 6,
+                    targets: 7,
                     className: "text-center",
                     width: "48px",
                     orderable: false,

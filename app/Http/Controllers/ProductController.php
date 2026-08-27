@@ -195,6 +195,35 @@ class ProductController extends Controller
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
         $leveledProspect = Prospect::whereNULL('level')->where('id_sales', Auth::id())->count();
 
+        // Grafik Barang Masuk & Keluar per bulan (12 bulan terakhir)
+        $chartStart = Carbon::now()->startOfMonth()->subMonths(11);
+        $monthlyInByYm = DB::table('detail_product_in as d')
+            ->join('product_in as p', 'p.id', '=', 'd.id_product_in')
+            ->join('detail_product as dp', 'dp.id', '=', 'd.id_detail_product')
+            ->where('dp.id_product', $id)
+            ->where('p.date', '>=', $chartStart->toDateString())
+            ->selectRaw("DATE_FORMAT(p.date, '%Y-%m') as ym, SUM(d.qty) as total")
+            ->groupBy('ym')
+            ->pluck('total', 'ym');
+        $monthlyOutByYm = DB::table('detail_product_out as d')
+            ->join('product_out as p', 'p.id', '=', 'd.id_product_out')
+            ->join('detail_product as dp', 'dp.id', '=', 'd.id_detail_product')
+            ->where('dp.id_product', $id)
+            ->where('p.date', '>=', $chartStart->toDateString())
+            ->selectRaw("DATE_FORMAT(p.date, '%Y-%m') as ym, SUM(d.qty) as total")
+            ->groupBy('ym')
+            ->pluck('total', 'ym');
+
+        $monthlyLabels = [];
+        $monthlyIn = [];
+        $monthlyOut = [];
+        for ($m = 0; $m < 12; $m++) {
+            $cursor = $chartStart->copy()->addMonths($m);
+            $ym = $cursor->format('Y-m');
+            $monthlyLabels[] = $cursor->translatedFormat('M Y');
+            $monthlyIn[] = (float) ($monthlyInByYm[$ym] ?? 0);
+            $monthlyOut[] = (float) ($monthlyOutByYm[$ym] ?? 0);
+        }
 
         // Comment Buat Admin
         $firstComments = Comment::where('id_user', Auth::id())
@@ -260,7 +289,7 @@ class ProductController extends Controller
             ->where('o.level', '1')
             ->take(5)
             ->get();
-        return view('pages.warehouse.product.detail', compact('product', 'comment', 'unreadComment', 'commentAdmin', 'unreadCommentAdmin', 'details', 'leveledProspect', 'noSaleProspect', 'serials', 'allStock', 'partInquiries'));
+        return view('pages.warehouse.product.detail', compact('product', 'comment', 'unreadComment', 'commentAdmin', 'unreadCommentAdmin', 'details', 'leveledProspect', 'noSaleProspect', 'serials', 'allStock', 'partInquiries', 'monthlyLabels', 'monthlyIn', 'monthlyOut'));
     }
 
     /**

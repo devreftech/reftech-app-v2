@@ -6,6 +6,7 @@ use App\Models\HelpdeskTicket;
 use App\Models\PrDiscussionMention;
 use App\Models\PurchaseRequest;
 use App\Models\UnitQuotation;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -19,6 +20,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot()
     {
+        // App has no Tailwind CSS loaded (Bootstrap/Sneat admin theme), but Laravel's
+        // default paginator view is Tailwind-styled — every ->links() call rendered
+        // unstyled raw markup. Switch to the Bootstrap pagination view site-wide.
+        Paginator::useBootstrap();
+
         // Inject $prMentions & $pendingCancelQuotes ke navbar agar notifikasi
         // muncul di semua halaman tanpa mengubah setiap controller.
         View::composer('layouts.sales.navbar', function ($view) {
@@ -74,6 +80,15 @@ class AppServiceProvider extends ServiceProvider
             if (Auth::check() && Auth::user()->role == 'Admin') {
                 $openTicketCount = HelpdeskTicket::where('status', 'Open')->count();
                 $view->with('openTicketCount', $openTicketCount);
+            }
+        });
+
+        // Badge "Service Reports" untuk role ServiceM: jumlah report yang masih
+        // nunggu approval (pending). Approve dulu baru kehitung di badge Sales.
+        View::composer('components.dashboard.sidebar', function ($view) {
+            if (Auth::check() && in_array(Auth::user()->role, ['ServiceM', 'Admin'])) {
+                $srPendingApprovalCount = \App\Models\Reports::where('approval_status', 'pending')->count();
+                $view->with('srPendingApprovalCount', $srPendingApprovalCount);
             }
         });
     }

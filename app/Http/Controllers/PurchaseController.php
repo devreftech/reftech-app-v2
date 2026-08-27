@@ -741,6 +741,180 @@ class PurchaseController extends Controller
         return redirect()->back()->with('error', 'Gagal memproses Goods Receipt.');
     }
 
+    /**
+     * GR buat PO Parts yang dibeli langsung tanpa Purchase Request (id_purchase_request
+     * null) — sumber itemnya langsung detail_purchase_order, bukan
+     * purchase_request_detail_allocation kayak goodsReceiptForm() di atas, karena
+     * emang gak ada PR yang dialokasikan ke PO ini.
+     */
+    public function goodsReceiptFormDirect($id)
+    {
+        $po = PurchaseOrder::findOrFail($id);
+        $details = DetailPurchaseOrder::where('id_purchase_order', $id)
+            ->where('category', 'Sparepart')
+            ->orderBy('id')
+            ->get();
+
+        $fullRep = [];
+        foreach ($details as $key => $detail) {
+            $fullRep[$key] = $detail->id_product
+                ? DetailProduct::where('id_product', $detail->id_product)->with('product')->get()
+                : collect([]);
+        }
+
+        $suppliers = Supplier::all();
+        $previewNoGr = $po->no_gr ?: $this->prService->generateNoGr();
+
+        return view('pages.warehouse.purchase.goods_receipt_direct', compact('po', 'details', 'fullRep', 'suppliers', 'previewNoGr'));
+    }
+
+    public function storeGoodsReceiptDirect(Request $request, $id)
+    {
+        $rule = [
+            'no_do' => 'required|string|max:255',
+            'gr_date' => 'required|date',
+            'supplier' => 'required|integer|exists:supplier,id',
+            'detail_id' => 'required|array',
+            'detail_id.*' => 'required|integer|exists:detail_purchase_order,id',
+            'gr_status' => 'required|array',
+            'gr_status.*' => 'required|in:Sesuai,Tidak Sesuai,Rusak',
+            'replacement' => 'required|array',
+            'replacement.*' => 'required|integer|exists:detail_product,id',
+            'qty_received' => 'required|array',
+            'qty_received.*' => 'required|integer|min:0',
+            'qty_damaged' => 'nullable|array',
+            'qty_damaged.*' => 'nullable|integer|min:0',
+            'warehouse' => 'required|array',
+            'warehouse.*' => 'required|in:BDG,BKS',
+            'gr_note' => 'nullable|array',
+        ];
+
+        $message = [
+            'no_do.required' => 'Nomor Delivery Order (DO) Wajib Diisi',
+            'gr_date.required' => 'Tanggal Penerimaan Wajib Diisi',
+            'supplier.required' => 'Supplier Wajib Dipilih',
+            'replacement.*.required' => 'Commodity || Replacement Wajib Dipilih',
+        ];
+
+        $this->validate($request, $rule, $message);
+
+        $po = PurchaseOrder::findOrFail($id);
+        $supplier = Supplier::findOrFail($request->supplier);
+
+        $productIn = new ProductIn();
+        $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
+        $productIn->no_do = $request->no_do;
+        $productIn->invoice = $po->no_invoice_supplier;
+        $productIn->id_supplier = $request->supplier;
+        $productIn->id_purchase_order = $po->id;
+        $productIn->info = $supplier->info;
+        $productIn->date = $request->gr_date;
+        $productIn->date_invoice = null;
+        $productIn->subtotal = null;
+        $productIn->total_no_tax = null;
+        $productIn->tax = null;
+        $productIn->note = 'Otomatis dibuat via Goods Receipt PO ' . $po->no_po . ' (tanpa PR)';
+        $productIn->shipping = null;
+        $productIn->total = null;
+        $productIn->created_by = Auth::id();
+        $productIn->save();
+
+        $dProductSave = false;
+        $damagedLines = [];
+
+        foreach ($request->detail_id as $key => $detailId) {
+            $poDetail = DetailPurchaseOrder::find($detailId);
+            if (!$poDetail) {
+                continue;
+            }
+
+            $status = $request->gr_status[$key];
+            $poQtyCap = $poDetail->qty;
+
+            $qtyRec = $request->qty_received[$key];
+            $qtyDamaged = min((int) ($request->qty_damaged[$key] ?? 0), $poQtyCap);
+            $qtyGood = $qtyRec;
+            $note = $request->gr_note[$key] ?? null;
+            $replId = $request->replacement[$key];
+            $wh = $request->warehouse[$key];
+
+            if ($qtyGood > 0) {
+                $dProductIn = new DetailProductIn();
+                $dProductIn->id_product_in = $productIn->id;
+                $dProductIn->id_detail_product = $replId;
+                $dProductIn->qty = $qtyGood;
+                $dProductIn->modal = null;
+                $dProductIn->amount = null;
+                $dProductIn->warehouse = $wh;
+                $dProductIn->save();
+
+                // Update physical inventory stock
+                $productD = DetailProduct::find($replId);
+                if ($productD) {
+                    if ($wh == 'BDG') {
+                        $productD->stock += $qtyGood;
+                    } else {
+                        $productD->warehouse_stock += $qtyGood;
+                    }
+                    $productD->save();
+
+                    $product = Product::find($productD->id_product);
+                    if ($product) {
+                        if ($wh == 'BDG') {
+                            $product->stock += $qtyGood;
+                        } else {
+                            $product->warehouse_stock += $qtyGood;
+                        }
+                        $product->save();
+                    }
+                }
+            }
+
+            if ($qtyDamaged > 0) {
+                $damagedLines[] = [
+                    'id_replacement' => $replId,
+                    'qty' => $qtyDamaged,
+                    'note' => $note ?: 'Rusak saat diterima (GR PO ' . $po->no_po . ')',
+                ];
+            }
+
+            $dProductSave = true;
+        }
+
+        if (!empty($damagedLines)) {
+            $retur = new \App\Models\Retur();
+            $retur->id_product_in = $productIn->id;
+            $retur->no_return = $this->generateNoReturn();
+            $retur->status = 0;
+            $retur->date = $request->gr_date;
+            $retur->save();
+
+            foreach ($damagedLines as $line) {
+                $detailReturn = new \App\Models\DetailReturn();
+                $detailReturn->id_retur = $retur->id;
+                $detailReturn->id_replacement = $line['id_replacement'];
+                $detailReturn->qty = $line['qty'];
+                $detailReturn->note = $line['note'];
+                $detailReturn->date = $request->gr_date;
+                $detailReturn->status = 0;
+                $detailReturn->save();
+            }
+        }
+
+        if ($dProductSave) {
+            if (!$po->no_gr) {
+                $po->no_gr = $this->prService->generateNoGr();
+                $po->gr_sent_at = now();
+            }
+            $po->receipt_status = 'Received';
+            $po->save();
+
+            return redirect()->route('purchase.show', $po->id)->with('success', 'Verifikasi Goods Receipt berhasil disimpan.');
+        }
+
+        return redirect()->back()->with('error', 'Gagal memproses Goods Receipt.');
+    }
+
     public function update(Request $request, $id)
     {
         $rule = [
@@ -751,6 +925,22 @@ class PurchaseController extends Controller
         $this->validate($request, $rule);
 
         $detail = PurchaseRequestDetail::with('header')->findOrFail($id);
+
+        // qty (kebutuhan SO) cuma boleh diubah role Logistic/Admin — sama seperti
+        // qty_stock di bawah, biar nggak sembarang role bisa geser angka kebutuhan
+        // pengadaan setelah PR terbit (termasuk PR yang auto-generate dari shortage).
+        if ((int) $request->qty !== (int) $detail->qty) {
+            if (!in_array(Auth::user()->role, ['Logistic', 'Admin'])) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'qty' => 'Hanya role Logistic/Admin yang boleh mengubah qty Purchase Request.',
+                ]);
+            }
+            if ((int) $request->qty < (int) $detail->allocatedQty) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'qty' => "Qty tidak boleh diturunkan di bawah jumlah yang sudah dialokasikan ke PO ({$detail->allocatedQty}).",
+                ]);
+            }
+        }
 
         // qty_stock = qty tambahan buat buffer stok gudang (di luar kebutuhan SO),
         // sengaja dibatasi role Logistic/Admin dan cuma sebelum PR di-ACC — biar nggak
@@ -776,16 +966,16 @@ class PurchaseController extends Controller
         return redirect()->back()->with('success', 'Purchase Request berhasil diperbarui.');
     }
 
-    // Format: 001-BM/VIII/BDG/2026 — nomor urut per gudang (BDG/BKS) tiap bulan,
-    // biar keliatan langsung barangnya masuk ke gudang mana dari nomornya.
+    // Format: 001-P/BM/VIII/2026 — sama persis polanya kayak ProductInController::
+    // generateNoProductIn(), disamain biar No. Product In konsisten dari manapun
+    // dia dibuat (manual atau via Goods Receipt PO).
     private function generateNoProductIn(string $warehouse = 'BDG'): string
     {
         $now = now();
         $year = $now->format('Y');
         $romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
         $roman = $romanMonths[(int) $now->format('n') - 1];
-        $wh = in_array($warehouse, ['BDG', 'BKS']) ? $warehouse : 'BDG';
-        $suffix = "-BM/{$roman}/{$wh}/{$year}";
+        $suffix = "-P/BM/{$roman}/{$year}";
 
         $last = ProductIn::where('no_product_in', 'like', '%' . $suffix)
             ->orderByDesc('no_product_in')

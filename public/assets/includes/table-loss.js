@@ -30,20 +30,22 @@ $(function () {
                 { data: "no_quote" },
                 { data: "company" },
                 { data: "harga_total" },
+                { data: "type" },
                 { data: "description" },
                 { data: "estimated_date" },
                 { data: "status" },
             ],
             columnDefs: [
-                { targets: [2, 3, 4, 5], className: "text-center" },
+                { targets: [2, 3, 4, 5, 6], className: "text-center" },
                 {
                     targets: 0,
                     className: "text-center text-nowrap",
                     responsivePriority: 1,
                     render: function (data, type, full) {
                         if (type !== "display") return data;
-                        var id  = full["id"];
-                        var url = route("quotation.show", id);
+                        var id = full["id"];
+                        var rowType = full["row_type"];
+                        var url = rowType === "unit" ? "/smart-quote/" + id : route("quotation.show", id);
                         return '<a class="fw-bold text-primary" href="' + url + '">' + (data || "-") + "</a>";
                     },
                 },
@@ -68,30 +70,59 @@ $(function () {
                         return '<div class="d-flex justify-content-between px-2"><span>Rp.</span><span>' + formatted + "</span></div>";
                     },
                 },
-                { targets: 3, render: function (data, type, full) {
+                {
+                    // Type quotation (Sparepart/Service/Overhaul/Rental untuk quotation biasa,
+                    // Unit/Rental/Project/Parts/Service untuk Smart Quote).
+                    targets: 3,
+                    render: function (data, type) {
+                        if (type === "filter" || type === "sort") return data || "-";
+                        if (type !== "display") return data;
+                        if (!data) {
+                            return '<span class="badge rounded-pill bg-label-secondary">-</span>';
+                        }
+                        var colors = {
+                            Unit:      "bg-label-primary",
+                            Rental:    "bg-label-info",
+                            Project:   "bg-label-dark",
+                            Parts:     "bg-label-warning",
+                            Sparepart: "bg-label-warning",
+                            Service:   "bg-label-success",
+                            Piping:    "bg-label-secondary",
+                            "Air Audit": "bg-label-danger",
+                            Overhaul:  "bg-label-danger",
+                        };
+                        var labels = { Parts: "Sparepart" };
+                        var cls   = colors[data] || "bg-label-secondary";
+                        var label = labels[data] || data;
+                        return '<span class="badge rounded-pill ' + cls + '">' + label + "</span>";
+                    },
+                },
+                { targets: 4, render: function (data, type, full) {
                     if (type !== "display") return data;
                     return (data || full.title || "-") || "-";
                 } },
                 {
-                    targets: 4,
+                    targets: 5,
                     render: function (data, type) {
                         if (type !== "display") return data;
                         return data ? moment(data).format("DD-MM-YYYY") : "-";
                     },
                 },
                 {
-                    targets: 5,
+                    targets: 6,
                     render: function (data, type, full) {
                         if (type !== "display") return data;
                         var tip = full["note"] || "";
                         var $status = {
-                            20:  { title: "Send WA / Email",     pct: "20%",  class: "bg-label-secondary", colorTip: "tooltip-secondary" },
-                            30:  { title: "Inquiry Accepted",     pct: "30%",  class: "bg-label-dark",      colorTip: "tooltip-dark" },
-                            40:  { title: "Progress Follow Up",   pct: "40%",  class: "bg-label-info",      colorTip: "tooltip-info" },
-                            60:  { title: "Negotiation / Revisi", pct: "60%",  class: "bg-label-primary",   colorTip: "tooltip-primary" },
-                            80:  { title: "Hot Prospect",         pct: "80%",  class: "bg-label-warning",   colorTip: "tooltip-warning" },
-                            100: { title: "Done PO",              pct: "100%", class: "bg-label-success",   colorTip: "tooltip-success" },
-                            0:   { title: "Loss",                 pct: "0%",   class: "bg-label-danger",    colorTip: "tooltip-danger" },
+                            20:       { title: "Send WA / Email",     pct: "20%",  class: "bg-label-secondary", colorTip: "tooltip-secondary" },
+                            30:       { title: "Inquiry Accepted",     pct: "30%",  class: "bg-label-dark",      colorTip: "tooltip-dark" },
+                            40:       { title: "Progress Follow Up",   pct: "40%",  class: "bg-label-info",      colorTip: "tooltip-info" },
+                            60:       { title: "Negotiation / Revisi", pct: "60%",  class: "bg-label-primary",   colorTip: "tooltip-primary" },
+                            80:       { title: "Hot Prospect",         pct: "80%",  class: "bg-label-warning",   colorTip: "tooltip-warning" },
+                            100:      { title: "Done PO",              pct: "100%", class: "bg-label-success",   colorTip: "tooltip-success" },
+                            0:        { title: "Loss",                 pct: "0%",   class: "bg-label-danger",    colorTip: "tooltip-danger" },
+                            'loss':   { title: "Loss",                 pct: "0%",   class: "bg-label-danger",    colorTip: "tooltip-danger" },
+                            'cancel': { title: "Cancel",               pct: "0%",   class: "bg-label-danger",    colorTip: "tooltip-danger" },
                         };
                         var s = $status[data];
                         if (!s) return data;

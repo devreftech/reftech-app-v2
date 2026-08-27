@@ -5,8 +5,6 @@ $(function () {
         return m.isValid() ? m.format("DD-MM-YYYY") : data;
     }
 
-    // Sama seperti format nomor di tabel Purchase Request — cuma 6 karakter
-    // pertama + "…", nomor lengkapnya tetap kelihatan lewat tooltip.
     function shortCode(data) {
         var full = data || "-";
         var short = full.length > 6 ? full.substring(0, 6) + "…" : full;
@@ -14,7 +12,7 @@ $(function () {
     }
 
     // Kolom Item selalu jadi tombol expand yang buka child row berisi rincian
-    // tiap item — sama persis baik cuma 1 item maupun lebih dari 1, biar tampilannya konsisten.
+    // tiap item — sama polanya kayak tabel PR, biar tampilannya konsisten.
     function itemCol(data, type, full) {
         if (type !== "display") return data || "-";
         if (full.items_detail) {
@@ -24,10 +22,8 @@ $(function () {
         return data || "-";
     }
 
-    // Tiap entri items_detail formatnya "deskripsi::qty_stok_tambahan::status_go",
-    // dipisah pas di-GROUP_CONCAT dari server — lihat /db/purchase-order/incoming.
-    // qty_stok_tambahan kosong kalau qty yang dibeli di PO sama dengan qty yang
-    // dialokasikan buat PR ini (gak ada kelebihan buat stok).
+    // Format items_detail sama kayak tabel PR ("deskripsi::(kosong)::(kosong)")
+    // biar bisa pakai parser yang sama — cuma badge extra stock/GO gak pernah kepakai di sini.
     function itemsChildHtml(itemsDetail) {
         if (!itemsDetail) {
             return '<div class="p-2 ps-4 text-muted small">Tidak ada rincian item.</div>';
@@ -35,49 +31,36 @@ $(function () {
         var rows = itemsDetail.split("||").map(function (it) {
             var parts = it.split("::");
             var desc = parts[0] || it;
-            var extraStock = parts[1] || "";
-            var go = parts[2] || "";
-            var badges = "";
-            if (extraStock) {
-                badges += ' <span class="badge bg-label-info" data-toggle="tooltip"' +
-                    ' title="Kelebihan qty dari kebutuhan PR, buat tambahan stok">+' + extraStock + " stok</span>";
-            }
-            if (go === "Genuine") {
-                badges += ' <span class="badge bg-label-success">Genuine</span>';
-            } else if (go && go !== "-") {
-                badges += ' <span class="badge bg-label-warning">' + go + "</span>";
-            }
-            return "<li>" + desc + badges + "</li>";
+            return "<li>" + desc + "</li>";
         }).join("");
         return '<div class="p-2 ps-4"><ul class="mb-0 ps-3 small">' + rows + "</ul></div>";
     }
 
-    var $table = $(".datatable-incoming-goods");
+    var $table = $(".datatable-incoming-goods-direct");
     if (!$table.length) return;
 
     var dt = $table.DataTable({
         ajax: {
             type: "GET",
-            url: "/db/purchase-order/incoming",
+            url: "/db/purchase-order/incoming/direct",
             headers: { "Content-Type": "application/json" },
             dataSrc: function (json) {
                 var count = (json.data || []).length;
-                $("#menunggu-penerimaan-count-badge").text(count).toggleClass("d-none", count === 0);
+                $("#menunggu-penerimaan-direct-count-badge").text(count).toggleClass("d-none", count === 0);
+                window.updateIncomingGoodsTotalBadge && window.updateIncomingGoodsTotalBadge("direct", count);
                 return json.data || [];
             },
         },
         columns: [
             { data: "no_po" },
-            { data: "no_pr" },
-            { data: "no_pending" },
-            { data: "company" },
+            { data: "category" },
             { data: "item" },
             { data: "supplier" },
             { data: "cargo" },
             { data: "po_date" },
             { data: null },
             { data: null },
-            // Kolom tersembunyi biar search box ikut nyari nama part di rincian item.
+            // Kolom tersembunyi biar search box ikut nyari nama unit/part di rincian item.
             { data: "items_detail" },
         ],
         columnDefs: [
@@ -94,55 +77,39 @@ $(function () {
                 },
             },
             {
-                // No PR — link ke halaman pending_po yang sama, sama seperti halaman Purchase Request.
+                // Type — kategori PO tanpa PR ini (Unit/Parts), nentuin form GR mana yang
+                // dipakai (Unit lewat UnitProductInController, Parts lewat goods-receipt-direct).
                 targets: 1,
+                className: "text-center",
                 render: function (data, type, full) {
                     if (type !== "display") return data || "-";
-                    var code = shortCode(data);
-                    if (!full.id_pending) {
-                        return '<span data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' + code.short + "</span>";
+                    if (data === "Unit") {
+                        return '<span class="badge bg-label-warning">Unit</span>';
                     }
-                    var url = route("purchase-request.show", full.id_pending);
-                    return '<a href="' + url + '" data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' + code.short + "</a>";
+                    return '<span class="badge bg-label-primary">Parts</span>';
                 },
             },
+            { targets: 2, render: itemCol },
             {
-                // No SO — record pending_po yang sama dengan No PR, jadi linknya ke halaman yang sama.
-                targets: 2,
-                render: function (data, type, full) {
-                    if (type !== "display") return data || "-";
-                    var code = shortCode(data);
-                    if (!full.id_pending) {
-                        return '<span data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' + code.short + "</span>";
-                    }
-                    var url = route("purchase-request.show", full.id_pending);
-                    return '<a href="' + url + '" data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' + code.short + "</a>";
-                },
-            },
-            { targets: [3, 6], render: function (data) { return data || "-"; } },
-            { targets: 4, render: itemCol },
-            {
-                // Vendor — dikasih badge Lokal/Impor di depan nama, sesuai data purchase_type
-                // vendor itu di PO ini (Campuran kalau item-nya campur lokal & impor).
-                targets: 5,
+                // Vendor — dikasih badge Lokal/Impor di depan nama, ditentukan dari info supplier-nya.
+                targets: 3,
                 render: function (data, type, full) {
                     if (type !== "display") return data || "-";
                     var badgeMap = {
                         Lokal: '<span class="badge bg-label-success me-1">Lokal</span>',
                         Impor: '<span class="badge bg-label-info me-1">Impor</span>',
-                        Campuran: '<span class="badge bg-label-secondary me-1">Campuran</span>',
                     };
                     var badge = badgeMap[full.purchase_type] || "";
                     return badge + (data || "-");
                 },
             },
-            { targets: 7, render: function (data) { return dateCol(data); } },
+            { targets: 4, render: function (data) { return data || "-"; } },
+            { targets: 5, render: function (data) { return dateCol(data); } },
             {
-                // Tabel ini nampilin semua PO yang belum diterima — is_on_delivery
-                // (dari route /db/purchase-order/incoming) yang bedain PO yang info
-                // pengirimannya udah lengkap (siap/lagi jalan) vs yang masih nunggu
-                // Admin isi delivery info per-PO.
-                targets: 8,
+                // is_on_delivery: 1 kalau on_delivery_at sudah diisi Admin (lihat
+                // POController::deliveryUnit) — beda konsep dari purchase_type PR karena
+                // PO di tabel ini gak lewat PurchaseRequestDetailAllocation sama sekali.
+                targets: 6,
                 className: "text-center",
                 orderable: false,
                 searchable: false,
@@ -154,7 +121,9 @@ $(function () {
                 },
             },
             {
-                targets: 9,
+                // Action GR — Unit ke UnitProductInController, selain itu (Parts tanpa PR)
+                // ke PurchaseController::goodsReceiptFormDirect().
+                targets: 7,
                 className: "text-center",
                 orderable: false,
                 searchable: false,
@@ -162,21 +131,23 @@ $(function () {
                     if (full.is_on_delivery != 1) {
                         return '<span class="text-muted small">Menunggu Info Pengiriman</span>';
                     }
-                    var url = route("purchase.goods-receipt", full.id);
+                    var url = full.category === "Unit"
+                        ? route("unit-product-in.goods-receipt-form", full.id)
+                        : route("purchase.goods-receipt-direct", full.id);
                     return '<a href="' + url + '" class="btn btn-sm btn-primary text-white waves-effect waves-light">' +
                         '<i class="mdi mdi-checkbox-marked-circle-outline me-1"></i>GR</a>';
                 },
             },
-            { targets: 10, visible: false, orderable: false },
+            { targets: 8, visible: false, orderable: false },
         ],
-        order: [[7, "asc"]],
+        order: [[5, "asc"]],
         displayLength: 10,
         lengthMenu: [10, 25, 50, 75, 100],
         dom:
             '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-end"f>>' +
             '<"table-responsive"t>' +
             '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
-        language: { emptyTable: "Tidak ada barang yang sedang dalam pengiriman." },
+        language: { emptyTable: "Tidak ada PO tanpa Purchase Request yang sedang menunggu penerimaan." },
         drawCallback: function () {
             $('[data-bs-toggle="tooltip"]').tooltip();
         },

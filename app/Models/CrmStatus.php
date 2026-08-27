@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class CrmStatus extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
     protected $table = "crm_status";
     protected $fillable = [
         'id_client', 'status'

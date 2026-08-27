@@ -18,12 +18,8 @@ class UnitProductInController extends Controller
 {
     public function index()
     {
-        $unitProductIns = UnitProductIn::with('supplier')->orderByDesc('id')->get();
-        $pendingUnitPo = PurchaseOrder::where('category', 'Unit')
-            ->where('receipt_status', 'Pending')
-            ->orderByDesc('id')
-            ->get();
-        return view('pages.warehouse.unit-product-in.index', compact('unitProductIns', 'pendingUnitPo'));
+        $unitProductIns = UnitProductIn::with('supplier', 'po')->orderByDesc('id')->get();
+        return view('pages.warehouse.unit-product-in.index', compact('unitProductIns'));
     }
 
     public function create()
@@ -34,20 +30,25 @@ class UnitProductInController extends Controller
         return view('pages.warehouse.unit-product-in.form', compact('units', 'suppliers', 'nextNoTransaksi'));
     }
 
+    // Format: 001-U/BM/VIII/2026 — U (Unit) beda sama P (Parts/Sparepart) yang
+    // dipakai ProductInController::generateNoProductIn(), biar sekilas kebaca dari
+    // nomornya kategori barangnya apa. Nomor urut per bulan.
     private function generateNoTransaksi(): string
     {
-        $year = now()->format('Y');
-        $month = now()->format('m');
-        $prefix = "UIN/{$year}/{$month}/";
+        $now = now();
+        $year = $now->format('Y');
+        $romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+        $roman = $romanMonths[(int) $now->format('n') - 1];
+        $suffix = "-U/BM/{$roman}/{$year}";
 
-        $last = UnitProductIn::where('no_transaksi', 'like', $prefix . '%')
+        $last = UnitProductIn::where('no_transaksi', 'like', '%' . $suffix)
             ->orderByDesc('no_transaksi')
             ->value('no_transaksi');
 
-        $lastSeq = $last ? (int) substr($last, -3) : 0;
+        $lastSeq = $last ? (int) substr($last, 0, 3) : 0;
         $nextSeq = str_pad($lastSeq + 1, 3, '0', STR_PAD_LEFT);
 
-        return $prefix . $nextSeq;
+        return $nextSeq . $suffix;
     }
 
     public function store(Request $request)
@@ -106,12 +107,15 @@ class UnitProductInController extends Controller
             if ($unitProductIn->transaction_type == 'purchase_new') {
                 $detail->kondisi = 'Baru';
 
+                // Biaya rebranding TIDAK diisi di sini — selalu 0 dulu pas GR, rinciannya
+                // (bisa >1 baris: cat, stiker, ongkos kerja, dst) diisi belakangan lewat
+                // halaman detail unit (lihat storeRebrandingCost) begitu HPP-nya jelas.
                 $inventory = new UnitInventory();
                 $inventory->id_unit = $idUnit;
                 $inventory->serial_number = $serial;
                 $inventory->harga_modal = $harga;
-                $inventory->biaya_rebranding = $biayaTambahan;
-                $inventory->total_modal = $harga + $biayaTambahan;
+                $inventory->biaya_rebranding = 0;
+                $inventory->total_modal = $harga;
                 $inventory->status = 'available';
                 $inventory->id_unit_product_in = $unitProductIn->id;
                 $inventory->created_by = Auth::id();
@@ -150,8 +154,12 @@ class UnitProductInController extends Controller
     public function goodsReceiptForm($po)
     {
         $purchase = PurchaseOrder::where('category', 'Unit')->findOrFail($po);
-        $detail = DetailPurchaseOrder::where('id_purchase_order', $po)->where('category', 'Unit')->get();
-        return view('pages.warehouse.unit-product-in.goods-receipt', compact('purchase', 'detail'));
+        $detail = DetailPurchaseOrder::where('id_purchase_order', $po)->where('category', 'Unit')->with('unit')->get();
+        // Preview nomor transaksi yang bakal dipakai kalau penerimaan ini disimpan —
+        // sama polanya kayak previewNoGr di form GR Parts, biar user tahu nomornya
+        // dari awal walau baru beneran "dikunci" pas submit.
+        $previewNoTransaksi = $this->generateNoTransaksi();
+        return view('pages.warehouse.unit-product-in.goods-receipt', compact('purchase', 'detail', 'previewNoTransaksi'));
     }
 
     public function storeGoodsReceipt(Request $request, $po)
@@ -178,27 +186,53 @@ class UnitProductInController extends Controller
 
             foreach ($request->detail_id as $key => $detailId) {
                 $poDetail = DetailPurchaseOrder::findOrFail($detailId);
+                $serial = $request->serial_number[$key] ?? null;
+                // Kondisi ditentukan pas PO dibuat (lihat POController::store/update) —
+                // Baru masuk stok jual (unit_inventory), Second didaftarkan sebagai
+                // aset dulu buat di-QC (fixed_asset, sama kayak alur trade_in/purchase_used
+                // manual di prosesDetail()) sebelum bisa dijual/direntalkan.
+                $kondisi = $poDetail->kondisi === 'Second' ? 'Second' : 'Baru';
 
                 $detail = new DetailUnitProductIn();
                 $detail->id_unit_product_in = $unitProductIn->id;
                 $detail->id_unit = $poDetail->id_unit;
-                $detail->serial_number = $request->serial_number[$key] ?? null;
+                $detail->serial_number = $serial;
                 $detail->harga = $poDetail->price;
                 $detail->biaya_tambahan = 0;
-                $detail->kondisi = 'Baru';
+                $detail->kondisi = $kondisi;
 
-                $inventory = new UnitInventory();
-                $inventory->id_unit = $poDetail->id_unit;
-                $inventory->serial_number = $request->serial_number[$key] ?? null;
-                $inventory->harga_modal = $poDetail->price;
-                $inventory->biaya_rebranding = 0;
-                $inventory->total_modal = $poDetail->price;
-                $inventory->status = 'available';
-                $inventory->id_unit_product_in = $unitProductIn->id;
-                $inventory->created_by = Auth::id();
-                $inventory->save();
+                if ($kondisi === 'Baru') {
+                    $inventory = new UnitInventory();
+                    $inventory->id_unit = $poDetail->id_unit;
+                    $inventory->serial_number = $serial;
+                    $inventory->harga_modal = $poDetail->price;
+                    $inventory->biaya_rebranding = 0;
+                    $inventory->total_modal = $poDetail->price;
+                    $inventory->status = 'available';
+                    $inventory->id_unit_product_in = $unitProductIn->id;
+                    $inventory->created_by = Auth::id();
+                    $inventory->save();
 
-                $detail->id_unit_inventory = $inventory->id;
+                    $detail->id_unit_inventory = $inventory->id;
+                } else {
+                    $fixed = new FixedAsset();
+                    $fixed->type = 'Mesin';
+                    $fixed->code = app(FixedController::class)->generateAssetCode('Mesin');
+                    $fixed->id_unit = $poDetail->id_unit;
+                    $fixed->serial_number = $serial;
+                    $fixed->kondisi = 'Second';
+                    $fixed->qc_status = 'checking';
+                    $fixed->id_supplier = $purchase->id_supplier;
+                    $fixed->beli = $request->date;
+                    $fixed->umur = 48;
+                    $fixed->total = $poDetail->price;
+                    $fixed->qty = 1;
+                    $fixed->status = 0;
+                    $fixed->save();
+
+                    $detail->id_fixed_asset = $fixed->id;
+                }
+
                 $detail->save();
             }
 
@@ -207,5 +241,89 @@ class UnitProductInController extends Controller
         });
 
         return redirect('/purchase/' . $purchase->id)->with('success', 'Goods Receipt unit berhasil disimpan.');
+    }
+
+    /**
+     * Detail per MODEL unit (Unit Global id), bukan per serial number — spesifikasi
+     * Unit-nya, breakdown stok tiap serial number yang lagi available, riwayat masuk
+     * (semua transaksi yang bawa model ini masuk), dan riwayat keluar (semua yang
+     * udah terjual). Serial number beda-beda per unit fisik, tapi satu halaman ini
+     * mewakili modelnya secara keseluruhan.
+     */
+    public function showInventory($id)
+    {
+        $unit = Unit::findOrFail($id);
+        $inventories = UnitInventory::where('id_unit', $id)->with('rebrandingCosts')->orderByDesc('id')->get();
+
+        return view('pages.warehouse.unit-inventory.show', compact('unit', 'inventories'));
+    }
+
+    /**
+     * Tambah satu baris rincian biaya rebranding buat satu unit fisik (unit_inventory) —
+     * bisa berkali-kali (cat, stiker, ongkos kerja, dst). biaya_rebranding & total_modal
+     * di-sync ulang dari SUM semua baris tiap kali ada perubahan, bukan diisi manual
+     * lagi pas GR — lihat UnitProductInController::prosesDetail/storeGoodsReceipt yang
+     * selalu set biaya_rebranding awal ke 0.
+     */
+    public function storeRebrandingCost(Request $request, $inventoryId)
+    {
+        $this->validate($request, [
+            'date' => 'required|date',
+            'item' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0',
+            'note' => 'nullable|string|max:255',
+        ]);
+
+        $inventory = UnitInventory::findOrFail($inventoryId);
+
+        $inventory->rebrandingCosts()->create([
+            'date' => $request->date,
+            'item' => $request->item,
+            'amount' => $request->amount,
+            'note' => $request->note,
+            'created_by' => Auth::id(),
+        ]);
+
+        $this->syncRebrandingTotal($inventory);
+
+        return redirect()->back()->with('success', 'Rincian biaya rebranding berhasil ditambahkan.');
+    }
+
+    public function destroyRebrandingCost($costId)
+    {
+        $cost = \App\Models\UnitInventoryRebrandingCost::findOrFail($costId);
+        $inventory = $cost->unitInventory;
+        $cost->delete();
+
+        if ($inventory) {
+            $this->syncRebrandingTotal($inventory);
+        }
+
+        return redirect()->back()->with('success', 'Rincian biaya rebranding berhasil dihapus.');
+    }
+
+    private function syncRebrandingTotal(UnitInventory $inventory): void
+    {
+        $inventory->biaya_rebranding = $inventory->rebrandingCosts()->sum('amount');
+        $inventory->total_modal = $inventory->harga_modal + $inventory->biaya_rebranding;
+        $inventory->save();
+    }
+
+    /**
+     * Set/ubah harga jual (listing) satu MODEL unit — satu harga berlaku buat
+     * semua serial number-nya, bukan per unit fisik. Beda dari harga_modal/
+     * total_modal (harga pokok/beli per unit) yang tetap per serial.
+     */
+    public function updateHargaJualUnit(Request $request, $id)
+    {
+        $this->validate($request, [
+            'harga_jual' => 'required|numeric|min:0',
+        ]);
+
+        $unit = Unit::findOrFail($id);
+        $unit->harga_jual = $request->harga_jual;
+        $unit->save();
+
+        return redirect()->back()->with('success', 'Harga jual unit berhasil disimpan.');
     }
 }

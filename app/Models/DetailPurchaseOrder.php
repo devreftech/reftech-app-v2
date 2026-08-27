@@ -16,6 +16,7 @@ class DetailPurchaseOrder extends Model
     protected $fillable = [
         'product',
         'id_unit',
+        'kondisi',
         'category',
         'id_product',
         'qty',

@@ -26,13 +26,14 @@ if (Auth::check()) {
         $yearFilterU = ($year && $year !== 'all') ? " AND YEAR(sh.created_at) = " . intval($year) : "";
         $query = "SELECT q.id, q.no_quote, c.company, c.ru, q.nett, q.title, q.po_date,
                          inv.id AS invoice_id, inv.no_po, inv.no_invoice,
-                         'service' AS row_type
+                         'service' AS row_type, q.type
                   FROM quotation q
                   LEFT JOIN pic p ON p.id = q.id_pic
                   LEFT JOIN client c ON c.id = p.id_client
                   INNER JOIN users u ON u.id = q.id_sales
                   LEFT JOIN invoice inv ON inv.id_quotation = q.id
                   WHERE u.id = $user->id AND q.status = '100' AND q.level = '1' AND q.is_primary = '1'$yearFilter
+                  AND NOT EXISTS (SELECT 1 FROM payment pay WHERE pay.id_quotation = q.id AND pay.method = 'Escrow')
                   GROUP BY q.id
 
                   UNION ALL
@@ -53,10 +54,11 @@ if (Auth::check()) {
                          (SELECT invU.no_invoice FROM invoice invU
                           WHERE invU.id_unit_quotation = uq.id AND invU.no_invoice IS NOT NULL
                           ORDER BY invU.id DESC LIMIT 1) AS no_invoice,
-                         'unit' AS row_type
+                         'unit' AS row_type, uq.type
                   FROM unit_quotation uq
                   LEFT JOIN client cl ON cl.id = NULLIF(uq.id_client,'')
                   WHERE uq.id_sales = $user->id AND uq.status = 'po_received' AND uq.is_latest = 1
+                  AND NOT EXISTS (SELECT 1 FROM payment pay2 WHERE pay2.id_unit_quotation = uq.id AND pay2.method = 'Escrow')
                   AND EXISTS (
                       SELECT 1 FROM unit_quotation_status_history sh
                       WHERE sh.id_unit_quotation = uq.id AND sh.status = 'po_received'$yearFilterU

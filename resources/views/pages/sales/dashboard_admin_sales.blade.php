@@ -157,6 +157,25 @@
                                 </a>
                             </li>
                         @endforeach
+                        <li class="nav-item change-sales text-center flex-shrink-0" role="presentation" data-id="project">
+                            <a class="nav-link btn d-flex flex-column align-items-center justify-content-center p-2 rounded-3"
+                               role="tab" data-bs-toggle="tab" data-bs-target="#navs-sales-project"
+                               aria-controls="navs-sales-project" aria-selected="false"
+                               style="transition: all 0.2s ease;">
+                                <div class="position-relative mb-1">
+                                    <div class="rounded-circle border bg-label-primary d-flex align-items-center justify-content-center"
+                                        style="width: 48px; height: 48px; border-width: 2px !important;">
+                                        <i class="mdi mdi-briefcase-outline fs-4"></i>
+                                    </div>
+                                </div>
+                                <span class="fw-semibold text-dark text-truncate d-block" style="max-width: 85px; font-size: 0.78rem; line-height: 1.2;">
+                                    Sales Project
+                                </span>
+                                <small class="text-muted text-truncate d-block" style="max-width: 85px; font-size: 0.7rem; line-height: 1.2;">
+                                    Admin/SM
+                                </small>
+                            </a>
+                        </li>
                     </ul>
                     <div class="tab-content p-0 ms-0 ms-sm-2">
                         @php
@@ -624,6 +643,54 @@
                                 @endphp
                             </div>
                         @endforeach
+
+                        {{-- Sales Project: quotation gabungan dibuat oleh Admin/Sales Manager.
+                        Cuma nampilin jumlah quotation & nominal bulan ini, karena project ini
+                        cuma nerima & ngolah data — gak punya target/aktivitas per-orang seperti Sales. --}}
+                        <div class="tab-pane fade" id="navs-sales-project" role="tabpanel">
+                            <div class="mb-3">
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pb-2 pt-2 border-bottom mb-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="rounded-circle border bg-label-primary d-flex align-items-center justify-content-center"
+                                            style="width: 44px; height: 44px; border-width: 2px !important;">
+                                            <i class="mdi mdi-briefcase-outline fs-5"></i>
+                                        </div>
+                                        <div>
+                                            <h5 class="mb-0 fw-bold text-dark">Sales Project</h5>
+                                            <small class="text-muted d-block">Quotation gabungan Admin / Sales Manager</small>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-label-primary px-3 py-2 rounded-pill">
+                                            <i class="mdi mdi-briefcase-check-outline me-1"></i> Project
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3">
+                                    <div class="col-12 col-md-6">
+                                        <div class="p-3 border rounded-3 bg-body-tertiary h-100">
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-email-multiple-outline"></i></span>
+                                                <span class="fw-semibold text-dark" style="font-size: 0.85rem;">Quotation Dibuat</span>
+                                            </div>
+                                            <h4 class="mb-0 fw-bold text-dark">{{ $projectQuoteCount }}</h4>
+                                            <small class="text-muted">Bulan ini</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <div class="p-3 border rounded-3 bg-body-tertiary h-100">
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <span class="badge bg-label-success p-1 rounded"><i class="mdi mdi-cash-multiple"></i></span>
+                                                <span class="fw-semibold text-dark" style="font-size: 0.85rem;">Total Nominal</span>
+                                            </div>
+                                            <h4 class="mb-0 fw-bold text-success">Rp {{ number_format($projectQuoteNominal, 0, ',', '.') }}</h4>
+                                            <small class="text-muted">Bulan ini</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -637,6 +704,7 @@
                                 <th>Quote No.</th>
                                 <th>Company</th>
                                 <th>Total Price</th>
+                                <th>Type</th>
                                 <th>Description</th>
                                 <th>Date</th>
                                 <th>Status</th>

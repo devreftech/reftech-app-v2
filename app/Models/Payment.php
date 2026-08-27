@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Payment extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
     protected $table = "payment";
     protected $fillable = [
         'id_quotation',
@@ -19,6 +20,7 @@ class Payment extends Model
         'level',
         'type',
         'method',
+        'escrow_channel',
         'date_confirm',
         'due_date',
         'overdue',

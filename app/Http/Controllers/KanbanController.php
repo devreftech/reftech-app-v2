@@ -13,6 +13,9 @@ use App\Models\KanbanTaskAttachment;
 use App\Models\KanbanTaskDeleteRequest;
 use Illuminate\Support\Facades\Storage;
 use App\Models\User;
+use App\Models\PurchaseRequest;
+use App\Models\ProjectExpense;
+use App\Models\Expanse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -24,9 +27,9 @@ class KanbanController extends Controller
         $user = Auth::user();
         
         if ($user->role === 'Admin') {
-            $boards = KanbanBoard::where('type', '!=', 'monitoring')->with('creator')->orderBy('title')->get();
+            $boards = KanbanBoard::with('creator')->orderBy('title')->get();
         } else {
-            $boards = $user->kanbanBoards()->where('type', '!=', 'monitoring')->with('creator')->orderBy('title')->get();
+            $boards = $user->kanbanBoards()->with('creator')->orderBy('title')->get();
         }
 
         // Fetch all active users for board creation members select
@@ -79,6 +82,10 @@ class KanbanController extends Controller
     {
         $user = Auth::user();
         $board = KanbanBoard::with(['columns', 'members'])->findOrFail($id);
+
+        if ($board->type === 'monitoring') {
+            return redirect()->route('kanban.monitoring-document');
+        }
 
         // Check permission: Admin can see all, members can see their boards
         if ($user->role !== 'Admin' && !$board->members->contains($user->id)) {
@@ -190,14 +197,41 @@ class KanbanController extends Controller
     public function getBoardData($id)
     {
         $user = Auth::user();
-        $board = KanbanBoard::with(['columns.tasks.assignees', 'columns.tasks.checklists.items', 'columns.tasks.pendingPo.quote.sales'])->findOrFail($id);
+        $board = KanbanBoard::with([
+            'columns.tasks.assignees',
+            'columns.tasks.checklists.items',
+            'columns.tasks.pendingPo.quote.sales',
+            'columns.tasks.pendingPo.quote.invoice',
+            'columns.tasks.pendingPo.quote.pic.client',
+            'columns.tasks.pendingPo.unitQuotation.sales',
+            'columns.tasks.pendingPo.unitQuotation.invoices',
+            'columns.tasks.pendingPo.unitQuotation.client',
+            'columns.tasks.unitQuotation.sales',
+            'columns.tasks.unitQuotation.invoices',
+            'columns.tasks.unitQuotation.client',
+        ])->findOrFail($id);
 
         if ($user->role !== 'Admin' && !$board->members->contains($user->id)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        $hiddenForServiceM = ['INVOICE', 'CANCEL PO', 'PO MENYUSUL'];
         $data = [];
         foreach ($board->columns as $column) {
+            if ($board->type === 'monitoring' && $user->role === 'ServiceM') {
+                $colUpper = strtoupper(trim($column->title));
+                $shouldHide = false;
+                foreach ($hiddenForServiceM as $hiddenKeyword) {
+                    if (str_contains($colUpper, $hiddenKeyword)) {
+                        $shouldHide = true;
+                        break;
+                    }
+                }
+                if ($shouldHide) {
+                    continue;
+                }
+            }
+
             $items = [];
             foreach ($column->tasks as $task) {
                 $taskAssignees = $task->assignees->map(function ($u) {
@@ -217,10 +251,58 @@ class KanbanController extends Controller
                 $nettValue = 0;
                 $idSales = null;
                 $salesName = null;
-                if ($task->pendingPo && $task->pendingPo->quote) {
-                    $nettValue = (float) $task->pendingPo->quote->nett;
-                    $idSales = $task->pendingPo->quote->id_sales;
-                    $salesName = $task->pendingPo->quote->sales ? $task->pendingPo->quote->sales->name : null;
+                $entityType = null;
+                $noPo = null;
+                $company = null;
+
+                if ($task->pendingPo || $task->unitQuotation) {
+                    $po = $task->pendingPo;
+                    // Kartu bisa lahir dari PO (pendingPo) atau langsung dari tombol "Post
+                    // to Kanban" di halaman quotation (id_unit_quotation, tanpa PO/SO) —
+                    // dua-duanya diperlakukan sebagai quotation Unit.
+                    $isUnit = $po ? (bool) $po->id_unit_quotation : true;
+                    $quoteRef = $po ? ($isUnit ? $po->unitQuotation : $po->quote) : $task->unitQuotation;
+                    if ($quoteRef) {
+                        $nettValue = $user->role === 'ServiceM' ? 0 : (float) ($isUnit ? ($quoteRef->total ?? 0) : ($quoteRef->nett ?? 0));
+                        $idSales = $quoteRef->id_sales;
+                        $salesName = $quoteRef->sales ? $quoteRef->sales->name : null;
+                        $company = $isUnit ? ($quoteRef->client->company ?? null) : ($quoteRef->pic->client->company ?? null);
+                    }
+                    if ($po) {
+                        $noPo = $po->no_po ?: $po->no_pending;
+                    }
+
+                    // Check invoice flag / invoice number
+                    $invoices = $isUnit
+                        ? ($quoteRef ? $quoteRef->invoices : collect())
+                        : ($quoteRef ? $quoteRef->invoice : collect());
+
+                    $firstInvoice = $invoices ? ($invoices->whereNotNull('no_invoice')->where('no_invoice', '!=', '')->first() ?: $invoices->first()) : null;
+                    if ($firstInvoice) {
+                        if ($firstInvoice->flag === 'Kojisha' || ($firstInvoice->no_invoice && str_contains($firstInvoice->no_invoice, '/KII/'))) {
+                            $entityType = 'KII';
+                        } elseif ($firstInvoice->flag === 'Reftech' || ($firstInvoice->no_invoice && str_contains($firstInvoice->no_invoice, '/RJO/'))) {
+                            $entityType = 'RJO';
+                        }
+                    }
+
+                    // Fallback to quotation flag / client info
+                    if (!$entityType && $quoteRef) {
+                        $client = $isUnit
+                            ? ($quoteRef->client ?? null)
+                            : (($quoteRef->pic) ? $quoteRef->pic->client : null);
+                        $flag = $quoteRef->flag ?? ($client ? $client->info : null);
+                        if ($flag === 'Kojisha') {
+                            $entityType = 'KII';
+                        } elseif ($flag === 'Reftech') {
+                            $entityType = 'RJO';
+                        }
+                    }
+
+                    // Default to RJO for monitoring board tasks if not specified
+                    if (!$entityType && $board->type === 'monitoring') {
+                        $entityType = 'RJO';
+                    }
                 }
 
                 $items[] = [
@@ -236,6 +318,9 @@ class KanbanController extends Controller
                     'nett' => $nettValue,
                     'id_sales' => $idSales,
                     'sales_name' => $salesName,
+                    'entity_type' => $entityType,
+                    'no_po' => $noPo,
+                    'company' => $company,
                 ];
             }
             $data[] = [
@@ -499,6 +584,7 @@ class KanbanController extends Controller
     public function getTaskDetails($id)
     {
         $task = KanbanTask::with([
+            'board',
             'column',
             'assignees',
             'comments.user',
@@ -509,6 +595,8 @@ class KanbanController extends Controller
             'pendingPo.quote.sales',
             'pendingPo.unitQuotation.client',
             'pendingPo.unitQuotation.sales',
+            'unitQuotation.client',
+            'unitQuotation.sales',
             'bast'
         ])->findOrFail($id);
 
@@ -634,136 +722,246 @@ class KanbanController extends Controller
             ];
         });
 
-        $soDetails = null;
-        if ($task->pendingPo) {
-            $po = $task->pendingPo;
-            $isUnit = (bool) $po->id_unit_quotation;
-            $quoteRef = $isUnit ? $po->unitQuotation : $po->quote;
-            $quoteIdCol = $isUnit ? 'id_unit_quotation' : 'id_quotation';
-            $quoteRefId = $isUnit ? $po->id_unit_quotation : $po->id_quotation;
-
-            $invoicePo = \App\Models\Invoice::where($quoteIdCol, $quoteRefId)->whereNotNull('no_po')->where('no_po', '!=', '')->value('no_po');
-            $poNumber = $invoicePo ?: ($po->no_pending ?? 'No PO');
-            $companyName = 'Unknown Client';
-            $clientAddress = '';
-            $clientId = null;
-            $bastEntity = 'Reftech';
-            $client = $isUnit
-                ? ($quoteRef->client ?? null)
-                : (($quoteRef && $quoteRef->pic) ? $quoteRef->pic->client : null);
-            if ($client) {
-                $companyName = $client->company;
-                $clientAddress = $client->address;
-                $clientId = $client->id;
-                $bastEntity = ($client->info == 'Reftech') ? 'Reftech' : 'Kojisha';
+        // Ringkasan Kesehatan Keuangan — sama persis rumusnya kayak
+        // ProjectMonitoringController::show(), cuma dipanggil di sini biar kartu
+        // ringkasannya kelihatan langsung dari task Kanban tanpa pindah halaman.
+        $computeFinancialHealth = function ($pendingId, $revenue) {
+            if (!$pendingId) {
+                return null;
             }
-
-            // Get Invoices and associate their payments sequentially
-            $invoices = \App\Models\Invoice::where($quoteIdCol, $quoteRefId)->orderBy('id')->get();
-            $payments = \App\Models\Payment::where($quoteIdCol, $quoteRefId)->orderBy('id')->get();
-            
-            $invoiceList = [];
-            foreach ($invoices as $index => $invoice) {
-                $payment = $payments->get($index);
-                $status = 'Unpaid';
-                if ($payment) {
-                    $status = ($payment->level == 1) ? 'Paid' : 'Pending Confirmation';
-                }
-                
-                $typeLabel = 'Invoice';
-                switch ($invoice->type) {
-                    case 'CT':
-                        $typeLabel = 'Cash Before Delivery';
-                        break;
-                    case 'DP':
-                        $typeLabel = 'Down Payment';
-                        break;
-                    case 'BP':
-                        $typeLabel = 'Balance Payment / Tempo';
-                        break;
-                }
-                $percentVal = $invoice->percent !== null ? (int)$invoice->percent : 100;
-                $termName = ($invoice->no_invoice && $invoice->term) ? $invoice->term : "{$typeLabel} ({$percentVal}%)";
-                
-                $invoiceList[] = [
-                    'id' => $invoice->id,
-                    'no_invoice' => $invoice->no_invoice ?: 'Draft Invoice #' . $invoice->id,
-                    'term_name' => $termName,
-                    'status' => $status,
-                    'link' => url('/invoice/' . $invoice->id)
-                ];
-            }
-
-            // Get Delivery / Surat Jalan records for all invoices of this quotation
-            $invoiceIds = $invoices->pluck('id')->toArray();
-            $deliveries = \App\Models\Delivery::whereIn('id_invoice', $invoiceIds)->get()->map(function($d) {
-                return [
-                    'id' => $d->id,
-                    'destination' => $d->destination ?: 'No Destination',
-                    'link' => url('/delivery/' . $d->id),
-                ];
-            });
-
-            // Get available service reports for this client
-            $availableReports = [];
-            if ($clientId) {
-                $availableReports = \App\Models\Reports::whereHas('pic', function($q) use ($clientId) {
-                    $q->where('id_client', $clientId);
-                })
-                ->orderBy('created_at', 'desc')
+            $materialCost = PurchaseRequest::where('id_pending', $pendingId)
+                ->where('status', '3')
+                ->with('details')
                 ->get()
-                ->map(function($r) {
+                ->flatMap->details
+                ->sum('amount');
+            $generalCost = ProjectExpense::where('id_pending', $pendingId)->sum('amount');
+            $shippingCost = Expanse::where('id_pending', $pendingId)->where('type', 'Resi')->sum('cost');
+            $totalCost = $materialCost + $generalCost + $shippingCost;
+            $profit = $revenue - $totalCost;
+            $margin = $revenue > 0 ? ($profit / $revenue) * 100 : 0;
+
+            return [
+                'revenue' => $revenue,
+                'total_cost' => $totalCost,
+                'profit' => $profit,
+                'margin' => round($margin, 1),
+            ];
+        };
+
+        $soDetails = null;
+        if ($task->pendingPo || $task->unitQuotation) {
+            if ($task->pendingPo) {
+                $po = $task->pendingPo;
+                $isUnit = (bool) $po->id_unit_quotation;
+                $quoteRef = $isUnit ? $po->unitQuotation : $po->quote;
+                $quoteIdCol = $isUnit ? 'id_unit_quotation' : 'id_quotation';
+                $quoteRefId = $isUnit ? $po->id_unit_quotation : $po->id_quotation;
+
+                $invoicePo = \App\Models\Invoice::where($quoteIdCol, $quoteRefId)->whereNotNull('no_po')->where('no_po', '!=', '')->value('no_po');
+                $poNumber = $invoicePo ?: ($po->no_pending ?? 'No PO');
+                $companyName = 'Unknown Client';
+                $clientAddress = '';
+                $clientId = null;
+                $bastEntity = 'Reftech';
+                $client = $isUnit
+                    ? ($quoteRef->client ?? null)
+                    : (($quoteRef && $quoteRef->pic) ? $quoteRef->pic->client : null);
+                if ($client) {
+                    $companyName = $client->company;
+                    $clientAddress = $client->address;
+                    $clientId = $client->id;
+                    $bastEntity = ($client->info == 'Reftech') ? 'Reftech' : 'Kojisha';
+                }
+
+                // Get Invoices and associate their payments sequentially
+                $invoices = \App\Models\Invoice::where($quoteIdCol, $quoteRefId)->orderBy('id')->get();
+                $payments = \App\Models\Payment::where($quoteIdCol, $quoteRefId)->orderBy('id')->get();
+                
+                $invoiceList = [];
+                foreach ($invoices as $index => $invoice) {
+                    $payment = $payments->get($index);
+                    $status = 'Unpaid';
+                    if ($payment) {
+                        $status = ($payment->level == 1) ? 'Paid' : 'Pending Confirmation';
+                    }
+                    
+                    $typeLabel = 'Invoice';
+                    switch ($invoice->type) {
+                        case 'CT':
+                            $typeLabel = 'Cash Before Delivery';
+                            break;
+                        case 'DP':
+                            $typeLabel = 'Down Payment';
+                            break;
+                        case 'BP':
+                            $typeLabel = 'Balance Payment / Tempo';
+                            break;
+                    }
+                    $percentVal = $invoice->percent !== null ? (int)$invoice->percent : 100;
+                    $termName = ($invoice->no_invoice && $invoice->term) ? $invoice->term : "{$typeLabel} ({$percentVal}%)";
+                    
+                    $invoiceList[] = [
+                        'id' => $invoice->id,
+                        'no_invoice' => $invoice->no_invoice ?: 'Draft Invoice #' . $invoice->id,
+                        'term_name' => $termName,
+                        'status' => $status,
+                        'link' => url('/invoice/' . $invoice->id)
+                    ];
+                }
+
+                // Get Delivery / Surat Jalan records for all invoices of this quotation
+                $invoiceIds = $invoices->pluck('id')->toArray();
+                $deliveries = \App\Models\Delivery::whereIn('id_invoice', $invoiceIds)->get()->map(function($d) {
                     return [
-                        'id' => $r->id,
-                        'jobdesc' => ($r->no_service ?: 'No SR') . ' - ' . ($r->jobdesc ?: 'Service Report #' . $r->id) . ' (' . $r->created_at->format('d-m-Y') . ')',
+                        'id' => $d->id,
+                        'destination' => $d->destination ?: 'No Destination',
+                        'link' => url('/delivery/' . $d->id),
                     ];
                 });
-            }
 
-            $activeReport = null;
-            if ($task->service_report_id) {
-                $rep = \App\Models\Reports::find($task->service_report_id);
-                if ($rep) {
-                    $activeReport = [
-                        'id' => $rep->id,
-                        'jobdesc' => ($rep->no_service ?: 'No SR') . ' - ' . ($rep->jobdesc ?: 'Service Report #' . $rep->id),
-                        'date' => $rep->created_at->format('d-m-Y'),
-                        'link' => url('/service-reports/' . $rep->id),
-                    ];
+                // Get available service reports for this client
+                $availableReports = [];
+                if ($clientId) {
+                    $availableReports = \App\Models\Reports::whereHas('pic', function($q) use ($clientId) {
+                        $q->where('id_client', $clientId);
+                    })
+                    ->orderBy('created_at', 'desc')
+                    ->get()
+                    ->map(function($r) {
+                        return [
+                            'id' => $r->id,
+                            'jobdesc' => ($r->no_service ?: 'No SR') . ' - ' . ($r->jobdesc ?: 'Service Report #' . $r->id) . ' (' . $r->created_at->format('d-m-Y') . ')',
+                        ];
+                    });
                 }
-            }
 
-            $soDetails = [
-                'id' => $po->id,
-                'no_po' => $poNumber,
-                'company' => $companyName,
-                'address' => $clientAddress,
-                'sales_name' => $quoteRef && $quoteRef->sales ? $quoteRef->sales->name : 'N/A',
-                'quote_id' => $quoteRefId,
-                'quote_no' => $quoteRef ? $quoteRef->no_quote : 'N/A',
-                'quote_link' => url(($isUnit ? '/unit-quotation/' : '/quotation/') . $quoteRefId),
-                'quote_nett' => $quoteRef ? number_format($isUnit ? $quoteRef->total : $quoteRef->nett, 2, ',', '.') : '0',
-                'type' => $po->type,
-                'date' => $po->date ? $po->date : '',
-                'invoices' => $invoiceList,
-                'deliveries' => $deliveries,
-                'available_reports' => $availableReports,
-                'service_report_id' => $task->service_report_id,
-                'active_report' => $activeReport,
-                'bast_prefill' => [
-                    'id_quotation' => $quoteRefId,
-                    'entity' => $bastEntity,
-                    'customer_name' => $companyName,
-                    'work_title' => $quoteRef ? $quoteRef->title : '',
-                    'po_number' => $poNumber,
-                ],
-                'bast' => $task->bast ? [
-                    'id' => $task->bast->id,
-                    'no_bast' => $task->bast->no_bast,
-                    'show_link' => route('bast.show', $task->bast->id),
-                    'print_link' => route('bast.print', $task->bast->id),
-                ] : null,
-            ];
+                $activeReport = null;
+                if ($task->service_report_id) {
+                    $rep = \App\Models\Reports::find($task->service_report_id);
+                    if ($rep) {
+                        $activeReport = [
+                            'id' => $rep->id,
+                            'jobdesc' => ($rep->no_service ?: 'No SR') . ' - ' . ($rep->jobdesc ?: 'Service Report #' . $rep->id),
+                            'date' => $rep->created_at->format('d-m-Y'),
+                            'link' => url('/service-reports/' . $rep->id),
+                        ];
+                    }
+                }
+
+                $entityType = null;
+                $firstInvoice = $invoices->whereNotNull('no_invoice')->where('no_invoice', '!=', '')->first() ?: $invoices->first();
+                if ($firstInvoice) {
+                    if ($firstInvoice->flag === 'Kojisha' || ($firstInvoice->no_invoice && str_contains($firstInvoice->no_invoice, '/KII/'))) {
+                        $entityType = 'KII';
+                    } elseif ($firstInvoice->flag === 'Reftech' || ($firstInvoice->no_invoice && str_contains($firstInvoice->no_invoice, '/RJO/'))) {
+                        $entityType = 'RJO';
+                    }
+                }
+                if (!$entityType && $quoteRef) {
+                    $flag = $quoteRef->flag ?? ($client ? $client->info : null);
+                    if ($flag === 'Kojisha') {
+                        $entityType = 'KII';
+                    } elseif ($flag === 'Reftech') {
+                        $entityType = 'RJO';
+                    }
+                }
+                if (!$entityType) {
+                    $entityType = ($bastEntity === 'Kojisha') ? 'KII' : 'RJO';
+                }
+
+                $soDetails = [
+                    'id' => $po->id,
+                    'no_po' => $poNumber,
+                    'company' => $companyName,
+                    'address' => $clientAddress,
+                    'entity_type' => $entityType,
+                    'sales_name' => $quoteRef && $quoteRef->sales ? $quoteRef->sales->name : 'N/A',
+                    'quote_id' => $quoteRefId,
+                    'quote_no' => $quoteRef ? $quoteRef->no_quote : 'N/A',
+                    'quote_link' => $isUnit ? route('unit-quotation.show', $quoteRefId) : route('quotation.show', $quoteRefId),
+                    'quote_nett' => $quoteRef ? number_format($isUnit ? $quoteRef->total : $quoteRef->nett, 2, ',', '.') : '0',
+                    'project_monitoring_link' => route('project-monitoring.show', $po->id),
+                    'financial_health' => $computeFinancialHealth($po->id, (float) ($quoteRef ? ($isUnit ? $quoteRef->total : $quoteRef->nett) : 0)),
+                    'type' => $po->type,
+                    'date' => $po->date ? $po->date : '',
+                    'invoices' => $invoiceList,
+                    'deliveries' => $deliveries,
+                    'available_reports' => $availableReports,
+                    'service_report_id' => $task->service_report_id,
+                    'active_report' => $activeReport,
+                    'bast_prefill' => [
+                        'id_quotation' => $quoteRefId,
+                        'entity' => $bastEntity,
+                        'customer_name' => $companyName,
+                        'work_title' => $quoteRef ? $quoteRef->title : '',
+                        'po_number' => $poNumber,
+                    ],
+                    'bast' => $task->bast ? [
+                        'id' => $task->bast->id,
+                        'no_bast' => $task->bast->no_bast,
+                        'show_link' => route('bast.show', $task->bast->id),
+                        'print_link' => route('bast.print', $task->bast->id),
+                    ] : null,
+                ];
+            } elseif ($task->unitQuotation) {
+                // Kartu lahir langsung dari tombol "Post to Kanban" di halaman quotation
+                // (belum ada PO/SO) — panel SO Details tetap ditampilkan tapi versi
+                // ringkas, yang penting link balik ke quotation-nya kelihatan.
+                $quoteRef = $task->unitQuotation;
+                $client = $quoteRef->client;
+                $bastEntity = ($client && $client->info == 'Reftech') ? 'Reftech' : 'Kojisha';
+                $entityType = $bastEntity === 'Kojisha' ? 'KII' : 'RJO';
+
+                // Kartu ini gak punya pending_po_id, tapi bisa aja PendingPO-nya udah dibuat
+                // terpisah (mis. dari upload-po) — kalau ada, ikutan tautkan Project Monitoring
+                // & Ringkasan Kesehatan Keuangan-nya.
+                $relatedPo = \App\Models\PendingPO::where('id_unit_quotation', $quoteRef->id)->first();
+
+                $soDetails = [
+                    'id' => null,
+                    'no_po' => 'Belum ada PO',
+                    'company' => $client ? $client->company : 'Unknown Client',
+                    'address' => $client ? $client->address : '',
+                    'entity_type' => $entityType,
+                    'sales_name' => $quoteRef->sales ? $quoteRef->sales->name : 'N/A',
+                    'quote_id' => $quoteRef->id,
+                    'quote_no' => $quoteRef->no_quote,
+                    'quote_link' => route('unit-quotation.show', $quoteRef->id),
+                    'quote_nett' => number_format($quoteRef->total, 2, ',', '.'),
+                    // Fallback ke halaman quotation kalau belum ada PendingPO sama sekali.
+                    'project_monitoring_link' => $relatedPo
+                        ? route('project-monitoring.show', $relatedPo->id)
+                        : route('unit-quotation.show', $quoteRef->id),
+                    'financial_health' => $computeFinancialHealth($relatedPo?->id, (float) $quoteRef->total),
+                    'type' => $quoteRef->type,
+                    'date' => $quoteRef->date ?: '',
+                    'invoices' => [],
+                    'deliveries' => [],
+                    'available_reports' => [],
+                    'service_report_id' => null,
+                    'active_report' => null,
+                    'bast_prefill' => [
+                        'id_quotation' => $quoteRef->id,
+                        'entity' => $bastEntity,
+                        'customer_name' => $client ? $client->company : '',
+                        'work_title' => $quoteRef->title,
+                        'po_number' => 'Belum ada PO',
+                    ],
+                    'bast' => null,
+                ];
+            }
+        }
+
+        $user = Auth::user();
+        if ($soDetails && $user && $user->role === 'ServiceM') {
+            $soDetails['quote_nett'] = null;
+            $soDetails['quote_link'] = null;
+            $soDetails['invoices'] = [];
+            $soDetails['financial_health'] = null;
+            if ($soDetails['project_monitoring_link'] && str_contains($soDetails['project_monitoring_link'], 'unit-quotation')) {
+                $soDetails['project_monitoring_link'] = null;
+            }
         }
 
         return response()->json([
@@ -1071,11 +1269,13 @@ class KanbanController extends Controller
     public function monitoringDocument()
     {
         $user = Auth::user();
-        if ($user->role !== 'Admin' && $user->role !== 'Accounting' && $user->role !== 'Finance Manager') {
+        $board = KanbanBoard::with('members')->where('type', 'monitoring')->first();
+
+        $isMember = $board && $board->members->contains($user->id);
+        if ($user->role !== 'Admin' && $user->role !== 'Accounting' && $user->role !== 'Finance Manager' && !$isMember) {
             abort(403, 'Akses ditolak.');
         }
 
-        $board = KanbanBoard::where('type', 'monitoring')->first();
         if (!$board) {
             $board = KanbanBoard::create([
                 'title' => 'Monitoring Document',
@@ -1281,42 +1481,102 @@ class KanbanController extends Controller
     public function getAvailablePOs()
     {
         $user = Auth::user();
-        if ($user->role !== 'Admin' && $user->role !== 'Accounting' && $user->role !== 'Finance Manager') {
+        $board = KanbanBoard::with('members')->where('type', 'monitoring')->first();
+        $isMember = $board && $board->members->contains($user->id);
+        if ($user->role !== 'Admin' && $user->role !== 'Accounting' && $user->role !== 'Finance Manager' && !$isMember) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $board = KanbanBoard::where('type', 'monitoring')->first();
         $existingPoIds = $board ? KanbanTask::where('board_id', $board->id)->whereNotNull('pending_po_id')->pluck('pending_po_id')->toArray() : [];
 
         $pos = \App\Models\PendingPO::where('status', '<', 6)
             ->whereNotIn('id', $existingPoIds)
             ->where('created_at', '>=', '2026-07-17 00:00:00')
-            ->whereHas('quote.invoice', function($q) {
-                $q->whereNotNull('no_invoice')->where('no_invoice', '!=', '');
+            ->where(function ($outer) {
+                $outer->where(function ($sub) {
+                    $sub->whereNotNull('id_quotation')
+                        ->whereHas('quote.invoice', function($q) {
+                            $q->whereNotNull('no_invoice')->where('no_invoice', '!=', '');
+                        })
+                        ->whereHas('quote.payment', function($q) {
+                            $q->where('method', '!=', 'Escrow');
+                        });
+                })->orWhere(function ($sub) {
+                    $sub->whereNotNull('id_unit_quotation')
+                        ->whereHas('unitQuotation.invoices', function($q) {
+                            $q->whereNotNull('no_invoice')->where('no_invoice', '!=', '');
+                        })
+                        ->whereHas('unitQuotation.payments', function($q) {
+                            $q->where('method', '!=', 'Escrow');
+                        });
+                });
             })
-            ->whereHas('quote.payment', function($q) {
-                $q->where('method', '!=', 'Escrow');
-            })
-            ->with(['quote.pic.client', 'quote.sales'])
+            ->with(['quote.pic.client', 'quote.sales', 'quote.invoice', 'unitQuotation.client', 'unitQuotation.sales', 'unitQuotation.invoices'])
             ->get();
 
         $invoicePoByQuotation = \App\Models\Invoice::whereIn('id_quotation', $pos->pluck('id_quotation')->filter()->unique())
             ->whereNotNull('no_po')->where('no_po', '!=', '')
             ->pluck('no_po', 'id_quotation');
 
-        $pos = $pos->map(function ($po) use ($invoicePoByQuotation) {
-                $poNumber = $invoicePoByQuotation->get($po->id_quotation) ?: ($po->no_pending ?? 'No PO');
-                $companyName = 'Unknown Client';
-                if ($po->quote && $po->quote->pic && $po->quote->pic->client) {
-                    $companyName = $po->quote->pic->client->company;
+        $invoicePoByUnitQuotation = \App\Models\Invoice::whereIn('id_unit_quotation', $pos->pluck('id_unit_quotation')->filter()->unique())
+            ->whereNotNull('no_po')->where('no_po', '!=', '')
+            ->pluck('no_po', 'id_unit_quotation');
+
+        $pos = $pos->map(function ($po) use ($invoicePoByQuotation, $invoicePoByUnitQuotation) {
+            $isUnit = (bool) $po->id_unit_quotation;
+            $quoteRef = $isUnit ? $po->unitQuotation : $po->quote;
+
+            $poNumber = $isUnit
+                ? ($invoicePoByUnitQuotation->get($po->id_unit_quotation) ?: ($po->no_pending ?? 'No PO'))
+                : ($invoicePoByQuotation->get($po->id_quotation) ?: ($po->no_pending ?? 'No PO'));
+
+            $companyName = 'Unknown Client';
+            if ($isUnit && $po->unitQuotation && $po->unitQuotation->client) {
+                $companyName = $po->unitQuotation->client->company;
+            } elseif (!$isUnit && $po->quote && $po->quote->pic && $po->quote->pic->client) {
+                $companyName = $po->quote->pic->client->company;
+            }
+
+            $salesName = $quoteRef && $quoteRef->sales ? $quoteRef->sales->name : 'N/A';
+
+            $entityType = null;
+            $invoices = $isUnit
+                ? ($quoteRef ? $quoteRef->invoices : collect())
+                : ($quoteRef ? $quoteRef->invoice : collect());
+
+            $firstInvoice = $invoices ? ($invoices->whereNotNull('no_invoice')->where('no_invoice', '!=', '')->first() ?: $invoices->first()) : null;
+            if ($firstInvoice) {
+                if ($firstInvoice->flag === 'Kojisha' || ($firstInvoice->no_invoice && str_contains($firstInvoice->no_invoice, '/KII/'))) {
+                    $entityType = 'KII';
+                } elseif ($firstInvoice->flag === 'Reftech' || ($firstInvoice->no_invoice && str_contains($firstInvoice->no_invoice, '/RJO/'))) {
+                    $entityType = 'RJO';
                 }
-                return [
-                    'id' => $po->id,
-                    'no_po' => $poNumber,
-                    'company' => $companyName,
-                    'sales' => $po->quote && $po->quote->sales ? $po->quote->sales->name : 'N/A',
-                ];
-            });
+            }
+
+            if (!$entityType && $quoteRef) {
+                $client = $isUnit
+                    ? ($quoteRef->client ?? null)
+                    : (($quoteRef->pic) ? $quoteRef->pic->client : null);
+                $flag = $quoteRef->flag ?? ($client ? $client->info : null);
+                if ($flag === 'Kojisha') {
+                    $entityType = 'KII';
+                } elseif ($flag === 'Reftech') {
+                    $entityType = 'RJO';
+                }
+            }
+
+            if (!$entityType) {
+                $entityType = 'RJO';
+            }
+
+            return [
+                'id' => $po->id,
+                'no_po' => $poNumber,
+                'company' => $companyName,
+                'sales' => $salesName,
+                'entity_type' => $entityType,
+            ];
+        });
 
         return response()->json([
             'success' => true,
@@ -1327,13 +1587,14 @@ class KanbanController extends Controller
     public function checkNewCards($lastTaskId)
     {
         $user = Auth::user();
-        if ($user->role !== 'Admin' && $user->role !== 'Accounting' && $user->role !== 'Finance Manager') {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        $board = KanbanBoard::where('type', 'monitoring')->first();
+        $board = KanbanBoard::with('members')->where('type', 'monitoring')->first();
         if (!$board) {
             return response()->json(['success' => true, 'new_cards' => 0]);
+        }
+
+        $isMember = $board->members->contains($user->id);
+        if ($user->role !== 'Admin' && $user->role !== 'Accounting' && $user->role !== 'Finance Manager' && !$isMember) {
+            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $newCardsCount = KanbanTask::where('board_id', $board->id)

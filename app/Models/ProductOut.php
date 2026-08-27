@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ProductOut extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
     protected $table = "product_out";
     protected $date = [
         'created_at',

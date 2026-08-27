@@ -23,12 +23,36 @@ $(function () {
                 { data: "warehouse_stock" },
                 { data: "pending_stock" },
                 { data: "price" },
+                { data: "price_updated_at" },
             ],
             columnDefs: [
                 {
                     targets: 9,
-                    className: "text-end",
-                    render: $.fn.dataTable.render.number(".", "", 0, "Rp."),
+                    className: "text-nowrap",
+                    render: function (data, type) {
+                        if (type !== "display" && type !== "filter") {
+                            return data === null || data === "" ? 0 : data;
+                        }
+                        var n = parseFloat(data);
+                        if (isNaN(n)) n = 0;
+                        var num = String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                        // "Rp" rata kiri, nominal rata kanan dalam satu sel
+                        return (
+                            '<div class="d-flex justify-content-between">' +
+                            '<span class="text-muted me-3">Rp</span>' +
+                            '<span>' + num + '</span>' +
+                            '</div>'
+                        );
+                    },
+                },
+                {
+                    targets: 10,
+                    className: "text-center text-nowrap",
+                    render: function (data, type) {
+                        if (!data) return "-";
+                        if (type !== "display") return data;
+                        return moment(data).format("DD MMM YYYY");
+                    },
                 },
                 {
                     targets: 2,

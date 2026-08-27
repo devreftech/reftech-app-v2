@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ReqVisit extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
     protected $table = "req_visit";
     protected $date = [
         'req_date',

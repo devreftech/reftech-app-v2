@@ -39,6 +39,20 @@ class ProspectController extends Controller
         $prospects = Prospect::where('id_sales', Auth::id())->whereNull('level')->get();
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
         $leveledProspect = Prospect::whereNULL('level')->where('id_sales', Auth::id())->count();
+
+        // Sales specific metrics
+        $salesNewProspectCount   = Prospect::where('id_sales', Auth::id())->whereNull('level')->count();
+        $salesFuProspectCount    = Prospect::where('id_sales', Auth::id())->where('level', '9')->count();
+        $salesTotalAssigned      = $salesNewProspectCount + $salesFuProspectCount;
+        $salesQuoteForecast      = Quotation::where('id_sales', Auth::id())->where('level', '1')->where('is_primary', '1')->whereIn('status', ['20', '30', '40', '60', '80'])->sum('nett');
+        $salesQuoteForecastCount = Quotation::where('id_sales', Auth::id())->where('level', '1')->where('is_primary', '1')->whereIn('status', ['20', '30', '40', '60', '80'])->count();
+        $salesHotProspect        = Quotation::where('id_sales', Auth::id())->where('level', '1')->where('is_primary', '1')->where('status', '80')->sum('nett');
+        $salesHotProspectCount   = Quotation::where('id_sales', Auth::id())->where('level', '1')->where('is_primary', '1')->where('status', '80')->count();
+        $salesPo                 = Quotation::where('id_sales', Auth::id())->where('status', '100')->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $salesPoCount            = Quotation::where('id_sales', Auth::id())->where('status', '100')->where('level', '1')->where('is_primary', '1')->count();
+        $salesLoss               = Quotation::where('id_sales', Auth::id())->where('status', '0')->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $salesLossCount          = Quotation::where('id_sales', Auth::id())->where('status', '0')->where('level', '1')->where('is_primary', '1')->count();
+
         $now = Carbon::now();
         $startOfMonth = $now->copy()->startOfMonth();
         $endOfMonth = $now->copy()->endOfMonth();
@@ -197,7 +211,18 @@ class ProspectController extends Controller
             'selectedWeekNum',
             'domainList',
             'salesList',
-            'availableYears'
+            'availableYears',
+            'salesNewProspectCount',
+            'salesFuProspectCount',
+            'salesTotalAssigned',
+            'salesQuoteForecast',
+            'salesQuoteForecastCount',
+            'salesHotProspect',
+            'salesHotProspectCount',
+            'salesPo',
+            'salesPoCount',
+            'salesLoss',
+            'salesLossCount'
         ));
     }
 
@@ -444,8 +469,9 @@ class ProspectController extends Controller
             ->where('o.level', '1')
             ->take(5)
             ->get();
+        $allUsers = User::where('active', '1')->get(['id', 'name', 'image', 'role']);
 
-        return view('pages.support.prospect.detail', compact('allQuotation', 'prospect', 'comment', 'prospectComments', 'unreadComment', 'commentAdmin', 'quotation', 'unreadCommentAdmin', 'leveledProspect', 'noSaleProspect', 'pic', 'client', 'sales', 'user'));
+        return view('pages.support.prospect.detail', compact('allQuotation', 'prospect', 'comment', 'prospectComments', 'unreadComment', 'commentAdmin', 'quotation', 'unreadCommentAdmin', 'leveledProspect', 'noSaleProspect', 'pic', 'client', 'sales', 'user', 'allUsers'));
     }
 
     /**
@@ -583,15 +609,7 @@ class ProspectController extends Controller
 
     public function create_quotation($id)
     {
-        $prospect = Prospect::find($id);
-        $dateNow = Carbon::now();
-        $numberQ = Quotation::whereYear('estimated_date', $dateNow)->where('id_sales', Auth::user()->id)->count();
-        $formattedNumberQ = str_pad($numberQ + 1, 3, '0', STR_PAD_LEFT);
-        $monthNow = $dateNow->month;
-        $formattedMonthNow = $this->convertToRoman($monthNow);
-        $product = collect([]);
-
-        return view('pages.support.prospect.quotation', compact('prospect', 'numberQ', 'formattedNumberQ', 'formattedMonthNow', 'product'));
+        return redirect()->route('unit-quotation.create', ['prospect_id' => $id]);
     }
 
     public function store_quotation(Request $request, $id)

@@ -21,12 +21,35 @@ class SerialProduct extends Model
         'image',
         'detail',
         'price',
+        'price_updated_at',
         'rental',
         'second',
         'new',
         'bar',
         'air_cap',
     ];
+
+    protected $casts = [
+        'price_updated_at' => 'datetime',
+    ];
+
+    protected static function booted()
+    {
+        // Catat waktu tiap kali `price` berubah, apa pun controller-nya
+        // (edit equivalent, part-inquiry, bulk update, dll).
+        static::creating(function ($serial) {
+            if (!is_null($serial->price) && is_null($serial->price_updated_at)) {
+                $serial->price_updated_at = now();
+            }
+        });
+
+        static::updating(function ($serial) {
+            if ($serial->isDirty('price')) {
+                $serial->price_updated_at = now();
+            }
+        });
+    }
+
     public function product()
     {
         return $this->belongsTo('App\Models\Product', 'id_product', 'id');

@@ -33,4 +33,9 @@ class UnitInventory extends Model
     {
         return $this->belongsTo(User::class, 'created_by', 'id');
     }
+
+    public function rebrandingCosts()
+    {
+        return $this->hasMany(UnitInventoryRebrandingCost::class, 'id_unit_inventory', 'id')->orderBy('id');
+    }
 }

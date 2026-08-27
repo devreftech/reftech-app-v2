@@ -271,6 +271,11 @@
                                                         <label class="form-check-label small">Custom Item</label>
                                                     </div>
                                                 </div>
+                                                {{-- Radio di atas gak punya name (per-baris, exclusivity dihandle JS) supaya
+                                                     gak nabrak grup radio baris lain — nilainya disinkronkan ke sini lewat
+                                                     applyRowCategory() tiap kali berubah, ini yang beneran ke-submit. --}}
+                                                <input type="hidden" class="item-category-value" name="item_category[]"
+                                                    value="{{ ($item->category ?? '') == 'Unit' ? 'Unit' : (($item->category ?? '') == 'Custom' ? 'Custom' : 'Sparepart') }}">
                                                 <div class="field-product-sparepart">
                                                     <select class="form-select form-select-sm select2-product-po" name="id_product[]">
                                                         <option value="">Cari SKU / Product...</option>
@@ -296,6 +301,10 @@
                                                                 {{ $u->sku }} {{ $u->brand }} {{ $u->model }}
                                                             </option>
                                                         @endforeach
+                                                    </select>
+                                                    <select class="form-select form-select-sm mt-1 select-kondisi-unit" name="kondisi[]">
+                                                        <option value="Baru" {{ ($item->kondisi ?? 'Baru') == 'Baru' ? 'selected' : '' }}>Unit Baru (masuk stok jual)</option>
+                                                        <option value="Second" {{ ($item->kondisi ?? '') == 'Second' ? 'selected' : '' }}>Unit Second (jadi Fixed Asset, QC dulu)</option>
                                                     </select>
                                                 </div>
                                                 <div class="field-product-custom" style="display:none;">
@@ -404,6 +413,7 @@
                                                         <label class="form-check-label small">Custom Item</label>
                                                     </div>
                                                 </div>
+                                                <input type="hidden" class="item-category-value" name="item_category[]" value="Sparepart">
                                                 <div class="field-product-sparepart">
                                                     <select class="form-select form-select-sm select2-product-po" name="id_product[]">
                                                         <option value="">Cari SKU / Product...</option>
@@ -428,6 +438,10 @@
                                                                 {{ $u->sku }} {{ $u->brand }} {{ $u->model }}
                                                             </option>
                                                         @endforeach
+                                                    </select>
+                                                    <select class="form-select form-select-sm mt-1 select-kondisi-unit" name="kondisi[]">
+                                                        <option value="Baru" selected>Unit Baru (masuk stok jual)</option>
+                                                        <option value="Second">Unit Second (jadi Fixed Asset, QC dulu)</option>
                                                     </select>
                                                 </div>
                                                 <div class="field-product-custom" style="display:none;">
@@ -528,6 +542,7 @@
                                                     <label class="form-check-label small">Custom Item</label>
                                                 </div>
                                             </div>
+                                            <input type="hidden" class="item-category-value" name="item_category[]" value="Sparepart">
                                             <div class="field-product-sparepart">
                                                 <select class="form-select form-select-sm select2-product-po" name="id_product[]">
                                                     <option value="">Cari SKU / Product...</option>
@@ -551,6 +566,10 @@
                                                             {{ $u->sku }} {{ $u->brand }} {{ $u->model }}
                                                         </option>
                                                     @endforeach
+                                                </select>
+                                                <select class="form-select form-select-sm mt-1 select-kondisi-unit" name="kondisi[]">
+                                                    <option value="Baru" selected>Unit Baru (masuk stok jual)</option>
+                                                    <option value="Second">Unit Second (jadi Fixed Asset, QC dulu)</option>
                                                 </select>
                                             </div>
                                             <div class="field-product-custom" style="display:none;">
@@ -1560,6 +1579,9 @@
 
             function applyRowCategory($fields) {
                 var category = $fields.find('.item-category-radio:checked').val() || 'Sparepart';
+                // Radio-nya sendiri gak punya name (lihat komentar di template), jadi nilai
+                // yang beneran ke-submit ke server disinkronkan lewat hidden input ini.
+                $fields.find('.item-category-value').val(category);
                 var $sparepart = $fields.find('.field-product-sparepart');
                 var $unit = $fields.find('.field-product-unit');
                 var $custom = $fields.find('.field-product-custom');

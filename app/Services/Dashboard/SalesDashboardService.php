@@ -206,6 +206,7 @@ class SalesDashboardService
             ->join('client as c', 'c.id', '=', 'm.id_client')
             ->join('users as u', 'u.id', '=', 'c.id_sales')
             ->where('u.id', $salesUserId)
+            ->where('reports.approval_status', 'approved')
             ->where('reports.viewed', 0)
             ->count();
 

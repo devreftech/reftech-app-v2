@@ -54,7 +54,7 @@ try {
     FROM unit_quotation uq
     LEFT JOIN client c2 ON c2.id = NULLIF(uq.id_client,'')
     INNER JOIN users u2 ON u2.id = uq.id_sales
-    WHERE uq.status NOT IN ('hot_prospect','po_received') AND (uq.is_latest = 1 OR uq.is_latest IS NULL)
+    WHERE uq.status NOT IN ('hot_prospect','po_received','loss','cancel') AND (uq.is_latest = 1 OR uq.is_latest IS NULL)
         AND u2.role IN ('Admin','Sales Manager')$yearFilterU
 
     ORDER BY estimated_date DESC";
