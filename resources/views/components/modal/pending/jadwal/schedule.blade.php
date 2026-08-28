@@ -8,7 +8,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h4 class="modal-title text-center" id="exampleModalLabel5">
-                        {{ 'Scheduling' }} {{ $order->quote->invoice[0]->no_po ?? $order->quote->pic->client->customer }}
+                        {{ 'Scheduling' }} {{ $order->quote?->invoice[0]?->no_po ?? $order->quote?->pic?->client?->customer ?? $order->unitQuotation?->po_number ?? $order->unitQuotation?->client?->company ?? '-' }}
                     </h4>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
