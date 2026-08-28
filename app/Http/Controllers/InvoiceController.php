@@ -527,14 +527,16 @@ class InvoiceController extends Controller
 
             return $defaultCode;
         }
-        // Generate next invoice numbers — mempertimbangkan sequence SUO booking & invoice unit quotation
+        // Generate next invoice numbers.
+        // Sequence SUO booking & invoice unit quotation semuanya berformat PPn Reftech (SJ-P/RJO),
+        // jadi hanya relevan untuk nomor PPn Reftech. Non-PPn & Kojisha punya sequence sendiri per tahun.
         $nextCodePR  = generateNextInvoiceNumber($lastInvoicePRef,  '001', $lastSuoSeq, $lastUnitSeq);
-        $nextCodeNPR = generateNextInvoiceNumber($lastInvoiceNPRef, '001', $lastSuoSeq, $lastUnitSeq);
-        $nextCodePK  = generateNextInvoiceNumber($lastInvoicePKoj,  '001', $lastSuoSeq, $lastUnitSeq);
-        $nextCodeNPK = generateNextInvoiceNumber($lastInvoiceNPKoj, '001', $lastSuoSeq, $lastUnitSeq);
+        $nextCodeNPR = generateNextInvoiceNumber($lastInvoiceNPRef, '001');
+        $nextCodePK  = generateNextInvoiceNumber($lastInvoicePKoj,  '001');
+        $nextCodeNPK = generateNextInvoiceNumber($lastInvoiceNPKoj, '001');
 
         // "Last No" display — tampilkan nomor terakhir yg benar-benar dipakai (invoice, SUO booking, atau invoice unit quotation)
-        $getEffectiveLastDisplay = function ($lastInvoice) use ($lastSuoBookingNo, $lastSuoSeq, $lastUnitInvoice, $lastUnitSeq) {
+        $getEffectiveLastDisplay = function ($lastInvoice, $includeGlobal = false) use ($lastSuoBookingNo, $lastSuoSeq, $lastUnitInvoice, $lastUnitSeq) {
             $best = 0;
             if ($lastInvoice) {
                 preg_match('/^(\d+)\//', $lastInvoice->no_invoice, $m);
@@ -542,17 +544,19 @@ class InvoiceController extends Controller
             }
             $bestDisplay = $lastInvoice->no_invoice ?? null;
 
-            if ($lastUnitSeq > $best) {
-                $best = $lastUnitSeq;
-                $bestDisplay = $lastUnitInvoice->no_invoice;
-            }
-            if ($lastSuoSeq > $best) {
-                $bestDisplay = $lastSuoBookingNo;
+            if ($includeGlobal) {
+                if ($lastUnitSeq > $best) {
+                    $best = $lastUnitSeq;
+                    $bestDisplay = $lastUnitInvoice->no_invoice;
+                }
+                if ($lastSuoSeq > $best) {
+                    $bestDisplay = $lastSuoBookingNo;
+                }
             }
 
             return $bestDisplay;
         };
-        $displayLastPR  = $getEffectiveLastDisplay($lastInvoicePRef);
+        $displayLastPR  = $getEffectiveLastDisplay($lastInvoicePRef, true);
         $displayLastNPR = $getEffectiveLastDisplay($lastInvoiceNPRef);
         $displayLastPK  = $getEffectiveLastDisplay($lastInvoicePKoj);
         $displayLastNPK = $getEffectiveLastDisplay($lastInvoiceNPKoj);

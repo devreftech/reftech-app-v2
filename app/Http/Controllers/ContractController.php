@@ -54,8 +54,9 @@ class ContractController extends Controller
         $numberLastSC      = Contract::where('type', 'Selling')->where('level', '1')
             ->whereYear('date', $today)->orderByDesc('id')->first('no_contract');
         $formattedNumberSC = $this->generateNextContractNumber($numberLastSC, '001');
+        $unitNumbers = Contract::unitContractNumbers($today->year);
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
-        return view('pages.accounting.contract.index', compact('requestContract','requestInvoice','noSaleProspect', 'contracts', 'thisYear', 'formattedNumberSP', 'formattedNumberSNP', 'formattedNumberCP', 'formattedNumberCNP', 'numberLastSP', 'numberLastSNP', 'numberLastCP', 'numberLastCNP', 'formattedNumberSC'));
+        return view('pages.accounting.contract.index', compact('requestContract','requestInvoice','noSaleProspect', 'contracts', 'thisYear', 'formattedNumberSP', 'formattedNumberSNP', 'formattedNumberCP', 'formattedNumberCNP', 'numberLastSP', 'numberLastSNP', 'numberLastCP', 'numberLastCNP', 'formattedNumberSC', 'unitNumbers'));
     }
 
     /**
@@ -122,6 +123,7 @@ class ContractController extends Controller
         $numberLastSC   = Contract::where('type', 'Selling')->where('level', '1')
             ->whereYear('date', $today)->orderByDesc('id')->first('no_contract');
         $formattedNumberSC = $this->generateNextContractNumber($numberLastSC, '001');
+        $unitNumbers = Contract::unitContractNumbers($today->year);
 
         // Unit quotation contract — separate view
         if ($contract->id_unit_quotation) {
@@ -129,7 +131,7 @@ class ContractController extends Controller
             return view('pages.accounting.contract.detail-unit', compact(
                 'requestContract', 'requestInvoice', 'noSaleProspect',
                 'contract', 'unitQuote', 'thisYear',
-                'formattedNumberSP', 'formattedNumberSNP', 'formattedNumberSC'
+                'formattedNumberSP', 'formattedNumberSNP', 'formattedNumberSC', 'unitNumbers'
             ));
         }
 
@@ -268,11 +270,13 @@ class ContractController extends Controller
     public function request_selling_contract_unit($id)
     {
         $quote   = UnitQuotation::findOrFail($id);
+        // Kojisha -> Confirm Order (type=Order), selain itu Reftech -> Selling Contract.
+        $type    = $quote->isKojisha() ? 'Order' : 'Selling';
         $sellcon = Contract::create([
             'id_unit_quotation' => $id,
             'no_contract'       => $quote->no_quote,
             'level'             => '0',
-            'type'              => 'Selling',
+            'type'              => $type,
             'date'              => Carbon::today(),
         ]);
         return $sellcon ? 1 : 0;
@@ -281,15 +285,16 @@ class ContractController extends Controller
     public function create_selling_contract_unit(Request $request, $id)
     {
         $quote   = UnitQuotation::findOrFail($id);
+        $type    = $quote->isKojisha() ? 'Order' : 'Selling';
         $sellcon = Contract::create([
             'id_unit_quotation' => $id,
             'no_contract'       => $request->no_contract,
             'level'             => '1',
-            'type'              => 'Selling',
+            'type'              => $type,
             'date'              => Carbon::today(),
         ]);
         return redirect()->route('contract.show', $sellcon->id)
-            ->with('success', 'Selling Contract berhasil dibuat.');
+            ->with('success', ($type === 'Order' ? 'Confirm Order' : 'Selling Contract') . ' berhasil dibuat.');
     }
 
     public function request_confirm_order($id)

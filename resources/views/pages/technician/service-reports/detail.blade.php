@@ -1,10 +1,25 @@
 @extends('layouts.sales.app')
 @section('title', 'Service Reports')
 @section('content')
+    @php
+        // Sales / Sales Manager belum boleh baca isi report sebelum di-approve —
+        // isian-nya di-blur + dikasih overlay keterangan, tapi halaman tetap bisa diakses.
+        $lockForSales = in_array(Auth::user()->role, ['Sales', 'Sales Manager'])
+            && $service->approval_status !== 'approved';
+    @endphp
     <div class="row invoice-preview">
         <div class="col-xl-9 col-md-8 col-12 mb-md-0 mb-4">
             <div class="card invoice-preview-card">
                 <div class="card-body">
+                    <div class="position-relative">
+                        @if ($lockForSales)
+                            <div class="sr-lock-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-center p-4">
+                                <i class="mdi mdi-clock-alert-outline text-warning mb-2" style="font-size: 2.5rem;"></i>
+                                <h5 class="fw-bold mb-1">Service Report Terkunci</h5>
+                                <p class="text-muted mb-0">Service report masih menunggu review Teknisi/Admin.</p>
+                            </div>
+                        @endif
+                        <div class="{{ $lockForSales ? 'sr-lock-blur' : '' }}">
                     <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-row flex-column">
                         @if ($service->pic->client->info == 'Reftech')
                             <div class="mb-xl-0 pb-1">
@@ -288,6 +303,8 @@
                             <p class="mt-2 mb-0">( {{ $service->pic->name_pic }} )</p>
                         </div>
                     </div>
+                        </div>{{-- /.sr-lock-blur --}}
+                    </div>{{-- /.position-relative --}}
                 </div>
             </div>
         </div>
@@ -296,8 +313,8 @@
         <div class="col-xl-3 col-md-4 col-12 invoice-actions">
             <div class="card mb-3">
                 <div class="card-body">
-                    {{-- ServiceM belum boleh Download/Bagikan sebelum report di-approve --}}
-                    @unless (Auth::user()->role === 'ServiceM' && $service->approval_status !== 'approved')
+                    {{-- ServiceM & Sales belum boleh Download/Bagikan sebelum report di-approve --}}
+                    @unless ($service->approval_status !== 'approved' && in_array(Auth::user()->role, ['ServiceM', 'Sales', 'Sales Manager']))
                         <a class="btn btn-primary btn-outline-secondary d-grid w-100 mb-3 waves-effect" target="_blank"
                             href="{{ route('service-reports.print', $service->id) }}">
                             Download
@@ -305,8 +322,10 @@
                         <button id="buttonShare" data-id="{{ $service->id }}"
                             class="btn btn-success d-grid w-100 waves-effect mb-3">Bagikan</button>
                     @endunless
-                    <a href="{{ route('service-reports.edit', $service->id) }}"
-                        class="btn btn-outline-warning d-grid w-100 waves-effect mb-3">Edit</a>
+                    @unless ($lockForSales)
+                        <a href="{{ route('service-reports.edit', $service->id) }}"
+                            class="btn btn-outline-warning d-grid w-100 waves-effect mb-3">Edit</a>
+                    @endunless
                     @if (Auth::user()->role == 'Technician' || Auth::user()->role == 'Coordinator')
                         <div class="btn-group w-100 mb-3">
                             <button type="button" class="btn btn-outline-danger w-100 waves-effect dropdown-toggle"
@@ -350,6 +369,7 @@
                 </div>
             </div>
 
+            @unless ($lockForSales)
             <div class="card">
                 <div class="card-body">
                     {{-- Fitur upload lama (#inputImage) disembunyikan, kode tetap ada untuk rollback --}}
@@ -378,6 +398,7 @@
                     @endif
                 </div>
             </div>
+            @endunless
         </div>
         {{-- End : Button Invoice --}}
     </div>
@@ -390,6 +411,20 @@
     <!-- Page CSS -->
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/css/pages/app-invoice.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css" />
+    <style>
+        /* Isian report yang belum di-approve: di-blur untuk Sales, dengan overlay keterangan */
+        .sr-lock-blur {
+            filter: blur(6px);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .sr-lock-overlay {
+            z-index: 5;
+            background: rgba(255, 255, 255, .6);
+            border-radius: .375rem;
+        }
+    </style>
 @endpush
 @push('after-script')
     <script src="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.js"></script>

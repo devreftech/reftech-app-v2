@@ -98,9 +98,11 @@ use FontLib\Table\Type\post;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\MailboxController;
 use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\DeveloperMaintenanceController;
+use App\Http\Controllers\Developer\DeveloperMailboxController;
 use Illuminate\Http\Request;
 
 /*
@@ -120,6 +122,15 @@ Route::get('/api/maintenance/status', [DeveloperMaintenanceController::class, 's
 Route::get('/developer/maintenance', [DeveloperMaintenanceController::class, 'index'])->name('developer.maintenance.index');
 Route::post('/developer/maintenance/toggle', [DeveloperMaintenanceController::class, 'toggle'])->name('developer.maintenance.toggle');
 Route::post('/developer/maintenance/upload-chunk', [DeveloperMaintenanceController::class, 'uploadChunk'])->name('developer.maintenance.upload_chunk');
+
+// Developer Mailbox Management Routes
+Route::get('/developer/mailbox-management', [DeveloperMailboxController::class, 'index'])->name('developer.mailbox.index');
+Route::get('/developer/mailbox-management/user/{id}', [DeveloperMailboxController::class, 'getUserSetting'])->name('developer.mailbox.get_user');
+Route::post('/developer/mailbox-management/save', [DeveloperMailboxController::class, 'saveSetting'])->name('developer.mailbox.save');
+Route::post('/developer/mailbox-management/test-connection', [DeveloperMailboxController::class, 'testConnection'])->name('developer.mailbox.test_connection');
+Route::post('/developer/mailbox-management/sync/{id}', [DeveloperMailboxController::class, 'syncUser'])->name('developer.mailbox.sync');
+Route::post('/developer/mailbox-management/toggle-active/{id}', [DeveloperMailboxController::class, 'toggleActive'])->name('developer.mailbox.toggle_active');
+Route::delete('/developer/mailbox-management/delete/{id}', [DeveloperMailboxController::class, 'deleteSetting'])->name('developer.mailbox.delete');
 
 // Route Dashboard
 // Route::get('/', function () {
@@ -157,6 +168,16 @@ Route::group(["middleware" => "auth"], function () {
     // Route User
     Route::resource('/profile', UserController::class);
     Route::post('/profile/{id}/banner', [UserController::class, 'updateBanner'])->name('profile.banner.update');
+
+    // Route Sales Mailbox Hub & Backend API
+    Route::get('/sales/mailbox', [MailboxController::class, 'index'])->name('sales.mailbox.index');
+    Route::post('/sales/mailbox/send', [MailboxController::class, 'send'])->name('sales.mailbox.send');
+    Route::post('/sales/mailbox/settings', [MailboxController::class, 'saveSettings'])->name('sales.mailbox.settings');
+    Route::post('/sales/mailbox/test-connection', [MailboxController::class, 'testConnection'])->name('sales.mailbox.test-connection');
+    Route::post('/sales/mailbox/sync', [MailboxController::class, 'sync'])->name('sales.mailbox.sync');
+    Route::post('/sales/mailbox/toggle-star', [MailboxController::class, 'toggleStar'])->name('sales.mailbox.toggle-star');
+    Route::post('/sales/mailbox/mark-read', [MailboxController::class, 'markRead'])->name('sales.mailbox.mark-read');
+    Route::post('/sales/mailbox/delete', [MailboxController::class, 'deleteMessage'])->name('sales.mailbox.delete');
 
     // Route Sales Payment Templates
     Route::get('/sales-payment-templates', [SalesPaymentTemplateController::class, 'index'])->name('sales-payment-templates.index');
@@ -1239,6 +1260,8 @@ Route::group(["middleware" => "auth"], function () {
                 'reports.jobdesc',
                 'reports.date',
                 'reports.viewed',
+                'reports.approval_status',
+                'reports.reject_note',
                 'c.company',
                 't.name',
                 'm.tag',
@@ -2040,17 +2063,30 @@ Route::group(["middleware" => "auth"], function () {
         $year = $request->query('year');
         $tax  = $request->query('tax', 'all');
 
-        $query = Contract::join('quotation as q', 'q.id', '=', 'contract.id_quotation')
+        $serviceQuery = Contract::join('quotation as q', 'q.id', '=', 'contract.id_quotation')
             ->join('pic as p', 'p.id', '=', 'q.id_pic')
             ->join('client as c', 'c.id', '=', 'p.id_client')
             ->join('users as u', 'u.id', '=', 'q.id_sales')
             ->where('contract.type', 'Order')
             ->where('contract.level', '1');
-        if ($year && $year !== 'all') $query->whereYear('contract.date', $year);
-        if ($tax === 'ppn')     $query->where('q.tax', '11');
-        elseif ($tax === 'non-ppn') $query->where('q.tax', '0');
+        if ($year && $year !== 'all') $serviceQuery->whereYear('contract.date', $year);
+        if ($tax === 'ppn')     $serviceQuery->where('q.tax', '11');
+        elseif ($tax === 'non-ppn') $serviceQuery->where('q.tax', '0');
+        $service = $serviceQuery->get(['contract.id','contract.no_contract','contract.type','contract.date','q.harga_total','u.name','c.company',DB::raw("CASE WHEN q.tax = '11' THEN 1 ELSE 0 END AS ppn")]);
 
-        $contract = $query->get(['contract.id','contract.no_contract','contract.type','contract.date','q.harga_total','u.name','c.company',DB::raw("CASE WHEN q.tax = '11' THEN 1 ELSE 0 END AS ppn")]);
+        // Kontrak dari Smart Quotation (unit) yang ber-flag Kojisha disimpan sebagai type=Order,
+        // jadi tampil di tab Confirm Order (mirror cabang unit di /db/selling-contract).
+        $unitQuery = Contract::join('unit_quotation as uq', 'uq.id', '=', 'contract.id_unit_quotation')
+            ->join('client as c', 'c.id', '=', 'uq.id_client')
+            ->join('users as u', 'u.id', '=', 'uq.id_sales')
+            ->where('contract.type', 'Order')
+            ->where('contract.level', '1');
+        if ($year && $year !== 'all') $unitQuery->whereYear('contract.date', $year);
+        if ($tax === 'ppn')     $unitQuery->where('uq.tax', 1);
+        elseif ($tax === 'non-ppn') $unitQuery->where('uq.tax', 0);
+        $unit = $unitQuery->get(['contract.id','contract.no_contract','contract.type','contract.date',DB::raw('uq.total AS harga_total'),'u.name','c.company',DB::raw("CASE WHEN uq.tax = 1 THEN 1 ELSE 0 END AS ppn")]);
+
+        $contract = $service->merge($unit)->sortByDesc('id')->values();
         return response()->json(['data' => $contract]);
     });
 
@@ -2243,6 +2279,12 @@ Route::group(["middleware" => "auth"], function () {
             ->where('invoice.flag', 'Reftech')
             ->whereNotNull('quotation.po_file')
             ->whereNotNull('invoice.no_invoice')
+            ->whereNotExists(function ($q) { // Escrow tampil di tab Marketplace, bukan di sini
+                $q->select(DB::raw(1))
+                    ->from('payment')
+                    ->whereColumn('payment.id_quotation', 'quotation.id')
+                    ->where('payment.method', 'Escrow');
+            })
             ->whereYear('quotation.po_date', $year)
             ->get(['invoice.*', 'client.company', 'users.name', 'users.image as sales_image', 'quotation.harga_total', 'quotation.po_date',
                    DB::raw("'service' AS source"),
@@ -2267,7 +2309,9 @@ Route::group(["middleware" => "auth"], function () {
         return response()->json(['data' => $merged]);
     });
     Route::get('/db/invoice/kojisha', function () {
-        $invoice = Invoice::join('quotation', 'quotation.id', '=', 'invoice.id_quotation')
+        $year = request('year', date('Y'));
+
+        $serviceInvoices = Invoice::join('quotation', 'quotation.id', '=', 'invoice.id_quotation')
             ->join('pic', 'pic.id', '=', 'quotation.id_pic')
             ->join('client', 'client.id', '=', 'pic.id_client')
             ->join('users', 'users.id', '=', 'quotation.id_sales')
@@ -2275,10 +2319,34 @@ Route::group(["middleware" => "auth"], function () {
             ->where('invoice.flag', 'Kojisha')
             ->whereNotNull('quotation.po_file')
             ->whereNotNull('invoice.no_invoice')
-            ->orderByDesc('invoice.no_invoice')
+            ->whereNotExists(function ($q) { // Escrow tampil di tab Marketplace, bukan di sini
+                $q->select(DB::raw(1))
+                    ->from('payment')
+                    ->whereColumn('payment.id_quotation', 'quotation.id')
+                    ->where('payment.method', 'Escrow');
+            })
+            ->whereYear('quotation.po_date', $year)
             ->get(['invoice.*', 'client.company', 'users.name', 'users.image as sales_image', 'quotation.harga_total', 'quotation.po_date',
+                   DB::raw("'service' AS source"),
                    DB::raw("IF(quotation.tax = '11', 'PPN', 'Non PPN') AS ppn")]);
-        return response()->json(['data' => $invoice]);
+
+        $unitInvoices = Invoice::join('unit_quotation', 'unit_quotation.id', '=', 'invoice.id_unit_quotation')
+            ->join('client', 'client.id', '=', 'unit_quotation.id_client')
+            ->join('users', 'users.id', '=', 'unit_quotation.id_sales')
+            ->where('invoice.flag', 'Kojisha')
+            ->whereNotNull('invoice.no_invoice')
+            ->where('invoice.type', '!=', 'Escrow') // Escrow tampil di tab Marketplace, bukan di sini
+            ->whereYear('invoice.date', $year)
+            ->get([
+                'invoice.*', 'client.company', 'users.name', 'users.image as sales_image',
+                DB::raw('ROUND(unit_quotation.total * IFNULL(invoice.percent, 100) / 100) AS harga_total'),
+                DB::raw('invoice.date AS po_date'),
+                DB::raw("'unit' AS source"),
+                DB::raw("IF(unit_quotation.tax = 1, 'PPN', 'Non PPN') AS ppn"),
+            ]);
+
+        $merged = $serviceInvoices->merge($unitInvoices)->sortByDesc('no_invoice')->values();
+        return response()->json(['data' => $merged]);
     });
 
     Route::get('/db/sales/invoice/ar', function () {

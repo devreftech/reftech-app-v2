@@ -1,6 +1,12 @@
 @extends('layouts.sales.app')
-@section('title', 'Selling Contract — ' . $contract->no_contract)
+@section('title', ($contract->type == 'Order' ? 'Confirm Order' : 'Selling Contract') . ' — ' . $contract->no_contract)
 @section('content')
+    @php
+        $isKojisha  = $unitQuote->isKojisha();
+        $docHeading = $contract->type == 'Order' ? 'CONFIRM ORDER' : 'SELLING CONTRACT';
+        $docNoun    = $contract->type == 'Order' ? 'Confirm Order' : 'Selling Contract';
+        $entityName = $isKojisha ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima';
+    @endphp
     <div class="row invoice-preview">
         {{-- Contract Document --}}
         <div class="col-xl-9 col-md-8 col-12 mb-md-0 mb-4">
@@ -11,23 +17,33 @@
                             <div class="d-flex svg-illustration align-items-center gap-2 mb-4">
                                 <span class="app-brand-logo demo">
                                     <span style="color: var(--bs-primary)">
-                                        <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="" width="60%">
+                                        <img src="{{ asset('/asset') }}/logo/{{ $isKojisha ? 'Kojisha-Log.png' : 'Reftech-Log.png' }}" alt="" width="60%">
                                     </span>
                                 </span>
                             </div>
-                            <p class="mb-1 fw-bolder">PT Reftech Jaya Optima</p>
+                            <p class="mb-1 fw-bolder">{{ $entityName }}</p>
                             <div style="font-size: 10px">
-                                <p class="mb-1">Taman Kopo Indah V, Ruko Sommerville No. 31</p>
-                                <p class="mb-1">Bandung – Jawa Barat 40218</p>
-                                <p class="mb-1">
-                                    <i class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-14px"></i>022 54417653
-                                    &nbsp;|&nbsp;
-                                    <i class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px"></i>info@reftech.id
-                                </p>
+                                @if ($isKojisha)
+                                    <p class="mb-1">Jl. Nancep No. 45A, Setu, Cibitung</p>
+                                    <p class="mb-1">Kab. Bekasi 17320</p>
+                                    <p class="mb-1">
+                                        <i class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-14px"></i>+62 812-1000-0997
+                                        &nbsp;|&nbsp;
+                                        <i class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px"></i>admin@kojisha.com
+                                    </p>
+                                @else
+                                    <p class="mb-1">Taman Kopo Indah V, Ruko Sommerville No. 31</p>
+                                    <p class="mb-1">Bandung – Jawa Barat 40218</p>
+                                    <p class="mb-1">
+                                        <i class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-14px"></i>022 54417653
+                                        &nbsp;|&nbsp;
+                                        <i class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px"></i>info@reftech.id
+                                    </p>
+                                @endif
                             </div>
                         </div>
                         <div class="text-end">
-                            <h3 class="fw-bold">SELLING CONTRACT</h3>
+                            <h3 class="fw-bold">{{ $docHeading }}</h3>
                             <div><span class="fw-bolder">#{{ $contract->no_contract }}</span></div>
                             <div class="mt-1">
                                 <span class="text-muted">{{ Carbon\Carbon::parse($contract->date)->format('d-m-Y') }}</span>
@@ -56,7 +72,7 @@
                             <p class="mb-1">Email :</p>
                         </div>
                         <div class="col-3 text-end">
-                            <p class="mb-1">PT Reftech Jaya Optima</p>
+                            <p class="mb-1">{{ $entityName }}</p>
                             <p class="mb-1">{{ $unitQuote->client?->email ?? '-' }}</p>
                         </div>
                     </div>
@@ -190,10 +206,17 @@
                     <div class="row mt-3">
                         <div class="col-4 my-5 text-center">
                             <p class="fs-normal fw-medium">Authorized By,</p>
-                            <img src="{{ asset('/asset') }}/contract/sign-irene.jpeg" alt=""
-                                style="width: 100px; height: 77px;">
-                            <p class="pt-3">Mrs. Irene</p>
-                            <p>PT. Reftech Jaya Optima</p>
+                            @if ($isKojisha)
+                                <img src="{{ asset('/asset') }}/sign/kojisha-nm.jpeg" alt=""
+                                    style="width: 100px; height: 77px;">
+                                <p class="pt-3">&nbsp;</p>
+                                <p>PT. Kojisha Innotiv Indonesia</p>
+                            @else
+                                <img src="{{ asset('/asset') }}/contract/sign-irene.jpeg" alt=""
+                                    style="width: 100px; height: 77px;">
+                                <p class="pt-3">Mrs. Irene</p>
+                                <p>PT. Reftech Jaya Optima</p>
+                            @endif
                         </div>
                         <div class="col-4"></div>
                         <div class="col-4 my-5 text-center">
@@ -273,8 +296,18 @@
             <div class="modal-content">
                 <form action="{{ route('accept.contract', $contract->id) }}" method="POST">
                     @csrf
+                    @php
+                        $isOrderU  = $contract->type == 'Order';
+                        $suffixU   = $isOrderU ? 'CO/KII' : 'SELLCTX/RJO';
+                        $seqU      = $isOrderU
+                            ? ($unitQuote->tax ? ($unitNumbers['nextCP'] ?? '001') : ($unitNumbers['nextCNP'] ?? '001'))
+                            : ($unitQuote->tax ? ($unitNumbers['nextSP'] ?? '001') : ($unitNumbers['nextSNP'] ?? '001'));
+                        $lastU     = $isOrderU
+                            ? ($unitQuote->tax ? ($unitNumbers['lastCP'] ?? null) : ($unitNumbers['lastCNP'] ?? null))
+                            : ($unitQuote->tax ? ($unitNumbers['lastSP'] ?? null) : ($unitNumbers['lastSNP'] ?? null));
+                    @endphp
                     <div class="modal-header border-0">
-                        <h5 class="modal-title">Approve Selling Contract</h5>
+                        <h5 class="modal-title">Approve {{ $docNoun }}</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
@@ -283,12 +316,12 @@
                             &nbsp;·&nbsp; {{ $unitQuote->no_quote }}
                         </p>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">No. Selling Contract</label>
+                            <label class="form-label fw-semibold">No. {{ $docNoun }}</label>
                             <input type="text" class="form-control" name="no_contract"
-                                value="{{ $formattedNumberSC }}/{{ $unitQuote->tax ? 'P' : 'NP' }}/SELLCTX/RJO/{{ $thisYear }}"
+                                value="{{ $seqU }}/{{ $unitQuote->tax ? 'P' : 'NP' }}/{{ $suffixU }}/{{ $thisYear }}"
                                 required>
                             <div class="form-text text-danger">
-                                Last No SC: {{ \App\Models\Contract::where('type','Selling')->where('level','1')->whereYear('date',now())->orderByDesc('id')->value('no_contract') ?? '-' }}
+                                Last No: {{ $lastU ?? '-' }}
                             </div>
                         </div>
                     </div>

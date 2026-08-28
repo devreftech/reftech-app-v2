@@ -1,6 +1,12 @@
 @extends('layouts.sales.app')
 @section('title', $sellcon->no_contract)
 
+@php
+    $isKojisha  = $unitQuote->isKojisha();
+    $docHeading = $sellcon->type == 'Order' ? 'CONFIRM ORDER' : 'SELLING CONTRACT';
+    $entityName = $isKojisha ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima';
+@endphp
+
 <div class="invoice-print p-4 text-black">
     <div class="container-fluid flex-grow-1 container-p-y">
 
@@ -10,23 +16,33 @@
                 <div class="d-flex svg-illustration align-items-center gap-2 mb-4">
                     <span class="app-brand-logo demo">
                         <span style="color: var(--bs-primary)">
-                            <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="" width="60%">
+                            <img src="{{ asset('/asset') }}/logo/{{ $isKojisha ? 'Kojisha-Log.png' : 'Reftech-Log.png' }}" alt="" width="60%">
                         </span>
                     </span>
                 </div>
-                <p class="mb-1 fw-bolder" style="font-size: 15px">PT Reftech Jaya Optima</p>
+                <p class="mb-1 fw-bolder" style="font-size: 15px">{{ $entityName }}</p>
                 <div style="font-size: 13px">
-                    <p class="mb-1">Taman Kopo Indah V, Soho Sommerville No. 31</p>
-                    <p class="mb-1">Bandung – Jawa Barat 40218</p>
-                    <p class="mb-1">
-                        <i class="mdi mdi-phone-outline me-1 mdi-13px"></i>022 54417653
-                        &nbsp;&nbsp;
-                        <i class="mdi mdi-email-outline me-1 mdi-13px"></i>info@reftech.id
-                    </p>
+                    @if ($isKojisha)
+                        <p class="mb-1">Jl. Nancep No. 45A, Setu, Cibitung</p>
+                        <p class="mb-1">Kab. Bekasi 17320</p>
+                        <p class="mb-1">
+                            <i class="mdi mdi-phone-outline me-1 mdi-13px"></i>+62 812-1000-0997
+                            &nbsp;&nbsp;
+                            <i class="mdi mdi-email-outline me-1 mdi-13px"></i>admin@kojisha.com
+                        </p>
+                    @else
+                        <p class="mb-1">Taman Kopo Indah V, Soho Sommerville No. 31</p>
+                        <p class="mb-1">Bandung – Jawa Barat 40218</p>
+                        <p class="mb-1">
+                            <i class="mdi mdi-phone-outline me-1 mdi-13px"></i>022 54417653
+                            &nbsp;&nbsp;
+                            <i class="mdi mdi-email-outline me-1 mdi-13px"></i>info@reftech.id
+                        </p>
+                    @endif
                 </div>
             </div>
             <div class="text-end">
-                <h3 class="fw-bold">SELLING CONTRACT</h3>
+                <h3 class="fw-bold">{{ $docHeading }}</h3>
                 <div><span class="fw-bolder">#{{ $sellcon->no_contract }}</span></div>
                 <div class="mt-1">
                     <span class="text-muted">{{ Carbon\Carbon::parse($sellcon->date)->format('d-m-Y') }}</span>
@@ -55,7 +71,7 @@
                     <p class="mb-1">Email :</p>
                 </div>
                 <div class="col-3 text-end">
-                    <p class="mb-1">PT Reftech Jaya Optima</p>
+                    <p class="mb-1">{{ $entityName }}</p>
                     <p class="mb-1">{{ $unitQuote->client?->email ?? '-' }}</p>
                 </div>
             </div>
@@ -196,10 +212,17 @@
         <div class="row mt-3">
             <div class="col-4 my-5 text-center">
                 <p class="fs-normal fw-medium">Authorized By,</p>
-                <img src="{{ asset('/asset') }}/contract/sign-irene.jpeg" alt=""
-                    style="width: 100px; height: 77px;">
-                <p class="pt-3">Mrs. Irene</p>
-                <p>PT. Reftech Jaya Optima</p>
+                @if ($isKojisha)
+                    <img src="{{ asset('/asset') }}/sign/kojisha-nm.jpeg" alt=""
+                        style="width: 100px; height: 77px;">
+                    <p class="pt-3">&nbsp;</p>
+                    <p>PT. Kojisha Innotiv Indonesia</p>
+                @else
+                    <img src="{{ asset('/asset') }}/contract/sign-irene.jpeg" alt=""
+                        style="width: 100px; height: 77px;">
+                    <p class="pt-3">Mrs. Irene</p>
+                    <p>PT. Reftech Jaya Optima</p>
+                @endif
             </div>
             <div class="col-4"></div>
             <div class="col-4 my-5 text-center">

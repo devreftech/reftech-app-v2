@@ -29,6 +29,9 @@ $(function () {
                 type: "GET",
                 url: Url,
                 headers: { "Content-Type": "application/json" },
+                data: function (d) {
+                    d.year = $("#invoice-kojisha-year-filter").val();
+                },
             },
             columns: [
                 { data: "no_invoice" },
@@ -69,7 +72,9 @@ $(function () {
                     targets: 0,
                     render: function (data, type, full) {
                         if (type === "display") {
-                            var detailRoute = route("invoice.show", full["id"]);
+                            var detailRoute = full["source"] === "unit"
+                                ? route("invoice.show_unit", full["id"])
+                                : route("invoice.show", full["id"]);
                             return '<a class="fw-bold text-primary" href="' + detailRoute + '">' + data + "</a>";
                         }
                         return data;
@@ -131,15 +136,28 @@ $(function () {
 
         $("div.hl-2.head-invoice-kojisha").html('<h5 class="card-title mb-0">Table Invoice Kojisha</h5>');
 
-        // Filter PPN / Non PPN
+        // Filter PPN / Non PPN + Tahun Invoice
         $("div.dt-invoice-kojisha-filters").html(
             '<div class="d-flex align-items-center gap-2">' +
             '<label class="form-label mb-0 fw-semibold small">PPN</label>' +
             '<select class="form-select form-select-sm w-auto" id="invoice-kojisha-ppn-filter">' +
             '<option value="">Semua</option><option value="PPN" selected>PPN</option><option value="Non PPN">Non PPN</option>' +
-            '</select></div>'
+            '</select></div>' +
+            '<div class="d-flex align-items-center gap-2">' +
+            '<label class="form-label mb-0 fw-semibold small">Tahun Invoice</label>' +
+            '<select class="form-select form-select-sm w-auto" id="invoice-kojisha-year-filter"></select></div>'
         );
 
+        var currentYear = new Date().getFullYear();
+        var yearOpts = '';
+        for (var y = currentYear; y >= 2024; y--) {
+            yearOpts += '<option value="' + y + '">' + y + '</option>';
+        }
+        $("#invoice-kojisha-year-filter").html(yearOpts);
+
+        $("#invoice-kojisha-year-filter").on("change", function () {
+            dt_invoice.ajax.reload();
+        });
         $("#invoice-kojisha-ppn-filter").on("change", function () {
             var val = $(this).val();
             dt_invoice.column(3).search(val ? "^" + val + "$" : "", true, false).draw();

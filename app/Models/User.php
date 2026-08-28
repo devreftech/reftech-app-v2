@@ -198,4 +198,14 @@ class User extends Authenticatable
 
         return $salesUsers;
     }
+
+    public function mailSetting()
+    {
+        return $this->hasOne(\App\Models\UserMailSetting::class, 'user_id');
+    }
+
+    public function mailboxMessages()
+    {
+        return $this->hasMany(\App\Models\MailboxMessage::class, 'user_id');
+    }
 }

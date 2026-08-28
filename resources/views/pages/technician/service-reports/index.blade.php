@@ -53,7 +53,7 @@
         </h4>
         <div class="card mb-3">
             <div class="card-datatable table-responsive pt-0">
-                <table class="datatable-reports-sales table table-striped">
+                <table class="datatable-reports-sales table table-bordered">
                     <thead>
                         <tr>
                             <th></th>
@@ -65,6 +65,7 @@
                             <th>Serial / Tag</th>
                             <th>Date</th>
                             <th>Technician</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                 </table>

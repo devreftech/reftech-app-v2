@@ -61,6 +61,16 @@ class UnitQuotation extends Model
         return $this->belongsTo(Client::class, 'id_client');
     }
 
+    /**
+     * Entitas penerbit dokumen mengikuti client-nya: 'Kojisha' kalau client.info = 'Kojisha',
+     * selain itu Reftech. Dipakai untuk routing kontrak (Selling Contract vs Confirm Order)
+     * & branding dokumen.
+     */
+    public function isKojisha(): bool
+    {
+        return optional($this->client)->info === 'Kojisha';
+    }
+
     public function pic()
     {
         return $this->belongsTo(Pic::class, 'id_pic');

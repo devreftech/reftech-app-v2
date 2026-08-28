@@ -135,7 +135,13 @@
     {{-- Modals accept contract (dibutuhkan oleh tab Request) --}}
     @foreach ($contracts as $contract)
         @if ($contract->id_unit_quotation)
-            @php $result = $formattedNumberSC ?? str_pad(1, 3, '0', STR_PAD_LEFT); @endphp
+            @php
+                $isOrderU = $contract->type == 'Order';
+                $isPpnU   = (bool) ($contract->unitQuotation?->tax);
+                $result = $isOrderU
+                    ? ($isPpnU ? ($unitNumbers['nextCP'] ?? '001') : ($unitNumbers['nextCNP'] ?? '001'))
+                    : ($isPpnU ? ($unitNumbers['nextSP'] ?? '001') : ($unitNumbers['nextSNP'] ?? '001'));
+            @endphp
             @include('components.modal.accounting.accept-contract-unit')
         @else
             @php
