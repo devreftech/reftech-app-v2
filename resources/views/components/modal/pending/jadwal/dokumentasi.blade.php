@@ -10,7 +10,7 @@
                 <div class="modal-body p-0">
                     <div class="onboarding-content">
                         <h4 class="onboarding-title text-center mb-4"> Dokumentasi
-                            {{ @$schedule->order->quote->invoice[0]->no_po ?? @$schedule->order->quote->pic->client->customer }}
+                            {{ $schedule->order?->quote?->invoice[0]?->no_po ?? $schedule->order?->quote?->pic?->client?->customer ?? $schedule->order?->unitQuotation?->po_number ?? $schedule->order?->unitQuotation?->client?->company ?? '-' }}
                         </h4>
                         <div class="row">
                             <div class="col-12">
