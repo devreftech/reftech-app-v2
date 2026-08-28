@@ -8,8 +8,17 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0">
+                    @php
+                        $isOrderUnit = $contract->type == 'Order';
+                        $docNoun     = $isOrderUnit ? 'Confirm Order' : 'Selling Contract';
+                        $suffixDoc   = $isOrderUnit ? 'CO/KII' : 'SELLCTX/RJO';
+                        $isPpnUnit   = (bool) ($contract->unitQuotation?->tax);
+                        $lastNoUnit  = $isOrderUnit
+                            ? ($isPpnUnit ? ($unitNumbers['lastCP'] ?? null) : ($unitNumbers['lastCNP'] ?? null))
+                            : ($isPpnUnit ? ($unitNumbers['lastSP'] ?? null) : ($unitNumbers['lastSNP'] ?? null));
+                    @endphp
                     <div class="onboarding-content mb-0">
-                        <h4 class="onboarding-title text-body">Accept Contract of {{ $contract->no_contract }}</h4>
+                        <h4 class="onboarding-title text-body">Accept {{ $docNoun }} of {{ $contract->no_contract }}</h4>
                         <div class="onboarding-info mb-3">
                             {{ $contract->unitQuotation?->client?->company ?? '-' }}
                         </div>
@@ -18,9 +27,10 @@
                                 <div class="form-floating form-floating-outline">
                                     <input type="text" class="form-control" id="no_contract_{{ $contract->id }}"
                                         name="no_contract" placeholder="No Contract"
-                                        value="{{ $result }}/{{ $contract->unitQuotation?->tax ? 'P' : 'NP' }}/SELLCTX/RJO/{{ $thisYear }}">
+                                        value="{{ $result }}/{{ $isPpnUnit ? 'P' : 'NP' }}/{{ $suffixDoc }}/{{ $thisYear }}">
                                     <label for="no_contract_{{ $contract->id }}">No Contract</label>
                                 </div>
+                                <p class="text-danger text-start mt-2 mb-0">Last No : {{ $lastNoUnit ?? '-' }}</p>
                             </div>
                         </div>
                     </div>

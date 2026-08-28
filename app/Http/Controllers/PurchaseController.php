@@ -41,14 +41,20 @@ class PurchaseController extends Controller
 
     public function index()
     {
-        // Badge hanya menghitung PR yang pending_po-nya masih ada, biar konsisten
-        // dengan isi tabel (PR dengan id_pending yatim tidak pernah bisa ditampilkan).
+        // Badge harus konsisten dengan isi tabel: query tabel (lihat
+        // $purchaseRequestListQuery di routes/web.php) nge-INNER JOIN ke
+        // purchase_request_detail, jadi PR yang cuma header kosong tanpa item
+        // (mis. draft yang semua detailnya sudah dihapus) tidak pernah muncul di
+        // tabel. Selain itu id_pending harus masih ada. Dua syarat itu dipakai di
+        // sini juga supaya angka badge = jumlah baris yang benar-benar tampil.
         $validPendingIds = PendingPO::pluck('id');
 
-        $newCount = PurchaseRequest::where('status', '0')->whereIn('id_pending', $validPendingIds)->count();
-        $accCount = PurchaseRequest::where('status', '1')->whereIn('id_pending', $validPendingIds)->count();
-        $deliveryCount = PurchaseRequest::where('status', '2')->whereIn('id_pending', $validPendingIds)->count();
-        $doneCount = PurchaseRequest::where('status', '3')->whereIn('id_pending', $validPendingIds)->count();
+        $badgeBase = fn () => PurchaseRequest::whereIn('id_pending', $validPendingIds)->has('details');
+
+        $newCount = $badgeBase()->where('status', '0')->count();
+        $accCount = $badgeBase()->where('status', '1')->count();
+        $deliveryCount = $badgeBase()->where('status', '2')->count();
+        $doneCount = $badgeBase()->where('status', '3')->count();
         // Sama seperti isi tab-nya: PO cuma dihitung selama PR-nya masih status Acc(1).
         $poCount = PurchaseOrder::whereNotNull('id_purchase_request')
             ->whereIn('id_purchase_request', PurchaseRequest::where('status', '1')->pluck('id'))

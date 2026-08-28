@@ -260,8 +260,11 @@
 
         {{-- Action Card --}}
         @php
-            $sellingContract          = $contracts->where('type', 'Selling')->where('level', '1')->first();
-            $requestedSellingContract = $contracts->where('type', 'Selling')->where('level', '0')->first();
+            // Kontrak unit: Reftech -> type=Selling, Kojisha -> type=Order. Jangan filter type.
+            $isKojisha                = $quote->isKojisha();
+            $contractNoun             = $isKojisha ? 'Confirm Order' : 'Selling Contract';
+            $sellingContract          = $contracts->where('level', '1')->first();
+            $requestedSellingContract = $contracts->where('level', '0')->first();
             $issuedInvoices  = $invoices->filter(fn($i) => !is_null($i->no_invoice));
             $pendingInvoices = $invoices->filter(fn($i) => is_null($i->no_invoice));
             $issuedTotal     = $issuedInvoices->sum(fn($i) => round($quote->total * floatval($i->percent ?? 100) / 100));
@@ -370,13 +373,13 @@
                                     <i class="mdi mdi-clock-outline me-1"></i> Wait Kontrak
                                 </div>
                             @elseif (Auth::user()->role === 'Sales' && $quote->status !== 'po_received')
-                                <a href="#" data-id="{{ $quote->id }}" class="btn btn-sm btn-label-primary d-flex align-items-center justify-content-center w-100 fw-semibold px-1 text-truncate request-selling-unit" title="Request Selling Contract">
-                                    <i class="mdi mdi-file-sign me-1"></i> Selling Contract
+                                <a href="#" data-id="{{ $quote->id }}" class="btn btn-sm btn-label-primary d-flex align-items-center justify-content-center w-100 fw-semibold px-1 text-truncate request-selling-unit" title="Request {{ $contractNoun }}">
+                                    <i class="mdi mdi-file-sign me-1"></i> {{ $contractNoun }}
                                 </a>
                             @elseif (Auth::user()->role === 'Admin' || Auth::user()->role === 'Accounting')
                                 <button type="button" class="btn btn-sm btn-label-primary d-flex align-items-center justify-content-center w-100 fw-semibold px-1 text-truncate"
-                                    data-bs-toggle="modal" data-bs-target="#modalSellingContractUnit" title="Create Selling Contract">
-                                    <i class="mdi mdi-file-plus-outline me-1"></i> Selling Contract
+                                    data-bs-toggle="modal" data-bs-target="#modalSellingContractUnit" title="Create {{ $contractNoun }}">
+                                    <i class="mdi mdi-file-plus-outline me-1"></i> {{ $contractNoun }}
                                 </button>
                             @endif
                         </div>
@@ -881,24 +884,34 @@
     </div>
 </div>
 
-{{-- Modal Create Selling Contract (Admin/Accounting) --}}
+{{-- Modal Create Selling Contract / Confirm Order (Admin/Accounting) --}}
 @if (!isset($sellingContract) || !$sellingContract)
+@php
+    $ppnCode  = $quote->tax ? 'P' : 'NP';
+    if ($isKojisha) {
+        $seqCode   = $quote->tax ? ($unitNumbers['nextCP'] ?? '001') : ($unitNumbers['nextCNP'] ?? '001');
+        $suffixDoc = 'CO/KII';
+    } else {
+        $seqCode   = $quote->tax ? ($unitNumbers['nextSP'] ?? '001') : ($unitNumbers['nextSNP'] ?? '001');
+        $suffixDoc = 'SELLCTX/RJO';
+    }
+@endphp
 <div class="modal fade" id="modalSellingContractUnit" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="{{ route('unit-quotation.selling-contract', $quote->id) }}" method="POST">
                 @csrf
                 <div class="modal-header border-0">
-                    <h5 class="modal-title">Create Selling Contract</h5>
+                    <h5 class="modal-title">Create {{ $contractNoun }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body text-center">
                     <h5 class="mb-1">{{ $quote->no_quote }}</h5>
                     <p class="text-muted mb-3">{{ $quote->client?->company }}</p>
                     <div class="mb-3 text-start">
-                        <label class="form-label fw-semibold">No. Selling Contract</label>
+                        <label class="form-label fw-semibold">No. {{ $contractNoun }}</label>
                         <input type="text" class="form-control" name="no_contract"
-                            value="{{ $formattedNumberSC }}/{{ $quote->tax ? 'P' : 'NP' }}/SELLCTX/RJO/{{ $thisYear }}"
+                            value="{{ $seqCode }}/{{ $ppnCode }}/{{ $suffixDoc }}/{{ $thisYear }}"
                             required>
                     </div>
                 </div>
@@ -1636,7 +1649,7 @@
         e.preventDefault();
         var id = $(this).data('id');
         Swal.fire({
-            title: 'Request Selling Contract?',
+            title: 'Request {{ $contractNoun }}?',
             text: 'Permintaan akan dikirim ke accounting untuk diproses.',
             icon: 'question',
             showCancelButton: true,
@@ -1655,7 +1668,7 @@
                     if (response == 1) {
                         Swal.fire({
                             icon: 'success', title: 'Requested!',
-                            text: 'Permintaan Selling Contract telah dikirim.',
+                            text: 'Permintaan {{ $contractNoun }} telah dikirim.',
                             customClass: { confirmButton: 'btn btn-success waves-effect' },
                             buttonsStyling: false,
                         }).then(function () { location.reload(); });

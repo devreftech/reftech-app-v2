@@ -110,6 +110,22 @@
                 </a>
             </li>
 
+            @php
+                $isMailboxConfigured = auth::user()?->isDeveloper() || (!empty(auth::user()?->mailSetting?->smtp_username));
+                $unreadInboxCount = $isMailboxConfigured ? (auth::user()?->mailboxMessages()->where('folder', 'inbox')->where('is_read', false)->count() ?? 0) : 0;
+            @endphp
+            @if ($isMailboxConfigured)
+            <li class="menu-item {{ request()->is('sales/mailbox*') ? 'active' : '' }}">
+                <a href="{{ route('sales.mailbox.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-email-fast-outline"></i>
+                    <div data-i18n="Mailbox">Mailbox</div>
+                    @if ($unreadInboxCount > 0)
+                        <div class="badge bg-primary rounded-pill ms-auto">{{ $unreadInboxCount }}</div>
+                    @endif
+                </a>
+            </li>
+            @endif
+
 
 
             {{-- <li class="menu-item {{ request()->is('unit-quotation') || request()->is('unit-quotation/*') ? 'active' : '' }}">
@@ -979,6 +995,22 @@
                     <div data-i18n="Quotation">Quotation</div>
                 </a>
             </li>
+
+            @php
+                $isMailboxConfiguredSales = auth::user()?->isDeveloper() || (!empty(auth::user()?->mailSetting?->smtp_username));
+                $unreadInboxCountSales = $isMailboxConfiguredSales ? (auth::user()?->mailboxMessages()->where('folder', 'inbox')->where('is_read', false)->count() ?? 0) : 0;
+            @endphp
+            @if ($isMailboxConfiguredSales)
+            <li class="menu-item {{ request()->is('sales/mailbox*') ? 'active' : '' }}">
+                <a href="{{ route('sales.mailbox.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-email-fast-outline"></i>
+                    <div data-i18n="Mailbox">Mailbox</div>
+                    @if ($unreadInboxCountSales > 0)
+                        <div class="badge bg-primary rounded-pill ms-auto">{{ $unreadInboxCountSales }}</div>
+                    @endif
+                </a>
+            </li>
+            @endif
 
             {{-- <li class="menu-item {{ request()->is('unit-quotation') || request()->is('unit-quotation/*') ? 'active' : '' }}">
                 <a href="{{ route('unit-quotation.index') }}" class="menu-link">
@@ -2648,6 +2680,13 @@
         @if (auth::user()?->isDeveloper())
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Developer Tools</span>
+            </li>
+            <li class="menu-item {{ request()->is('developer/mailbox-management*') ? 'active' : '' }}">
+                <a href="{{ route('developer.mailbox.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-email-sync-outline"></i>
+                    <div data-i18n="Mailbox Management">Mailbox Management</div>
+                    <div class="badge bg-label-primary rounded-pill ms-auto">Central</div>
+                </a>
             </li>
             <li class="menu-item {{ request()->is('developer/maintenance*') ? 'active' : '' }}">
                 <a href="{{ route('developer.maintenance.index') }}" class="menu-link">

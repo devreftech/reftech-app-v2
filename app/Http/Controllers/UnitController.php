@@ -33,8 +33,10 @@ class UnitController extends Controller
      */
     public function index()
     {
-        // Halaman "unit siap ditawarkan" — datanya dimuat via AJAX per tab (lihat
-        // table-unit-ready.js), sumbernya fixed_asset (qc_status='ok') join unit.
+        // Halaman "Unit" (role Sales) — 1 card, 2 tab: Unit Bekas & Unit Baru,
+        // masing-masing dipecah per kategori (sub-pill). Datanya dimuat via AJAX
+        // (lihat table-unit-sales.js) dari endpoint yang sama dengan halaman admin
+        // Unit Acquisition: /db/unit-acquisition (fixed_asset) & /db/unit-inventory.
         // Versi lama berbasis Machine ada di index-legacy.blade.php (tidak dipakai lagi).
         return view('pages.warehouse.unit.index');
     }

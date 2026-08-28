@@ -1,439 +1,281 @@
 $(function () {
-    var dt_table_product_sales_unit = $(".datatable-product-sales-unit");
-    var Url = "/db/sales/unit";
+    // Halaman /unit (role Sales) — 1 card, 2 tab: Unit Bekas & Unit Baru.
+    // Datanya sinkron dengan yang dilihat admin: sumbernya persis sama,
+    //   Unit Bekas -> /db/unit-acquisition  (fixed_asset type "Mesin", join unit)
+    //   Unit Baru  -> /db/unit-inventory    (unit_inventory status "available")
+    // Baris cuma buka modal spesifikasi (#unitSpecModal), tanpa navigasi/aksi.
 
-    if (dt_table_product_sales_unit.length) {
-        $('[data-toggle="tooltip"]').tooltip();
-        var dt_product = dt_table_product_sales_unit.DataTable({
+    function dash(d) {
+        return d || d === 0 ? d : "-";
+    }
+
+    // air_cap kadang udah simpan satuannya sendiri ("1,15 m³/min"), kadang angka polos.
+    function airCapCol(d) {
+        if (!d) return "-";
+        return /m.?\/min/i.test(d) ? d : d + " m³/min";
+    }
+
+    function currency(d) {
+        if (d === null || d === undefined || d === "") return '<span class="text-muted">Belum diset</span>';
+        return "Rp " + Number(d).toLocaleString("id-ID");
+    }
+
+    var categoryLabels = {
+        "AIR COMPRESSOR SCREW": "Screw Compressor",
+        "PISTON COMPRESSOR": "Piston Compressor",
+        "BOOSTER COMPRESSOR": "Booster Compressor",
+        "REFRIGERANT AIR DRYER": "Refrigerant Dryer",
+        "DESICANT DRYER": "Desiccant Dryer",
+    };
+    function categoryCol(d) {
+        return categoryLabels[d] || d || "-";
+    }
+
+    var qcBadges = {
+        checking: '<span class="badge bg-label-warning">Dalam Pengecekan</span>',
+        ok: '<span class="badge bg-label-success">Unit OK</span>',
+        reject: '<span class="badge bg-label-danger">Reject</span>',
+    };
+    var statusUnitBadges = {
+        Service: '<span class="badge bg-label-warning">Service</span>',
+        Rental: '<span class="badge bg-label-primary">Rental</span>',
+        Breakdown: '<span class="badge bg-label-danger">Breakdown</span>',
+        Reserved: '<span class="badge bg-label-info">Reserved</span>',
+        Sold: '<span class="badge bg-label-dark">Sold</span>',
+    };
+
+    function statusCol(data, type, full) {
+        if (type !== "display") {
+            return [full.qc_status, full.qc_status === "ok" ? full.status_unit : null].filter(Boolean).join(" ");
+        }
+        var badge = qcBadges[full.qc_status] || "";
+        if (full.qc_status === "ok" && full.status_unit && statusUnitBadges[full.status_unit]) {
+            badge += " " + statusUnitBadges[full.status_unit];
+        }
+        return badge || "-";
+    }
+
+    function stockBadgeCol(data, type) {
+        if (type !== "display") return data;
+        return '<span class="badge bg-label-success">' + (data || 0) + " unit</span>";
+    }
+
+    function unitName(full) {
+        return [full.unit_brand, full.unit_model].filter(Boolean).join(" ") || full.unit_sku || "-";
+    }
+
+    function nameCol(data, type, full) {
+        var name = unitName(full);
+        if (type !== "display") return name;
+        return '<a href="javascript:void(0);" class="text-primary fw-semibold btn-view-spec">' + name + "</a>";
+    }
+
+    // ── Modal spesifikasi ────────────────────────────────────────────────
+    var SPEC_LABELS = [
+        { key: "unit_brand", label: "Brand" },
+        { key: "unit_model", label: "Model" },
+        { key: "unit_sku", label: "SKU" },
+        { key: "code", label: "Code" },
+        { key: "serial_number", label: "Serial Number" },
+        { key: "unit_category", label: "Kategori", render: categoryCol },
+        { key: "lubricant", label: "Type / Lubricant" },
+        { key: "power", label: "Motor Power" },
+        { key: "air_cap", label: "Air Capacity", render: airCapCol },
+        { key: "pdp", label: "PDP" },
+        { key: "grade", label: "Grade" },
+        { key: "connect", label: "Connection" },
+        { key: "capacity", label: "Capacity" },
+        { key: "material", label: "Material" },
+        { key: "supplier_name", label: "Supplier" },
+    ];
+
+    function showSpecModal(full) {
+        var rows = "";
+        SPEC_LABELS.forEach(function (f) {
+            var v = full[f.key];
+            if (v === null || v === undefined || v === "") return;
+            rows +=
+                '<div class="col-5 text-muted py-1">' + f.label + "</div>" +
+                '<div class="col-7 py-1 fw-semibold">' + (f.render ? f.render(v) : v) + "</div>";
+        });
+        if (full.stock !== undefined && full.stock !== null) {
+            rows += '<div class="col-5 text-muted py-1">Stok</div><div class="col-7 py-1 fw-semibold">' +
+                full.stock + " unit</div>";
+        }
+        if (full.harga_jual !== undefined) {
+            rows += '<div class="col-5 text-muted py-1">Harga Jual</div><div class="col-7 py-1 fw-semibold">' +
+                currency(full.harga_jual) + "</div>";
+        }
+        $("#unitSpecModalTitle").text(unitName(full) === "-" ? "Spesifikasi Unit" : unitName(full));
+        $("#unitSpecModalBody").html(rows || '<div class="col-12 text-muted py-2">Tidak ada data spesifikasi.</div>');
+        new bootstrap.Modal(document.getElementById("unitSpecModal")).show();
+    }
+
+    $(document).on("click", ".btn-view-spec", function () {
+        var $table = $(this).closest("table");
+        if (!$.fn.dataTable.isDataTable($table)) return;
+        var dt = $table.DataTable();
+        var full = dt.row($(this).closest("tr")).data();
+        if (full) showSpecModal(full);
+    });
+
+    // ── Tab Unit Bekas — /db/unit-acquisition ───────────────────────────
+    var bekasSpecs = {
+        screw: [
+            { data: "lubricant", render: dash },
+            { data: "power", render: dash },
+            { data: "air_cap", render: airCapCol },
+        ],
+        dryer: [
+            { data: "unit_category", render: categoryCol },
+            { data: "pdp", render: dash },
+            { data: "air_cap", render: airCapCol },
+        ],
+        filter: [
+            { data: "air_cap", render: airCapCol },
+            { data: "grade", render: dash },
+            { data: "connect", render: dash },
+        ],
+        tank: [
+            { data: "capacity", render: dash },
+            { data: "material", render: dash },
+            { data: "lubricant", render: dash },
+        ],
+    };
+
+    var bekasTotals = {};
+    function updateBekasTotal(group, count) {
+        bekasTotals[group] = count;
+        var total = Object.keys(bekasTotals).reduce(function (s, k) { return s + bekasTotals[k]; }, 0);
+        $("#unit-second-count-badge").text(total).toggleClass("d-none", total === 0);
+    }
+
+    // ── Tab Unit Baru — /db/unit-inventory ──────────────────────────────
+    var baruSpecs = {
+        screw: [
+            { data: "unit_category", render: categoryCol },
+            { data: "lubricant", render: dash },
+            { data: "power", render: dash },
+            { data: "air_cap", render: airCapCol },
+        ],
+        dryer: [
+            { data: "unit_category", render: categoryCol },
+            { data: "pdp", render: dash },
+            { data: "air_cap", render: airCapCol },
+        ],
+        filter: [
+            { data: "air_cap", render: airCapCol },
+            { data: "grade", render: dash },
+            { data: "connect", render: dash },
+        ],
+        chiller: [
+            { data: "capacity", render: dash },
+            { data: "power", render: dash },
+        ],
+    };
+
+    var baruTotals = {};
+    function updateBaruTotal(group, count) {
+        baruTotals[group] = count;
+        var total = Object.keys(baruTotals).reduce(function (s, k) { return s + baruTotals[k]; }, 0);
+        $("#unit-baru-count-badge").text(total).toggleClass("d-none", total === 0);
+    }
+
+    var DOM =
+        '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-end"f>>' +
+        '<"table-responsive"t>' +
+        '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>';
+
+    // Unit Bekas tables
+    $(".datatable-unit-sales-bekas").each(function () {
+        var $table = $(this);
+        var group = $table.data("group");
+        if (!group) return;
+
+        var specs = bekasSpecs[group] || [];
+        var columns = [{ data: "code", render: dash }, { data: null, render: nameCol }];
+        var columnDefs = [];
+        var idx = 2;
+        specs.forEach(function (spec) {
+            columns.push({ data: spec.data, render: spec.render });
+            idx++;
+        });
+        columns.push({ data: "serial_number", render: dash });
+        columns.push({ data: null, orderable: false, render: statusCol });
+
+        var dt = $table.DataTable({
             ajax: {
                 type: "GET",
-                url: Url,
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                // success: function (hasil, Url) {
-                //     console.log("Url:", Url);
-                //     console.log(hasil);
-                // },
-                // error: function (error) {
-                //     console.log("Url:", Url);
-                //     console.error("Error:", error);
-                //     console.log("error disini");
-                // },
-            },
-            columns: [
-                { data: "" },
-                { data: "id" },
-                { data: "id" },
-                // { data: "new" },
-                { data: "brand" },
-                { data: "unit" },
-                { data: "pn" },
-                { data: "serial" },
-                { data: "power" },
-                { data: "bar" },
-                { data: "air_cap" },
-                // { data: "status" },
-                // { data: "price", className: "text-end" },
-                // { data: "price_rental", className: "text-end" },
-            ],
-            columnDefs: [
-                {
-                    targets: [3,4,5,6,7,8],
-                    render: function (data, type, full, row) {
-                        var id = full["id"];
-                        if (type === "display") {
-                            if (data === null || data === "") {
-                                return "-";
-                            }
-                            return (
-                                '<p type="p" class="text-black d-grid w-100 waves-effect mb-3"data-bs-toggle="modal" data-bs-target="#detailUnit-'+ id +'">' +
-                                data + '</p>'
-                            );
-                        }
-                        return data;
-                    },
-                },
-                {
-                    // For Responsive
-                    className: "control",
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 2,
-                    targets: 0,
-                    render: function (data, type, full, meta) {
-                        return "";
-                    },
-                },
-                {
-                    // For Checkboxes
-                    targets: 1,
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 3,
-                    checkboxes: true,
-                    render: function () {
-                        return '<input type="checkbox" class="dt-checkboxes form-check-input">';
-                    },
-                    checkboxes: {
-                        selectAllRender:
-                            '<input type="checkbox" class="form-check-input">',
-                    },
-                },
-                {
-                    targets: 2,
-                    searchable: true,
-                    visible: false,
-                },
-                {
-                    responsivePriority: 1,
-                    targets: 3,
-                },
-                {
-                    targets: [3, 4, 5],
-                    render: function (data, type, row) {
-                        if (data === null || data === undefined) {
-                            return "-";
-                        } else {
-                            return data;
-                        }
-                    },
-                },
-                // {
-                //     targets: 9,
-                //     render: function (data, type, full, meta) {
-                //         var $title = full["status"];
-                //         var ket = full["tag"];
-                //         var $status = {
-                //             Ready: {
-                //                 title: $title,
-                //                 class: "bg-label-primary",
-                //                 colorTip: "tooltip-primary",
-                //                 titleTip: ket,
-                //             },
-                //             "On Rental": {
-                //                 title: $title,
-                //                 class: " bg-label-warning",
-                //                 colorTip: "tooltip-warning",
-                //                 titleTip: ket,
-                //             },
-                //             Sold: {
-                //                 title: $title,
-                //                 class: " bg-label-secondary",
-                //                 colorTip: "tooltip-secondary",
-                //                 titleTip: ket,
-                //             },
-                //             Service: {
-                //                 title: $title,
-                //                 class: " bg-label-danger",
-                //                 colorTip: "tooltip-danger",
-                //                 titleTip: ket,
-                //             },
-                //         };
-                //         if (typeof $status[$title] === "undefined") {
-                //             return data;
-                //         }
-                //         return (
-                //             '<span data-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="' +
-                //             $status[$title].colorTip +
-                //             '" title="' +
-                //             $status[$title].titleTip +
-                //             '" class="badge rounded-pill ' +
-                //             $status[$title].class +
-                //             '">' +
-                //             $status[$title].title +
-                //             "</span>"
-                //         );
-                //         // return (
-                //         //     '<span class="badge rounded-pill ' +
-                //         //     $status[$title].class +
-                //         //     '">' +
-                //         //     $status[$title].title +
-                //         //     "</span>"
-                //         // );
-                //     },
-                // },
-                // {
-                //     targets: [10, 11],
-                //     render: function (data, type, row) {
-                //         if (data === null || data === undefined) {
-                //             return "-";
-                //         } else {
-                //             return $.fn.dataTable.render
-                //                 .number(".", "", 0, "Rp.")
-                //                 .display(data);
-                //         }
-                //     },
-                // },
-            ],
-            order: [[2, "desc"]],
-            dom: '<"card-header flex-column flex-md-row"<"head-label text-center"><"dt-action-buttons text-end pt-3 pt-md-0"B>><"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
-            displayLength: 7,
-            lengthMenu: [7, 10, 25, 50, 75, 100],
-            buttons: [
-                {
-                    extend: "collection",
-                    className: "btn btn-label-primary dropdown-toggle me-2",
-                    text: '<i class="mdi mdi-export-variant me-sm-1"></i> <span class="d-none d-sm-inline-block">Export</span>',
-                    buttons: [
-                        {
-                            extend: "print",
-                            text: '<i class="mdi mdi-printer-outline me-1" ></i>Print',
-                            className: "dropdown-item",
-                            exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
-                            },
-                            customize: function (win) {
-                                //customize print view for dark
-                                $(win.document.body)
-                                    .css("color", config.colors.headingColor)
-                                    .css(
-                                        "border-color",
-                                        config.colors.borderColor
-                                    )
-                                    .css(
-                                        "background-color",
-                                        config.colors.bodyBg
-                                    );
-                                $(win.document.body)
-                                    .find("table")
-                                    .addClass("compact")
-                                    .css("color", "inherit")
-                                    .css("border-color", "inherit")
-                                    .css("background-color", "inherit");
-                            },
-                        },
-                        {
-                            extend: "csv",
-                            text: '<i class="mdi mdi-file-document-outline me-1" ></i>Csv',
-                            className: "dropdown-item",
-                            exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
-                            },
-                        },
-                        {
-                            extend: "excel",
-                            text: '<i class="mdi mdi-file-excel-outline me-1"></i>Excel',
-                            className: "dropdown-item",
-                            exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
-                            },
-                        },
-                        {
-                            extend: "pdf",
-                            text: '<i class="mdi mdi-file-pdf-box me-1"></i>Pdf',
-                            className: "dropdown-item",
-                            exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
-                            },
-                        },
-                        {
-                            extend: "copy",
-                            text: '<i class="mdi mdi-content-copy me-1" ></i>Copy',
-                            className: "dropdown-item",
-                            exportOptions: {
-                                columns: [3, 4, 5, 6, 7, 8, 9],
-                                // prevent avatar to be display
-                                format: {
-                                    body: function (inner, coldex, rowdex) {
-                                        if (inner.length <= 0) return inner;
-                                        var el = $.parseHTML(inner);
-                                        var result = "";
-                                        $.each(el, function (index, item) {
-                                            if (
-                                                item.classList !== undefined &&
-                                                item.classList.contains(
-                                                    "user-name"
-                                                )
-                                            ) {
-                                                result =
-                                                    result +
-                                                    item.lastChild.firstChild
-                                                        .textContent;
-                                            } else if (
-                                                item.innerText === undefined
-                                            ) {
-                                                result =
-                                                    result + item.textContent;
-                                            } else
-                                                result =
-                                                    result + item.innerText;
-                                        });
-                                        return result;
-                                    },
-                                },
-                            },
-                        },
-                    ],
-                },
-                // {
-                //     text: '<i class="mdi mdi-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add New Product</span>',
-                //     className: "btn btn-primary",
-                //     attr: {
-                //         "data-bs-target": "#createProduct",
-                //         "data-bs-toggle": "modal",
-                //     },
-                // },
-            ],
-            drawCallback: function (settings) {
-                $('[data-toggle="tooltip"]').tooltip();
-            },
-            responsive: {
-                details: {
-                    display: $.fn.dataTable.Responsive.display.modal({
-                        header: function (row) {
-                            var data = row.data();
-                            return "Details of " + data["pn"];
-                        },
-                    }),
-                    type: "column",
-                    renderer: function (api, rowIdx, columns) {
-                        var data = $.map(columns, function (col, i) {
-                            return col.title !== "" // ? Do not show row in modal popup if title is blank (for check box)
-                                ? '<tr data-dt-row="' +
-                                      col.rowIndex +
-                                      '" data-dt-column="' +
-                                      col.columnIndex +
-                                      '">' +
-                                      "<td>" +
-                                      col.title +
-                                      ":" +
-                                      "</td> " +
-                                      "<td>" +
-                                      col.data +
-                                      "</td>" +
-                                      "</tr>"
-                                : "";
-                        }).join("");
-
-                        return data
-                            ? $('<table class="table"/><tbody />').append(data)
-                            : false;
-                    },
+                url: "/db/unit-acquisition?group=" + group,
+                headers: { "Content-Type": "application/json" },
+                dataSrc: function (json) {
+                    var data = json.data || [];
+                    $("#unit-acquisition-" + group + "-count-badge")
+                        .text(data.length).toggleClass("d-none", data.length === 0);
+                    updateBekasTotal(group, data.length);
+                    return data;
                 },
             },
+            columns: columns,
+            columnDefs: columnDefs,
+            order: [[0, "desc"]],
+            displayLength: 10,
+            lengthMenu: [10, 25, 50, 75, 100],
+            dom: DOM,
+            language: { emptyTable: "Belum ada unit bekas di kategori ini." },
         });
-        $("div.head-label").html(
-            '<h5 class="card-title mb-0">Table Unit Baru</h5>'
-        );
-    }
-    dt_table_product_sales_unit.on("draw", function () {
-        $('[data-toggle="tooltip"]').tooltip();
+
+        $('button[data-bs-target="#pill-bekas-' + group + '"]').on("shown.bs.tab", function () {
+            dt.columns.adjust().draw(false);
+        });
+    });
+
+    // Unit Baru tables
+    $(".datatable-unit-sales-baru").each(function () {
+        var $table = $(this);
+        var group = $table.data("group");
+        if (!group) return;
+
+        var specs = baruSpecs[group] || [];
+        var columns = [{ data: null, render: nameCol }];
+        specs.forEach(function (spec) {
+            columns.push({ data: spec.data, render: spec.render });
+        });
+        columns.push({ data: "stock", className: "text-center", render: stockBadgeCol });
+        columns.push({ data: "harga_jual", render: function (d, t) { return t !== "display" ? (d || 0) : currency(d); } });
+
+        var dt = $table.DataTable({
+            ajax: {
+                type: "GET",
+                url: "/db/unit-inventory?group=" + group,
+                headers: { "Content-Type": "application/json" },
+                dataSrc: function (json) {
+                    var data = json.data || [];
+                    var count = data.reduce(function (s, r) { return s + (parseInt(r.stock, 10) || 0); }, 0);
+                    $("#unit-inventory-" + group + "-count-badge")
+                        .text(count).toggleClass("d-none", count === 0);
+                    updateBaruTotal(group, count);
+                    return data;
+                },
+            },
+            columns: columns,
+            order: [[0, "asc"]],
+            displayLength: 10,
+            lengthMenu: [10, 25, 50, 75, 100],
+            dom: DOM,
+            language: { emptyTable: "Belum ada stok unit baru di kategori ini." },
+        });
+
+        $('button[data-bs-target="#pill-baru-' + group + '"]').on("shown.bs.tab", function () {
+            dt.columns.adjust().draw(false);
+        });
+    });
+
+    // DataTables salah ngukur lebar kolom saat tab-nya masih hidden — koreksi
+    // begitu tab utama "Unit Baru" pertama kali dibuka.
+    $('button[data-bs-target="#tab-unit-baru"]').one("shown.bs.tab", function () {
+        $(".datatable-unit-sales-baru").each(function () {
+            if ($.fn.dataTable.isDataTable(this)) $(this).DataTable().columns.adjust().draw(false);
+        });
     });
 });

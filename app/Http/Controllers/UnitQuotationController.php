@@ -189,6 +189,8 @@ class UnitQuotationController extends Controller
         } else {
             $formattedNumberSC = '001';
         }
+        // Nomor kontrak unit dipisah per (Selling/Order x PPN/Non-PPN) — lihat Contract::unitContractNumbers().
+        $unitNumbers = Contract::unitContractNumbers($thisYear);
 
         $payments  = Payment::where('id_unit_quotation', $quote->id)->orderBy('id')->get();
         $pendingPo = PendingPO::where('id_unit_quotation', $quote->id)->first();
@@ -201,7 +203,7 @@ class UnitQuotationController extends Controller
         // jadi link "Monitoring Project" langsung ke kartunya, bukan modal Post lagi.
         $kanbanTask = KanbanTask::where('id_unit_quotation', $quote->id)->latest()->first();
 
-        return view('pages.unit-quotation.detail', compact('quote', 'allVersions', 'invoices', 'contracts', 'payments', 'thisYear', 'formattedNumberSC', 'pendingPo', 'kanbanBoards', 'kanbanTask'));
+        return view('pages.unit-quotation.detail', compact('quote', 'allVersions', 'invoices', 'contracts', 'payments', 'thisYear', 'formattedNumberSC', 'unitNumbers', 'pendingPo', 'kanbanBoards', 'kanbanTask'));
     }
 
     /**
@@ -774,7 +776,7 @@ class UnitQuotationController extends Controller
         $invoice = Invoice::create([
             'id_unit_quotation' => $quote->id,
             'no_po'             => $quote->po_number,
-            'flag'              => 'Reftech',
+            'flag'              => $this->invoiceFlagFor($quote),
             'pph'               => 0,
             'type'              => $request->label,
             'percent'           => $percentOfTotal,
@@ -832,7 +834,7 @@ class UnitQuotationController extends Controller
             $targetInvoice = Invoice::create([
                 'id_unit_quotation' => $id,
                 'no_po'             => $quote->po_number,
-                'flag'              => 'Reftech',
+                'flag'              => $this->invoiceFlagFor($quote),
                 'pph'               => 0,
                 'type'              => 'Escrow',
                 'percent'           => $payment->percent,
@@ -1213,11 +1215,18 @@ class UnitQuotationController extends Controller
         return Invoice::create([
             'id_unit_quotation' => $quote->id,
             'no_po'             => $quote->po_number,
-            'flag'              => 'Reftech',
+            'flag'              => $this->invoiceFlagFor($quote),
             'pph'               => 0,
             'type'              => $invoiceType,
             'percent'           => $invoiceType === 'DP' ? floatval($dpPercent ?? 50) : 100,
         ]);
+    }
+
+    // Entitas penerbit invoice mengikuti client-nya (Reftech / Kojisha) supaya
+    // invoice, surat jalan, & label pengiriman konsisten.
+    private function invoiceFlagFor(UnitQuotation $quote): string
+    {
+        return optional($quote->client)->info === 'Kojisha' ? 'Kojisha' : 'Reftech';
     }
 
     // Notifikasi Accounting & Admin: ada invoice yang menunggu diterbitkan (muncul di
