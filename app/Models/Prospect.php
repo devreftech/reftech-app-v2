@@ -23,7 +23,8 @@ class Prospect extends Model
         'id_pic',
         'kebutuhan',
         'provide',
-        'level'
+        'level',
+        'date',
     ];
 
     // Connection Table

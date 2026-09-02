@@ -175,6 +175,24 @@
             $hasDisc    = $quote->details->where('disc', '>', 0)->count() > 0;
             $labelSpan  = $quote->tax ? ($hasDisc ? 3 : 2) : 3;
             $amountSpan = ($quote->tax || $hasDisc) ? 2 : 1;
+            $isDpInvoice = in_array($invoice->type, ['DP', 'Down Payment']);
+            $dpPct  = floatval($invoice->percent);
+            $dpBase = round($afterDisc * $dpPct / 100);          // porsi barang untuk DP (sebelum PPN)
+            $dpDpp  = round($dpBase * 11 / 12);                   // DPP nilai lain, diambil dari DP
+            $dpPpn  = round($dpDpp * 0.12);                       // PPN 12% atas DPP DP
+            $dpShip = $quote->shipping > 0 ? round($quote->shipping * $dpPct / 100) : 0;
+            // baris DP: Sub Total + DP% + TOTAL (3) + Discount/AfterDisc + DPP/PPN + Shipping + PPH
+            $dpRowspan = 3 + ($quote->diskon > 0 ? 2 : 0) + ($quote->tax ? 2 : 0) + ($dpShip > 0 ? 1 : 0) + ($totalPph > 0 ? 1 : 0);
+            $isBpInvoice = in_array($invoice->type, ['BP', 'Balance Payment']);
+            $bpPct    = floatval($invoice->percent);
+            $bpDpPct  = max(0, 100 - $bpPct);
+            $bpBase   = round($afterDisc * $bpPct / 100);        // porsi barang untuk BP (sebelum PPN)
+            $bpDpBase = round($afterDisc * $bpDpPct / 100);      // porsi barang DP yang sudah ditagih
+            $bpDpp    = round($bpBase * 11 / 12);                // DPP nilai lain, diambil dari BP
+            $bpPpn    = round($bpDpp * 0.12);                    // PPN 12% atas DPP BP
+            $bpShip   = $quote->shipping > 0 ? round($quote->shipping * $bpPct / 100) : 0;
+            // baris BP: Sub Total + DP% + BP% + TOTAL (4) + Discount/AfterDisc + DPP/PPN + Shipping + PPH
+            $bpRowspan = 4 + ($quote->diskon > 0 ? 2 : 0) + ($quote->tax ? 2 : 0) + ($bpShip > 0 ? 1 : 0) + ($totalPph > 0 ? 1 : 0);
         @endphp
         <div>
             <table class="table table-bordered items-top-align-table m-0" style="border: 1px solid rgb(60,60,60); width: 100%;">
@@ -303,6 +321,179 @@
                     @endforeach
 
                     {{-- Finance Summary --}}
+                    @if ($isDpInvoice)
+                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                            <td colspan="{{ $quote->tax ? 2 : 1 }}" rowspan="{{ $dpRowspan }}" style="border: none !important;"></td>
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                <p class="m-0"><span class="i18n" data-en="Sub Total">Sub Total</span></p>
+                            </td>
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <p class="m-0">Rp {{ number_format($quote->subtotal, 0, '', '.') }}</p>
+                            </td>
+                        </tr>
+                        @if ($quote->diskon > 0)
+                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                    <p class="m-0">Discount{{ $quote->discount_label ? ' (' . $quote->discount_label . ')' : '' }}</p>
+                                </td>
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                    <p class="m-0">- Rp {{ number_format($quote->discount_amount, 0, '', '.') }}</p>
+                                </td>
+                            </tr>
+                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                    <p class="m-0">Total After Discount</p>
+                                </td>
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                    <p class="m-0">Rp {{ number_format($afterDisc, 0, '', '.') }}</p>
+                                </td>
+                            </tr>
+                        @endif
+                        <tr class="fw-medium finance-summary-row" style="font-size: 13px; background:#f2f2f2;">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                <p class="m-0"><span class="i18n" data-en="DP {{ $dpPct }}%">DP {{ $dpPct }}%</span></p>
+                            </td>
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <p class="m-0">Rp {{ number_format($dpBase, 0, '', '.') }}</p>
+                            </td>
+                        </tr>
+                        @if ($quote->tax)
+                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                    <p class="m-0"><span class="i18n" data-en="DPP on PPN">DPP Atas PPN</span></p>
+                                </td>
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                    <p class="m-0">Rp {{ number_format($dpDpp, 0, '', '.') }}</p>
+                                </td>
+                            </tr>
+                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                    <p class="m-0">PPN 12%</p>
+                                </td>
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                    <p class="m-0">Rp {{ number_format($dpPpn, 0, '', '.') }}</p>
+                                </td>
+                            </tr>
+                        @endif
+                        @if ($dpShip > 0)
+                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                    <p class="m-0">Shipping Cost ({{ $dpPct }}%)</p>
+                                </td>
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                    <p class="m-0">Rp {{ number_format($dpShip, 0, '', '.') }}</p>
+                                </td>
+                            </tr>
+                        @endif
+                        @if ($totalPph > 0)
+                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                    <p class="m-0">PPH 23</p>
+                                </td>
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important; color:#dc3545;">
+                                    <p class="m-0">- Rp {{ number_format($totalPph, 0, '', '.') }}</p>
+                                </td>
+                            </tr>
+                        @endif
+                        <tr class="finance-summary-row" style="font-size: 13px; background:yellow; border-top:2px solid #e6c300;">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-2 fw-bold" style="padding-right: 10px !important; color:#000;">
+                                <p class="m-0 fw-bold">TOTAL</p>
+                            </td>
+                            <td colspan="{{ $amountSpan }}" class="py-2 fw-bold text-end" style="padding-right: 10px !important; color:#000;">
+                                <p class="m-0 fw-bold">Rp {{ number_format($totalAfterPph, 0, '', '.') }}</p>
+                            </td>
+                        </tr>
+                    @elseif ($isBpInvoice)
+                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                            <td colspan="{{ $quote->tax ? 2 : 1 }}" rowspan="{{ $bpRowspan }}" style="border: none !important;"></td>
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                <p class="m-0"><span class="i18n" data-en="Sub Total">Sub Total</span></p>
+                            </td>
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <p class="m-0">Rp {{ number_format($quote->subtotal, 0, '', '.') }}</p>
+                            </td>
+                        </tr>
+                        @if ($quote->diskon > 0)
+                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                    <p class="m-0">Discount{{ $quote->discount_label ? ' (' . $quote->discount_label . ')' : '' }}</p>
+                                </td>
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                    <p class="m-0">- Rp {{ number_format($quote->discount_amount, 0, '', '.') }}</p>
+                                </td>
+                            </tr>
+                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                    <p class="m-0">Total After Discount</p>
+                                </td>
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                    <p class="m-0">Rp {{ number_format($afterDisc, 0, '', '.') }}</p>
+                                </td>
+                            </tr>
+                        @endif
+                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                <p class="m-0"><span class="i18n" data-en="DP {{ $bpDpPct }}%">DP {{ $bpDpPct }}%</span></p>
+                            </td>
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <p class="m-0">Rp {{ number_format($bpDpBase, 0, '', '.') }}</p>
+                            </td>
+                        </tr>
+                        <tr class="fw-medium finance-summary-row" style="font-size: 13px; background:#f2f2f2;">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                <p class="m-0"><span class="i18n" data-en="BP {{ $bpPct }}%">BP {{ $bpPct }}%</span></p>
+                            </td>
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <p class="m-0">Rp {{ number_format($bpBase, 0, '', '.') }}</p>
+                            </td>
+                        </tr>
+                        @if ($quote->tax)
+                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                    <p class="m-0"><span class="i18n" data-en="DPP on PPN">DPP Atas PPN</span></p>
+                                </td>
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                    <p class="m-0">Rp {{ number_format($bpDpp, 0, '', '.') }}</p>
+                                </td>
+                            </tr>
+                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                    <p class="m-0">PPN 12%</p>
+                                </td>
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                    <p class="m-0">Rp {{ number_format($bpPpn, 0, '', '.') }}</p>
+                                </td>
+                            </tr>
+                        @endif
+                        @if ($bpShip > 0)
+                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                    <p class="m-0">Shipping Cost ({{ $bpPct }}%)</p>
+                                </td>
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                    <p class="m-0">Rp {{ number_format($bpShip, 0, '', '.') }}</p>
+                                </td>
+                            </tr>
+                        @endif
+                        @if ($totalPph > 0)
+                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                                    <p class="m-0">PPH 23</p>
+                                </td>
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important; color:#dc3545;">
+                                    <p class="m-0">- Rp {{ number_format($totalPph, 0, '', '.') }}</p>
+                                </td>
+                            </tr>
+                        @endif
+                        <tr class="finance-summary-row" style="font-size: 13px; background:yellow; border-top:2px solid #e6c300;">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-2 fw-bold" style="padding-right: 10px !important; color:#000;">
+                                <p class="m-0 fw-bold">TOTAL</p>
+                            </td>
+                            <td colspan="{{ $amountSpan }}" class="py-2 fw-bold text-end" style="padding-right: 10px !important; color:#000;">
+                                <p class="m-0 fw-bold">Rp {{ number_format($totalAfterPph, 0, '', '.') }}</p>
+                            </td>
+                        </tr>
+                    @else
                     <tr class="fw-medium finance-summary-row" style="font-size: 13px">
                         <td colspan="{{ $quote->tax ? 2 : 1 }}" rowspan="9" style="border: none !important;"></td>
                         <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
@@ -388,11 +579,11 @@
                                 $dpAmount  = round($quote->total * $dpPercent / 100);
                             @endphp
                             @if ($dpAmount > 0)
-                                <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                                    <td colspan="{{ $labelSpan }}" class="text-end py-1" style="padding-right: 10px !important; color:#dc3545;">
+                                <tr class="fw-medium finance-summary-row" style="font-size: 13px; background:#d4edda;">
+                                    <td colspan="{{ $labelSpan }}" class="text-end py-1" style="padding-right: 10px !important; color:#155724;">
                                         <p class="m-0"><span class="i18n" data-en="DP Already Paid ({{ $dpPercent }}%)">DP Telah Dibayar ({{ $dpPercent }}%)</span></p>
                                     </td>
-                                    <td colspan="{{ $amountSpan }}" class="py-1 text-end" style="padding-right: 10px !important; color:#dc3545;">
+                                    <td colspan="{{ $amountSpan }}" class="py-1 text-end" style="padding-right: 10px !important; color:#155724;">
                                         <p class="m-0">Rp {{ number_format($dpAmount, 0, '', '.') }}</p>
                                     </td>
                                 </tr>
@@ -400,9 +591,50 @@
                         @endif
                         @php
                             $billingType    = in_array($invoice->type, ['BP', 'Balance Payment']) ? 'BP' : (in_array($invoice->type, ['DP', 'Down Payment']) ? 'DP' : $invoice->type);
-                            $billingLabelId = 'TAGIHAN ' . $billingType . ' (' . floatval($invoice->percent) . '%)';
-                            $billingLabelEn = 'AMOUNT DUE - ' . $billingType . ' (' . floatval($invoice->percent) . '%)';
+                            $billingPct     = floatval($invoice->percent);
+                            $billingLabelId = 'TAGIHAN ' . $billingType . ' (' . $billingPct . '%)';
+                            $billingLabelEn = 'AMOUNT DUE - ' . $billingType . ' (' . $billingPct . '%)';
+                            // Rincian DPP / PPN untuk porsi tagihan ini (rumus DPP nilai lain 11/12, sama dengan baris kontrak di atas)
+                            $billDpp   = round($afterDisc * 11 / 12 * $billingPct / 100);
+                            $billPpn   = round($quote->tax_amount * $billingPct / 100);
+                            $billGross = $billDpp + $billPpn;
                         @endphp
+                        @if ($quote->tax)
+                            <tr class="fw-medium finance-summary-row" style="font-size: 12px; background:#fffdf2;">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-1" style="padding-right: 10px !important; color:#555;">
+                                    <p class="m-0"><span class="i18n" data-en="DPP {{ $billingType }} ({{ $billingPct }}%)">DPP {{ $billingType }} ({{ $billingPct }}%)</span></p>
+                                </td>
+                                <td colspan="{{ $amountSpan }}" class="py-1 text-end" style="padding-right: 10px !important; color:#333;">
+                                    <p class="m-0">Rp {{ number_format($billDpp, 0, '', '.') }}</p>
+                                </td>
+                            </tr>
+                            <tr class="fw-medium finance-summary-row" style="font-size: 12px; background:#fffdf2;">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-1" style="padding-right: 10px !important; color:#555;">
+                                    <p class="m-0"><span class="i18n" data-en="VAT 12% {{ $billingType }} ({{ $billingPct }}%)">PPN 12% {{ $billingType }} ({{ $billingPct }}%)</span></p>
+                                </td>
+                                <td colspan="{{ $amountSpan }}" class="py-1 text-end" style="padding-right: 10px !important; color:#333;">
+                                    <p class="m-0">Rp {{ number_format($billPpn, 0, '', '.') }}</p>
+                                </td>
+                            </tr>
+                            @if ($totalPph > 0)
+                                <tr class="fw-medium finance-summary-row" style="font-size: 12px; background:#fffdf2;">
+                                    <td colspan="{{ $labelSpan }}" class="text-end py-1" style="padding-right: 10px !important; color:#555;">
+                                        <p class="m-0"><span class="i18n" data-en="{{ $billingType }} (DPP + VAT)">{{ $billingType }} (DPP + PPN)</span></p>
+                                    </td>
+                                    <td colspan="{{ $amountSpan }}" class="py-1 text-end" style="padding-right: 10px !important; color:#333;">
+                                        <p class="m-0">Rp {{ number_format($billGross, 0, '', '.') }}</p>
+                                    </td>
+                                </tr>
+                                <tr class="fw-medium finance-summary-row" style="font-size: 12px; background:#fffdf2;">
+                                    <td colspan="{{ $labelSpan }}" class="text-end py-1" style="padding-right: 10px !important; color:#555;">
+                                        <p class="m-0">PPH 23</p>
+                                    </td>
+                                    <td colspan="{{ $amountSpan }}" class="py-1 text-end" style="padding-right: 10px !important; color:#dc3545;">
+                                        <p class="m-0">- Rp {{ number_format($totalPph, 0, '', '.') }}</p>
+                                    </td>
+                                </tr>
+                            @endif
+                        @endif
                         <tr class="finance-summary-row" style="font-size: 13px; background:yellow; border-top:2px solid #e6c300;">
                             <td colspan="{{ $labelSpan }}" class="text-end py-2 fw-bold" style="padding-right: 10px !important; color:#000;">
                                 <p class="m-0 fw-bold"><span class="i18n" data-en="{{ $billingLabelEn }}">{{ $billingLabelId }}</span></p>
@@ -411,6 +643,7 @@
                                 <p class="m-0 fw-bold">Rp {{ number_format($totalAfterPph, 0, '', '.') }}</p>
                             </td>
                         </tr>
+                    @endif
                     @endif
                 </tbody>
             </table>

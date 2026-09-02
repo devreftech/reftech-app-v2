@@ -93,9 +93,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/smart-quote/{id}/change-status', [UnitQuotationController::class, 'changeStatus'])->name('unit-quotation.change-status');
     Route::post('/smart-quote/{id}/revise', [UnitQuotationController::class, 'revise'])->name('unit-quotation.revise');
     Route::post('/smart-quote/{id}/upload-po', [UnitQuotationController::class, 'uploadPO'])->name('unit-quotation.upload-po');
+    Route::post('/smart-quote/{id}/update-po-number', [UnitQuotationController::class, 'updatePoNumber'])->name('unit-quotation.update-po-number');
     Route::post('/smart-quote/{id}/request-next-invoice', [UnitQuotationController::class, 'requestNextInvoice'])->name('unit-quotation.request-next-invoice');
     Route::post('/smart-quote/{id}/add-payment', [UnitQuotationController::class, 'addPayment'])->name('unit-quotation.add-payment');
     Route::post('/smart-quote/{id}/post-to-kanban', [UnitQuotationController::class, 'postToKanban'])->name('unit-quotation.post-to-kanban');
+    Route::get('/smart-quote/kanban/linkable-tasks/{boardId}', [UnitQuotationController::class, 'getLinkableKanbanTasks'])->name('unit-quotation.kanban-linkable-tasks');
     Route::get('/notifications/payment/unread', [UnitQuotationController::class, 'unreadPaymentNotifications'])->name('notifications.payment.unread');
     Route::post('/notifications/payment/{id}/read', [UnitQuotationController::class, 'markPaymentNotificationRead'])->name('notifications.payment.read');
     Route::post('/smart-quote/payment/{id}/proof', [UnitQuotationController::class, 'proofPayment'])->name('unit-quotation.proof-payment');
@@ -111,6 +113,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/smart-quote/{id}/comment', [UnitQuotationController::class, 'storeComment'])->name('unit-quotation.storeComment');
     Route::post('/smart-quote/comments/{id}/update', [UnitQuotationController::class, 'updateComment'])->name('unit-quotation.updateComment');
     Route::delete('/smart-quote/comments/{id}', [UnitQuotationController::class, 'destroyComment'])->name('unit-quotation.destroyComment');
+    Route::post('/smart-quote/{id}/fee', [UnitQuotationController::class, 'updateFee'])->name('unit-quotation.update-fee');
+    Route::delete('/smart-quote/{id}/fee', [UnitQuotationController::class, 'deleteFee'])->name('unit-quotation.delete-fee');
 
     // SUO (Sales Urgent Order)
     Route::get('/suo', [SuoController::class, 'index'])->name('suo.index');

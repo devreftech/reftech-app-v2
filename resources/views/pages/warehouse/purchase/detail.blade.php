@@ -131,7 +131,32 @@
                                     <tr>
                                         <td class="fw-semibold text-muted ps-0">Payment Status</td>
                                         <td>:
-                                            @if ($invoice)
+                                            @php
+                                                $paymentInfo = null;
+                                                $paymentRecord = \App\Models\Payment::where($isUnitQuotation ? 'id_unit_quotation' : 'id_quotation', $quotation->id)->orderByDesc('id')->first();
+                                                if ($paymentRecord) {
+                                                    if ($paymentRecord->type === 'Tempo') {
+                                                        $days = $paymentRecord->tempo ?: preg_replace('/[^0-9]/', '', (string)$paymentRecord->note);
+                                                        $paymentInfo = ['label' => $days ? 'Credit (' . $days . ' Days)' : 'Credit', 'class' => 'bg-label-info'];
+                                                    } elseif ($paymentRecord->date_confirm || $paymentRecord->level == 1) {
+                                                        $paymentInfo = ['label' => 'Payment Confirmed', 'class' => 'bg-label-success'];
+                                                    } else {
+                                                        $paymentInfo = ['label' => 'Unconfirmed', 'class' => 'bg-label-warning'];
+                                                    }
+                                                } elseif ($isUnitQuotation && ($quotation->payment_method || $quotation->payment || (@$invoice && $invoice->type == 'CT'))) {
+                                                    $rawTempo = $quotation->payment_method ?: ($quotation->payment ?: @$invoice->term);
+                                                    $days = preg_replace('/[^0-9]/', '', (string)$rawTempo);
+                                                    $paymentInfo = ['label' => $days ? 'Credit (' . $days . ' Days)' : 'Credit', 'class' => 'bg-label-info'];
+                                                } elseif (@$invoice && $invoice->type == 'CT') {
+                                                    $days = preg_replace('/[^0-9]/', '', (string)$invoice->term);
+                                                    $paymentInfo = ['label' => $days ? 'Credit (' . $days . ' Days)' : 'Credit', 'class' => 'bg-label-info'];
+                                                } elseif (@$invoice && $invoice->status_p == 1) {
+                                                    $paymentInfo = ['label' => 'Payment Confirmed', 'class' => 'bg-label-success'];
+                                                }
+                                            @endphp
+                                            @if ($paymentInfo)
+                                                <span class="badge {{ $paymentInfo['class'] }} fw-semibold">{{ $paymentInfo['label'] }}</span>
+                                            @elseif ($invoice)
                                                 <span class="badge {{ $invoice->status_p == 1 ? 'bg-label-success' : 'bg-label-danger' }} fw-semibold">
                                                     {{ $invoice->status_p == 1 ? 'Payment Confirmed' : 'Unpaid' }}
                                                 </span>

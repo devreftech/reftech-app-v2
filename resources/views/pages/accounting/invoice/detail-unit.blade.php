@@ -438,10 +438,120 @@
                         $afterDisc = $quote->diskon > 0
                             ? $quote->subtotal - $quote->discount_amount
                             : $quote->subtotal;
+                        $isDpInvoice = in_array($invoice->type, ['DP', 'Down Payment']);
+                        $isBpInvoice = in_array($invoice->type, ['BP', 'Balance Payment']);
+                        $dpPct  = floatval($invoice->percent);
+                        $dpBase = round($afterDisc * $dpPct / 100);          // porsi barang untuk DP (sebelum PPN)
+                        $dpDpp  = round($dpBase * 11 / 12);                   // DPP nilai lain, diambil dari DP
+                        $dpPpn  = round($dpDpp * 0.12);                      // PPN 12% atas DPP DP
+                        $dpShip = $quote->shipping > 0 ? round($quote->shipping * $dpPct / 100) : 0;
+                        // BP: porsi tagihan ini + porsi DP yang sudah ditagih sebelumnya
+                        $bpPct     = floatval($invoice->percent);
+                        $bpDpPct   = max(0, 100 - $bpPct);
+                        $bpBase    = round($afterDisc * $bpPct / 100);       // porsi barang untuk BP (sebelum PPN)
+                        $bpDpBase  = round($afterDisc * $bpDpPct / 100);     // porsi barang DP yang sudah ditagih
+                        $bpDpp     = round($bpBase * 11 / 12);               // DPP nilai lain, diambil dari BP
+                        $bpPpn     = round($bpDpp * 0.12);                   // PPN 12% atas DPP BP
+                        $bpShip    = $quote->shipping > 0 ? round($quote->shipping * $bpPct / 100) : 0;
                     @endphp
                     <div class="d-flex justify-content-end mb-3">
                         <div style="min-width:280px; font-size:12px; border:1px solid #d0d0ff; border-left:4px solid #696cff; border-radius:6px; overflow:hidden; background:#fff;">
                             <table style="width:100%; border-collapse:collapse;">
+                                @if ($isDpInvoice)
+                                    <tr>
+                                        <td style="padding:6px 16px 6px 14px; color:#555;"><span class="i18n" data-en="Sub Total">Sub Total</span></td>
+                                        <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($quote->subtotal, 0, '', '.') }}</td>
+                                    </tr>
+                                    @if ($quote->diskon > 0)
+                                        <tr style="border-top:1px solid #eeeeff;">
+                                            <td style="padding:6px 16px 6px 14px; color:#555;">Discount{{ $quote->discount_label ? ' ' . $quote->discount_label : '' }}</td>
+                                            <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#dc3545;">- Rp {{ number_format($quote->discount_amount, 0, '', '.') }}</td>
+                                        </tr>
+                                        <tr style="border-top:1px solid #eeeeff;">
+                                            <td style="padding:6px 16px 6px 14px; color:#555;">After Discount</td>
+                                            <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($afterDisc, 0, '', '.') }}</td>
+                                        </tr>
+                                    @endif
+                                    <tr style="border-top:1px solid #eeeeff; background:#f7f7f7;">
+                                        <td style="padding:6px 16px 6px 14px; color:#555;"><span class="i18n" data-en="DP {{ $dpPct }}%">DP {{ $dpPct }}%</span></td>
+                                        <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#555;">Rp {{ number_format($dpBase, 0, '', '.') }}</td>
+                                    </tr>
+                                    @if ($quote->tax)
+                                        <tr style="border-top:1px solid #eeeeff;">
+                                            <td style="padding:6px 16px 6px 14px; color:#555;"><span class="i18n" data-en="DPP on PPN">DPP Atas PPN</span></td>
+                                            <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($dpDpp, 0, '', '.') }}</td>
+                                        </tr>
+                                        <tr style="border-top:1px solid #eeeeff;">
+                                            <td style="padding:6px 16px 6px 14px; color:#555;">PPN 12%</td>
+                                            <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($dpPpn, 0, '', '.') }}</td>
+                                        </tr>
+                                    @endif
+                                    @if ($dpShip > 0)
+                                        <tr style="border-top:1px solid #eeeeff;">
+                                            <td style="padding:6px 16px 6px 14px; color:#555;">Shipping Cost ({{ $dpPct }}%)</td>
+                                            <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($dpShip, 0, '', '.') }}</td>
+                                        </tr>
+                                    @endif
+                                    @if ($totalPph > 0)
+                                        <tr style="border-top:1px solid #eeeeff;">
+                                            <td style="padding:6px 16px 6px 14px; color:#555;">PPH 23</td>
+                                            <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#dc3545;">- Rp {{ number_format($totalPph, 0, '', '.') }}</td>
+                                        </tr>
+                                    @endif
+                                    <tr style="border-top:2px solid #e6c300; background:yellow;">
+                                        <td style="padding:9px 16px 9px 14px; font-weight:800; font-size:13px; color:#000;">TOTAL</td>
+                                        <td style="padding:9px 14px 9px 0; text-align:right; font-weight:800; font-size:13px; color:#000;">Rp {{ number_format($totalAfterPph, 0, '', '.') }}</td>
+                                    </tr>
+                                @elseif ($isBpInvoice)
+                                    <tr>
+                                        <td style="padding:6px 16px 6px 14px; color:#555;"><span class="i18n" data-en="Sub Total">Sub Total</span></td>
+                                        <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($quote->subtotal, 0, '', '.') }}</td>
+                                    </tr>
+                                    @if ($quote->diskon > 0)
+                                        <tr style="border-top:1px solid #eeeeff;">
+                                            <td style="padding:6px 16px 6px 14px; color:#555;">Discount{{ $quote->discount_label ? ' ' . $quote->discount_label : '' }}</td>
+                                            <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#dc3545;">- Rp {{ number_format($quote->discount_amount, 0, '', '.') }}</td>
+                                        </tr>
+                                        <tr style="border-top:1px solid #eeeeff;">
+                                            <td style="padding:6px 16px 6px 14px; color:#555;">After Discount</td>
+                                            <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($afterDisc, 0, '', '.') }}</td>
+                                        </tr>
+                                    @endif
+                                    <tr style="border-top:1px solid #eeeeff;">
+                                        <td style="padding:6px 16px 6px 14px; color:#555;"><span class="i18n" data-en="DP {{ $bpDpPct }}%">DP {{ $bpDpPct }}%</span></td>
+                                        <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($bpDpBase, 0, '', '.') }}</td>
+                                    </tr>
+                                    <tr style="border-top:1px solid #eeeeff; background:#f7f7f7;">
+                                        <td style="padding:6px 16px 6px 14px; color:#555;"><span class="i18n" data-en="BP {{ $bpPct }}%">BP {{ $bpPct }}%</span></td>
+                                        <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#555;">Rp {{ number_format($bpBase, 0, '', '.') }}</td>
+                                    </tr>
+                                    @if ($quote->tax)
+                                        <tr style="border-top:1px solid #eeeeff;">
+                                            <td style="padding:6px 16px 6px 14px; color:#555;"><span class="i18n" data-en="DPP on PPN">DPP Atas PPN</span></td>
+                                            <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($bpDpp, 0, '', '.') }}</td>
+                                        </tr>
+                                        <tr style="border-top:1px solid #eeeeff;">
+                                            <td style="padding:6px 16px 6px 14px; color:#555;">PPN 12%</td>
+                                            <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($bpPpn, 0, '', '.') }}</td>
+                                        </tr>
+                                    @endif
+                                    @if ($bpShip > 0)
+                                        <tr style="border-top:1px solid #eeeeff;">
+                                            <td style="padding:6px 16px 6px 14px; color:#555;">Shipping Cost ({{ $bpPct }}%)</td>
+                                            <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($bpShip, 0, '', '.') }}</td>
+                                        </tr>
+                                    @endif
+                                    @if ($totalPph > 0)
+                                        <tr style="border-top:1px solid #eeeeff;">
+                                            <td style="padding:6px 16px 6px 14px; color:#555;">PPH 23</td>
+                                            <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#dc3545;">- Rp {{ number_format($totalPph, 0, '', '.') }}</td>
+                                        </tr>
+                                    @endif
+                                    <tr style="border-top:2px solid #e6c300; background:yellow;">
+                                        <td style="padding:9px 16px 9px 14px; font-weight:800; font-size:13px; color:#000;">TOTAL</td>
+                                        <td style="padding:9px 14px 9px 0; text-align:right; font-weight:800; font-size:13px; color:#000;">Rp {{ number_format($totalAfterPph, 0, '', '.') }}</td>
+                                    </tr>
+                                @else
                                 <tr>
                                     <td style="padding:6px 16px 6px 14px; color:#555;">Subtotal</td>
                                     <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($quote->subtotal, 0, '', '.') }}</td>
@@ -504,15 +614,41 @@
                                     @endif
                                     @php
                                         $billingType = in_array($invoice->type, ['DP', 'Down Payment']) ? 'DP' : (in_array($invoice->type, ['BP', 'Balance Payment']) ? 'BP' : strtoupper($invoice->type));
-                                        $billingLabelId = 'TAGIHAN ' . $billingType . ' (' . floatval($invoice->percent) . '%)';
-                                        $billingLabelEn = 'AMOUNT DUE - ' . $billingType . ' (' . floatval($invoice->percent) . '%)';
+                                        $billingPct  = floatval($invoice->percent);
+                                        $billingLabelId = 'TAGIHAN ' . $billingType . ' (' . $billingPct . '%)';
+                                        $billingLabelEn = 'AMOUNT DUE - ' . $billingType . ' (' . $billingPct . '%)';
+                                        // Rincian DPP / PPN untuk porsi tagihan ini (mengikuti rumus DPP nilai lain 11/12 seperti baris kontrak di atas)
+                                        $billDpp   = round($afterDisc * 11 / 12 * $billingPct / 100);
+                                        $billPpn   = round($quote->tax_amount * $billingPct / 100);
+                                        $billGross = $billDpp + $billPpn;
                                     @endphp
+                                    @if ($quote->tax)
+                                        <tr style="border-top:1px solid #eeeeff; background:#fffdf2;">
+                                            <td style="padding:5px 16px 5px 26px; color:#666; font-size:11.5px;"><span class="i18n" data-en="DPP {{ $billingType }} ({{ $billingPct }}%)">DPP {{ $billingType }} ({{ $billingPct }}%)</span></td>
+                                            <td style="padding:5px 14px 5px 0; text-align:right; font-weight:500; color:#333; font-size:11.5px;">Rp {{ number_format($billDpp, 0, '', '.') }}</td>
+                                        </tr>
+                                        <tr style="background:#fffdf2;">
+                                            <td style="padding:5px 16px 5px 26px; color:#666; font-size:11.5px;"><span class="i18n" data-en="VAT 12% {{ $billingType }} ({{ $billingPct }}%)">PPN 12% {{ $billingType }} ({{ $billingPct }}%)</span></td>
+                                            <td style="padding:5px 14px 5px 0; text-align:right; font-weight:500; color:#333; font-size:11.5px;">Rp {{ number_format($billPpn, 0, '', '.') }}</td>
+                                        </tr>
+                                        @if ($totalPph > 0)
+                                            <tr style="background:#fffdf2;">
+                                                <td style="padding:5px 16px 5px 26px; color:#666; font-size:11.5px;"><span class="i18n" data-en="{{ $billingType }} (DPP + VAT)">{{ $billingType }} (DPP + PPN)</span></td>
+                                                <td style="padding:5px 14px 5px 0; text-align:right; font-weight:500; color:#333; font-size:11.5px;">Rp {{ number_format($billGross, 0, '', '.') }}</td>
+                                            </tr>
+                                            <tr style="background:#fffdf2;">
+                                                <td style="padding:5px 16px 5px 26px; color:#666; font-size:11.5px;">PPH 23</td>
+                                                <td style="padding:5px 14px 5px 0; text-align:right; font-weight:500; color:#dc3545; font-size:11.5px;">- Rp {{ number_format($totalPph, 0, '', '.') }}</td>
+                                            </tr>
+                                        @endif
+                                    @endif
                                     <tr style="border-top:2px solid #e6c300; background:yellow;">
                                         <td style="padding:8px 16px 8px 14px; font-weight:800; font-size:12.5px; color:#000;">
                                             <span class="i18n" data-en="{{ $billingLabelEn }}">{{ $billingLabelId }}</span>
                                         </td>
                                         <td style="padding:8px 14px 8px 0; text-align:right; font-weight:800; font-size:13px; color:#000;">Rp {{ number_format($totalAfterPph, 0, '', '.') }}</td>
                                     </tr>
+                                @endif
                                 @endif
                             </table>
                         </div>
@@ -693,7 +829,7 @@
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm w-100 waves-effect text-start"
                             data-bs-toggle="modal" data-bs-target="#editInvoiceModal">
-                            <i class="mdi mdi-pencil-outline me-1 text-primary"></i> Edit No Invoice / Term
+                            <i class="mdi mdi-pencil-outline me-1 text-primary"></i> Edit No Invoice / PO / Term
                         </button>
                         <button type="button" class="btn btn-outline-warning btn-sm w-100 waves-effect text-start"
                             data-bs-toggle="modal" data-bs-target="#dueDate">
@@ -738,9 +874,12 @@
                     @if ($allInvoices->count() > 1)
                         <hr class="my-1">
                         @foreach ($allInvoices as $inv)
+                            @php
+                                $invTypeCode = in_array($inv->type, ['DP', 'Down Payment']) ? 'DP' : (in_array($inv->type, ['BP', 'Balance Payment']) ? 'BP' : strtoupper($inv->type));
+                            @endphp
                             <a href="{{ route('invoice.show_unit', $inv->id) }}"
                                class="btn btn-sm {{ $inv->id == $invoice->id ? 'btn-primary' : 'btn-outline-secondary' }} w-100 waves-effect">
-                                <span class="badge {{ $inv->type === 'DP' ? 'bg-warning' : 'bg-info' }} me-1">{{ $inv->type }}</span>
+                                <span class="badge {{ $invTypeCode === 'DP' ? 'bg-warning' : 'bg-info' }} me-1">{{ $invTypeCode }}</span>
                                 {{ $inv->no_invoice ?? 'Pending' }}
                             </a>
                         @endforeach
@@ -805,12 +944,13 @@
                 <div class="card-body p-0">
                     @foreach ($allInvoices as $inv)
                         @php
+                            $invTypeCode = in_array($inv->type, ['DP', 'Down Payment']) ? 'DP' : (in_array($inv->type, ['BP', 'Balance Payment']) ? 'BP' : strtoupper($inv->type));
                             $invTotal = $quote->total;
-                            if ($inv->type === 'DP' && $inv->term) {
+                            if ($invTypeCode === 'DP' && $inv->term) {
                                 $pct      = preg_match('/^DP\s*(\d+(?:\.\d+)?)\s*%/i', $inv->term, $m) ? floatval($m[1]) : 0;
                                 $invTotal = round($quote->total * $pct / 100);
-                            } elseif ($inv->type === 'BP') {
-                                $dpInv    = $allInvoices->firstWhere('type', 'DP');
+                            } elseif ($invTypeCode === 'BP') {
+                                $dpInv    = $allInvoices->first(fn($i) => in_array($i->type, ['DP', 'Down Payment']));
                                 $pct      = $dpInv?->term && preg_match('/^DP\s*(\d+(?:\.\d+)?)\s*%/i', $dpInv->term, $m) ? floatval($m[1]) : 0;
                                 $invTotal = $quote->total - round($quote->total * $pct / 100);
                             }
@@ -818,7 +958,7 @@
                         <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
                             <div>
                                 <p class="mb-0 small fw-semibold">
-                                    <span class="badge {{ $inv->type === 'DP' ? 'bg-warning' : ($inv->type === 'BP' ? 'bg-info' : 'bg-primary') }} me-1" style="font-size:10px">{{ $inv->type }}</span>
+                                    <span class="badge {{ $invTypeCode === 'DP' ? 'bg-warning' : ($invTypeCode === 'BP' ? 'bg-info' : 'bg-primary') }} me-1" style="font-size:10px">{{ $invTypeCode }}</span>
                                     Rp {{ number_format($invTotal, 0, '', '.') }}
                                 </p>
                                 <p class="mb-0 text-muted" style="font-size:11px">{{ $inv->no_invoice ?? 'Belum diterbitkan' }}</p>
@@ -1732,7 +1872,7 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="editInvoiceModalLabel">Edit No Invoice & Term of Payment</h5>
+                        <h5 class="modal-title" id="editInvoiceModalLabel">Edit No Invoice, PO & Term of Payment</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form method="POST" action="{{ route('invoice.update', $invoice->id) }}">
@@ -1742,6 +1882,11 @@
                             <div class="mb-3">
                                 <label for="invoiceNumber" class="form-label">No Invoice</label>
                                 <input type="text" class="form-control" id="invoiceNumber" name="invoice" value="{{ old('invoice', $invoice->no_invoice) }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="invoiceNoPo" class="form-label">No PO</label>
+                                <input type="text" class="form-control" id="invoiceNoPo" name="no_po" maxlength="100" value="{{ old('no_po', $invoice->no_po ?? $quote->po_number) }}">
+                                <div class="form-text">Perubahan No PO di sini ikut memperbarui No PO di Smart Quote &amp; invoice lain pada quote yang sama.</div>
                             </div>
                             <div class="mb-3">
                                 <label for="termPayment" class="form-label">Term of Payment</label>

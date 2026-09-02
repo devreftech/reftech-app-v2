@@ -2,7 +2,10 @@
 @section('title', 'Detail Unit — ' . $product->sku)
 @section('content')
     @php
-        $isPriv = in_array(auth::user()->role, ['Admin', 'Sales', 'Logistic']);
+        $role = Auth::user()->role;
+        $isSales = $role === 'Sales';
+        $canEditUnit = in_array($role, ['Admin', 'Logistic']);
+        $isPriv = in_array($role, ['Admin', 'Sales', 'Logistic']);
         $isCompressor = in_array($product->unit, ['PISTON COMPRESSOR', 'AIR COMPRESSOR SCREW']);
         $isDryer      = in_array($product->unit, ['REFRIGERANT AIR DRYER', 'DESICANT DRYER']);
     @endphp
@@ -23,7 +26,7 @@
                 <h4 class="fw-bold mb-0 text-dark">{{ $product->sku }}</h4>
             </div>
         </div>
-        @if ($isPriv)
+        @if ($canEditUnit)
             <div class="d-flex gap-2">
                 <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#updateProduct-{{ $product->id }}">
                     <i class="mdi mdi-pencil-outline me-1"></i> Edit Unit
@@ -39,7 +42,7 @@
     <div class="card unit-hero-card mb-4 border-0">
         <div class="card-body py-3 px-4">
             <div class="row align-items-center g-3">
-                <div class="col-6 col-md-3 border-end-md">
+                <div class="col-12 col-md-4 border-end-md">
                     <div class="d-flex align-items-center gap-3">
                         <div class="avatar avatar-md bg-label-primary rounded-3 p-2 d-flex align-items-center justify-content-center">
                             <i class="mdi mdi-cog-outline fs-3"></i>
@@ -50,7 +53,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3 border-end-md">
+                <div class="col-12 col-md-4 border-end-md">
                     <div class="d-flex align-items-center gap-3">
                         <div class="avatar avatar-md bg-label-info rounded-3 p-2 d-flex align-items-center justify-content-center">
                             <i class="mdi mdi-lightning-bolt-outline fs-3"></i>
@@ -61,7 +64,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3 border-end-md">
+                <div class="col-12 col-md-4">
                     <div class="d-flex align-items-center gap-3">
                         <div class="avatar avatar-md bg-label-warning rounded-3 p-2 d-flex align-items-center justify-content-center">
                             <i class="mdi mdi-fan fs-3"></i>
@@ -69,17 +72,6 @@
                         <div>
                             <span class="metric-label d-block text-muted">Air Capacity / FAD</span>
                             <h6 class="mb-0 fw-bold text-dark">{{ $product->air_cap ? $product->air_cap . ' m³/min' : '-' }}</h6>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="avatar avatar-md bg-label-success rounded-3 p-2 d-flex align-items-center justify-content-center">
-                            <i class="mdi mdi-cube-outline fs-3"></i>
-                        </div>
-                        <div>
-                            <span class="metric-label d-block text-muted">Total Stock</span>
-                            <h6 class="mb-0 fw-bold text-dark">{{ $allStock }} <span class="small text-muted fw-normal">(Awal: {{ $product->frist_stock ?: 0 }})</span></h6>
                         </div>
                     </div>
                 </div>
@@ -93,16 +85,10 @@
             <ul class="nav nav-tabs custom-nav-tabs m-0" id="unit-global-detail-tab-nav" role="tablist">
                 <li class="nav-item">
                     <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-unit-detail" type="button">
-                        <i class="mdi mdi-information-outline me-1.5 fs-5"></i>Detail Specifications
+                        <i class="mdi mdi-information-outline me-1.5 fs-5"></i>Detail Spesifikasi & Template PM
                     </button>
                 </li>
                 @if ($isPriv)
-                    <li class="nav-item">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-unit-pm-template" type="button">
-                            <i class="mdi mdi-file-document-edit-outline me-1.5 fs-5"></i>Template Penawaran PM
-                            <span class="badge bg-success rounded-pill ms-2">BARU</span>
-                        </button>
-                    </li>
                     <li class="nav-item">
                         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-unit-equivalent" type="button">
                             <i class="mdi mdi-swap-horizontal me-1.5 fs-5"></i>Equivalent
@@ -115,60 +101,11 @@
         <div class="card-body p-4">
             <div class="tab-content p-0">
 
-                {{-- ==================== TAB: DETAIL ==================== --}}
+                {{-- ==================== TAB: DETAIL & TEMPLATE PM ==================== --}}
                 <div class="tab-pane fade show active" id="tab-unit-detail" role="tabpanel">
                     <div class="row g-4">
-                        {{-- General Specs --}}
-                        <div class="col-lg-6">
-                            <div class="card spec-card">
-                                <div class="spec-header d-flex align-items-center justify-content-between">
-                                    <h6 class="mb-0 fw-bold text-dark">
-                                        <i class="mdi mdi-format-list-bulleted me-2 text-primary"></i>Informasi Umum
-                                    </h6>
-                                </div>
-                                <div class="card-body p-3">
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">Kategori Unit</div>
-                                        <div class="col-7 spec-val">{{ $product->unit ?: '-' }}</div>
-                                    </div>
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">SKU</div>
-                                        <div class="col-7 spec-val"><code class="text-primary fw-bold">{{ $product->sku ?: '-' }}</code></div>
-                                    </div>
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">Brand</div>
-                                        <div class="col-7 spec-val">{{ $product->brand ?: '-' }}</div>
-                                    </div>
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">Model</div>
-                                        <div class="col-7 spec-val">{{ $product->model ?: '-' }}</div>
-                                    </div>
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">Status Unit</div>
-                                        <div class="col-7 spec-val">
-                                            @if ($product->status)
-                                                <span class="badge bg-label-info">{{ $product->status }}</span>
-                                            @else
-                                                -
-                                            @endif
-                                        </div>
-                                    </div>
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">Stock Awal</div>
-                                        <div class="col-7 spec-val">{{ $product->frist_stock !== null ? $product->frist_stock : '-' }}</div>
-                                    </div>
-                                    @if ($product->desc && !$isCompressor && !$isDryer)
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Deskripsi</div>
-                                            <div class="col-7 spec-val">{{ $product->desc }}</div>
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Technical Specs --}}
-                        <div class="col-lg-6">
+                        {{-- Technical Specs (Full Width) --}}
+                        <div class="col-12">
                             <div class="card spec-card">
                                 <div class="spec-header d-flex align-items-center justify-content-between">
                                     <h6 class="mb-0 fw-bold text-dark">
@@ -176,86 +113,268 @@
                                     </h6>
                                 </div>
                                 <div class="card-body p-3">
-                                    @if ($isCompressor)
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Type Compressor</div>
-                                            <div class="col-7 spec-val">{{ $product->type_unit ?: '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Short Description</div>
-                                            <div class="col-7 spec-val">{{ $product->desc ?: '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Max. Working Pressure</div>
-                                            <div class="col-7 spec-val">{{ $product->bar ? $product->bar . ' Bar' : '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Air Capacity</div>
-                                            <div class="col-7 spec-val">{{ $product->air_cap ? $product->air_cap . ' m³/min' : '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Motor Power</div>
-                                            <div class="col-7 spec-val"><span class="badge bg-label-primary">{{ $product->power ?: '-' }}</span></div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Rated Voltage</div>
-                                            <div class="col-7 spec-val">{{ $product->voltage ?: '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Drive</div>
-                                            <div class="col-7 spec-val">{{ $product->connect ?: '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Cooling Method</div>
-                                            <div class="col-7 spec-val">{{ $product->cooling ?: '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Discharge Connection</div>
-                                            <div class="col-7 spec-val">{{ $product->exhaust ?: '-' }}</div>
-                                        </div>
-                                    @elseif ($isDryer)
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">FAD / Air Capacity</div>
-                                            <div class="col-7 spec-val">{{ $product->air_cap ? $product->air_cap . ' m³/min' : '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Refrigerant Type</div>
-                                            <div class="col-7 spec-val">{{ $product->refrigerant_type ?: '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">PDP</div>
-                                            <div class="col-7 spec-val">{{ $product->pdp ?: '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Rated Voltage</div>
-                                            <div class="col-7 spec-val">{{ $product->voltage ?: '-' }}</div>
-                                        </div>
-                                    @else
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Short Description</div>
-                                            <div class="col-7 spec-val">{{ $product->desc ?: '-' }}</div>
-                                        </div>
-                                    @endif
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">Dimension</div>
-                                        <div class="col-7 spec-val">{{ $product->dimension ?: '-' }}</div>
-                                    </div>
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">Weight</div>
-                                        <div class="col-7 spec-val">{{ $product->weight ? $product->weight . ' Kg' : '-' }}</div>
+                                    <div class="row g-3">
+                                        @if ($isCompressor)
+                                            <div class="col-md-6">
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Type Compressor</div>
+                                                    <div class="col-7 spec-val">{{ $product->type_unit ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Short Description</div>
+                                                    <div class="col-7 spec-val">{{ $product->desc ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Max. Working Pressure</div>
+                                                    <div class="col-7 spec-val">{{ $product->bar ? $product->bar . ' Bar' : '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Air Capacity</div>
+                                                    <div class="col-7 spec-val">{{ $product->air_cap ? $product->air_cap . ' m³/min' : '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Motor Power</div>
+                                                    <div class="col-7 spec-val"><span class="badge bg-label-primary">{{ $product->power ?: '-' }}</span></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Rated Voltage</div>
+                                                    <div class="col-7 spec-val">{{ $product->voltage ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Drive</div>
+                                                    <div class="col-7 spec-val">{{ $product->connect ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Cooling Method</div>
+                                                    <div class="col-7 spec-val">{{ $product->cooling ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Discharge Connection</div>
+                                                    <div class="col-7 spec-val">{{ $product->exhaust ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Dimension</div>
+                                                    <div class="col-7 spec-val">{{ $product->dimension ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Weight</div>
+                                                    <div class="col-7 spec-val">{{ $product->weight ? $product->weight . ' Kg' : '-' }}</div>
+                                                </div>
+                                            </div>
+                                        @elseif ($isDryer)
+                                            <div class="col-md-6">
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">FAD / Air Capacity</div>
+                                                    <div class="col-7 spec-val">{{ $product->air_cap ? $product->air_cap . ' m³/min' : '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Refrigerant Type</div>
+                                                    <div class="col-7 spec-val">{{ $product->refrigerant_type ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">PDP</div>
+                                                    <div class="col-7 spec-val">{{ $product->pdp ?: '-' }}</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Rated Voltage</div>
+                                                    <div class="col-7 spec-val">{{ $product->voltage ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Dimension</div>
+                                                    <div class="col-7 spec-val">{{ $product->dimension ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Weight</div>
+                                                    <div class="col-7 spec-val">{{ $product->weight ? $product->weight . ' Kg' : '-' }}</div>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <div class="col-md-6">
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Short Description</div>
+                                                    <div class="col-7 spec-val">{{ $product->desc ?: '-' }}</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Dimension</div>
+                                                    <div class="col-7 spec-val">{{ $product->dimension ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Weight</div>
+                                                    <div class="col-7 spec-val">{{ $product->weight ? $product->weight . ' Kg' : '-' }}</div>
+                                                </div>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        @if ($product->note)
-                            <div class="col-12">
-                                <div class="card spec-card bg-light border-0">
-                                    <div class="card-body p-3.5">
-                                        <h6 class="fw-bold text-dark mb-2">
-                                            <i class="mdi mdi-note-text-outline me-2 text-warning"></i>Catatan (Note)
-                                        </h6>
-                                        <div class="p-3 bg-white rounded border text-secondary" style="font-family: inherit; white-space: pre-wrap;">{{ $product->note }}</div>
+
+
+                        @if ($isPriv)
+                            {{-- Section Pembatas: Template Penawaran PM --}}
+                            <div class="col-12 mt-4 pt-2">
+                                <div class="d-flex align-items-center gap-2 mb-3 border-top pt-4">
+                                    <i class="mdi mdi-file-document-edit-outline fs-4 text-primary"></i>
+                                    <h5 class="fw-bold mb-0 text-dark">Template Penawaran PM</h5>
+                                    <span class="badge bg-success rounded-pill ms-1">BARU</span>
+                                </div>
+
+                                <div id="pm-template-card"
+                                    data-endpoint="{{ route('unit-global.pm-template', $product->id) }}"
+                                    data-save-endpoint="{{ route('unit-global.pm-template.save', $product->id) }}"
+                                    data-is-sales="{{ $isSales ? 'true' : 'false' }}">
+
+                                    <div class="alert alert-info border-0 shadow-xs d-flex align-items-center mb-4 rounded-3">
+                                        <i class="mdi mdi-information-outline fs-4 me-3 text-info"></i>
+                                        <div class="small">
+                                            @if ($isSales)
+                                                Informasi item yang masuk penawaran PM per level untuk unit ini beserta estimasi harga part dan tarif jasa service.
+                                                Untuk menggunakan template ini pada penawaran, buka halaman <strong>Create Smart Quote</strong> lalu pakai tombol <strong>"Load Template PM"</strong>.
+                                            @else
+                                                Susun manual item apa saja yang masuk penawaran PM per level untuk unit ini. Daftar item tersimpan
+                                                permanen per unit + level, dan jadi sumber data <a href="{{ route('forecast.index') }}" target="_blank" class="fw-bold text-decoration-underline">Forecast Sales</a> juga.
+                                                Biaya jasa tetap otomatis dari <a href="{{ route('forecast.prices') }}" target="_blank" class="fw-bold text-decoration-underline">pricelist Forecast</a> berdasarkan Motor Power unit ini.
+                                                Untuk memakai template ini di penawaran, buka halaman <strong>Create Smart Quote</strong> lalu pakai tombol "Load Template PM".
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-4">
+                                        {{-- Kolom kiri: ringkasan unit + pilih level --}}
+                                        <div class="col-lg-3">
+                                            <div class="card spec-card mb-3">
+                                                <div class="card-body p-3">
+                                                    <h6 class="text-uppercase text-muted small fw-bold mb-3" style="letter-spacing:.04em;">
+                                                        Ringkasan Unit
+                                                    </h6>
+                                                    <dl class="row mb-0 small">
+                                                        <dt class="col-5 text-muted fw-normal">SKU</dt>
+                                                        <dd class="col-7 text-end mb-2 fw-semibold text-dark">{{ $product->sku }}</dd>
+                                                        <dt class="col-5 text-muted fw-normal">Brand</dt>
+                                                        <dd class="col-7 text-end mb-2 text-dark">{{ $product->brand ?: '-' }}</dd>
+                                                        <dt class="col-5 text-muted fw-normal">Model</dt>
+                                                        <dd class="col-7 text-end mb-2 text-dark">{{ $product->model ?: '-' }}</dd>
+                                                        <dt class="col-5 text-muted fw-normal">Power</dt>
+                                                        <dd class="col-7 text-end mb-0 fw-bold text-primary">{{ $product->power ?: '-' }}</dd>
+                                                    </dl>
+                                                </div>
+                                            </div>
+                                            <div class="card spec-card">
+                                                <div class="card-body p-3">
+                                                    <h6 class="text-uppercase text-muted small fw-bold mb-3" style="letter-spacing:.04em;">
+                                                        Pilih Level PM
+                                                    </h6>
+                                                    <div class="d-flex flex-wrap gap-2" id="pm-level-group">
+                                                        <button type="button" class="btn btn-sm rounded-pill px-3 pm-level-btn" data-level="PM1">PM1</button>
+                                                        <button type="button" class="btn btn-sm rounded-pill px-3 pm-level-btn" data-level="PM2">PM2</button>
+                                                        <button type="button" class="btn btn-sm rounded-pill px-3 pm-level-btn" data-level="PM3">PM3</button>
+                                                        <button type="button" class="btn btn-sm rounded-pill px-3 pm-level-btn" data-level="PM4">PM4</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {{-- Kolom kanan: builder --}}
+                                        <div class="col-lg-9">
+                                            <div id="pm-template-empty" class="card spec-card">
+                                                <div class="card-body text-center text-muted py-5">
+                                                    <i class="mdi mdi-arrow-left-bold-circle-outline fs-1 d-block mb-2 text-primary opacity-50"></i>
+                                                    Pilih level PM di sebelah kiri untuk {{ $isSales ? 'melihat' : 'menyusun / melihat' }} template item unit ini.
+                                                </div>
+                                            </div>
+
+                                            <div id="pm-template-result" style="display:none;">
+                                                <div class="card spec-card">
+                                                    <div class="card-body p-3">
+                                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                                            <h6 class="mb-0 fw-bold text-dark">Item Template</h6>
+                                                            <span class="badge bg-label-primary rounded-pill px-2.5" id="pm-template-level-badge">-</span>
+                                                        </div>
+                                                        @if (!$isSales)
+                                                            <p class="text-muted small mb-3"><i class="mdi mdi-drag-vertical me-1"></i>Geser ikon di kiri tiap baris untuk mengurutkan item.</p>
+                                                        @endif
+                                                        <div class="table-responsive">
+                                                            <table class="table table-sm table-hover mb-0">
+                                                                <thead>
+                                                                    <tr>
+                                                                        @if (!$isSales)
+                                                                            <th style="width:30px;"></th>
+                                                                        @endif
+                                                                        <th class="text-uppercase small text-muted">Item</th>
+                                                                        <th class="text-end text-uppercase small text-muted" style="width:{{ $isSales ? '90px' : '70px' }};">Qty</th>
+                                                                        <th class="text-end text-uppercase small text-muted" style="width:{{ $isSales ? '160px' : '140px' }};">Harga</th>
+                                                                        @if (!$isSales)
+                                                                            <th style="width:40px;"></th>
+                                                                        @endif
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody id="pm-template-rows"></tbody>
+                                                            </table>
+                                                        </div>
+                                                        <div id="pm-template-noparts-warning" class="alert alert-warning py-2 px-3 small mt-2 mb-0 rounded" style="display:none;">
+                                                            Belum ada item di template level ini.
+                                                        </div>
+                                                        <div id="pm-template-power-warning" class="alert alert-warning py-2 px-3 small mt-2 mb-0 rounded" style="display:none;">
+                                                            @if ($isSales)
+                                                                Tarif jasa untuk power unit ini belum ada di pricelist Forecast.
+                                                            @else
+                                                                Tarif jasa untuk power unit ini belum ada di pricelist Forecast. Isi dulu di halaman <a href="{{ route('forecast.prices') }}" target="_blank" class="fw-bold text-decoration-underline">Master Harga Jasa PM</a>.
+                                                            @endif
+                                                        </div>
+                                                        @if (!$isSales)
+                                                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                                                <button type="button" class="btn btn-sm btn-outline-info" id="btn-pm-add-header">
+                                                                    <i class="mdi mdi-format-header-1 me-1"></i> Tambah Head Title
+                                                                </button>
+                                                                <button type="button" class="btn btn-sm btn-outline-primary" id="btn-pm-add-part">
+                                                                    <i class="mdi mdi-plus me-1"></i> Tambah dari Product Equivalent
+                                                                </button>
+                                                                <button type="button" class="btn btn-sm btn-outline-success" id="btn-pm-add-service">
+                                                                    <i class="mdi mdi-account-hard-hat-outline me-1"></i> Tambah Jasa Service
+                                                                </button>
+                                                                <button type="button" class="btn btn-sm btn-outline-dark" id="btn-pm-add-bearing-kit" style="display:none;">
+                                                                    <i class="mdi mdi-cog-outline me-1"></i> Tambah Set Bearing Kit
+                                                                </button>
+                                                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-pm-add-custom">
+                                                                    <i class="mdi mdi-plus me-1"></i> Tambah Item Custom
+                                                                </button>
+                                                                <button type="button" class="btn btn-sm btn-outline-warning ms-md-auto" id="btn-pm-copy-level">
+                                                                    <i class="mdi mdi-content-copy me-1"></i> Salin dari Level Lain
+                                                                </button>
+                                                            </div>
+                                                            <div id="pm-add-part-picker" class="mt-3" style="display:none;">
+                                                                <select class="form-select form-select-sm" id="pm-part-select" style="width:100%">
+                                                                    <option value="">Cari part (PN / Brand / Deskripsi)...</option>
+                                                                </select>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+
+                                                <div class="card spec-card mt-3">
+                                                    <div class="card-body p-3 d-flex justify-content-between align-items-center flex-wrap gap-3 pm-total-bar">
+                                                        <div>
+                                                            <div class="text-muted small">Total Estimated Price</div>
+                                                            <div class="fw-bold fs-4 text-primary" id="pm-template-total">Rp 0</div>
+                                                        </div>
+                                                        @if (!$isSales)
+                                                            <div class="d-flex gap-2">
+                                                                <button type="button" class="btn btn-primary btn-md shadow-sm" id="btn-save-template">
+                                                                    <i class="mdi mdi-content-save-outline me-1"></i> Simpan Template
+                                                                </button>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -264,148 +383,15 @@
                 </div>
 
                 @if ($isPriv)
-                    {{-- ==================== TAB: TEMPLATE PENAWARAN PM ==================== --}}
-                    <div class="tab-pane fade" id="tab-unit-pm-template" role="tabpanel">
-                        <div id="pm-template-card"
-                            data-endpoint="{{ route('unit-global.pm-template', $product->id) }}"
-                            data-save-endpoint="{{ route('unit-global.pm-template.save', $product->id) }}">
-
-                            <div class="alert alert-info border-0 shadow-xs d-flex align-items-center mb-4 rounded-3">
-                                <i class="mdi mdi-information-outline fs-4 me-3 text-info"></i>
-                                <div class="small">
-                                    Susun manual item apa saja yang masuk penawaran PM per level untuk unit ini. Daftar item tersimpan
-                                    permanen per unit + level, dan jadi sumber data <a href="{{ route('forecast.index') }}" target="_blank" class="fw-bold text-decoration-underline">Forecast Sales</a> juga.
-                                    Biaya jasa tetap otomatis dari <a href="{{ route('forecast.prices') }}" target="_blank" class="fw-bold text-decoration-underline">pricelist Forecast</a> berdasarkan Motor Power unit ini.
-                                    Untuk memakai template ini di penawaran, buka halaman <strong>Create Smart Quote</strong> lalu pakai tombol "Load Template PM".
-                                </div>
-                            </div>
-
-                            <div class="row g-4">
-                                {{-- Kolom kiri: ringkasan unit + pilih level --}}
-                                <div class="col-lg-3">
-                                    <div class="card spec-card mb-3">
-                                        <div class="card-body p-3">
-                                            <h6 class="text-uppercase text-muted small fw-bold mb-3" style="letter-spacing:.04em;">
-                                                Ringkasan Unit
-                                            </h6>
-                                            <dl class="row mb-0 small">
-                                                <dt class="col-5 text-muted fw-normal">SKU</dt>
-                                                <dd class="col-7 text-end mb-2 fw-semibold text-dark">{{ $product->sku }}</dd>
-                                                <dt class="col-5 text-muted fw-normal">Brand</dt>
-                                                <dd class="col-7 text-end mb-2 text-dark">{{ $product->brand ?: '-' }}</dd>
-                                                <dt class="col-5 text-muted fw-normal">Model</dt>
-                                                <dd class="col-7 text-end mb-2 text-dark">{{ $product->model ?: '-' }}</dd>
-                                                <dt class="col-5 text-muted fw-normal">Power</dt>
-                                                <dd class="col-7 text-end mb-0 fw-bold text-primary">{{ $product->power ?: '-' }}</dd>
-                                            </dl>
-                                        </div>
-                                    </div>
-                                    <div class="card spec-card">
-                                        <div class="card-body p-3">
-                                            <h6 class="text-uppercase text-muted small fw-bold mb-3" style="letter-spacing:.04em;">
-                                                Pilih Level PM
-                                            </h6>
-                                            <div class="d-flex flex-wrap gap-2" id="pm-level-group">
-                                                <button type="button" class="btn btn-sm rounded-pill px-3 pm-level-btn" data-level="PM1">PM1</button>
-                                                <button type="button" class="btn btn-sm rounded-pill px-3 pm-level-btn" data-level="PM2">PM2</button>
-                                                <button type="button" class="btn btn-sm rounded-pill px-3 pm-level-btn" data-level="PM3">PM3</button>
-                                                <button type="button" class="btn btn-sm rounded-pill px-3 pm-level-btn" data-level="PM4">PM4</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- Kolom kanan: builder --}}
-                                <div class="col-lg-9">
-                                    <div id="pm-template-empty" class="card spec-card">
-                                        <div class="card-body text-center text-muted py-5">
-                                            <i class="mdi mdi-arrow-left-bold-circle-outline fs-1 d-block mb-2 text-primary opacity-50"></i>
-                                            Pilih level PM di sebelah kiri untuk menyusun / melihat template item unit ini.
-                                        </div>
-                                    </div>
-
-                                    <div id="pm-template-result" style="display:none;">
-                                        <div class="card spec-card">
-                                            <div class="card-body p-3">
-                                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                                    <h6 class="mb-0 fw-bold text-dark">Item Template</h6>
-                                                    <span class="badge bg-label-primary rounded-pill px-2.5" id="pm-template-level-badge">-</span>
-                                                </div>
-                                                <p class="text-muted small mb-3"><i class="mdi mdi-drag-vertical me-1"></i>Geser ikon di kiri tiap baris untuk mengurutkan item.</p>
-                                                <div class="table-responsive">
-                                                    <table class="table table-sm table-hover mb-0">
-                                                        <thead>
-                                                            <tr>
-                                                                <th style="width:30px;"></th>
-                                                                <th class="text-uppercase small text-muted">Item</th>
-                                                                <th class="text-end text-uppercase small text-muted" style="width:70px;">Qty</th>
-                                                                <th class="text-end text-uppercase small text-muted" style="width:140px;">Harga</th>
-                                                                <th style="width:40px;"></th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody id="pm-template-rows"></tbody>
-                                                    </table>
-                                                </div>
-                                                <div id="pm-template-noparts-warning" class="alert alert-warning py-2 px-3 small mt-2 mb-0 rounded" style="display:none;">
-                                                    Belum ada item di template level ini. Susun mulai dari Head Title, lalu tambahkan part / jasa / item custom.
-                                                </div>
-                                                <div id="pm-template-power-warning" class="alert alert-warning py-2 px-3 small mt-2 mb-0 rounded" style="display:none;">
-                                                    Tarif jasa untuk power unit ini belum ada di pricelist Forecast. Isi dulu di halaman <a href="{{ route('forecast.prices') }}" target="_blank" class="fw-bold text-decoration-underline">Master Harga Jasa PM</a>.
-                                                </div>
-                                                <div class="d-flex flex-wrap gap-2 mt-3">
-                                                    <button type="button" class="btn btn-sm btn-outline-info" id="btn-pm-add-header">
-                                                        <i class="mdi mdi-format-header-1 me-1"></i> Tambah Head Title
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-pm-add-part">
-                                                        <i class="mdi mdi-plus me-1"></i> Tambah dari Product Equivalent
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-success" id="btn-pm-add-service">
-                                                        <i class="mdi mdi-account-hard-hat-outline me-1"></i> Tambah Jasa Service
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-dark" id="btn-pm-add-bearing-kit" style="display:none;">
-                                                        <i class="mdi mdi-cog-outline me-1"></i> Tambah Set Bearing Kit
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-pm-add-custom">
-                                                        <i class="mdi mdi-plus me-1"></i> Tambah Item Custom
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-warning ms-md-auto" id="btn-pm-copy-level">
-                                                        <i class="mdi mdi-content-copy me-1"></i> Salin dari Level Lain
-                                                    </button>
-                                                </div>
-                                                <div id="pm-add-part-picker" class="mt-3" style="display:none;">
-                                                    <select class="form-select form-select-sm" id="pm-part-select" style="width:100%">
-                                                        <option value="">Cari part (PN / Brand / Deskripsi)...</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="card spec-card mt-3">
-                                            <div class="card-body p-3 d-flex justify-content-between align-items-center flex-wrap gap-3 pm-total-bar">
-                                                <div>
-                                                    <div class="text-muted small">Total Estimated Price</div>
-                                                    <div class="fw-bold fs-4 text-primary" id="pm-template-total">Rp 0</div>
-                                                </div>
-                                                <div class="d-flex gap-2">
-                                                    <button type="button" class="btn btn-primary btn-md shadow-sm" id="btn-save-template">
-                                                        <i class="mdi mdi-content-save-outline me-1"></i> Simpan Template
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     {{-- ==================== TAB: EQUIVALENT ==================== --}}
                     <div class="tab-pane fade" id="tab-unit-equivalent" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="mb-0 fw-bold text-dark">Data Equivalent Unit</h6>
-                            <button type="button" class="btn btn-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#createEquivalent-{{ $product->id }}">
-                                <i class="mdi mdi-plus me-1"></i> New Equivalent
-                            </button>
+                            @if ($canEditUnit)
+                                <button type="button" class="btn btn-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#createEquivalent-{{ $product->id }}">
+                                    <i class="mdi mdi-plus me-1"></i> New Equivalent
+                                </button>
+                            @endif
                         </div>
                         <div class="table-responsive text-nowrap rounded border p-2">
                             <table class="datatable-product-equivalent table table-hover mb-0">
@@ -428,21 +414,23 @@
         </div>
     </div>
 
-    @include('components.modal.warehouse.unit.form-global')
-    @include('components.modal.warehouse.replacement.form')
-    @include('components.modal.warehouse.equivalent.form-global')
-    @php
-        $no = 0;
-    @endphp
-    @foreach ($serials as $serial)
+    @if ($canEditUnit)
+        @include('components.modal.warehouse.unit.form-global')
+        @include('components.modal.warehouse.replacement.form')
         @include('components.modal.warehouse.equivalent.form-global')
         @php
-            $no++;
+            $no = 0;
         @endphp
-    @endforeach
-    @foreach ($details as $detail)
-        @include('components.modal.warehouse.replacement.form-price')
-    @endforeach
+        @foreach ($serials as $serial)
+            @include('components.modal.warehouse.equivalent.form-global')
+            @php
+                $no++;
+            @endphp
+        @endforeach
+        @foreach ($details as $detail)
+            @include('components.modal.warehouse.replacement.form-price')
+        @endforeach
+    @endif
 @endsection()
 
 @push('after-style')
@@ -548,30 +536,35 @@
             vertical-align: middle;
             border-bottom: 1px solid #f1f1f2;
         }
-        #tab-unit-pm-template .pm-level-btn {
+        #pm-template-card .pm-level-btn,
+        .pm-level-btn {
             border: 1px solid #696cff;
             background: rgba(105, 108, 255, 0.05);
             color: #696cff;
             font-weight: 600;
             transition: all 0.2s ease;
         }
-        #tab-unit-pm-template .pm-level-btn:hover {
+        #pm-template-card .pm-level-btn:hover,
+        .pm-level-btn:hover {
             background: rgba(105, 108, 255, 0.15);
         }
-        #tab-unit-pm-template .pm-level-btn.active {
+        #pm-template-card .pm-level-btn.active,
+        .pm-level-btn.active {
             background: #696cff;
             border-color: #696cff;
             color: #fff;
             box-shadow: 0 4px 12px rgba(105, 108, 255, 0.3);
         }
-        #tab-unit-pm-template .pm-source-note {
+        #pm-template-card .pm-source-note,
+        .pm-source-note {
             font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
             font-size: .72rem;
             color: var(--bs-secondary-color, #6c757d);
             display: block;
             margin-top: 2px;
         }
-        #tab-unit-pm-template .pm-total-bar {
+        #pm-template-card .pm-total-bar,
+        .pm-total-bar {
             border-top: 1px dashed var(--bs-border-color);
         }
     </style>
@@ -819,6 +812,7 @@
             if ($pmCard.length) {
                 var pmEndpoint = $pmCard.data('endpoint');
                 var pmSaveEndpoint = $pmCard.data('save-endpoint');
+                var isSales = $pmCard.data('is-sales') === true || $pmCard.data('is-sales') === 'true';
                 var pmCurrentLevel = null;
                 var pmCurrentUnit = null;
                 var pmServiceSuggestion = null;
@@ -863,31 +857,51 @@
 
                 function renderPmItems() {
                     var $rows = $('#pm-template-rows').empty();
-                    var dragHandle = '<td class="text-muted pm-drag-handle" style="cursor:grab;"><i class="mdi mdi-drag-vertical fs-5"></i></td>';
+                    var dragHandle = isSales ? '' : '<td class="text-muted pm-drag-handle" style="cursor:grab;"><i class="mdi mdi-drag-vertical fs-5"></i></td>';
 
                     $.each(pmItems, function(i, it) {
                         if (!it._uid) it._uid = pmNextUid();
                         var $tr;
                         if (it.type === 'header') {
-                            $tr = $(
-                                '<tr class="table-light">' +
-                                    dragHandle +
-                                    '<td colspan="3"><span class="fw-bold text-dark text-uppercase" style="letter-spacing:.03em;">' + pmEscapeHtml(it.label) + '</span></td>' +
-                                    '<td class="text-end"><button type="button" class="btn btn-icon btn-sm btn-label-danger pm-item-remove"><i class="mdi mdi-delete-outline"></i></button></td>' +
-                                '</tr>'
-                            );
+                            if (isSales) {
+                                $tr = $(
+                                    '<tr class="table-light">' +
+                                        '<td colspan="3"><span class="fw-bold text-dark text-uppercase" style="letter-spacing:.03em;">' + pmEscapeHtml(it.label) + '</span></td>' +
+                                    '</tr>'
+                                );
+                            } else {
+                                $tr = $(
+                                    '<tr class="table-light">' +
+                                        dragHandle +
+                                        '<td colspan="3"><span class="fw-bold text-dark text-uppercase" style="letter-spacing:.03em;">' + pmEscapeHtml(it.label) + '</span></td>' +
+                                        '<td class="text-end"><button type="button" class="btn btn-icon btn-sm btn-label-danger pm-item-remove"><i class="mdi mdi-delete-outline"></i></button></td>' +
+                                    '</tr>'
+                                );
+                            }
                         } else {
-                            $tr = $(
-                                '<tr>' +
-                                    dragHandle +
-                                    '<td><span class="fw-semibold text-dark">' + pmEscapeHtml(it.label) + '</span>' +
-                                        (it.description ? '<span class="text-muted small d-block" style="white-space:pre-line;">' + pmEscapeHtml(it.description) + '</span>' : '') +
-                                    '</td>' +
-                                    '<td class="text-end"><input type="number" min="0" step="1" class="form-control form-control-sm text-end pm-item-qty" value="' + it.qty + '"></td>' +
-                                    '<td class="text-end"><input type="text" class="form-control form-control-sm text-end pm-item-price" value="' + pmFormatThousand(it.price) + '"></td>' +
-                                    '<td class="text-end"><button type="button" class="btn btn-icon btn-sm btn-label-danger pm-item-remove"><i class="mdi mdi-delete-outline"></i></button></td>' +
-                                '</tr>'
-                            );
+                            if (isSales) {
+                                $tr = $(
+                                    '<tr>' +
+                                        '<td><span class="fw-semibold text-dark">' + pmEscapeHtml(it.label) + '</span>' +
+                                            (it.description ? '<span class="text-muted small d-block" style="white-space:pre-line;">' + pmEscapeHtml(it.description) + '</span>' : '') +
+                                        '</td>' +
+                                        '<td class="text-end fw-semibold text-dark">' + pmEscapeHtml(it.qty) + (it.info_qty ? ' <small class="text-muted">' + pmEscapeHtml(it.info_qty) + '</small>' : '') + '</td>' +
+                                        '<td class="text-end fw-semibold text-primary">' + pmFormatRupiah(it.price) + '</td>' +
+                                    '</tr>'
+                                );
+                            } else {
+                                $tr = $(
+                                    '<tr>' +
+                                        dragHandle +
+                                        '<td><span class="fw-semibold text-dark">' + pmEscapeHtml(it.label) + '</span>' +
+                                            (it.description ? '<span class="text-muted small d-block" style="white-space:pre-line;">' + pmEscapeHtml(it.description) + '</span>' : '') +
+                                        '</td>' +
+                                        '<td class="text-end"><input type="number" min="0" step="1" class="form-control form-control-sm text-end pm-item-qty" value="' + it.qty + '"></td>' +
+                                        '<td class="text-end"><input type="text" class="form-control form-control-sm text-end pm-item-price" value="' + pmFormatThousand(it.price) + '"></td>' +
+                                        '<td class="text-end"><button type="button" class="btn btn-icon btn-sm btn-label-danger pm-item-remove"><i class="mdi mdi-delete-outline"></i></button></td>' +
+                                    '</tr>'
+                                );
+                            }
                         }
                         $tr.data('index', i);
                         $tr.attr('data-uid', it._uid);
@@ -897,7 +911,7 @@
                     $('#pm-template-noparts-warning').toggle(pmItems.length === 0);
                     $('#pm-template-total').text(pmFormatRupiah(pmTotal()));
 
-                    if (!pmSortable) {
+                    if (!isSales && !pmSortable) {
                         pmSortable = Sortable.create(document.getElementById('pm-template-rows'), {
                             animation: 150,
                             handle: '.pm-drag-handle',
@@ -1220,13 +1234,25 @@
                     if (!pmServiceSuggestion) return;
                     Swal.fire({
                         title: 'Tambah Jasa Service',
+                        width: '720px',
                         html:
-                            '<input id="pm-service-label" class="swal2-input" placeholder="Nama Item" value="' + pmEscapeHtml(pmServiceSuggestion.label) + '">' +
-                            '<textarea id="pm-service-desc" class="swal2-textarea" placeholder="Deskripsi scope kerja">' + pmEscapeHtml(pmServiceSuggestion.description || '') + '</textarea>' +
-                            '<input id="pm-service-price" type="text" class="swal2-input" placeholder="Harga" value="' + pmFormatThousand(pmServiceSuggestion.amount || 0) + '">' +
-                            (!pmServiceSuggestion.matched ? '<div class="swal2-validation-message" style="display:block;">Belum ada harga jasa untuk power unit ini di pricelist Forecast — isi manual.</div>' : ''),
-                        confirmButtonText: 'Tambah',
+                            '<div class="text-start">' +
+                                '<label class="form-label small fw-semibold text-muted mb-1">Nama Jasa Service</label>' +
+                                '<input id="pm-service-label" class="swal2-input m-0 mb-3 w-100" style="font-size:.92rem;" placeholder="Nama Item" value="' + pmEscapeHtml(pmServiceSuggestion.label) + '">' +
+                                '<label class="form-label small fw-semibold text-muted mb-1">Deskripsi Scope Pekerjaan</label>' +
+                                '<textarea id="pm-service-desc" class="swal2-textarea m-0 mb-3 w-100" style="min-height:160px; font-size:.88rem; line-height:1.5; resize:vertical;" placeholder="Deskripsi scope kerja">' + pmEscapeHtml(pmServiceSuggestion.description || '') + '</textarea>' +
+                                '<label class="form-label small fw-semibold text-muted mb-1">Harga Jasa (Rp)</label>' +
+                                '<input id="pm-service-price" type="text" class="swal2-input m-0 w-100" style="font-size:.92rem;" placeholder="Harga" value="' + pmFormatThousand(pmServiceSuggestion.amount || 0) + '">' +
+                            '</div>' +
+                            (!pmServiceSuggestion.matched ? '<div class="swal2-validation-message mt-2" style="display:block;">Belum ada harga jasa untuk power unit ini di pricelist Forecast — isi manual.</div>' : ''),
+                        confirmButtonText: 'Tambah Jasa',
                         showCancelButton: true,
+                        cancelButtonText: 'Batal',
+                        customClass: {
+                            confirmButton: 'btn btn-success me-2 waves-effect waves-light',
+                            cancelButton: 'btn btn-label-secondary waves-effect'
+                        },
+                        buttonsStyling: false,
                         preConfirm: function() {
                             var label = document.getElementById('pm-service-label').value.trim();
                             var description = document.getElementById('pm-service-desc').value.trim();

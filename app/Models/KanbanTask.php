@@ -82,4 +82,9 @@ class KanbanTask extends Model
     {
         return $this->hasOne(Bast::class, 'id_kanban_task');
     }
+
+    public function taskExpenses()
+    {
+        return $this->hasMany(ProjectExpense::class, 'id_kanban_task');
+    }
 }

@@ -40,12 +40,11 @@
                         </div>
                     </div>
 
-                    @if ($semesterNow)
-                        <a href="{{ route('report.semester', $semesterNow) }}"
-                           class="btn btn-sm btn-primary waves-effect waves-light mt-1">
-                            <i class="mdi mdi-chart-areaspline me-1"></i> View Sales
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        <a href="{{ route('report.monthly') }}" class="btn btn-xs btn-label-primary rounded-pill px-3 waves-effect fw-semibold">
+                            <i class="mdi mdi-chart-line me-1"></i> Report Sales
                         </a>
-                    @endif
+                    </div>
                 </div>
                 <img src="{{ asset('assets') }}/img/illustrations/trophy.png"
                     class="position-absolute bottom-0 end-0 me-3" height="140" alt="view sales">
@@ -452,6 +451,22 @@
                                                                     </div>
                                                                     <div class="d-flex align-items-baseline gap-1 mt-1">
                                                                         <h6 class="mb-0 fw-bold text-dark filtered-prospect-sales">{{ $user->id == ($firstSales->id ?? 1) ? $filteredProspect : 0 }}</h6>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Closing Tile (Quotation yang jadi PO) -->
+                                                            <div class="col-6">
+                                                                <div class="p-2 border rounded-3 bg-body-tertiary">
+                                                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                        <div class="d-flex align-items-center gap-1">
+                                                                            <span class="badge bg-label-success p-1 rounded"><i class="mdi mdi-file-check-outline"></i></span>
+                                                                            <span class="fw-semibold text-dark" style="font-size: 0.78rem;">Closing</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="d-flex align-items-baseline gap-1 mt-1">
+                                                                        <h6 class="mb-0 fw-bold text-dark filtered-po-count">{{ $user->id == ($firstSales->id ?? 1) ? $filteredPO : 0 }}</h6>
+                                                                        <small class="text-muted" style="font-size: 0.7rem;">Quote</small>
                                                                     </div>
                                                                 </div>
                                                             </div>

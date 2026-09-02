@@ -35,6 +35,16 @@ class UnitQuotation extends Model
         'tax_amount',
         'shipping',
         'total',
+        'fee',
+        'fee_note',
+        'fee_bank_name',
+        'fee_bank_account',
+        'fee_bank_holder',
+        'fee_payment_status',
+        'fee_transfer_date',
+        'fee_transfer_proof',
+        'fee_transfer_note',
+        'fee_paid_by',
         'note',
         'validity',
         'pricing',
@@ -50,10 +60,11 @@ class UnitQuotation extends Model
     ];
 
     protected $casts = [
-        'date'         => 'date',
-        'expired_date' => 'date',
-        'tax'          => 'boolean',
-        'hide_title'   => 'boolean',
+        'date'              => 'date',
+        'expired_date'      => 'date',
+        'fee_transfer_date' => 'datetime',
+        'tax'               => 'boolean',
+        'hide_title'        => 'boolean',
     ];
 
     public function client()
@@ -84,6 +95,11 @@ class UnitQuotation extends Model
     public function sales()
     {
         return $this->belongsTo(\App\Models\User::class, 'id_sales');
+    }
+
+    public function feePaidBy()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'fee_paid_by');
     }
 
     public function details()
@@ -162,6 +178,37 @@ class UnitQuotation extends Model
             return '';
         }
         return $this->diskon . '%';
+    }
+
+    /**
+     * Kebijakan Pajak Fee 2026:
+     * - < 1.500.000: 0% (tidak ada potongan pajak)
+     * - 1.500.000 - 5.000.000: potongan 3.68%
+     * - > 5.000.000: potongan 10%
+     */
+    public function getFeeTaxDataAttribute()
+    {
+        $fee = floatval($this->fee ?? 0);
+        if ($fee < 1500000) {
+            $taxRate = 0;
+            $taxRateLabel = '0%';
+        } elseif ($fee <= 5000000) {
+            $taxRate = 0.0368;
+            $taxRateLabel = '3.68%';
+        } else {
+            $taxRate = 0.10;
+            $taxRateLabel = '10%';
+        }
+        $taxAmount = round($fee * $taxRate);
+        $netFee = $fee - $taxAmount;
+
+        return (object) [
+            'gross_fee'      => $fee,
+            'tax_rate'       => $taxRate,
+            'tax_rate_label' => $taxRateLabel,
+            'tax_amount'     => $taxAmount,
+            'net_fee'        => $netFee,
+        ];
     }
 
     /** All revisions in the same group (including original) */

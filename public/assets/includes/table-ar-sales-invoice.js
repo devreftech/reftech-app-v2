@@ -9,9 +9,9 @@ $(function () {
             .clone(true)
             .appendTo(".datatable-sales-invoice-ar thead");
         $(".datatable-sales-invoice-ar thead tr:eq(1) th").each(function (i) {
-            var title = $(this).text();
+            var title = $(this).text().trim();
             $(this).html(
-                '<input type="text" class="form-control" placeholder="Search ' +
+                '<input type="text" class="form-control form-control-sm bg-white" placeholder="Filter ' +
                     title +
                     '" />'
             );
@@ -32,13 +32,11 @@ $(function () {
                 },
                 data: function (d) {
                     d.year = window.invoiceYearFilter || "all";
+                    d.sales_id = window.invoiceSalesFilter || "all";
                     return d;
                 },
             },
             columns: [
-                // { data: "" },
-                // { data: "id" },
-                // { data: "id" },
                 { data: "short_invoice" },
                 { data: "tanggal" },
                 { data: "short_po" },
@@ -49,22 +47,6 @@ $(function () {
                 { data: "last_payment_type" },
             ],
             columnDefs: [
-                // {
-                //     // For Responsive
-                //     className: "control",
-                //     orderable: false,
-                //     searchable: false,
-                //     responsivePriority: 2,
-                //     targets: 0,
-                //     render: function (data, type, full, meta) {
-                //         return "";
-                //     },
-                // },
-                // {
-                //     targets: 0,
-                //     searchable: true,
-                //     visible: false,
-                // },
                 {
                     responsivePriority: 1,
                     targets: 0,
@@ -74,12 +56,14 @@ $(function () {
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             var id = full["id"];
-                            detailRoute = route("payment_detail.invoice", id);
+                            var detailRoute = typeof route === "function" 
+                                ? route("payment_detail.invoice", id) 
+                                : "/payment-detail/invoice/" + id;
                             return (
-                                '<a class="text-black" href="' +
+                                '<a class="fw-bold text-primary text-decoration-none" href="' +
                                 detailRoute +
-                                '">' +
-                                data +
+                                '"><i class="mdi mdi-file-document-outline me-1"></i>' +
+                                (data || "-") +
                                 "</a>"
                             );
                         }
@@ -91,8 +75,8 @@ $(function () {
                     render: function (data, type, row) {
                         if (type === "display" || type === "filter") {
                             return (
-                                '<div class="text-end">Rp ' +
-                                new Intl.NumberFormat("id-ID").format(data) +
+                                '<div class="text-end fw-bold text-dark">Rp ' +
+                                new Intl.NumberFormat("id-ID").format(data || 0) +
                                 "</div>"
                             );
                         }
@@ -101,7 +85,9 @@ $(function () {
                 },
                 {
                     targets: 7,
+                    className: "text-center",
                     render: function (data, type, full, row) {
+                        if (type !== "display") return data;
                         var payType  = full["last_payment_type"];
                         var payLevel = full["last_payment_level"];
                         var payCount = full["payment_count"];
@@ -127,18 +113,17 @@ $(function () {
                             label = "bg-label-danger";
                         }
                         return (
-                            '<div class="text-center"><span class="badge rounded-pill ' +
+                            '<span class="badge rounded-pill px-3 py-1 fw-semibold ' +
                             label +
                             '">' +
                             title +
-                            "</span></div>"
+                            "</span>"
                         );
                     },
                 },
             ],
             order: [],
-            // orderCellsTop: true,
-            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>><"table-responsive"t><"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
+            dom: '<"card-header d-flex flex-wrap justify-content-between align-items-center gap-2 py-3 bg-transparent border-bottom"<"d-flex align-items-center gap-2"l><"d-flex align-items-center gap-2"f>><"table-responsive"t><"card-footer d-flex flex-wrap justify-content-between align-items-center gap-2 py-3 bg-transparent border-top"<"small text-muted"i><"pagination-wrapper"p>>',
         });
 
         window.invoiceDataTables = window.invoiceDataTables || {};

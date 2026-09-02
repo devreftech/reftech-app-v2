@@ -102,12 +102,11 @@
                                 <tr>
                                     <th class="text-center py-2" style="width:5%; font-weight:700; border-color:#d0d0ff;">No.</th>
                                     <th class="text-center py-2" style="width:45%; font-weight:700; border-color:#d0d0ff;">Item Description</th>
-                                    <th class="text-center py-2" style="width:12%; font-weight:700; border-color:#d0d0ff;">Qty</th>
-                                    <th class="text-center py-2" style="width:18%; font-weight:700; border-color:#d0d0ff;">Price (IDR)</th>
+                                    <th class="text-center py-2" style="width:12%; font-weight:700; border-color:#d0d0ff;">Qty</th>                                    <th class="text-center py-2 text-nowrap" style="width:18%; font-weight:700; border-color:#d0d0ff; white-space:nowrap;">Price (IDR)</th>
                                     @if ($hasDisc)
-                                        <th class="text-center py-2" style="width:7%; font-weight:700; border-color:#d0d0ff;">Disc</th>
+                                         <th class="text-center py-2" style="width:7%; font-weight:700; border-color:#d0d0ff;">Disc</th>
                                     @endif
-                                    <th class="text-center py-2" style="width:13%; font-weight:700; border-color:#d0d0ff;">Amount (IDR)</th>
+                                    <th class="text-center py-2 text-nowrap" style="width:13%; font-weight:700; border-color:#d0d0ff; white-space:nowrap;">Amount (IDR)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -124,16 +123,16 @@
                                         <td class="text-center align-top py-2">
                                             <span class="fw-bold" style="color:#222;">{{ $product->qty }}</span> {{ $product->info_qty }}
                                         </td>
-                                        <td class="text-end align-top py-2">
-                                            Rp {{ number_format($product->price, 0, '', '.') }}
+                                        <td class="text-end align-top py-2 text-nowrap" style="white-space:nowrap;">
+                                            {{ number_format($product->price, 0, '', '.') }}
                                         </td>
                                         @if ($hasDisc)
                                             <td class="text-center align-top py-2">
                                                 {{ $product->disc ? $product->disc . '%' : '-' }}
                                             </td>
                                         @endif
-                                        <td class="text-end align-top py-2 fw-semibold" style="color:#111;">
-                                            Rp {{ number_format($product->amount, 0, '', '.') }}
+                                        <td class="text-end align-top py-2 fw-semibold text-nowrap" style="color:#111; white-space:nowrap;">
+                                            {{ number_format($product->amount, 0, '', '.') }}
                                         </td>
                                     </tr>
                                 @endforeach
@@ -203,6 +202,17 @@
                                                 </td>
                                             </tr>
                                         @endif
+                                        @if ($purchase->delivery_cost > 0)
+                                            <tr>
+                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">DELIVERY COST</td>
+                                                <td class="py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #111; vertical-align: middle;">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span>Rp</span>
+                                                        <span class="fw-semibold">{{ number_format($purchase->delivery_cost, 0, '', '.') }}</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endif
                                         @if ($totalPph > 0)
                                             <tr>
                                                 <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">TOTAL PPH</td>
@@ -239,12 +249,10 @@
                             <p class="fw-bold mb-0" style="color:#111;">PT Reftech Jaya Optima</p>
                         </div>
                         <div class="col-6">
-                            <div class="pt-2">
-                                <p class="fw-bold mb-1" style="color:#333;">Accepted By Vendor.</p>
-                                <div style="height:70px;"></div>
-                                <p class="fw-bold mb-0" style="color:#111;">{{ $purchase->attn ?: '-' }}</p>
-                                <p class="text-muted mb-0" style="font-size:11px;">{{ $purchase->company }}</p>
-                            </div>
+                            <p class="fw-bold mb-1" style="color:#333;">Accepted By Vendor.</p>
+                            <div class="my-1" style="height:70px;"></div>
+                            <p class="fw-bold mb-0" style="color:#111;">{{ $purchase->attn ?: '-' }}</p>
+                            <p class="text-muted mb-0" style="font-size:11px;">{{ $purchase->company }}</p>
                         </div>
                     </div>
                 </div>

@@ -47,17 +47,24 @@ class PurchaseController extends Controller
         // (mis. draft yang semua detailnya sudah dihapus) tidak pernah muncul di
         // tabel. Selain itu id_pending harus masih ada. Dua syarat itu dipakai di
         // sini juga supaya angka badge = jumlah baris yang benar-benar tampil.
-        $validPendingIds = PendingPO::pluck('id');
+        $validPendingIds = PendingPO::where(function ($q) {
+            $q->whereNotNull('id_quotation')->orWhereNotNull('id_unit_quotation');
+        })->pluck('id');
 
         $badgeBase = fn () => PurchaseRequest::whereIn('id_pending', $validPendingIds)->has('details');
 
         $newCount = $badgeBase()->where('status', '0')->count();
         $accCount = $badgeBase()->where('status', '1')->count();
         $deliveryCount = $badgeBase()->where('status', '2')->count();
-        $doneCount = $badgeBase()->where('status', '3')->count();
+
         // Sama seperti isi tab-nya: PO cuma dihitung selama PR-nya masih status Acc(1).
         $poCount = PurchaseOrder::whereNotNull('id_purchase_request')
             ->whereIn('id_purchase_request', PurchaseRequest::where('status', '1')->pluck('id'))
+            ->count();
+
+        // Tab Good Receipt di-root dari PO yang PR-nya sudah berstatus Done(3).
+        $doneCount = PurchaseOrder::whereNotNull('id_purchase_request')
+            ->whereIn('id_purchase_request', PurchaseRequest::where('status', '3')->pluck('id'))
             ->count();
 
         return view('pages.warehouse.purchase.index', compact('newCount', 'accCount', 'deliveryCount', 'doneCount', 'poCount'));

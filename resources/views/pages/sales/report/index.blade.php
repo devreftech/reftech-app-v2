@@ -9,6 +9,16 @@
         $salesPercentage = $targetTotal > 0 ? round(($amountSales / $targetTotal) * 100, 1) : 0;
         $salesColor = $salesPercentage >= 100 ? 'success' : ($salesPercentage >= 80 ? 'warning' : 'danger');
         $today = \Carbon\Carbon::now();
+
+        // Calculate Total Paid (Accounting Confirmed) for POs this month
+        $paidRegular = $quotation->sum(function($q) {
+            return $q->payment ? $q->payment->filter(fn($p) => (int)$p->level === 1 || !empty($p->date_confirm))->sum('amount') : 0;
+        });
+        $paidUnit = $unitQuotationPO->sum(function($uq) {
+            return $uq->payments ? $uq->payments->filter(fn($p) => (int)$p->level === 1 || !empty($p->date_confirm))->sum('amount') : 0;
+        });
+        $amountPaidSales = $paidRegular + $paidUnit;
+        $paidPercentage = $amountSales > 0 ? round(($amountPaidSales / $amountSales) * 100, 1) : 0;
     @endphp
 
     <!-- Executive Header Card with Filter Options -->
@@ -16,12 +26,9 @@
         <div class="card-body p-4">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
                 <div>
-                    <div class="d-flex align-items-center gap-2 mb-1">
-                        <span class="badge bg-label-primary fs-6 px-3 py-2">
-                            <i class="mdi mdi-calendar-text me-1"></i> Periode Laporan
-                        </span>
-                        <span class="text-muted fw-semibold fs-5">
-                            {{ \Carbon\Carbon::createFromDate($yearNow, $monthNow, 1)->locale('id')->translatedFormat('F Y') }}
+                    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                        <span class="badge bg-label-primary rounded-pill px-3 py-1 fw-semibold">
+                            <i class="mdi mdi-calendar-text me-1"></i> Periode {{ \Carbon\Carbon::createFromDate($yearNow, $monthNow, 1)->locale('id')->translatedFormat('F Y') }}
                         </span>
                         @if (Auth::user()->role == 'Admin')
                             <span class="badge bg-label-warning rounded-pill px-3 py-1">
@@ -35,15 +42,15 @@
                     </small>
                 </div>
 
-                <!-- Filter Options in 1 Single Bar: Sales Dropdown (if admin) | Prev | Bulan | Tahun | Next -->
+                <!-- Clean & Modern Filter Toolbar -->
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <form action="{{ url('/reports') }}" method="GET" id="filterReportForm" class="d-flex align-items-center flex-wrap mb-0 gap-2">
                         @if (Auth::user()->role == 'Admin' && isset($salesList))
-                            <div class="input-group input-group-sm flex-nowrap" style="min-width: 210px;">
-                                <span class="input-group-text bg-label-primary border-primary text-primary fw-semibold">
-                                    <i class="mdi mdi-account-tie me-1"></i> Sales
+                            <div class="d-flex align-items-center bg-body-tertiary border rounded-pill px-2 py-1">
+                                <span class="badge bg-label-primary rounded-circle p-1 me-1">
+                                    <i class="mdi mdi-account-tie" style="font-size: 11px;"></i>
                                 </span>
-                                <select name="sales" class="form-select border-primary text-primary fw-semibold" onchange="document.getElementById('filterReportForm').submit()">
+                                <select name="sales" class="form-select form-select-sm border-0 bg-transparent fw-semibold text-dark py-0" style="min-width: 140px; font-size: 0.82rem; cursor: pointer;" onchange="document.getElementById('filterReportForm').submit()">
                                     @foreach ($salesList as $s)
                                         <option value="{{ $s->id }}" {{ $s->id == ($salesId ?? $user->id) ? 'selected' : '' }}>
                                             {{ $s->name }}
@@ -53,16 +60,18 @@
                             </div>
                         @endif
 
-                        <div class="input-group input-group-sm flex-nowrap">
+                        <!-- Segmented Date Navigator Pill Group -->
+                        <div class="d-inline-flex align-items-center bg-body-tertiary border rounded-pill p-1">
                             <!-- Prev Month Button -->
                             <a href="{{ url('/reports') }}?month={{ $prevMonth }}&year={{ $prevYear }}{{ Auth::user()->role == 'Admin' && isset($salesId) ? '&sales=' . $salesId : '' }}" 
-                               class="btn btn-outline-primary waves-effect" 
-                               data-bs-toggle="tooltip" title="Bulan Sebelumnya">
-                                <i class="mdi mdi-chevron-left me-1"></i> Prev
+                               class="btn btn-icon btn-sm btn-label-secondary rounded-circle" 
+                               style="width: 28px; height: 28px;"
+                               data-bs-toggle="tooltip" title="Bulan Sebelumnya ({{ \Carbon\Carbon::createFromDate($prevYear, $prevMonth, 1)->locale('id')->translatedFormat('M Y') }})">
+                                <i class="mdi mdi-chevron-left fs-5"></i>
                             </a>
 
-                            <!-- Month Select Dropdown -->
-                            <select name="month" class="form-select border-primary text-primary fw-semibold" style="min-width: 125px;" onchange="document.getElementById('filterReportForm').submit()">
+                            <!-- Month Select -->
+                            <select name="month" class="form-select form-select-sm border-0 bg-transparent fw-semibold text-dark text-center px-1" style="min-width: 110px; font-size: 0.82rem; cursor: pointer;" onchange="document.getElementById('filterReportForm').submit()">
                                 @for ($m = 1; $m <= 12; $m++)
                                     <option value="{{ $m }}" {{ $m == $monthNow ? 'selected' : '' }}>
                                         {{ \Carbon\Carbon::createFromDate(2026, $m, 1)->locale('id')->translatedFormat('F') }}
@@ -70,8 +79,10 @@
                                 @endfor
                             </select>
 
-                            <!-- Year Select Dropdown -->
-                            <select name="year" class="form-select border-primary text-primary fw-semibold" style="min-width: 95px;" onchange="document.getElementById('filterReportForm').submit()">
+                            <span class="text-muted opacity-25">|</span>
+
+                            <!-- Year Select -->
+                            <select name="year" class="form-select form-select-sm border-0 bg-transparent fw-semibold text-dark text-center px-1" style="min-width: 78px; font-size: 0.82rem; cursor: pointer;" onchange="document.getElementById('filterReportForm').submit()">
                                 @foreach ($yearsList as $y)
                                     <option value="{{ $y }}" {{ $y == $yearNow ? 'selected' : '' }}>
                                         {{ $y }}
@@ -81,20 +92,30 @@
 
                             <!-- Next Month Button -->
                             <a href="{{ url('/reports') }}?month={{ $nextMonth }}&year={{ $nextYear }}{{ Auth::user()->role == 'Admin' && isset($salesId) ? '&sales=' . $salesId : '' }}" 
-                               class="btn btn-outline-primary waves-effect" 
-                               data-bs-toggle="tooltip" title="Bulan Berikutnya">
-                                Next <i class="mdi mdi-chevron-right ms-1"></i>
+                               class="btn btn-icon btn-sm btn-label-secondary rounded-circle" 
+                               style="width: 28px; height: 28px;"
+                               data-bs-toggle="tooltip" title="Bulan Berikutnya ({{ \Carbon\Carbon::createFromDate($nextYear, $nextMonth, 1)->locale('id')->translatedFormat('M Y') }})">
+                                <i class="mdi mdi-chevron-right fs-5"></i>
                             </a>
                         </div>
 
+                        <!-- Return to Current Month Button -->
                         @if ($monthNow != now()->month || $yearNow != now()->year)
-                            <a href="{{ url('/reports') }}{{ Auth::user()->role == 'Admin' && isset($salesId) ? '?sales=' . $salesId : '' }}" class="btn btn-sm btn-outline-secondary waves-effect" data-bs-toggle="tooltip" title="Kembali ke Bulan Sekarang">
-                                <i class="mdi mdi-reload me-1"></i> Sekarang
+                            <a href="{{ url('/reports') }}{{ Auth::user()->role == 'Admin' && isset($salesId) ? '?sales=' . $salesId : '' }}" 
+                               class="btn btn-sm btn-label-primary rounded-pill px-3 fw-semibold" 
+                               data-bs-toggle="tooltip" title="Kembali ke Bulan Sekarang">
+                                <i class="mdi mdi-calendar-today me-1"></i> Bulan Ini
                             </a>
                         @endif
 
                         @if (Auth::user()->role == 'Admin')
-                            <a href="{{ url('/overview') }}" class="btn btn-sm btn-label-secondary waves-effect">
+                            <a href="{{ route('kanban.boards.show', 2) }}" class="btn btn-sm btn-label-info rounded-pill px-3 fw-semibold">
+                                <i class="mdi mdi-view-column-outline me-1"></i> Kanban Project HVAC
+                            </a>
+                            <a href="{{ route('piping-rab.index') }}" class="btn btn-sm btn-label-primary rounded-pill px-3 fw-semibold">
+                                <i class="mdi mdi-pipe me-1"></i> RAB Piping
+                            </a>
+                            <a href="{{ url('/overview') }}" class="btn btn-sm btn-label-secondary rounded-pill px-3 fw-semibold">
                                 <i class="mdi mdi-arrow-left me-1"></i> Overview
                             </a>
                         @endif
@@ -164,7 +185,7 @@
                         @endphp
                         <div class="col-6 col-md-4">
                             <a href="#activities" class="text-decoration-none">
-                                <div class="p-3 border rounded-3 bg-body-tertiary h-100 transition-all hover-shadow">
+                                <div class="p-3 border rounded-3 bg-body-tertiary h-100">
                                     <div class="d-flex align-items-center justify-content-between mb-2">
                                         <span class="badge bg-label-secondary p-2 rounded-circle">
                                             <i class="mdi mdi-account-multiple-plus-outline fs-5"></i>
@@ -187,7 +208,7 @@
                         @endphp
                         <div class="col-6 col-md-4">
                             <a href="#activities" class="text-decoration-none">
-                                <div class="p-3 border rounded-3 bg-body-tertiary h-100 transition-all hover-shadow">
+                                <div class="p-3 border rounded-3 bg-body-tertiary h-100">
                                     <div class="d-flex align-items-center justify-content-between mb-2">
                                         <span class="badge bg-label-info p-2 rounded-circle">
                                             <i class="mdi mdi-phone-outline fs-5"></i>
@@ -210,7 +231,7 @@
                         @endphp
                         <div class="col-6 col-md-4">
                             <a href="#activities" class="text-decoration-none">
-                                <div class="p-3 border rounded-3 bg-body-tertiary h-100 transition-all hover-shadow">
+                                <div class="p-3 border rounded-3 bg-body-tertiary h-100">
                                     <div class="d-flex align-items-center justify-content-between mb-2">
                                         <span class="badge bg-label-primary p-2 rounded-circle">
                                             <i class="mdi mdi-account-multiple-outline fs-5"></i>
@@ -234,7 +255,7 @@
                             @endphp
                             <div class="col-6 col-md-4">
                                 <a href="#activities" class="text-decoration-none">
-                                    <div class="p-3 border rounded-3 bg-body-tertiary h-100 transition-all hover-shadow">
+                                    <div class="p-3 border rounded-3 bg-body-tertiary h-100">
                                         <div class="d-flex align-items-center justify-content-between mb-2">
                                             <span class="badge bg-label-warning p-2 rounded-circle">
                                                 <i class="mdi mdi-map-marker-outline fs-5"></i>
@@ -258,7 +279,7 @@
                         @endphp
                         <div class="col-6 col-md-4">
                             <a href="#activities" class="text-decoration-none">
-                                <div class="p-3 border rounded-3 bg-body-tertiary h-100 transition-all hover-shadow">
+                                <div class="p-3 border rounded-3 bg-body-tertiary h-100">
                                     <div class="d-flex align-items-center justify-content-between mb-2">
                                         <span class="badge bg-label-info p-2 rounded-circle">
                                             <i class="mdi mdi-file-document-outline fs-5"></i>
@@ -277,7 +298,7 @@
                         <!-- Purchase Order (PO) -->
                         <div class="col-6 col-md-4">
                             <a href="#po" class="text-decoration-none">
-                                <div class="p-3 border rounded-3 bg-success-subtle border-success-subtle h-100 transition-all hover-shadow">
+                                <div class="p-3 border rounded-3 bg-success-subtle border-success-subtle h-100">
                                     <div class="d-flex align-items-center justify-content-between mb-2">
                                         <span class="badge bg-success text-white p-2 rounded-circle">
                                             <i class="mdi mdi-cart-plus fs-5"></i>
@@ -297,235 +318,351 @@
             </div>
         </div>
 
-        <!-- Right Column: Financial Realization Big Card -->
+        <!-- Right Column: Financial Realization Card (Clean & Modern SaaS Dashboard Style) -->
         <div class="col-12 col-xl-5">
-            <div class="card clean-card h-100 bg-primary text-white position-relative overflow-hidden">
-                <div class="position-absolute end-0 bottom-0 opacity-10 me-n3 mb-n3">
-                    <i class="mdi mdi-wallet-outline" style="font-size: 11rem; line-height: 1;"></i>
-                </div>
-                <div class="card-body p-4 d-flex flex-column justify-content-between position-relative z-1">
-                    <div>
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <span class="badge bg-white text-primary fw-bold px-3 py-2 rounded-pill">
-                                <i class="mdi mdi-currency-usd me-1"></i> Realisasi Sales
+            <div class="card clean-card h-100 d-flex flex-column justify-content-between">
+                
+                <!-- Card Header -->
+                <div class="card-header pb-2">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-label-primary p-2 rounded-3">
+                                <i class="mdi mdi-currency-usd fs-5"></i>
                             </span>
-                            <span class="badge bg-white bg-opacity-25 text-white fw-bold px-3 py-1 rounded-pill">
-                                {{ \Carbon\Carbon::createFromDate($yearNow, $monthNow, 1)->locale('id')->translatedFormat('F Y') }}
+                            <div>
+                                <h5 class="card-title mb-0 fw-bold text-dark">Realisasi Sales</h5>
+                                <small class="text-muted">Periode {{ \Carbon\Carbon::createFromDate($yearNow, $monthNow, 1)->locale('id')->translatedFormat('F Y') }}</small>
+                            </div>
+                        </div>
+                        <div>
+                            @if ($salesPercentage >= 100)
+                                <span class="badge bg-label-success rounded-pill px-3 py-1 fw-bold">
+                                    <i class="mdi mdi-check-circle-outline me-1"></i>{{ $salesPercentage }}% Target
+                                </span>
+                            @elseif ($salesPercentage >= 80)
+                                <span class="badge bg-label-warning rounded-pill px-3 py-1 fw-bold">
+                                    <i class="mdi mdi-fire me-1"></i>{{ $salesPercentage }}% On Track
+                                </span>
+                            @else
+                                <span class="badge bg-label-primary rounded-pill px-3 py-1 fw-bold">
+                                    {{ $salesPercentage }}% Target
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card Body -->
+                <div class="card-body py-3 d-flex flex-column justify-content-between">
+                    
+                    <!-- Hero Revenue Display & Paid Status -->
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <small class="text-muted fw-semibold text-uppercase" style="font-size: 0.73rem; letter-spacing: 0.5px;">
+                                Total Closing (PO Received)
+                            </small>
+                            <span class="badge bg-label-success rounded-pill px-2 py-0 fw-bold" style="font-size: 0.72rem;">
+                                <i class="mdi mdi-cash-check me-1"></i>Terbayar: {{ $paidPercentage }}%
                             </span>
                         </div>
-                        <p class="mb-1 text-white-50 small fw-semibold">TOTAL CLOSING (PO RECEIVED)</p>
-                        <h2 class="text-white fw-bold mb-3 display-6">
-                            Rp {{ number_format($amountSales, 0, ',', '.') }}
-                        </h2>
+                        <div class="d-flex align-items-baseline justify-content-between flex-wrap gap-2">
+                            <h2 class="mb-0 fw-bold text-dark" style="letter-spacing: -0.5px;">
+                                Rp {{ number_format($amountSales, 0, ',', '.') }}
+                            </h2>
+                        </div>
+                        
+                        <!-- Financial Sub-Metrics (Paid, Target, Gap) -->
+                        <div class="d-flex align-items-center gap-2 text-muted small mt-2 flex-wrap">
+                            <div class="d-inline-flex align-items-center gap-1">
+                                <span class="badge bg-label-success px-2 py-1 rounded fw-semibold text-dark" style="font-size: 0.73rem;">
+                                    <i class="mdi mdi-check-circle-outline text-success me-1"></i>Sudah Dibayar: <strong>Rp {{ number_format($amountPaidSales, 0, ',', '.') }}</strong>
+                                </span>
+                            </div>
+                            <span class="opacity-50">•</span>
+                            <div>
+                                <span class="opacity-75">Target:</span> 
+                                <span class="fw-semibold text-dark">Rp {{ number_format($targetTotal, 0, ',', '.') }}</span>
+                            </div>
+                            <span class="opacity-50">•</span>
+                            <div>
+                                @if ($amountSales >= $targetTotal && $targetTotal > 0)
+                                    <span class="badge bg-label-success rounded-pill px-2 py-0 fw-bold" style="font-size: 0.72rem;">
+                                        +Rp {{ number_format($amountSales - $targetTotal, 0, ',', '.') }} (Surplus)
+                                    </span>
+                                @else
+                                    <span class="opacity-75">Sisa:</span> 
+                                    <span class="fw-semibold text-danger">Rp {{ number_format(max(0, $targetTotal - $amountSales), 0, ',', '.') }}</span>
+                                @endif
+                            </div>
+                        </div>
                     </div>
 
-                    <div>
-                        <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="small text-white-50">Persentase Target Bulanan</span>
-                            <span class="fw-bold text-white fs-6">{{ $salesPercentage }}%</span>
+                    <!-- Clean Progress Bar -->
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <small class="text-muted fw-semibold">Pencapaian Target Bulanan</small>
+                            <small class="fw-bold text-dark">{{ $salesPercentage }}%</small>
                         </div>
-                        <div class="progress progress-white mb-3" style="height: 10px; background-color: rgba(255,255,255,0.25);">
-                            <div class="progress-bar bg-white shadow-sm" role="progressbar" 
+                        <div class="progress" style="height: 8px; background-color: rgba(67, 89, 113, 0.08); border-radius: 6px;">
+                            <div class="progress-bar bg-{{ $salesColor }} rounded-pill" role="progressbar" 
                                 style="width: {{ min($salesPercentage, 100) }}%;" 
                                 aria-valuenow="{{ $salesPercentage }}" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
+                    </div>
 
-                        <div class="row pt-2 border-top border-white border-opacity-25 text-white-50 small g-2">
-                            <div class="col-6">
-                                <div>Hot Prospect (80%):</div>
-                                <div class="text-white fw-semibold">Rp {{ number_format($amountProspect, 0, ',', '.') }}</div>
-                            </div>
-                            <div class="col-6 text-end">
-                                <div>Pipeline Quote Aktif:</div>
-                                <div class="text-white fw-semibold">Rp {{ number_format($amountQuote, 0, ',', '.') }}</div>
+                    <!-- Pipeline Sub-Cards -->
+                    <div class="row g-2">
+                        <!-- Hot Prospect (80%) -->
+                        <div class="col-6">
+                            <div class="p-3 border rounded-3 bg-body-tertiary h-100">
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <small class="text-muted fw-semibold" style="font-size: 0.75rem;">Hot Prospect (80%)</small>
+                                    <span class="badge bg-label-danger p-1 rounded-circle">
+                                        <i class="mdi mdi-fire fs-tiny"></i>
+                                    </span>
+                                </div>
+                                <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.92rem;">
+                                    Rp {{ number_format($amountProspect, 0, ',', '.') }}
+                                </h6>
+                                <small class="text-muted" style="font-size: 0.7rem;">Potensi closing segera</small>
                             </div>
                         </div>
+
+                        <!-- Pipeline Quote Aktif -->
+                        <div class="col-6">
+                            <div class="p-3 border rounded-3 bg-body-tertiary h-100">
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <small class="text-muted fw-semibold" style="font-size: 0.75rem;">Pipeline Quote Aktif</small>
+                                    <span class="badge bg-label-info p-1 rounded-circle">
+                                        <i class="mdi mdi-file-document-outline fs-tiny"></i>
+                                    </span>
+                                </div>
+                                <h6 class="mb-0 fw-bold text-dark" style="font-size: 0.92rem;">
+                                    Rp {{ number_format($amountQuote, 0, ',', '.') }}
+                                </h6>
+                                <small class="text-muted" style="font-size: 0.7rem;">Penawaran aktif</small>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Card Footer Action Strip -->
+                <div class="card-footer py-2 px-4 border-top d-flex align-items-center justify-content-between bg-body-tertiary rounded-bottom flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2 text-muted small">
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <i class="mdi mdi-cart-check text-success fs-5"></i>
+                            <strong class="text-dark">{{ $totalPO }}</strong> Deals Closed
+                        </span>
+                        <span class="opacity-50">•</span>
+                        <span class="text-success fw-semibold">
+                            <i class="mdi mdi-cash-check me-1"></i>Terbayar: Rp {{ number_format($amountPaidSales, 0, ',', '.') }}
+                        </span>
+                    </div>
+                    <a href="#po" class="btn btn-xs btn-label-primary rounded-pill fw-semibold">
+                        Rincian PO <i class="mdi mdi-chevron-right ms-1"></i>
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    {{-- Card 1: Rekap KPI Mingguan (gaya sheet Excel Sales Manager) --}}
+    <div class="mb-4" id="weekly-kpi">
+        @include('components.overview.weekly-kpi-card', [
+            'weeklyKpi' => $weeklyKpi,
+            'monthLabel' => \Carbon\Carbon::createFromDate($yearNow, $monthNow, 1)->locale('id')->translatedFormat('F Y'),
+        ])
+    </div>
+
+    {{-- Card 2: Activities & Communication (Daily Call & CRM) --}}
+    <div class="card clean-card mb-4 overflow-hidden" id="activities">
+        <div class="card-header border-bottom bg-white p-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <i class="mdi mdi-phone-log-outline text-info mdi-24px"></i>
+                <h5 class="card-title mb-0 fw-bold">Aktivitas Sales (Daily Call & CRM)</h5>
+            </div>
+            <ul class="nav nav-pills nav-pills-custom flex-wrap gap-2" id="activityTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active d-flex align-items-center gap-2" id="calls-tab" data-bs-toggle="tab" data-bs-target="#tab-calls" type="button" role="tab" aria-controls="tab-calls" aria-selected="true">
+                        <i class="mdi mdi-phone-outline"></i>
+                        <span>Daily Call</span>
+                        <span class="badge rounded-pill bg-label-info">{{ $totalDC }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link d-flex align-items-center gap-2" id="crm-tab" data-bs-toggle="tab" data-bs-target="#tab-crm" type="button" role="tab" aria-controls="tab-crm" aria-selected="false">
+                        <i class="mdi mdi-account-multiple-outline"></i>
+                        <span>CRM Touchpoints</span>
+                        <span class="badge rounded-pill bg-label-primary">{{ $totalCRM }}</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body p-0">
+            <div class="tab-content p-0" id="activityTabsContent">
+                {{-- Tab 1: Daily Calls --}}
+                <div class="tab-pane fade show active" id="tab-calls" role="tabpanel" aria-labelledby="calls-tab">
+                    <div class="card-datatable table-responsive">
+                        <table class="datatable-overview-call table table-hover border-top" id="tableOverviewCall" data-url="{{ url('/db/overview/call/' . $user->id . '/' . $dateFormatted) }}">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40px;"></th>
+                                    <th>ID</th>
+                                    <th>Perusahaan / Customer</th>
+                                    <th class="text-center" style="width: 130px;">Interaksi</th>
+                                    <th class="text-nowrap" style="width: 140px;">Tgl Terakhir</th>
+                                    <th class="text-center" style="width: 120px;">Status</th>
+                                    <th>Catatan Terakhir</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- Tab 2: CRM Touchpoints --}}
+                <div class="tab-pane fade" id="tab-crm" role="tabpanel" aria-labelledby="crm-tab">
+                    <div class="card-datatable table-responsive">
+                        <table class="datatable-overview-crm table table-hover border-top" id="tableOverviewCrm" data-url="{{ url('/db/overview/crm/' . $user->id . '/' . $dateFormatted) }}">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40px;"></th>
+                                    <th>ID</th>
+                                    <th>Perusahaan / Customer</th>
+                                    <th class="text-center" style="width: 130px;">Interaksi</th>
+                                    <th class="text-nowrap" style="width: 140px;">Tgl Terakhir</th>
+                                    <th class="text-center" style="width: 120px;">Status</th>
+                                    <th>Catatan Terakhir</th>
+                                </tr>
+                            </thead>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Weekly Operational Activities Table Card -->
-    <div class="card clean-card mb-4" id="activities">
-        <div class="card-header d-flex align-items-center justify-content-between pb-2">
-            <h5 class="card-title mb-0 d-flex align-items-center gap-2">
-                <i class="mdi mdi-calendar-range-outline text-primary fs-4"></i> Rincian Matrix Aktivitas Mingguan (Weekly Breakdown)
-            </h5>
-            <small class="text-muted">Distribusi data per minggu dalam bulan terpilih</small>
+    {{-- Card 3: Commercial Pipeline (Quotation, Purchase Order & Lost) --}}
+    <div class="card clean-card mb-4 overflow-hidden" id="pipeline">
+        <div class="card-header border-bottom bg-white p-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <i class="mdi mdi-file-chart-outline text-primary mdi-24px"></i>
+                <h5 class="card-title mb-0 fw-bold">Commercial Pipeline (Quotation, Purchase Order & Lost)</h5>
+            </div>
+            <ul class="nav nav-pills nav-pills-custom flex-wrap gap-2" id="pipelineTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active d-flex align-items-center gap-2" id="quote-all-tab" data-bs-toggle="tab" data-bs-target="#tab-quote-all" type="button" role="tab" aria-controls="tab-quote-all" aria-selected="true">
+                        <i class="mdi mdi-file-document-multiple-outline"></i>
+                        <span>Semua Quotation</span>
+                        <span class="badge rounded-pill bg-label-primary">{{ $totalQuoteAll }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link d-flex align-items-center gap-2" id="quote-active-tab" data-bs-toggle="tab" data-bs-target="#tab-quote-active" type="button" role="tab" aria-controls="tab-quote-active" aria-selected="false">
+                        <i class="mdi mdi-clock-outline"></i>
+                        <span>Quotation Active</span>
+                        <span class="badge rounded-pill bg-label-warning">{{ $totalQuoteActive }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link d-flex align-items-center gap-2" id="po-tab" data-bs-toggle="tab" data-bs-target="#tab-po" type="button" role="tab" aria-controls="tab-po" aria-selected="false">
+                        <i class="mdi mdi-cart-check"></i>
+                        <span>Purchase Order</span>
+                        <span class="badge rounded-pill bg-label-success">{{ $totalPO }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link d-flex align-items-center gap-2" id="loss-tab" data-bs-toggle="tab" data-bs-target="#tab-loss" type="button" role="tab" aria-controls="tab-loss" aria-selected="false">
+                        <i class="mdi mdi-cart-minus"></i>
+                        <span>Lost Quotation</span>
+                        <span class="badge rounded-pill bg-label-danger">{{ $totalLoss }}</span>
+                    </button>
+                </li>
+            </ul>
         </div>
-        <div class="table-responsive text-nowrap">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th style="min-width: 200px;">Jenis Aktivitas</th>
-                        @foreach ($dataDc as $week)
-                            <th class="text-center">Minggu {{ $week['week'] }}</th>
-                        @endforeach
-                        <th class="text-center fw-bold">Total Capaian</th>
-                        <th class="text-center fw-bold" style="width: 140px;">Pencapaian (%)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- New Leads Row -->
-                    <tr>
-                        <td class="fw-semibold text-dark">
-                            <span class="badge bg-label-secondary p-1 rounded me-2"><i class="mdi mdi-account-plus"></i></span>
-                            New Leads
-                        </td>
-                        @php
-                            $totalLeadsFullWeek = 0;
-                        @endphp
-                        @foreach ($dataLeads as $week)
-                            <td class="text-center font-monospace">{{ $week['total'] }}</td>
-                            @php
-                                $totalLeadsFullWeek += $week['total'];
-                            @endphp
-                        @endforeach
-                        <td class="text-center fw-bold text-dark">{{ $totalLeadsFullWeek }}</td>
-                        <td class="text-center">
-                            @php
-                                $targetL = $target->leads ?? 0;
-                                $denomL = is_array($dataLeads) && count($dataLeads) > 4 ? ($targetL + $targetL / 4) : $targetL;
-                                $pctL = $denomL > 0 ? round(($totalLeadsFullWeek / $denomL) * 100) : 0;
-                                $colorL = $pctL >= 100 ? 'success' : ($pctL >= 80 ? 'warning' : 'danger');
-                            @endphp
-                            <span class="badge bg-label-{{ $colorL }} rounded-pill px-3 py-1 fw-bold">{{ $pctL }}%</span>
-                        </td>
-                    </tr>
 
-                    <!-- Daily Call Row -->
-                    <tr>
-                        <td class="fw-semibold text-dark">
-                            <span class="badge bg-label-info p-1 rounded me-2"><i class="mdi mdi-phone-outline"></i></span>
-                            Daily Call
-                        </td>
-                        @php
-                            $totalDcFullWeek = 0;
-                        @endphp
-                        @foreach ($dataDc as $week)
-                            <td class="text-center font-monospace">{{ $week['total'] }}</td>
-                            @php
-                                $totalDcFullWeek += $week['total'];
-                            @endphp
-                        @endforeach
-                        <td class="text-center fw-bold text-dark">{{ $totalDcFullWeek }}</td>
-                        <td class="text-center">
-                            @php
-                                $targetD = $target->dc ?? 0;
-                                $denomD = is_array($dataDc) && count($dataDc) > 4 ? ($targetD + $targetD / 4) : $targetD;
-                                $pctD = $denomD > 0 ? round(($totalDcFullWeek / $denomD) * 100) : 0;
-                                $colorD = $pctD >= 100 ? 'success' : ($pctD >= 80 ? 'warning' : 'danger');
-                            @endphp
-                            <span class="badge bg-label-{{ $colorD }} rounded-pill px-3 py-1 fw-bold">{{ $pctD }}%</span>
-                        </td>
-                    </tr>
+        <div class="card-body p-0">
+            <div class="tab-content p-0" id="pipelineTabsContent">
+                {{-- Tab 1: Quotations (Semua Status) --}}
+                <div class="tab-pane fade show active" id="tab-quote-all" role="tabpanel" aria-labelledby="quote-all-tab">
+                    <div class="card-datatable table-responsive">
+                        <table class="datatable-overview-quotation table table-hover border-top" id="tableOverviewQuotation" data-url="{{ url('/db/overview/quotation/' . $user->id . '/' . $dateFormatted) }}">
+                            <thead class="table-light">
+                                <tr>
+                                    <th></th>
+                                    <th>ID</th>
+                                    <th>Quote No.</th>
+                                    <th>Company</th>
+                                    <th>Total Price</th>
+                                    <th>Description</th>
+                                    <th class="text-nowrap">Date Quotation</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
 
-                    <!-- CRM Row -->
-                    <tr>
-                        <td class="fw-semibold text-dark">
-                            <span class="badge bg-label-primary p-1 rounded me-2"><i class="mdi mdi-account-multiple-outline"></i></span>
-                            Customer Relationship Management (CRM)
-                        </td>
-                        @php
-                            $totalCrmFullWeek = 0;
-                        @endphp
-                        @foreach ($dataCRM as $week)
-                            <td class="text-center font-monospace">{{ $week['total'] }}</td>
-                            @php
-                                $totalCrmFullWeek += $week['total'];
-                            @endphp
-                        @endforeach
-                        <td class="text-center fw-bold text-dark">{{ $totalCrmFullWeek }}</td>
-                        <td class="text-center">
-                            @php
-                                $targetC = $target->crm ?? 0;
-                                $denomC = is_array($dataCRM) && count($dataCRM) > 4 ? ($targetC + $targetC / 4) : $targetC;
-                                $pctC = $denomC > 0 ? round(($totalCrmFullWeek / $denomC) * 100) : 0;
-                                $colorC = $pctC >= 100 ? 'success' : ($pctC >= 80 ? 'warning' : 'danger');
-                            @endphp
-                            <span class="badge bg-label-{{ $colorC }} rounded-pill px-3 py-1 fw-bold">{{ $pctC }}%</span>
-                        </td>
-                    </tr>
+                {{-- Tab 2: Quotations Active (Belum Loss & Belum PO) --}}
+                <div class="tab-pane fade" id="tab-quote-active" role="tabpanel" aria-labelledby="quote-active-tab">
+                    <div class="card-datatable table-responsive">
+                        <table class="datatable-overview-quotation-active table table-hover border-top" id="tableOverviewQuotationActive" data-url="{{ url('/db/overview/quotation-active/' . $user->id . '/' . $dateFormatted) }}">
+                            <thead class="table-light">
+                                <tr>
+                                    <th></th>
+                                    <th>ID</th>
+                                    <th>Quote No.</th>
+                                    <th>Company</th>
+                                    <th>Total Price</th>
+                                    <th>Description</th>
+                                    <th class="text-nowrap">Date Quotation</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
 
-                    <!-- Visit Row -->
-                    @if (in_array($userArea, ['Bekasi', 'Jabodetabek', 'Jawa Barat']))
-                        <tr>
-                            <td class="fw-semibold text-dark">
-                                <span class="badge bg-label-warning p-1 rounded me-2"><i class="mdi mdi-map-marker-outline"></i></span>
-                                Customer Visit
-                            </td>
-                            @php
-                                $totalVisitFullWeek = 0;
-                            @endphp
-                            @foreach ($dataVisit as $week)
-                                <td class="text-center font-monospace">{{ $week['total'] }}</td>
-                                @php
-                                    $totalVisitFullWeek += $week['total'];
-                                @endphp
-                            @endforeach
-                            <td class="text-center fw-bold text-dark">{{ $totalVisitFullWeek }}</td>
-                            <td class="text-center">
-                                @php
-                                    $targetV = $target->visit ?? 0;
-                                    $denomV = is_array($dataVisit) && count($dataVisit) > 4 ? ($targetV + $targetV / 4) : $targetV;
-                                    $pctV = $denomV > 0 ? round(($totalVisitFullWeek / $denomV) * 100) : 0;
-                                    $colorV = $pctV >= 100 ? 'success' : ($pctV >= 80 ? 'warning' : 'danger');
-                                @endphp
-                                <span class="badge bg-label-{{ $colorV }} rounded-pill px-3 py-1 fw-bold">{{ $pctV }}%</span>
-                            </td>
-                        </tr>
-                    @endif
+                {{-- Tab 3: Purchase Orders --}}
+                <div class="tab-pane fade" id="tab-po" role="tabpanel" aria-labelledby="po-tab">
+                    <div class="card-datatable table-responsive">
+                        <table class="datatable-overview-po table table-hover border-top" id="tableOverviewPo" data-url="{{ url('/db/overview/po/' . $user->id . '/' . $dateFormatted) }}">
+                            <thead class="table-light">
+                                <tr>
+                                    <th></th>
+                                    <th>ID</th>
+                                    <th>Quote No.</th>
+                                    <th>Company</th>
+                                    <th>Description</th>
+                                    <th class="text-nowrap">Date PO</th>
+                                    <th>Total Price</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
 
-                    <!-- Quotation Row -->
-                    <tr>
-                        <td class="fw-semibold text-dark">
-                            <span class="badge bg-label-info p-1 rounded me-2"><i class="mdi mdi-file-document-outline"></i></span>
-                            Quotation Issued
-                        </td>
-                        @php
-                            $totalQuoteFullWeek = 0;
-                        @endphp
-                        @foreach ($dataQuote as $week)
-                            <td class="text-center font-monospace">{{ $week['total'] }}</td>
-                            @php
-                                $totalQuoteFullWeek += $week['total'];
-                            @endphp
-                        @endforeach
-                        <td class="text-center fw-bold text-dark">{{ $totalQuoteFullWeek }}</td>
-                        <td class="text-center">
-                            @php
-                                $targetQ = $target->quote ?? 0;
-                                $denomQ = is_array($dataQuote) && count($dataQuote) > 4 ? ($targetQ + $targetQ / 4) : $targetQ;
-                                $pctQ = $denomQ > 0 ? round(($totalQuoteFullWeek / $denomQ) * 100) : 0;
-                                $colorQ = $pctQ >= 100 ? 'success' : ($pctQ >= 80 ? 'warning' : 'danger');
-                            @endphp
-                            <span class="badge bg-label-{{ $colorQ }} rounded-pill px-3 py-1 fw-bold">{{ $pctQ }}%</span>
-                        </td>
-                    </tr>
-
-                    <!-- Purchase Order Row -->
-                    <tr>
-                        <td class="fw-semibold text-dark">
-                            <span class="badge bg-label-success p-1 rounded me-2"><i class="mdi mdi-cart-plus"></i></span>
-                            Purchase Order (PO)
-                        </td>
-                        @php
-                            $totalPoFullWeek = 0;
-                        @endphp
-                        @foreach ($dataPo as $week)
-                            <td class="text-center font-monospace">{{ $week['total'] }}</td>
-                            @php
-                                $totalPoFullWeek += $week['total'];
-                            @endphp
-                        @endforeach
-                        <td class="text-center fw-bold text-success">{{ $totalPoFullWeek }}</td>
-                        <td class="text-center">
-                            <span class="badge bg-label-success rounded-pill px-3 py-1 fw-bold">Active</span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                {{-- Tab 4: Lost Quotations --}}
+                <div class="tab-pane fade" id="tab-loss" role="tabpanel" aria-labelledby="loss-tab">
+                    <div class="card-datatable table-responsive">
+                        <table class="datatable-overview-loss table table-hover border-top" id="tableOverviewLoss" data-url="{{ url('/db/overview/loss/' . $user->id . '/' . $dateFormatted) }}">
+                            <thead class="table-light">
+                                <tr>
+                                    <th></th>
+                                    <th>ID</th>
+                                    <th>Quote No.</th>
+                                    <th>Company</th>
+                                    <th>Description</th>
+                                    <th class="text-nowrap">Date</th>
+                                    <th>Total Price</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -548,7 +685,7 @@
                         <th class="fw-bold">Judul Penawaran</th>
                         <th class="fw-bold">Tanggal PO</th>
                         <th class="fw-bold text-end">Nilai Nett (Rp)</th>
-                        <th class="fw-bold text-end">Paid (Accounting Confirmed)</th>
+                        <th class="fw-bold text-end">PAID</th>
                     </tr>
                 </thead>
                 <tbody class="table-border-bottom-0">
@@ -676,13 +813,6 @@
             box-shadow: 0 2px 6px 0 rgba(67, 89, 113, 0.08);
             background: #ffffff;
         }
-        .hover-shadow:hover {
-            box-shadow: 0 4px 12px 0 rgba(67, 89, 113, 0.12);
-            transform: translateY(-2px);
-        }
-        .transition-all {
-            transition: all 0.2s ease-in-out;
-        }
         .fs-tiny {
             font-size: 0.7rem;
         }
@@ -691,5 +821,110 @@
                 border-left: 1px solid rgba(67, 89, 113, 0.12) !important;
             }
         }
+        .nav-pills-custom .nav-link {
+            border-radius: 8px;
+            padding: 10px 18px;
+            font-weight: 500;
+            color: #566a7f;
+            transition: all 0.2s ease;
+            background: #ffffff;
+            border: 1px solid #e0e4e8;
+        }
+        .nav-pills-custom .nav-link:hover {
+            background: rgba(105, 108, 255, 0.08);
+            color: #696cff;
+            border-color: #696cff;
+        }
+        .nav-pills-custom .nav-link.active {
+            background: #696cff;
+            color: #ffffff;
+            border-color: #696cff;
+            box-shadow: 0 4px 12px rgba(105, 108, 255, 0.35);
+        }
+        .nav-pills-custom .nav-link.active .badge {
+            background: rgba(255, 255, 255, 0.25) !important;
+            color: #ffffff !important;
+        }
+        .dt-control-btn {
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            background: rgba(105, 108, 255, 0.08);
+            color: #696cff;
+            border: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .dt-control-btn:hover {
+            background: #696cff;
+            color: #ffffff;
+        }
+        tr.shown .dt-control-btn {
+            background: rgba(255, 62, 29, 0.1);
+            color: #ff3e1d;
+        }
+        tr.shown .dt-control-btn:hover {
+            background: #ff3e1d;
+            color: #ffffff;
+        }
+        .minimal-feed-item {
+            background: #ffffff;
+            border: 1px solid #edf0f2;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            transition: all 0.2s ease;
+        }
+        .minimal-feed-item:last-child {
+            margin-bottom: 0;
+        }
+        .minimal-feed-item:hover {
+            background: #fafbfe;
+            border-color: #dbe0ea;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        .minimal-feed-item.feed-success {
+            border-left: 4px solid #71dd37;
+        }
+        .minimal-feed-item.feed-danger {
+            border-left: 4px solid #ff3e1d;
+        }
+        .minimal-feed-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .minimal-note-text {
+            color: #566a7f;
+            font-size: 0.84rem;
+            line-height: 1.45;
+        }
     </style>
+@endpush
+
+@push('page-script')
+    <script src="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-overview-call.js?v={{ time() }}"></script>
+    <script src="{{ asset('assets') }}/includes/table-overview-crm.js?v={{ time() }}"></script>
+    <script src="{{ asset('assets') }}/includes/table-overview-quotation.js?v={{ time() }}"></script>
+    <script src="{{ asset('assets') }}/includes/table-overview-quotation-active.js?v={{ time() }}"></script>
+    <script src="{{ asset('assets') }}/includes/table-overview-po.js?v={{ time() }}"></script>
+    <script src="{{ asset('assets') }}/includes/table-overview-loss.js?v={{ time() }}"></script>
+    <script>
+        $(document).ready(function() {
+            $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+                if ($.fn.dataTable) {
+                    $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+                }
+            });
+        });
+    </script>
 @endpush

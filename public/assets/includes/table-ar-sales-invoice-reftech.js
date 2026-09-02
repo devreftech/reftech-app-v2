@@ -38,6 +38,7 @@ $(function () {
                 },
                 data: function (d) {
                     d.year = window.invoiceYearFilter || "all";
+                    d.sales_id = window.invoiceSalesFilter || "all";
                     return d;
                 },
             },
@@ -62,16 +63,16 @@ $(function () {
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             var id = full["id"];
-                            detailRoute = route("payment_detail.invoice", id);
+                            var detailRoute = typeof route === "function" ? route("payment_detail.invoice", id) : "/payment/invoice/" + id;
                             return (
-                                '<a class="text-black" href="' +
+                                '<a class="text-black fw-semibold" href="' +
                                 detailRoute +
                                 '">' +
-                                data +
+                                (data || full["no_invoice"] || "-") +
                                 "</a>"
                             );
                         }
-                        return data;
+                        return data || full["no_invoice"] || "";
                     },
                 },
                 {

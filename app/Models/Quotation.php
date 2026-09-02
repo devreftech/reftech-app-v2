@@ -48,6 +48,28 @@ class Quotation extends Model
         'harga_total'
     ];
 
+    /**
+     * Batasi ke quotation "primary" secara efektif: baris yang ditandai is_primary = 1,
+     * ATAU kepala rantai revisi (primary_id = id) yang rantainya tidak punya baris
+     * ber-is_primary = 1 sama sekali (data lama yang flag-nya tidak pernah ter-set).
+     * Dipakai untuk rekap PO supaya quotation tunggal yang is_primary-nya '0' tetap terhitung.
+     */
+    public function scopeEffectivePrimary($query)
+    {
+        return $query->where(function ($q) {
+            $q->where('quotation.is_primary', '1')
+                ->orWhere(function ($q2) {
+                    $q2->whereColumn('quotation.primary_id', 'quotation.id')
+                        ->whereNotExists(function ($sub) {
+                            $sub->selectRaw('1')
+                                ->from('quotation as qp')
+                                ->whereColumn('qp.primary_id', 'quotation.primary_id')
+                                ->where('qp.is_primary', '1');
+                        });
+                });
+        });
+    }
+
     public function pic()
     {
         return $this->belongsTo('App\Models\Pic', 'id_pic', 'id');

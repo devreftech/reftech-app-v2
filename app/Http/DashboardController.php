@@ -381,8 +381,13 @@ class DashboardController extends Controller
                 )
             );
 
-        } elseif (Auth::user()->role == 'Admin') {
-            $prCount = PurchaseRequest::where('status', '0')->count();
+            $validPendingIds = \App\Models\PendingPO::where(function ($q) {
+                $q->whereNotNull('id_quotation')->orWhereNotNull('id_unit_quotation');
+            })->pluck('id');
+            $prCount = PurchaseRequest::where('status', '0')
+                ->whereIn('id_pending', $validPendingIds)
+                ->has('details')
+                ->count();
 
             $requestContract = Contract::join('quotation as q', 'q.id', '=', 'contract.id_quotation')
                 ->join('pic as p', 'p.id', '=', 'q.id_pic')

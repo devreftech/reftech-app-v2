@@ -46,7 +46,13 @@ class AdminDashboardService
      */
     public function getDashboardData($sorted, $sales, $notulens, $yearNow, $monthNow, $dateNow)
     {
-        $prCount = PurchaseRequest::where('status', '0')->count();
+        $validPendingIds = \App\Models\PendingPO::where(function ($q) {
+            $q->whereNotNull('id_quotation')->orWhereNotNull('id_unit_quotation');
+        })->pluck('id');
+        $prCount = PurchaseRequest::where('status', '0')
+            ->whereIn('id_pending', $validPendingIds)
+            ->has('details')
+            ->count();
 
         // Daily Welcome Alert for Admin
         $showAdminWelcomeAlert = false;
@@ -139,8 +145,7 @@ class AdminDashboardService
         $lastDayOfMonth = date('Y-m-t', strtotime($firstDayOfMonth));
 
         // Quotation stats untuk firstSalesId, digabung jadi satu query pakai
-        // conditional aggregation (sebelumnya 5 query terpisah: totalProspectSupport,
-        // totalForecast, totalQuotation, totalHotProspect, totalLoss, filteredQuote).
+        // conditional aggregation + UnitQuotation
         $quoteAgg = Quotation::whereBetween('estimated_date', [$firstDayOfMonth, $lastDayOfMonth])
             ->where('id_sales', $firstSalesId)
             ->where('level', '1')
@@ -155,12 +160,25 @@ class AdminDashboardService
             ")
             ->first();
 
-        $filteredQuote = (int) $quoteAgg->filtered_quote;
-        $totalQuotation = (float) $quoteAgg->total_quotation;
-        $totalProspectSupport = (float) $quoteAgg->total_prospect_support;
-        $totalForecast = (float) $quoteAgg->total_forecast;
-        $totalHotProspect = (float) $quoteAgg->total_hot_prospect;
-        $totalLoss = (float) $quoteAgg->total_loss;
+        $unitQuoteAgg = UnitQuotation::whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
+            ->where('id_sales', $firstSalesId)
+            ->where('is_latest', 1)
+            ->selectRaw("
+                COUNT(*) as filtered_quote,
+                COALESCE(SUM(total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)), 0) as total_quotation,
+                COALESCE(SUM(CASE WHEN status IN ('draft','sent','negotiation','revision','hot_prospect') THEN (total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)) ELSE 0 END), 0) as total_prospect_support,
+                COALESCE(SUM(CASE WHEN status = 'hot_prospect' THEN (total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)) ELSE 0 END), 0) as total_forecast,
+                COALESCE(SUM(CASE WHEN status = 'hot_prospect' THEN (total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)) ELSE 0 END), 0) as total_hot_prospect,
+                COALESCE(SUM(CASE WHEN status = 'loss' THEN (total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)) ELSE 0 END), 0) as total_loss
+            ")
+            ->first();
+
+        $filteredQuote = (int) $quoteAgg->filtered_quote + (int) ($unitQuoteAgg->filtered_quote ?? 0);
+        $totalQuotation = (float) $quoteAgg->total_quotation + (float) ($unitQuoteAgg->total_quotation ?? 0);
+        $totalProspectSupport = (float) $quoteAgg->total_prospect_support + (float) ($unitQuoteAgg->total_prospect_support ?? 0);
+        $totalForecast = (float) $quoteAgg->total_forecast + (float) ($unitQuoteAgg->total_forecast ?? 0);
+        $totalHotProspect = (float) $quoteAgg->total_hot_prospect + (float) ($unitQuoteAgg->total_hot_prospect ?? 0);
+        $totalLoss = (float) $quoteAgg->total_loss + (float) ($unitQuoteAgg->total_loss ?? 0);
 
         $totalProspect = Quotation::join('prospect as p', 'quotation.id', '=', 'p.id_quotation')
             ->whereNotNull('id_quotation')->whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)
@@ -465,14 +483,24 @@ class AdminDashboardService
         $endWeek = date('W', strtotime($lastDayOfMonth));
         $weekStart = $firstDayOfWeek > 1 ? $weekEnd + 1 : $weekEnd;
 
-        $allData = Quotation::select('id_sales', DB::raw('WEEK(estimated_date, 4) as week_num'), DB::raw('COUNT(*) as total'))
+        $spData = Quotation::select('id_sales', DB::raw('WEEK(estimated_date, 4) as week_num'), DB::raw('COUNT(*) as total'))
             ->whereBetween('estimated_date', [$firstDayOfMonth, $lastDayOfMonth])
             ->where('level', '1')
             ->where('is_primary', '1')
             ->groupBy('id_sales', DB::raw('WEEK(estimated_date, 4)'))
-            ->get()
+            ->get();
+
+        $unitData = UnitQuotation::select('id_sales', DB::raw('WEEK(date, 4) as week_num'), DB::raw('COUNT(*) as total'))
+            ->whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
+            ->where('is_latest', 1)
+            ->groupBy('id_sales', DB::raw('WEEK(date, 4)'))
+            ->get();
+
+        $allData = $spData->concat($unitData)
             ->groupBy('id_sales')
-            ->map(fn($items) => $items->pluck('total', 'week_num'));
+            ->map(function ($items) {
+                return $items->groupBy('week_num')->map(fn($wItems) => $wItems->sum('total'));
+            });
 
         return $this->buildWeeklyFullMonth($sales, $allData, $weekStart, $endWeek, $yearNow);
     }
@@ -490,15 +518,26 @@ class AdminDashboardService
         $endWeek = date('W', strtotime($lastDayOfMonth));
         $weekStart = $firstDayOfWeek > 1 ? $weekEnd + 1 : $weekEnd;
 
-        $allData = Quotation::select('id_sales', DB::raw('WEEK(po_date, 4) as week_num'), DB::raw('COUNT(*) as total'))
+        $spData = Quotation::select('id_sales', DB::raw('WEEK(po_date, 4) as week_num'), DB::raw('COUNT(*) as total'))
             ->whereBetween('po_date', [$firstDayOfMonth, $lastDayOfMonth])
             ->where('status', '100')
             ->where('level', '1')
             ->where('is_primary', '1')
             ->groupBy('id_sales', DB::raw('WEEK(po_date, 4)'))
-            ->get()
+            ->get();
+
+        $unitData = UnitQuotation::select('id_sales', DB::raw('WEEK(po_received, 4) as week_num'), DB::raw('COUNT(*) as total'))
+            ->whereBetween('po_received', [$firstDayOfMonth, $lastDayOfMonth])
+            ->where('status', 'po_received')
+            ->where('is_latest', 1)
+            ->groupBy('id_sales', DB::raw('WEEK(po_received, 4)'))
+            ->get();
+
+        $allData = $spData->concat($unitData)
             ->groupBy('id_sales')
-            ->map(fn($items) => $items->pluck('total', 'week_num'));
+            ->map(function ($items) {
+                return $items->groupBy('week_num')->map(fn($wItems) => $wItems->sum('total'));
+            });
 
         return $this->buildWeeklyFullMonth($sales, $allData, $weekStart, $endWeek, $yearNow);
     }

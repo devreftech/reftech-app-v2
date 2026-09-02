@@ -92,6 +92,7 @@ use App\Models\Service;
 use App\Models\StatusMonitoring;
 use App\Models\StockOpname;
 use App\Models\Supplier;
+use App\Models\UnitQuotation;
 use App\Models\User;
 use Carbon\Carbon;
 use FontLib\Table\Type\post;
@@ -216,6 +217,8 @@ Route::group(["middleware" => "auth"], function () {
     Route::delete('/forecast/contracts/{id}', [ForecastController::class, 'deleteContract'])->name('forecast.contracts.delete');
 
     require base_path('routes/modules/quotations.php');
+    require base_path('routes/modules/piping.php');
+    require base_path('routes/modules/schematics.php');
 
     // Route untuk Visit
     Route::get('/visits/leads', function () {
@@ -257,6 +260,7 @@ Route::group(["middleware" => "auth"], function () {
     // Route untuk Overview
     Route::resource('/overview', OverviewController::class);
     Route::get('/overview/sales/{id}', [OverviewController::class, 'semesterOverviewSales'])->name('overview.semester');
+    Route::get('/detail-overview/{sales}/{date}/weekly-kpi', [OverviewController::class, 'weeklyKpiPartial'])->name('detail-overview.weekly-kpi');
     Route::get('/detail-overview/{sales}/{date}', [OverviewController::class, 'detailSemesterOverview'])->name('detail-overview.semester');
     Route::get('/overview/{semester}/{sales}', [OverviewController::class, 'overviewAdmin'])->name('overview-sales.semester');
     Route::get('/report/monthly/{year?}/{month?}', [OverviewController::class, 'reportMonthly'])->name('report.monthly');
@@ -1321,6 +1325,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/invoice/unit/{id}/sign', [InvoiceController::class, 'hand_sign_unit'])->name('invoice.unit.sign');
     Route::delete('/invoice/unit/{id}/del-sign', [InvoiceController::class, 'delete_hand_sign_unit'])->name('invoice.unit.del-sign');
     Route::get('/invoice/unit/{id}/label', [InvoiceController::class, 'label_detail_unit'])->name('invoice.unit.label_detail');
+    Route::post('/invoice/unit/{id}/label/recipient', [InvoiceController::class, 'update_label_recipient_unit'])->name('invoice.unit.label_recipient');
     Route::get('/invoice/unit/{id}/label/print', [InvoiceController::class, 'label_print_unit'])->name('invoice.unit.label_print');
     Route::get('/request/invoice', [InvoiceController::class, 'request'])->name('invoice.request');
     Route::get('/request/invoice/unit/{id}', [InvoiceController::class, 'before_accept_unit'])->name('before.accept.unit');
@@ -1347,6 +1352,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::delete('/invoice/del-pph/{id}', [InvoiceController::class, 'delete_pph'])->name('invoice.del-pph');
     Route::delete('/invoice/del-pph-service/{id}', [InvoiceController::class, 'delete_pph_service'])->name('invoice.del-pph-service');
     Route::get('/invoice/label_detail/{id}', [InvoiceController::class, 'label_detail'])->name('invoice.label_detail');
+    Route::post('/invoice/{id}/label/recipient', [InvoiceController::class, 'update_label_recipient'])->name('invoice.label_recipient');
     Route::get('/invoice/label_print/{id}', [InvoiceController::class, 'label_print'])->name('invoice.label_print');
     Route::post('/invoice/change_desc/{id}', [InvoiceController::class, 'change_desc'])->name('invoice.change_desc');
     Route::post('/invoice/confirm_payment/{id}', [InvoiceController::class, 'confirm_payment'])->name('invoice.confirm_payment');
@@ -1664,6 +1670,8 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/payable/aging/{id}', [PayableController::class, 'show_aging'])->name('payable.show_aging');
     Route::get('/payable/receipt', [PayableController::class, 'index_receipt'])->name('payable.index_receipt');
     Route::get('/payable/receipt/{id}', [PayableController::class, 'show_receipt'])->name('payable.show_receipt');
+    Route::post('/payable/receipt/{id}/confirm', [PayableController::class, 'confirmReceipt'])->name('payable.confirm_receipt');
+    Route::post('/payable/receipt/{id}/unconfirm', [PayableController::class, 'unconfirmReceipt'])->name('payable.unconfirm_receipt');
     Route::post('/payable/pph/{id}', [PayableController::class, 'addPph'])->name('payable.addPph');
     Route::post('/payable/date/{id}', [PayableController::class, 'editDate'])->name('payable.editDate');
 
@@ -1769,9 +1777,15 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/purchase/{id}/goods-receipt-direct', [PurchaseController::class, 'storeGoodsReceiptDirect'])->name('purchase.store-goods-receipt-direct');
     Route::post('/purchase-order-type/quick-store', [POController::class, 'quickStoreType'])->name('purchase-order-type.quick-store');
 
-    // Purchase Order
+    // Product Set
     Route::resource('/product-set', ProductSetController::class);
     Route::post('/product-set/item/{id}', [ProductSetController::class, 'store_item'])->name('product-set.store_item');
+    Route::delete('/product-set/item/{id}', [ProductSetController::class, 'destroy_item'])->name('product-set.destroy_item');
+    Route::post('/product-set/equivalent/{id}', [ProductSetController::class, 'store_equivalent'])->name('product-set.store_equivalent');
+    Route::delete('/product-set/equivalent/{id}', [ProductSetController::class, 'destroy_equivalent'])->name('product-set.destroy_equivalent');
+    Route::post('/product-set/vendor-price/{id}', [ProductSetController::class, 'store_vendor_price'])->name('product-set.store_vendor_price');
+    Route::delete('/product-set/vendor-price/{id}', [ProductSetController::class, 'destroy_vendor_price'])->name('product-set.destroy_vendor_price');
+    Route::get('/product-set/search/products', [ProductSetController::class, 'search_products'])->name('product-set.search_products');
 
     // Kanban Board
     Route::get('/kanban', [KanbanController::class, 'index'])->name('kanban.index');
@@ -1781,6 +1795,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::delete('/kanban/boards/{id}', [KanbanController::class, 'destroyBoard'])->name('kanban.boards.destroy');
     
     Route::get('/kanban/boards/{id}/data', [KanbanController::class, 'getBoardData'])->name('kanban.boards.data');
+    Route::post('/kanban/columns/reorder', [KanbanController::class, 'reorderColumns'])->name('kanban.columns.reorder');
     Route::post('/kanban/tasks/move', [KanbanController::class, 'moveTask'])->name('kanban.tasks.move');
     Route::post('/kanban/tasks', [KanbanController::class, 'storeTask'])->name('kanban.tasks.store');
     Route::get('/kanban/tasks/{id}', [KanbanController::class, 'getTaskDetails'])->name('kanban.tasks.show');
@@ -1805,6 +1820,15 @@ Route::group(["middleware" => "auth"], function () {
     // Task Attachments
     Route::post('/kanban/tasks/{id}/attachments', [KanbanController::class, 'uploadAttachment'])->name('kanban.tasks.attachments.upload');
     Route::delete('/kanban/attachments/{id}', [KanbanController::class, 'destroyAttachment'])->name('kanban.tasks.attachments.destroy');
+
+    // Task Expenses (manajemen biaya per kartu)
+    Route::post('/kanban/tasks/{id}/expenses', [KanbanController::class, 'storeTaskExpense'])->name('kanban.tasks.expenses.store');
+    Route::delete('/kanban/task-expenses/{id}', [KanbanController::class, 'destroyTaskExpense'])->name('kanban.tasks.expenses.destroy');
+
+    // Hubungkan / putuskan kartu ke Unit Quotation
+    Route::get('/kanban/linkable-quotations', [KanbanController::class, 'getLinkableQuotations'])->name('kanban.linkable-quotations');
+    Route::post('/kanban/tasks/{id}/link-quotation', [KanbanController::class, 'linkQuotation'])->name('kanban.tasks.link-quotation');
+    Route::post('/kanban/tasks/{id}/unlink-quotation', [KanbanController::class, 'unlinkQuotation'])->name('kanban.tasks.unlink-quotation');
 
     // Task Delete Requests
     Route::post('/kanban/tasks/{id}/request-delete', [KanbanController::class, 'requestDeleteTask'])->name('kanban.tasks.request-delete');
@@ -2190,7 +2214,14 @@ Route::group(["middleware" => "auth"], function () {
                 $q->where('c.ru', $ruType);
             })
             ->when($status, function ($q) use ($status) {
-                $q->where('cs.status', $status);
+                if ($status == 2) {
+                    $q->where(function ($sq) {
+                        $sq->where('cs.status', 2)
+                            ->orWhereNull('cs.status');
+                    });
+                } else {
+                    $q->where('cs.status', $status);
+                }
             })
             ->groupBy(
                 'c.id'
@@ -2349,100 +2380,93 @@ Route::group(["middleware" => "auth"], function () {
         return response()->json(['data' => $merged]);
     });
 
-    Route::get('/db/sales/invoice/ar', function () {
-        $year = request()->get('year');
-        $salesId = request()->get('sales_id');
+    // Optimized Helper for Sales Invoice AR endpoints
+    if (!function_exists('fetchSalesInvoiceData')) {
+        function fetchSalesInvoiceData($tab = 'ar', $year = 'all', $salesId = 'all') {
+            $paymentAggSub = DB::table('payment')
+                ->select(
+                    'id_quotation',
+                    DB::raw('COUNT(*) as payment_count'),
+                    DB::raw('SUM(CASE WHEN type = "DP" AND level = 1 THEN amount ELSE 0 END) as total_dp'),
+                    DB::raw('SUM(CASE WHEN type = "BP" AND level = 1 THEN amount ELSE 0 END) as total_bp'),
+                    DB::raw('SUM(CASE WHEN level = 1 THEN amount ELSE 0 END) as total_payment_level1'),
+                    DB::raw('MAX(id) as last_payment_id'),
+                    DB::raw('MAX(CASE WHEN type = "DP" THEN id ELSE NULL END) as last_dp_id'),
+                    DB::raw('MAX(CASE WHEN type = "BP" THEN id ELSE NULL END) as last_bp_id'),
+                    DB::raw('MAX(CASE WHEN type NOT IN ("DP","BP") THEN id ELSE NULL END) as last_other_id')
+                )
+                ->whereNotNull('id_quotation')
+                ->groupBy('id_quotation');
 
-        // last payment (umum)
-        $lastPaymentSub = DB::table('payment as p1')
-            ->select('p1.id', 'p1.id_quotation', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.overdue', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
+            $qQuery = Invoice::join('quotation', 'quotation.id', '=', 'invoice.id_quotation')
+                ->join('pic', 'pic.id', '=', 'quotation.id_pic')
+                ->join('client', 'client.id', '=', 'pic.id_client')
+                ->join('users', 'users.id', '=', 'quotation.id_sales')
+                ->leftJoinSub($paymentAggSub, 'pay_agg', fn($j) => $j->on('quotation.id', '=', 'pay_agg.id_quotation'))
+                ->leftJoin('payment as pay', 'pay.id', '=', 'pay_agg.last_payment_id')
+                ->leftJoin('payment as dp_last', 'dp_last.id', '=', 'pay_agg.last_dp_id')
+                ->leftJoin('payment as bp_last', 'bp_last.id', '=', 'pay_agg.last_bp_id')
+                ->leftJoin('payment as other_last', 'other_last.id', '=', 'pay_agg.last_other_id')
+                ->where('quotation.status', '100')
+                ->whereNotNull('quotation.po_file')
+                ->whereNotNull('invoice.no_invoice')
+                ->where(function ($q) {
+                    $q->whereNull('pay.method')->orWhere('pay.method', '!=', 'Escrow');
+                });
 
-        // last DP
-        $lastDP = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type="DP" GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
+            $uqPaymentAggSub = DB::table('payment')
+                ->select(
+                    'id_unit_quotation',
+                    DB::raw('COUNT(*) as payment_count'),
+                    DB::raw('SUM(CASE WHEN type = "DP" AND level = 1 THEN amount ELSE 0 END) as total_dp'),
+                    DB::raw('SUM(CASE WHEN type = "BP" AND level = 1 THEN amount ELSE 0 END) as total_bp'),
+                    DB::raw('SUM(CASE WHEN level = 1 THEN amount ELSE 0 END) as total_payment_level1'),
+                    DB::raw('MAX(id) as last_payment_id'),
+                    DB::raw('MAX(CASE WHEN type = "DP" THEN id ELSE NULL END) as last_dp_id'),
+                    DB::raw('MAX(CASE WHEN type = "BP" THEN id ELSE NULL END) as last_bp_id'),
+                    DB::raw('MAX(CASE WHEN type NOT IN ("DP","BP") THEN id ELSE NULL END) as last_other_id')
+                )
+                ->whereNotNull('id_unit_quotation')
+                ->groupBy('id_unit_quotation');
 
-        // last BP
-        $lastBP = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type="BP" GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
+            $uqQuery = Invoice::join('unit_quotation', 'unit_quotation.id', '=', 'invoice.id_unit_quotation')
+                ->join('client', 'client.id', '=', 'unit_quotation.id_client')
+                ->join('users', 'users.id', '=', 'unit_quotation.id_sales')
+                ->leftJoinSub($uqPaymentAggSub, 'pay_agg', fn($j) => $j->on('invoice.id_unit_quotation', '=', 'pay_agg.id_unit_quotation'))
+                ->leftJoin('payment as pay', 'pay.id', '=', 'pay_agg.last_payment_id')
+                ->leftJoin('payment as dp_last', 'dp_last.id', '=', 'pay_agg.last_dp_id')
+                ->leftJoin('payment as bp_last', 'bp_last.id', '=', 'pay_agg.last_bp_id')
+                ->leftJoin('payment as other_last', 'other_last.id', '=', 'pay_agg.last_other_id')
+                ->whereNotNull('invoice.no_invoice')
+                ->whereNotNull('invoice.id_unit_quotation')
+                ->where(function ($q) {
+                    $q->whereNull('pay.method')->orWhere('pay.method', '!=', 'Escrow');
+                });
 
-        // last Other (selain DP/BP)
-        $lastOther = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type NOT IN ("DP","BP") GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
+            if ($tab === 'reftech') {
+                $qQuery->where('client.info', 'Reftech');
+                $uqQuery->where('client.info', 'Reftech');
+            } elseif ($tab === 'kojisha') {
+                $qQuery->where('client.info', 'Kojisha');
+                $uqQuery->where('client.info', 'Kojisha');
+            } elseif ($tab === 'ahmad') {
+                $qQuery->whereIn('quotation.id_sales', [2, 3, 4, 32]);
+                $uqQuery->whereIn('unit_quotation.id_sales', [2, 3, 4, 32]);
+            } elseif ($tab === 'rayi') {
+                $qQuery->whereIn('quotation.id_sales', [1, 16, 23]);
+                $uqQuery->whereIn('unit_quotation.id_sales', [1, 16, 23]);
+            }
 
-        // sum DP / BP level 1
-        $sumDP = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_dp'))
-            ->where('type', 'DP')->where('level', 1)->groupBy('id_quotation');
-        $sumBP = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_bp'))
-            ->where('type', 'BP')->where('level', 1)->groupBy('id_quotation');
+            if ($year && $year !== 'all') {
+                $qQuery->whereYear('invoice.date', (int) $year);
+                $uqQuery->whereYear('invoice.date', (int) $year);
+            }
+            if ($salesId && $salesId !== 'all') {
+                $qQuery->where('quotation.id_sales', $salesId);
+                $uqQuery->where('unit_quotation.id_sales', $salesId);
+            }
 
-        // sum all payments level 1
-        $sumPaymentLvl1 = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_payment_level1'))
-            ->where('level', 1)
-            ->groupBy('id_quotation');
-
-        // count payments per quotation
-        $paymentCountSub = DB::table('payment')
-            ->select('id_quotation', DB::raw('COUNT(*) as payment_count'))
-            ->groupBy('id_quotation');
-
-        $invoice = Invoice::join('quotation', 'quotation.id', '=', 'invoice.id_quotation')
-            ->join('pic', 'pic.id', '=', 'quotation.id_pic')
-            ->join('client', 'client.id', '=', 'pic.id_client')
-            ->join('users', 'users.id', '=', 'quotation.id_sales')
-
-            // join last payment umum (dipertahankan)
-            ->leftJoinSub($lastPaymentSub, 'pay', fn($join) => $join->on('quotation.id', '=', 'pay.id_quotation'))
-
-            // join last DP/BP/Other (hanya info, tidak dicampur ke outstanding)
-            ->leftJoinSub($lastDP, 'dp_last', fn($join) => $join->on('quotation.id', '=', 'dp_last.id_quotation'))
-            ->leftJoinSub($lastBP, 'bp_last', fn($join) => $join->on('quotation.id', '=', 'bp_last.id_quotation'))
-            ->leftJoinSub($lastOther, 'other_last', fn($join) => $join->on('quotation.id', '=', 'other_last.id_quotation'))
-
-            // join sums DP/BP dan sum level1
-            ->leftJoinSub($sumDP, 'dp_sum', fn($join) => $join->on('quotation.id', '=', 'dp_sum.id_quotation'))
-            ->leftJoinSub($sumBP, 'bp_sum', fn($join) => $join->on('quotation.id', '=', 'bp_sum.id_quotation'))
-            ->leftJoinSub($sumPaymentLvl1, 'pay_sum_lvl1', fn($join) => $join->on('quotation.id', '=', 'pay_sum_lvl1.id_quotation'))
-
-            // join payment count
-            ->leftJoinSub($paymentCountSub, 'pay_count', fn($join) => $join->on('quotation.id', '=', 'pay_count.id_quotation'))
-
-            ->where('quotation.status', '100')
-            ->whereNotNull('quotation.po_file')
-            ->whereNotNull('invoice.no_invoice')
-            ->where(function ($q) {
-                $q->whereNull('pay.method')->orWhere('pay.method', '!=', 'Escrow');
-            })
-            ->when($year && $year !== 'all', fn($q) => $q->whereYear('invoice.date', (int) $year))
-            ->when($salesId && $salesId !== 'all', fn($q) => $q->where('quotation.id_sales', $salesId))
-            ->orderByDesc('invoice.date')
-            ->select([
+            $qInvoices = $qQuery->orderByDesc('invoice.date')->select([
                 'invoice.*',
                 DB::raw("SUBSTRING(invoice.no_invoice, 1, 12) as short_invoice"),
                 DB::raw("SUBSTRING(invoice.no_po, 1, 10) as short_po"),
@@ -2453,126 +2477,51 @@ Route::group(["middleware" => "auth"], function () {
                 'quotation.harga_total',
                 'quotation.po_date',
                 'quotation.tax',
-
-                // last payment default (tetap dipertahankan)
                 DB::raw('IFNULL(pay.amount,0) as last_payment_amount'),
                 DB::raw('pay.type as last_payment_type'),
                 DB::raw('pay.level as last_payment_level'),
                 DB::raw('pay.due_date as last_due_date'),
                 DB::raw('pay.overdue as last_overdue'),
-
-                // last DP
                 DB::raw('IFNULL(dp_last.amount,0) as dp_amount'),
                 DB::raw('dp_last.level as dp_level'),
-
-                // last BP
                 DB::raw('IFNULL(bp_last.amount,0) as bp_amount'),
                 DB::raw('bp_last.level as bp_level'),
-
-                // last Other
                 DB::raw('IFNULL(other_last.amount,0) as other_amount'),
                 DB::raw('other_last.type as other_type'),
                 DB::raw('other_last.level as other_level'),
-
-                // sums
-                DB::raw('IFNULL(dp_sum.total_dp,0) as total_dp'),
-                DB::raw('IFNULL(bp_sum.total_bp,0) as total_bp'),
-                DB::raw('IFNULL(pay_sum_lvl1.total_payment_level1,0) as total_payment_level1'),
-
-                // payment count (1 atau lebih)
-                DB::raw('IFNULL(pay_count.payment_count,0) as payment_count'),
-
-                // outstanding logic: pertama cek payment_count
+                DB::raw('IFNULL(pay_agg.total_dp,0) as total_dp'),
+                DB::raw('IFNULL(pay_agg.total_bp,0) as total_bp'),
+                DB::raw('IFNULL(pay_agg.total_payment_level1,0) as total_payment_level1'),
+                DB::raw('IFNULL(pay_agg.payment_count,0) as payment_count'),
                 DB::raw("
+                    CASE
+                        WHEN IFNULL(pay_agg.payment_count,0) = 1 THEN (
                             CASE
-                -- kalau hanya 1 payment
-                WHEN IFNULL(pay_count.payment_count,0) = 1
-                    THEN (
-                        CASE
-                            -- kalau method DP
-                            WHEN pay.method = 'DP' THEN
-                                CASE
-                                    WHEN IFNULL(pay.level,0) = 0 THEN quotation.harga_total
-                                    ELSE quotation.harga_total - IFNULL(pay.amount,0)
-                                END
+                                WHEN pay.method = 'DP' THEN
+                                    CASE WHEN IFNULL(pay.level,0) = 0 THEN quotation.harga_total ELSE quotation.harga_total - IFNULL(pay.amount,0) END
+                                ELSE CASE WHEN IFNULL(pay.level,0) = 0 THEN quotation.harga_total ELSE 0 END
+                            END
+                        )
+                        WHEN IFNULL(pay_agg.payment_count,0) > 1 THEN (
+                            CASE
+                                WHEN IFNULL(pay_agg.total_dp,0) = 0 AND IFNULL(pay_agg.total_bp,0) = 0 THEN quotation.harga_total
+                                WHEN IFNULL(pay_agg.total_dp,0) > 0 AND IFNULL(pay_agg.total_bp,0) = 0 THEN quotation.harga_total - IFNULL(pay_agg.total_dp,0)
+                                WHEN IFNULL(pay_agg.total_dp,0) > 0 AND IFNULL(pay_agg.total_bp,0) > 0 THEN 0
+                                ELSE quotation.harga_total
+                            END
+                        )
+                        ELSE quotation.harga_total
+                    END as outstanding
+                ")
+            ])->get();
 
-                            -- kalau bukan DP
-                            ELSE (
-                                CASE
-                                    WHEN IFNULL(pay.level,0) = 0 THEN quotation.harga_total
-                                    ELSE 0
-                                END
-                            )
-                        END
-                    )
-
-                -- kalau lebih dari 1 payment
-                WHEN IFNULL(pay_count.payment_count,0) > 1
-                    THEN (
-                        CASE
-                            WHEN IFNULL(dp_sum.total_dp,0) = 0 AND IFNULL(bp_sum.total_bp,0) = 0
-                                THEN quotation.harga_total
-                            WHEN IFNULL(dp_sum.total_dp,0) > 0 AND IFNULL(bp_sum.total_bp,0) = 0
-                                THEN quotation.harga_total - IFNULL(dp_sum.total_dp,0)
-                            WHEN IFNULL(dp_sum.total_dp,0) > 0 AND IFNULL(bp_sum.total_bp,0) > 0
-                                THEN 0
-                            ELSE quotation.harga_total
-                        END
-                    )
-
-                ELSE quotation.harga_total
-            END as outstanding
-            ")
-            ])
-            ->get();
-
-        // Unit quotation AR — payment subs keyed by id_unit_quotation
-        $uqLastPaymentSub = DB::table('payment as p1')
-            ->select('p1.id', 'p1.id_unit_quotation', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.overdue', 'p1.method', 'p1.created_at')
-            ->join(DB::raw('(SELECT id_unit_quotation AS uq_id, MAX(id) as max_id FROM payment WHERE id_unit_quotation IS NOT NULL GROUP BY id_unit_quotation) as p2'), 'p1.id', '=', 'p2.max_id');
-        $uqLastDP = DB::table('payment as p1')
-            ->select('p1.id_unit_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(DB::raw('(SELECT id_unit_quotation AS uq_id, MAX(id) as max_id FROM payment WHERE type="DP" AND id_unit_quotation IS NOT NULL GROUP BY id_unit_quotation) as p2'), 'p1.id', '=', 'p2.max_id');
-        $uqLastBP = DB::table('payment as p1')
-            ->select('p1.id_unit_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(DB::raw('(SELECT id_unit_quotation AS uq_id, MAX(id) as max_id FROM payment WHERE type="BP" AND id_unit_quotation IS NOT NULL GROUP BY id_unit_quotation) as p2'), 'p1.id', '=', 'p2.max_id');
-        $uqLastOther = DB::table('payment as p1')
-            ->select('p1.id_unit_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(DB::raw('(SELECT id_unit_quotation AS uq_id, MAX(id) as max_id FROM payment WHERE type NOT IN ("DP","BP") AND id_unit_quotation IS NOT NULL GROUP BY id_unit_quotation) as p2'), 'p1.id', '=', 'p2.max_id');
-        $uqSumDP = DB::table('payment')->select('id_unit_quotation', DB::raw('SUM(amount) as total_dp'))
-            ->where('type', 'DP')->where('level', 1)->whereNotNull('id_unit_quotation')->groupBy('id_unit_quotation');
-        $uqSumBP = DB::table('payment')->select('id_unit_quotation', DB::raw('SUM(amount) as total_bp'))
-            ->where('type', 'BP')->where('level', 1)->whereNotNull('id_unit_quotation')->groupBy('id_unit_quotation');
-        $uqSumPaymentLvl1 = DB::table('payment')->select('id_unit_quotation', DB::raw('SUM(amount) as total_payment_level1'))
-            ->where('level', 1)->whereNotNull('id_unit_quotation')->groupBy('id_unit_quotation');
-        $uqPaymentCountSub = DB::table('payment')->select('id_unit_quotation', DB::raw('COUNT(*) as payment_count'))
-            ->whereNotNull('id_unit_quotation')->groupBy('id_unit_quotation');
-
-        $unitInvoice = Invoice::join('unit_quotation', 'unit_quotation.id', '=', 'invoice.id_unit_quotation')
-            ->join('client', 'client.id', '=', 'unit_quotation.id_client')
-            ->join('users', 'users.id', '=', 'unit_quotation.id_sales')
-            ->leftJoinSub($uqLastPaymentSub, 'pay', fn($j) => $j->on('invoice.id_unit_quotation', '=', 'pay.id_unit_quotation'))
-            ->leftJoinSub($uqLastDP, 'dp_last', fn($j) => $j->on('invoice.id_unit_quotation', '=', 'dp_last.id_unit_quotation'))
-            ->leftJoinSub($uqLastBP, 'bp_last', fn($j) => $j->on('invoice.id_unit_quotation', '=', 'bp_last.id_unit_quotation'))
-            ->leftJoinSub($uqLastOther, 'other_last', fn($j) => $j->on('invoice.id_unit_quotation', '=', 'other_last.id_unit_quotation'))
-            ->leftJoinSub($uqSumDP, 'dp_sum', fn($j) => $j->on('invoice.id_unit_quotation', '=', 'dp_sum.id_unit_quotation'))
-            ->leftJoinSub($uqSumBP, 'bp_sum', fn($j) => $j->on('invoice.id_unit_quotation', '=', 'bp_sum.id_unit_quotation'))
-            ->leftJoinSub($uqSumPaymentLvl1, 'pay_sum_lvl1', fn($j) => $j->on('invoice.id_unit_quotation', '=', 'pay_sum_lvl1.id_unit_quotation'))
-            ->leftJoinSub($uqPaymentCountSub, 'pay_count', fn($j) => $j->on('invoice.id_unit_quotation', '=', 'pay_count.id_unit_quotation'))
-            ->where('invoice.flag', 'Reftech')
-            ->whereNotNull('invoice.no_invoice')
-            ->whereNotNull('invoice.id_unit_quotation')
-            ->where(function ($q) {
-                $q->whereNull('pay.method')->orWhere('pay.method', '!=', 'Escrow');
-            })
-            ->when($year && $year !== 'all', fn($q) => $q->whereYear('invoice.date', (int) $year))
-            ->when($salesId && $salesId !== 'all', fn($q) => $q->where('unit_quotation.id_sales', $salesId))
-            ->orderByDesc('invoice.date')
-            ->select([
+            $uqInvoices = $uqQuery->orderByDesc('invoice.date')->select([
                 'invoice.*',
                 DB::raw("SUBSTRING(invoice.no_invoice, 1, 12) as short_invoice"),
                 DB::raw("SUBSTRING(invoice.no_po, 1, 10) as short_po"),
-                'client.company', 'client.info as bendera', 'users.name as name',
+                'client.company',
+                'client.info as bendera',
+                'users.name as name',
                 DB::raw("DATE_FORMAT(invoice.date, '%d-%m-%Y') as tanggal"),
                 DB::raw('unit_quotation.total as harga_total'),
                 DB::raw('unit_quotation.created_at as po_date'),
@@ -2582,744 +2531,59 @@ Route::group(["middleware" => "auth"], function () {
                 DB::raw('pay.level as last_payment_level'),
                 DB::raw('pay.due_date as last_due_date'),
                 DB::raw('pay.overdue as last_overdue'),
-                DB::raw('IFNULL(dp_last.amount,0) as dp_amount'), DB::raw('dp_last.level as dp_level'),
-                DB::raw('IFNULL(bp_last.amount,0) as bp_amount'), DB::raw('bp_last.level as bp_level'),
-                DB::raw('IFNULL(other_last.amount,0) as other_amount'), DB::raw('other_last.type as other_type'), DB::raw('other_last.level as other_level'),
-                DB::raw('IFNULL(dp_sum.total_dp,0) as total_dp'),
-                DB::raw('IFNULL(bp_sum.total_bp,0) as total_bp'),
-                DB::raw('IFNULL(pay_sum_lvl1.total_payment_level1,0) as total_payment_level1'),
-                DB::raw('IFNULL(pay_count.payment_count,0) as payment_count'),
+                DB::raw('IFNULL(dp_last.amount,0) as dp_amount'),
+                DB::raw('dp_last.level as dp_level'),
+                DB::raw('IFNULL(bp_last.amount,0) as bp_amount'),
+                DB::raw('bp_last.level as bp_level'),
+                DB::raw('IFNULL(other_last.amount,0) as other_amount'),
+                DB::raw('other_last.type as other_type'),
+                DB::raw('other_last.level as other_level'),
+                DB::raw('IFNULL(pay_agg.total_dp,0) as total_dp'),
+                DB::raw('IFNULL(pay_agg.total_bp,0) as total_bp'),
+                DB::raw('IFNULL(pay_agg.total_payment_level1,0) as total_payment_level1'),
+                DB::raw('IFNULL(pay_agg.payment_count,0) as payment_count'),
                 DB::raw("
                     CASE
-                        WHEN IFNULL(pay_count.payment_count,0) = 1 THEN (
+                        WHEN IFNULL(pay_agg.payment_count,0) = 1 THEN (
                             CASE
                                 WHEN pay.method = 'DP' THEN
                                     CASE WHEN IFNULL(pay.level,0) = 0 THEN unit_quotation.total ELSE unit_quotation.total - IFNULL(pay.amount,0) END
                                 ELSE CASE WHEN IFNULL(pay.level,0) = 0 THEN unit_quotation.total ELSE 0 END
                             END
                         )
-                        WHEN IFNULL(pay_count.payment_count,0) > 1 THEN (
+                        WHEN IFNULL(pay_agg.payment_count,0) > 1 THEN (
                             CASE
-                                WHEN IFNULL(dp_sum.total_dp,0) = 0 AND IFNULL(bp_sum.total_bp,0) = 0 THEN unit_quotation.total
-                                WHEN IFNULL(dp_sum.total_dp,0) > 0 AND IFNULL(bp_sum.total_bp,0) = 0 THEN unit_quotation.total - IFNULL(dp_sum.total_dp,0)
-                                WHEN IFNULL(dp_sum.total_dp,0) > 0 AND IFNULL(bp_sum.total_bp,0) > 0 THEN 0
+                                WHEN IFNULL(pay_agg.total_dp,0) = 0 AND IFNULL(pay_agg.total_bp,0) = 0 THEN unit_quotation.total
+                                WHEN IFNULL(pay_agg.total_dp,0) > 0 AND IFNULL(pay_agg.total_bp,0) = 0 THEN unit_quotation.total - IFNULL(pay_agg.total_dp,0)
+                                WHEN IFNULL(pay_agg.total_dp,0) > 0 AND IFNULL(pay_agg.total_bp,0) > 0 THEN 0
                                 ELSE unit_quotation.total
                             END
                         )
                         ELSE unit_quotation.total
                     END as outstanding
-                "),
-            ])
-            ->get();
+                ")
+            ])->get();
 
-        $invoice = $invoice->merge($unitInvoice);
-        return response()->json(['data' => $invoice]);
+            return $qInvoices->merge($uqInvoices);
+        }
+    }
+
+    Route::get('/db/sales/invoice/ar', function () {
+        return response()->json(['data' => fetchSalesInvoiceData('ar', request()->get('year'), request()->get('sales_id'))]);
     });
     Route::get('/db/sales/invoice/reftech', function () {
-        $year = request()->get('year');
-        $salesId = request()->get('sales_id');
-
-        // last payment (umum)
-        $lastPaymentSub = DB::table('payment as p1')
-            ->select('p1.id', 'p1.id_quotation', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.overdue', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // last DP
-        $lastDP = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type="DP" GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // last BP
-        $lastBP = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type="BP" GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // last Other (selain DP/BP)
-        $lastOther = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type NOT IN ("DP","BP") GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // sum DP / BP level 1
-        $sumDP = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_dp'))
-            ->where('type', 'DP')->where('level', 1)->groupBy('id_quotation');
-        $sumBP = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_bp'))
-            ->where('type', 'BP')->where('level', 1)->groupBy('id_quotation');
-
-        // sum all payments level 1
-        $sumPaymentLvl1 = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_payment_level1'))
-            ->where('level', 1)
-            ->groupBy('id_quotation');
-
-        // count payments per quotation
-        $paymentCountSub = DB::table('payment')
-            ->select('id_quotation', DB::raw('COUNT(*) as payment_count'))
-            ->groupBy('id_quotation');
-
-        $invoice = Invoice::join('quotation', 'quotation.id', '=', 'invoice.id_quotation')
-            ->join('pic', 'pic.id', '=', 'quotation.id_pic')
-            ->join('client', 'client.id', '=', 'pic.id_client')
-            ->join('users', 'users.id', '=', 'quotation.id_sales')
-
-            // join last payment umum (dipertahankan)
-            ->leftJoinSub($lastPaymentSub, 'pay', fn($join) => $join->on('quotation.id', '=', 'pay.id_quotation'))
-
-            // join last DP/BP/Other (hanya info, tidak dicampur ke outstanding)
-            ->leftJoinSub($lastDP, 'dp_last', fn($join) => $join->on('quotation.id', '=', 'dp_last.id_quotation'))
-            ->leftJoinSub($lastBP, 'bp_last', fn($join) => $join->on('quotation.id', '=', 'bp_last.id_quotation'))
-            ->leftJoinSub($lastOther, 'other_last', fn($join) => $join->on('quotation.id', '=', 'other_last.id_quotation'))
-
-            // join sums DP/BP dan sum level1
-            ->leftJoinSub($sumDP, 'dp_sum', fn($join) => $join->on('quotation.id', '=', 'dp_sum.id_quotation'))
-            ->leftJoinSub($sumBP, 'bp_sum', fn($join) => $join->on('quotation.id', '=', 'bp_sum.id_quotation'))
-            ->leftJoinSub($sumPaymentLvl1, 'pay_sum_lvl1', fn($join) => $join->on('quotation.id', '=', 'pay_sum_lvl1.id_quotation'))
-
-            // join payment count
-            ->leftJoinSub($paymentCountSub, 'pay_count', fn($join) => $join->on('quotation.id', '=', 'pay_count.id_quotation'))
-
-            ->where('client.info', 'Reftech')
-            ->where('quotation.status', '100')
-            ->whereNotNull('quotation.po_file')
-            ->whereNotNull('invoice.no_invoice')
-            ->when($year && $year !== 'all', fn($q) => $q->whereYear('invoice.date', (int) $year))
-            ->when($salesId && $salesId !== 'all', fn($q) => $q->where('quotation.id_sales', $salesId))
-            ->orderByDesc('invoice.date')
-            ->select([
-                'invoice.*',
-                DB::raw("SUBSTRING(invoice.no_invoice, 1, 12) as short_invoice"),
-                DB::raw("SUBSTRING(invoice.no_po, 1, 10) as short_po"),
-                'client.company',
-                'client.info as bendera',
-                'users.name as name',
-                DB::raw("DATE_FORMAT(invoice.date, '%d-%m-%Y') as tanggal"),
-                'quotation.harga_total',
-                'quotation.po_date',
-                'quotation.tax',
-
-                // last payment default (tetap dipertahankan)
-                DB::raw('IFNULL(pay.amount,0) as last_payment_amount'),
-                DB::raw('pay.type as last_payment_type'),
-                DB::raw('pay.level as last_payment_level'),
-                DB::raw('pay.due_date as last_due_date'),
-                DB::raw('pay.overdue as last_overdue'),
-
-                // last DP
-                DB::raw('IFNULL(dp_last.amount,0) as dp_amount'),
-                DB::raw('dp_last.level as dp_level'),
-
-                // last BP
-                DB::raw('IFNULL(bp_last.amount,0) as bp_amount'),
-                DB::raw('bp_last.level as bp_level'),
-
-                // last Other
-                DB::raw('IFNULL(other_last.amount,0) as other_amount'),
-                DB::raw('other_last.type as other_type'),
-                DB::raw('other_last.level as other_level'),
-
-                // sums
-                DB::raw('IFNULL(dp_sum.total_dp,0) as total_dp'),
-                DB::raw('IFNULL(bp_sum.total_bp,0) as total_bp'),
-                DB::raw('IFNULL(pay_sum_lvl1.total_payment_level1,0) as total_payment_level1'),
-
-                // payment count (1 atau lebih)
-                DB::raw('IFNULL(pay_count.payment_count,0) as payment_count'),
-
-                // outstanding logic: pertama cek payment_count
-                DB::raw("
-                            CASE
-                -- kalau hanya 1 payment
-                WHEN IFNULL(pay_count.payment_count,0) = 1
-                    THEN (
-                        CASE
-                            -- kalau method DP
-                            WHEN pay.method = 'DP' THEN
-                                CASE
-                                    WHEN IFNULL(pay.level,0) = 0 THEN quotation.harga_total
-                                    ELSE quotation.harga_total - IFNULL(pay.amount,0)
-                                END
-
-                            -- kalau bukan DP
-                            ELSE (
-                                CASE
-                                    WHEN IFNULL(pay.level,0) = 0 THEN quotation.harga_total
-                                    ELSE 0
-                                END
-                            )
-                        END
-                    )
-
-                -- kalau lebih dari 1 payment
-                WHEN IFNULL(pay_count.payment_count,0) > 1
-                    THEN (
-                        CASE
-                            WHEN IFNULL(dp_sum.total_dp,0) = 0 AND IFNULL(bp_sum.total_bp,0) = 0
-                                THEN quotation.harga_total
-                            WHEN IFNULL(dp_sum.total_dp,0) > 0 AND IFNULL(bp_sum.total_bp,0) = 0
-                                THEN quotation.harga_total - IFNULL(dp_sum.total_dp,0)
-                            WHEN IFNULL(dp_sum.total_dp,0) > 0 AND IFNULL(bp_sum.total_bp,0) > 0
-                                THEN 0
-                            ELSE quotation.harga_total
-                        END
-                    )
-
-                ELSE quotation.harga_total
-            END as outstanding
-            ")
-            ])
-            ->get();
-        return response()->json(['data' => $invoice]);
+        return response()->json(['data' => fetchSalesInvoiceData('reftech', request()->get('year'), request()->get('sales_id'))]);
     });
     Route::get('/db/sales/invoice/kojisha', function () {
-        $year = request()->get('year');
-        $salesId = request()->get('sales_id');
-
-        // last payment (umum)
-        $lastPaymentSub = DB::table('payment as p1')
-            ->select('p1.id', 'p1.id_quotation', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.overdue', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // last DP
-        $lastDP = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type="DP" GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // last BP
-        $lastBP = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type="BP" GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // last Other (selain DP/BP)
-        $lastOther = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type NOT IN ("DP","BP") GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // sum DP / BP level 1
-        $sumDP = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_dp'))
-            ->where('type', 'DP')->where('level', 1)->groupBy('id_quotation');
-        $sumBP = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_bp'))
-            ->where('type', 'BP')->where('level', 1)->groupBy('id_quotation');
-
-        // sum all payments level 1
-        $sumPaymentLvl1 = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_payment_level1'))
-            ->where('level', 1)
-            ->groupBy('id_quotation');
-
-        // count payments per quotation
-        $paymentCountSub = DB::table('payment')
-            ->select('id_quotation', DB::raw('COUNT(*) as payment_count'))
-            ->groupBy('id_quotation');
-
-        $invoice = Invoice::join('quotation', 'quotation.id', '=', 'invoice.id_quotation')
-            ->join('pic', 'pic.id', '=', 'quotation.id_pic')
-            ->join('client', 'client.id', '=', 'pic.id_client')
-            ->join('users', 'users.id', '=', 'quotation.id_sales')
-
-            // join last payment umum (dipertahankan)
-            ->leftJoinSub($lastPaymentSub, 'pay', fn($join) => $join->on('quotation.id', '=', 'pay.id_quotation'))
-
-            // join last DP/BP/Other (hanya info, tidak dicampur ke outstanding)
-            ->leftJoinSub($lastDP, 'dp_last', fn($join) => $join->on('quotation.id', '=', 'dp_last.id_quotation'))
-            ->leftJoinSub($lastBP, 'bp_last', fn($join) => $join->on('quotation.id', '=', 'bp_last.id_quotation'))
-            ->leftJoinSub($lastOther, 'other_last', fn($join) => $join->on('quotation.id', '=', 'other_last.id_quotation'))
-
-            // join sums DP/BP dan sum level1
-            ->leftJoinSub($sumDP, 'dp_sum', fn($join) => $join->on('quotation.id', '=', 'dp_sum.id_quotation'))
-            ->leftJoinSub($sumBP, 'bp_sum', fn($join) => $join->on('quotation.id', '=', 'bp_sum.id_quotation'))
-            ->leftJoinSub($sumPaymentLvl1, 'pay_sum_lvl1', fn($join) => $join->on('quotation.id', '=', 'pay_sum_lvl1.id_quotation'))
-
-            // join payment count
-            ->leftJoinSub($paymentCountSub, 'pay_count', fn($join) => $join->on('quotation.id', '=', 'pay_count.id_quotation'))
-
-            ->where('client.info', 'Kojisha')
-            ->where('quotation.status', '100')
-            ->whereNotNull('quotation.po_file')
-            ->whereNotNull('invoice.no_invoice')
-            ->when($year && $year !== 'all', fn($q) => $q->whereYear('invoice.date', (int) $year))
-            ->when($salesId && $salesId !== 'all', fn($q) => $q->where('quotation.id_sales', $salesId))
-            ->orderByDesc('invoice.date')
-            ->select([
-                'invoice.*',
-                DB::raw("SUBSTRING(invoice.no_invoice, 1, 12) as short_invoice"),
-                DB::raw("SUBSTRING(invoice.no_po, 1, 10) as short_po"),
-                'client.company',
-                'client.info as bendera',
-                'users.name as name',
-                DB::raw("DATE_FORMAT(invoice.date, '%d-%m-%Y') as tanggal"),
-                'quotation.harga_total',
-                'quotation.po_date',
-                'quotation.tax',
-
-                // last payment default (tetap dipertahankan)
-                DB::raw('IFNULL(pay.amount,0) as last_payment_amount'),
-                DB::raw('pay.type as last_payment_type'),
-                DB::raw('pay.level as last_payment_level'),
-                DB::raw('pay.due_date as last_due_date'),
-                DB::raw('pay.overdue as last_overdue'),
-
-                // last DP
-                DB::raw('IFNULL(dp_last.amount,0) as dp_amount'),
-                DB::raw('dp_last.level as dp_level'),
-
-                // last BP
-                DB::raw('IFNULL(bp_last.amount,0) as bp_amount'),
-                DB::raw('bp_last.level as bp_level'),
-
-                // last Other
-                DB::raw('IFNULL(other_last.amount,0) as other_amount'),
-                DB::raw('other_last.type as other_type'),
-                DB::raw('other_last.level as other_level'),
-
-                // sums
-                DB::raw('IFNULL(dp_sum.total_dp,0) as total_dp'),
-                DB::raw('IFNULL(bp_sum.total_bp,0) as total_bp'),
-                DB::raw('IFNULL(pay_sum_lvl1.total_payment_level1,0) as total_payment_level1'),
-
-                // payment count (1 atau lebih)
-                DB::raw('IFNULL(pay_count.payment_count,0) as payment_count'),
-
-                // outstanding logic: pertama cek payment_count
-                DB::raw("
-                            CASE
-                -- kalau hanya 1 payment
-                WHEN IFNULL(pay_count.payment_count,0) = 1
-                    THEN (
-                        CASE
-                            -- kalau method DP
-                            WHEN pay.method = 'DP' THEN
-                                CASE
-                                    WHEN IFNULL(pay.level,0) = 0 THEN quotation.harga_total
-                                    ELSE quotation.harga_total - IFNULL(pay.amount,0)
-                                END
-
-                            -- kalau bukan DP
-                            ELSE (
-                                CASE
-                                    WHEN IFNULL(pay.level,0) = 0 THEN quotation.harga_total
-                                    ELSE 0
-                                END
-                            )
-                        END
-                    )
-
-                -- kalau lebih dari 1 payment
-                WHEN IFNULL(pay_count.payment_count,0) > 1
-                    THEN (
-                        CASE
-                            WHEN IFNULL(dp_sum.total_dp,0) = 0 AND IFNULL(bp_sum.total_bp,0) = 0
-                                THEN quotation.harga_total
-                            WHEN IFNULL(dp_sum.total_dp,0) > 0 AND IFNULL(bp_sum.total_bp,0) = 0
-                                THEN quotation.harga_total - IFNULL(dp_sum.total_dp,0)
-                            WHEN IFNULL(dp_sum.total_dp,0) > 0 AND IFNULL(bp_sum.total_bp,0) > 0
-                                THEN 0
-                            ELSE quotation.harga_total
-                        END
-                    )
-
-                ELSE quotation.harga_total
-            END as outstanding
-            ")
-            ])
-            ->get();
-        return response()->json(['data' => $invoice]);
+        return response()->json(['data' => fetchSalesInvoiceData('kojisha', request()->get('year'), request()->get('sales_id'))]);
     });
-
     Route::get('/db/sales/invoice/ahmad', function () {
-        $year = request()->get('year');
-        $salesId = request()->get('sales_id');
-
-        // last payment (umum)
-        $lastPaymentSub = DB::table('payment as p1')
-            ->select('p1.id', 'p1.id_quotation', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.overdue', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // last DP
-        $lastDP = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type="DP" GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // last BP
-        $lastBP = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type="BP" GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // last Other (selain DP/BP)
-        $lastOther = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type NOT IN ("DP","BP") GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // sum DP / BP level 1
-        $sumDP = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_dp'))
-            ->where('type', 'DP')->where('level', 1)->groupBy('id_quotation');
-        $sumBP = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_bp'))
-            ->where('type', 'BP')->where('level', 1)->groupBy('id_quotation');
-
-        // sum all payments level 1
-        $sumPaymentLvl1 = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_payment_level1'))
-            ->where('level', 1)
-            ->groupBy('id_quotation');
-
-        // count payments per quotation
-        $paymentCountSub = DB::table('payment')
-            ->select('id_quotation', DB::raw('COUNT(*) as payment_count'))
-            ->groupBy('id_quotation');
-
-        $invoice = Invoice::join('quotation', 'quotation.id', '=', 'invoice.id_quotation')
-            ->join('pic', 'pic.id', '=', 'quotation.id_pic')
-            ->join('client', 'client.id', '=', 'pic.id_client')
-            ->join('users', 'users.id', '=', 'quotation.id_sales')
-
-            // join last payment umum (dipertahankan)
-            ->leftJoinSub($lastPaymentSub, 'pay', fn($join) => $join->on('quotation.id', '=', 'pay.id_quotation'))
-
-            // join last DP/BP/Other (hanya info, tidak dicampur ke outstanding)
-            ->leftJoinSub($lastDP, 'dp_last', fn($join) => $join->on('quotation.id', '=', 'dp_last.id_quotation'))
-            ->leftJoinSub($lastBP, 'bp_last', fn($join) => $join->on('quotation.id', '=', 'bp_last.id_quotation'))
-            ->leftJoinSub($lastOther, 'other_last', fn($join) => $join->on('quotation.id', '=', 'other_last.id_quotation'))
-
-            // join sums DP/BP dan sum level1
-            ->leftJoinSub($sumDP, 'dp_sum', fn($join) => $join->on('quotation.id', '=', 'dp_sum.id_quotation'))
-            ->leftJoinSub($sumBP, 'bp_sum', fn($join) => $join->on('quotation.id', '=', 'bp_sum.id_quotation'))
-            ->leftJoinSub($sumPaymentLvl1, 'pay_sum_lvl1', fn($join) => $join->on('quotation.id', '=', 'pay_sum_lvl1.id_quotation'))
-
-            // join payment count
-            ->leftJoinSub($paymentCountSub, 'pay_count', fn($join) => $join->on('quotation.id', '=', 'pay_count.id_quotation'))
-
-            ->where('quotation.status', '100')
-            ->whereIn('quotation.id_sales', [2, 3, 4, 32])
-            ->whereNotNull('quotation.po_file')
-            ->whereNotNull('invoice.no_invoice')
-            ->when($year && $year !== 'all', fn($q) => $q->whereYear('invoice.date', (int) $year))
-            ->when($salesId && $salesId !== 'all', fn($q) => $q->where('quotation.id_sales', $salesId))
-            ->orderByDesc('invoice.date')
-            ->select([
-                'invoice.*',
-                DB::raw("SUBSTRING(invoice.no_invoice, 1, 12) as short_invoice"),
-                DB::raw("SUBSTRING(invoice.no_po, 1, 10) as short_po"),
-                'client.company',
-                'client.info as bendera',
-                'users.name as name',
-                DB::raw("DATE_FORMAT(invoice.date, '%d-%m-%Y') as tanggal"),
-                'quotation.harga_total',
-                'quotation.po_date',
-                'quotation.tax',
-
-                // last payment default (tetap dipertahankan)
-                DB::raw('IFNULL(pay.amount,0) as last_payment_amount'),
-                DB::raw('pay.type as last_payment_type'),
-                DB::raw('pay.level as last_payment_level'),
-                DB::raw('pay.due_date as last_due_date'),
-                DB::raw('pay.overdue as last_overdue'),
-
-                // last DP
-                DB::raw('IFNULL(dp_last.amount,0) as dp_amount'),
-                DB::raw('dp_last.level as dp_level'),
-
-                // last BP
-                DB::raw('IFNULL(bp_last.amount,0) as bp_amount'),
-                DB::raw('bp_last.level as bp_level'),
-
-                // last Other
-                DB::raw('IFNULL(other_last.amount,0) as other_amount'),
-                DB::raw('other_last.type as other_type'),
-                DB::raw('other_last.level as other_level'),
-
-                // sums
-                DB::raw('IFNULL(dp_sum.total_dp,0) as total_dp'),
-                DB::raw('IFNULL(bp_sum.total_bp,0) as total_bp'),
-                DB::raw('IFNULL(pay_sum_lvl1.total_payment_level1,0) as total_payment_level1'),
-
-                // payment count (1 atau lebih)
-                DB::raw('IFNULL(pay_count.payment_count,0) as payment_count'),
-
-                // outstanding logic: pertama cek payment_count
-                DB::raw("
-                            CASE
-                -- kalau hanya 1 payment
-                WHEN IFNULL(pay_count.payment_count,0) = 1
-                    THEN (
-                        CASE
-                            -- kalau method DP
-                            WHEN pay.method = 'DP' THEN
-                                CASE
-                                    WHEN IFNULL(pay.level,0) = 0 THEN quotation.harga_total
-                                    ELSE quotation.harga_total - IFNULL(pay.amount,0)
-                                END
-
-                            -- kalau bukan DP
-                            ELSE (
-                                CASE
-                                    WHEN IFNULL(pay.level,0) = 0 THEN quotation.harga_total
-                                    ELSE 0
-                                END
-                            )
-                        END
-                    )
-
-                -- kalau lebih dari 1 payment
-                WHEN IFNULL(pay_count.payment_count,0) > 1
-                    THEN (
-                        CASE
-                            WHEN IFNULL(dp_sum.total_dp,0) = 0 AND IFNULL(bp_sum.total_bp,0) = 0
-                                THEN quotation.harga_total
-                            WHEN IFNULL(dp_sum.total_dp,0) > 0 AND IFNULL(bp_sum.total_bp,0) = 0
-                                THEN quotation.harga_total - IFNULL(dp_sum.total_dp,0)
-                            WHEN IFNULL(dp_sum.total_dp,0) > 0 AND IFNULL(bp_sum.total_bp,0) > 0
-                                THEN 0
-                            ELSE quotation.harga_total
-                        END
-                    )
-
-                ELSE quotation.harga_total
-            END as outstanding
-            ")
-            ])
-            ->get();
-        return response()->json(['data' => $invoice]);
+        return response()->json(['data' => fetchSalesInvoiceData('ahmad', request()->get('year'), request()->get('sales_id'))]);
     });
     Route::get('/db/sales/invoice/rayi', function () {
-        $year = request()->get('year');
-        $salesId = request()->get('sales_id');
-
-        // last payment (umum)
-        $lastPaymentSub = DB::table('payment as p1')
-            ->select('p1.id', 'p1.id_quotation', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.overdue', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // last DP
-        $lastDP = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type="DP" GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // last BP
-        $lastBP = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type="BP" GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // last Other (selain DP/BP)
-        $lastOther = DB::table('payment as p1')
-            ->select('p1.id_quotation', 'p1.id', 'p1.amount', 'p1.type', 'p1.level', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(
-                DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment WHERE type NOT IN ("DP","BP") GROUP BY id_quotation) as p2'),
-                'p1.id',
-                '=',
-                'p2.max_id'
-            );
-
-        // sum DP / BP level 1
-        $sumDP = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_dp'))
-            ->where('type', 'DP')->where('level', 1)->groupBy('id_quotation');
-        $sumBP = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_bp'))
-            ->where('type', 'BP')->where('level', 1)->groupBy('id_quotation');
-
-        // sum all payments level 1
-        $sumPaymentLvl1 = DB::table('payment')
-            ->select('id_quotation', DB::raw('SUM(amount) as total_payment_level1'))
-            ->where('level', 1)
-            ->groupBy('id_quotation');
-
-        // count payments per quotation
-        $paymentCountSub = DB::table('payment')
-            ->select('id_quotation', DB::raw('COUNT(*) as payment_count'))
-            ->groupBy('id_quotation');
-
-        $invoice = Invoice::join('quotation', 'quotation.id', '=', 'invoice.id_quotation')
-            ->join('pic', 'pic.id', '=', 'quotation.id_pic')
-            ->join('client', 'client.id', '=', 'pic.id_client')
-            ->join('users', 'users.id', '=', 'quotation.id_sales')
-
-            // join last payment umum (dipertahankan)
-            ->leftJoinSub($lastPaymentSub, 'pay', fn($join) => $join->on('quotation.id', '=', 'pay.id_quotation'))
-
-            // join last DP/BP/Other (hanya info, tidak dicampur ke outstanding)
-            ->leftJoinSub($lastDP, 'dp_last', fn($join) => $join->on('quotation.id', '=', 'dp_last.id_quotation'))
-            ->leftJoinSub($lastBP, 'bp_last', fn($join) => $join->on('quotation.id', '=', 'bp_last.id_quotation'))
-            ->leftJoinSub($lastOther, 'other_last', fn($join) => $join->on('quotation.id', '=', 'other_last.id_quotation'))
-
-            // join sums DP/BP dan sum level1
-            ->leftJoinSub($sumDP, 'dp_sum', fn($join) => $join->on('quotation.id', '=', 'dp_sum.id_quotation'))
-            ->leftJoinSub($sumBP, 'bp_sum', fn($join) => $join->on('quotation.id', '=', 'bp_sum.id_quotation'))
-            ->leftJoinSub($sumPaymentLvl1, 'pay_sum_lvl1', fn($join) => $join->on('quotation.id', '=', 'pay_sum_lvl1.id_quotation'))
-
-            // join payment count
-            ->leftJoinSub($paymentCountSub, 'pay_count', fn($join) => $join->on('quotation.id', '=', 'pay_count.id_quotation'))
-
-            ->where('quotation.status', '100')
-            ->whereIn('quotation.id_sales', [1, 16, 23])
-            ->whereNotNull('quotation.po_file')
-            ->whereNotNull('invoice.no_invoice')
-            ->when($year && $year !== 'all', fn($q) => $q->whereYear('invoice.date', (int) $year))
-            ->when($salesId && $salesId !== 'all', fn($q) => $q->where('quotation.id_sales', $salesId))
-            ->orderByDesc('invoice.date')
-            ->select([
-                'invoice.*',
-                DB::raw("SUBSTRING(invoice.no_invoice, 1, 12) as short_invoice"),
-                DB::raw("SUBSTRING(invoice.no_po, 1, 10) as short_po"),
-                'client.company',
-                'client.info as bendera',
-                'users.name as name',
-                DB::raw("DATE_FORMAT(invoice.date, '%d-%m-%Y') as tanggal"),
-                'quotation.harga_total',
-                'quotation.po_date',
-                'quotation.tax',
-
-                // last payment default (tetap dipertahankan)
-                DB::raw('IFNULL(pay.amount,0) as last_payment_amount'),
-                DB::raw('pay.type as last_payment_type'),
-                DB::raw('pay.level as last_payment_level'),
-                DB::raw('pay.due_date as last_due_date'),
-                DB::raw('pay.overdue as last_overdue'),
-
-                // last DP
-                DB::raw('IFNULL(dp_last.amount,0) as dp_amount'),
-                DB::raw('dp_last.level as dp_level'),
-
-                // last BP
-                DB::raw('IFNULL(bp_last.amount,0) as bp_amount'),
-                DB::raw('bp_last.level as bp_level'),
-
-                // last Other
-                DB::raw('IFNULL(other_last.amount,0) as other_amount'),
-                DB::raw('other_last.type as other_type'),
-                DB::raw('other_last.level as other_level'),
-
-                // sums
-                DB::raw('IFNULL(dp_sum.total_dp,0) as total_dp'),
-                DB::raw('IFNULL(bp_sum.total_bp,0) as total_bp'),
-                DB::raw('IFNULL(pay_sum_lvl1.total_payment_level1,0) as total_payment_level1'),
-
-                // payment count (1 atau lebih)
-                DB::raw('IFNULL(pay_count.payment_count,0) as payment_count'),
-
-                // outstanding logic: pertama cek payment_count
-                DB::raw("
-                            CASE
-                -- kalau hanya 1 payment
-                WHEN IFNULL(pay_count.payment_count,0) = 1
-                    THEN (
-                        CASE
-                            -- kalau method DP
-                            WHEN pay.method = 'DP' THEN
-                                CASE
-                                    WHEN IFNULL(pay.level,0) = 0 THEN quotation.harga_total
-                                    ELSE quotation.harga_total - IFNULL(pay.amount,0)
-                                END
-
-                            -- kalau bukan DP
-                            ELSE (
-                                CASE
-                                    WHEN IFNULL(pay.level,0) = 0 THEN quotation.harga_total
-                                    ELSE 0
-                                END
-                            )
-                        END
-                    )
-
-                -- kalau lebih dari 1 payment
-                WHEN IFNULL(pay_count.payment_count,0) > 1
-                    THEN (
-                        CASE
-                            WHEN IFNULL(dp_sum.total_dp,0) = 0 AND IFNULL(bp_sum.total_bp,0) = 0
-                                THEN quotation.harga_total
-                            WHEN IFNULL(dp_sum.total_dp,0) > 0 AND IFNULL(bp_sum.total_bp,0) = 0
-                                THEN quotation.harga_total - IFNULL(dp_sum.total_dp,0)
-                            WHEN IFNULL(dp_sum.total_dp,0) > 0 AND IFNULL(bp_sum.total_bp,0) > 0
-                                THEN 0
-                            ELSE quotation.harga_total
-                        END
-                    )
-
-                ELSE quotation.harga_total
-            END as outstanding
-            ")
-            ])
-            ->get();
-        return response()->json(['data' => $invoice]);
+        return response()->json(['data' => fetchSalesInvoiceData('rayi', request()->get('year'), request()->get('sales_id'))]);
     });
+
     Route::get('/db/sales/invoice/escrow', function () {
         $year = request()->get('year');
         $salesId = request()->get('sales_id');
@@ -3364,7 +2628,6 @@ Route::group(["middleware" => "auth"], function () {
             ->sum('quotation.harga_total');
 
         $uInvoice = Invoice::join('unit_quotation', 'unit_quotation.id', '=', 'invoice.id_unit_quotation')
-            ->where('invoice.flag', 'Reftech')
             ->whereNotNull('invoice.no_invoice')
             ->whereNotNull('invoice.id_unit_quotation')
             ->when($year && $year !== 'all', fn($q) => $q->whereYear('invoice.date', (int) $year))
@@ -3386,7 +2649,6 @@ Route::group(["middleware" => "auth"], function () {
 
         $uPayment = Invoice::join('unit_quotation', 'unit_quotation.id', '=', 'invoice.id_unit_quotation')
             ->join('payment', 'payment.id_unit_quotation', '=', 'unit_quotation.id')
-            ->where('invoice.flag', 'Reftech')
             ->whereNotNull('invoice.no_invoice')
             ->whereNotNull('invoice.id_unit_quotation')
             ->where('payment.level', 1)
@@ -3470,6 +2732,7 @@ Route::group(["middleware" => "auth"], function () {
 
             if ($infoFilter) {
                 $sp->where('c.info', $infoFilter);
+                $uq->where('c.info', $infoFilter);
             }
             if ($salesIds) {
                 $sp->whereIn('u.id', $salesIds);
@@ -4592,8 +3855,50 @@ AND u.id = ' . Auth::user()->id . ') AS price'), DB::raw('(SELECT COALESCE(COUNT
 
         $month = $dateCarbon->month;
         $year = $dateCarbon->year;
-        $data = Activities::join('client', 'activities.id_client', '=', 'client.id')->where('client.id_sales', $sales)->whereIn('name', ['Daily Call', 'Follow Up'])->whereMonth('date', $month)->whereYear('date', $year)->get();
-        return response()->json(['data' => $data]);
+        $activities = Activities::join('client', 'activities.id_client', '=', 'client.id')
+            ->where('client.id_sales', $sales)
+            ->whereIn('name', ['Daily Call', 'Follow Up'])
+            ->whereMonth('date', $month)
+            ->whereYear('date', $year)
+            ->orderBy('activities.date', 'desc')
+            ->get([
+                'activities.id',
+                'activities.name',
+                'activities.date',
+                'activities.status',
+                'activities.note',
+                'activities.week',
+                'client.id as client_id',
+                'client.company',
+                'client.role',
+            ]);
+
+        $grouped = $activities->groupBy('client_id')->map(function ($items) {
+            $first = $items->first();
+            return [
+                'id' => $first->id,
+                'client_id' => $first->client_id,
+                'company' => $first->company,
+                'role' => $first->role,
+                'total_activities' => $items->count(),
+                'latest_date' => $first->date,
+                'latest_name' => $first->name,
+                'latest_status' => $first->status,
+                'latest_note' => $first->note,
+                'history' => $items->map(function ($act) {
+                    return [
+                        'id' => $act->id,
+                        'name' => $act->name,
+                        'date' => $act->date,
+                        'status' => $act->status,
+                        'note' => $act->note,
+                        'week' => $act->week,
+                    ];
+                })->values()->all(),
+            ];
+        })->values();
+
+        return response()->json(['data' => $grouped]);
     });
     Route::get('/db/overview/crm/{sales}/{date}', function ($sales, $date) {
         $dateRep = "01-" . $date;
@@ -4601,8 +3906,50 @@ AND u.id = ' . Auth::user()->id . ') AS price'), DB::raw('(SELECT COALESCE(COUNT
 
         $month = $dateCarbon->month;
         $year = $dateCarbon->year;
-        $data = Activities::join('client', 'activities.id_client', '=', 'client.id')->where('client.id_sales', $sales)->where('name', 'CRM')->whereMonth('date', $month)->whereYear('date', $year)->get();
-        return response()->json(['data' => $data]);
+        $activities = Activities::join('client', 'activities.id_client', '=', 'client.id')
+            ->where('client.id_sales', $sales)
+            ->where('name', 'CRM')
+            ->whereMonth('date', $month)
+            ->whereYear('date', $year)
+            ->orderBy('activities.date', 'desc')
+            ->get([
+                'activities.id',
+                'activities.name',
+                'activities.date',
+                'activities.status',
+                'activities.note',
+                'activities.week',
+                'client.id as client_id',
+                'client.company',
+                'client.role',
+            ]);
+
+        $grouped = $activities->groupBy('client_id')->map(function ($items) {
+            $first = $items->first();
+            return [
+                'id' => $first->id,
+                'client_id' => $first->client_id,
+                'company' => $first->company,
+                'role' => $first->role,
+                'total_activities' => $items->count(),
+                'latest_date' => $first->date,
+                'latest_name' => $first->name,
+                'latest_status' => $first->status,
+                'latest_note' => $first->note,
+                'history' => $items->map(function ($act) {
+                    return [
+                        'id' => $act->id,
+                        'name' => $act->name,
+                        'date' => $act->date,
+                        'status' => $act->status,
+                        'note' => $act->note,
+                        'week' => $act->week,
+                    ];
+                })->values()->all(),
+            ];
+        })->values();
+
+        return response()->json(['data' => $grouped]);
     });
     Route::get('/db/overview/quotation/{sales}/{date}', function ($sales, $date) {
         $dateRep = "01-" . $date;
@@ -4610,7 +3957,83 @@ AND u.id = ' . Auth::user()->id . ') AS price'), DB::raw('(SELECT COALESCE(COUNT
 
         $month = $dateCarbon->month;
         $year = $dateCarbon->year;
-        $data = Quotation::join('pic', 'quotation.id_pic', '=', 'pic.id')->join('client', 'pic.id_client', '=', 'client.id')->where('level', '1')->where('is_primary', '1')->where('quotation.id_sales', $sales)->whereMonth('estimated_date', $month)->whereYear('estimated_date', $year)->get(['no_quote', 'client.company', 'nett', 'title', 'estimated_date', 'status', 'quotation.note', 'quotation.id']);
+        $legacy = Quotation::join('pic', 'quotation.id_pic', '=', 'pic.id')->join('client', 'pic.id_client', '=', 'client.id')->where('level', '1')->where('is_primary', '1')->where('quotation.id_sales', $sales)->whereMonth('estimated_date', $month)->whereYear('estimated_date', $year)->get(['no_quote', 'client.company', 'nett', 'title', 'estimated_date', 'status', 'quotation.note', 'quotation.id']);
+        $unitQuotes = UnitQuotation::join('client', 'unit_quotation.id_client', '=', 'client.id')
+            ->where('unit_quotation.is_latest', 1)
+            ->where('unit_quotation.id_sales', $sales)
+            ->whereMonth('unit_quotation.date', $month)
+            ->whereYear('unit_quotation.date', $year)
+            ->get([
+                'unit_quotation.no_quote',
+                'client.company',
+                DB::raw('COALESCE(total - IFNULL(tax_amount, 0) - IFNULL(fee, 0), 0) as nett'),
+                'unit_quotation.title',
+                'unit_quotation.date as estimated_date',
+                'unit_quotation.status',
+                'unit_quotation.note',
+                'unit_quotation.id',
+            ])
+            ->map(function ($row) {
+                $statusMap = [
+                    'draft' => '20',
+                    'reviewed' => '30',
+                    'approved' => '30',
+                    'sent' => '40',
+                    'negotiation' => '60',
+                    'hot_prospect' => '80',
+                    'po_received' => '100',
+                    'po_lost' => '0',
+                    'cancelled' => '0',
+                ];
+                $row->is_smart = true;
+                $row->status = $statusMap[$row->status] ?? '20';
+                return $row;
+            });
+
+        $data = $legacy->concat($unitQuotes)->values();
+        return response()->json(['data' => $data]);
+    });
+    Route::get('/db/overview/quotation-active/{sales}/{date}', function ($sales, $date) {
+        $dateRep = "01-" . $date;
+        $dateCarbon = Carbon::createFromFormat('d-m-Y', $dateRep);
+
+        $month = $dateCarbon->month;
+        $year = $dateCarbon->year;
+        $legacy = Quotation::join('pic', 'quotation.id_pic', '=', 'pic.id')->join('client', 'pic.id_client', '=', 'client.id')->where('level', '1')->where('is_primary', '1')->where('quotation.id_sales', $sales)->whereIn('quotation.status', ['20', '30', '40', '60'])->whereMonth('estimated_date', $month)->whereYear('estimated_date', $year)->get(['no_quote', 'client.company', 'nett', 'title', 'estimated_date', 'status', 'quotation.note', 'quotation.id']);
+        $unitQuotes = UnitQuotation::join('client', 'unit_quotation.id_client', '=', 'client.id')
+            ->where('unit_quotation.is_latest', 1)
+            ->where('unit_quotation.id_sales', $sales)
+            ->whereIn('unit_quotation.status', ['draft', 'reviewed', 'approved', 'sent', 'negotiation'])
+            ->whereMonth('unit_quotation.date', $month)
+            ->whereYear('unit_quotation.date', $year)
+            ->get([
+                'unit_quotation.no_quote',
+                'client.company',
+                DB::raw('COALESCE(total - IFNULL(tax_amount, 0) - IFNULL(fee, 0), 0) as nett'),
+                'unit_quotation.title',
+                'unit_quotation.date as estimated_date',
+                'unit_quotation.status',
+                'unit_quotation.note',
+                'unit_quotation.id',
+            ])
+            ->map(function ($row) {
+                $statusMap = [
+                    'draft' => '20',
+                    'reviewed' => '30',
+                    'approved' => '30',
+                    'sent' => '40',
+                    'negotiation' => '60',
+                    'hot_prospect' => '80',
+                    'po_received' => '100',
+                    'po_lost' => '0',
+                    'cancelled' => '0',
+                ];
+                $row->is_smart = true;
+                $row->status = $statusMap[$row->status] ?? '20';
+                return $row;
+            });
+
+        $data = $legacy->concat($unitQuotes)->values();
         return response()->json(['data' => $data]);
     });
     Route::get('/db/overview/loss/{sales}/{date}', function ($sales, $date) {
@@ -4619,7 +4042,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'), DB::raw('(SELECT COALESCE(COUNT
 
         $month = $dateCarbon->month;
         $year = $dateCarbon->year;
-        $data = Quotation::join('pic', 'quotation.id_pic', '=', 'pic.id')
+        $legacy = Quotation::join('pic', 'quotation.id_pic', '=', 'pic.id')
             ->join('client', 'pic.id_client', '=', 'client.id')
             ->where('quotation.id_sales', $sales)
             ->where('quotation.status', '0')
@@ -4628,7 +4051,31 @@ AND u.id = ' . Auth::user()->id . ') AS price'), DB::raw('(SELECT COALESCE(COUNT
             ->whereYear('estimated_date', $year)
             ->get(['no_quote', 'client.company', 'nett', 'title', 'estimated_date', 'status', 'quotation.note', 'quotation.id']);
 
-        $totalNett = Quotation::whereMonth('estimated_date', $month)->whereYear('estimated_date', $year)->where('status', '0')->where('id_sales', $sales)->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $unitLoss = UnitQuotation::join('client', 'unit_quotation.id_client', '=', 'client.id')
+            ->where('unit_quotation.is_latest', 1)
+            ->where('unit_quotation.id_sales', $sales)
+            ->whereIn('unit_quotation.status', ['po_lost', 'cancelled'])
+            ->whereMonth('unit_quotation.date', $month)
+            ->whereYear('unit_quotation.date', $year)
+            ->get([
+                'unit_quotation.no_quote',
+                'client.company',
+                DB::raw('COALESCE(total - IFNULL(tax_amount, 0) - IFNULL(fee, 0), 0) as nett'),
+                'unit_quotation.title',
+                'unit_quotation.date as estimated_date',
+                'unit_quotation.status',
+                'unit_quotation.note',
+                'unit_quotation.id',
+            ])
+            ->map(function ($row) {
+                $row->is_smart = true;
+                $row->status = '0';
+                return $row;
+            });
+
+        $data = $legacy->concat($unitLoss)->values();
+        $totalNett = Quotation::whereMonth('estimated_date', $month)->whereYear('estimated_date', $year)->where('status', '0')->where('id_sales', $sales)->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + UnitQuotation::where('unit_quotation.is_latest', 1)->where('unit_quotation.id_sales', $sales)->whereIn('unit_quotation.status', ['po_lost', 'cancelled'])->whereMonth('unit_quotation.date', $month)->whereYear('unit_quotation.date', $year)->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
         $formattedTotalNett = number_format($totalNett, 0, ',', '.');
         return response()->json([
             'data' => $data,
@@ -4641,7 +4088,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'), DB::raw('(SELECT COALESCE(COUNT
 
         $month = $dateCarbon->month;
         $year = $dateCarbon->year;
-        $data = Quotation::join('pic', 'quotation.id_pic', '=', 'pic.id')
+        $legacy = Quotation::join('pic', 'quotation.id_pic', '=', 'pic.id')
             ->join('client', 'pic.id_client', '=', 'client.id')
             ->where('quotation.id_sales', $sales)
             ->where('quotation.status', '100')
@@ -4650,7 +4097,31 @@ AND u.id = ' . Auth::user()->id . ') AS price'), DB::raw('(SELECT COALESCE(COUNT
             ->whereYear('po_date', $year)
             ->get(['no_quote', 'client.company', 'nett', 'title', 'po_date', 'status', 'quotation.note', 'quotation.id']);
 
-        $totalNett = Quotation::whereMonth('po_date', $month)->whereYear('po_date', $year)->where('status', '100')->where('id_sales', $sales)->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $unitPO = UnitQuotation::join('client', 'unit_quotation.id_client', '=', 'client.id')
+            ->where('unit_quotation.is_latest', 1)
+            ->where('unit_quotation.id_sales', $sales)
+            ->where('unit_quotation.status', 'po_received')
+            ->whereMonth('unit_quotation.po_received', $month)
+            ->whereYear('unit_quotation.po_received', $year)
+            ->get([
+                'unit_quotation.no_quote',
+                'client.company',
+                DB::raw('COALESCE(total - IFNULL(tax_amount, 0) - IFNULL(fee, 0), 0) as nett'),
+                'unit_quotation.title',
+                'unit_quotation.po_received as po_date',
+                'unit_quotation.status',
+                'unit_quotation.note',
+                'unit_quotation.id',
+            ])
+            ->map(function ($row) {
+                $row->is_smart = true;
+                $row->status = '100';
+                return $row;
+            });
+
+        $data = $legacy->concat($unitPO)->values();
+        $totalNett = Quotation::whereMonth('po_date', $month)->whereYear('po_date', $year)->where('status', '100')->where('id_sales', $sales)->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + UnitQuotation::where('unit_quotation.is_latest', 1)->where('unit_quotation.id_sales', $sales)->where('unit_quotation.status', 'po_received')->whereMonth('unit_quotation.po_received', $month)->whereYear('unit_quotation.po_received', $year)->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
         $formattedTotalNett = number_format($totalNett, 0, ',', '.');
         return response()->json([
             'data' => $data,
@@ -4663,7 +4134,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'), DB::raw('(SELECT COALESCE(COUNT
 
         $month = $dateCarbon->month;
         $year = $dateCarbon->year;
-        $data = Quotation::join('pic', 'quotation.id_pic', '=', 'pic.id')
+        $legacy = Quotation::join('pic', 'quotation.id_pic', '=', 'pic.id')
             ->join('client', 'pic.id_client', '=', 'client.id')
             ->join('users as s', 's.id', '=', 'quotation.id_sales')
             ->where('quotation.id_support', $sales)
@@ -4673,7 +4144,33 @@ AND u.id = ' . Auth::user()->id . ') AS price'), DB::raw('(SELECT COALESCE(COUNT
             ->whereYear('po_date', $year)
             ->get(['s.name', 'no_quote', 'client.company', 'nett', 'title', 'po_date', 'status', 'quotation.note', 'quotation.id']);
 
-        $totalNett = Quotation::whereMonth('po_date', $month)->whereYear('po_date', $year)->where('status', '100')->where('id_sales', $sales)->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $unitPO = UnitQuotation::join('client', 'unit_quotation.id_client', '=', 'client.id')
+            ->join('users as s', 's.id', '=', 'unit_quotation.id_sales')
+            ->where('unit_quotation.is_latest', 1)
+            ->where('unit_quotation.id_support', $sales)
+            ->where('unit_quotation.status', 'po_received')
+            ->whereMonth('unit_quotation.po_received', $month)
+            ->whereYear('unit_quotation.po_received', $year)
+            ->get([
+                's.name',
+                'unit_quotation.no_quote',
+                'client.company',
+                DB::raw('COALESCE(total - IFNULL(tax_amount, 0) - IFNULL(fee, 0), 0) as nett'),
+                'unit_quotation.title',
+                'unit_quotation.po_received as po_date',
+                'unit_quotation.status',
+                'unit_quotation.note',
+                'unit_quotation.id',
+            ])
+            ->map(function ($row) {
+                $row->is_smart = true;
+                $row->status = '100';
+                return $row;
+            });
+
+        $data = $legacy->concat($unitPO)->values();
+        $totalNett = Quotation::whereMonth('po_date', $month)->whereYear('po_date', $year)->where('status', '100')->where('id_sales', $sales)->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + UnitQuotation::where('unit_quotation.is_latest', 1)->where('unit_quotation.id_support', $sales)->where('unit_quotation.status', 'po_received')->whereMonth('unit_quotation.po_received', $month)->whereYear('unit_quotation.po_received', $year)->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
         $formattedTotalNett = number_format($totalNett, 0, ',', '.');
         return response()->json([
             'data' => $data,
@@ -4684,7 +4181,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'), DB::raw('(SELECT COALESCE(COUNT
     Route::get('/db/client/po-history/{id}', function ($id) {
         $year = request()->query('year');
 
-        $query = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')->where('level', '1')->where('is_primary', '1')->where('quotation.status', '100')->where('pic.id_client', $id);
+        $query = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')->where('level', '1')->effectivePrimary()->where('quotation.status', '100')->where('pic.id_client', $id);
         if ($year) {
             $query->whereYear('quotation.po_date', $year);
         }
@@ -4719,7 +4216,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'), DB::raw('(SELECT COALESCE(COUNT
     Route::get('/db/client/po-summary/{id}', function ($id) {
         $year = request()->query('year');
 
-        $query = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')->where('level', '1')->where('is_primary', '1')->where('quotation.status', '100')->where('pic.id_client', $id);
+        $query = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')->where('level', '1')->effectivePrimary()->where('quotation.status', '100')->where('pic.id_client', $id);
         if ($year) {
             $query->whereYear('quotation.po_date', $year);
         }
@@ -6965,10 +6462,10 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             'u.image as user_image',
             'u.name as user_name',
             DB::raw('COUNT(DISTINCT d.id) as item_count'),
-            DB::raw("CASE WHEN COUNT(DISTINCT d.id) = 1 THEN MAX(CONCAT(d.qty, ' ', pr.unit)) ELSE CONCAT(COUNT(DISTINCT d.id), ' item') END as qty_full"),
-            DB::raw("CASE WHEN COUNT(DISTINCT d.id) = 1 THEN MAX(CONCAT(s.brand, ' ', s.pn, ' (', SUBSTRING(pr.go, 1, 1) , ')')) ELSE CONCAT(COUNT(DISTINCT d.id), ' item') END as item"),
+            DB::raw("CASE WHEN COUNT(DISTINCT d.id) = 1 THEN MAX(CONCAT(d.qty, ' ', COALESCE(pr.unit, 'item'))) ELSE CONCAT(COUNT(DISTINCT d.id), ' item') END as qty_full"),
+            DB::raw("CASE WHEN COUNT(DISTINCT d.id) = 1 THEN MAX(CONCAT(COALESCE(s.brand, ''), ' ', COALESCE(s.pn, ''), ' (', SUBSTRING(COALESCE(pr.go, '-'), 1, 1) , ')')) ELSE CONCAT(COUNT(DISTINCT d.id), ' item') END as item"),
             // Rincian tiap item — dipakai buat expand row di tabel, biar N item bisa dibuka tanpa pindah halaman.
-            DB::raw("GROUP_CONCAT(DISTINCT CONCAT(s.brand, ' ', s.pn, ' (', pr.go, ') x', d.qty, ' ', pr.unit) SEPARATOR '||') as items_detail"),
+            DB::raw("GROUP_CONCAT(DISTINCT CONCAT(COALESCE(s.brand, ''), ' ', COALESCE(s.pn, ''), ' (', COALESCE(pr.go, '-'), ') x', d.qty, ' ', COALESCE(pr.unit, '')) SEPARATOR '||') as items_detail"),
             DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(pda.purchase_type, '')) <= 1 THEN MAX(pda.purchase_type) ELSE 'Campuran' END as purchase_type"),
             DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(pda.cargo, '')) <= 1 THEN MAX(pda.cargo) ELSE 'Campuran' END as cargo"),
             DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(pda.no_resi, '')) <= 1 THEN MAX(pda.no_resi) ELSE 'Campuran' END as no_resi"),
@@ -6994,7 +6491,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         // (tempo dianggap otomatis "gate lolos" tanpa perlu konfirmasi, sama seperti
         // logika PurchaseRequestService::evaluatePaymentGate()).
         $paymentStatusCase = "CASE
-                WHEN pay.type = 'Tempo' THEN 'tempo'
+                WHEN pay.type = 'Tempo' THEN CONCAT('tempo:', COALESCE(NULLIF(pay.tempo, ''), NULLIF(pay.note, ''), 'Credit'))
                 WHEN pay.date_confirm IS NOT NULL OR pay.level = 1 THEN 'confirmed'
                 ELSE 'unconfirmed'
             END";
@@ -7002,8 +6499,8 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         // PR yang berasal dari quotation biasa (pending_po.id_quotation)
         $fromQuotation = PurchaseRequest::join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
             ->join('purchase_request_detail as d', 'd.id_purchase_request', '=', 'purchase_request.id')
-            ->join('serial_product as s', 'd.id_equivalent', '=', 's.id')
-            ->join('product as pr', 'pr.id', '=', 's.id_product')
+            ->leftJoin('serial_product as s', 'd.id_equivalent', '=', 's.id')
+            ->leftJoin('product as pr', 'pr.id', '=', 's.id_product')
             ->leftJoin('purchase_request_detail_allocation as pda', 'pda.id_purchase_request_detail', '=', 'd.id')
             ->join('quotation as q', 'p.id_quotation', '=', 'q.id')
             ->join('pic as pi', 'pi.id', '=', 'q.id_pic')
@@ -7013,14 +6510,17 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             ->where('purchase_request.status', $status)
             ->groupBy($groupBy)
             ->select(array_merge($baseColumns, [
-                DB::raw("(SELECT $paymentStatusCase FROM payment pay WHERE pay.id_quotation = q.id ORDER BY pay.id DESC LIMIT 1) AS payment_status"),
+                DB::raw("COALESCE(
+                    (SELECT $paymentStatusCase FROM payment pay WHERE pay.id_quotation = q.id ORDER BY pay.id DESC LIMIT 1),
+                    (SELECT CASE WHEN inv.type = 'CT' THEN CONCAT('tempo:', COALESCE(NULLIF(inv.term, ''), 'Credit')) END FROM invoice inv WHERE inv.id_quotation = q.id ORDER BY inv.id DESC LIMIT 1)
+                ) AS payment_status"),
             ]));
 
         // PR yang berasal dari unit quotation (pending_po.id_unit_quotation)
         $fromUnitQuotation = PurchaseRequest::join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
             ->join('purchase_request_detail as d', 'd.id_purchase_request', '=', 'purchase_request.id')
-            ->join('serial_product as s', 'd.id_equivalent', '=', 's.id')
-            ->join('product as pr', 'pr.id', '=', 's.id_product')
+            ->leftJoin('serial_product as s', 'd.id_equivalent', '=', 's.id')
+            ->leftJoin('product as pr', 'pr.id', '=', 's.id_product')
             ->leftJoin('purchase_request_detail_allocation as pda', 'pda.id_purchase_request_detail', '=', 'd.id')
             ->join('unit_quotation as uq', 'p.id_unit_quotation', '=', 'uq.id')
             ->join('pic as pi', 'pi.id', '=', 'uq.id_pic')
@@ -7030,7 +6530,13 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             ->where('purchase_request.status', $status)
             ->groupBy($groupBy)
             ->select(array_merge($baseColumns, [
-                DB::raw("(SELECT $paymentStatusCase FROM payment pay WHERE pay.id_unit_quotation = uq.id ORDER BY pay.id DESC LIMIT 1) AS payment_status"),
+                DB::raw("COALESCE(
+                    (SELECT $paymentStatusCase FROM payment pay WHERE pay.id_unit_quotation = uq.id ORDER BY pay.id DESC LIMIT 1),
+                    CASE 
+                        WHEN uq.payment_method LIKE '%Tempo%' OR uq.payment LIKE '%Day%' OR (SELECT inv.type FROM invoice inv WHERE inv.id_unit_quotation = uq.id ORDER BY inv.id DESC LIMIT 1) = 'CT'
+                        THEN CONCAT('tempo:', COALESCE(NULLIF(uq.payment_method, ''), NULLIF(uq.payment, ''), (SELECT NULLIF(inv.term, '') FROM invoice inv WHERE inv.id_unit_quotation = uq.id ORDER BY inv.id DESC LIMIT 1), 'Credit'))
+                    END
+                ) AS payment_status"),
             ]));
 
         return $fromQuotation->unionAll($fromUnitQuotation)->orderByDesc('date');
@@ -7347,7 +6853,12 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             )
             ->groupBy(
                 'product_in.id',
-                'product_in.invoice'
+                'product_in.invoice',
+                'product_in.accept',
+                'product_in.total',
+                'product_in.supplier',
+                's.supplier',
+                'product_in.date'
             )
             ->orderByDesc('product_in.date')
             ->whereNotNull('product_in.invoice')
@@ -7377,7 +6888,12 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             )
             ->groupBy(
                 'product_in.id',
-                'product_in.invoice'
+                'product_in.invoice',
+                'product_in.accept',
+                'product_in.total',
+                'product_in.supplier',
+                's.supplier',
+                'product_in.date'
             )
             ->orderByDesc('product_in.date')
             ->where('accept', '0')
@@ -7668,7 +7184,78 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         return response()->json(['data' => $data]);
     });
     Route::get('/db/product/set', function () {
-        $data = ProductSet::join('product as p', 'p.id', '=', 'product_set.id_product')->groupBy('product_set.id')->select('product_set.*', 'p.description', 'p.commodity', 'p.stock', 'p.unit')->get();
+        $productSets = ProductSet::has('product')->with(['product', 'item.replacement.product.serial'])->get();
+        $data = $productSets->map(function ($ps) {
+            $product = $ps->product;
+            if (!$product) return null;
+            $items = $ps->item ?? collect();
+            $itemNames = $items->map(function ($it) {
+                return $it->replacement ? $it->replacement->replacement : null;
+            })->filter()->values();
+
+            $components = $items->map(function ($it) {
+                $r = $it->replacement;
+                if (!$r) return null;
+                $off = (int) ($r->stock ?? 0);
+                $wh = (int) ($r->warehouse_stock ?? 0);
+                $tot = $off + $wh;
+                $unit = ($r->product && $r->product->unit && $r->product->unit !== '-') ? $r->product->unit : 'Pcs';
+                $serials = ($r->product && $r->product->serial) ? $r->product->serial->map(function ($s) {
+                    return [
+                        'brand' => $s->brand,
+                        'pn'    => $s->pn,
+                        'detail'=> $s->detail,
+                    ];
+                })->values() : [];
+
+                return [
+                    'id'               => $it->id,
+                    'replacement_id'   => $r->id,
+                    'product_id'       => $r->product->id ?? null,
+                    'name'             => $r->replacement ?? '-',
+                    'stock'            => $off,
+                    'warehouse_stock'  => $wh,
+                    'total_stock'      => $tot,
+                    'unit'             => $unit,
+                    'serials'          => $serials,
+                ];
+            })->filter()->values();
+
+            $officeStock = (int) ($product->stock ?? 0);
+            $whStock = (int) ($product->warehouse_stock ?? 0);
+            $totalStock = $officeStock + $whStock;
+
+            $cat = $product->category;
+            if (!$cat || $cat === '-' || in_array($cat, ['Consumable Part', 'Non Consumable Part', 'Sparepart', 'Bearing Kit'])) {
+                $text = ($product->commodity ?? '') . ' ' . ($product->description ?? '');
+                if (stripos($text, 'Bearing') !== false && stripos($text, 'Main Motor') !== false) {
+                    $cat = 'Bearing Kit Main Motor';
+                } elseif (stripos($text, 'Bearing') !== false && stripos($text, 'Fan Motor') !== false) {
+                    $cat = 'Bearing Kit Fan Motor';
+                } elseif (stripos($text, 'Bearing') !== false || stripos($text, 'Airend') !== false) {
+                    $cat = 'Bearing Kit Airend';
+                } else {
+                    $cat = 'Non Bearing Kit';
+                }
+            }
+
+            return [
+                'id'              => $ps->id,
+                'id_product'      => $ps->id_product,
+                'commodity'       => $product->commodity ?? '-',
+                'detail_desc'     => $product->detail_desc ?? '-',
+                'category'        => $cat,
+                'description'     => $product->description ?? '-',
+                'stock'           => $officeStock,
+                'warehouse_stock' => $whStock,
+                'total_stock'     => $totalStock,
+                'unit'            => ($product->unit && $product->unit !== '-') ? $product->unit : 'Set',
+                'item_count'      => $items->count(),
+                'item_names'      => $itemNames,
+                'components'      => $components,
+                'created_at'      => $ps->created_at ? $ps->created_at->format('d M Y') : '-',
+            ];
+        })->filter()->values();
         return response()->json(['data' => $data]);
     });
     Route::get('/db/client/service-history/{id}', function ($id) {
@@ -7755,8 +7342,20 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         Route::get('/contacts', [ChatController::class, 'getContacts'])->name('contacts');
         Route::get('/messages/{userId}', [ChatController::class, 'getMessages'])->name('messages');
         Route::post('/send', [ChatController::class, 'sendMessage'])->name('send');
+        Route::post('/messages', [ChatController::class, 'sendMessage'])->name('messages.send');
         Route::post('/mark-read/{userId}', [ChatController::class, 'markAsRead'])->name('mark-read');
         Route::get('/poll', [ChatController::class, 'poll'])->name('poll');
+        Route::post('/typing', [ChatController::class, 'setTypingStatus'])->name('typing');
+        Route::put('/messages/{id}', [ChatController::class, 'editMessage'])->name('edit-message');
+        Route::delete('/messages/{id}', [ChatController::class, 'deleteMessage'])->name('delete-message');
+    });
+
+    // ------------------------------------------------------------------------
+    // Finance - Management Fee Routes
+    // ------------------------------------------------------------------------
+    Route::prefix('finance/management-fee')->name('finance.management-fee.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ManagementFeeController::class, 'index'])->name('index');
+        Route::post('/{id}/disbursement', [\App\Http\Controllers\ManagementFeeController::class, 'updateDisbursement'])->name('update-disbursement');
     });
 });
 Auth::routes();

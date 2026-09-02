@@ -514,32 +514,57 @@ class ServiceReportsController extends Controller
 
     public function inputImageV2(Request $request, $id)
     {
-        $images = $request->file('image', []);
-        $descriptions = $request->input('description', []);
+        $request->validate([
+            'image'   => 'required|array|min:1',
+            'image.*' => 'required|image|mimes:jpeg,jpg,png,webp|max:20480',
+        ], [
+            'image.required'   => 'Silakan pilih minimal 1 foto.',
+            'image.*.image'    => 'File yang diupload harus berupa gambar.',
+            'image.*.mimes'    => 'Format gambar harus JPEG, JPG, PNG, atau WEBP.',
+            'image.*.max'      => 'Ukuran per foto maksimal 20 MB.',
+        ]);
 
-        $status = false;
-        foreach ($images as $item => $foto) {
-            $photo = new ReportsPict();
-            $photo->id_reports = $id;
-            $photo->keterangan = $descriptions[$item] ?? '';
+        // Tingkatkan limit memori dan waktu eksekusi sementara untuk batch image processing
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(180);
 
-            $image_ext = $foto->getClientOriginalExtension();
-            $image_name = Str::random(8);
+        try {
+            $images = $request->file('image', []);
+            $descriptions = $request->input('description', []);
 
-            $upload_path = 'service-reports/photos/' . date('Y') . '/' . date('m') . '/' . $id;
-            $imagename = $upload_path . '/' . $image_name . '.' . $image_ext;
+            $status = false;
+            foreach ($images as $item => $foto) {
+                $photo = new ReportsPict();
+                $photo->id_reports = $id;
+                $photo->keterangan = $descriptions[$item] ?? '';
 
-            // Crop otomatis jadi square, portrait/landscape apapun mengikuti
-            $img = Image::make($foto->path());
-            $img->fit(600, 600);
-            Storage::disk('public')->put($imagename, (string) $img->encode());
+                $image_ext = $foto->getClientOriginalExtension();
+                $image_name = Str::random(8);
 
-            $photo->picture = $imagename;
-            $status = $photo->save();
-        }
+                $upload_path = 'service-reports/photos/' . date('Y') . '/' . date('m') . '/' . $id;
+                $imagename = $upload_path . '/' . $image_name . '.' . $image_ext;
 
-        if ($status) {
-            return redirect('service-reports/' . $id)->with('success', 'Data Has been created');
+                // Crop otomatis jadi square, portrait/landscape apapun mengikuti
+                $img = Image::make($foto->path());
+                $img->fit(600, 600);
+                Storage::disk('public')->put($imagename, (string) $img->encode());
+
+                $photo->picture = $imagename;
+                $status = $photo->save();
+            }
+
+            if ($status) {
+                return redirect('service-reports/' . $id)->with('success', 'Foto service report berhasil ditambahkan.');
+            }
+
+            return redirect('service-reports/' . $id)->with('error', 'Tidak ada foto yang berhasil diupload.');
+        } catch (\Throwable $e) {
+            \Log::error('Error uploading service report images: ' . $e->getMessage(), [
+                'service_id' => $id,
+                'trace'      => $e->getTraceAsString(),
+            ]);
+
+            return redirect('service-reports/' . $id)->with('error', 'Gagal memproses foto: ' . $e->getMessage());
         }
     }
 

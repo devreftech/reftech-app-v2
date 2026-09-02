@@ -6,8 +6,9 @@
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title text-center" id="exampleModalLabel5">Add PPH
-                    </h4>
+                    <h5 class="modal-title fw-bold text-dark" id="exampleModalLabel5">
+                        <i class="mdi mdi-calendar-edit me-1 text-warning"></i> Change Payment Date
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">

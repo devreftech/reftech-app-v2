@@ -1,5 +1,6 @@
 @extends('layouts.sales.app')
 @section('title', 'Create Smart Quote')
+@section('hide-chat', true)
 @section('content')
     {{-- Hero Page Header & Top Bar --}}
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center py-3 mb-3 gap-3">
@@ -60,17 +61,49 @@
                     </div>
                     @if ($isManager ?? false)
                         <div class="col-md-4">
-                            <div class="form-floating form-floating-outline">
-                                <select class="select2 form-select" id="sales-select">
-                                    <option value="">-- Semua Sales (Optional) --</option>
-                                    @foreach ($salesUsers as $s)
-                                        <option value="{{ $s->id }}">{{ $s->name }}</option>
-                                    @endforeach
-                                </select>
-                                <label>Filter by Sales <span class="text-muted small">(optional)</span></label>
+                            <div class="p-2.5 mb-2 rounded-3 border bg-white shadow-none">
+                                <div class="d-flex align-items-center justify-content-between mb-1.5">
+                                    <span class="text-muted small fw-bold text-uppercase" style="font-size: 10.5px; letter-spacing: 0.5px;">
+                                        <i class="mdi mdi-filter-variant text-primary me-1"></i> Mode Sumber Client
+                                    </span>
+                                </div>
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input" type="radio" name="client_source_type" id="src_by_sales" value="sales" checked>
+                                        <label class="form-check-label fw-semibold text-dark" for="src_by_sales" style="font-size: 12px; cursor: pointer;">
+                                            <i class="mdi mdi-account-tie text-primary me-0.5"></i> By Sales
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input" type="radio" name="client_source_type" id="src_self_leads" value="self_leads">
+                                        <label class="form-check-label fw-semibold text-dark" for="src_self_leads" style="font-size: 12px; cursor: pointer;">
+                                            <i class="mdi mdi-account-arrow-right text-success me-0.5"></i> Leads Sendiri
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-text small text-muted">
-                                Pilih sales untuk memuat client miliknya, atau langsung cari client di kolom sebelah tanpa memilih sales.
+
+                            <div id="sales-select-container">
+                                <div class="form-floating form-floating-outline">
+                                    <select class="select2 form-select" name="id_sales" id="sales-select">
+                                        <option value="">-- Semua Sales (Default) --</option>
+                                        @foreach ($salesUsers as $s)
+                                            <option value="{{ $s->id }}">{{ $s->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <label>Filter by Sales</label>
+                                </div>
+                                <div class="form-text small text-muted" style="font-size: 11px;">
+                                    Pilih sales untuk memuat client miliknya, atau pilih opsi <strong>Leads Sendiri</strong> di atas.
+                                </div>
+                            </div>
+
+                            <div id="self-leads-banner" class="alert alert-subtle-success py-2 px-3 mb-0 rounded-3 d-none align-items-center gap-2" style="font-size: 12px; background-color: #e8fadf; border: 1px solid #71dd37; color: #2e6815;">
+                                <i class="mdi mdi-check-circle-outline fs-5 text-success"></i>
+                                <div>
+                                    <strong class="d-block" style="font-size: 12px;">Mode Leads Sendiri Aktif</strong>
+                                    <span style="font-size: 11px; color: #43762b;">Memuat data leads yang diinput sendiri oleh Anda.</span>
+                                </div>
                             </div>
                         </div>
                     @endif
@@ -334,6 +367,37 @@
             </button>
         </div>
     </form>
+
+    <!-- Floating Fixed Bottom Summary Bar (Blue Concept) -->
+    <div class="sticky-summary-bar p-3 no-print">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div>
+                    <span class="text-white-50 small d-block" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Total Penawaran (<span id="bubble-active-option-name" class="text-white fw-bold">Opsi 1</span>)
+                    </span>
+                    <span class="fw-bold fs-4 text-warning" id="bubble-grand-total">Rp 0</span>
+                </div>
+                <div class="border-start border-white-50 ps-3 d-none d-md-block" style="font-size: 11.5px;">
+                    <span class="text-white-50">Subtotal: <strong class="text-white" id="bubble-subtotal">Rp 0</strong></span>
+                    <span class="mx-2 text-white-50">&bull;</span>
+                    <span class="text-white-50">PPN: <strong class="text-white" id="bubble-tax">Rp 0</strong></span>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-white-50 small d-none d-sm-inline-flex align-items-center me-1" id="smartQuoteLastSavedTime" style="font-size: 11.5px;">
+                    <i class="mdi mdi-cloud-check-outline me-1 text-white"></i> AutoSave Aktif
+                </span>
+                <button type="button" class="btn btn-sm btn-outline-light" onclick="resetSmartQuoteDraft()" title="Reset dan hapus draft tersimpan">
+                    <i class="mdi mdi-refresh me-1"></i> Reset
+                </button>
+                <button type="submit" form="form-unit-quotation" class="btn btn-light text-primary btn-sm px-4 fw-bold shadow-sm">
+                    <i class="mdi mdi-content-save me-1"></i> Save Quotation
+                </button>
+            </div>
+        </div>
+    </div>
     {{-- TEMPLATES (hidden, cloned by JS) --}}
     <template id="tmpl-unit-row">
         <div class="unit-row border-bottom p-3" data-type="unit">
@@ -564,12 +628,14 @@
     {{-- Pane untuk 1 Opsi: judul, line items sendiri, summary sendiri --}}
     <template id="tmpl-option-pane">
         <div class="option-pane tab-pane fade" id="option-pane-__OPT__" data-option-idx="__OPT__">
-            <div class="p-3 border-bottom bg-light-subtle d-flex align-items-center gap-2 flex-wrap">
-                <label class="fw-semibold small text-muted mb-0">Judul Opsi:</label>
-                <input type="text" class="form-control form-control-sm fw-bold option-title-input" style="max-width:320px;"
-                    name="options[__OPT__][title]" placeholder="Judul Opsi (mis. Unit Baru, Unit Second)">
+            <div class="p-3 border-bottom bg-light-subtle d-flex align-items-center gap-2 flex-wrap option-header-toolbar" style="display: none;">
+                <div class="option-title-wrapper align-items-center gap-2" style="display: none;">
+                    <label class="fw-semibold small text-muted mb-0">Judul Opsi:</label>
+                    <input type="text" class="form-control form-control-sm fw-bold option-title-input" style="max-width:320px;"
+                        name="options[__OPT__][title]" placeholder="Judul Opsi (mis. Unit Baru, Unit Second)">
+                </div>
                 <span class="badge bg-label-secondary items-count-badge">0 Items</span>
-                <button type="button" class="btn btn-sm btn-outline-danger ms-auto btn-remove-option">
+                <button type="button" class="btn btn-sm btn-outline-danger ms-auto btn-remove-option" style="display: none;">
                     <i class="mdi mdi-delete-outline me-1"></i> Hapus Opsi Ini
                 </button>
             </div>
@@ -660,33 +726,228 @@
         .btn-drag-handle { cursor: grab; padding: 2px 4px; border-radius: 4px; transition: background 0.15s; }
         .btn-drag-handle:hover { background: #e8e8ff; color: #696cff !important; }
         .btn-drag-handle:active { cursor: grabbing; }
+
+        /* Floating Fixed Bottom Summary Bar - Blue Concept */
+        .sticky-summary-bar {
+            position: fixed;
+            bottom: 20px;
+            left: calc(16.25rem + 1.5rem);
+            right: 1.5rem;
+            z-index: 1040;
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.4), 0 8px 10px -6px rgba(30, 58, 138, 0.3);
+            border-radius: 12px;
+            color: #fff;
+            transition: left 0.3s ease, right 0.3s ease;
+        }
+        .layout-menu-collapsed .sticky-summary-bar {
+            left: calc(4.5rem + 1.5rem);
+        }
+        @media (max-width: 1199.98px) {
+            .sticky-summary-bar {
+                left: 1rem;
+                right: 1rem;
+                bottom: 12px;
+            }
+        }
+        #form-unit-quotation {
+            padding-bottom: 90px;
+        }
+        #chat-bubble-container, .chat-bubble-container, #chat-widget {
+            display: none !important;
+        }
+        /* Sembunyikan toolbar header opsi (badge items, judul opsi, tombol hapus) jika opsi cuma 1 */
+        .tab-content:not(.has-multi-options) .option-header-toolbar {
+            display: none !important;
+        }
     </style>
 @endpush
 
 @push('after-script')
     <script src="{{ asset('assets') }}/vendor/libs/select2/select2.js"></script>
     <script src="{{ asset('assets') }}/vendor/libs/sortablejs/sortable.js"></script>
-    @if(old('payment'))
-        <script>window.EDIT_PAYMENT = @json(old('payment'));</script>
-    @endif
-    @if(isset($selectedPic) && $selectedPic)
-        <script>window.EDIT_PIC_ID = @json($selectedPic);</script>
-    @endif
-    <script>window.TRANSPORT_PRICES = @json($transportationPrices);</script>
+
+    <script>
+        const SMART_QUOTE_DRAFT_KEY = 'smart_quote_create_draft';
+        let savedDraftData = null;
+        try {
+            const rawDraft = localStorage.getItem(SMART_QUOTE_DRAFT_KEY);
+            if (rawDraft) {
+                savedDraftData = JSON.parse(rawDraft);
+            }
+        } catch(e) { console.error('Draft load error', e); }
+
+        if (savedDraftData && savedDraftData.options && savedDraftData.options.length > 0) {
+            window.EDIT_OPTIONS = savedDraftData.options;
+            if (savedDraftData.id_client) window.EDIT_CLIENT_ID = savedDraftData.id_client;
+            if (savedDraftData.id_pic) window.EDIT_PIC_ID = savedDraftData.id_pic;
+            if (savedDraftData.id_plant) window.EDIT_PLANT_ID = savedDraftData.id_plant;
+            if (savedDraftData.address_hidden || savedDraftData.address_manual) {
+                window.EDIT_ADDRESS = savedDraftData.address_hidden || savedDraftData.address_manual;
+            }
+            if (savedDraftData.payment_hidden || savedDraftData.payment_manual) {
+                window.EDIT_PAYMENT = savedDraftData.payment_hidden || savedDraftData.payment_manual;
+            }
+        } else {
+            @if(old('payment'))
+                window.EDIT_PAYMENT = @json(old('payment'));
+            @endif
+            @if(isset($selectedPic) && $selectedPic)
+                window.EDIT_PIC_ID = @json($selectedPic);
+            @endif
+        }
+        window.TRANSPORT_PRICES = @json($transportationPrices);
+    </script>
     <script src="{{ asset('assets') }}/includes/form-unit-quotation.js?v={{ filemtime(public_path('assets/includes/form-unit-quotation.js')) }}"></script>
-    @if(isset($selectedClient) && $selectedClient)
-        <script>
-            $(document).ready(function() {
+    
+    <script>
+        $(document).ready(function() {
+            if (savedDraftData && savedDraftData.id_client) {
                 setTimeout(function() {
-                    $('#client-select').val(@json($selectedClient)).trigger('change');
+                    $('#client-select').val(savedDraftData.id_client).trigger('change');
                 }, 150);
-            });
-        </script>
-    @endif
+            } else if (@json(isset($selectedClient) && $selectedClient)) {
+                setTimeout(function() {
+                    $('#client-select').val(@json($selectedClient ?? '')).trigger('change');
+                }, 150);
+            }
+        });
+    </script>
 @endpush
 
 @push('page-script')
     <script>
+        // ── AutoSave & Draft Management Engine ──
+        let autoSaveTimer = null;
+
+        function triggerAutoSaveSmartQuote() {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(function() {
+                saveSmartQuoteDraft();
+            }, 500);
+        }
+
+        function saveSmartQuoteDraft() {
+            try {
+                const draft = {
+                    id_sales: $('#sales-select').val() || '',
+                    id_client: $('#client-select').val() || '',
+                    id_pic: $('#pic-select').val() || '',
+                    id_plant: $('#input-id-plant').val() || '',
+                    address_select: $('#address-select').val() || '',
+                    address_manual: $('#input-address-manual').val() || '',
+                    address_hidden: $('#input-address-hidden').val() || '',
+                    date: $('#input-date').val() || '',
+                    expired_date: $('#input-expired-date').val() || '',
+                    no_pr: $('input[name="no_pr"]').val() || '',
+                    title: $('input[name="title"]').val() || '',
+                    type: $('#select-type').val() || 'Project',
+                    unit_condition: $('#select-unit-condition').val() || '',
+                    week: $('#select-week').val() || '',
+                    note: $('#note').val() || '',
+                    validity: $('#validity').val() || '',
+                    pricing: $('#pricing').val() || '',
+                    payment_select: $('#payment-select').val() || '',
+                    payment_manual: $('#input-payment-manual').val() || '',
+                    payment_hidden: $('#input-payment-hidden').val() || '',
+                    warranty: $('#warranty').val() || '',
+                    delivery_process: $('#delivery').val() || '',
+                    options: []
+                };
+
+                $('.option-pane').each(function() {
+                    const $pane = $(this);
+                    const optIdx = $pane.data('option-idx');
+                    const optTitle = $pane.find('.option-title-input').val() || '';
+                    const diskonType = $pane.find('.select-diskon-type').val() || 'percent';
+                    const diskon = $pane.find('.input-diskon').val() || '0';
+                    const tax = $pane.find('.toggle-tax').is(':checked') ? 1 : 0;
+                    const shipping = $pane.find('.input-shipping').val() || '0';
+
+                    const optData = {
+                        title: optTitle,
+                        diskon_type: diskonType,
+                        diskon: diskonType === 'amount' ? (parseFloat(diskon.replace(/\D/g, '')) || 0) : (parseFloat(diskon) || 0),
+                        tax: tax,
+                        shipping: parseFloat(shipping.replace(/\D/g, '')) || 0,
+                        items: []
+                    };
+
+                    $pane.find('.line-items-container .unit-row').each(function() {
+                        const $row = $(this);
+                        const rowType = $row.attr('data-type') || 'custom';
+                        const item = {
+                            type: rowType,
+                            id_unit: $row.find('.field-id-unit').val() || '',
+                            id_fixed_asset: $row.find('.field-id-fixed-asset').val() || '',
+                            id_equivalent: $row.find('.field-id-equivalent').val() || '',
+                            spec_visible: $row.find('.field-spec-visible').val() || '',
+                            label: $row.find('.field-label').val() || '',
+                            description: $row.find('.field-description').val() || '',
+                            qty: parseFloat($row.find('.field-qty').val()) || 1,
+                            info_qty: $row.find('.field-info-qty').val() || 'Unit',
+                            price: parseFloat(String($row.find('.field-price').val()).replace(/\D/g, '')) || 0,
+                            disc: parseFloat($row.find('.field-disc').val()) || 0,
+                        };
+
+                        if (rowType === 'transport') {
+                            item.label = $row.find('.field-transport-type').val() || item.label;
+                        }
+
+                        optData.items.push(item);
+                    });
+
+                    draft.options.push(optData);
+                });
+
+                localStorage.setItem(SMART_QUOTE_DRAFT_KEY, JSON.stringify(draft));
+
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                $('#smartQuoteLastSavedTime').html('<i class="mdi mdi-cloud-check-outline me-1 text-white"></i> Autosaved pk ' + timeStr);
+            } catch(e) {
+                console.error('Failed to autosave smart quote draft', e);
+            }
+        }
+
+        function resetSmartQuoteDraft() {
+            if (confirm('Yakin ingin mereset draft penawaran ini dan mengulang dari awal?')) {
+                localStorage.removeItem(SMART_QUOTE_DRAFT_KEY);
+                window.location.reload();
+            }
+        }
+
+        // Restore scalar fields if draft exists
+        $(document).ready(function() {
+            if (savedDraftData) {
+                if (savedDraftData.date) $('#input-date').val(savedDraftData.date);
+                if (savedDraftData.expired_date) $('#input-expired-date').val(savedDraftData.expired_date);
+                if (savedDraftData.no_pr) $('input[name="no_pr"]').val(savedDraftData.no_pr);
+                if (savedDraftData.title) $('input[name="title"]').val(savedDraftData.title);
+                if (savedDraftData.type) $('#select-type').val(savedDraftData.type).trigger('change');
+                if (savedDraftData.unit_condition) $('#select-unit-condition').val(savedDraftData.unit_condition);
+                if (savedDraftData.week) $('#select-week').val(savedDraftData.week);
+                if (savedDraftData.note) $('#note').val(savedDraftData.note);
+                if (savedDraftData.validity) $('#validity').val(savedDraftData.validity);
+                if (savedDraftData.pricing) $('#pricing').val(savedDraftData.pricing);
+                if (savedDraftData.warranty) $('#warranty').val(savedDraftData.warranty);
+                if (savedDraftData.delivery_process) $('#delivery').val(savedDraftData.delivery_process);
+
+                $('#smartQuoteLastSavedTime').html('<i class="mdi mdi-cloud-check-outline me-1 text-white"></i> Draft dipulihkan');
+            }
+
+            // Bind input changes for auto-saving
+            $('#form-unit-quotation').on('input change', 'input, select, textarea', function() {
+                triggerAutoSaveSmartQuote();
+            });
+
+            // Clear draft upon successful form submission
+            $('#form-unit-quotation').on('submit', function() {
+                localStorage.removeItem(SMART_QUOTE_DRAFT_KEY);
+            });
+        });
+
         (function () {
             const inputDate    = document.getElementById('input-date');
             const expiredDate  = document.getElementById('input-expired-date');

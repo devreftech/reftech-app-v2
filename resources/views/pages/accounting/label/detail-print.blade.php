@@ -1,5 +1,36 @@
 @extends('layouts.sales.app')
 @section('title', $invoice->no_invoice)
+@php
+    $recipientPic = null;
+    $recipientAddress = null;
+
+    if (isset($pendingPO) && $pendingPO) {
+        $isCombined = (bool) $pendingPO->combine_shipping_and_parts;
+        if ($isCombined) {
+            $recipientPic = $pendingPO->shipping_recipient;
+            if (($pendingPO->shipping_address_type ?? 'customer') === 'manual' && $pendingPO->shipping_address_manual) {
+                $recipientAddress = $pendingPO->shipping_address_manual;
+            }
+        } else {
+            $recipientPic = $pendingPO->doc_recipient;
+            if (($pendingPO->doc_address_type ?? 'customer') === 'manual' && $pendingPO->doc_address_manual) {
+                $recipientAddress = $pendingPO->doc_address_manual;
+            }
+        }
+    }
+
+    $toCompany = $quote->pic?->client?->company ?? '-';
+    $toPicName = $recipientPic?->name_pic ?? $quote->pic?->name_pic ?? $quote->attn ?? '-';
+    $toPicPhone = $recipientPic?->phone ?? $recipientPic?->phone_pic ?? $quote->pic?->phone_pic ?? $quote->pic?->phone ?? $quote->pic?->client?->phone ?? '-';
+
+    if (!$recipientAddress) {
+        if ($invoice->invoiceTo == '2' && $quote->pic?->client?->subAddress) {
+            $recipientAddress = $quote->pic->client->subAddress;
+        } else {
+            $recipientAddress = $quote->pic?->client?->address ?? '-';
+        }
+    }
+@endphp
 <div class="invoice-print p-4">
     <div class="container-fluid flex-grow-1 container-p-y">
         @if ($invoice->flag == 'Reftech')
@@ -21,14 +52,13 @@
                     <p class="mb-1 mx-2 fw-bolder fs-12" style="border-bottom: 1px solid black; width:fit-content;">
                         Office :</p>
                     <div class="mx-2" style="font-size: 12px">
-                        <p class="mb-1 text-black">Taman Kopo Indah V, Ruko Sommerville No.
-                            31</p>
+                        <p class="mb-1 text-black">Taman Kopo Indah V, Soho Sommerville No. 31</p>
                         <p class="mb-1 text-black">Bandung – Jawa Barat 40218</p>
                         <p class="mb-1 text-black">
                             <i class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-14px"></i>022
                             54417653
                             {{ '   ' }}<i
-                                class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px"></i>admin@reftech.id
+                                class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px"></i>accounting@reftech.id
                         </p>
                         <p class="mb-1">
                         </p>
@@ -58,29 +88,25 @@
                         <p class="mb-0 fw-semibold p-4 py-0 pt-1">TO</p>
                     </div>
                     <div class="col-8">
-                        <p class="mb-0 fw-semibold pt-1">: {{ $quote->pic->client->company }}</p>
+                        <p class="mb-0 fw-semibold pt-1">: {{ $toCompany }}</p>
                     </div>
                     <div class="col-4 px-0">
                         <p class="mb-0 fw-semibold p-4 py-0">ALAMAT</p>
                     </div>
                     <div class="col-8">
-                        @if ($invoice->invoiceTo == '1')
-                            <p class="mb-0 ">: {{ $quote->pic->client->address }}</p>
-                        @else
-                            <p class="mb-0 ">: {{ $quote->pic->client->subAddress }}</p>
-                        @endif
+                        <p class="mb-0 ">: {{ $recipientAddress }}</p>
                     </div>
                     <div class="col-4 px-0">
                         <p class="mb-0 fw-semibold p-4 py-0">Attn.</p>
                     </div>
                     <div class="col-8">
-                        <p class="mb-0 ">: {{ $quote->pic->name_pic }}</p>
+                        <p class="mb-0 ">: {{ $toPicName }}</p>
                     </div>
                     <div class="col-4 px-0">
                         <p class="mb-0 fw-semibold p-4 py-0">Phone</p>
                     </div>
                     <div class="col-8">
-                        <p class="mb-0 ">: {{ $quote->pic->phone_pic }}</p>
+                        <p class="mb-0 ">: {{ $toPicPhone }}</p>
                     </div>
                 </div>
             </div>
@@ -129,29 +155,25 @@
                         <p class="mb-0 fw-semibold p-4 py-0 pt-1">TO</p>
                     </div>
                     <div class="col-8">
-                        <p class="mb-0 fw-semibold pt-1">: {{ $quote->pic->client->company }}</p>
+                        <p class="mb-0 fw-semibold pt-1">: {{ $toCompany }}</p>
                     </div>
                     <div class="col-4 px-0">
                         <p class="mb-0 fw-semibold p-4 py-0">ALAMAT</p>
                     </div>
                     <div class="col-8">
-                        @if ($invoice->invoiceTo == '1')
-                            <p class="mb-0 ">: {{ $quote->pic->client->address }}</p>
-                        @else
-                            <p class="mb-0 ">: {{ $quote->pic->client->subAddress }}</p>
-                        @endif
+                        <p class="mb-0 ">: {{ $recipientAddress }}</p>
                     </div>
                     <div class="col-4 px-0">
                         <p class="mb-0 fw-semibold p-4 py-0">Attn.</p>
                     </div>
                     <div class="col-8">
-                        <p class="mb-0 ">: {{ $quote->pic->name_pic }}</p>
+                        <p class="mb-0 ">: {{ $toPicName }}</p>
                     </div>
                     <div class="col-4 px-0">
                         <p class="mb-0 fw-semibold p-4 py-0">Phone</p>
                     </div>
                     <div class="col-8">
-                        <p class="mb-0 ">: {{ $quote->pic->phone_pic }}</p>
+                        <p class="mb-0 ">: {{ $toPicPhone }}</p>
                     </div>
                 </div>
             </div>

@@ -19,6 +19,7 @@ class UnitQuotationOption extends Model
         'tax_amount',
         'shipping',
         'total',
+        'fee',
     ];
 
     protected $casts = [

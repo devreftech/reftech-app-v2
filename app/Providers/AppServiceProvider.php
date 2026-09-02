@@ -64,12 +64,19 @@ class AppServiceProvider extends ServiceProvider
         // muncul di semua halaman untuk role Admin/Accounting, bukan cuma di Dashboard.
         View::composer('components.dashboard.sidebar', function ($view) {
             if (Auth::check() && in_array(Auth::user()->role, ['Admin', 'Accounting'])) {
-                // Samakan dengan filter di PurchaseController::index() — PR dengan
-                // id_pending yatim (pending_po sudah terhapus) tidak akan pernah bisa
-                // ditampilkan di tabel manapun, jadi jangan ikut dihitung di badge juga.
+                // Samakan persis dengan filter di PurchaseController::index():
+                // 1. PR status 0 (New Purchase)
+                // 2. id_pending memiliki quotation/unit_quotation valid
+                // 3. Memiliki detail item (bukan draft kosong)
+                $validPendingIds = \App\Models\PendingPO::where(function ($q) {
+                    $q->whereNotNull('id_quotation')->orWhereNotNull('id_unit_quotation');
+                })->pluck('id');
+
                 $prCount = PurchaseRequest::where('status', '0')
-                    ->whereIn('id_pending', \App\Models\PendingPO::pluck('id'))
+                    ->whereIn('id_pending', $validPendingIds)
+                    ->has('details')
                     ->count();
+
                 $view->with('prCount', $prCount);
             }
         });

@@ -199,6 +199,16 @@ class ProductInController extends Controller
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
         $return = $product->return;
 
+        // Brand-nya nyimpen di serial_product (bukan di product/detail_product langsung)
+        $productIds = $detail->pluck('detailProduct.id_product')->filter()->unique();
+        $serials = \App\Models\SerialProduct::whereIn('id_product', $productIds)->get(['id_product', 'pn', 'brand']);
+        foreach ($detail as $d) {
+            $idProduct = $d->detailProduct->id_product ?? null;
+            $match = $serials->first(fn ($s) => $s->id_product === $idProduct && $s->pn === $d->detailProduct->replacement);
+            $fallback = $serials->first(fn ($s) => $s->id_product === $idProduct);
+            $d->brand = $match->brand ?? $fallback->brand ?? null;
+        }
+
         // Info tambahan buat mode edit inline — cuma relevan selama belum ada invoice
         // (lihat preview.blade.php lama), jadi query-nya di-skip kalau udah gak kepake.
         $suppliers = collect();
@@ -206,20 +216,6 @@ class ProductInController extends Controller
         if (!$product->invoice) {
             $suppliers = Supplier::all();
             $detProduct = DetailProduct::join('product', 'detail_product.id_product', '=', 'product.id')->get('detail_product.*');
-
-            // Brand-nya nyimpen di serial_product (bukan di product/detail_product langsung),
-            // dan satu product bisa punya beberapa serial/brand (part alternatif) — jadi
-            // dicocokkan ke PN (replacement) yang persis dulu, baru fallback ke brand
-            // pertama yang share id_product yang sama.
-            $productIds = $detail->pluck('detailProduct.id_product')->filter()->unique();
-            $serials = \App\Models\SerialProduct::whereIn('id_product', $productIds)->get(['id_product', 'pn', 'brand']);
-            foreach ($detail as $d) {
-                $idProduct = $d->detailProduct->id_product ?? null;
-                $match = $serials->first(fn ($s) => $s->id_product === $idProduct && $s->pn === $d->detailProduct->replacement);
-                $fallback = $serials->first(fn ($s) => $s->id_product === $idProduct);
-                $d->brand = $match->brand ?? $fallback->brand ?? null;
-            }
-
             $this->attachPoPriceReference($detail, $product->purchaseOrder);
         }
 

@@ -12,10 +12,12 @@ use App\Models\Product;
 use App\Models\Prospect;
 use App\Models\Quotation;
 use App\Models\Termncon;
+use App\Models\UnitQuotation;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ProspectController extends Controller
 {
@@ -26,16 +28,43 @@ class ProspectController extends Controller
      */
     public function index()
     {
+        // Smart Quote (unit_quotation) ikut dihitung di pipeline support: id_support
+        // turun dari prospect/client, nilai pakai basis pre-PPN & pre-fee (analog
+        // kolom `nett` di quotation lama), status dipetakan:
+        //   forecast = belum PO & belum loss | prospek tinggi = hot_prospect/negotiation
+        $sqNett = 'total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)';
+        $sqBase       = UnitQuotation::where('is_latest', 1)->where('id_support', Auth::user()->id);
+        $sqBaseAdmin  = UnitQuotation::where('is_latest', 1)->whereNotNull('id_support');
+
         $quotation = Quotation::where('id_support', Auth::user()->id)->where('level', '1')->where('is_primary', '1')->get();
-        $forecast = Quotation::where('id_support', Auth::user()->id)->where('level', '1')->where('is_primary', '1')->whereIn('status', ['20', '30', '40', '60', '80'])->sum('nett');
-        $prospect = Quotation::where('id_support', Auth::user()->id)->where('level', '1')->where('is_primary', '1')->where('status', '80')->sum('nett');
-        $po = Quotation::where('id_support', Auth::user()->id)->where('status', '100')->where('level', '1')->where('is_primary', '1')->sum('nett');
-        $loss = Quotation::where('id_support', Auth::user()->id)->where('status', '0')->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $forecast = Quotation::where('id_support', Auth::user()->id)->where('level', '1')->where('is_primary', '1')->whereIn('status', ['20', '30', '40', '60', '80'])->sum('nett')
+            + (clone $sqBase)->whereNotIn('status', ['po_received', 'loss'])->sum(DB::raw($sqNett));
+        $prospect = Quotation::where('id_support', Auth::user()->id)->where('level', '1')->where('is_primary', '1')->where('status', '80')->sum('nett')
+            + (clone $sqBase)->whereIn('status', ['hot_prospect', 'negotiation'])->sum(DB::raw($sqNett));
+        $po = Quotation::where('id_support', Auth::user()->id)->where('status', '100')->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + (clone $sqBase)->where('status', 'po_received')->sum(DB::raw($sqNett));
+        $loss = Quotation::where('id_support', Auth::user()->id)->where('status', '0')->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + (clone $sqBase)->where('status', 'loss')->sum(DB::raw($sqNett));
         $quotationAdmin = Quotation::whereNotNull('id_support')->where('level', '1')->get();
-        $forecastAdmin = Quotation::whereIn('status', ['20', '30', '40', '60', '80'])->whereNotNull('id_support')->where('level', '1')->where('is_primary', '1')->sum('nett');
-        $prospectAdmin = Quotation::where('status', '80')->whereNotNull('id_support')->where('level', '1')->where('is_primary', '1')->sum('nett');
-        $poAdmin = Quotation::where('status', '100')->whereNotNull('id_support')->where('level', '1')->where('is_primary', '1')->sum('nett');
-        $lossAdmin = Quotation::where('status', '0')->whereNotNull('id_support')->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $forecastAdmin = Quotation::whereIn('status', ['20', '30', '40', '60', '80'])->whereNotNull('id_support')->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + (clone $sqBaseAdmin)->whereNotIn('status', ['po_received', 'loss'])->sum(DB::raw($sqNett));
+        $prospectAdmin = Quotation::where('status', '80')->whereNotNull('id_support')->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + (clone $sqBaseAdmin)->whereIn('status', ['hot_prospect', 'negotiation'])->sum(DB::raw($sqNett));
+        $poAdmin = Quotation::where('status', '100')->whereNotNull('id_support')->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + (clone $sqBaseAdmin)->where('status', 'po_received')->sum(DB::raw($sqNett));
+        $lossAdmin = Quotation::where('status', '0')->whereNotNull('id_support')->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + (clone $sqBaseAdmin)->where('status', 'loss')->sum(DB::raw($sqNett));
+
+        // Jumlah dokumen penawaran Smart Quote per tahap (dipakai di sub-label kartu,
+        // digabung dengan count dari koleksi $quotation/$quotationAdmin di view).
+        $sqDocForecast      = (clone $sqBase)->whereNotIn('status', ['po_received', 'loss'])->count();
+        $sqDocProspect      = (clone $sqBase)->whereIn('status', ['hot_prospect', 'negotiation'])->count();
+        $sqDocPo            = (clone $sqBase)->where('status', 'po_received')->count();
+        $sqDocLoss          = (clone $sqBase)->where('status', 'loss')->count();
+        $sqDocForecastAdmin = (clone $sqBaseAdmin)->whereNotIn('status', ['po_received', 'loss'])->count();
+        $sqDocProspectAdmin = (clone $sqBaseAdmin)->whereIn('status', ['hot_prospect', 'negotiation'])->count();
+        $sqDocPoAdmin       = (clone $sqBaseAdmin)->where('status', 'po_received')->count();
+        $sqDocLossAdmin     = (clone $sqBaseAdmin)->where('status', 'loss')->count();
         $prospects = Prospect::where('id_sales', Auth::id())->whereNull('level')->get();
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
         $leveledProspect = Prospect::whereNULL('level')->where('id_sales', Auth::id())->count();
@@ -206,6 +235,14 @@ class ProspectController extends Controller
             'prospectAdmin',
             'poAdmin',
             'lossAdmin',
+            'sqDocForecast',
+            'sqDocProspect',
+            'sqDocPo',
+            'sqDocLoss',
+            'sqDocForecastAdmin',
+            'sqDocProspectAdmin',
+            'sqDocPoAdmin',
+            'sqDocLossAdmin',
             'salesLeads',
             'availableWeeks',
             'selectedWeekNum',

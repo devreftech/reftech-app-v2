@@ -103,6 +103,26 @@ $(function () {
 
         recalcSectionSubtotals();
         toggleEmptyState();
+        updateBubbleSummary();
+        if (typeof window.triggerAutoSaveSmartQuote === 'function') {
+            window.triggerAutoSaveSmartQuote();
+        }
+    }
+
+    function updateBubbleSummary() {
+        var $activePane = getActiveOptionPane();
+        if (!$activePane || !$activePane.length) return;
+
+        var opt = $activePane.data('option-idx');
+        var optTitle = $('#options-tab-nav .nav-item[data-option-idx="' + opt + '"] .tab-title-display').text() || ('Opsi ' + (parseInt(opt, 10) + 1));
+        var subtotalText = $activePane.find('.display-subtotal').text() || 'Rp 0';
+        var taxText = $activePane.find('.display-tax').text() || 'Rp 0';
+        var totalText = $activePane.find('.display-total').text() || 'Rp 0';
+
+        $('#bubble-active-option-name').text(optTitle);
+        $('#bubble-subtotal').text(subtotalText);
+        $('#bubble-tax').text(taxText);
+        $('#bubble-grand-total').text(totalText);
     }
 
     // ── Subtotal per Head Title (sub-grouping DI DALAM 1 Opsi — beda dari
@@ -448,10 +468,24 @@ $(function () {
         return $active.length ? $active : $('.option-pane').first();
     }
 
-    // Tombol "Hapus Opsi Ini" disembunyikan kalau cuma tersisa 1 opsi — minimal 1 opsi harus ada.
+    // Header toolbar opsi (Judul Opsi, Badge Items, dan Tombol Hapus Opsi) serta tab nav disembunyikan kalau cuma ada 1 opsi.
     function updateOptionRemoveButtons() {
-        var multi = $('.option-pane').length > 1;
-        $('.btn-remove-option').toggle(multi);
+        var count = $('.option-pane').length;
+        var multi = count > 1;
+
+        $('#options-tab-content').toggleClass('has-multi-options', multi);
+
+        if (multi) {
+            $('.option-header-toolbar').removeClass('d-none').addClass('d-flex').show();
+            $('.btn-remove-option').removeClass('d-none').show();
+            $('.option-title-wrapper').removeClass('d-none').addClass('d-flex').show();
+            $('#options-tab-nav').removeClass('d-none').addClass('d-flex').show();
+        } else {
+            $('.option-header-toolbar').addClass('d-none').removeClass('d-flex').hide();
+            $('.btn-remove-option').addClass('d-none').hide();
+            $('.option-title-wrapper').addClass('d-none').removeClass('d-flex').hide();
+            $('#options-tab-nav').addClass('d-none').removeClass('d-flex').hide();
+        }
     }
 
     function initSortableForContainer(container) {
@@ -515,10 +549,15 @@ $(function () {
         $('html, body').animate({ scrollTop: $pane.offset().top - 100 }, 300);
     });
 
+    $(document).on('shown.bs.tab', '#options-tab-nav a[data-bs-toggle="pill"]', function () {
+        updateBubbleSummary();
+    });
+
     $(document).on('input', '.option-title-input', function () {
         var opt = $(this).closest('.option-pane').data('option-idx');
         var text = $(this).val() || ('Opsi ' + (parseInt(opt, 10) + 1));
         $('#options-tab-nav .nav-item[data-option-idx="' + opt + '"] .tab-title-display').text(text);
+        updateBubbleSummary();
     });
 
     $(document).on('click', '.btn-remove-option', function () {
@@ -914,30 +953,64 @@ $(function () {
     }
     initClientSelect2();
 
-    // ── Sales filter (Sales Manager / Admin only) — reload Client list by selected sales ──
+    // ── Client Source Filter (Sales Manager / Admin only) ──
     var $salesSelect = $('#sales-select');
     if ($salesSelect.length) {
-        $salesSelect.select2({ placeholder: '-- Semua Sales (Optional) --', allowClear: true });
+        $salesSelect.select2({ placeholder: '-- Semua Sales (Default) --', allowClear: true });
 
         $salesSelect.on('change', function () {
-            var salesId = $(this).val();
+            var salesId = $(this).val() || 'all';
             var $clientSelect = $('#client-select');
             var currentClientId = $clientSelect.val();
 
-            $clientSelect.empty().append('<option value="">-- Select Client --</option>');
-
-            if (!salesId) {
-                initClientSelect2();
-                return;
-            }
+            $clientSelect.empty().append('<option value="">-- Loading Clients... --</option>');
 
             $.get('/smart-quote/clients-by-sales/' + salesId, function (res) {
+                $clientSelect.empty().append('<option value="">-- Select Client --</option>');
                 (res.clients || []).forEach(function (c) {
                     var selected = (currentClientId && String(c.id) === String(currentClientId)) ? ' selected' : '';
                     $clientSelect.append('<option value="' + c.id + '" data-role="' + (c.role || '') + '"' + selected + '>' + c.company + '</option>');
                 });
                 initClientSelect2();
             });
+        });
+
+        // Handler for switching between "By Sales" and "Leads Sendiri"
+        $('input[name="client_source_type"]').on('change', function () {
+            var mode = $(this).val();
+            var $clientSelect = $('#client-select');
+            var currentClientId = $clientSelect.val();
+
+            if (mode === 'self_leads') {
+                $('#sales-select-container').hide();
+                $('#self-leads-banner').removeClass('d-none').addClass('d-flex');
+                $clientSelect.empty().append('<option value="">-- Loading Leads Sendiri... --</option>');
+
+                $.get('/smart-quote/clients-by-sales/self_leads', function (res) {
+                    var count = (res.clients || []).length;
+                    $clientSelect.empty().append('<option value="">-- Pilih Leads Sendiri (' + count + ' Data) --</option>');
+                    (res.clients || []).forEach(function (c) {
+                        var selected = (currentClientId && String(c.id) === String(currentClientId)) ? ' selected' : '';
+                        $clientSelect.append('<option value="' + c.id + '" data-role="' + (c.role || '') + '"' + selected + '>' + c.company + '</option>');
+                    });
+                    initClientSelect2();
+                });
+            } else {
+                $('#sales-select-container').show();
+                $('#self-leads-banner').removeClass('d-flex').addClass('d-none');
+
+                var salesId = $('#sales-select').val() || 'all';
+                $clientSelect.empty().append('<option value="">-- Loading Clients... --</option>');
+
+                $.get('/smart-quote/clients-by-sales/' + salesId, function (res) {
+                    $clientSelect.empty().append('<option value="">-- Select Client --</option>');
+                    (res.clients || []).forEach(function (c) {
+                        var selected = (currentClientId && String(c.id) === String(currentClientId)) ? ' selected' : '';
+                        $clientSelect.append('<option value="' + c.id + '" data-role="' + (c.role || '') + '"' + selected + '>' + c.company + '</option>');
+                    });
+                    initClientSelect2();
+                });
+            }
         });
     }
 
@@ -1511,5 +1584,6 @@ $(function () {
     });
 
     toggleEmptyState();
+    updateOptionRemoveButtons();
     recalcSummary();
 });
