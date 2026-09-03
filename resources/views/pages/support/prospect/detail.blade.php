@@ -33,6 +33,9 @@
             </div>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button type="button" class="btn btn-label-primary waves-effect" data-bs-toggle="modal" data-bs-target="#editProspectModal">
+                <i class="mdi mdi-pencil-outline me-1"></i>Edit Prospect
+            </button>
             <a href="{{ route('prospect.index') }}" class="btn btn-label-secondary waves-effect">
                 <i class="mdi mdi-arrow-left me-1"></i>Kembali
             </a>
@@ -145,11 +148,11 @@
                                         <div class="text-dark small text-truncate">{{ $client->email ?: '—' }}</div>
                                     </div>
                                 </div>
-                                @if ($client->machine)
+                                @if ($client->unit)
                                     <div class="pt-1">
                                         <div class="text-muted small">Existing Machine / Unit</div>
                                         <div class="badge bg-label-secondary text-dark fw-normal text-wrap text-start mt-1">
-                                            <i class="mdi mdi-cogs me-1 text-primary"></i>{{ $client->machine }}
+                                            <i class="mdi mdi-cogs me-1 text-primary"></i>{{ $client->unit }}
                                         </div>
                                     </div>
                                 @endif
@@ -231,6 +234,9 @@
                 <div class="card-body p-0">
                     @if (@$quotation)
                         @php
+                            $isSmartQuote = $quotationIsSmart ?? false;
+
+                            // Status quotation lama = kode angka; Smart Quote = string.
                             $statusMap = [
                                 '100' => ['label' => 'Done PO', 'color' => 'success', 'icon' => 'mdi-cart-check'],
                                 '80'  => ['label' => 'Hot Prospect', 'color' => 'warning', 'icon' => 'mdi-fire'],
@@ -240,7 +246,22 @@
                                 '20'  => ['label' => 'Send WA/Email', 'color' => 'secondary', 'icon' => 'mdi-email-outline'],
                                 '0'   => ['label' => 'Loss', 'color' => 'danger', 'icon' => 'mdi-close-circle-outline'],
                             ];
-                            $st = $statusMap[$quotation->status] ?? ['label' => 'Status: ' . $quotation->status, 'color' => 'primary', 'icon' => 'mdi-file-outline'];
+                            $smartStatusMap = [
+                                'draft'        => ['label' => 'Draft', 'color' => 'secondary', 'icon' => 'mdi-file-outline'],
+                                'sent'         => ['label' => 'Sent', 'color' => 'info', 'icon' => 'mdi-email-outline'],
+                                'negotiation'  => ['label' => 'Negotiation', 'color' => 'warning', 'icon' => 'mdi-handshake'],
+                                'revision'     => ['label' => 'Revisi', 'color' => 'primary', 'icon' => 'mdi-file-document-edit-outline'],
+                                'hot_prospect' => ['label' => 'Hot Prospect', 'color' => 'danger', 'icon' => 'mdi-fire'],
+                                'po_received'  => ['label' => 'PO Received', 'color' => 'success', 'icon' => 'mdi-cart-check'],
+                                'loss'         => ['label' => 'Loss', 'color' => 'dark', 'icon' => 'mdi-close-circle-outline'],
+                                'cancel'       => ['label' => 'Cancel', 'color' => 'dark', 'icon' => 'mdi-cancel'],
+                            ];
+                            $activeMap = $isSmartQuote ? $smartStatusMap : $statusMap;
+                            $st = $activeMap[$quotation->status] ?? ['label' => 'Status: ' . $quotation->status, 'color' => 'primary', 'icon' => 'mdi-file-outline'];
+
+                            $quoteUrl = $isSmartQuote
+                                ? route('unit-quotation.show', $quotation->id)
+                                : route('quotation.show', $quotation->id);
                         @endphp
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0">
@@ -269,7 +290,7 @@
                                             </div>
                                         </td>
                                         <td class="text-center">
-                                            <a href="{{ route('quotation.show', $quotation->id) }}" class="btn btn-sm btn-outline-primary waves-effect rounded-pill px-3">
+                                            <a href="{{ $quoteUrl }}" class="btn btn-sm btn-outline-primary waves-effect rounded-pill px-3">
                                                 <i class="mdi mdi-eye-outline me-1"></i> Lihat
                                             </a>
                                         </td>
@@ -544,6 +565,228 @@
     </div>
 @endsection
 
+@push('modals')
+    @php
+        $categoryOptions = [
+            'Service Compressor',
+            'Rental Compressor',
+            'Sparepart Compressor',
+            'Instalasi Piping',
+            'Air Audit',
+            'Fire System',
+            'HVAC System',
+            'Unit Baru/Second',
+        ];
+        $sourceOptions = [
+            'IG' => 'Instagram',
+            'WhatsApp' => 'WhatsApp',
+            'LinkedIn' => 'LinkedIn',
+            'Website' => 'Website',
+            'Indotrading' => 'Indotrading',
+            'Tokopedia' => 'Tokopedia',
+            'OLX' => 'OLX',
+            'Google' => 'Google',
+            'Google Ads' => 'Google Ads',
+            'Meta Ads' => 'Meta Ads',
+            'Facebook' => 'Facebook',
+            'Other' => 'Other',
+        ];
+        $currentCategory = old('category', $prospect->category);
+        $currentSource = old('source', $client->source);
+        $currentDate = old('date', $prospect->date ? \Carbon\Carbon::parse($prospect->date)->format('Y-m-d') : '');
+    @endphp
+
+    <div class="modal fade" id="editProspectModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <form action="{{ route('prospect.update', $prospect->id) }}" method="POST">
+                    @csrf
+                    @method('PUT')
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">
+                            <i class="mdi mdi-pencil-outline me-1 text-primary"></i> Edit Detail Prospek #{{ $prospect->id }}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        @if ($errors->any())
+                            <div class="alert alert-danger">
+                                <ul class="mb-0 ps-3">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
+                        {{-- Kebutuhan / Detail Prospek --}}
+                        <h6 class="fw-bold text-primary mb-3">
+                            <i class="mdi mdi-text-box-search-outline me-1"></i> Kebutuhan / Detail Prospek
+                        </h6>
+                        <div class="row g-3 mb-2">
+                            <div class="col-12">
+                                <div class="form-floating form-floating-outline">
+                                    <textarea class="form-control h-px-100" name="kebutuhan" id="editKebutuhan"
+                                        placeholder="Rincian kebutuhan klien">{{ old('kebutuhan', $prospect->kebutuhan) }}</textarea>
+                                    <label for="editKebutuhan">Deskripsi Kebutuhan</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-floating form-floating-outline">
+                                    <select class="form-select" name="category" id="editCategory">
+                                        <option value="">-- Pilih Kategori --</option>
+                                        @if ($currentCategory && !in_array($currentCategory, $categoryOptions))
+                                            <option value="{{ $currentCategory }}" selected>{{ $currentCategory }}</option>
+                                        @endif
+                                        @foreach ($categoryOptions as $opt)
+                                            <option value="{{ $opt }}" {{ $currentCategory == $opt ? 'selected' : '' }}>{{ $opt }}</option>
+                                        @endforeach
+                                    </select>
+                                    <label for="editCategory">Kategori</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-floating form-floating-outline">
+                                    <select class="form-select" name="source" id="editSource">
+                                        <option value="">-- Pilih Source --</option>
+                                        @if ($currentSource && !array_key_exists($currentSource, $sourceOptions))
+                                            <option value="{{ $currentSource }}" selected>{{ $currentSource }}</option>
+                                        @endif
+                                        @foreach ($sourceOptions as $val => $label)
+                                            <option value="{{ $val }}" {{ $currentSource == $val ? 'selected' : '' }}>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                    <label for="editSource">Sumber Prospek (Source)</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="date" class="form-control" name="date" id="editDate" value="{{ $currentDate }}">
+                                    <label for="editDate">Tanggal Prospek</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="source_detail" id="editSourceDetail"
+                                        maxlength="100" placeholder="example.com"
+                                        value="{{ old('source_detail', $client->source_detail) }}">
+                                    <label for="editSourceDetail">Website Domain (opsional)</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        {{-- Informasi Perusahaan & Kontak PIC --}}
+                        <h6 class="fw-bold text-primary mb-3">
+                            <i class="mdi mdi-domain me-1"></i> Informasi Perusahaan & Kontak PIC
+                        </h6>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="company" id="editCompany"
+                                        placeholder="PT xxxxxxx" value="{{ old('company', $client->company) }}" required>
+                                    <label for="editCompany">Nama Perusahaan</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating form-floating-outline">
+                                    <textarea class="form-control h-px-100" name="address" id="editAddress"
+                                        placeholder="Alamat utama">{{ old('address', $client->address) }}</textarea>
+                                    <label for="editAddress">Alamat Utama</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating form-floating-outline">
+                                    <textarea class="form-control h-px-100" name="subAddress" id="editSubAddress"
+                                        placeholder="Sub alamat / plant">{{ old('subAddress', $client->subAddress) }}</textarea>
+                                    <label for="editSubAddress">Sub Alamat / Plant</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="area" id="editArea"
+                                        placeholder="Area / Kota" value="{{ old('area', $client->area) }}">
+                                    <label for="editArea">Area / Kota</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-floating form-floating-outline">
+                                    <select class="form-select" name="ru" id="editRu">
+                                        <option value="">-- Pilih --</option>
+                                        <option value="User" {{ old('ru', $client->ru) == 'User' ? 'selected' : '' }}>User</option>
+                                        <option value="Reseller" {{ old('ru', $client->ru) == 'Reseller' ? 'selected' : '' }}>Reseller</option>
+                                    </select>
+                                    <label for="editRu">Tipe Klien (R/U)</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="unit" id="editUnit"
+                                        placeholder="Contoh: KAESER SK 21" value="{{ old('unit', $client->unit) }}">
+                                    <label for="editUnit">Existing Machine / Unit</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="phone" id="editPhone"
+                                        placeholder="021xxxxxxx" value="{{ old('phone', $client->phone) }}">
+                                    <label for="editPhone">Telepon Kantor</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="email" id="editEmail"
+                                        placeholder="company@email.com" value="{{ old('email', $client->email) }}">
+                                    <label for="editEmail">Email Kantor</label>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="text-muted small text-uppercase fw-semibold mt-2">Person In Charge (PIC)</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="namePic" id="editNamePic"
+                                        placeholder="Nama PIC" value="{{ old('namePic', $pic->name_pic) }}">
+                                    <label for="editNamePic">Nama PIC</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="position" id="editPosition"
+                                        placeholder="Contoh: Purchasing" value="{{ old('position', $pic->position) }}">
+                                    <label for="editPosition">Jabatan PIC</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="phonePic" id="editPhonePic"
+                                        placeholder="08xxxxxxxxxx" value="{{ old('phonePic', $pic->phone_pic) }}">
+                                    <label for="editPhonePic">Nomor WhatsApp / HP</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="emailPic" id="editEmailPic"
+                                        placeholder="pic@email.com" value="{{ old('emailPic', $pic->email_pic) }}">
+                                    <label for="editEmailPic">Email PIC</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary waves-effect waves-light">
+                            <i class="mdi mdi-content-save-outline me-1"></i> Simpan Perubahan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endpush
+
 @push('after-style')
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/select2/select2.css" />
@@ -608,6 +851,12 @@
             // Scroll diskusi ke pesan terbaru
             var list = document.querySelector('.discussion-list');
             if (list) list.scrollTop = list.scrollHeight;
+
+            // Buka kembali modal edit bila validasi gagal
+            @if ($errors->any())
+                var editModalEl = document.getElementById('editProspectModal');
+                if (editModalEl) bootstrap.Modal.getOrCreateInstance(editModalEl).show();
+            @endif
         });
 
         // ── @mention logic (Identical to Purchase Request) ───────────────────

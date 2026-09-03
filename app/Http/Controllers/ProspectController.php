@@ -277,20 +277,22 @@ class ProspectController extends Controller
 
         $salesUser = User::findOrFail($sales);
 
-        $prospects = Prospect::with(['pic.client', 'quotation'])
+        $prospects = Prospect::with(['pic.client'])
             ->where('id_sales', $sales)
             ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
             ->orderByDesc('created_at')
             ->get()
             ->map(function ($p) {
+                [$q] = $p->resolveQuotation();
+
                 return [
                     'id' => $p->id,
                     'company' => $p->pic->client->company ?? '-',
                     'category' => $p->category,
                     'kebutuhan' => $p->kebutuhan,
                     'date' => $p->date ? Carbon::parse($p->date)->format('d-m-Y') : '-',
-                    'status' => $p->quotation->status ?? null,
-                    'nett' => $p->quotation->nett ?? null,
+                    'status' => $q->status ?? null,
+                    'nett' => $q->nett ?? ($q->total ?? null),
                 ];
             });
 
@@ -431,7 +433,7 @@ class ProspectController extends Controller
     public function show($id)
     {
         $prospect = Prospect::find($id);
-        $quotation = Quotation::find($prospect->id_quotation);
+        [$quotation, $quotationIsSmart] = $prospect->resolveQuotation();
         $allQuotation = Quotation::where('id_pic', $prospect->id_pic)->get();
         $pic = Pic::where('id', $prospect->id_pic)->first();
         $client = Client::where('id', $pic->id_client)->first();
@@ -508,7 +510,7 @@ class ProspectController extends Controller
             ->get();
         $allUsers = User::where('active', '1')->get(['id', 'name', 'image', 'role']);
 
-        return view('pages.support.prospect.detail', compact('allQuotation', 'prospect', 'comment', 'prospectComments', 'unreadComment', 'commentAdmin', 'quotation', 'unreadCommentAdmin', 'leveledProspect', 'noSaleProspect', 'pic', 'client', 'sales', 'user', 'allUsers'));
+        return view('pages.support.prospect.detail', compact('allQuotation', 'prospect', 'comment', 'prospectComments', 'unreadComment', 'commentAdmin', 'quotation', 'quotationIsSmart', 'unreadCommentAdmin', 'leveledProspect', 'noSaleProspect', 'pic', 'client', 'sales', 'user', 'allUsers'));
     }
 
     /**
@@ -525,17 +527,73 @@ class ProspectController extends Controller
     /**
      * Update the specified resource in storage.
      *
+     * Dipakai oleh tombol "Edit Prospect" di halaman detail untuk mengubah isian
+     * "Kebutuhan / Detail Prospek" (tabel prospect) serta "Informasi Perusahaan &
+     * Kontak PIC" (tabel client + pic) sekaligus dalam satu form.
+     *
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id)
     {
-        $prospect = Prospect::find($id);
-        $prospect->id_sales = $request->sales;
-        $prospectSave = $prospect->save();
-        if ($prospectSave) {
-            return redirect('prospect')->with('message', 'data telah ditambahkan');
+        $prospect = Prospect::findOrFail($id);
+        $pic = Pic::findOrFail($prospect->id_pic);
+        $client = Client::findOrFail($pic->id_client);
+
+        $rule = [
+            'company' => 'required|string|max:255',
+            'email' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:100',
+            'ru' => 'nullable|string|max:50',
+            'source' => 'nullable|string|max:100',
+            'source_detail' => 'nullable|string|max:100',
+            'unit' => 'nullable|string|max:255',
+            'address' => 'nullable|string',
+            'subAddress' => 'nullable|string',
+            'area' => 'nullable|string|max:255',
+            'category' => 'nullable|string|max:100',
+            'kebutuhan' => 'nullable|string',
+            'date' => 'nullable|date',
+            'namePic' => 'nullable|string|max:255',
+            'position' => 'nullable|string|max:255',
+            'emailPic' => 'nullable|string|max:255',
+            'phonePic' => 'nullable|string|max:100',
+        ];
+
+        $message = [
+            'company.required' => 'Field Nama Perusahaan Wajib Diisi',
+            'source_detail.max' => 'Domain maksimal 100 karakter',
+            'date.date' => 'Format Tanggal tidak valid',
+        ];
+
+        $this->validate($request, $rule, $message);
+
+        $client->company = $request->company;
+        $client->email = $request->email;
+        $client->phone = $request->phone;
+        $client->ru = $request->ru;
+        $client->source = $request->source;
+        $client->source_detail = $request->filled('source_detail') ? strtolower(trim($request->source_detail)) : null;
+        $client->unit = $request->unit;
+        $client->address = $request->address;
+        $client->subAddress = $request->subAddress;
+        $client->area = $request->area;
+        $client->save();
+
+        $pic->name_pic = $request->namePic;
+        $pic->position = $request->position;
+        $pic->email_pic = $request->emailPic;
+        $pic->phone_pic = $request->phonePic;
+        $pic->save();
+
+        $prospect->category = $request->category;
+        $prospect->kebutuhan = $request->kebutuhan;
+        if ($request->filled('date')) {
+            $prospect->date = $request->date;
         }
+        $prospect->save();
+
+        return redirect()->route('prospect.show', $prospect->id)->with('message', 'Detail prospek berhasil diperbarui');
     }
 
     /**

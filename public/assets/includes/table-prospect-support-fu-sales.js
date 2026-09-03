@@ -169,12 +169,22 @@ $(function () {
                                 30:  { label: "Inquiry Accepted", color: "dark", icon: "mdi-check-all" },
                                 20:  { label: "Send WA/Email", color: "secondary", icon: "mdi-email-outline" },
                                 0:   { label: "Loss", color: "danger", icon: "mdi-close-circle-outline" },
+                                // Smart Quote (unit_quotation) statuses
+                                draft:        { label: "Draft", color: "secondary", icon: "mdi-file-outline" },
+                                sent:         { label: "Sent", color: "info", icon: "mdi-email-outline" },
+                                negotiation:  { label: "Negotiation", color: "warning", icon: "mdi-handshake" },
+                                revision:     { label: "Revisi", color: "primary", icon: "mdi-file-document-edit-outline" },
+                                hot_prospect: { label: "Hot Prospect", color: "danger", icon: "mdi-fire" },
+                                po_received:  { label: "PO Received", color: "success", icon: "mdi-cart-check" },
+                                loss:         { label: "Loss", color: "dark", icon: "mdi-close-circle-outline" },
+                                cancel:       { label: "Cancel", color: "dark", icon: "mdi-cancel" },
                             };
 
                             if (full.quotation_id || full.status !== null) {
                                 var st = statusMap[full.status] || { label: "Quoted", color: "primary", icon: "mdi-file-document-outline" };
+                                var quoteHref = full.is_smart ? "/smart-quote/" + full.quotation_id : "/quotation/" + full.quotation_id;
                                 var quoteLink = full.no_quote
-                                    ? `<a href="/unit-quotation/detail/${full.quotation_id}" class="small fw-bold text-primary d-block mb-1 text-decoration-none">
+                                    ? `<a href="${quoteHref}" class="small fw-bold text-primary d-block mb-1 text-decoration-none">
                                          <i class="mdi mdi-file-outline me-1"></i>${full.no_quote}
                                        </a>`
                                     : "";
@@ -203,9 +213,10 @@ $(function () {
                     render: function (data, type, full) {
                         if (type === "display") {
                             if (full.quotation_id) {
+                                var quoteHref = full.is_smart ? "/smart-quote/" + full.quotation_id : "/quotation/" + full.quotation_id;
                                 return `
                                     <div class="d-flex align-items-center gap-1 justify-content-center">
-                                        <a href="/unit-quotation/detail/${full.quotation_id}" class="btn btn-icon btn-sm btn-outline-primary waves-effect rounded-pill" data-bs-toggle="tooltip" title="Lihat Quotation">
+                                        <a href="${quoteHref}" class="btn btn-icon btn-sm btn-outline-primary waves-effect rounded-pill" data-bs-toggle="tooltip" title="Lihat Quotation">
                                             <i class="mdi mdi-file-document-outline"></i>
                                         </a>
                                         <a href="/prospect/${full.id}" class="btn btn-icon btn-sm btn-outline-secondary waves-effect rounded-pill" data-bs-toggle="tooltip" title="Detail Prospect">
