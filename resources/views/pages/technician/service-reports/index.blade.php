@@ -7,7 +7,7 @@
         </h4>
         <div class="card mb-3">
             <div class="card-datatable table-responsive pt-0">
-                <table class="datatable-reports table table-striped">
+                <table class="datatable-reports table table-bordered">
                     <thead>
                         <tr>
                             <th></th>
@@ -17,7 +17,7 @@
                             <th>Job Desc</th>
                             <th>Unit Type</th>
                             <th>Serial / Tag</th>
-                            <th>Date</th>
+                            <th class="text-nowrap">Date</th>
                             <th>Status</th>
                         </tr>
                     </thead>
