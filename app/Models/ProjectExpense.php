@@ -18,6 +18,7 @@ class ProjectExpense extends Model
         'name',
         'category',
         'amount',
+        'payment_info',
         'date',
         'receipt',
     ];

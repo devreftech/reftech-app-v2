@@ -1513,6 +1513,7 @@ Route::group(["middleware" => "auth"], function () {
     })->name('project-monitoring.index');
     Route::get('/project-monitoring/{id}', [ProjectMonitoringController::class, 'show'])->name('project-monitoring.show');
     Route::post('/project-monitoring/{id}/expense', [ProjectMonitoringController::class, 'storeExpense'])->name('project-monitoring.store-expense');
+    Route::put('/project-monitoring/expense/{id}', [ProjectMonitoringController::class, 'updateExpense'])->name('project-monitoring.update-expense');
     Route::delete('/project-monitoring/expense/{id}', [ProjectMonitoringController::class, 'destroyExpense'])->name('project-monitoring.destroy-expense');
     Route::post('/project-monitoring/{id}/status-step', [ProjectMonitoringController::class, 'updateStatusStep'])->name('project-monitoring.update-status-step');
 

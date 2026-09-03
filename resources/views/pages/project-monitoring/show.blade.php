@@ -172,110 +172,114 @@
             </div>
         </div>
 
-        <div class="row">
-            <!-- Project Information & KPI Column -->
-            <div class="col-12 {{ $hasFinancialAccess ? 'col-lg-4' : 'col-lg-12' }} mb-4">
-                <!-- Info Card -->
-                <div class="card mb-4 shadow-sm border-0">
-                    <div class="card-header pb-2 border-bottom py-3">
-                        <h5 class="card-title mb-0 fw-bold text-primary"><i class="mdi mdi-information-outline me-2"></i> Informasi Proyek</h5>
-                    </div>
-                    <div class="card-body pt-3">
-                        <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
-                            <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(105, 108, 255, 0.08); color: #696cff;">
+        <!-- Project Information Card (Full Width) -->
+        <div class="card mb-4 shadow-sm border-0">
+            <div class="card-header pb-2 border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h5 class="card-title mb-0 fw-bold text-primary">
+                    <i class="mdi mdi-information-outline me-2"></i> Informasi Proyek
+                </h5>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    @php
+                        switch ($project->status) {
+                            case 1: $statusName = 'On Check'; $statusBadge = 'bg-label-warning'; break;
+                            case 2: $statusName = 'Ready Stock'; $statusBadge = 'bg-label-info'; break;
+                            case 3: $statusName = 'Kurang'; $statusBadge = 'bg-label-danger'; break;
+                            case 4: $statusName = 'Pre-Order'; $statusBadge = 'bg-label-primary'; break;
+                            case 5: $statusName = 'Delivery Process'; $statusBadge = 'bg-label-linkedin'; break;
+                            case 6: $statusName = 'Done'; $statusBadge = 'bg-label-success'; break;
+                            case 7: $statusName = 'Cancel'; $statusBadge = 'bg-label-danger'; break;
+                            default: $statusName = 'In Progress'; $statusBadge = 'bg-label-secondary'; break;
+                        }
+                    @endphp
+                    <span class="badge {{ $statusBadge }} fw-semibold fs-7 px-3 py-1.5">{{ $statusName }}</span>
+                    @if ($project->status != '6' && $project->status != '8' && $project->status != '9')
+                        <button type="button" class="btn btn-sm btn-primary hover-elevate fw-semibold" data-bs-toggle="modal" data-bs-target="#statusEdit" {{ auth::user()->role != 'Sales' ? '' : 'disabled' }}>
+                            <i class="mdi mdi-square-edit-outline me-1"></i> Update Status
+                        </button>
+                        <form action="{{ route('pending-po.changeType', $project->id) }}" method="POST" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-outline-warning hover-elevate fw-semibold" onclick="return confirm('Apakah Anda yakin ingin memindahkan proyek ini ke Sales Order?')">
+                                <i class="mdi mdi-swap-horizontal me-1"></i> Move to SO
+                            </button>
+                        </form>
+                    @endif
+                </div>
+            </div>
+            <div class="card-body pt-3">
+                <div class="row g-3">
+                    <div class="col-12 col-sm-6 col-md-4 col-lg">
+                        <div class="d-flex align-items-center p-2 rounded bg-light h-100">
+                            <div class="avatar avatar-sm me-2 flex-shrink-0" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(105, 108, 255, 0.08); color: #696cff;">
                                 <i class="mdi mdi-briefcase-variant-outline fs-5"></i>
                             </div>
-                            <div>
+                            <div class="text-truncate">
                                 <small class="text-muted d-block" style="font-size: 11px;">No Project</small>
                                 <span class="fw-semibold text-dark">{{ $project->no_pending }}</span>
                             </div>
                         </div>
-                        <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
-                            <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(3, 195, 236, 0.08); color: #03c3ec;">
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-4 col-lg">
+                        <div class="d-flex align-items-center p-2 rounded bg-light h-100">
+                            <div class="avatar avatar-sm me-2 flex-shrink-0" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(3, 195, 236, 0.08); color: #03c3ec;">
                                 <i class="mdi mdi-domain fs-5"></i>
                             </div>
-                            <div>
+                            <div class="text-truncate">
                                 <small class="text-muted d-block" style="font-size: 11px;">Customer</small>
-                                <span class="fw-semibold text-dark">{{ $project->company }}</span>
+                                <span class="fw-semibold text-dark text-truncate d-block" title="{{ $project->company }}">{{ $project->company }}</span>
                             </div>
                         </div>
-                        <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
-                            <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(113, 221, 55, 0.08); color: #71dd37;">
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-4 col-lg">
+                        <div class="d-flex align-items-center p-2 rounded bg-light h-100">
+                            <div class="avatar avatar-sm me-2 flex-shrink-0" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(113, 221, 55, 0.08); color: #71dd37;">
                                 <i class="mdi mdi-file-document-outline fs-5"></i>
                             </div>
-                            <div>
+                            <div class="text-truncate">
                                 <small class="text-muted d-block" style="font-size: 11px;">No Penawaran</small>
                                 <span class="fw-semibold text-dark">{{ $project->no_quote }}</span>
                             </div>
                         </div>
-                        <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
-                            <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(255, 171, 0, 0.08); color: #ffab00;">
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-4 col-lg">
+                        <div class="d-flex align-items-center p-2 rounded bg-light h-100">
+                            <div class="avatar avatar-sm me-2 flex-shrink-0" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(255, 171, 0, 0.08); color: #ffab00;">
                                 <i class="mdi mdi-account-tie-outline fs-5"></i>
                             </div>
-                            <div>
+                            <div class="text-truncate">
                                 <small class="text-muted d-block" style="font-size: 11px;">Sales PIC</small>
                                 <span class="fw-semibold text-dark">{{ $project->sales_name }}</span>
                             </div>
                         </div>
-                        <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
-                            <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(255, 62, 29, 0.08); color: #ff3e1d;">
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-4 col-lg">
+                        <div class="d-flex align-items-center p-2 rounded bg-light h-100">
+                            <div class="avatar avatar-sm me-2 flex-shrink-0" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(255, 62, 29, 0.08); color: #ff3e1d;">
                                 <i class="mdi mdi-account-outline fs-5"></i>
                             </div>
-                            <div>
+                            <div class="text-truncate">
                                 <small class="text-muted d-block" style="font-size: 11px;">Customer PIC</small>
                                 <span class="fw-semibold text-dark">{{ $project->pic_name }}</span>
                             </div>
                         </div>
-                        
-                        <!-- Project Status and Update Action -->
-                        <div class="mt-4 pt-3 border-top">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="text-muted small fw-semibold">Status Project:</span>
-                                @php
-                                    switch ($project->status) {
-                                        case 1: $statusName = 'On Check'; $statusBadge = 'bg-label-warning'; break;
-                                        case 2: $statusName = 'Ready Stock'; $statusBadge = 'bg-label-info'; break;
-                                        case 3: $statusName = 'Kurang'; $statusBadge = 'bg-label-danger'; break;
-                                        case 4: $statusName = 'Pre-Order'; $statusBadge = 'bg-label-primary'; break;
-                                        case 5: $statusName = 'Delivery Process'; $statusBadge = 'bg-label-linkedin'; break;
-                                        case 6: $statusName = 'Done'; $statusBadge = 'bg-label-success'; break;
-                                        case 7: $statusName = 'Cancel'; $statusBadge = 'bg-label-danger'; break;
-                                        default: $statusName = 'In Progress'; $statusBadge = 'bg-label-secondary'; break;
-                                    }
-                                @endphp
-                                <span class="badge {{ $statusBadge }} fw-semibold fs-7">{{ $statusName }}</span>
-                            </div>
-                            
-                            @if ($project->status != '6' && $project->status != '8' && $project->status != '9')
-                                <button type="button" class="btn btn-primary w-100 hover-elevate fw-semibold mb-2" data-bs-toggle="modal" data-bs-target="#statusEdit" {{ auth::user()->role != 'Sales' ? '' : 'disabled' }}>
-                                    <i class="mdi mdi-square-edit-outline me-1"></i> Update Status Project
-                                </button>
-                                <form action="{{ route('pending-po.changeType', $project->id) }}" method="POST">
-                                    @csrf
-                                    <button type="submit" class="btn btn-outline-warning w-100 hover-elevate fw-semibold" onclick="return confirm('Apakah Anda yakin ingin memindahkan proyek ini ke Sales Order?')">
-                                        <i class="mdi mdi-swap-horizontal me-1"></i> Move to Sales Order
-                                    </button>
-                                </form>
-                            @endif
-                        </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Tabs Section Column -->
-            @if($hasFinancialAccess)
-            <div class="col-12 col-lg-8 mb-4">
-                <div class="nav-align-top mb-4">
-                    <ul class="nav nav-tabs" role="tablist">
-                        <li class="nav-item">
-                            <button type="button" class="nav-link active" role="tab" data-bs-toggle="tab" data-bs-target="#navs-financial" aria-controls="navs-financial" aria-selected="true">
-                                <i class="mdi mdi-finance me-1"></i> Keuangan (Financial)
-                            </button>
-                        </li>
-                    </ul>
-                    <div class="tab-content">
-                        <!-- Financial Details Tab -->
-                        <div class="tab-pane fade show active" id="navs-financial" role="tabpanel">
+        <!-- Keuangan (Financial) Section (Full Width) -->
+        @if($hasFinancialAccess)
+        <div class="col-12 mb-4 p-0">
+            <div class="nav-align-top mb-4">
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item">
+                        <button type="button" class="nav-link active" role="tab" data-bs-toggle="tab" data-bs-target="#navs-financial" aria-controls="navs-financial" aria-selected="true">
+                            <i class="mdi mdi-finance me-1"></i> Keuangan (Financial)
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <!-- Financial Details Tab -->
+                    <div class="tab-pane fade show active" id="navs-financial" role="tabpanel">
                             
                             <!-- Kesehatan Keuangan (Financial Health Summary) -->
                             <div class="card bg-label-primary mb-4 border-0 shadow-none">
@@ -283,23 +287,57 @@
                                     <h5 class="card-title text-primary fw-bold mb-4"><i class="mdi mdi-chart-line me-2"></i> Ringkasan Kesehatan Keuangan</h5>
                                     <div class="row g-3">
                                         <div class="col-12 col-md-4">
-                                            <div class="p-3 bg-white rounded border border-light shadow-sm">
-                                                <span class="text-muted small d-block mb-1">Total Pendapatan (Revenue)</span>
-                                                <h4 class="fw-bold text-success mb-0">Rp {{ number_format($project->revenue, 0, ',', '.') }}</h4>
+                                            <div class="p-3 bg-white rounded border border-light shadow-sm h-100 d-flex flex-column justify-content-between">
+                                                <div>
+                                                    <span class="text-muted small d-block mb-1">Total Pendapatan (Revenue)</span>
+                                                    <h4 class="fw-bold text-success mb-2">Rp {{ number_format($project->revenue, 0, ',', '.') }}</h4>
+                                                </div>
+                                                <div class="pt-2 border-top text-muted" style="font-size: 11px;">
+                                                    <div class="d-flex justify-content-between">
+                                                        <span><i class="mdi mdi-file-document-outline text-primary me-1"></i>Penawaran:</span>
+                                                        <span class="fw-semibold text-dark">{{ $project->no_quote }}</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="col-12 col-md-4">
-                                            <div class="p-3 bg-white rounded border border-light shadow-sm">
-                                                <span class="text-muted small d-block mb-1">Total Biaya (COGS)</span>
-                                                <h4 class="fw-bold text-danger mb-0">Rp {{ number_format($totalCost, 0, ',', '.') }}</h4>
+                                            <div class="p-3 bg-white rounded border border-light shadow-sm h-100 d-flex flex-column justify-content-between">
+                                                <div>
+                                                    <span class="text-muted small d-block mb-1">Total Biaya (COGS)</span>
+                                                    <h4 class="fw-bold text-danger mb-2">Rp {{ number_format($totalCost, 0, ',', '.') }}</h4>
+                                                </div>
+                                                <div class="pt-2 border-top text-muted" style="font-size: 11px;">
+                                                    <div class="d-flex justify-content-between mb-1">
+                                                        <span><i class="mdi mdi-tools text-info me-1"></i>Biaya Material:</span>
+                                                        <span class="fw-semibold text-dark">Rp {{ number_format($materialCost, 0, ',', '.') }}</span>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between {{ $shippingCost > 0 ? 'mb-1' : '' }}">
+                                                        <span><i class="mdi mdi-cash-multiple text-warning me-1"></i>Biaya Operasional:</span>
+                                                        <span class="fw-semibold text-dark">Rp {{ number_format($generalCost, 0, ',', '.') }}</span>
+                                                    </div>
+                                                    @if($shippingCost > 0)
+                                                        <div class="d-flex justify-content-between">
+                                                            <span><i class="mdi mdi-truck-fast-outline text-secondary me-1"></i>Pengiriman (Resi):</span>
+                                                            <span class="fw-semibold text-dark">Rp {{ number_format($shippingCost, 0, ',', '.') }}</span>
+                                                        </div>
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="col-12 col-md-4">
-                                            <div class="p-3 bg-white rounded border border-light shadow-sm">
-                                                <span class="text-muted small d-block mb-1">Estimasi Net Profit</span>
-                                                <h4 class="fw-bold {{ $profit >= 0 ? 'text-primary' : 'text-danger' }} mb-0">
-                                                    Rp {{ number_format($profit, 0, ',', '.') }}
-                                                </h4>
+                                            <div class="p-3 bg-white rounded border border-light shadow-sm h-100 d-flex flex-column justify-content-between">
+                                                <div>
+                                                    <span class="text-muted small d-block mb-1">Estimasi Net Profit</span>
+                                                    <h4 class="fw-bold {{ $profit >= 0 ? 'text-primary' : 'text-danger' }} mb-2">
+                                                        Rp {{ number_format($profit, 0, ',', '.') }}
+                                                    </h4>
+                                                </div>
+                                                <div class="pt-2 border-top text-muted" style="font-size: 11px;">
+                                                    <div class="d-flex justify-content-between">
+                                                        <span><i class="mdi mdi-percent-outline text-success me-1"></i>Margin Profit:</span>
+                                                        <span class="fw-bold {{ $margin >= 0 ? 'text-success' : 'text-danger' }}">{{ number_format($margin, 1) }}%</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -384,75 +422,261 @@
                             </div>
                         </div>
 
-                        <!-- Purchase requests Tab -->
+                        <!-- Purchase requests & Field Materials Tab -->
                         <div class="tab-pane fade" id="subnavs-purchases" role="tabpanel">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h6 class="fw-semibold m-0">Log Pembelian Barang & Spare Part</h6>
-                                <span class="badge bg-label-danger">Total Biaya PR: Rp {{ number_format($materialCost, 0, ',', '.') }}</span>
+                                <h6 class="fw-semibold m-0">Log Pembelian Barang & Material Lapangan</h6>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <span class="badge bg-label-danger">Total Biaya Material: Rp {{ number_format($materialCost, 0, ',', '.') }}</span>
+                                    <button type="button" class="btn btn-primary btn-sm waves-effect" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
+                                        <i class="mdi mdi-plus me-1"></i> Catat Biaya Baru
+                                    </button>
+                                </div>
                             </div>
-                            <div class="table-responsive text-nowrap border rounded">
-                                <table class="table table-striped mb-0">
-                                    <thead>
-                                        <tr class="table-warning">
-                                            <th>No PR</th>
-                                            <th>Commodity / Part</th>
-                                            <th class="text-center">Qty</th>
-                                            <th>Status</th>
-                                            <th class="text-end">Harga Beli</th>
-                                            <th class="text-end">Total Nominal</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse($purchases as $header)
-                                            @forelse($header->details as $pr)
+
+                            <!-- Summary Cards for Purchases -->
+                            <div class="row mb-3">
+                                <div class="col-md-6 mb-2">
+                                    <div class="p-3 border rounded bg-light">
+                                        <small class="text-muted d-block">Pembelian Barang / Spare Part (PR Resmi)</small>
+                                        <span class="h5 fw-bold text-danger">Rp {{ number_format($purchases->where('status', '3')->flatMap->details->sum('amount'), 0, ',', '.') }}</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <div class="p-3 border rounded bg-light">
+                                        <small class="text-muted d-block">Pengeluaran Material Lapangan Langsung</small>
+                                        <span class="h5 fw-bold text-danger">Rp {{ number_format($materialExpenses->sum('amount'), 0, ',', '.') }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- PR Table (Hidden sementara) --}}
+                            {{--
+                            <div class="mb-4">
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="badge bg-label-warning me-2"><i class="mdi mdi-cart-outline me-1"></i> PR</span>
+                                    <span class="fw-bold small text-muted text-uppercase">Purchase Request (PR Logistik)</span>
+                                </div>
+                                <div class="table-responsive text-nowrap border rounded">
+                                    <table class="table table-striped mb-0">
+                                        <thead>
+                                            <tr class="table-warning">
+                                                <th>No PR</th>
+                                                <th>Commodity / Part</th>
+                                                <th class="text-center">Qty</th>
+                                                <th>Status</th>
+                                                <th class="text-end">Harga Beli</th>
+                                                <th class="text-end">Total Nominal</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @forelse($purchases as $header)
+                                                @forelse($header->details as $pr)
+                                                    <tr>
+                                                        <td>
+                                                            <span class="text-primary fw-semibold">{{ $header->no_pr }}</span>
+                                                        </td>
+                                                        <td class="text-wrap">
+                                                            @if($pr->equivalent)
+                                                                {{ $pr->equivalent->product->commodity ?? '-' }}
+                                                                ({{ $pr->equivalent->pn ?? '' }})
+                                                            @else
+                                                                -
+                                                            @endif
+                                                        </td>
+                                                        <td class="text-center">{{ $pr->qty }}</td>
+                                                        <td>
+                                                            @if($header->status == '3')
+                                                                <span class="badge bg-success">Received</span>
+                                                            @elseif($header->status == '2')
+                                                                <span class="badge bg-info">Ordered</span>
+                                                            @elseif($header->status == '1')
+                                                                <span class="badge bg-warning">Approved</span>
+                                                            @else
+                                                                <span class="badge bg-secondary">Pending</span>
+                                                            @endif
+                                                        </td>
+                                                        <td class="text-end">
+                                                            @if($pr->price)
+                                                                Rp {{ number_format($pr->price, 0, ',', '.') }}
+                                                            @else
+                                                                -
+                                                            @endif
+                                                        </td>
+                                                        <td class="text-end">
+                                                            @if($pr->amount)
+                                                                Rp {{ number_format($pr->amount, 0, ',', '.') }}
+                                                            @else
+                                                                -
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @empty
+                                                @endforelse
+                                            @empty
                                                 <tr>
+                                                    <td colspan="6" class="text-center">Belum ada pengajuan pembelian barang (PR) untuk proyek ini.</td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            --}}
+
+                            <!-- Material Expenses Table -->
+                            <div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="badge bg-label-info me-2"><i class="mdi mdi-tools me-1"></i> Material</span>
+                                    <span class="fw-bold small text-muted text-uppercase">Catatan Pembelian Material Lapangan Langsung</span>
+                                </div>
+                                <div class="table-responsive text-nowrap border rounded">
+                                    <table class="table table-striped mb-0">
+                                        <thead>
+                                            <tr class="table-info">
+                                                <th>Tanggal</th>
+                                                <th>Nama Material / Pengeluaran</th>
+                                                <th>Kategori</th>
+                                                <th>Payment Info</th>
+                                                <th class="text-end">Nominal</th>
+                                                <th class="text-center">Nota</th>
+                                                <th class="text-center">Oleh</th>
+                                                @if($hasFinancialAccess)
+                                                    <th class="text-center">Aksi</th>
+                                                @endif
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @forelse($materialExpenses as $matExp)
+                                                <tr>
+                                                    <td>{{ \Carbon\Carbon::parse($matExp->date)->format('d-M-Y') }}</td>
+                                                    <td class="text-wrap" style="max-width: 180px;">{{ $matExp->name }}</td>
                                                     <td>
-                                                        <span class="text-primary fw-semibold">{{ $header->no_pr }}</span>
+                                                        <span class="badge bg-label-warning">{{ $matExp->category }}</span>
                                                     </td>
-                                                    <td class="text-wrap">
-                                                        @if($pr->equivalent)
-                                                            {{ $pr->equivalent->product->commodity ?? '-' }}
-                                                            ({{ $pr->equivalent->pn ?? '' }})
+                                                    <td class="text-wrap" style="max-width: 180px;">
+                                                        @if($matExp->payment_info)
+                                                            <span class="badge bg-label-secondary text-dark fw-normal"><i class="mdi mdi-credit-card-outline me-1"></i>{{ $matExp->payment_info }}</span>
+                                                        @else
+                                                            <span class="text-muted small">-</span>
+                                                        @endif
+                                                    </td>
+                                                    <td class="text-end">Rp {{ number_format($matExp->amount, 0, ',', '.') }}</td>
+                                                    <td class="text-center">
+                                                        @if ($matExp->receipt)
+                                                            <a href="{{ asset($matExp->receipt) }}" target="_blank" class="text-primary fs-4">
+                                                                <i class="mdi mdi-file-image-outline"></i>
+                                                            </a>
                                                         @else
                                                             -
                                                         @endif
                                                     </td>
-                                                    <td class="text-center">{{ $pr->qty }}</td>
-                                                    <td>
-                                                        @if($header->status == '3')
-                                                            <span class="badge bg-success">Received</span>
-                                                        @elseif($header->status == '2')
-                                                            <span class="badge bg-info">Ordered</span>
-                                                        @elseif($header->status == '1')
-                                                            <span class="badge bg-warning">Approved</span>
+                                                    <td class="text-center">
+                                                        @if($matExp->user)
+                                                            <div class="avatar avatar-sm d-inline-block" data-bs-toggle="tooltip" data-popup="tooltip-custom" data-bs-placement="top" title="{{ $matExp->user->name }}">
+                                                                @if($matExp->user->image)
+                                                                    <img src="{{ asset($matExp->user->image) }}" alt="{{ $matExp->user->name }}" class="rounded-circle" style="width: 30px; height: 30px; object-fit: cover;">
+                                                                @else
+                                                                    <span class="avatar-initial rounded-circle bg-label-warning fs-tiny fw-bold">
+                                                                        {{ strtoupper(substr($matExp->user->name, 0, 2)) }}
+                                                                    </span>
+                                                                @endif
+                                                            </div>
                                                         @else
-                                                            <span class="badge bg-secondary">Pending</span>
+                                                            <span class="text-muted small">-</span>
                                                         @endif
                                                     </td>
-                                                    <td class="text-end">
-                                                        @if($pr->price)
-                                                            Rp {{ number_format($pr->price, 0, ',', '.') }}
-                                                        @else
-                                                            -
-                                                        @endif
-                                                    </td>
-                                                    <td class="text-end">
-                                                        @if($pr->amount)
-                                                            Rp {{ number_format($pr->amount, 0, ',', '.') }}
-                                                        @else
-                                                            -
-                                                        @endif
-                                                    </td>
+                                                    @if($hasFinancialAccess || $matExp->id_user == Auth::id())
+                                                        <td class="text-center">
+                                                            <div class="d-flex align-items-center justify-content-center gap-1">
+                                                                <button type="button" class="btn btn-xs btn-outline-primary p-1" data-bs-toggle="modal" data-bs-target="#editExpenseModal{{ $matExp->id }}" title="Edit Biaya">
+                                                                    <i class="mdi mdi-pencil-outline"></i>
+                                                                </button>
+                                                                <form action="{{ route('project-monitoring.destroy-expense', $matExp->id) }}" method="post" onsubmit="return confirm('Apakah Anda yakin ingin menghapus biaya material ini?')" class="d-inline">
+                                                                    @csrf
+                                                                    @method('DELETE')
+                                                                    <button type="submit" class="btn btn-xs btn-outline-danger p-1" title="Hapus Biaya">
+                                                                        <i class="mdi mdi-delete-outline"></i>
+                                                                    </button>
+                                                                </form>
+                                                            </div>
+
+                                                            <!-- Edit Modal for Material Expense -->
+                                                            <div class="modal fade" id="editExpenseModal{{ $matExp->id }}" tabindex="-1" aria-hidden="true">
+                                                                <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+                                                                    <div class="modal-content text-start">
+                                                                        <div class="modal-header">
+                                                                            <h5 class="modal-title">Edit Catatan Pembelian Material</h5>
+                                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                                        </div>
+                                                                        <form action="{{ route('project-monitoring.update-expense', $matExp->id) }}" method="post" enctype="multipart/form-data">
+                                                                            @csrf
+                                                                            @method('PUT')
+                                                                            <div class="modal-body">
+                                                                                <div class="row">
+                                                                                    <div class="col-12 mb-3">
+                                                                                        <label for="name_mat_{{ $matExp->id }}" class="form-label">Deskripsi Pengeluaran</label>
+                                                                                        <input type="text" id="name_mat_{{ $matExp->id }}" name="name" class="form-control" value="{{ $matExp->name }}" required />
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="row g-2">
+                                                                                    <div class="col-6 mb-3">
+                                                                                        <label for="category_mat_{{ $matExp->id }}" class="form-label">Kategori</label>
+                                                                                        <select id="category_mat_{{ $matExp->id }}" name="category" class="form-select" onchange="togglePaymentInfo(this, 'paymentInfoRow_mat_{{ $matExp->id }}')" required>
+                                                                                            <option value="Transport" {{ $matExp->category == 'Transport' ? 'selected' : '' }}>Transport</option>
+                                                                                            <option value="Akomodasi" {{ $matExp->category == 'Akomodasi' ? 'selected' : '' }}>Akomodasi (Hotel/Penginapan)</option>
+                                                                                            <option value="Konsumsi" {{ $matExp->category == 'Konsumsi' ? 'selected' : '' }}>Konsumsi</option>
+                                                                                            <option value="Material" {{ $matExp->category == 'Material' ? 'selected' : '' }}>Material Lapangan</option>
+                                                                                            <option value="Alat" {{ $matExp->category == 'Alat' ? 'selected' : '' }}>Sewa Alat</option>
+                                                                                            <option value="Lain-lain" {{ $matExp->category == 'Lain-lain' ? 'selected' : '' }}>Lain-lain</option>
+                                                                                        </select>
+                                                                                    </div>
+                                                                                    <div class="col-6 mb-3">
+                                                                                        <label for="date_mat_{{ $matExp->id }}" class="form-label">Tanggal Pengeluaran</label>
+                                                                                        <input type="date" id="date_mat_{{ $matExp->id }}" name="date" class="form-control" value="{{ \Carbon\Carbon::parse($matExp->date)->format('Y-m-d') }}" required />
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="row">
+                                                                                    <div class="col-12 mb-3">
+                                                                                        <label for="payment_info_mat_{{ $matExp->id }}" class="form-label">Payment Info (Cara Pembayaran / No Rekening / Transfer Tujuan)</label>
+                                                                                        <input type="text" id="payment_info_mat_{{ $matExp->id }}" name="payment_info" class="form-control" value="{{ $matExp->payment_info }}" placeholder="Contoh: BCA 1234567890 a.n Toko Bangunan XYZ / Cash" />
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="row g-2">
+                                                                                    <div class="col-6 mb-3">
+                                                                                        <label for="amount_mat_{{ $matExp->id }}" class="form-label">Nominal Biaya (Rp)</label>
+                                                                                        <input type="text" id="amount_mat_{{ $matExp->id }}" name="amount" class="form-control" value="{{ number_format($matExp->amount, 0, ',', '.') }}" onkeyup="formatRupiahInput(this)" placeholder="Contoh: 150.000" required />
+                                                                                    </div>
+                                                                                    <div class="col-6 mb-3">
+                                                                                        <label for="receipt_mat_{{ $matExp->id }}" class="form-label">Ganti Nota / Receipt (Opsional)</label>
+                                                                                        <input type="file" id="receipt_mat_{{ $matExp->id }}" name="receipt" class="form-control" accept="image/*,application/pdf" />
+                                                                                        @if($matExp->receipt)
+                                                                                            <small class="text-muted d-block mt-1">
+                                                                                                Nota saat ini: <a href="{{ asset($matExp->receipt) }}" target="_blank" class="text-primary fw-semibold"><i class="mdi mdi-file-image-outline me-1"></i>Lihat Nota</a>
+                                                                                            </small>
+                                                                                        @endif
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="modal-footer">
+                                                                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                                                                                <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                                                                            </div>
+                                                                        </form>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    @endif
                                                 </tr>
                                             @empty
+                                                <tr>
+                                                    <td colspan="8" class="text-center">Belum ada catatan pembelian material lapangan langsung.</td>
+                                                </tr>
                                             @endforelse
-                                        @empty
-                                            <tr>
-                                                <td colspan="6" class="text-center">Belum ada pengajuan pembelian barang (PR) untuk proyek ini.</td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
 
@@ -488,48 +712,141 @@
                                             <th>Tanggal</th>
                                             <th>Nama Pengeluaran</th>
                                             <th>Kategori</th>
-                                            <th>Oleh</th>
+                                            <th>Payment Info</th>
                                             <th class="text-end">Nominal</th>
                                             <th class="text-center">Nota</th>
+                                            <th class="text-center">Oleh</th>
                                             @if($hasFinancialAccess)
                                                 <th class="text-center">Aksi</th>
                                             @endif
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @forelse($expenses as $exp)
+                                        @forelse($operationalExpenses as $exp)
                                             <tr>
                                                 <td>{{ \Carbon\Carbon::parse($exp->date)->format('d-M-Y') }}</td>
                                                 <td class="text-wrap" style="max-width: 150px;">{{ $exp->name }}</td>
                                                 <td>
                                                     <span class="badge bg-label-info">{{ $exp->category }}</span>
                                                 </td>
-                                                <td>{{ $exp->user?->name ?? '-' }}</td>
+                                                <td class="text-wrap" style="max-width: 180px;">
+                                                    @if($exp->payment_info)
+                                                        <span class="badge bg-label-secondary text-dark fw-normal"><i class="mdi mdi-credit-card-outline me-1"></i>{{ $exp->payment_info }}</span>
+                                                    @else
+                                                        <span class="text-muted small">-</span>
+                                                    @endif
+                                                </td>
                                                 <td class="text-end">Rp {{ number_format($exp->amount, 0, ',', '.') }}</td>
                                                 <td class="text-center">
                                                     @if ($exp->receipt)
                                                         <a href="{{ asset($exp->receipt) }}" target="_blank" class="text-primary fs-4">
-                                                             <i class="mdi mdi-file-image-outline"></i>
+                                                            <i class="mdi mdi-file-image-outline"></i>
                                                         </a>
                                                     @else
                                                         -
                                                     @endif
                                                 </td>
+                                                <td class="text-center">
+                                                    @if($exp->user)
+                                                        <div class="avatar avatar-sm d-inline-block" data-bs-toggle="tooltip" data-popup="tooltip-custom" data-bs-placement="top" title="{{ $exp->user->name }}">
+                                                            @if($exp->user->image)
+                                                                <img src="{{ asset($exp->user->image) }}" alt="{{ $exp->user->name }}" class="rounded-circle" style="width: 30px; height: 30px; object-fit: cover;">
+                                                            @else
+                                                                <span class="avatar-initial rounded-circle bg-label-primary fs-tiny fw-bold">
+                                                                    {{ strtoupper(substr($exp->user->name, 0, 2)) }}
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                    @else
+                                                        <span class="text-muted small">-</span>
+                                                    @endif
+                                                </td>
                                                 @if($hasFinancialAccess || $exp->id_user == Auth::id())
                                                     <td class="text-center">
-                                                        <form action="{{ route('project-monitoring.destroy-expense', $exp->id) }}" method="post" onsubmit="return confirm('Apakah Anda yakin ingin menghapus biaya ini?')">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="btn btn-xs btn-outline-danger p-1">
-                                                                <i class="mdi mdi-delete-outline"></i>
+                                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                                            <button type="button" class="btn btn-xs btn-outline-primary p-1" data-bs-toggle="modal" data-bs-target="#editExpenseModal{{ $exp->id }}" title="Edit Biaya">
+                                                                <i class="mdi mdi-pencil-outline"></i>
                                                             </button>
-                                                        </form>
+                                                            <form action="{{ route('project-monitoring.destroy-expense', $exp->id) }}" method="post" onsubmit="return confirm('Apakah Anda yakin ingin menghapus biaya ini?')" class="d-inline">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-xs btn-outline-danger p-1" title="Hapus Biaya">
+                                                                    <i class="mdi mdi-delete-outline"></i>
+                                                                </button>
+                                                            </form>
+                                                        </div>
+
+                                                        <!-- Edit Modal for Operational Expense -->
+                                                        <div class="modal fade" id="editExpenseModal{{ $exp->id }}" tabindex="-1" aria-hidden="true">
+                                                            <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+                                                                <div class="modal-content text-start">
+                                                                    <div class="modal-header">
+                                                                        <h5 class="modal-title">Edit Catatan Biaya Operasional</h5>
+                                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                                    </div>
+                                                                    <form action="{{ route('project-monitoring.update-expense', $exp->id) }}" method="post" enctype="multipart/form-data">
+                                                                        @csrf
+                                                                        @method('PUT')
+                                                                        <div class="modal-body">
+                                                                            <div class="row">
+                                                                                <div class="col-12 mb-3">
+                                                                                    <label for="name_op_{{ $exp->id }}" class="form-label">Deskripsi Pengeluaran</label>
+                                                                                    <input type="text" id="name_op_{{ $exp->id }}" name="name" class="form-control" value="{{ $exp->name }}" required />
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="row g-2">
+                                                                                <div class="col-6 mb-3">
+                                                                                    <label for="category_op_{{ $exp->id }}" class="form-label">Kategori</label>
+                                                                                    <select id="category_op_{{ $exp->id }}" name="category" class="form-select" required>
+                                                                                        <option value="Transport" {{ $exp->category == 'Transport' ? 'selected' : '' }}>Transport</option>
+                                                                                        <option value="Akomodasi" {{ $exp->category == 'Akomodasi' ? 'selected' : '' }}>Akomodasi (Hotel/Penginapan)</option>
+                                                                                        <option value="Konsumsi" {{ $exp->category == 'Konsumsi' ? 'selected' : '' }}>Konsumsi</option>
+                                                                                        <option value="Material" {{ $exp->category == 'Material' ? 'selected' : '' }}>Material Lapangan</option>
+                                                                                        <option value="Alat" {{ $exp->category == 'Alat' ? 'selected' : '' }}>Sewa Alat</option>
+                                                                                        <option value="Lain-lain" {{ $exp->category == 'Lain-lain' ? 'selected' : '' }}>Lain-lain</option>
+                                                                                    </select>
+                                                                                </div>
+                                                                                <div class="col-6 mb-3">
+                                                                                    <label for="date_op_{{ $exp->id }}" class="form-label">Tanggal Pengeluaran</label>
+                                                                                    <input type="date" id="date_op_{{ $exp->id }}" name="date" class="form-control" value="{{ \Carbon\Carbon::parse($exp->date)->format('Y-m-d') }}" required />
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="row">
+                                                                                <div class="col-12 mb-3">
+                                                                                    <label for="payment_info_op_{{ $exp->id }}" class="form-label">Payment Info (Cara Pembayaran / No Rekening / Transfer Tujuan)</label>
+                                                                                    <input type="text" id="payment_info_op_{{ $exp->id }}" name="payment_info" class="form-control" value="{{ $exp->payment_info }}" placeholder="Contoh: BCA 1234567890 a.n Toko Bangunan XYZ / Cash" />
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="row g-2">
+                                                                                <div class="col-6 mb-3">
+                                                                                    <label for="amount_op_{{ $exp->id }}" class="form-label">Nominal Biaya (Rp)</label>
+                                                                                    <input type="text" id="amount_op_{{ $exp->id }}" name="amount" class="form-control" value="{{ number_format($exp->amount, 0, ',', '.') }}" onkeyup="formatRupiahInput(this)" placeholder="Contoh: 150.000" required />
+                                                                                </div>
+                                                                                <div class="col-6 mb-3">
+                                                                                    <label for="receipt_op_{{ $exp->id }}" class="form-label">Ganti Nota / Receipt (Opsional)</label>
+                                                                                    <input type="file" id="receipt_op_{{ $exp->id }}" name="receipt" class="form-control" accept="image/*,application/pdf" />
+                                                                                    @if($exp->receipt)
+                                                                                        <small class="text-muted d-block mt-1">
+                                                                                            Nota saat ini: <a href="{{ asset($exp->receipt) }}" target="_blank" class="text-primary fw-semibold"><i class="mdi mdi-file-image-outline me-1"></i>Lihat Nota</a>
+                                                                                        </small>
+                                                                                    @endif
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="modal-footer">
+                                                                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                                                                            <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                                                                        </div>
+                                                                    </form>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </td>
                                                 @endif
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="7" class="text-center">Belum ada pengeluaran operasional yang dicatat.</td>
+                                                <td colspan="8" class="text-center">Belum ada pengeluaran operasional yang dicatat.</td>
                                             </tr>
                                         @endforelse
                                     </tbody>
@@ -540,10 +857,7 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
-@endif
-        </div>
+    @endif
 
     <!-- Standalone Cek Barang (Logistik) Card -->
     <div class="card mb-4 shadow-sm border">
@@ -635,7 +949,7 @@
 
     <!-- Add Expense Modal -->
     <div class="modal fade" id="addExpenseModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalCenterTitle">Catat Pengeluaran Proyek Baru</h5>
@@ -668,10 +982,16 @@
                                 <input type="date" id="date" name="date" class="form-control" value="{{ now()->format('Y-m-d') }}" required />
                             </div>
                         </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label for="payment_info" class="form-label">Payment Info (Cara Pembayaran / No Rekening / Transfer Tujuan)</label>
+                                <input type="text" id="payment_info" name="payment_info" class="form-control" placeholder="Contoh: BCA 1234567890 a.n Toko Bangunan XYZ / Cash" />
+                            </div>
+                        </div>
                         <div class="row g-2">
                             <div class="col-6 mb-3">
                                 <label for="amount" class="form-label">Nominal Biaya (Rp)</label>
-                                <input type="number" id="amount" name="amount" class="form-control" min="0" placeholder="Contoh: 150000" required />
+                                <input type="text" id="amount" name="amount" class="form-control" placeholder="Contoh: 150.000" onkeyup="formatRupiahInput(this)" required />
                             </div>
                             <div class="col-6 mb-3">
                                 <label for="receipt" class="form-label">Upload Nota / Receipt (Gambar/PDF)</label>
@@ -995,6 +1315,15 @@
     @push('after-script')
         <script src="{{ asset('assets') }}/vendor/libs/select2/select2.js"></script>
         <script>
+            function formatRupiahInput(input) {
+                var value = input.value.replace(/[^0-9]/g, '');
+                if (value === '') {
+                    input.value = '';
+                    return;
+                }
+                input.value = new Intl.NumberFormat('id-ID').format(value);
+            }
+
             $(document).ready(function() {
                 if ($('#replacementEdit .select2').length) {
                     $('#replacementEdit .select2').each(function() {
