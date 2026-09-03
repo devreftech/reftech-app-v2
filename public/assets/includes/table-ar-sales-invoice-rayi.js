@@ -36,18 +36,20 @@ $(function () {
                 },
                 data: function (d) {
                     d.year = window.invoiceYearFilter || "all";
+                    d.sales_id = window.invoiceSalesFilter || "all";
                     return d;
                 },
             },
             columns: [
-                { data: "no_invoice" },
-                { data: "no_po" },
+                { data: "short_invoice" },
                 { data: "tanggal" },
+                { data: "short_po" },
                 { data: "company" },
                 { data: "harga_total" },
                 { data: "total_payment_level1" },
                 { data: "outstanding" },
                 { data: "last_payment_type" },
+                { data: "tax" },
                 { data: "name" },
                 { data: "bendera" },
             ],
@@ -61,16 +63,16 @@ $(function () {
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             var id = full["id"];
-                            detailRoute = route("payment_detail.invoice", id);
+                            var detailRoute = typeof route === "function" ? route("payment_detail.invoice", id) : "/payment/invoice/" + id;
                             return (
-                                '<a class="text-black" href="' +
+                                '<a class="text-black fw-semibold" href="' +
                                 detailRoute +
                                 '">' +
-                                data +
+                                (data || full["no_invoice"] || "-") +
                                 "</a>"
                             );
                         }
-                        return data;
+                        return data || full["no_invoice"] || "";
                     },
                 },
                 {
@@ -78,8 +80,9 @@ $(function () {
                     render: function (data, type, row) {
                         if (type === "display" || type === "filter") {
                             return (
-                                "Rp " +
-                                new Intl.NumberFormat("id-ID").format(data)
+                                '<div class="text-end">Rp ' +
+                                new Intl.NumberFormat("id-ID").format(data || 0) +
+                                '</div>'
                             );
                         }
                         return data;
@@ -88,17 +91,16 @@ $(function () {
                 {
                     targets: 7,
                     render: function (data, type, full, row) {
-                        var type = full["last_payment_type"];
+                        var ptype = full["last_payment_type"];
                         var overdue = full["last_overdue"] ?? "No";
-                        var paytot = full["total_payment"];
                         var title, label;
-                        if (type == "CBD" || type == "COD" || type == "BP") {
+                        if (ptype == "CBD" || ptype == "COD" || ptype == "BP") {
                             title = "Full Paid";
                             label = "bg-label-success";
-                        } else if (type == "DP") {
+                        } else if (ptype == "DP") {
                             title = "Partial";
                             label = "bg-label-warning";
-                        } else if (type == "Tempo") {
+                        } else if (ptype == "Tempo") {
                             title = "Credit " + overdue + " Days";
                             label = "bg-label-primary";
                         } else {
@@ -106,11 +108,41 @@ $(function () {
                             label = "bg-label-danger";
                         }
                         return (
-                            '<span class="badge rounded-pill ' +
+                            '<div class="text-center"><span class="badge rounded-pill ' +
                             label +
                             '">' +
                             title +
-                            "</span>"
+                            "</span></div>"
+                        );
+                    },
+                },
+                {
+                    targets: 8,
+                    render: function (data, type, full, row) {
+                        var tax = full["tax"];
+                        if (tax == "11" || tax == "1" || tax == "PPN") {
+                            return '<div class="text-center"><span class="badge rounded-pill bg-label-info">PPN</span></div>';
+                        }
+                        return '<div class="text-center"><span class="badge rounded-pill bg-label-secondary">Non PPN</span></div>';
+                    },
+                },
+                {
+                    targets: 10,
+                    render: function (data, type, full, row) {
+                        var title, label;
+                        if (data == "Reftech") {
+                            title = "RJO";
+                            label = "bg-label-primary";
+                        } else {
+                            title = "KII";
+                            label = "bg-label-danger";
+                        }
+                        return (
+                            '<div class="text-center"><span class="badge rounded-pill ' +
+                            label +
+                            '">' +
+                            title +
+                            "</span></div>"
                         );
                     },
                 },

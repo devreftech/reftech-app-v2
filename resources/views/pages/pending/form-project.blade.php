@@ -38,7 +38,7 @@
                     <div class="row">
                         <div class="col-12 col-lg-6 mb-3 mb-lg-0">
                             <textarea class="form-control" rows="2" placeholder="Detail Customers" name="detail_client"
-                                style="min-height: 100px">{{ $pending->quote->pic->client->company }}</textarea>
+                                style="min-height: 100px">{{ $pending->quote->pic->client->company ?? $pending->unitQuotation->client->company ?? '' }}</textarea>
                         </div>
                         <div class="col-6 col-lg-3">
                             <div class="form-floating form-floating-outline">
@@ -198,9 +198,9 @@
                             <div class="input-group" data-total="1">
                                 <span class="input-group-text">Rp. </span>
                                 <p class="form-control pending-item-total-label h-px-25 mb-0" id="total-label">
-                                    {{ number_format($pending->quote->subtotal, 0, ',', '.') }} </p>
+                                    {{ number_format($pending->quote->subtotal ?? $pending->unitQuotation->subtotal ?? 0, 0, ',', '.') }} </p>
                                 <input class="form-control pending-item-total" type="number" name="total"
-                                    id="total" value="{{ $pending->quote->subtotal }}" hidden>
+                                    id="total" value="{{ $pending->quote->subtotal ?? $pending->unitQuotation->subtotal ?? 0 }}" hidden>
                             </div>
                         </div>
                     </div>

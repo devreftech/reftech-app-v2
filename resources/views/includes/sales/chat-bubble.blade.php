@@ -7,17 +7,18 @@
 /* Chat Floating Trigger & Container Styling                                  */
 /* -------------------------------------------------------------------------- */
 .rf-chat-widget-wrapper {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 1070;
+    position: fixed !important;
+    bottom: 24px !important;
+    right: 24px !important;
+    z-index: 999999 !important;
     font-family: inherit;
+    pointer-events: auto !important;
 }
 
 /* Floating Action Button */
 .rf-chat-bubble-btn {
-    width: 60px;
-    height: 60px;
+    width: 60px !important;
+    height: 60px !important;
     padding: 0 !important;
     margin: 0 !important;
     border-radius: 50% !important;
@@ -28,13 +29,19 @@
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    box-shadow: 0 8px 24px rgba(102, 108, 255, 0.45);
-    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(102, 108, 255, 0.45) !important;
+    cursor: pointer !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
+    position: relative !important;
     text-decoration: none;
     -webkit-appearance: none;
     appearance: none;
+    pointer-events: auto !important;
+    z-index: 999999 !important;
+}
+
+.rf-chat-bubble-btn * {
+    pointer-events: none !important;
 }
 
 .rf-chat-bubble-btn:hover {
@@ -110,32 +117,31 @@
 /* Chat Window Box                                                            */
 /* -------------------------------------------------------------------------- */
 .rf-chat-box {
-    position: fixed;
-    bottom: 96px;
-    right: 24px;
-    width: 390px;
-    max-width: calc(100vw - 32px);
-    height: 570px;
-    max-height: calc(100vh - 120px);
+    position: fixed !important;
+    bottom: 96px !important;
+    right: 24px !important;
+    width: 390px !important;
+    max-width: calc(100vw - 32px) !important;
+    height: 570px !important;
+    max-height: calc(100vh - 120px) !important;
     background-color: #ffffff;
-    border-radius: 16px;
-    box-shadow: 0 16px 40px rgba(76, 78, 100, 0.22);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    z-index: 1075;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(20px) scale(0.95);
-    transform-origin: bottom right;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    border: 1px solid rgba(76, 78, 100, 0.12);
+    border-radius: 16px !important;
+    box-shadow: 0 16px 40px rgba(76, 78, 100, 0.22) !important;
+    display: none !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    z-index: 1000000 !important;
+    border: 1px solid rgba(76, 78, 100, 0.12) !important;
+    pointer-events: auto !important;
 }
 
-.rf-chat-box.active {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0) scale(1);
+.rf-chat-box.active,
+.rf-chat-box.rf-open {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) scale(1) !important;
+    pointer-events: auto !important;
 }
 
 /* Dark mode compatibility */
@@ -673,12 +679,400 @@
         visibility: hidden !important;
     }
 }
+
+/* Typing Indicator Animation */
+.rf-typing-indicator-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    animation: fadeInMsg 0.2s ease forwards;
+}
+
+.rf-typing-bubble {
+    background-color: #ffffff;
+    border: 1px solid rgba(76, 78, 100, 0.08);
+    border-radius: 14px;
+    border-bottom-left-radius: 4px;
+    padding: 6px 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.dark-style .rf-typing-bubble {
+    background-color: #2e3046;
+    border-color: #40425c;
+}
+
+.rf-typing-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.rf-typing-dots span {
+    width: 6px;
+    height: 6px;
+    background-color: #666cff;
+    border-radius: 50%;
+    display: inline-block;
+    animation: rfDotBounce 1.4s infinite ease-in-out both;
+}
+
+.rf-typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+.rf-typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes rfDotBounce {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1.1); opacity: 1; }
+}
+
+.rf-typing-text {
+    font-size: 11px;
+    color: #797c92;
+    font-style: italic;
+}
+
+.dark-style .rf-typing-text {
+    color: #a8aaae;
+}
+
+/* Emoji & Sticker Picker Popover */
+.rf-picker-popover {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 10px;
+    width: 310px;
+    height: 270px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.15);
+    border: 1px solid rgba(76, 78, 100, 0.12);
+    display: none;
+    flex-direction: column;
+    z-index: 1080;
+    overflow: hidden;
+    animation: rfPopIn 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark-style .rf-picker-popover {
+    background: #2b2c40;
+    border-color: #3e405b;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+}
+
+@keyframes rfPopIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.rf-picker-header {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid rgba(76, 78, 100, 0.08);
+    background: #f8f8fb;
+    padding: 5px 8px;
+    gap: 4px;
+}
+
+.dark-style .rf-picker-header {
+    background: #232333;
+    border-bottom-color: #3e405b;
+}
+
+.rf-picker-tab-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #797c92;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.rf-picker-tab-btn.active {
+    background: #ffffff;
+    color: #666cff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.dark-style .rf-picker-tab-btn.active {
+    background: #2b2c40;
+    color: #666cff;
+}
+
+.rf-picker-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.rf-emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    font-size: 20px;
+    text-align: center;
+}
+
+.rf-emoji-btn {
+    background: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 3px 0;
+    line-height: 1;
+    transition: transform 0.15s, background 0.15s;
+    user-select: none;
+}
+
+.rf-emoji-btn:hover {
+    transform: scale(1.25);
+    background: rgba(102, 108, 255, 0.12);
+}
+
+.rf-sticker-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.rf-sticker-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f8f8fb;
+    border: 1px solid rgba(76, 78, 100, 0.08);
+    border-radius: 8px;
+    padding: 8px 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.dark-style .rf-sticker-item {
+    background: #232333;
+    border-color: #3e405b;
+}
+
+.rf-sticker-item:hover {
+    transform: translateY(-2px);
+    border-color: #666cff;
+    box-shadow: 0 4px 10px rgba(102, 108, 255, 0.2);
+}
+
+.rf-sticker-icon {
+    font-size: 28px;
+    line-height: 1;
+}
+
+.rf-sticker-label {
+    font-size: 10px;
+    color: #797c92;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.dark-style .rf-sticker-label {
+    color: #a8aaae;
+}
+
+/* WhatsApp Web Style Message Actions */
+.rf-msg-chevron-btn {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.88);
+    color: #5d596c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.15s ease;
+    padding: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    z-index: 2;
+}
+
+.rf-msg-outgoing .rf-msg-chevron-btn {
+    background: rgba(255, 255, 255, 0.92);
+    color: #5557d0;
+}
+
+.rf-msg-bubble:hover .rf-msg-chevron-btn,
+.rf-msg-bubble:focus-within .rf-msg-chevron-btn {
+    opacity: 1;
+}
+
+.rf-msg-chevron-btn:hover {
+    background: #ffffff;
+    transform: scale(1.1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+}
+
+/* Floating Context Menu (WhatsApp Web Style) */
+.rf-msg-context-menu {
+    position: absolute;
+    z-index: 1099;
+    min-width: 135px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(76, 78, 100, 0.24);
+    border: 1px solid rgba(76, 78, 100, 0.12);
+    padding: 5px;
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    animation: rfPopIn 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark-style .rf-msg-context-menu {
+    background: #2b2c40;
+    border-color: #3e405b;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+}
+
+.rf-context-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 500;
+    color: #5d596c;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rf-context-item i {
+    font-size: 15px;
+}
+
+.rf-context-item:hover {
+    background: rgba(102, 108, 255, 0.08);
+}
+
+.rf-context-item.text-primary {
+    color: #666cff !important;
+}
+
+.rf-context-item.text-danger {
+    color: #ff3e1d !important;
+}
+
+.rf-context-item.text-danger:hover {
+    background: rgba(255, 62, 29, 0.08);
+}
+
+.dark-style .rf-context-item {
+    color: #dbdade;
+}
+
+.dark-style .rf-context-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.rf-edit-bar {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    background: #f0f0ff;
+    border-top: 1px solid #d4d4ff;
+    padding: 6px 14px;
+    font-size: 12px;
+    align-items: center;
+    justify-content: space-between;
+    color: #5557d0;
+    box-shadow: 0 -3px 8px rgba(0,0,0,0.04);
+}
+
+.dark-style .rf-edit-bar {
+    background: #2b2a47;
+    border-top-color: #4b4975;
+    color: #9d9eff;
+}
+
+/* Developer Audit View Styles */
+.rf-msg-deleted-dev {
+    border: 1px dashed #ff4d49 !important;
+    background: rgba(255, 77, 73, 0.08) !important;
+    color: #ff3e1d !important;
+}
+
+.rf-audit-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(255, 77, 73, 0.18);
+    color: #ff3e1d;
+    margin-bottom: 4px;
+}
+
+.rf-audit-original {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px dashed rgba(76,78,100,0.25);
+    font-size: 11px;
+    color: #6e6b7b;
+}
+
+.dark-style .rf-audit-original {
+    color: #b4b7bd;
+}
+
+.rf-sticker-bubble-card {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.rf-sticker-bubble-icon {
+    font-size: 40px;
+    line-height: 1.1;
+    margin-bottom: 2px;
+    animation: rfPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.rf-sticker-bubble-text {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
 </style>
 
 <div class="rf-chat-widget-wrapper" id="rfChatWidget">
 
     <!-- FLOATING BUBBLE BUTTON -->
-    <button type="button" class="rf-chat-bubble-btn" id="rfChatToggleBtn" title="Buka Chat Internal Reftech">
+    <button type="button" class="rf-chat-bubble-btn" id="rfChatToggleBtn" title="Buka Chat Internal Reftech" onclick="toggleChatBox(event)">
         <span class="rf-btn-icon-inner" id="rfChatBtnInner">
             <svg id="rfChatSvgIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 3c5.523 0 10 3.806 10 8.5c0 2.203-.984 4.223-2.64 5.733l.613 3.373a1 1 0 0 1-1.341 1.125l-3.83-1.637c-.89.266-1.83.406-2.802.406-5.523 0-10-3.806-10-8.5S6.477 3 12 3zm0 2c-4.418 0-8 2.91-8 6.5s3.582 6.5 8 6.5c.877 0 1.728-.124 2.528-.358a1 1 0 0 1 .74.075l2.673 1.144-.43-2.366a1 1 0 0 1 .38-.934C19.141 14.425 20 12.822 20 11.5 20 7.91 16.418 5 12 5zm-3.5 5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm7 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm-3.5 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/>
@@ -780,6 +1174,40 @@
             </div>
 
             <!-- Attachment Selected Bar -->
+            
+            <!-- Floating Message Context Menu (WhatsApp Web Style) -->
+            <div id="rfMsgContextMenu" class="rf-msg-context-menu" style="display: none;">
+                <button type="button" class="rf-context-item text-primary" id="rfCtxEditBtn" onclick="handleCtxEdit()">
+                    <i class="mdi mdi-pencil-outline"></i>
+                    <span>Edit Pesan</span>
+                </button>
+                <button type="button" class="rf-context-item text-danger" id="rfCtxDeleteBtn" onclick="handleCtxDelete()">
+                    <i class="mdi mdi-delete-outline"></i>
+                    <span>Hapus Pesan</span>
+                </button>
+            </div>
+
+            <!-- Typing Indicator (Live Animation) -->
+            <div id="rfTypingIndicator" class="rf-typing-indicator-row" style="display: none; padding: 4px 16px 8px; background: #f8f8fb;">
+                <div class="rf-typing-bubble">
+                    <span class="rf-typing-dots">
+                        <span></span><span></span><span></span>
+                    </span>
+                    <span class="rf-typing-text" id="rfTypingText">sedang mengetik...</span>
+                </div>
+            </div>
+
+            <!-- Message Edit Mode Bar -->
+            <div class="rf-edit-bar" id="rfEditBar">
+                <div class="d-flex align-items-center gap-2 text-truncate" style="max-width: 85%;">
+                    <i class="mdi mdi-pencil-outline" style="font-size: 16px;"></i>
+                    <span class="text-truncate">Edit: <span id="rfEditPreviewText" class="fw-semibold"></span></span>
+                </div>
+                <button type="button" class="btn btn-sm btn-icon text-muted p-0" onclick="cancelEditingMessage()" title="Batal Edit">
+                    <i class="mdi mdi-close"></i>
+                </button>
+            </div>
+
             <div class="rf-attachment-preview-bar" id="rfAttachmentPreviewBar">
                 <div class="d-flex align-items-center gap-2 text-truncate" style="max-width: 85%;">
                     <i class="mdi mdi-paperclip text-primary" style="font-size: 18px;"></i>
@@ -791,12 +1219,32 @@
             </div>
 
             <!-- Input Bar -->
-            <div class="rf-chat-input-bar">
+                        <div class="rf-chat-input-bar">
+                <!-- Emoji & Sticker Picker Popover -->
+                <div class="rf-picker-popover" id="rfPickerPopover">
+                    <div class="rf-picker-header">
+                        <button type="button" class="rf-picker-tab-btn active" id="rfTabEmojiBtn" onclick="switchPickerTab('emoji')">😀 Emoji</button>
+                        <button type="button" class="rf-picker-tab-btn" id="rfTabStickerBtn" onclick="switchPickerTab('sticker')">🧸 Stiker</button>
+                        <button type="button" class="btn btn-sm btn-icon p-0 text-muted ms-auto" onclick="togglePickerPopover(false)" style="font-size: 16px;">
+                            <i class="mdi mdi-close"></i>
+                        </button>
+                    </div>
+                    <div class="rf-picker-body" id="rfEmojiBody">
+                        <div class="rf-emoji-grid" id="rfEmojiGrid"></div>
+                    </div>
+                    <div class="rf-picker-body" id="rfStickerBody" style="display: none;">
+                        <div class="rf-sticker-grid" id="rfStickerGrid"></div>
+                    </div>
+                </div>
+
                 <input type="file" id="rfChatFileInput" style="display: none;" onchange="handleFileSelected(event)">
                 <button type="button" class="rf-chat-action-btn" title="Lampirkan File/Foto" onclick="document.getElementById('rfChatFileInput').click()">
                     <i class="mdi mdi-paperclip"></i>
                 </button>
-                <input type="text" class="rf-chat-input" id="rfChatInputField" placeholder="Ketik pesan..." onkeypress="handleChatKeyPress(event)">
+                <button type="button" class="rf-chat-action-btn" id="rfPickerToggleBtn" title="Emoji & Stiker" onclick="togglePickerPopover()">
+                    <i class="mdi mdi-emoticon-happy-outline"></i>
+                </button>
+                <input type="text" class="rf-chat-input" id="rfChatInputField" placeholder="Ketik pesan..." onkeypress="handleChatKeyPress(event)" oninput="handleChatInputTyping(event)">
                 <button type="button" class="rf-chat-send-btn" id="rfSendMsgBtn" onclick="sendChatMessage()" title="Kirim Pesan">
                     <i class="mdi mdi-send" id="rfSendIcon"></i>
                 </button>
@@ -825,6 +1273,40 @@ var activeFetchController = null;
 var isInitialPollComplete = false;
 var originalDocTitle = document.title;
 var titleBlinkTimer = null;
+
+var editingMessageId = null;
+var activeContextMenuMsgId = null;
+var typingDebounceTimer = null;
+var isViewerDeveloper = false;
+var lastToggleTime = 0;
+
+/* Emoji List */
+var emojiList = [
+    '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '😉', '😌', '😍', '🥰', '😘',
+    '😋', '😛', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕',
+    '🙁', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶',
+    '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯',
+    '👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '👇', '✋', '🤚', '🖐️', '🖖',
+    '👋', '🤝', '👏', '🙌', '👐', '🤲', '🙏', '💪', '🔥', '✨', '🎉', '🚀', '❤️', '🧡', '💛', '💚',
+    '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '☕', '💡'
+];
+
+/* Sticker List */
+var stickerList = [
+    { key: 'thumbs_up', icon: '👍', label: 'Mantap', desc: 'MANTAP!' },
+    { key: 'love', icon: '❤️', label: 'Terima Kasih', desc: 'TERIMA KASIH' },
+    { key: 'noted', icon: '📝', label: 'Siap / Noted', desc: 'SIAP NOTED' },
+    { key: 'working', icon: '💻', label: 'Dikerjakan', desc: 'OTW KERJAKAN' },
+    { key: 'urgent', icon: '⚡', label: 'Urgent', desc: 'URGENT' },
+    { key: 'done', icon: '✅', label: 'Selesai', desc: 'SUDAH SELESAI' },
+    { key: 'coffee', icon: '☕', label: 'Ngopi Dulu', desc: 'NGOPI DULU' },
+    { key: 'clap', icon: '👏', label: 'Keren', desc: 'KEREN BANGET' },
+    { key: 'laugh', icon: '😂', label: 'Haha Lucu', desc: 'HAHAHA' },
+    { key: 'salute', icon: '🫡', label: 'Siap Komandan', desc: 'SIAP LAKSANAKAN' },
+    { key: 'call', icon: '📞', label: 'Hubungi Saya', desc: 'MOHON TELEPON' },
+    { key: 'warning', icon: '⚠️', label: 'Perhatian', desc: 'HARAP DICEK' }
+];
+
 
 function triggerTitleBlink(text) {
     if (!document.hidden) return;
@@ -945,17 +1427,36 @@ function toggleSoundEffect() {
 /* Initialization                                                             */
 /* -------------------------------------------------------------------------- */
 document.addEventListener('DOMContentLoaded', function() {
-    var toggleBtn = document.getElementById('rfChatToggleBtn');
-    var closeBtn = document.getElementById('rfCloseChatBtn');
-    var searchInput = document.getElementById('rfSearchUserInput');
+    document.addEventListener('click', function(e) {
+        var picker = document.getElementById('rfPickerPopover');
+        var toggleBtn = document.getElementById('rfPickerToggleBtn');
+        if (picker && picker.style.display === 'flex') {
+            if (!picker.contains(e.target) && !toggleBtn.contains(e.target)) {
+                picker.style.display = 'none';
+            }
+        }
 
-    if (toggleBtn) toggleBtn.addEventListener('click', toggleChatBox);
-    if (closeBtn) closeBtn.addEventListener('click', toggleChatBox);
+        var menu = document.getElementById('rfMsgContextMenu');
+        if (menu && menu.style.display === 'flex') {
+            if (!menu.contains(e.target) && !e.target.closest('.rf-msg-chevron-btn')) {
+                closeMsgContextMenu();
+            }
+        }
+    });
+
+    var msgList = document.getElementById('rfMessagesList');
+    if (msgList) {
+        msgList.addEventListener('scroll', function() {
+            closeMsgContextMenu();
+        });
+    }
+
+    var searchInput = document.getElementById('rfSearchUserInput');
 
     // Filter contacts search
     if (searchInput) {
         searchInput.addEventListener('input', function(e) {
-            var val = e.target.value.toLowerCase().trim();
+            var val = (e.target.value || '').toLowerCase().trim();
             renderFilteredContacts(val);
         });
     }
@@ -981,19 +1482,41 @@ document.addEventListener('DOMContentLoaded', function() {
 /* -------------------------------------------------------------------------- */
 /* Toggle Chat Window                                                         */
 /* -------------------------------------------------------------------------- */
-function toggleChatBox() {
+function toggleChatBox(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+
+    var now = Date.now();
+    if (now - lastToggleTime < 250) {
+        return; // Guard against double execution
+    }
+    lastToggleTime = now;
+
     var box = document.getElementById('rfChatBox');
     var iconInner = document.getElementById('rfChatBtnInner');
+    if (!box) return;
     isChatOpen = !isChatOpen;
+    console.log('[Reftech Chat] toggleChatBox executed. isChatOpen:', isChatOpen);
 
     if (isChatOpen) {
         box.classList.add('active');
+        box.classList.add('rf-open');
+        box.style.setProperty('display', 'flex', 'important');
         if (iconInner) iconInner.innerHTML = svgCloseIcon;
-        // Fetch fresh contact list if empty or on open
-        loadContacts();
+        stopTitleBlink();
+        if (contactsData.length === 0) {
+            loadContacts();
+        }
+        if (activeChatUser) {
+            loadConversationMessages(activeChatUser.id);
+        }
     } else {
         box.classList.remove('active');
+        box.classList.remove('rf-open');
+        box.style.setProperty('display', 'none', 'important');
         if (iconInner) iconInner.innerHTML = svgChatIcon;
+        togglePickerPopover(false);
+        closeMsgContextMenu();
     }
 }
 
@@ -1099,14 +1622,13 @@ function filterChatPresence(status, btn) {
 
 function applyContactFilters() {
     var searchInput = document.getElementById('rfSearchUserInput');
-    var kw = (searchInput ? searchInput.value : '').toLowerCase().trim();
+    var kw = (searchInput && searchInput.value ? searchInput.value : '').toLowerCase().trim();
 
-    var filtered = contactsData.filter(function(c) {
-        // Status presence filter
+    var filtered = (contactsData || []).filter(function(c) {
+        if (!c) return false;
         var presenceStatus = (c.presence && c.presence.status) ? c.presence.status : 'offline';
         var matchStatus = (currentFilterStatus === 'all') || (presenceStatus === currentFilterStatus);
 
-        // Search filter by name, role, or id
         var name = (c.name || '').toLowerCase();
         var role = (c.role || '').toLowerCase();
         var id = String(c.id || '');
@@ -1150,6 +1672,9 @@ function updateRoomPresenceHeader(presence) {
 /* Chat Room Management                                                       */
 /* -------------------------------------------------------------------------- */
 function selectContact(userId) {
+    cancelEditingMessage();
+    togglePickerPopover(false);
+    closeMsgContextMenu();
     var user = contactsData.find(function(c) { return c.id === userId; });
     if (!user) return;
 
@@ -1187,6 +1712,9 @@ function selectContact(userId) {
 }
 
 function backToChatList() {
+    cancelEditingMessage();
+    togglePickerPopover(false);
+    closeMsgContextMenu();
     activeChatUser = null;
     document.getElementById('rfChatRoomView').style.display = 'none';
     document.getElementById('rfChatListView').style.display = 'flex';
@@ -1295,17 +1823,18 @@ function renderMessageStream(messages) {
 function generateMessageItemHtml(m) {
     var isOut = m.is_outgoing;
     var rowClass = isOut ? 'rf-msg-outgoing' : 'rf-msg-incoming';
+    var isDevAudit = m.is_developer_audit || isViewerDeveloper;
 
     var avatarHtml = '';
     if (!isOut && activeChatUser) {
         var av = activeChatUser.avatar_url 
-            ? `<img src="${activeChatUser.avatar_url}" alt="${escapeHtml(activeChatUser.name)}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">`
+            ? `<img src="${activeChatUser.avatar_url}" alt="${escapeHtml(activeChatUser.name)}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" onerror="this.outerHTML='<div class=\'rf-avatar-placeholder\' style=\'background-color: ${activeChatUser.avatar_color}22; color: ${activeChatUser.avatar_color}; font-size: 11px;\'>${activeChatUser.avatar_text}</div>'">`
             : `<div class="rf-avatar-placeholder" style="background-color: ${activeChatUser.avatar_color}22; color: ${activeChatUser.avatar_color}; font-size: 11px;">${activeChatUser.avatar_text}</div>`;
         avatarHtml = `<div class="rf-chat-avatar-wrap" style="width: 28px; height: 28px;">${av}</div>`;
     }
 
     var attachmentHtml = '';
-    if (m.attachment_url) {
+    if (m.attachment_url && !m.is_deleted) {
         if (m.attachment_type === 'image') {
             attachmentHtml = `
                 <a href="${m.attachment_url}" target="_blank" title="Buka Gambar">
@@ -1326,20 +1855,65 @@ function generateMessageItemHtml(m) {
         }
     }
 
-    var textHtml = m.message ? `<div>${escapeHtml(m.message).replace(/\n/g, '<br>')}</div>` : '';
+    var textHtml = '';
+    var isSticker = false;
+    var bubbleExtraClass = '';
+
+    if (m.is_deleted) {
+        if (isDevAudit) {
+            bubbleExtraClass = ' rf-msg-deleted-dev';
+            textHtml = `
+                <div class="rf-audit-badge"><i class="mdi mdi-shield-alert-outline"></i> DIHAPUS (AUDIT DEVELOPER)</div>
+                <div class="text-decoration-line-through opacity-75">${escapeHtml(m.original_message || m.message || '(Lampiran)')}</div>
+            `;
+        } else {
+            textHtml = `<div class="text-muted fst-italic"><i class="mdi mdi-block-helper me-1"></i> Pesan ini telah dihapus</div>`;
+        }
+    } else {
+        var stickerMatch = m.message ? m.message.match(/^\[sticker:([a-zA-Z0-9_-]+)\]$/) : null;
+        if (stickerMatch) {
+            isSticker = true;
+            var stObj = stickerList.find(function(s) { return s.key === stickerMatch[1]; }) || { icon: '✨', desc: 'STIKER' };
+            textHtml = `
+                <div class="rf-sticker-bubble-card">
+                    <div class="rf-sticker-bubble-icon">${stObj.icon}</div>
+                    <div class="rf-sticker-bubble-text">${stObj.desc}</div>
+                </div>
+            `;
+        } else if (m.message) {
+            textHtml = `<div>${escapeHtml(m.message).replace(/\n/g, '<br>')}</div>`;
+        }
+
+        if (m.is_edited && isDevAudit && m.original_message) {
+            textHtml += `
+                <div class="rf-audit-original">
+                    <small><b>Teks Asli:</b> ${escapeHtml(m.original_message)}</small>
+                </div>
+            `;
+        }
+    }
+
+    var editedNotice = (m.is_edited && !m.is_deleted) ? '<span class="ms-1" style="font-size: 9.5px; opacity: 0.85;">(diedit)</span>' : '';
     var checkmarkHtml = isOut 
         ? `<i class="mdi ${m.is_read ? 'mdi-check-all text-primary' : 'mdi-check'}" id="rfMsgCheck_${m.id}" style="font-size: 14px; margin-left: 2px;"></i>` 
         : '';
+
+    var chevronBtnHtml = '';
+    if (m.can_modify && !m.is_deleted) {
+        chevronBtnHtml = `<button type="button" class="rf-msg-chevron-btn" onclick="openMsgContextMenu(event, ${m.id}, ${isSticker ? 'true' : 'false'})" title="Opsi Pesan"><i class="mdi mdi-chevron-down"></i></button>`;
+    }
 
     return `
         <div class="rf-msg-row ${rowClass}" id="rfMsgRow_${m.id}">
             ${avatarHtml}
             <div>
-                <div class="rf-msg-bubble">
+                <div class="rf-msg-bubble${bubbleExtraClass}">
+                    ${chevronBtnHtml}
                     ${textHtml}
                     ${attachmentHtml}
                     <div class="rf-msg-meta">
                         <span>${m.time || ''}</span>
+                        ${editedNotice}
                         ${checkmarkHtml}
                     </div>
                 </div>
@@ -1351,10 +1925,282 @@ function generateMessageItemHtml(m) {
 /* -------------------------------------------------------------------------- */
 /* Send Message                                                               */
 /* -------------------------------------------------------------------------- */
-function handleChatKeyPress(e) {
-    if (e.key === 'Enter') {
+
+/* -------------------------------------------------------------------------- */
+/* Emoji & Sticker Helpers                                                    */
+/* -------------------------------------------------------------------------- */
+function initEmojiAndStickers() {
+    var emojiGrid = document.getElementById('rfEmojiGrid');
+    if (emojiGrid && emojiGrid.children.length === 0) {
+        var html = '';
+        emojiList.forEach(function(em) {
+            html += `<button type="button" class="rf-emoji-btn" onclick="insertEmoji('${em}')">${em}</button>`;
+        });
+        emojiGrid.innerHTML = html;
+    }
+
+    var stickerGrid = document.getElementById('rfStickerGrid');
+    if (stickerGrid && stickerGrid.children.length === 0) {
+        var sHtml = '';
+        stickerList.forEach(function(st) {
+            sHtml += `
+                <div class="rf-sticker-item" onclick="sendSticker('${st.key}')" title="${st.label}">
+                    <div class="rf-sticker-icon">${st.icon}</div>
+                    <div class="rf-sticker-label">${st.label}</div>
+                </div>
+            `;
+        });
+        stickerGrid.innerHTML = sHtml;
+    }
+}
+
+function togglePickerPopover(forceState) {
+    var popover = document.getElementById('rfPickerPopover');
+    if (!popover) return;
+    initEmojiAndStickers();
+    if (typeof forceState === 'boolean') {
+        popover.style.display = forceState ? 'flex' : 'none';
+    } else {
+        popover.style.display = (popover.style.display === 'flex') ? 'none' : 'flex';
+    }
+}
+
+function switchPickerTab(tab) {
+    var emojiBody = document.getElementById('rfEmojiBody');
+    var stickerBody = document.getElementById('rfStickerBody');
+    var emojiBtn = document.getElementById('rfTabEmojiBtn');
+    var stickerBtn = document.getElementById('rfTabStickerBtn');
+
+    if (tab === 'emoji') {
+        emojiBody.style.display = 'block';
+        stickerBody.style.display = 'none';
+        emojiBtn.className = 'rf-picker-tab-btn active';
+        stickerBtn.className = 'rf-picker-tab-btn';
+    } else {
+        emojiBody.style.display = 'none';
+        stickerBody.style.display = 'block';
+        emojiBtn.className = 'rf-picker-tab-btn';
+        stickerBtn.className = 'rf-picker-tab-btn active';
+    }
+}
+
+function insertEmoji(em) {
+    var input = document.getElementById('rfChatInputField');
+    if (!input) return;
+    input.value += em;
+    input.focus();
+}
+
+function sendSticker(key) {
+    togglePickerPopover(false);
+    if (!activeChatUser) return;
+    sendDirectMessage('[sticker:' + key + ']');
+}
+
+/* -------------------------------------------------------------------------- */
+/* WhatsApp Web Style Smart Floating Context Menu                             */
+/* -------------------------------------------------------------------------- */
+function openMsgContextMenu(e, msgId, isSticker) {
+    if (e) {
         e.preventDefault();
-        sendChatMessage();
+        e.stopPropagation();
+    }
+    activeContextMenuMsgId = msgId;
+
+    var menu = document.getElementById('rfMsgContextMenu');
+    var editBtn = document.getElementById('rfCtxEditBtn');
+    var roomView = document.getElementById('rfChatRoomView');
+    if (!menu || !roomView) return;
+
+    if (editBtn) {
+        editBtn.style.display = isSticker ? 'none' : 'flex';
+    }
+
+    var targetBtn = e ? e.currentTarget : null;
+    var btnRect = targetBtn ? targetBtn.getBoundingClientRect() : null;
+    var roomRect = roomView.getBoundingClientRect();
+
+    menu.style.display = 'flex';
+
+    var menuWidth = 135;
+    var menuHeight = isSticker ? 40 : 76;
+
+    if (btnRect) {
+        var posX = btnRect.left - roomRect.left - menuWidth + 24;
+        if (posX < 8) posX = 8;
+        if (posX + menuWidth > roomRect.width - 8) posX = roomRect.width - menuWidth - 8;
+
+        var posY = btnRect.bottom - roomRect.top + 4;
+        // If near the bottom of chatroom, open upwards!
+        if (posY + menuHeight > roomRect.height - 60) {
+            posY = btnRect.top - roomRect.top - menuHeight - 4;
+        }
+
+        menu.style.left = posX + 'px';
+        menu.style.top = posY + 'px';
+    }
+}
+
+function closeMsgContextMenu() {
+    var menu = document.getElementById('rfMsgContextMenu');
+    if (menu) menu.style.display = 'none';
+    activeContextMenuMsgId = null;
+}
+
+function handleCtxEdit() {
+    if (activeContextMenuMsgId) {
+        var id = activeContextMenuMsgId;
+        closeMsgContextMenu();
+        startEditingMessage(id);
+    }
+}
+
+function handleCtxDelete() {
+    if (activeContextMenuMsgId) {
+        var id = activeContextMenuMsgId;
+        closeMsgContextMenu();
+        deleteChatMessage(id);
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Typing Heartbeat Signal                                                    */
+/* -------------------------------------------------------------------------- */
+function handleChatInputTyping(e) {
+    if (!activeChatUser) return;
+    if (typingDebounceTimer) clearTimeout(typingDebounceTimer);
+    
+    sendTypingSignal(true);
+
+    typingDebounceTimer = setTimeout(function() {
+        sendTypingSignal(false);
+    }, 3000);
+}
+
+function sendTypingSignal(isTyping) {
+    if (!activeChatUser) return;
+    var csrfToken = document.querySelector('meta[name="csrf-token"]') 
+        ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') 
+        : '';
+
+    fetch('/chat/typing', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            receiver_id: activeChatUser.id,
+            is_typing: isTyping
+        })
+    }).catch(function() {});
+}
+
+function updateTypingIndicator(isTyping) {
+    var el = document.getElementById('rfTypingIndicator');
+    var textEl = document.getElementById('rfTypingText');
+    if (!el) return;
+    var isCurrentlyShowing = (el.style.display === 'flex');
+    if (isTyping && activeChatUser) {
+        if (textEl) textEl.innerText = (activeChatUser.name.split(' ')[0]) + ' sedang mengetik...';
+        if (!isCurrentlyShowing) {
+            el.style.display = 'flex';
+            scrollToBottomChat();
+        }
+    } else {
+        if (isCurrentlyShowing) {
+            el.style.display = 'none';
+        }
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Edit & Delete Chat Message                                                 */
+/* -------------------------------------------------------------------------- */
+function startEditingMessage(msgId) {
+    if (!activeChatUser) return;
+    var msgs = conversationCache[activeChatUser.id] || [];
+    var msgObj = msgs.find(function(m) { return m.id === msgId; });
+    if (!msgObj) return;
+
+    editingMessageId = msgId;
+    var editBar = document.getElementById('rfEditBar');
+    var editPreview = document.getElementById('rfEditPreviewText');
+    var inputField = document.getElementById('rfChatInputField');
+
+    if (editPreview) editPreview.innerText = msgObj.message || '(Lampiran)';
+    if (editBar) editBar.style.display = 'flex';
+    if (inputField) {
+        inputField.value = msgObj.message || '';
+        inputField.focus();
+    }
+}
+
+function cancelEditingMessage() {
+    editingMessageId = null;
+    var editBar = document.getElementById('rfEditBar');
+    var inputField = document.getElementById('rfChatInputField');
+    if (editBar) editBar.style.display = 'none';
+    if (inputField) inputField.value = '';
+}
+
+function deleteChatMessage(msgId) {
+    if (!confirm('Apakah Anda yakin ingin menghapus pesan ini?')) return;
+    var csrfToken = document.querySelector('meta[name="csrf-token"]') 
+        ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') 
+        : '';
+
+    fetch('/chat/messages/' + msgId, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        var deletedMsg = data.message_data || data.message;
+        if (data.status === 'success' && deletedMsg) {
+            updateSingleMessageInView(deletedMsg);
+        }
+    })
+    .catch(function(err) {
+        console.error('Failed to delete message:', err);
+    });
+}
+
+function updateSingleMessageInView(msgObj) {
+    if (!activeChatUser) return;
+    var msgs = conversationCache[activeChatUser.id] || [];
+    var idx = msgs.findIndex(function(m) { return m.id === msgObj.id; });
+    if (idx !== -1) {
+        var old = msgs[idx];
+        if (old.message === msgObj.message && old.is_edited === msgObj.is_edited && old.is_deleted === msgObj.is_deleted) {
+            return;
+        }
+        msgs[idx] = msgObj;
+    }
+
+    var existingRow = document.getElementById('rfMsgRow_' + msgObj.id);
+    if (existingRow) {
+        var temp = document.createElement('div');
+        temp.innerHTML = generateMessageItemHtml(msgObj);
+        var newRow = temp.firstElementChild;
+        if (newRow) {
+            existingRow.replaceWith(newRow);
+        }
+    }
+}
+
+function handleChatKeyPress(e) {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+        if (!e.shiftKey) {
+            e.preventDefault();
+            sendChatMessage();
+        }
     }
 }
 
@@ -1375,33 +2221,17 @@ function clearSelectedAttachment() {
     if (preview) preview.style.display = 'none';
 }
 
-function sendChatMessage() {
+function sendDirectMessage(text) {
     if (!activeChatUser) return;
-
-    var input = document.getElementById('rfChatInputField');
-    var text = input.value.trim();
-    var file = selectedAttachmentFile;
-
-    if (!text && !file) return;
-
     var csrfToken = document.querySelector('meta[name="csrf-token"]') 
         ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') 
         : '';
 
     var formData = new FormData();
     formData.append('receiver_id', activeChatUser.id);
-    if (text) formData.append('message', text);
-    if (file) formData.append('attachment', file);
+    formData.append('message', text);
 
-    // Reset input immediately
-    input.value = '';
-    clearSelectedAttachment();
-
-    var sendBtn = document.getElementById('rfSendMsgBtn');
-    var sendIcon = document.getElementById('rfSendIcon');
-    if (sendIcon) sendIcon.className = 'mdi mdi-loading mdi-spin';
-
-    fetch('/chat/send', {
+    fetch('/chat/messages', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': csrfToken,
@@ -1412,33 +2242,102 @@ function sendChatMessage() {
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
-        if (sendIcon) sendIcon.className = 'mdi mdi-send';
-        if (data.status === 'success' && data.message_data) {
-            var msg = data.message_data;
-            if (msg.id > lastMessageId) lastMessageId = msg.id;
+        var sentMsg = data.message_data || data.message;
+        if (data.status === 'success' && sentMsg) {
+            var userId = activeChatUser.id;
+            if (!conversationCache[userId]) conversationCache[userId] = [];
+            conversationCache[userId].push(sentMsg);
+            renderMessageStream(conversationCache[userId]);
+            updateContactSnippet(sentMsg);
+        }
+    });
+}
 
-            // Sync with memory cache
-            if (!conversationCache[activeChatUser.id]) conversationCache[activeChatUser.id] = [];
-            conversationCache[activeChatUser.id].push(msg);
+function sendChatMessage() {
+    if (!activeChatUser) return;
+    var input = document.getElementById('rfChatInputField');
+    var messageText = input ? input.value.trim() : '';
 
-            var list = document.getElementById('rfMessagesList');
-            // Remove empty state if present
-            if (list.querySelector('.rf-chat-empty-state')) {
-                list.innerHTML = '';
+    if (!messageText && !selectedAttachmentFile) return;
+
+    var csrfToken = document.querySelector('meta[name="csrf-token"]') 
+        ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') 
+        : '';
+
+    // Handle Edit Mode
+    if (editingMessageId) {
+        var editId = editingMessageId;
+        cancelEditingMessage();
+
+        fetch('/chat/messages/' + editId, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ message: messageText })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            var editedMsg = data.message_data || data.message;
+            if (data.status === 'success' && editedMsg) {
+                updateSingleMessageInView(editedMsg);
             }
-            list.insertAdjacentHTML('beforeend', generateMessageItemHtml(msg));
-            scrollToBottomChat();
+        })
+        .catch(function(err) {
+            console.error('Failed to edit message:', err);
+        });
+        return;
+    }
 
-            // Update contact last message in contacts list
-            var contactMsg = document.getElementById('rfContactMsg_' + activeChatUser.id);
-            if (contactMsg) contactMsg.innerText = 'Anda: ' + (msg.message || (msg.attachment_type === 'image' ? '🖼️ Gambar' : '📎 Dokumen'));
-            var contactTime = document.getElementById('rfContactTime_' + activeChatUser.id);
-            if (contactTime) contactTime.innerText = msg.time;
+    var sendBtn = document.getElementById('rfSendMsgBtn');
+    var sendIcon = document.getElementById('rfSendIcon');
+    if (sendBtn) sendBtn.disabled = true;
+    if (sendIcon) sendIcon.className = 'mdi mdi-loading mdi-spin';
+
+    var formData = new FormData();
+    formData.append('receiver_id', activeChatUser.id);
+    if (messageText) formData.append('message', messageText);
+    if (selectedAttachmentFile) formData.append('attachment', selectedAttachmentFile);
+
+    if (input) input.value = '';
+    clearSelectedAttachment();
+    togglePickerPopover(false);
+    closeMsgContextMenu();
+
+    fetch('/chat/messages', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: formData
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.status === 'success') {
+            var sentMsg = data.message_data || data.message;
+            if (sentMsg) {
+                var userId = activeChatUser.id;
+                if (!conversationCache[userId]) conversationCache[userId] = [];
+                conversationCache[userId].push(sentMsg);
+                if (activeChatUser.id === userId) {
+                    renderMessageStream(conversationCache[userId]);
+                }
+                updateContactSnippet(sentMsg);
+            }
         }
     })
     .catch(function(err) {
-        if (sendIcon) sendIcon.className = 'mdi mdi-send';
         console.error('Failed to send message:', err);
+    })
+    .finally(function() {
+        if (sendBtn) sendBtn.disabled = false;
+        if (sendIcon) sendIcon.className = 'mdi mdi-send';
+        if (input) input.focus();
     });
 }
 
@@ -1529,6 +2428,18 @@ function pollNewMessages() {
                     dotEl.title = data.target_user_presence.last_seen_text || data.target_user_presence.label;
                 }
             }
+
+            // Live Partner Typing Indicator
+            if (isChatOpen && activeChatUser) {
+                updateTypingIndicator(data.is_partner_typing === true);
+            }
+
+            // Sync live edits / deletes
+            if (data.updated_messages && data.updated_messages.length > 0) {
+                data.updated_messages.forEach(function(um) {
+                    updateSingleMessageInView(um);
+                });
+            }
         }
     })
     .catch(function(err) {
@@ -1598,6 +2509,29 @@ function scrollToBottomChat() {
         }, 60);
     }
 }
+
+
+// Expose functions globally on window for click handlers
+window.toggleChatBox = toggleChatBox;
+window.selectContact = selectContact;
+window.backToChatList = backToChatList;
+window.togglePickerPopover = togglePickerPopover;
+window.switchPickerTab = switchPickerTab;
+window.insertEmoji = insertEmoji;
+window.sendSticker = sendSticker;
+window.handleChatInputTyping = handleChatInputTyping;
+window.openMsgContextMenu = openMsgContextMenu;
+window.closeMsgContextMenu = closeMsgContextMenu;
+window.handleCtxEdit = handleCtxEdit;
+window.handleCtxDelete = handleCtxDelete;
+window.startEditingMessage = startEditingMessage;
+window.cancelEditingMessage = cancelEditingMessage;
+window.deleteChatMessage = deleteChatMessage;
+window.sendChatMessage = sendChatMessage;
+window.clearSelectedAttachment = clearSelectedAttachment;
+window.handleFileSelected = handleFileSelected;
+window.toggleSoundEffect = toggleSoundEffect;
+window.filterChatPresence = filterChatPresence;
 
 function escapeHtml(string) {
     if (!string) return '';

@@ -186,6 +186,21 @@
                 </ul>
             </li>
 
+            @if (in_array(auth::user()->role, ['Admin', 'developer', 'Developer']) || (method_exists(auth::user(), 'isDeveloper') && auth::user()->isDeveloper()))
+            <li class="menu-item {{ request()->is('piping-rab*') ? 'active' : '' }}">
+                <a href="{{ route('piping-rab.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-calculator-variant-outline"></i>
+                    <div data-i18n="Estimasi / RAB Piping">Estimasi / RAB Piping</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('schematics*') ? 'active' : '' }}">
+                <a href="{{ route('schematics.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-vector-polyline"></i>
+                    <div data-i18n="Schematic Diagram">Schematic Diagram</div>
+                </a>
+            </li>
+            @endif
+
             @if (auth::user()->role == 'Admin')
             <li class="menu-item {{ request()->is('sales-target') ? 'active' : '' }}">
                 <a href="{{ route('sales-target.index') }}" class="menu-link">
@@ -546,6 +561,22 @@
                     <span class="menu-header-text">Finance</span>
                 </li>
 
+                @php
+                    $pendingFeeCount = \App\Models\UnitQuotation::where('fee', '>', 0)
+                        ->where('fee_payment_status', '!=', 'paid')
+                        ->where('status', 'po_received')
+                        ->count();
+                @endphp
+                <li class="menu-item {{ request()->is('finance/management-fee*') ? 'active' : '' }}">
+                    <a href="{{ route('finance.management-fee.index') }}" class="menu-link">
+                        <i class="menu-icon tf-icons mdi mdi-cash-refund"></i>
+                        <div data-i18n="Management Fee">Management Fee</div>
+                        @if ($pendingFeeCount >= 1)
+                            <div class="badge bg-warning rounded-pill ms-auto">{{ $pendingFeeCount }}</div>
+                        @endif
+                    </a>
+                </li>
+
                 <li
                     class="menu-item {{ request()->is('expense-account') || request()->is('expense') || request()->is('expense-umum') || request()->is('expense-inventory') || request()->is('expense-ongkir') ? 'open' : '' }}">
                     <a href="javascript:void(0);" class="menu-link menu-toggle">
@@ -871,6 +902,12 @@
                     <div data-i18n="Master Harga Jasa PM">Master Harga Jasa PM</div>
                 </a>
             </li>
+            <li class="menu-item {{ request()->is('piping-materials*') ? 'active' : '' }}">
+                <a href="{{ route('piping-materials.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-pipe"></i>
+                    <div data-i18n="Material Piping">Material Piping</div>
+                </a>
+            </li>
             <li class="menu-item {{ request()->is('catalog-unit') || request()->is('catalog-unit/*') ? 'active' : '' }}">
                 <a href="{{ route('catalog-unit.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-tag-text-outline"></i>
@@ -948,7 +985,7 @@
                 <span class="menu-header-text">Client</span>
             </li>
             <li
-                class="menu-item {{ request()->is('leads') || request()->is('leads/detail/*') || request()->is('existing') || request()->is('existing/*') || request()->is('ru') || request()->is('existing-bangkrupt') || request()->is('customer-by-status') || request()->is('key-accounts') ? 'open' : '' }}">
+                class="menu-item {{ request()->is('leads') || request()->is('leads/detail/*') || request()->is('existing') || request()->is('existing/*') || request()->is('ru') || request()->is('existing-bangkrupt') || request()->is('key-accounts') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-account-group-outline"></i>
                     <div data-i18n="Client">Client</div>
@@ -962,12 +999,6 @@
                         </a>
                     </li>
 
-                    <li
-                        class="menu-item {{ request()->is('customer-by-status') || request()->is('existing/*') ? 'active' : '' }}">
-                        <a href="{{ route('index-status.customers') }}" class="menu-link">
-                            <div data-i18n="CRM">CRM</div>
-                        </a>
-                    </li>
                     <li
                         class="menu-item {{ request()->is('key-accounts') ? 'active' : '' }}">
                         <a href="{{ route('key-accounts.index') }}" class="menu-link">
@@ -1059,6 +1090,12 @@
                 <a href="{{ route('forecast.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-chart-box-plus-outline"></i>
                     <div data-i18n="Forecast">Forecast</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('schematics*') ? 'active' : '' }}">
+                <a href="{{ route('schematics.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-vector-polyline"></i>
+                    <div data-i18n="Schematic Diagram">Schematic Diagram</div>
                 </a>
             </li>
             <li class="menu-header fw-light mt-4">
@@ -1354,12 +1391,12 @@
                     <div data-i18n="Dashboards">Dashboards</div>
                 </a>
             </li>
-            <li class="menu-item {{ request()->is('kanban*') ? 'active' : '' }}">
+            {{-- <li class="menu-item {{ request()->is('kanban*') ? 'active' : '' }}">
                 <a href="{{ route('kanban.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-view-dashboard-outline"></i>
                     <div data-i18n="Kanban">Kanban</div>
                 </a>
-            </li>
+            </li> --}}
             {{-- <li class="menu-item">
                 <a href="#" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-phone-incoming-outgoing-outline"></i>
@@ -1370,6 +1407,13 @@
                 <a href="{{ url('/reports') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-finance"></i>
                     <div data-i18n="Reports">Reports</div>
+                </a>
+            </li>
+            <li
+                class="menu-item {{ request()->is('overview') || request()->is('overview/*') || request()->is('overview/*/*') ? 'active' : '' }}">
+                <a href="{{ url('/overview') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-account-eye-outline"></i>
+                    <div data-i18n="Overview">Overview</div>
                 </a>
             </li>
             <!-- Layouts

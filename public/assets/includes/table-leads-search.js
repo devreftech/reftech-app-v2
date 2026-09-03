@@ -190,18 +190,10 @@ $(function () {
             // order: [[1, "desc"]],
             // orderCellsTop: true,
             dom:
-                '<"row"<"dt-action-buttons text-end pt-3 pt-md-0"B><"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>' +
+                '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>' +
                 '<"table-responsive"t>' +
                 '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
             buttons: [
-                {
-                    text: '<i class="mdi mdi-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add New Leads</span>',
-                    className: "btn btn-primary",
-                    attr: {
-                        "data-bs-target": "#createLeads",
-                        "data-bs-toggle": "modal",
-                    },
-                },
                 // {
                 //     text: '<i class="mdi mdi-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add New Payable</span>',
                 //     className: "btn btn-primary btn-new",

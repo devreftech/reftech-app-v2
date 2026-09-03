@@ -372,8 +372,18 @@
                                                     @endif
                                                 </span>
                                             @else
-                                                <span class="fw-semibold text-dark">{{ $d->detailProduct->product->commodity ?? '-' }}</span>
-                                                <span class="text-muted">({{ $d->detailProduct->replacement ?? '-' }})</span>
+                                                <div>
+                                                    <span class="fw-semibold text-dark">{{ $d->detailProduct->product->commodity ?? '-' }}</span>
+                                                    @if ($d->brand)
+                                                        <span class="badge bg-label-primary ms-1" style="font-size:11px;">{{ $d->brand }}</span>
+                                                    @endif
+                                                    @if (!empty($d->detailProduct->replacement) && $d->detailProduct->replacement !== ($d->detailProduct->product->commodity ?? ''))
+                                                        <small class="text-muted d-block">{{ $d->detailProduct->replacement }}</small>
+                                                    @endif
+                                                    @if ($d->detailProduct->product->description ?? null)
+                                                        <small class="text-muted d-block fst-italic">{{ $d->detailProduct->product->description }}</small>
+                                                    @endif
+                                                </div>
                                             @endif
                                         </td>
                                         <td class="text-center">
@@ -696,8 +706,13 @@
                                         @php $row = $costAllocation['rows']->get($d->id); @endphp
                                         <tr>
                                             <td>
-                                                <span class="fw-semibold">{{ $d->detailProduct->product->commodity ?? '-' }}</span>
-                                                <span class="text-muted">({{ $d->detailProduct->replacement ?? '-' }})</span>
+                                                <span class="fw-semibold text-dark">{{ $d->detailProduct->product->commodity ?? '-' }}</span>
+                                                @if (!empty($d->detailProduct->replacement) && $d->detailProduct->replacement !== ($d->detailProduct->product->commodity ?? ''))
+                                                    <span class="text-muted">({{ $d->detailProduct->replacement }})</span>
+                                                @endif
+                                                @if ($d->detailProduct->product->description ?? null)
+                                                    <small class="text-muted d-block fst-italic">{{ $d->detailProduct->product->description }}</small>
+                                                @endif
                                             </td>
                                             <td class="text-center">{{ $d->qty }}</td>
                                             <td class="text-center">Rp {{ $moneyFmt($row['item_value'] ?? 0) }}</td>

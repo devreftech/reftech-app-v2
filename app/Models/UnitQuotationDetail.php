@@ -23,6 +23,7 @@ class UnitQuotationDetail extends Model
         'price',
         'disc',
         'amount',
+        'fee',
         'pph',
         'sort_order',
     ];
@@ -55,6 +56,31 @@ class UnitQuotationDetail extends Model
     public function getDeliveredQtyAttribute()
     {
         return (float) $this->deliveredItems()->sum('qty');
+    }
+
+    public function getFeeTaxDataAttribute()
+    {
+        $fee = floatval($this->fee ?? 0);
+        if ($fee < 1500000) {
+            $taxRate = 0;
+            $taxRateLabel = '0%';
+        } elseif ($fee <= 5000000) {
+            $taxRate = 0.0368;
+            $taxRateLabel = '3.68%';
+        } else {
+            $taxRate = 0.10;
+            $taxRateLabel = '10%';
+        }
+        $taxAmount = round($fee * $taxRate);
+        $netFee = $fee - $taxAmount;
+
+        return (object) [
+            'gross_fee'      => $fee,
+            'tax_rate'       => $taxRate,
+            'tax_rate_label' => $taxRateLabel,
+            'tax_amount'     => $taxAmount,
+            'net_fee'        => $netFee,
+        ];
     }
 
     public function getRemainingQtyAttribute()

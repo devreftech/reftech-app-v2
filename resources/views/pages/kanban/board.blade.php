@@ -134,8 +134,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="createTaskAssignee" class="form-label">Assign To</label>
-                            <select class="form-select select2-create" id="createTaskAssignee" data-placeholder="Choose assignee">
-                                <option value="">Unassigned</option>
+                            <select class="form-select select2-create" id="createTaskAssignee" name="assignees[]" multiple="multiple" data-placeholder="Choose assignee">
                                 @foreach ($users as $user)
                                     <option value="{{ $user->id }}">{{ $user->name }}</option>
                                 @endforeach
@@ -144,14 +143,6 @@
                         <div class="mb-3">
                             <label for="createTaskDueDate" class="form-label">Due Date</label>
                             <input type="text" class="form-control flatpickr" id="createTaskDueDate" placeholder="YYYY-MM-DD">
-                        </div>
-                        <div class="mb-3">
-                            <label for="createTaskPriority" class="form-label">Prioritas</label>
-                            <select class="form-select" id="createTaskPriority">
-                                <option value="low">Rendah</option>
-                                <option value="medium" selected>Sedang</option>
-                                <option value="high">Tinggi</option>
-                            </select>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -224,6 +215,10 @@
                                              <div class="col-sm-6">
                                                  <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Nomor PO</span>
                                                  <strong id="soPoNumber" class="text-dark" style="font-size: 13.5px;"></strong>
+                                             </div>
+                                             <div class="col-sm-6">
+                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Nomor SO</span>
+                                                 <span id="soSoNumber" class="text-dark fw-semibold" style="font-size: 13.5px;">-</span>
                                              </div>
                                              <div class="col-sm-6">
                                                  <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Entity / Tipe Invoice</span>
@@ -371,6 +366,82 @@
                                  </div>
                              </div>
 
+                            @if ($board->type !== 'monitoring')
+                            <!-- Quotation terhubung -->
+                            <div class="mb-4" id="quotationLinkContainer">
+                                <label class="form-label text-muted fw-semibold" style="font-size: 11px;">Quotation Terhubung</label>
+                                <div id="quotationLinkedView" class="align-items-center justify-content-between p-2 rounded border bg-white" style="display: none; font-size: 12.5px;">
+                                    <div class="d-flex align-items-center gap-2 min-width-0">
+                                        <i class="mdi mdi-file-document-outline text-primary" style="font-size: 18px;"></i>
+                                        <div class="min-width-0">
+                                            <a id="quotationLinkedNo" href="#" target="_blank" class="fw-bold text-primary d-block text-truncate text-decoration-none"></a>
+                                            <small id="quotationLinkedCompany" class="text-muted d-block text-truncate"></small>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-xs btn-outline-danger flex-shrink-0" id="btnUnlinkQuotation">
+                                        <i class="mdi mdi-link-off me-1"></i>Putuskan
+                                    </button>
+                                </div>
+                                <div id="quotationLinkForm" style="display: none;">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <select class="form-select form-select-sm select2-link-quote" id="linkQuotationSelect" style="width: 100%;" data-placeholder="Cari no. quote / perusahaan..."></select>
+                                        <button type="button" class="btn btn-sm btn-primary flex-shrink-0" id="btnLinkQuotation"><i class="mdi mdi-link-variant me-1"></i>Hubungkan</button>
+                                    </div>
+                                    <small class="text-muted" style="font-size: 10.5px;">Sambungkan kartu ini ke Unit Quotation yang belum punya kartu.</small>
+                                </div>
+                            </div>
+
+                            <!-- Pengeluaran Project (manajemen biaya per kartu) -->
+                            <div class="mb-4" id="taskExpenseContainer">
+                                <div class="card border border-light-subtle shadow-sm" style="background-color: #fbfbfc; border-radius: 12px; border: 1px solid #eef0f4 !important;">
+                                    <div class="card-body p-3.5">
+                                        <div class="d-flex align-items-center justify-content-between pb-2 mb-3" style="border-bottom: 2px solid #ff9f43;">
+                                            <h6 class="fw-bold mb-0 text-dark d-flex align-items-center" style="font-size: 14.5px;">
+                                                <i class="mdi mdi-cash-multiple me-2 text-warning" style="font-size: 18px;"></i> Pengeluaran Project
+                                            </h6>
+                                            <span class="badge bg-label-warning fw-bold" id="taskExpenseTotal" style="font-size: 12px;">Rp 0</span>
+                                        </div>
+
+                                        <div id="taskExpensesList" class="d-flex flex-column gap-1 mb-3" style="font-size: 12.5px;"></div>
+
+                                        <div id="taskExpenseFormWrap" style="display: none;">
+                                            <button type="button" class="btn btn-xs btn-outline-primary" id="btnShowExpenseForm"><i class="mdi mdi-plus me-1"></i>Tambah Biaya</button>
+                                            <form id="taskExpenseForm" class="mt-2 border rounded p-2 bg-white" style="display: none;" enctype="multipart/form-data">
+                                                <div class="row g-2">
+                                                    <div class="col-12">
+                                                        <input type="text" class="form-control form-control-sm" id="expenseName" placeholder="Nama biaya" required>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <select class="form-select form-select-sm" id="expenseCategory" required>
+                                                            <option value="Transport">Transport</option>
+                                                            <option value="Akomodasi">Akomodasi</option>
+                                                            <option value="Konsumsi">Konsumsi</option>
+                                                            <option value="Material">Material</option>
+                                                            <option value="Alat">Alat</option>
+                                                            <option value="Lain-lain">Lain-lain</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <input type="text" class="form-control form-control-sm" id="expenseAmount" placeholder="Nominal (Rp)" inputmode="numeric" autocomplete="off" required>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <input type="text" class="form-control form-control-sm flatpickr-expense" id="expenseDate" placeholder="YYYY-MM-DD" required>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <input type="file" class="form-control form-control-sm" id="expenseReceipt" accept=".jpg,.jpeg,.png,.pdf">
+                                                    </div>
+                                                </div>
+                                                <div class="text-end mt-2">
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary" id="btnCancelExpenseForm">Batal</button>
+                                                    <button type="submit" class="btn btn-xs btn-primary">Simpan Biaya</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
+
                             <!-- Labels section -->
                             <div class="mb-4">
                                 <label class="form-label text-muted fw-semibold" style="font-size: 11px;">Labels</label>
@@ -395,7 +466,7 @@
                                 </div>
                             </div>
 
-                            <!-- Metadata row (Assignee, Due Date, and Priority dropdowns) -->
+                            <!-- Metadata row (Assignee, Due Date) -->
                             <div class="row mb-4">
                                 <div class="col-sm-6 {{ $board->type === 'monitoring' ? 'd-none' : '' }}">
                                     <label for="editTaskAssignee" class="form-label text-muted fw-semibold" style="font-size: 11px;">Ditugaskan Kepada</label>
@@ -410,14 +481,6 @@
                                 <div class="col-sm-6">
                                     <label for="editTaskDueDate" class="form-label text-muted fw-semibold" style="font-size: 11px;">Tanggal Batas Waktu</label>
                                     <input type="text" class="form-control flatpickr" id="editTaskDueDate" placeholder="YYYY-MM-DD">
-                                </div>
-                                <div class="col-sm-6">
-                                    <label for="editTaskPriority" class="form-label text-muted fw-semibold" style="font-size: 11px;">Prioritas</label>
-                                    <select class="form-select" id="editTaskPriority">
-                                        <option value="low">Rendah</option>
-                                        <option value="medium">Sedang</option>
-                                        <option value="high">Tinggi</option>
-                                    </select>
                                 </div>
                             </div>
 
@@ -500,115 +563,170 @@
     <input type="hidden" id="editTaskId">
     <input type="file" id="taskAttachmentInput" style="display:none;">
 
-    @if (auth()->user()->role === 'Admin')
-        <!-- Board Settings Modal -->
+    @if (auth()->user()->role === 'Admin' || (auth()->user()->role === 'Accounting' && $board->type === 'monitoring'))
+        <!-- Board Settings Modal (Wide 2-Column Layout) -->
         <div class="modal fade" id="boardSettingsModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title fw-bold">Board Settings</h5>
+            <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+                    <div class="modal-header bg-light py-3 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar avatar-sm bg-label-primary rounded p-1 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                <i class="mdi mdi-cog-outline" style="font-size: 20px;"></i>
+                            </div>
+                            <div>
+                                <h5 class="modal-title fw-bold mb-0 text-heading">Pengaturan Papan Kanban</h5>
+                                <small class="text-muted">Atur informasi papan, kelola anggota, label kustom, dan susun urutan kolom</small>
+                            </div>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form id="boardSettingsForm" enctype="multipart/form-data">
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                <label for="settingsBoardTitle" class="form-label">Board Title</label>
-                                <input type="text" class="form-control" id="settingsBoardTitle" name="title" value="{{ $board->title }}" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="settingsBoardDescription" class="form-label">Description</label>
-                                <textarea class="form-control" id="settingsBoardDescription" name="description" rows="2">{{ $board->description }}</textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="settingsBoardMembers" class="form-label">Manage Members</label>
-                                <select class="select2 form-select" id="settingsBoardMembers" name="member_ids[]" multiple="multiple" data-placeholder="Select members">
-                                    @foreach ($users as $user)
-                                        <option value="{{ $user->id }}" {{ $board->members->contains($user->id) ? 'selected' : '' }}>
-                                            {{ $user->name }} ({{ $user->role }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <label class="form-label mb-0">Manage Columns</label>
-                                    <button type="button" class="btn btn-xs btn-outline-primary" id="settingsAddColBtn">
-                                        <i class="mdi mdi-plus"></i> Add Column
-                                    </button>
-                                </div>
-                                <div id="settingsColumnsContainer">
-                                    @foreach ($board->columns as $column)
-                                        <div class="input-group mb-2 settings-column-item" data-id="{{ $column->id }}">
-                                            <input type="hidden" name="columns[][id]" value="{{ $column->id }}">
-                                            <input type="text" class="form-control" name="columns[][title]" value="{{ $column->title }}" required>
-                                            <button class="btn btn-outline-danger btn-remove-settings-column" type="button"><i class="mdi mdi-close"></i></button>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                            <div class="mb-3 border-top pt-3">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <label class="form-label mb-0 fw-bold">Custom Label Names</label>
-                                    <div class="dropdown">
-                                        <button type="button" class="btn btn-xs btn-outline-primary dropdown-toggle hide-arrow" id="settingsAddLabelBtn" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <i class="mdi mdi-plus"></i> Add Label
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end p-2" id="settingsAddLabelMenu" style="min-width: 150px;">
-                                            <!-- Dynamically populated via JS -->
-                                        </ul>
+                        <div class="modal-body p-4">
+                            <div class="row g-4">
+                                <!-- SISI KIRI: Informasi Umum, Anggota, Label, dan Notifikasi -->
+                                <div class="col-lg-6 border-end-lg pe-lg-4">
+                                    <h6 class="fw-bold text-primary mb-3 d-flex align-items-center gap-2" style="font-size: 13.5px;">
+                                        <i class="mdi mdi-information-outline"></i> Informasi & Anggota Papan
+                                    </h6>
+
+                                    <div class="mb-3">
+                                        <label for="settingsBoardTitle" class="form-label fw-semibold">Judul Papan <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="settingsBoardTitle" name="title" value="{{ $board->title }}" required>
                                     </div>
-                                </div>
-                                <div id="settingsLabelsContainer" class="row g-2">
-                                    @foreach($activeLabels as $color => $name)
-                                        <div class="col-sm-6 settings-label-item" data-color="{{ $color }}">
-                                            <div class="input-group input-group-sm mb-2">
-                                                <span class="input-group-text bg-{{ $color }} text-white" style="width: 35px; border: 0;">&nbsp;</span>
-                                                <input type="text" class="form-control" name="labels[{{ $color }}]" value="{{ $board->labels ? ($board->labels[$color] ?? '') : '' }}" placeholder="{{ $name }}">
-                                                <button class="btn btn-outline-danger btn-remove-settings-label" type="button"><i class="mdi mdi-close"></i></button>
+                                    <div class="mb-3">
+                                        <label for="settingsBoardDescription" class="form-label fw-semibold">Deskripsi</label>
+                                        <textarea class="form-control" id="settingsBoardDescription" name="description" rows="2" placeholder="Deskripsi singkat papan...">{{ $board->description }}</textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="settingsBoardMembers" class="form-label fw-semibold">Kelola Anggota (Members)</label>
+                                        <select class="select2 form-select" id="settingsBoardMembers" name="member_ids[]" multiple="multiple" data-placeholder="Pilih anggota papan">
+                                            @foreach ($users as $user)
+                                                <option value="{{ $user->id }}" {{ $board->members->contains($user->id) ? 'selected' : '' }}>
+                                                    {{ $user->name }} ({{ $user->role }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3 pt-2 border-top">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label class="form-label mb-0 fw-semibold">Kustom Nama Label (Tag)</label>
+                                            <div class="dropdown">
+                                                <button type="button" class="btn btn-xs btn-outline-primary dropdown-toggle hide-arrow" id="settingsAddLabelBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="mdi mdi-plus"></i> Tambah Label
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end p-2" id="settingsAddLabelMenu" style="min-width: 150px;">
+                                                    <!-- Dynamically populated via JS -->
+                                                </ul>
                                             </div>
                                         </div>
-                                    @endforeach
+                                        <div id="settingsLabelsContainer" class="row g-2">
+                                            @foreach($activeLabels as $color => $name)
+                                                <div class="col-sm-6 settings-label-item" data-color="{{ $color }}">
+                                                    <div class="input-group input-group-sm mb-1">
+                                                        <span class="input-group-text bg-{{ $color }} text-white" style="width: 32px; border: 0;">&nbsp;</span>
+                                                        <input type="text" class="form-control form-control-sm" name="labels[{{ $color }}]" value="{{ $board->labels ? ($board->labels[$color] ?? '') : '' }}" placeholder="{{ $name }}">
+                                                        <button class="btn btn-outline-danger btn-remove-settings-label" type="button"><i class="mdi mdi-close"></i></button>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+
+                                    @if ($board->type === 'monitoring')
+                                        <div class="mb-3 border-top pt-3">
+                                            <label for="settingsNotificationSound" class="form-label fw-semibold">Suara Notifikasi PO Baru (mp3/wav/ogg)</label>
+                                            <input type="file" class="form-control form-control-sm" id="settingsNotificationSound" name="notification_sound" accept="audio/*">
+                                            @if ($board->notification_sound)
+                                                <div class="d-flex align-items-center mt-2 gap-2">
+                                                    <small class="text-success mb-0">
+                                                        <i class="mdi mdi-check-circle-outline"></i> Suara aktif: {{ basename($board->notification_sound) }}
+                                                    </small>
+                                                    <button type="button" class="btn btn-xs btn-outline-info py-0 px-2" id="btnTestSound" data-sound="{{ asset($board->notification_sound) }}">
+                                                        <i class="mdi mdi-volume-high me-1"></i> Test
+                                                    </button>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endif
                                 </div>
-                            </div>
-                            @if ($board->type === 'monitoring')
-                            <div class="mb-3 border-top pt-3">
-                                <label for="settingsNotificationSound" class="form-label fw-bold">Notification Sound (mp3/wav/ogg)</label>
-                                <input type="file" class="form-control" id="settingsNotificationSound" name="notification_sound" accept="audio/*">
-                                @if ($board->notification_sound)
-                                    <div class="d-flex align-items-center mt-2 gap-2">
-                                        <small class="text-success mb-0">
-                                            <i class="mdi mdi-check-circle-outline"></i> Sound kustom aktif: {{ basename($board->notification_sound) }}
-                                        </small>
-                                        <button type="button" class="btn btn-xs btn-outline-info py-0 px-2" id="btnTestSound" data-sound="{{ asset($board->notification_sound) }}">
-                                            <i class="mdi mdi-volume-high me-1"></i> Test
+
+                                <!-- SISI KANAN: Kelola Kolom & Urutan Kolom (Drag & Drop) -->
+                                <div class="col-lg-6 ps-lg-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div>
+                                            <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-2" style="font-size: 13.5px;">
+                                                <i class="mdi mdi-view-column-outline"></i> Kelola & Urutan Kolom
+                                            </h6>
+                                            <small class="text-muted">Tahan & geser baris atau gunakan tombol &uarr;&darr; untuk menyusun urutan kolom</small>
+                                        </div>
+                                        <button type="button" class="btn btn-xs btn-primary" id="settingsAddColBtn">
+                                            <i class="mdi mdi-plus me-1"></i> Tambah Kolom
                                         </button>
                                     </div>
-                                @endif
-                            </div>
-                            <div class="mb-3 border-top pt-3">
-                                <label class="form-label fw-bold">Accounting &rarr; Sales Mapping</label>
-                                <p class="text-muted mb-2" style="font-size: 12px;">Atur sales yang ditangani tiap Accounting, dipakai untuk filter "{{ '-- Semua Accounting --' }}" di halaman board.</p>
-                                <div id="accountingMappingContainer">
-                                    @foreach ($accountingUsers as $accountingUser)
-                                        <div class="mb-2">
-                                            <label class="form-label" style="font-size: 12.5px;">{{ $accountingUser->name }}</label>
-                                            <select class="select2 form-select accounting-mapping-select" multiple="multiple" data-accounting-id="{{ $accountingUser->id }}" data-placeholder="Pilih sales yang ditangani">
-                                                @foreach ($salesUsers as $salesUser)
-                                                    <option value="{{ $salesUser->id }}" {{ $accountingUser->handledSales->contains($salesUser->id) ? 'selected' : '' }}>{{ $salesUser->name }}</option>
-                                                @endforeach
-                                            </select>
+
+                                    <div class="p-2 bg-light rounded border mb-3" style="max-height: 420px; overflow-y: auto;">
+                                        <div id="settingsColumnsContainer" class="d-flex flex-column gap-2">
+                                            @foreach ($board->columns as $index => $column)
+                                                <div class="settings-column-item card border shadow-xs mb-0 bg-white" data-id="{{ $column->id }}" draggable="true" style="cursor: grab; transition: all 0.2s ease;">
+                                                    <div class="card-body p-2 d-flex align-items-center gap-2">
+                                                        <div class="col-drag-handle text-muted px-1" title="Tahan & geser untuk mengubah urutan" style="cursor: grab;">
+                                                            <i class="mdi mdi-drag-vertical" style="font-size: 20px;"></i>
+                                                        </div>
+                                                        <span class="badge bg-label-primary rounded-pill col-order-badge px-2" style="font-size: 11px; min-width: 24px;">{{ $index + 1 }}</span>
+                                                        <input type="hidden" name="columns[][id]" value="{{ $column->id }}">
+                                                        <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-semibold" name="columns[][title]" value="{{ $column->title }}" required placeholder="Nama Kolom" style="box-shadow: none;">
+                                                        <div class="d-flex align-items-center gap-1 ms-auto flex-shrink-0">
+                                                            <button type="button" class="btn btn-xs btn-icon btn-outline-secondary btn-move-col-up" title="Pindah ke Atas">
+                                                                <i class="mdi mdi-arrow-up" style="font-size: 14px;"></i>
+                                                            </button>
+                                                            <button type="button" class="btn btn-xs btn-icon btn-outline-secondary btn-move-col-down" title="Pindah ke Bawah">
+                                                                <i class="mdi mdi-arrow-down" style="font-size: 14px;"></i>
+                                                            </button>
+                                                            <button type="button" class="btn btn-xs btn-icon btn-outline-danger btn-remove-settings-column ms-1" title="Hapus Kolom">
+                                                                <i class="mdi mdi-trash-can-outline" style="font-size: 14px;"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
                                         </div>
-                                    @endforeach
+                                    </div>
+
+                                    @if ($board->type === 'monitoring')
+                                        <div class="border-top pt-3">
+                                            <h6 class="fw-bold text-primary mb-1 d-flex align-items-center gap-2" style="font-size: 13px;">
+                                                <i class="mdi mdi-account-switch-outline"></i> Accounting &rarr; Sales Mapping
+                                            </h6>
+                                            <p class="text-muted mb-2" style="font-size: 11.5px;">Atur sales yang ditangani tiap Accounting (dipakai untuk filter tab Accounting).</p>
+                                            <div id="accountingMappingContainer" style="max-height: 160px; overflow-y: auto;">
+                                                @foreach ($accountingUsers as $accountingUser)
+                                                    <div class="mb-2">
+                                                        <label class="form-label mb-1" style="font-size: 12px; font-weight: 600;">{{ $accountingUser->name }}</label>
+                                                        <select class="select2 form-select form-select-sm accounting-mapping-select" multiple="multiple" data-accounting-id="{{ $accountingUser->id }}" data-placeholder="Pilih sales yang ditangani">
+                                                            @foreach ($salesUsers as $salesUser)
+                                                                <option value="{{ $salesUser->id }}" {{ $accountingUser->handledSales->contains($salesUser->id) ? 'selected' : '' }}>{{ $salesUser->name }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                            <button type="button" class="btn btn-xs btn-outline-primary mt-1" id="btnSaveAccountingMapping">
+                                                <i class="mdi mdi-content-save-outline me-1"></i> Simpan Mapping
+                                            </button>
+                                        </div>
+                                    @endif
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-primary mt-1" id="btnSaveAccountingMapping">
-                                    <i class="mdi mdi-content-save-outline me-1"></i> Simpan Mapping
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light py-2 border-top d-flex justify-content-between align-items-center">
+                            <small class="text-muted"><i class="mdi mdi-information-outline me-1"></i> Urutan kolom yang disusun di sini akan otomatis diterapkan pada Kanban Board.</small>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                                <button type="submit" class="btn btn-primary btn-sm px-4" id="btnSaveBoardSettings">
+                                    <i class="mdi mdi-check-circle-outline me-1"></i> Simpan Perubahan
                                 </button>
                             </div>
-                            @endif
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary" id="btnSaveBoardSettings">Save Changes</button>
                         </div>
                     </form>
                 </div>
@@ -630,6 +748,26 @@
             #taskDetailsModal .modal-xl {
                 max-width: 1300px !important;
             }
+        }
+
+        /* Settings Modal Column Drag & Reorder Styling */
+        .settings-column-item.dragging {
+            opacity: 0.4 !important;
+            background-color: #f8fafc !important;
+            border: 1.5px dashed #4f46e5 !important;
+        }
+        .settings-column-item.drag-over {
+            border-top: 2.5px solid #6366f1 !important;
+        }
+        .col-drag-handle {
+            cursor: grab !important;
+        }
+        .col-drag-handle:active {
+            cursor: grabbing !important;
+        }
+        .settings-column-item:hover {
+            border-color: #cbd5e1 !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05) !important;
         }
 
         /* Fixed height for the entire Kanban board area to fit viewport */
@@ -921,6 +1059,32 @@
                 dateFormat: "Y-m-d",
                 allowInput: true
             });
+            $(".flatpickr-expense").flatpickr({
+                dateFormat: "Y-m-d",
+                allowInput: true
+            });
+
+            // Select2 pencari Unit Quotation untuk fitur "Hubungkan ke Quotation"
+            if (boardType !== 'monitoring' && $('#linkQuotationSelect').length) {
+                $('#linkQuotationSelect').select2({
+                    dropdownParent: $('#linkQuotationSelect').closest('.modal'),
+                    placeholder: $('#linkQuotationSelect').data('placeholder'),
+                    width: '100%',
+                    ajax: {
+                        url: '{{ route("kanban.linkable-quotations") }}',
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) { return { q: params.term || '' }; },
+                        processResults: function (data) {
+                            return {
+                                results: (data.quotations || []).map(function (q) {
+                                    return { id: q.id, text: `${q.no_quote} — ${q.company}` };
+                                })
+                            };
+                        }
+                    }
+                });
+            }
 
             // Date formatter to DD-MM-YYYY
             function formatDateDisplay(dateStr) {
@@ -1089,24 +1253,14 @@
                                         </div>
                                     `;
 
-                                    let priorityHtml = '';
-                                    const taskPriority = task.priority || 'medium';
-                                    if (taskPriority === 'high') {
-                                        priorityHtml = `<span class="badge bg-danger" style="font-size: 8px; padding: 2px 5px; border-radius: 3px; line-height: 1;">Tinggi</span>`;
-                                    } else if (taskPriority === 'low') {
-                                        priorityHtml = `<span class="badge bg-info" style="font-size: 8px; padding: 2px 5px; border-radius: 3px; line-height: 1;">Rendah</span>`;
-                                    } else {
-                                        priorityHtml = `<span class="badge bg-warning" style="font-size: 8px; padding: 2px 5px; border-radius: 3px; line-height: 1;">Sedang</span>`;
-                                    }
-
-                                    let labelsHtml = '<div class="d-flex flex-wrap gap-1 mb-2 align-items-center">';
-                                    labelsHtml += priorityHtml;
+                                    let labelsHtml = '';
                                     if (task.labels && task.labels.length > 0) {
+                                        labelsHtml = '<div class="d-flex flex-wrap gap-1 mb-2 align-items-center">';
                                         task.labels.forEach(function(color) {
                                             labelsHtml += `<span class="badge bg-${color}" style="font-size: 8px; padding: 2px 5px; border-radius: 3px; line-height: 1;">${getLabelName(color)}</span>`;
                                         });
+                                        labelsHtml += '</div>';
                                     }
-                                    labelsHtml += '</div>';
 
                                     let poNum = '';
                                     let companyName = '';
@@ -1258,11 +1412,31 @@
                 });
             }
 
+            // Sync column reordering to DB
+            function syncColumnMovement(order) {
+                $.ajax({
+                    url: '{{ route("kanban.columns.reorder") }}',
+                    method: 'POST',
+                    data: {
+                        board_id: {{ $board->id }},
+                        order: order,
+                        _token: csrfToken
+                    },
+                    success: function(res) {
+                        // Successfully reordered columns
+                    },
+                    error: function(xhr) {
+                        loadKanbanBoard();
+                        alert('Gagal memindahkan kolom.');
+                    }
+                });
+            }
+
             // Open Create Task Modal
             function openCreateTaskModal(boardId) {
                 $('#createTaskColumnId').val(boardId);
                 $('#createTaskForm')[0].reset();
-                $('#createTaskAssignee').val('').trigger('change');
+                $('#createTaskAssignee').val(null).trigger('change');
                 
                 @if ($board->type === 'monitoring')
                     $('#createTaskTitleSelect').val('').trigger('change');
@@ -1312,9 +1486,8 @@
                 const colId = $('#createTaskColumnId').val();
                 const title = $('#createTaskTitle').val();
                 const desc = $('#createTaskDescription').val();
-                const assignee = $('#createTaskAssignee').val();
+                const assignees = $('#createTaskAssignee').val() || [];
                 const dueDate = $('#createTaskDueDate').val();
-                const priority = $('#createTaskPriority').val();
                 const pendingPoId = $('#createTaskPendingPoId').length ? $('#createTaskPendingPoId').val() : null;
 
                 $.ajax({
@@ -1325,9 +1498,8 @@
                         column_id: colId,
                         title: title,
                         description: desc,
-                        assigned_to: assignee,
+                        assignees: assignees,
                         due_date: dueDate,
-                        priority: priority,
                         pending_po_id: pendingPoId,
                         _token: csrfToken
                     },
@@ -1373,6 +1545,17 @@
                 $('#taskAttachmentInput').val('');
                 isProgrammaticChange = false;
 
+                if (boardType !== 'monitoring') {
+                    $('#taskExpensesList').html('');
+                    $('#taskExpenseTotal').text('Rp 0');
+                    if (document.getElementById('taskExpenseForm')) $('#taskExpenseForm')[0].reset();
+                    $('#taskExpenseForm').hide();
+                    $('#btnShowExpenseForm').show();
+                    $('#linkQuotationSelect').val(null).trigger('change');
+                    $('#quotationLinkedView').css('display', 'none');
+                    $('#quotationLinkForm').hide();
+                }
+
                 $('#descriptionStaticView').html('<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div></div>');
                 $('#labelsListContainer').html('');
                 $('#attachmentsListContainer').html('');
@@ -1414,8 +1597,9 @@
                             currentTaskData = response.task;
 
                             if (response.so_details) {
-                                $('#soPoNumber').text(response.so_details.no_po);
-                                $('#soClientName').text(response.so_details.company);
+                                $('#soPoNumber').text(response.so_details.no_po || '-');
+                                $('#soSoNumber').text(response.so_details.no_so || '-');
+                                $('#soClientName').text(response.so_details.company || '-');
 
                                 if (response.so_details.entity_type === 'KII') {
                                     $('#soEntityType').removeClass('bg-primary text-white').addClass('bg-danger text-white').text('KII (Kojisha)');
@@ -1576,9 +1760,6 @@
                                     $('#editTaskDueDate').val(currentTaskData.due_date || '');
                                 }
                             }
-                            if ($('#editTaskPriority').val() !== currentTaskData.priority) {
-                                $('#editTaskPriority').val(currentTaskData.priority || 'medium');
-                            }
                             isProgrammaticChange = false;
                             
                             // Set Description (only if user is not actively editing it)
@@ -1605,6 +1786,12 @@
 
                             // Render Unified Chronological Feed
                             renderTimelineFeed(response.feed);
+
+                            // Render biaya kartu & status hubungan quotation
+                            if (boardType !== 'monitoring') {
+                                renderTaskExpenses(response);
+                                renderQuotationLink(response);
+                            }
                         }
                     },
                     error: function() {
@@ -1612,6 +1799,172 @@
                     }
                 });
             }
+
+            const rpFmt = function (n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); };
+
+            function renderTaskExpenses(response) {
+                const expenses = response.expenses || [];
+                const canManage = !!response.can_manage_expense;
+                $('#taskExpenseTotal').text(rpFmt(response.expense_total));
+
+                let html = '';
+                if (expenses.length === 0) {
+                    html = '<p class="text-muted small mb-0">Belum ada pengeluaran dicatat.</p>';
+                } else {
+                    expenses.forEach(function (e) {
+                        const receipt = e.receipt
+                            ? `<a href="${e.receipt}" target="_blank" class="text-muted ms-1" title="Lihat struk"><i class="mdi mdi-paperclip"></i></a>`
+                            : '';
+                        const del = e.can_delete
+                            ? `<button type="button" class="btn btn-xs btn-text-danger btn-icon btn-delete-task-expense" data-id="${e.id}" style="width:20px;height:20px;padding:0;"><i class="mdi mdi-close"></i></button>`
+                            : '';
+                        html += `
+                            <div class="d-flex align-items-center justify-content-between p-2 rounded bg-white border">
+                                <div class="min-width-0">
+                                    <span class="fw-semibold text-heading">${e.name}</span>${receipt}
+                                    <div class="text-muted" style="font-size:10.5px;">
+                                        <span class="badge bg-label-secondary" style="font-size:9px;">${e.category}</span>
+                                        ${e.date || ''} &bull; ${e.user_name}
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                    <span class="fw-bold text-dark">${rpFmt(e.amount)}</span>
+                                    ${del}
+                                </div>
+                            </div>`;
+                    });
+                }
+                $('#taskExpensesList').html(html);
+
+                if (canManage) {
+                    $('#taskExpenseFormWrap').show();
+                } else {
+                    $('#taskExpenseFormWrap').hide();
+                }
+            }
+
+            function renderQuotationLink(response) {
+                const lq = response.linked_quotation;
+                const canLink = !!response.can_link_quotation;
+
+                if (lq) {
+                    $('#quotationLinkedNo').text(lq.no_quote || ('Quotation #' + lq.id)).attr('href', lq.link);
+                    $('#quotationLinkedCompany').text(lq.company || '');
+                    $('#quotationLinkedView').css('display', 'flex');
+                    $('#quotationLinkForm').hide();
+                    // Sudah jadi PO -> tidak boleh diputus
+                    $('#btnUnlinkQuotation').toggle(canLink && !lq.is_po);
+                } else {
+                    $('#quotationLinkedView').css('display', 'none');
+                    $('#quotationLinkForm').toggle(canLink);
+                }
+            }
+
+            // --- Pengeluaran Project (biaya per kartu) ---
+            // Format tampilan nominal jadi "5.000.000" sambil mengetik; angka mentah dikirim saat submit.
+            $('#expenseAmount').on('input', function () {
+                const digits = $(this).val().replace(/\D/g, '');
+                $(this).val(digits ? Number(digits).toLocaleString('id-ID') : '');
+            });
+
+            $('#btnShowExpenseForm').click(function () {
+                $(this).hide();
+                $('#taskExpenseForm').show();
+                $('#expenseName').focus();
+            });
+            $('#btnCancelExpenseForm').click(function () {
+                $('#taskExpenseForm')[0].reset();
+                $('#taskExpenseForm').hide();
+                $('#btnShowExpenseForm').show();
+            });
+            $('#taskExpenseForm').submit(function (e) {
+                e.preventDefault();
+                const taskId = $('#editTaskId').val();
+                if (!taskId) return;
+
+                const fd = new FormData();
+                fd.append('name', $('#expenseName').val());
+                fd.append('category', $('#expenseCategory').val());
+                fd.append('amount', $('#expenseAmount').val().replace(/\D/g, ''));
+                fd.append('date', $('#expenseDate').val());
+                if ($('#expenseReceipt')[0].files[0]) {
+                    fd.append('receipt', $('#expenseReceipt')[0].files[0]);
+                }
+                fd.append('_token', csrfToken);
+
+                const $btn = $(this).find('button[type="submit"]').prop('disabled', true);
+                $.ajax({
+                    url: `/kanban/tasks/${taskId}/expenses`,
+                    method: 'POST',
+                    data: fd,
+                    processData: false,
+                    contentType: false,
+                    success: function () {
+                        $('#taskExpenseForm')[0].reset();
+                        $('#taskExpenseForm').hide();
+                        $('#btnShowExpenseForm').show();
+                        loadTaskDetails(taskId);
+                    },
+                    error: function (xhr) {
+                        const msg = xhr.responseJSON && (xhr.responseJSON.error || xhr.responseJSON.message);
+                        alert(msg || 'Gagal menyimpan biaya.');
+                    },
+                    complete: function () { $btn.prop('disabled', false); }
+                });
+            });
+            $(document).on('click', '.btn-delete-task-expense', function () {
+                const expenseId = $(this).data('id');
+                const taskId = $('#editTaskId').val();
+                if (!confirm('Hapus pengeluaran ini?')) return;
+                $.ajax({
+                    url: `/kanban/task-expenses/${expenseId}`,
+                    method: 'DELETE',
+                    data: { _token: csrfToken },
+                    success: function () { loadTaskDetails(taskId); },
+                    error: function (xhr) {
+                        const msg = xhr.responseJSON && (xhr.responseJSON.error || xhr.responseJSON.message);
+                        alert(msg || 'Gagal menghapus biaya.');
+                    }
+                });
+            });
+
+            // --- Hubungkan / putuskan kartu ke Unit Quotation ---
+            $('#btnLinkQuotation').click(function () {
+                const taskId = $('#editTaskId').val();
+                const quoteId = $('#linkQuotationSelect').val();
+                if (!taskId || !quoteId) { alert('Pilih quotation dulu.'); return; }
+                $.ajax({
+                    url: `/kanban/tasks/${taskId}/link-quotation`,
+                    method: 'POST',
+                    data: { id_unit_quotation: quoteId, _token: csrfToken },
+                    success: function () {
+                        $('#linkQuotationSelect').val(null).trigger('change');
+                        loadTaskDetails(taskId);
+                        loadKanbanBoard();
+                    },
+                    error: function (xhr) {
+                        const msg = xhr.responseJSON && (xhr.responseJSON.error || xhr.responseJSON.message);
+                        alert(msg || 'Gagal menghubungkan quotation.');
+                    }
+                });
+            });
+            $('#btnUnlinkQuotation').click(function () {
+                const taskId = $('#editTaskId').val();
+                if (!confirm('Putuskan hubungan kartu ini dari quotation?')) return;
+                $.ajax({
+                    url: `/kanban/tasks/${taskId}/unlink-quotation`,
+                    method: 'POST',
+                    data: { _token: csrfToken },
+                    success: function () {
+                        loadTaskDetails(taskId);
+                        loadKanbanBoard();
+                    },
+                    error: function (xhr) {
+                        const msg = xhr.responseJSON && (xhr.responseJSON.error || xhr.responseJSON.message);
+                        alert(msg || 'Gagal memutuskan hubungan.');
+                    }
+                });
+            });
 
             // Labels Rendering
             function renderLabels(labels) {
@@ -1813,7 +2166,6 @@
                             description: $('#editTaskDescription').val(),
                             assignees: $('#editTaskAssignee').val(),
                             due_date: $('#editTaskDueDate').val(),
-                            priority: $('#editTaskPriority').val(),
                             column_id: 'column_' + currentTaskData.column_id,
                             _token: csrfToken
                         },
@@ -1849,7 +2201,6 @@
                         description: desc,
                         assignees: $('#editTaskAssignee').val(),
                         due_date: $('#editTaskDueDate').val(),
-                        priority: $('#editTaskPriority').val(),
                         column_id: 'column_' + currentTaskData.column_id,
                         _token: csrfToken
                     },
@@ -1863,8 +2214,7 @@
                 });
             });
 
-            // Metadata changes (Assignee, Due Date, and Priority auto-sync)
-            // Metadata changes (Assignee, Due Date, and Priority auto-sync)
+            // Metadata changes (Assignee, Due Date auto-sync)
             $(document).on('select2:select select2:unselect', '#editTaskAssignee', function(e) {
                 const taskId = $('#editTaskId').val();
                 if (!taskId || !currentTaskData) return;
@@ -1878,7 +2228,6 @@
                         description: $('#editTaskDescription').val(),
                         assignees: newAssignees,
                         due_date: $('#editTaskDueDate').val(),
-                        priority: $('#editTaskPriority').val(),
                         column_id: 'column_' + currentTaskData.column_id,
                         _token: csrfToken
                     },
@@ -1904,33 +2253,6 @@
                         description: $('#editTaskDescription').val(),
                         assignees: $('#editTaskAssignee').val(),
                         due_date: newDate,
-                        priority: $('#editTaskPriority').val(),
-                        column_id: 'column_' + currentTaskData.column_id,
-                        _token: csrfToken
-                    },
-                    success: function() {
-                        loadTaskDetails(taskId);
-                        loadKanbanBoard();
-                    }
-                });
-            });
-
-            $('#editTaskPriority').change(function() {
-                if (isProgrammaticChange) return;
-                const taskId = $('#editTaskId').val();
-                if (!taskId || !currentTaskData) return;
-                const newPriority = $(this).val();
-                if (newPriority == currentTaskData.priority) return;
-
-                $.ajax({
-                    url: `/kanban/tasks/${taskId}/update`,
-                    method: 'POST',
-                    data: {
-                        title: currentTaskData.title,
-                        description: $('#editTaskDescription').val(),
-                        assignees: $('#editTaskAssignee').val(),
-                        due_date: $('#editTaskDueDate').val(),
-                        priority: newPriority,
                         column_id: 'column_' + currentTaskData.column_id,
                         _token: csrfToken
                     },
@@ -1954,7 +2276,6 @@
                         description: $('#editTaskDescription').val(),
                         assignees: $('#editTaskAssignee').val(),
                         due_date: $('#editTaskDueDate').val(),
-                        priority: $('#editTaskPriority').val(),
                         column_id: colId,
                         _token: csrfToken
                     },
@@ -2460,7 +2781,6 @@
                         description: $('#editTaskDescription').val(),
                         assignees: $('#editTaskAssignee').val(),
                         due_date: $('#editTaskDueDate').val(),
-                        priority: $('#editTaskPriority').val(),
                         column_id: 'column_' + currentTaskData.column_id,
                         service_report_id: selectedReportId,
                         _token: csrfToken
@@ -2489,7 +2809,6 @@
                             description: $('#editTaskDescription').val(),
                             assignees: $('#editTaskAssignee').val(),
                             due_date: $('#editTaskDueDate').val(),
-                            priority: $('#editTaskPriority').val(),
                             column_id: 'column_' + currentTaskData.column_id,
                             service_report_id: null,
                             _token: csrfToken
@@ -2609,6 +2928,7 @@
             // Trigger when Settings Modal is shown
             $('#boardSettingsModal').on('show.bs.modal', function() {
                 refreshSettingsLabelDropdown();
+                updateSettingsColumnOrder();
             });
 
             // Handle Add Label selection from dropdown
@@ -2619,9 +2939,9 @@
 
                 const html = `
                     <div class="col-sm-6 settings-label-item" data-color="${color}">
-                        <div class="input-group input-group-sm mb-2">
-                            <span class="input-group-text bg-${color} text-white" style="width: 35px; border: 0;">&nbsp;</span>
-                            <input type="text" class="form-control" name="labels[${color}]" value="" placeholder="${colorDetails.name}">
+                        <div class="input-group input-group-sm mb-1">
+                            <span class="input-group-text bg-${color} text-white" style="width: 32px; border: 0;">&nbsp;</span>
+                            <input type="text" class="form-control form-control-sm" name="labels[${color}]" value="" placeholder="${colorDetails.name}">
                             <button class="btn btn-outline-danger btn-remove-settings-label" type="button"><i class="mdi mdi-close"></i></button>
                         </div>
                     </div>
@@ -2637,24 +2957,115 @@
                 refreshSettingsLabelDropdown();
             });
 
-            // Admin: Board Settings Column management
+            // Helper: Update numbers, buttons, and input attributes for settings columns
+            function updateSettingsColumnOrder() {
+                const total = $('.settings-column-item').length;
+                $('.settings-column-item').each(function(index) {
+                    $(this).find('.col-order-badge').text(index + 1);
+                    $(this).find('input[type="hidden"]').attr('name', 'columns[' + index + '][id]');
+                    $(this).find('input[type="text"]').attr('name', 'columns[' + index + '][title]');
+
+                    $(this).find('.btn-move-col-up').prop('disabled', index === 0);
+                    $(this).find('.btn-move-col-down').prop('disabled', index === total - 1);
+                });
+            }
+
+            // Move Column Up in Settings Modal
+            $(document).on('click', '.btn-move-col-up', function(e) {
+                e.preventDefault();
+                const item = $(this).closest('.settings-column-item');
+                const prev = item.prev('.settings-column-item');
+                if (prev.length) {
+                    item.insertBefore(prev);
+                    updateSettingsColumnOrder();
+                }
+            });
+
+            // Move Column Down in Settings Modal
+            $(document).on('click', '.btn-move-col-down', function(e) {
+                e.preventDefault();
+                const item = $(this).closest('.settings-column-item');
+                const next = item.next('.settings-column-item');
+                if (next.length) {
+                    item.insertAfter(next);
+                    updateSettingsColumnOrder();
+                }
+            });
+
+            // Admin/Accounting: Board Settings Column Add
             $('#settingsAddColBtn').click(function() {
-                var html = `
-                    <div class="input-group mb-2 settings-column-item">
-                        <input type="hidden" name="columns[][id]" value="">
-                        <input type="text" class="form-control" name="columns[][title]" placeholder="New Column" required>
-                        <button class="btn btn-outline-danger btn-remove-settings-column" type="button"><i class="mdi mdi-close"></i></button>
+                const count = $('.settings-column-item').length + 1;
+                const html = `
+                    <div class="settings-column-item card border shadow-xs mb-0 bg-white" data-id="" draggable="true" style="cursor: grab; transition: all 0.2s ease;">
+                        <div class="card-body p-2 d-flex align-items-center gap-2">
+                            <div class="col-drag-handle text-muted px-1" title="Tahan & geser untuk mengubah urutan" style="cursor: grab;">
+                                <i class="mdi mdi-drag-vertical" style="font-size: 20px;"></i>
+                            </div>
+                            <span class="badge bg-label-primary rounded-pill col-order-badge px-2" style="font-size: 11px; min-width: 24px;">${count}</span>
+                            <input type="hidden" name="columns[][id]" value="">
+                            <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-semibold" name="columns[][title]" value="" required placeholder="Nama Kolom Baru" style="box-shadow: none;">
+                            <div class="d-flex align-items-center gap-1 ms-auto flex-shrink-0">
+                                <button type="button" class="btn btn-xs btn-icon btn-outline-secondary btn-move-col-up" title="Pindah ke Atas">
+                                    <i class="mdi mdi-arrow-up" style="font-size: 14px;"></i>
+                                </button>
+                                <button type="button" class="btn btn-xs btn-icon btn-outline-secondary btn-move-col-down" title="Pindah ke Bawah">
+                                    <i class="mdi mdi-arrow-down" style="font-size: 14px;"></i>
+                                </button>
+                                <button type="button" class="btn btn-xs btn-icon btn-outline-danger btn-remove-settings-column ms-1" title="Hapus Kolom">
+                                    <i class="mdi mdi-trash-can-outline" style="font-size: 14px;"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 `;
                 $('#settingsColumnsContainer').append(html);
+                updateSettingsColumnOrder();
             });
 
+            // Admin/Accounting: Board Settings Column Remove
             $(document).on('click', '.btn-remove-settings-column', function() {
                 if ($('.settings-column-item').length > 1) {
                     $(this).closest('.settings-column-item').remove();
+                    updateSettingsColumnOrder();
                 } else {
                     alert('Minimal harus memiliki 1 kolom!');
                 }
+            });
+
+            // Drag & Drop Columns Reorder in Settings Modal
+            let draggedColItem = null;
+
+            $(document).on('dragstart', '.settings-column-item', function(e) {
+                draggedColItem = this;
+                $(this).addClass('dragging');
+                if (e.originalEvent && e.originalEvent.dataTransfer) {
+                    e.originalEvent.dataTransfer.effectAllowed = 'move';
+                    e.originalEvent.dataTransfer.setData('text/html', this.innerHTML);
+                }
+            });
+
+            $(document).on('dragover', '.settings-column-item', function(e) {
+                e.preventDefault();
+                if (e.originalEvent && e.originalEvent.dataTransfer) {
+                    e.originalEvent.dataTransfer.dropEffect = 'move';
+                }
+                if (draggedColItem && draggedColItem !== this) {
+                    const bounding = this.getBoundingClientRect();
+                    const offset = e.originalEvent.clientY - bounding.top;
+                    if (offset > bounding.height / 2) {
+                        this.parentNode.insertBefore(draggedColItem, this.nextSibling);
+                    } else {
+                        this.parentNode.insertBefore(draggedColItem, this);
+                    }
+                    updateSettingsColumnOrder();
+                }
+            });
+
+            $(document).on('dragend', '.settings-column-item', function(e) {
+                $(this).removeClass('dragging');
+                $('.settings-column-item').removeClass('drag-over');
+                draggedColItem = null;
+                updateSettingsColumnOrder();
             });
 
             // Scroll Arrow Navigation and indicator visibility
@@ -2888,13 +3299,15 @@
                 }
 
                 $('.kanban-item').each(function() {
-                    const titleText = $(this).find('.text-heading, .text-primary').text().toLowerCase();
+                    const titleText = $(this).find('.text-heading, .text-primary, .text-danger').text().toLowerCase();
                     const descText = $(this).find('.text-muted').text().toLowerCase();
                     const taskData = $(this).find('.kanban-item-content').data('task') || {};
                     const entityText = (taskData.entity_type || '').toLowerCase();
                     const entityFullName = (taskData.entity_type === 'KII' ? 'kojisha' : (taskData.entity_type === 'RJO' ? 'reftech' : ''));
+                    const poText = (taskData.no_po || '').toLowerCase();
+                    const soText = (taskData.no_so || '').toLowerCase();
 
-                    const matchesSearch = !query || titleText.includes(query) || descText.includes(query) || (boardType === 'monitoring' && (entityText.includes(query) || entityFullName.includes(query)));
+                    const matchesSearch = !query || titleText.includes(query) || descText.includes(query) || poText.includes(query) || soText.includes(query) || (boardType === 'monitoring' && (entityText.includes(query) || entityFullName.includes(query)));
                     const matchesAccounting = (boardType !== 'monitoring') || !allowedSalesIds || allowedSalesIds.includes(String(taskData.id_sales));
 
                     if (matchesSearch && matchesAccounting) {

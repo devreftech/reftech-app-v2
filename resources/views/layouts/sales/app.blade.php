@@ -188,6 +188,7 @@
             window.paymentNotifUnreadUrl = '{{ route('notifications.payment.unread') }}';
             window.paymentNotifReadUrlTemplate = '{{ url('notifications/payment/__ID__/read') }}';
             window.csrfToken = '{{ csrf_token() }}';
+            window.currentUserRole = '{{ Auth::user()->role }}';
         </script>
         <script src="{{ asset('assets') }}/includes/navbar-payment-notif.js"></script>
     @endif
@@ -319,8 +320,8 @@
         </div>
     </div>
 
-    {{-- Floating Chat Bubble Component (Disabled on Print Smart Quote and Print Views) --}}
-    @unless(request()->routeIs('unit-quotation.print') || request()->is('smart-quote/*/print') || request()->is('*print*'))
+    {{-- Floating Chat Bubble Component (Disabled on Print, Piping RAB, Piping Materials, and Smart Quote Create Views) --}}
+    @unless(request()->routeIs('unit-quotation.print') || request()->is('smart-quote/*/print') || request()->is('*print*') || request()->is('piping-rab*') || request()->is('piping-materials*') || request()->is('smart-quote/create*') || request()->routeIs('unit-quotation.create') || View::hasSection('hide-chat'))
         @include('includes.sales.chat-bubble')
     @endunless
 

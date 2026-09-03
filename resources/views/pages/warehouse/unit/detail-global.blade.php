@@ -2,7 +2,10 @@
 @section('title', 'Detail Unit — ' . $product->sku)
 @section('content')
     @php
-        $isPriv = in_array(auth::user()->role, ['Admin', 'Sales', 'Logistic']);
+        $role = Auth::user()->role;
+        $isSales = $role === 'Sales';
+        $canEditUnit = in_array($role, ['Admin', 'Logistic']);
+        $isPriv = in_array($role, ['Admin', 'Sales', 'Logistic']);
         $isCompressor = in_array($product->unit, ['PISTON COMPRESSOR', 'AIR COMPRESSOR SCREW']);
         $isDryer      = in_array($product->unit, ['REFRIGERANT AIR DRYER', 'DESICANT DRYER']);
     @endphp
@@ -23,7 +26,7 @@
                 <h4 class="fw-bold mb-0 text-dark">{{ $product->sku }}</h4>
             </div>
         </div>
-        @if ($isPriv)
+        @if ($canEditUnit)
             <div class="d-flex gap-2">
                 <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#updateProduct-{{ $product->id }}">
                     <i class="mdi mdi-pencil-outline me-1"></i> Edit Unit
@@ -39,7 +42,7 @@
     <div class="card unit-hero-card mb-4 border-0">
         <div class="card-body py-3 px-4">
             <div class="row align-items-center g-3">
-                <div class="col-6 col-md-3 border-end-md">
+                <div class="col-12 col-md-4 border-end-md">
                     <div class="d-flex align-items-center gap-3">
                         <div class="avatar avatar-md bg-label-primary rounded-3 p-2 d-flex align-items-center justify-content-center">
                             <i class="mdi mdi-cog-outline fs-3"></i>
@@ -50,7 +53,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3 border-end-md">
+                <div class="col-12 col-md-4 border-end-md">
                     <div class="d-flex align-items-center gap-3">
                         <div class="avatar avatar-md bg-label-info rounded-3 p-2 d-flex align-items-center justify-content-center">
                             <i class="mdi mdi-lightning-bolt-outline fs-3"></i>
@@ -61,7 +64,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3 border-end-md">
+                <div class="col-12 col-md-4">
                     <div class="d-flex align-items-center gap-3">
                         <div class="avatar avatar-md bg-label-warning rounded-3 p-2 d-flex align-items-center justify-content-center">
                             <i class="mdi mdi-fan fs-3"></i>
@@ -69,17 +72,6 @@
                         <div>
                             <span class="metric-label d-block text-muted">Air Capacity / FAD</span>
                             <h6 class="mb-0 fw-bold text-dark">{{ $product->air_cap ? $product->air_cap . ' m³/min' : '-' }}</h6>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="avatar avatar-md bg-label-success rounded-3 p-2 d-flex align-items-center justify-content-center">
-                            <i class="mdi mdi-cube-outline fs-3"></i>
-                        </div>
-                        <div>
-                            <span class="metric-label d-block text-muted">Total Stock</span>
-                            <h6 class="mb-0 fw-bold text-dark">{{ $allStock }} <span class="small text-muted fw-normal">(Awal: {{ $product->frist_stock ?: 0 }})</span></h6>
                         </div>
                     </div>
                 </div>
@@ -93,14 +85,13 @@
             <ul class="nav nav-tabs custom-nav-tabs m-0" id="unit-global-detail-tab-nav" role="tablist">
                 <li class="nav-item">
                     <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-unit-detail" type="button">
-                        <i class="mdi mdi-information-outline me-1.5 fs-5"></i>Detail Specifications
+                        <i class="mdi mdi-information-outline me-1.5 fs-5"></i>Detail Spesifikasi
                     </button>
                 </li>
                 @if ($isPriv)
                     <li class="nav-item">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-unit-pm-template" type="button">
-                            <i class="mdi mdi-file-document-edit-outline me-1.5 fs-5"></i>Template Penawaran PM
-                            <span class="badge bg-success rounded-pill ms-2">BARU</span>
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-unit-partlist" type="button">
+                            <i class="mdi mdi-wrench-outline me-1.5 fs-5"></i>Service PM
                         </button>
                     </li>
                     <li class="nav-item">
@@ -115,60 +106,11 @@
         <div class="card-body p-4">
             <div class="tab-content p-0">
 
-                {{-- ==================== TAB: DETAIL ==================== --}}
+                {{-- ==================== TAB: DETAIL SPESIFIKASI ==================== --}}
                 <div class="tab-pane fade show active" id="tab-unit-detail" role="tabpanel">
                     <div class="row g-4">
-                        {{-- General Specs --}}
-                        <div class="col-lg-6">
-                            <div class="card spec-card">
-                                <div class="spec-header d-flex align-items-center justify-content-between">
-                                    <h6 class="mb-0 fw-bold text-dark">
-                                        <i class="mdi mdi-format-list-bulleted me-2 text-primary"></i>Informasi Umum
-                                    </h6>
-                                </div>
-                                <div class="card-body p-3">
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">Kategori Unit</div>
-                                        <div class="col-7 spec-val">{{ $product->unit ?: '-' }}</div>
-                                    </div>
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">SKU</div>
-                                        <div class="col-7 spec-val"><code class="text-primary fw-bold">{{ $product->sku ?: '-' }}</code></div>
-                                    </div>
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">Brand</div>
-                                        <div class="col-7 spec-val">{{ $product->brand ?: '-' }}</div>
-                                    </div>
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">Model</div>
-                                        <div class="col-7 spec-val">{{ $product->model ?: '-' }}</div>
-                                    </div>
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">Status Unit</div>
-                                        <div class="col-7 spec-val">
-                                            @if ($product->status)
-                                                <span class="badge bg-label-info">{{ $product->status }}</span>
-                                            @else
-                                                -
-                                            @endif
-                                        </div>
-                                    </div>
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">Stock Awal</div>
-                                        <div class="col-7 spec-val">{{ $product->frist_stock !== null ? $product->frist_stock : '-' }}</div>
-                                    </div>
-                                    @if ($product->desc && !$isCompressor && !$isDryer)
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Deskripsi</div>
-                                            <div class="col-7 spec-val">{{ $product->desc }}</div>
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Technical Specs --}}
-                        <div class="col-lg-6">
+                        {{-- Technical Specs (Full Width) --}}
+                        <div class="col-12">
                             <div class="card spec-card">
                                 <div class="spec-header d-flex align-items-center justify-content-between">
                                     <h6 class="mb-0 fw-bold text-dark">
@@ -176,107 +118,130 @@
                                     </h6>
                                 </div>
                                 <div class="card-body p-3">
-                                    @if ($isCompressor)
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Type Compressor</div>
-                                            <div class="col-7 spec-val">{{ $product->type_unit ?: '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Short Description</div>
-                                            <div class="col-7 spec-val">{{ $product->desc ?: '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Max. Working Pressure</div>
-                                            <div class="col-7 spec-val">{{ $product->bar ? $product->bar . ' Bar' : '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Air Capacity</div>
-                                            <div class="col-7 spec-val">{{ $product->air_cap ? $product->air_cap . ' m³/min' : '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Motor Power</div>
-                                            <div class="col-7 spec-val"><span class="badge bg-label-primary">{{ $product->power ?: '-' }}</span></div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Rated Voltage</div>
-                                            <div class="col-7 spec-val">{{ $product->voltage ?: '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Drive</div>
-                                            <div class="col-7 spec-val">{{ $product->connect ?: '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Cooling Method</div>
-                                            <div class="col-7 spec-val">{{ $product->cooling ?: '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Discharge Connection</div>
-                                            <div class="col-7 spec-val">{{ $product->exhaust ?: '-' }}</div>
-                                        </div>
-                                    @elseif ($isDryer)
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">FAD / Air Capacity</div>
-                                            <div class="col-7 spec-val">{{ $product->air_cap ? $product->air_cap . ' m³/min' : '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Refrigerant Type</div>
-                                            <div class="col-7 spec-val">{{ $product->refrigerant_type ?: '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">PDP</div>
-                                            <div class="col-7 spec-val">{{ $product->pdp ?: '-' }}</div>
-                                        </div>
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Rated Voltage</div>
-                                            <div class="col-7 spec-val">{{ $product->voltage ?: '-' }}</div>
-                                        </div>
-                                    @else
-                                        <div class="row spec-item align-items-center">
-                                            <div class="col-5 spec-label">Short Description</div>
-                                            <div class="col-7 spec-val">{{ $product->desc ?: '-' }}</div>
-                                        </div>
-                                    @endif
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">Dimension</div>
-                                        <div class="col-7 spec-val">{{ $product->dimension ?: '-' }}</div>
-                                    </div>
-                                    <div class="row spec-item align-items-center">
-                                        <div class="col-5 spec-label">Weight</div>
-                                        <div class="col-7 spec-val">{{ $product->weight ? $product->weight . ' Kg' : '-' }}</div>
+                                    <div class="row g-3">
+                                        @if ($isCompressor)
+                                            <div class="col-md-6">
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Type Compressor</div>
+                                                    <div class="col-7 spec-val">{{ $product->type_unit ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Short Description</div>
+                                                    <div class="col-7 spec-val">{{ $product->desc ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Max. Working Pressure</div>
+                                                    <div class="col-7 spec-val">{{ $product->bar ? $product->bar . ' Bar' : '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Air Capacity</div>
+                                                    <div class="col-7 spec-val">{{ $product->air_cap ? $product->air_cap . ' m³/min' : '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Motor Power</div>
+                                                    <div class="col-7 spec-val"><span class="badge bg-label-primary">{{ $product->power ?: '-' }}</span></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Rated Voltage</div>
+                                                    <div class="col-7 spec-val">{{ $product->voltage ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Drive</div>
+                                                    <div class="col-7 spec-val">{{ $product->connect ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Cooling Method</div>
+                                                    <div class="col-7 spec-val">{{ $product->cooling ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Discharge Connection</div>
+                                                    <div class="col-7 spec-val">{{ $product->exhaust ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Dimension</div>
+                                                    <div class="col-7 spec-val">{{ $product->dimension ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Weight</div>
+                                                    <div class="col-7 spec-val">{{ $product->weight ? $product->weight . ' Kg' : '-' }}</div>
+                                                </div>
+                                            </div>
+                                        @elseif ($isDryer)
+                                            <div class="col-md-6">
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">FAD / Air Capacity</div>
+                                                    <div class="col-7 spec-val">{{ $product->air_cap ? $product->air_cap . ' m³/min' : '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Refrigerant Type</div>
+                                                    <div class="col-7 spec-val">{{ $product->refrigerant_type ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">PDP</div>
+                                                    <div class="col-7 spec-val">{{ $product->pdp ?: '-' }}</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Rated Voltage</div>
+                                                    <div class="col-7 spec-val">{{ $product->voltage ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Dimension</div>
+                                                    <div class="col-7 spec-val">{{ $product->dimension ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Weight</div>
+                                                    <div class="col-7 spec-val">{{ $product->weight ? $product->weight . ' Kg' : '-' }}</div>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <div class="col-md-6">
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Short Description</div>
+                                                    <div class="col-7 spec-val">{{ $product->desc ?: '-' }}</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Dimension</div>
+                                                    <div class="col-7 spec-val">{{ $product->dimension ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Weight</div>
+                                                    <div class="col-7 spec-val">{{ $product->weight ? $product->weight . ' Kg' : '-' }}</div>
+                                                </div>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        @if ($product->note)
-                            <div class="col-12">
-                                <div class="card spec-card bg-light border-0">
-                                    <div class="card-body p-3.5">
-                                        <h6 class="fw-bold text-dark mb-2">
-                                            <i class="mdi mdi-note-text-outline me-2 text-warning"></i>Catatan (Note)
-                                        </h6>
-                                        <div class="p-3 bg-white rounded border text-secondary" style="font-family: inherit; white-space: pre-wrap;">{{ $product->note }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        @endif
                     </div>
                 </div>
 
                 @if ($isPriv)
-                    {{-- ==================== TAB: TEMPLATE PENAWARAN PM ==================== --}}
-                    <div class="tab-pane fade" id="tab-unit-pm-template" role="tabpanel">
+                    {{-- ==================== TAB: PARTLIST (TEMPLATE PM) ==================== --}}
+                    <div class="tab-pane fade" id="tab-unit-partlist" role="tabpanel">
                         <div id="pm-template-card"
                             data-endpoint="{{ route('unit-global.pm-template', $product->id) }}"
-                            data-save-endpoint="{{ route('unit-global.pm-template.save', $product->id) }}">
+                            data-save-endpoint="{{ route('unit-global.pm-template.save', $product->id) }}"
+                            data-is-sales="{{ $isSales ? 'true' : 'false' }}">
 
                             <div class="alert alert-info border-0 shadow-xs d-flex align-items-center mb-4 rounded-3">
                                 <i class="mdi mdi-information-outline fs-4 me-3 text-info"></i>
                                 <div class="small">
-                                    Susun manual item apa saja yang masuk penawaran PM per level untuk unit ini. Daftar item tersimpan
-                                    permanen per unit + level, dan jadi sumber data <a href="{{ route('forecast.index') }}" target="_blank" class="fw-bold text-decoration-underline">Forecast Sales</a> juga.
-                                    Biaya jasa tetap otomatis dari <a href="{{ route('forecast.prices') }}" target="_blank" class="fw-bold text-decoration-underline">pricelist Forecast</a> berdasarkan Motor Power unit ini.
-                                    Untuk memakai template ini di penawaran, buka halaman <strong>Create Smart Quote</strong> lalu pakai tombol "Load Template PM".
+                                    @if ($isSales)
+                                        Informasi item yang masuk penawaran PM per level untuk unit ini beserta estimasi harga part dan tarif jasa service.
+                                        Untuk menggunakan template ini pada penawaran, buka halaman <strong>Create Smart Quote</strong> lalu pakai tombol <strong>"Load Template PM"</strong>.
+                                    @else
+                                        Susun manual item apa saja yang masuk penawaran PM per level untuk unit ini. Daftar item tersimpan
+                                        permanen per unit + level, dan jadi sumber data <a href="{{ route('forecast.index') }}" target="_blank" class="fw-bold text-decoration-underline">Forecast Sales</a> juga.
+                                        Biaya jasa tetap otomatis dari <a href="{{ route('forecast.prices') }}" target="_blank" class="fw-bold text-decoration-underline">pricelist Forecast</a> berdasarkan Motor Power unit ini.
+                                        Untuk memakai template ini di penawaran, buka halaman <strong>Create Smart Quote</strong> lalu pakai tombol "Load Template PM".
+                                    @endif
                                 </div>
                             </div>
 
@@ -292,14 +257,21 @@
                                                 <dt class="col-5 text-muted fw-normal">SKU</dt>
                                                 <dd class="col-7 text-end mb-2 fw-semibold text-dark">{{ $product->sku }}</dd>
                                                 <dt class="col-5 text-muted fw-normal">Brand</dt>
-                                                <dd class="col-7 text-end mb-2 text-dark">{{ $product->brand ?: '-' }}</dd>
+                                                <dd class="col-7 text-end mb-2 fw-semibold text-dark">{{ $product->brand ?: '-' }}</dd>
                                                 <dt class="col-5 text-muted fw-normal">Model</dt>
-                                                <dd class="col-7 text-end mb-2 text-dark">{{ $product->model ?: '-' }}</dd>
+                                                <dd class="col-7 text-end mb-2 fw-semibold text-dark">{{ $product->model ?: '-' }}</dd>
                                                 <dt class="col-5 text-muted fw-normal">Power</dt>
-                                                <dd class="col-7 text-end mb-0 fw-bold text-primary">{{ $product->power ?: '-' }}</dd>
+                                                <dd class="col-7 text-end mb-0 fw-semibold text-dark">
+                                                    @if ($product->power)
+                                                        <span class="badge bg-label-primary">{{ $product->power }}</span>
+                                                    @else
+                                                        -
+                                                    @endif
+                                                </dd>
                                             </dl>
                                         </div>
                                     </div>
+
                                     <div class="card spec-card">
                                         <div class="card-body p-3">
                                             <h6 class="text-uppercase text-muted small fw-bold mb-3" style="letter-spacing:.04em;">
@@ -320,7 +292,7 @@
                                     <div id="pm-template-empty" class="card spec-card">
                                         <div class="card-body text-center text-muted py-5">
                                             <i class="mdi mdi-arrow-left-bold-circle-outline fs-1 d-block mb-2 text-primary opacity-50"></i>
-                                            Pilih level PM di sebelah kiri untuk menyusun / melihat template item unit ini.
+                                            Pilih level PM di sebelah kiri untuk {{ $isSales ? 'melihat' : 'menyusun / melihat' }} template item unit ini.
                                         </div>
                                     </div>
 
@@ -331,52 +303,58 @@
                                                     <h6 class="mb-0 fw-bold text-dark">Item Template</h6>
                                                     <span class="badge bg-label-primary rounded-pill px-2.5" id="pm-template-level-badge">-</span>
                                                 </div>
-                                                <p class="text-muted small mb-3"><i class="mdi mdi-drag-vertical me-1"></i>Geser ikon di kiri tiap baris untuk mengurutkan item.</p>
-                                                <div class="table-responsive">
-                                                    <table class="table table-sm table-hover mb-0">
-                                                        <thead>
+                                                @if (!$isSales)
+                                                    <div class="small text-muted mb-3">
+                                                        Geser baris untuk ubah urutan. Ubah Qty / Estimasi Harga langsung di tabel.
+                                                    </div>
+                                                @endif
+
+                                                <div id="pm-template-power-warning" class="alert alert-warning border-0 py-2 px-3 small d-flex align-items-center mb-3 rounded-3" style="display:none;">
+                                                    <i class="mdi mdi-alert-outline me-2 fs-5"></i>
+                                                    Tarif jasa service untuk power unit ini belum ada di pricelist Forecast — silakan isi manual.
+                                                </div>
+
+                                                <div class="table-responsive rounded border mb-3">
+                                                    <table class="table table-sm align-middle mb-0" id="pm-template-table">
+                                                        <thead class="table-light">
                                                             <tr>
-                                                                <th style="width:30px;"></th>
-                                                                <th class="text-uppercase small text-muted">Item</th>
-                                                                <th class="text-end text-uppercase small text-muted" style="width:70px;">Qty</th>
-                                                                <th class="text-end text-uppercase small text-muted" style="width:140px;">Harga</th>
-                                                                <th style="width:40px;"></th>
+                                                                @if (!$isSales)
+                                                                    <th style="width:36px;"></th>
+                                                                @endif
+                                                                <th>Item / Part</th>
+                                                                <th class="text-end" style="width:120px;">Qty</th>
+                                                                <th class="text-end" style="width:160px;">Estimasi Harga</th>
+                                                                @if (!$isSales)
+                                                                    <th style="width:44px;"></th>
+                                                                @endif
                                                             </tr>
                                                         </thead>
                                                         <tbody id="pm-template-rows"></tbody>
                                                     </table>
                                                 </div>
-                                                <div id="pm-template-noparts-warning" class="alert alert-warning py-2 px-3 small mt-2 mb-0 rounded" style="display:none;">
-                                                    Belum ada item di template level ini. Susun mulai dari Head Title, lalu tambahkan part / jasa / item custom.
-                                                </div>
-                                                <div id="pm-template-power-warning" class="alert alert-warning py-2 px-3 small mt-2 mb-0 rounded" style="display:none;">
-                                                    Tarif jasa untuk power unit ini belum ada di pricelist Forecast. Isi dulu di halaman <a href="{{ route('forecast.prices') }}" target="_blank" class="fw-bold text-decoration-underline">Master Harga Jasa PM</a>.
-                                                </div>
-                                                <div class="d-flex flex-wrap gap-2 mt-3">
-                                                    <button type="button" class="btn btn-sm btn-outline-info" id="btn-pm-add-header">
-                                                        <i class="mdi mdi-format-header-1 me-1"></i> Tambah Head Title
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-pm-add-part">
-                                                        <i class="mdi mdi-plus me-1"></i> Tambah dari Product Equivalent
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-success" id="btn-pm-add-service">
-                                                        <i class="mdi mdi-account-hard-hat-outline me-1"></i> Tambah Jasa Service
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-dark" id="btn-pm-add-bearing-kit" style="display:none;">
-                                                        <i class="mdi mdi-cog-outline me-1"></i> Tambah Set Bearing Kit
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-pm-add-custom">
-                                                        <i class="mdi mdi-plus me-1"></i> Tambah Item Custom
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-warning ms-md-auto" id="btn-pm-copy-level">
-                                                        <i class="mdi mdi-content-copy me-1"></i> Salin dari Level Lain
-                                                    </button>
-                                                </div>
-                                                <div id="pm-add-part-picker" class="mt-3" style="display:none;">
-                                                    <select class="form-select form-select-sm" id="pm-part-select" style="width:100%">
-                                                        <option value="">Cari part (PN / Brand / Deskripsi)...</option>
-                                                    </select>
-                                                </div>
+
+                                                @if (!$isSales)
+                                                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                                                        <button type="button" class="btn btn-outline-primary btn-sm" id="btn-pm-add-part">
+                                                            <i class="mdi mdi-plus me-1"></i> Part Master
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-pm-add-custom">
+                                                            <i class="mdi mdi-plus me-1"></i> Custom Part
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-info btn-sm" id="btn-pm-add-header">
+                                                            <i class="mdi mdi-plus me-1"></i> Head Title
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-success btn-sm" id="btn-pm-add-service">
+                                                            <i class="mdi mdi-plus me-1"></i> Jasa Service
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-warning btn-sm" id="btn-pm-add-bearing-kit" style="display:none;">
+                                                            <i class="mdi mdi-plus me-1"></i> Set Bearing Kit
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-dark btn-sm ms-auto" id="btn-pm-copy-level" title="Salin item dari level PM lain untuk unit ini">
+                                                            <i class="mdi mdi-content-copy me-1"></i> Salin dari Level Lain
+                                                        </button>
+                                                    </div>
+                                                @endif
                                             </div>
                                         </div>
 
@@ -386,11 +364,13 @@
                                                     <div class="text-muted small">Total Estimated Price</div>
                                                     <div class="fw-bold fs-4 text-primary" id="pm-template-total">Rp 0</div>
                                                 </div>
-                                                <div class="d-flex gap-2">
-                                                    <button type="button" class="btn btn-primary btn-md shadow-sm" id="btn-save-template">
-                                                        <i class="mdi mdi-content-save-outline me-1"></i> Simpan Template
-                                                    </button>
-                                                </div>
+                                                @if (!$isSales)
+                                                    <div class="d-flex gap-2">
+                                                        <button type="button" class="btn btn-primary btn-md shadow-sm" id="btn-save-template">
+                                                            <i class="mdi mdi-content-save-outline me-1"></i> Simpan Template
+                                                        </button>
+                                                    </div>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>
@@ -398,14 +378,18 @@
                             </div>
                         </div>
                     </div>
+                @endif
 
+                @if ($isPriv)
                     {{-- ==================== TAB: EQUIVALENT ==================== --}}
                     <div class="tab-pane fade" id="tab-unit-equivalent" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="mb-0 fw-bold text-dark">Data Equivalent Unit</h6>
-                            <button type="button" class="btn btn-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#createEquivalent-{{ $product->id }}">
-                                <i class="mdi mdi-plus me-1"></i> New Equivalent
-                            </button>
+                            @if ($canEditUnit)
+                                <button type="button" class="btn btn-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#createEquivalent-{{ $product->id }}">
+                                    <i class="mdi mdi-plus me-1"></i> New Equivalent
+                                </button>
+                            @endif
                         </div>
                         <div class="table-responsive text-nowrap rounded border p-2">
                             <table class="datatable-product-equivalent table table-hover mb-0">
@@ -428,21 +412,23 @@
         </div>
     </div>
 
-    @include('components.modal.warehouse.unit.form-global')
-    @include('components.modal.warehouse.replacement.form')
-    @include('components.modal.warehouse.equivalent.form-global')
-    @php
-        $no = 0;
-    @endphp
-    @foreach ($serials as $serial)
+    @if ($canEditUnit)
+        @include('components.modal.warehouse.unit.form-global')
+        @include('components.modal.warehouse.replacement.form')
         @include('components.modal.warehouse.equivalent.form-global')
         @php
-            $no++;
+            $no = 0;
         @endphp
-    @endforeach
-    @foreach ($details as $detail)
-        @include('components.modal.warehouse.replacement.form-price')
-    @endforeach
+        @foreach ($serials as $serial)
+            @include('components.modal.warehouse.equivalent.form-global')
+            @php
+                $no++;
+            @endphp
+        @endforeach
+        @foreach ($details as $detail)
+            @include('components.modal.warehouse.replacement.form-price')
+        @endforeach
+    @endif
 @endsection()
 
 @push('after-style')
@@ -548,31 +534,139 @@
             vertical-align: middle;
             border-bottom: 1px solid #f1f1f2;
         }
-        #tab-unit-pm-template .pm-level-btn {
+        #pm-template-card .pm-level-btn,
+        .pm-level-btn {
             border: 1px solid #696cff;
             background: rgba(105, 108, 255, 0.05);
             color: #696cff;
             font-weight: 600;
             transition: all 0.2s ease;
         }
-        #tab-unit-pm-template .pm-level-btn:hover {
+        #pm-template-card .pm-level-btn:hover,
+        .pm-level-btn:hover {
             background: rgba(105, 108, 255, 0.15);
         }
-        #tab-unit-pm-template .pm-level-btn.active {
+        #pm-template-card .pm-level-btn.active,
+        .pm-level-btn.active {
             background: #696cff;
             border-color: #696cff;
             color: #fff;
             box-shadow: 0 4px 12px rgba(105, 108, 255, 0.3);
         }
-        #tab-unit-pm-template .pm-source-note {
+        #pm-template-card .pm-source-note,
+        .pm-source-note {
             font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
             font-size: .72rem;
             color: var(--bs-secondary-color, #6c757d);
             display: block;
             margin-top: 2px;
         }
-        #tab-unit-pm-template .pm-total-bar {
+        #pm-template-card .pm-total-bar,
+        .pm-total-bar {
             border-top: 1px dashed var(--bs-border-color);
+        }
+
+        /* ── Smooth Modal & SweetAlert2 Animations ── */
+        .swal2-container {
+            transition: background-color 0.25s ease !important;
+        }
+        .swal2-container.swal2-backdrop-show {
+            background: rgba(43, 52, 69, 0.45) !important;
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+        }
+        .swal2-popup {
+            border-radius: 14px !important;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+        }
+        .swal2-popup.swal2-show,
+        .swal2-show {
+            animation: swalSmoothIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+        }
+        .swal2-popup.swal2-hide,
+        .swal2-hide {
+            animation: swalSmoothOut 0.2s cubic-bezier(0.7, 0, 0.84, 0) forwards !important;
+        }
+        @keyframes swalSmoothIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.94) translateY(-12px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        @keyframes swalSmoothOut {
+            0% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.95) translateY(8px);
+            }
+        }
+
+        /* Smooth Bootstrap Modals */
+        .modal.fade {
+            transition: opacity 0.25s ease-out !important;
+        }
+        .modal.fade .modal-dialog {
+            transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease-out !important;
+            transform: scale(0.95) translateY(-14px);
+        }
+        .modal.show .modal-dialog {
+            transform: scale(1) translateY(0) !important;
+        }
+        .modal-backdrop.fade {
+            transition: opacity 0.25s ease-out !important;
+        }
+        .modal-backdrop.show {
+            opacity: 0.5 !important;
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+        }
+
+        .select2-container--open {
+            z-index: 99999999 !important;
+        }
+
+        /* Drag & Drop Handles */
+        .pm-drag-handle {
+            cursor: grab !important;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            touch-action: none !important;
+            width: 36px;
+            text-align: center;
+        }
+        .pm-drag-handle:active {
+            cursor: grabbing !important;
+        }
+        .pm-drag-handle i {
+            pointer-events: none;
+            color: #a1acb8;
+        }
+        .pm-drag-handle:hover i {
+            color: #696cff;
+        }
+        .pm-sortable-ghost {
+            opacity: 0.35 !important;
+            background-color: #e7e7ff !important;
+        }
+        .pm-sortable-chosen {
+            background-color: #f5f5f9 !important;
+        }
+        .pm-sortable-fallback {
+            opacity: 0.95 !important;
+            background: #ffffff !important;
+            box-shadow: 0 10px 30px rgba(67, 89, 113, 0.25) !important;
+            border: 1px solid #696cff !important;
+            border-radius: 6px !important;
+            display: table !important;
+            table-layout: fixed !important;
+            width: 100% !important;
         }
     </style>
 @endpush
@@ -589,12 +683,12 @@
     <script src="{{ asset('assets') }}/vendor/libs/select2/select2.js"></script>
     <script src="{{ asset('assets') }}/vendor/libs/bloodhound/bloodhound.js"></script>
     <script src="{{ asset('assets') }}/vendor/libs/sortablejs/sortable.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 @endpush
 
 @push('page-script')
-    <script src="{{ asset('assets') }}/js/tables-datatables-basic.js"></script>
     <script src="{{ asset('assets') }}/js/extended-ui-sweetalert2.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-equivalent-global.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-equivalent-unit.js"></script>
     <script src="{{ asset('assets') }}/includes/table-product-in-detail.js"></script>
     <script src="{{ asset('assets') }}/includes/table-product-out-detail.js"></script>
     <script src="{{ asset('assets') }}/includes/table-quotation-product.js"></script>
@@ -609,6 +703,13 @@
                 visible: true,
                 api: true
             }).columns.adjust().responsive.recalc();
+        });
+
+        // Auto load PM1 saat tab Partlist pertama kali dibuka jika belum ada level yang aktif
+        $('#unit-global-detail-tab-nav button[data-bs-target="#tab-unit-partlist"]').on('shown.bs.tab', function() {
+            if (!$('.pm-level-btn.active').length) {
+                $('.pm-level-btn[data-level="PM1"]').trigger('click');
+            }
         });
 
         // Rupiah formatter untuk field pricelist
@@ -819,6 +920,7 @@
             if ($pmCard.length) {
                 var pmEndpoint = $pmCard.data('endpoint');
                 var pmSaveEndpoint = $pmCard.data('save-endpoint');
+                var isSales = $pmCard.data('is-sales') === true || $pmCard.data('is-sales') === 'true';
                 var pmCurrentLevel = null;
                 var pmCurrentUnit = null;
                 var pmServiceSuggestion = null;
@@ -863,31 +965,51 @@
 
                 function renderPmItems() {
                     var $rows = $('#pm-template-rows').empty();
-                    var dragHandle = '<td class="text-muted pm-drag-handle" style="cursor:grab;"><i class="mdi mdi-drag-vertical fs-5"></i></td>';
+                    var dragHandle = isSales ? '' : '<td class="text-muted pm-drag-handle" style="cursor:grab;"><i class="mdi mdi-drag-vertical fs-5"></i></td>';
 
                     $.each(pmItems, function(i, it) {
                         if (!it._uid) it._uid = pmNextUid();
                         var $tr;
                         if (it.type === 'header') {
-                            $tr = $(
-                                '<tr class="table-light">' +
-                                    dragHandle +
-                                    '<td colspan="3"><span class="fw-bold text-dark text-uppercase" style="letter-spacing:.03em;">' + pmEscapeHtml(it.label) + '</span></td>' +
-                                    '<td class="text-end"><button type="button" class="btn btn-icon btn-sm btn-label-danger pm-item-remove"><i class="mdi mdi-delete-outline"></i></button></td>' +
-                                '</tr>'
-                            );
+                            if (isSales) {
+                                $tr = $(
+                                    '<tr class="table-light">' +
+                                        '<td colspan="3"><span class="fw-bold text-dark text-uppercase" style="letter-spacing:.03em;">' + pmEscapeHtml(it.label) + '</span></td>' +
+                                    '</tr>'
+                                );
+                            } else {
+                                $tr = $(
+                                    '<tr class="table-light">' +
+                                        dragHandle +
+                                        '<td colspan="3"><span class="fw-bold text-dark text-uppercase" style="letter-spacing:.03em;">' + pmEscapeHtml(it.label) + '</span></td>' +
+                                        '<td class="text-end"><button type="button" class="btn btn-icon btn-sm btn-label-danger pm-item-remove"><i class="mdi mdi-delete-outline"></i></button></td>' +
+                                    '</tr>'
+                                );
+                            }
                         } else {
-                            $tr = $(
-                                '<tr>' +
-                                    dragHandle +
-                                    '<td><span class="fw-semibold text-dark">' + pmEscapeHtml(it.label) + '</span>' +
-                                        (it.description ? '<span class="text-muted small d-block" style="white-space:pre-line;">' + pmEscapeHtml(it.description) + '</span>' : '') +
-                                    '</td>' +
-                                    '<td class="text-end"><input type="number" min="0" step="1" class="form-control form-control-sm text-end pm-item-qty" value="' + it.qty + '"></td>' +
-                                    '<td class="text-end"><input type="text" class="form-control form-control-sm text-end pm-item-price" value="' + pmFormatThousand(it.price) + '"></td>' +
-                                    '<td class="text-end"><button type="button" class="btn btn-icon btn-sm btn-label-danger pm-item-remove"><i class="mdi mdi-delete-outline"></i></button></td>' +
-                                '</tr>'
-                            );
+                            if (isSales) {
+                                $tr = $(
+                                    '<tr>' +
+                                        '<td><span class="fw-semibold text-dark">' + pmEscapeHtml(it.label) + '</span>' +
+                                            (it.description ? '<span class="text-muted small d-block" style="white-space:pre-line;">' + pmEscapeHtml(it.description) + '</span>' : '') +
+                                        '</td>' +
+                                        '<td class="text-end fw-semibold text-dark">' + pmEscapeHtml(it.qty) + (it.info_qty ? ' <small class="text-muted">' + pmEscapeHtml(it.info_qty) + '</small>' : '') + '</td>' +
+                                        '<td class="text-end fw-semibold text-primary">' + pmFormatRupiah(it.price) + '</td>' +
+                                    '</tr>'
+                                );
+                            } else {
+                                $tr = $(
+                                    '<tr>' +
+                                        dragHandle +
+                                        '<td><span class="fw-semibold text-dark">' + pmEscapeHtml(it.label) + '</span>' +
+                                            (it.description ? '<span class="text-muted small d-block" style="white-space:pre-line;">' + pmEscapeHtml(it.description) + '</span>' : '') +
+                                        '</td>' +
+                                        '<td class="text-end"><input type="number" min="0" step="1" class="form-control form-control-sm text-end pm-item-qty" value="' + it.qty + '"></td>' +
+                                        '<td class="text-end"><input type="text" class="form-control form-control-sm text-end pm-item-price" value="' + pmFormatThousand(it.price) + '"></td>' +
+                                        '<td class="text-end"><button type="button" class="btn btn-icon btn-sm btn-label-danger pm-item-remove"><i class="mdi mdi-delete-outline"></i></button></td>' +
+                                    '</tr>'
+                                );
+                            }
                         }
                         $tr.data('index', i);
                         $tr.attr('data-uid', it._uid);
@@ -897,21 +1019,57 @@
                     $('#pm-template-noparts-warning').toggle(pmItems.length === 0);
                     $('#pm-template-total').text(pmFormatRupiah(pmTotal()));
 
-                    if (!pmSortable) {
-                        pmSortable = Sortable.create(document.getElementById('pm-template-rows'), {
-                            animation: 150,
-                            handle: '.pm-drag-handle',
-                            onEnd: function() {
-                                var newOrder = $('#pm-template-rows tr').map(function() {
-                                    return $(this).attr('data-uid');
-                                }).get();
-                                pmItems.sort(function(a, b) {
-                                    return newOrder.indexOf(a._uid) - newOrder.indexOf(b._uid);
-                                });
-                                renderPmItems();
-                            }
-                        });
+                    if (!isSales) {
+                        initPmSortable();
                     }
+                }
+
+                function getSortableLib() {
+                    if (typeof Sortable !== 'undefined') {
+                        if (typeof Sortable.create === 'function') return Sortable;
+                        if (Sortable.default && typeof Sortable.default.create === 'function') return Sortable.default;
+                        if (Sortable.Sortable && typeof Sortable.Sortable.create === 'function') return Sortable.Sortable;
+                    }
+                    if (typeof window.Sortable !== 'undefined') {
+                        if (typeof window.Sortable.create === 'function') return window.Sortable;
+                        if (window.Sortable.default && typeof window.Sortable.default.create === 'function') return window.Sortable.default;
+                        if (window.Sortable.Sortable && typeof window.Sortable.Sortable.create === 'function') return window.Sortable.Sortable;
+                    }
+                    return null;
+                }
+
+                function initPmSortable() {
+                    if (isSales) return;
+                    var el = document.getElementById('pm-template-rows');
+                    if (!el) return;
+                    var SortableLib = getSortableLib();
+                    if (!SortableLib) return;
+
+                    if (pmSortable) {
+                        try { pmSortable.destroy(); } catch(e) {}
+                        pmSortable = null;
+                    }
+
+                    pmSortable = SortableLib.create(el, {
+                        animation: 150,
+                        handle: '.pm-drag-handle',
+                        forceFallback: true,
+                        fallbackClass: 'pm-sortable-fallback',
+                        ghostClass: 'pm-sortable-ghost',
+                        chosenClass: 'pm-sortable-chosen',
+                        dragClass: 'pm-sortable-drag',
+                        onEnd: function() {
+                            var newOrder = $('#pm-template-rows tr').map(function() {
+                                return $(this).attr('data-uid');
+                            }).get();
+                            pmItems.sort(function(a, b) {
+                                return newOrder.indexOf(a._uid) - newOrder.indexOf(b._uid);
+                            });
+                            $('#pm-template-rows tr').each(function(idx) {
+                                $(this).data('index', idx);
+                            });
+                        }
+                    });
                 }
 
                 function loadPmLevel(level) {
@@ -997,58 +1155,107 @@
                     renderPmItems();
                 });
 
-                // ── Tambah item dari master Product/Equivalent (search real-time) ──
+                // ── Tambah item dari master Product/Equivalent (Modal Dropdown Search Real-time) ──
                 $(document).on('click', '#btn-pm-add-part', function() {
-                    var $picker = $('#pm-add-part-picker');
-                    if ($picker.is(':visible')) {
-                        $picker.hide();
-                        return;
-                    }
-                    var $select = $('#pm-part-select');
-                    if (!$select.data('select2')) {
-                        $select.select2({
-                            width: '100%',
-                            placeholder: 'Cari part (PN / Brand / Deskripsi)...',
-                            minimumInputLength: 1,
-                            ajax: {
-                                url: '/db/equivalent/search',
-                                dataType: 'json',
-                                delay: 300,
-                                data: function(params) { return { q: params.term }; },
-                                processResults: function(data) {
-                                    return {
-                                        results: $.map(data, function(p) {
-                                            return {
-                                                id: p.id_equivalent,
-                                                text: (p.brand || '-') + ' — ' + (p.pn || '') + (p.product_desc ? ' (' + p.product_desc + ')' : ''),
-                                                part: p
-                                            };
-                                        })
-                                    };
+                    Swal.fire({
+                        title: 'Tambah Part Master',
+                        width: '640px',
+                        html:
+                            '<div class="text-start">' +
+                                '<label class="form-label small fw-semibold text-muted mb-1">Cari Part Master (PN / Brand / Deskripsi)</label>' +
+                                '<div class="mb-2">' +
+                                    '<select id="swal-pm-part-select" class="form-select form-select-sm" style="width:100%">' +
+                                        '<option value="">Ketik minimal 1 karakter untuk mencari...</option>' +
+                                    '</select>' +
+                                '</div>' +
+                                '<div class="small text-muted mt-2"><i class="mdi mdi-information-outline me-1"></i>Pilih part dari list pencarian untuk langsung menambahkannya ke tabel template.</div>' +
+                            '</div>',
+                        showConfirmButton: false,
+                        showCancelButton: true,
+                        cancelButtonText: 'Tutup',
+                        customClass: {
+                            cancelButton: 'btn btn-label-secondary waves-effect mt-2'
+                        },
+                        buttonsStyling: false,
+                        didOpen: function() {
+                            var $select = $('#swal-pm-part-select');
+                            function formatPartBadge(p) {
+                                var st = (p && p.genuine_status ? p.genuine_status : '').toLowerCase();
+                                if (st === 'genuine' || st === 'g') {
+                                    return '<span class="badge bg-label-success me-1 px-1.5 py-0.5" style="font-size:10px; font-weight:700;">G</span>';
                                 }
+                                if (st === 'replacement' || st === 'r') {
+                                    return '<span class="badge bg-label-warning me-1 px-1.5 py-0.5" style="font-size:10px; font-weight:700;">R</span>';
+                                }
+                                return '';
                             }
-                        });
-                    }
-                    $picker.show();
-                    $select.val(null).trigger('change');
-                    $select.select2('open');
-                });
 
-                $(document).on('select2:select', '#pm-part-select', function(e) {
-                    var part = e.params.data.part;
-                    if (!part) return;
-                    var partLabel = part.brand ? (part.brand + ' ' + (part.pn || '')) : (part.pn || part.product_name || 'Item');
-                    pmItems.push({
-                        type: 'part',
-                        id_equivalent: part.id_equivalent,
-                        label: partLabel.trim(),
-                        description: part.product_desc || '',
-                        qty: 1,
-                        info_qty: part.product_unit || 'Pcs',
-                        price: parseFloat(part.price) || 0
+                            $select.select2({
+                                dropdownParent: $('.swal2-container'),
+                                width: '100%',
+                                placeholder: 'Cari part (PN / Brand / Deskripsi)...',
+                                minimumInputLength: 1,
+                                ajax: {
+                                    url: '/db/equivalent/search',
+                                    dataType: 'json',
+                                    delay: 300,
+                                    data: function(params) { return { q: params.term }; },
+                                    processResults: function(data) {
+                                        return {
+                                            results: $.map(data, function(p) {
+                                                var bText = (p.brand || '-');
+                                                var pText = (p.pn || '');
+                                                var dText = (p.product_desc ? ' (' + p.product_desc + ')' : '');
+                                                return {
+                                                    id: p.id_equivalent,
+                                                    text: bText + ' — ' + pText + dText,
+                                                    part: p
+                                                };
+                                            })
+                                        };
+                                    }
+                                },
+                                templateResult: function(item) {
+                                    if (!item.id || !item.part) return item.text;
+                                    var p = item.part;
+                                    var badge = formatPartBadge(p);
+                                    var brand = p.brand ? p.brand : '-';
+                                    var pn = p.pn ? p.pn : '';
+                                    var desc = p.product_desc ? '<span class="text-muted small ms-1">(' + p.product_desc + ')</span>' : '';
+                                    return $('<span>' + badge + '<strong class="text-dark">' + brand + '</strong> — ' + pn + ' ' + desc + '</span>');
+                                },
+                                templateSelection: function(item) {
+                                    if (!item.id || !item.part) return item.text;
+                                    var p = item.part;
+                                    var badge = formatPartBadge(p);
+                                    var brand = p.brand ? p.brand : '-';
+                                    var pn = p.pn ? p.pn : '';
+                                    return $('<span>' + badge + brand + ' — ' + pn + '</span>');
+                                }
+                            });
+
+                            $select.on('select2:select', function(e) {
+                                var part = e.params.data.part;
+                                if (!part) return;
+                                var partLabel = part.brand ? (part.brand + ' ' + (part.pn || '')) : (part.pn || part.product_name || 'Item');
+                                pmItems.push({
+                                    type: 'part',
+                                    id_equivalent: part.id_equivalent,
+                                    label: partLabel.trim(),
+                                    description: part.product_desc || '',
+                                    qty: 1,
+                                    info_qty: part.product_unit || 'Pcs',
+                                    price: parseFloat(part.price) || 0
+                                });
+                                renderPmItems();
+                                Swal.close();
+                            });
+
+                            setTimeout(function() {
+                                $select.select2('open');
+                            }, 200);
+                        }
                     });
-                    renderPmItems();
-                    $('#pm-add-part-picker').hide();
                 });
 
                 // ── Tambah item custom ──
@@ -1218,15 +1425,28 @@
                 // ── Tambah Jasa Service (prefill dari pricelist Forecast, tetap bisa diedit) ──
                 $(document).on('click', '#btn-pm-add-service', function() {
                     if (!pmServiceSuggestion) return;
+                    var serviceLabel = (pmServiceSuggestion.label || ('Preventive Maintenance ' + (pmCurrentLevel || ''))).replace(/\bPM([1-4])\b/i, '$1').replace(/Preventive Maintenance PM/i, 'Preventive Maintenance ');
                     Swal.fire({
                         title: 'Tambah Jasa Service',
+                        width: '720px',
                         html:
-                            '<input id="pm-service-label" class="swal2-input" placeholder="Nama Item" value="' + pmEscapeHtml(pmServiceSuggestion.label) + '">' +
-                            '<textarea id="pm-service-desc" class="swal2-textarea" placeholder="Deskripsi scope kerja">' + pmEscapeHtml(pmServiceSuggestion.description || '') + '</textarea>' +
-                            '<input id="pm-service-price" type="text" class="swal2-input" placeholder="Harga" value="' + pmFormatThousand(pmServiceSuggestion.amount || 0) + '">' +
-                            (!pmServiceSuggestion.matched ? '<div class="swal2-validation-message" style="display:block;">Belum ada harga jasa untuk power unit ini di pricelist Forecast — isi manual.</div>' : ''),
-                        confirmButtonText: 'Tambah',
+                            '<div class="text-start">' +
+                                '<label class="form-label small fw-semibold text-muted mb-1">Nama Jasa Service</label>' +
+                                '<input id="pm-service-label" class="swal2-input m-0 mb-3 w-100" style="font-size:.92rem;" placeholder="Nama Item" value="' + pmEscapeHtml(serviceLabel) + '">' +
+                                '<label class="form-label small fw-semibold text-muted mb-1">Deskripsi Scope Pekerjaan</label>' +
+                                '<textarea id="pm-service-desc" class="swal2-textarea m-0 mb-3 w-100" style="min-height:160px; font-size:.88rem; line-height:1.5; resize:vertical;" placeholder="Deskripsi scope kerja">' + pmEscapeHtml(pmServiceSuggestion.description || '') + '</textarea>' +
+                                '<label class="form-label small fw-semibold text-muted mb-1">Harga Jasa (Rp)</label>' +
+                                '<input id="pm-service-price" type="text" class="swal2-input m-0 w-100" style="font-size:.92rem;" placeholder="Harga" value="' + pmFormatThousand(pmServiceSuggestion.amount || 0) + '">' +
+                            '</div>' +
+                            (!pmServiceSuggestion.matched ? '<div class="swal2-validation-message mt-2" style="display:block;">Belum ada harga jasa untuk power unit ini di pricelist Forecast — isi manual.</div>' : ''),
+                        confirmButtonText: 'Tambah Jasa',
                         showCancelButton: true,
+                        cancelButtonText: 'Batal',
+                        customClass: {
+                            confirmButton: 'btn btn-success me-2 waves-effect waves-light',
+                            cancelButton: 'btn btn-label-secondary waves-effect'
+                        },
+                        buttonsStyling: false,
                         preConfirm: function() {
                             var label = document.getElementById('pm-service-label').value.trim();
                             var description = document.getElementById('pm-service-desc').value.trim();

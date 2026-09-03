@@ -611,6 +611,30 @@
                 previewContainer.innerHTML = '';
 
                 var filesArray = Array.from(event.target.files);
+                if (filesArray.length === 0) return;
+
+                var MAX_TOTAL_MB = 40;
+                var MAX_TOTAL_BYTES = MAX_TOTAL_MB * 1024 * 1024;
+                var totalBytes = filesArray.reduce(function(acc, file) {
+                    return acc + file.size;
+                }, 0);
+                var totalMB = (totalBytes / (1024 * 1024)).toFixed(1);
+
+                if (totalBytes > MAX_TOTAL_BYTES) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Total File Terlalu Besar (' + totalMB + ' MB)',
+                        html: 'Maksimal total upload adalah <b>' + MAX_TOTAL_MB + ' MB</b> sekaligus agar tidak gagal.<br><br>' +
+                              '<span class="text-muted">Silakan pilih dan upload sebagian foto terlebih dahulu, lalu gunakan tombol <b>"Add More Photos"</b> untuk menambahkan sisanya.</span>',
+                        customClass: {
+                            confirmButton: 'btn btn-primary waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    });
+                    this.value = '';
+                    previewContainer.innerHTML = '';
+                    return;
+                }
 
                 // Buat slot placeholder dulu sesuai urutan file asli (sinkron),
                 // supaya urutan tampil preview tidak tergantung kecepatan FileReader per file.
@@ -648,6 +672,13 @@
 
                     reader.readAsDataURL(file);
                 });
+            });
+
+            $('#formInputImageV2').on('submit', function() {
+                var submitBtn = $('#btnSubmitImageV2');
+                var closeBtn = $('#btnCloseImageV2');
+                submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Mengupload & Memproses Foto...');
+                closeBtn.prop('disabled', true);
             });
         });
         $(document).on('click', '.delete-photo-item', function() {
@@ -1026,6 +1057,19 @@
                     title: 'Berhasil',
                     text: @json(session('success')),
                     customClass: { confirmButton: 'btn btn-success waves-effect' },
+                    buttonsStyling: false,
+                });
+            });
+        </script>
+    @endif
+    @if (session('error'))
+        <script>
+            $(function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: @json(session('error')),
+                    customClass: { confirmButton: 'btn btn-danger waves-effect' },
                     buttonsStyling: false,
                 });
             });

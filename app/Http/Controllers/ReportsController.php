@@ -15,8 +15,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
+use App\Services\OverviewService;
+
 class ReportsController extends Controller
 {
+    protected $overviewService;
+
+    public function __construct(OverviewService $overviewService)
+    {
+        $this->overviewService = $overviewService;
+    }
+
     public function index(Request $request)
     {
         if (Auth::user()->role == 'Support') {
@@ -93,11 +102,30 @@ class ReportsController extends Controller
             ->whereMonth('po_received', $monthNow)
             ->get();
 
-        $amountSalesUnit = $unitQuotationPO->sum(fn($uq) => $uq->total - $uq->tax_amount);
+        $amountSalesUnit = $unitQuotationPO->sum(fn($uq) => ($uq->total - floatval($uq->tax_amount ?? 0) - floatval($uq->fee ?? 0)));
         $amountSales    += $amountSalesUnit;
         $totalPO        += $unitQuotationPO->count();
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
         $leveledProspect = Prospect::whereNULL('level')->where('id_sales', Auth::id())->count();
+
+        // Pipeline Metrics for Commercial Pipeline Tabs
+        $totalQuoteAll = Quotation::where('id_sales', $salesId)->where('level', '1')->where('is_primary', '1')->whereMonth('estimated_date', $monthNow)->whereYear('estimated_date', $yearNow)->count()
+            + UnitQuotation::where('is_latest', 1)->where('id_sales', $salesId)->whereMonth('date', $monthNow)->whereYear('date', $yearNow)->count();
+        $amountQuoteAll = Quotation::where('id_sales', $salesId)->where('level', '1')->where('is_primary', '1')->whereMonth('estimated_date', $monthNow)->whereYear('estimated_date', $yearNow)->sum('nett')
+            + UnitQuotation::where('is_latest', 1)->where('id_sales', $salesId)->whereMonth('date', $monthNow)->whereYear('date', $yearNow)->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
+
+        $totalQuoteActive = Quotation::whereIn('status', ['20', '30', '40', '60', '80'])->whereMonth('estimated_date', $monthNow)->whereYear('estimated_date', $yearNow)->where('id_sales', $salesId)->where('level', '1')->where('is_primary', '1')->count()
+            + UnitQuotation::where('is_latest', 1)->where('id_sales', $salesId)->whereNotIn('status', ['po_received', 'loss'])->whereMonth('date', $monthNow)->whereYear('date', $yearNow)->count();
+        $amountQuoteActive = Quotation::whereIn('status', ['20', '30', '40', '60', '80'])->whereMonth('estimated_date', $monthNow)->whereYear('estimated_date', $yearNow)->where('id_sales', $salesId)->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + UnitQuotation::where('is_latest', 1)->where('id_sales', $salesId)->whereNotIn('status', ['po_received', 'loss'])->whereMonth('date', $monthNow)->whereYear('date', $yearNow)->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
+
+        $totalLoss = Quotation::where('id_sales', $salesId)->where('status', '0')->where('level', '1')->where('is_primary', '1')->whereMonth('estimated_date', $monthNow)->whereYear('estimated_date', $yearNow)->count()
+            + UnitQuotation::where('is_latest', 1)->where('id_sales', $salesId)->where('status', 'loss')->whereMonth('date', $monthNow)->whereYear('date', $yearNow)->count();
+        $amountQuoteLoss = Quotation::where('id_sales', $salesId)->where('status', '0')->where('level', '1')->where('is_primary', '1')->whereMonth('estimated_date', $monthNow)->whereYear('estimated_date', $yearNow)->sum('nett')
+            + UnitQuotation::where('is_latest', 1)->where('id_sales', $salesId)->where('status', 'loss')->whereMonth('date', $monthNow)->whereYear('date', $yearNow)->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
+
+        $weeklyKpi = $this->overviewService->buildWeeklyKpi($salesId, $monthNow, $yearNow);
+        $dateFormatted = sprintf('%02d-%04d', $monthNow, $yearNow);
 
         // Comments
         $firstComments = Comment::where('id_user', Auth::id())
@@ -139,15 +167,15 @@ class ReportsController extends Controller
             ->orderBy('o.date', 'DESC')
             ->select(['quotation.id as idQ', 'o.id as idC', 'o.id_user', 'o.level', 'o.comment', 'o.date', 'o.type', 'quotation.no_quote', 'u.name', 'u.image']);
 
-        $prospectComment = Comment::join('prospect as p', 'comment.id_prospect', '=', 'p.id')
-            ->join('users as u', 'u.id', '=', 'comment.id_user')
-            ->join('pic as pi', 'pi.id', '=', 'p.id_pic')
+        $prospectComment = Prospect::join('pic as pi', 'pi.id', '=', 'prospect.id_pic')
             ->join('client as c', 'c.id', '=', 'pi.id_client')
-            ->where('p.id_sales', $salesId)
+            ->join('comment', 'comment.id_status', '=', 'prospect.id')
+            ->join('users as u', 'u.id', '=', 'comment.id_user')
+            ->where('prospect.id_sales', $salesId)
             ->where('comment.type', 'prospect')
             ->where('comment.id_user', '!=', Auth::id())
             ->orderBy('comment.date', 'DESC')
-            ->select(['p.id as idP', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'comment.type', 'c.company', 'u.name', 'u.image']);
+            ->select(['prospect.id as idP', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'comment.type', 'c.company', 'u.name', 'u.image']);
 
         $comment = $quotationComment->union($prospectComment)
             ->orderBy('date', 'DESC')
@@ -164,7 +192,8 @@ class ReportsController extends Controller
             'leveledProspect', "quotation", "unitQuotationPO", "dataDc", "dataQuote", "dataPo", "dataLeads",
             "target", "dataCRM", "dataVisit", "totalDC", "totalCRM", "totalQuote", "totalVisit", "totalPO",
             "totalLeads", "amountSales", "amountQuote", "amountProspect", "monthNow", "yearNow", "prevMonth",
-            "prevYear", "nextMonth", "nextYear", "yearsList", "salesUser", "salesList", "salesId"
+            "prevYear", "nextMonth", "nextYear", "yearsList", "salesUser", "salesList", "salesId",
+            "weeklyKpi", "totalQuoteAll", "amountQuoteAll", "totalQuoteActive", "amountQuoteActive", "totalLoss", "amountQuoteLoss", "dateFormatted"
         ));
     }
 

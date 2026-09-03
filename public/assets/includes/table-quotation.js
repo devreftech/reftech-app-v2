@@ -177,17 +177,9 @@ $(function () {
             displayLength: 10,
             initComplete: function () {
                 $(".dt-btn-quotation").html(
-                    '<div class="dropdown">' +
-                        '<button class="btn btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">' +
-                            '<i class="mdi mdi-plus me-1"></i>Quotation' +
-                        '</button>' +
-                        '<ul class="dropdown-menu dropdown-menu-end">' +
-                            '<li><a class="dropdown-item disabled text-muted" href="javascript:void(0)" style="pointer-events:none; opacity:0.6;">Quotation Parts <span class="badge bg-label-secondary ms-1" style="font-size:9px;">Nonaktif</span></a></li>' +
-                            '<li><a class="dropdown-item disabled text-muted" href="javascript:void(0)" style="pointer-events:none; opacity:0.6;">Quotation General <span class="badge bg-label-secondary ms-1" style="font-size:9px;">Nonaktif</span></a></li>' +
-                            '<li><a class="dropdown-item disabled text-muted" href="javascript:void(0)" style="pointer-events:none; opacity:0.6;">Quotation Service <span class="badge bg-label-secondary ms-1" style="font-size:9px;">Nonaktif</span></a></li>' +
-                            '<li><a class="dropdown-item fw-semibold" href="' + route("unit-quotation.create") + '"><i class="mdi mdi-sparkles text-warning me-1"></i>Smart Quote <span class="badge bg-danger ms-1" style="font-size:9px;">New</span></a></li>' +
-                        '</ul>' +
-                    '</div>'
+                    '<a href="' + route("unit-quotation.create") + '" class="btn btn-primary btn-sm">' +
+                        '<i class="mdi mdi-plus me-1"></i>Quotation' +
+                    '</a>'
                 );
             },
             responsive: {

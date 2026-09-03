@@ -3,39 +3,54 @@
 @section('no-container') @endsection
 @section('content')
     <div class="container-fluid px-4 py-3">
-        <div class="d-flex flex-wrap align-items-center justify-content-between pb-3 mb-2">
-            <h4 class="fw-bold mb-0"><span class="text-muted fw-normal">Account Receivable /</span> Aging Report</h4>
+        {{-- Page Header --}}
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center py-2 mb-3 gap-3">
+            <div>
+                <h4 class="fw-bold mb-1">
+                    <span class="text-muted fw-light">Finance / Account Receivable (AR) /</span> Aging Report
+                </h4>
+                <p class="text-muted mb-0 small">
+                    <i class="mdi mdi-calendar-clock-outline me-1"></i> Analisis umur piutang, keterlambatan pembayaran klien, dan jatuh tempo kredit tempo
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('payment_index.invoice') }}" class="btn btn-label-primary btn-sm">
+                    <i class="mdi mdi-receipt-text-outline me-1"></i> Sales Invoice
+                </a>
+                <a href="{{ route('payment_index.payment') }}" class="btn btn-label-primary btn-sm">
+                    <i class="mdi mdi-cash-check me-1"></i> Payment Receipt
+                </a>
+            </div>
         </div>
 
         <div class="aging-metrics-pane" data-tab="general">
-            <div class="row g-4 mb-4">
+            <div class="row g-3 mb-4">
+                <!-- Total Outstanding -->
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #6366f1 !important; cursor: pointer;"
-                        data-bs-toggle="modal" data-bs-target="#detailOutstanding">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-primary">Total Outstanding</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(99, 102, 241, 0.12); color: #6366f1;">
-                                    <i class="mdi mdi-receipt-text-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f8f9ff 0%, #edf0ff 100%); border-left: 5px solid #696cff !important; cursor: pointer;"
+                        data-bs-toggle="modal" data-bs-target="#detailOutstanding" title="Klik untuk lihat detail outstanding">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-primary small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-receipt-text me-1"></i> Total Outstanding
+                                </span>
+                                <div class="avatar avatar-xs bg-label-primary rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-receipt-text fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-1" style="color: #6366f1;" id="aging-general-outstanding">Rp.
+                            <h3 class="fw-bolder text-primary fs-4 mb-1" id="aging-general-outstanding">Rp.
                                 {{ number_format($invoice->sum('amount'), 0, ',', '.') }}
                             </h3>
-                            <div class="table-responsive text-nowrap border-top mt-3 pt-2">
-                                <table class="table table-sm mb-0">
-                                    <tbody class="table-border-bottom-0">
+                            <div class="table-responsive text-nowrap border-top mt-2 pt-2" style="border-color: rgba(105, 108, 255, 0.15) !important;">
+                                <table class="table table-sm mb-0 table-borderless" style="font-size: 11.5px;">
+                                    <tbody>
                                         <tr>
-                                            <td class="pe-5 ps-0"><span class="text-muted">PPN</span></td>
-                                            <td class="ps-5 pe-0 d-flex justify-content-end">
-                                                <span class="fw-semibold" id="aging-general-outstanding-ppn">Rp. {{ number_format($invoice->filter(fn($i) => $i->tax)->sum('amount'), 0, ',', '.') }}</span>
-                                            </td>
+                                            <td class="ps-0 py-0 text-muted">PPN</td>
+                                            <td class="pe-0 py-0 text-end fw-semibold text-primary" id="aging-general-outstanding-ppn">Rp. {{ number_format($invoice->filter(fn($i) => $i->tax)->sum('amount'), 0, ',', '.') }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="pe-5 ps-0"><span class="text-muted">Non-PPN</span></td>
-                                            <td class="ps-5 pe-0 d-flex justify-content-end">
-                                                <span class="fw-semibold" id="aging-general-outstanding-nonppn">Rp. {{ number_format($invoice->filter(fn($i) => !$i->tax)->sum('amount'), 0, ',', '.') }}</span>
-                                            </td>
+                                            <td class="ps-0 py-0 text-muted">Non-PPN</td>
+                                            <td class="pe-0 py-0 text-end fw-semibold text-secondary" id="aging-general-outstanding-nonppn">Rp. {{ number_format($invoice->filter(fn($i) => !$i->tax)->sum('amount'), 0, ',', '.') }}</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -43,33 +58,33 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Total Overdue -->
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #ef4444 !important; cursor: pointer;"
-                        data-bs-toggle="modal" data-bs-target="#detailOverdue">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-danger">Total Overdue</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(239, 68, 68, 0.12); color: #ef4444;">
-                                    <i class="mdi mdi-alert-octagon-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #fff8f8 0%, #ffeded 100%); border-left: 5px solid #ff3e1d !important; cursor: pointer;"
+                        data-bs-toggle="modal" data-bs-target="#detailOverdue" title="Klik untuk lihat detail overdue">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-danger small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-clock-alert-outline me-1"></i> Total Overdue
+                                </span>
+                                <div class="avatar avatar-xs bg-label-danger rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-clock-alert-outline fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-1" style="color: #ef4444;" id="aging-general-overdue">Rp.
+                            <h3 class="fw-bolder text-danger fs-4 mb-1" id="aging-general-overdue">Rp.
                                 {{ number_format($overdue->sum('amount'), 0, ',', '.') }}
                             </h3>
-                            <div class="table-responsive text-nowrap border-top mt-3 pt-2">
-                                <table class="table table-sm mb-0">
-                                    <tbody class="table-border-bottom-0">
+                            <div class="table-responsive text-nowrap border-top mt-2 pt-2" style="border-color: rgba(255, 62, 29, 0.15) !important;">
+                                <table class="table table-sm mb-0 table-borderless" style="font-size: 11.5px;">
+                                    <tbody>
                                         <tr>
-                                            <td class="pe-5 ps-0"><span class="text-muted">PPN</span></td>
-                                            <td class="ps-5 pe-0 d-flex justify-content-end">
-                                                <span class="fw-semibold" id="aging-general-overdue-ppn">Rp. {{ number_format($overdue->filter(fn($i) => $i->tax)->sum('amount'), 0, ',', '.') }}</span>
-                                            </td>
+                                            <td class="ps-0 py-0 text-muted">PPN</td>
+                                            <td class="pe-0 py-0 text-end fw-semibold text-danger" id="aging-general-overdue-ppn">Rp. {{ number_format($overdue->filter(fn($i) => $i->tax)->sum('amount'), 0, ',', '.') }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="pe-5 ps-0"><span class="text-muted">Non-PPN</span></td>
-                                            <td class="ps-5 pe-0 d-flex justify-content-end">
-                                                <span class="fw-semibold" id="aging-general-overdue-nonppn">Rp. {{ number_format($overdue->filter(fn($i) => !$i->tax)->sum('amount'), 0, ',', '.') }}</span>
-                                            </td>
+                                            <td class="ps-0 py-0 text-muted">Non-PPN</td>
+                                            <td class="pe-0 py-0 text-end fw-semibold text-secondary" id="aging-general-overdue-nonppn">Rp. {{ number_format($overdue->filter(fn($i) => !$i->tax)->sum('amount'), 0, ',', '.') }}</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -77,33 +92,33 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Total Current -->
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #10b981 !important; cursor: pointer;"
-                        data-bs-toggle="modal" data-bs-target="#detailOnDue">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-success">Total On Due</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(16, 185, 129, 0.12); color: #10b981;">
-                                    <i class="mdi mdi-calendar-check-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f3fdf6 0%, #e8f9ee 100%); border-left: 5px solid #28a745 !important; cursor: pointer;"
+                        data-bs-toggle="modal" data-bs-target="#detailOnDue" title="Klik untuk lihat detail invoice current (belum jatuh tempo)">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-success small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-calendar-check-outline me-1"></i> Total Current
+                                </span>
+                                <div class="avatar avatar-xs bg-label-success rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-calendar-check-outline fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-1" style="color: #10b981;" id="aging-general-ondue">Rp.
+                            <h3 class="fw-bolder text-success fs-4 mb-1" id="aging-general-ondue">Rp.
                                 {{ number_format($ondue->sum('amount'), 0, ',', '.') }}
                             </h3>
-                            <div class="table-responsive text-nowrap border-top mt-3 pt-2">
-                                <table class="table table-sm mb-0">
-                                    <tbody class="table-border-bottom-0">
+                            <div class="table-responsive text-nowrap border-top mt-2 pt-2" style="border-color: rgba(40, 167, 69, 0.15) !important;">
+                                <table class="table table-sm mb-0 table-borderless" style="font-size: 11.5px;">
+                                    <tbody>
                                         <tr>
-                                            <td class="pe-5 ps-0"><span class="text-muted">PPN</span></td>
-                                            <td class="ps-5 pe-0 d-flex justify-content-end">
-                                                <span class="fw-semibold" id="aging-general-ondue-ppn">Rp. {{ number_format($ondue->filter(fn($i) => $i->tax)->sum('amount'), 0, ',', '.') }}</span>
-                                            </td>
+                                            <td class="ps-0 py-0 text-muted">PPN</td>
+                                            <td class="pe-0 py-0 text-end fw-semibold text-success" id="aging-general-ondue-ppn">Rp. {{ number_format($ondue->filter(fn($i) => $i->tax)->sum('amount'), 0, ',', '.') }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="pe-5 ps-0"><span class="text-muted">Non-PPN</span></td>
-                                            <td class="ps-5 pe-0 d-flex justify-content-end">
-                                                <span class="fw-semibold" id="aging-general-ondue-nonppn">Rp. {{ number_format($ondue->filter(fn($i) => !$i->tax)->sum('amount'), 0, ',', '.') }}</span>
-                                            </td>
+                                            <td class="ps-0 py-0 text-muted">Non-PPN</td>
+                                            <td class="pe-0 py-0 text-end fw-semibold text-secondary" id="aging-general-ondue-nonppn">Rp. {{ number_format($ondue->filter(fn($i) => !$i->tax)->sum('amount'), 0, ',', '.') }}</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -115,49 +130,58 @@
         </div>
 
         <div class="aging-metrics-pane d-none" data-tab="reftech">
-            <div class="row g-4 mb-4">
+            <div class="row g-3 mb-4">
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #6366f1 !important;">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-primary">Total Outstanding</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(99, 102, 241, 0.12); color: #6366f1;">
-                                    <i class="mdi mdi-receipt-text-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f8f9ff 0%, #edf0ff 100%); border-left: 5px solid #696cff !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-primary small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-receipt-text me-1"></i> Total Outstanding
+                                </span>
+                                <div class="avatar avatar-xs bg-label-primary rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-receipt-text fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-0" style="color: #6366f1;" id="aging-reftech-outstanding">Rp.
+                            <h3 class="fw-bolder text-primary fs-4 mb-1" id="aging-reftech-outstanding">Rp.
                                 {{ number_format($invoice->where('info', 'Reftech')->sum('amount'), 0, ',', '.') }}
                             </h3>
+                            <small class="text-muted" style="font-size: 11px;">Sisa saldo piutang Reftech yang belum dilunasi</small>
                         </div>
                     </div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #ef4444 !important;">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-danger">Total Overdue</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(239, 68, 68, 0.12); color: #ef4444;">
-                                    <i class="mdi mdi-alert-octagon-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #fff8f8 0%, #ffeded 100%); border-left: 5px solid #ff3e1d !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-danger small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-clock-alert-outline me-1"></i> Total Overdue
+                                </span>
+                                <div class="avatar avatar-xs bg-label-danger rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-clock-alert-outline fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-0" style="color: #ef4444;" id="aging-reftech-overdue">Rp.
+                            <h3 class="fw-bolder text-danger fs-4 mb-1" id="aging-reftech-overdue">Rp.
                                 {{ number_format($overdue->where('info', 'Reftech')->sum('amount'), 0, ',', '.') }}
                             </h3>
+                            <small class="text-muted" style="font-size: 11px;">Piutang Reftech yang telah melewati jatuh tempo</small>
                         </div>
                     </div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #10b981 !important;">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-success">Total On Due</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(16, 185, 129, 0.12); color: #10b981;">
-                                    <i class="mdi mdi-calendar-check-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f3fdf6 0%, #e8f9ee 100%); border-left: 5px solid #28a745 !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-success small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-calendar-check-outline me-1"></i> Total Current
+                                </span>
+                                <div class="avatar avatar-xs bg-label-success rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-calendar-check-outline fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-0" style="color: #10b981;" id="aging-reftech-ondue">Rp.
+                            <h3 class="fw-bolder text-success fs-4 mb-1" id="aging-reftech-ondue">Rp.
                                 {{ number_format($ondue->where('info', 'Reftech')->sum('amount'), 0, ',', '.') }}
                             </h3>
+                            <small class="text-muted" style="font-size: 11px;">Piutang Reftech berjalan yang belum jatuh tempo</small>
                         </div>
                     </div>
                 </div>
@@ -165,49 +189,58 @@
         </div>
 
         <div class="aging-metrics-pane d-none" data-tab="kojisha">
-            <div class="row g-4 mb-4">
+            <div class="row g-3 mb-4">
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #6366f1 !important;">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-primary">Total Outstanding</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(99, 102, 241, 0.12); color: #6366f1;">
-                                    <i class="mdi mdi-receipt-text-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f8f9ff 0%, #edf0ff 100%); border-left: 5px solid #696cff !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-primary small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-receipt-text me-1"></i> Total Outstanding
+                                </span>
+                                <div class="avatar avatar-xs bg-label-primary rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-receipt-text fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-0" style="color: #6366f1;" id="aging-kojisha-outstanding">Rp.
+                            <h3 class="fw-bolder text-primary fs-4 mb-1" id="aging-kojisha-outstanding">Rp.
                                 {{ number_format($invoice->where('info', 'Kojisha')->sum('amount'), 0, ',', '.') }}
                             </h3>
+                            <small class="text-muted" style="font-size: 11px;">Sisa saldo piutang Kojisha yang belum dilunasi</small>
                         </div>
                     </div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #ef4444 !important;">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-danger">Total Overdue</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(239, 68, 68, 0.12); color: #ef4444;">
-                                    <i class="mdi mdi-alert-octagon-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #fff8f8 0%, #ffeded 100%); border-left: 5px solid #ff3e1d !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-danger small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-clock-alert-outline me-1"></i> Total Overdue
+                                </span>
+                                <div class="avatar avatar-xs bg-label-danger rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-clock-alert-outline fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-0" style="color: #ef4444;" id="aging-kojisha-overdue">Rp.
+                            <h3 class="fw-bolder text-danger fs-4 mb-1" id="aging-kojisha-overdue">Rp.
                                 {{ number_format($overdue->where('info', 'Kojisha')->sum('amount'), 0, ',', '.') }}
                             </h3>
+                            <small class="text-muted" style="font-size: 11px;">Piutang Kojisha yang telah melewati jatuh tempo</small>
                         </div>
                     </div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #10b981 !important;">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-success">Total On Due</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(16, 185, 129, 0.12); color: #10b981;">
-                                    <i class="mdi mdi-calendar-check-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f3fdf6 0%, #e8f9ee 100%); border-left: 5px solid #28a745 !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-success small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-calendar-check-outline me-1"></i> Total Current
+                                </span>
+                                <div class="avatar avatar-xs bg-label-success rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-calendar-check-outline fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-0" style="color: #10b981;" id="aging-kojisha-ondue">Rp.
+                            <h3 class="fw-bolder text-success fs-4 mb-1" id="aging-kojisha-ondue">Rp.
                                 {{ number_format($ondue->where('info', 'Kojisha')->sum('amount'), 0, ',', '.') }}
                             </h3>
+                            <small class="text-muted" style="font-size: 11px;">Piutang Kojisha berjalan yang belum jatuh tempo</small>
                         </div>
                     </div>
                 </div>
@@ -215,49 +248,58 @@
         </div>
 
         <div class="aging-metrics-pane d-none" data-tab="ahmad">
-            <div class="row g-4 mb-4">
+            <div class="row g-3 mb-4">
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #6366f1 !important;">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-primary">Total Outstanding</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(99, 102, 241, 0.12); color: #6366f1;">
-                                    <i class="mdi mdi-receipt-text-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f8f9ff 0%, #edf0ff 100%); border-left: 5px solid #696cff !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-primary small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-receipt-text me-1"></i> Total Outstanding
+                                </span>
+                                <div class="avatar avatar-xs bg-label-primary rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-receipt-text fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-0" style="color: #6366f1;" id="aging-ahmad-outstanding">Rp.
+                            <h3 class="fw-bolder text-primary fs-4 mb-1" id="aging-ahmad-outstanding">Rp.
                                 {{ number_format($invoice->whereIn('id_sales', [2, 3, 4, 32])->sum('amount'), 0, ',', '.') }}
                             </h3>
+                            <small class="text-muted" style="font-size: 11px;">Sisa saldo piutang Yusuf yang belum dilunasi</small>
                         </div>
                     </div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #ef4444 !important;">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-danger">Total Overdue</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(239, 68, 68, 0.12); color: #ef4444;">
-                                    <i class="mdi mdi-alert-octagon-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #fff8f8 0%, #ffeded 100%); border-left: 5px solid #ff3e1d !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-danger small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-clock-alert-outline me-1"></i> Total Overdue
+                                </span>
+                                <div class="avatar avatar-xs bg-label-danger rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-clock-alert-outline fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-0" style="color: #ef4444;" id="aging-ahmad-overdue">Rp.
+                            <h3 class="fw-bolder text-danger fs-4 mb-1" id="aging-ahmad-overdue">Rp.
                                 {{ number_format($overdue->whereIn('id_sales', [2, 3, 4, 32])->sum('amount'), 0, ',', '.') }}
                             </h3>
+                            <small class="text-muted" style="font-size: 11px;">Piutang Yusuf yang telah melewati jatuh tempo</small>
                         </div>
                     </div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #10b981 !important;">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-success">Total On Due</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(16, 185, 129, 0.12); color: #10b981;">
-                                    <i class="mdi mdi-calendar-check-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f3fdf6 0%, #e8f9ee 100%); border-left: 5px solid #28a745 !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-success small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-calendar-check-outline me-1"></i> Total Current
+                                </span>
+                                <div class="avatar avatar-xs bg-label-success rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-calendar-check-outline fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-0" style="color: #10b981;" id="aging-ahmad-ondue">Rp.
+                            <h3 class="fw-bolder text-success fs-4 mb-1" id="aging-ahmad-ondue">Rp.
                                 {{ number_format($ondue->whereIn('id_sales', [2, 3, 4, 32])->sum('amount'), 0, ',', '.') }}
                             </h3>
+                            <small class="text-muted" style="font-size: 11px;">Piutang Yusuf berjalan yang belum jatuh tempo</small>
                         </div>
                     </div>
                 </div>
@@ -265,49 +307,58 @@
         </div>
 
         <div class="aging-metrics-pane d-none" data-tab="rayi">
-            <div class="row g-4 mb-4">
+            <div class="row g-3 mb-4">
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #6366f1 !important;">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-primary">Total Outstanding</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(99, 102, 241, 0.12); color: #6366f1;">
-                                    <i class="mdi mdi-receipt-text-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f8f9ff 0%, #edf0ff 100%); border-left: 5px solid #696cff !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-primary small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-receipt-text me-1"></i> Total Outstanding
+                                </span>
+                                <div class="avatar avatar-xs bg-label-primary rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-receipt-text fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-0" style="color: #6366f1;" id="aging-rayi-outstanding">Rp.
+                            <h3 class="fw-bolder text-primary fs-4 mb-1" id="aging-rayi-outstanding">Rp.
                                 {{ number_format($invoice->whereIn('id_sales', [1, 16, 23])->sum('amount'), 0, ',', '.') }}
                             </h3>
+                            <small class="text-muted" style="font-size: 11px;">Sisa saldo piutang Rayi yang belum dilunasi</small>
                         </div>
                     </div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #ef4444 !important;">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-danger">Total Overdue</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(239, 68, 68, 0.12); color: #ef4444;">
-                                    <i class="mdi mdi-alert-octagon-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #fff8f8 0%, #ffeded 100%); border-left: 5px solid #ff3e1d !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-danger small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-clock-alert-outline me-1"></i> Total Overdue
+                                </span>
+                                <div class="avatar avatar-xs bg-label-danger rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-clock-alert-outline fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-0" style="color: #ef4444;" id="aging-rayi-overdue">Rp.
+                            <h3 class="fw-bolder text-danger fs-4 mb-1" id="aging-rayi-overdue">Rp.
                                 {{ number_format($overdue->whereIn('id_sales', [1, 16, 23])->sum('amount'), 0, ',', '.') }}
                             </h3>
+                            <small class="text-muted" style="font-size: 11px;">Piutang Rayi yang telah melewati jatuh tempo</small>
                         </div>
                     </div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <div class="card metric-card border-0" style="border-top: 4px solid #10b981 !important;">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <span class="metric-label text-success">Total On Due</span>
-                                <div class="metric-icon-box m-0" style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background-color: rgba(16, 185, 129, 0.12); color: #10b981;">
-                                    <i class="mdi mdi-calendar-check-outline mdi-24px"></i>
+                    <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f3fdf6 0%, #e8f9ee 100%); border-left: 5px solid #28a745 !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-uppercase fw-bold text-success small" style="letter-spacing: .5px;">
+                                    <i class="mdi mdi-calendar-check-outline me-1"></i> Total Current
+                                </span>
+                                <div class="avatar avatar-xs bg-label-success rounded p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="mdi mdi-calendar-check-outline fs-6"></i>
                                 </div>
                             </div>
-                            <h3 class="metric-value mb-0" style="color: #10b981;" id="aging-rayi-ondue">Rp.
+                            <h3 class="fw-bolder text-success fs-4 mb-1" id="aging-rayi-ondue">Rp.
                                 {{ number_format($ondue->whereIn('id_sales', [1, 16, 23])->sum('amount'), 0, ',', '.') }}
                             </h3>
+                            <small class="text-muted" style="font-size: 11px;">Piutang Rayi berjalan yang belum jatuh tempo</small>
                         </div>
                     </div>
                 </div>
@@ -315,16 +366,16 @@
         </div>
 
         <!-- Filter Bar -->
-        <div class="card card-minimalist mb-4">
+        <div class="card border-0 shadow-sm mb-4">
             <div class="card-body p-3">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                     <div class="d-flex align-items-center gap-2">
-                        <i class="mdi mdi-filter-variant text-primary mdi-24px"></i>
+                        <i class="mdi mdi-filter-variant text-primary fs-5"></i>
                         <h6 class="fw-bold mb-0 text-dark">Filter Aging</h6>
                     </div>
                     <div class="d-flex flex-wrap align-items-center gap-3">
                         <div class="d-flex align-items-center gap-2">
-                            <label class="form-label mb-0 text-muted fw-semibold text-nowrap" style="font-size:0.85rem;">Filter Tahun:</label>
+                            <label class="form-label mb-0 text-muted small fw-semibold text-nowrap">Filter Tahun:</label>
                             <select class="form-select form-select-sm" id="aging-year-filter" style="min-width:140px;">
                                 <option value="all">Semua Tahun</option>
                                 @for ($y = now()->year; $y >= 2022; $y--)
@@ -333,7 +384,7 @@
                             </select>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <label class="form-label mb-0 text-muted fw-semibold text-nowrap" style="font-size:0.85rem;">Filter Sales:</label>
+                            <label class="form-label mb-0 text-muted small fw-semibold text-nowrap">Filter Sales:</label>
                             <select class="form-select form-select-sm" id="aging-sales-filter" style="min-width:180px;">
                                 <option value="all">Semua Sales</option>
                                 @if(isset($salesUsers))
@@ -345,7 +396,7 @@
                         </div>
                     </div>
                     <div class="d-flex flex-wrap align-items-center gap-2 mt-2 pt-2 border-top w-100">
-                        <span class="text-muted fw-semibold me-1" style="font-size:0.82rem;"><i class="mdi mdi-lightning-bolt text-warning me-1"></i>Quick Status Filter:</span>
+                        <span class="text-muted fw-semibold me-1 small"><i class="mdi mdi-lightning-bolt text-warning me-1"></i>Quick Status Filter:</span>
                         <button type="button" class="btn btn-xs btn-label-primary aging-quick-filter active" data-filter="all">Semua</button>
                         <button type="button" class="btn btn-xs btn-label-success aging-quick-filter" data-filter="current"><i class="mdi mdi-check-circle-outline me-1"></i>Current / On Due</button>
                         <button type="button" class="btn btn-xs btn-label-danger aging-quick-filter" data-filter="overdue"><i class="mdi mdi-alert-circle-outline me-1"></i>Overdue (>0 Hari)</button>
@@ -356,69 +407,64 @@
             </div>
         </div>
 
-        <div class="card card-minimalist">
-            <div class="card-header card-minimalist-header py-2">
+        {{-- Main Table Container with Tabs --}}
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent border-bottom py-2">
                 <ul class="nav nav-tabs card-header-tabs border-0 m-0 flex-nowrap overflow-auto" id="aging-ar-tab-nav" role="tablist">
                     <li class="nav-item">
-                        <button type="button" class="nav-link active" id="nav-aging-general" role="tab"
+                        <button type="button" class="nav-link active py-2 px-3 fw-semibold" id="nav-aging-general" role="tab"
                             data-bs-toggle="tab" data-bs-target="#navs-pills-top-general" aria-controls="navs-pills-top-general"
                             aria-selected="true" data-metrics-tab="general">
                             <i class="mdi mdi-view-list-outline me-1"></i>General
-                            <span class="badge rounded-pill bg-primary ms-1" id="badge-aging-general">-</span>
+                            <span class="badge rounded-pill bg-label-primary ms-1" id="badge-aging-general">-</span>
                         </button>
                     </li>
                     <li class="nav-item">
-                        <button type="button" class="nav-link" id="nav-aging-reftech" role="tab" data-bs-toggle="tab"
+                        <button type="button" class="nav-link py-2 px-3 fw-semibold" id="nav-aging-reftech" role="tab" data-bs-toggle="tab"
                             data-bs-target="#navs-pills-top-reftech" aria-controls="navs-pills-top-reftech"
                             aria-selected="false" tabindex="-1" data-metrics-tab="reftech">
                             <i class="mdi mdi-file-document-outline me-1"></i>Reftech
-                            <span class="badge rounded-pill bg-info ms-1" id="badge-aging-reftech">-</span>
+                            <span class="badge rounded-pill bg-label-info ms-1" id="badge-aging-reftech">-</span>
                         </button>
                     </li>
                     <li class="nav-item">
-                        <button type="button" class="nav-link" id="nav-aging-kojisha" role="tab" data-bs-toggle="tab"
+                        <button type="button" class="nav-link py-2 px-3 fw-semibold" id="nav-aging-kojisha" role="tab" data-bs-toggle="tab"
                             data-bs-target="#navs-pills-top-kojisha" aria-controls="navs-pills-top-kojisha"
                             aria-selected="false" tabindex="-1" data-metrics-tab="kojisha">
                             <i class="mdi mdi-file-document-multiple-outline me-1"></i>Kojisha
-                            <span class="badge rounded-pill bg-info ms-1" id="badge-aging-kojisha">-</span>
+                            <span class="badge rounded-pill bg-label-info ms-1" id="badge-aging-kojisha">-</span>
                         </button>
                     </li>
                     <li class="nav-item">
-                        <button type="button" class="nav-link" id="nav-aging-ahmad" role="tab" data-bs-toggle="tab"
+                        <button type="button" class="nav-link py-2 px-3 fw-semibold" id="nav-aging-ahmad" role="tab" data-bs-toggle="tab"
                             data-bs-target="#navs-pills-top-ahmad" aria-controls="navs-pills-top-ahmad" aria-selected="false"
                             tabindex="-1" data-metrics-tab="ahmad">
                             <i class="mdi mdi-account-outline me-1"></i>Yusuf
-                            <span class="badge rounded-pill bg-secondary ms-1" id="badge-aging-ahmad">-</span>
+                            <span class="badge rounded-pill bg-label-secondary ms-1" id="badge-aging-ahmad">-</span>
                         </button>
                     </li>
                     <li class="nav-item">
-                        <button type="button" class="nav-link" id="nav-aging-rayi" role="tab" data-bs-toggle="tab"
+                        <button type="button" class="nav-link py-2 px-3 fw-semibold" id="nav-aging-rayi" role="tab" data-bs-toggle="tab"
                             data-bs-target="#navs-pills-top-rayi" aria-controls="navs-pills-top-rayi" aria-selected="false"
                             tabindex="-1" data-metrics-tab="rayi">
                             <i class="mdi mdi-account-outline me-1"></i>Rayi
-                            <span class="badge rounded-pill bg-secondary ms-1" id="badge-aging-rayi">-</span>
+                            <span class="badge rounded-pill bg-label-secondary ms-1" id="badge-aging-rayi">-</span>
                         </button>
                     </li>
                 </ul>
             </div>
             <div class="card-body p-3">
-                <div class="tab-content">
+                <div class="tab-content border-0 p-0 m-0">
                     <div class="tab-pane fade show active" id="navs-pills-top-general" role="tabpanel">
                         <div class="card-datatable table-responsive pt-0">
-                            <table class="datatable-aging-report-ar table table-bordered" data-badge="badge-aging-general">
-                                <thead>
+                            <table class="datatable-aging-report-ar table table-hover border-top" data-badge="badge-aging-general">
+                                <thead class="table-light">
                                     <tr>
-                                        <th>Invoice</th>
-                                        <th>Date</th>
-                                        <th>No. PO</th>
-                                        <th>Customer</th>
-                                        <th>Total</th>
-                                        <th>Due Date</th>
-                                        <th>overdue</th>
-                                        <th>VAT</th>
-                                        <th>name</th>
-                                        <th>reminder</th>
-                                        <th>flag</th>
+                                        <th class="fw-semibold text-dark">Invoice &amp; PO</th>
+                                        <th class="fw-semibold text-dark">Customer &amp; Sales</th>
+                                        <th class="fw-semibold text-dark text-end">Nilai Invoice</th>
+                                        <th class="fw-semibold text-dark text-center">Jatuh Tempo &amp; Aging</th>
+                                        <th class="fw-semibold text-dark text-center">Reminder &amp; Action</th>
                                     </tr>
                                 </thead>
                             </table>
@@ -426,18 +472,14 @@
                     </div>
                     <div class="tab-pane fade" id="navs-pills-top-reftech" role="tabpanel">
                         <div class="card-datatable table-responsive pt-0">
-                            <table class="datatable-aging-report-reftech table table-bordered" data-badge="badge-aging-reftech">
-                                <thead>
+                            <table class="datatable-aging-report-reftech table table-hover border-top" data-badge="badge-aging-reftech">
+                                <thead class="table-light">
                                     <tr>
-                                        <th>Invoice</th>
-                                        <th>Date</th>
-                                        <th>No. PO</th>
-                                        <th>Customer</th>
-                                        <th>Total</th>
-                                        <th>Due Date</th>
-                                        <th>overdue</th>
-                                        <th>VAT</th>
-                                        <th>name</th>
+                                        <th class="fw-semibold text-dark">Invoice &amp; PO</th>
+                                        <th class="fw-semibold text-dark">Customer &amp; Sales</th>
+                                        <th class="fw-semibold text-dark text-end">Nilai Invoice</th>
+                                        <th class="fw-semibold text-dark text-center">Jatuh Tempo &amp; Aging</th>
+                                        <th class="fw-semibold text-dark text-center">Reminder &amp; Action</th>
                                     </tr>
                                 </thead>
                             </table>
@@ -445,18 +487,14 @@
                     </div>
                     <div class="tab-pane fade" id="navs-pills-top-kojisha" role="tabpanel">
                         <div class="card-datatable table-responsive pt-0">
-                            <table class="datatable-aging-report-kojisha table table-bordered" data-badge="badge-aging-kojisha">
-                                <thead>
+                            <table class="datatable-aging-report-kojisha table table-hover border-top" data-badge="badge-aging-kojisha">
+                                <thead class="table-light">
                                     <tr>
-                                        <th>Invoice</th>
-                                        <th>Date</th>
-                                        <th>No. PO</th>
-                                        <th>Customer</th>
-                                        <th>Total</th>
-                                        <th>Due Date</th>
-                                        <th>overdue</th>
-                                        <th>VAT</th>
-                                        <th>name</th>
+                                        <th class="fw-semibold text-dark">Invoice &amp; PO</th>
+                                        <th class="fw-semibold text-dark">Customer &amp; Sales</th>
+                                        <th class="fw-semibold text-dark text-end">Nilai Invoice</th>
+                                        <th class="fw-semibold text-dark text-center">Jatuh Tempo &amp; Aging</th>
+                                        <th class="fw-semibold text-dark text-center">Reminder &amp; Action</th>
                                     </tr>
                                 </thead>
                             </table>
@@ -464,18 +502,14 @@
                     </div>
                     <div class="tab-pane fade" id="navs-pills-top-ahmad" role="tabpanel">
                         <div class="card-datatable table-responsive pt-0">
-                            <table class="datatable-aging-report-ahmad table table-bordered" data-badge="badge-aging-ahmad">
-                                <thead>
+                            <table class="datatable-aging-report-ahmad table table-hover border-top" data-badge="badge-aging-ahmad">
+                                <thead class="table-light">
                                     <tr>
-                                        <th>Invoice</th>
-                                        <th>Date</th>
-                                        <th>No. PO</th>
-                                        <th>Customer</th>
-                                        <th>Total</th>
-                                        <th>Due Date</th>
-                                        <th>overdue</th>
-                                        <th>VAT</th>
-                                        <th>name</th>
+                                        <th class="fw-semibold text-dark">Invoice &amp; PO</th>
+                                        <th class="fw-semibold text-dark">Customer &amp; Sales</th>
+                                        <th class="fw-semibold text-dark text-end">Nilai Invoice</th>
+                                        <th class="fw-semibold text-dark text-center">Jatuh Tempo &amp; Aging</th>
+                                        <th class="fw-semibold text-dark text-center">Reminder &amp; Action</th>
                                     </tr>
                                 </thead>
                             </table>
@@ -483,19 +517,14 @@
                     </div>
                     <div class="tab-pane fade" id="navs-pills-top-rayi" role="tabpanel">
                         <div class="card-datatable table-responsive pt-0">
-                            <table class="datatable-aging-report-rayi table table-bordered" data-badge="badge-aging-rayi">
-                                <thead>
+                            <table class="datatable-aging-report-rayi table table-hover border-top" data-badge="badge-aging-rayi">
+                                <thead class="table-light">
                                     <tr>
-                                        <th>Invoice</th>
-                                        <th>Date</th>
-                                        <th>No. PO</th>
-                                        <th>Customer</th>
-                                        <th>Total</th>
-                                        <th>Due Date</th>
-                                        <th>overdue</th>
-                                        <th>VAT</th>
-                                        <th>name</th>
-                                        <th>flag</th>
+                                        <th class="fw-semibold text-dark">Invoice &amp; PO</th>
+                                        <th class="fw-semibold text-dark">Customer &amp; Sales</th>
+                                        <th class="fw-semibold text-dark text-end">Nilai Invoice</th>
+                                        <th class="fw-semibold text-dark text-center">Jatuh Tempo &amp; Aging</th>
+                                        <th class="fw-semibold text-dark text-center">Reminder &amp; Action</th>
                                     </tr>
                                 </thead>
                             </table>
@@ -570,51 +599,31 @@
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/formvalidation/dist/css/formValidation.min.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css" />
     <style>
-        /* Metric Card Stylings matching Sales Invoice AR */
-        .metric-card {
-            border-radius: 20px;
-            border: 1px solid rgba(229, 231, 235, 0.6) !important;
-            background: #ffffff;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-        .metric-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 30px rgba(79, 70, 229, 0.08) !important;
-        }
-        .metric-label {
-            font-size: 0.85rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .metric-value {
-            font-size: 1.85rem;
-            font-weight: 800;
-            letter-spacing: -0.025em;
-        }
-
-        .card-minimalist {
-            border: 1px solid #e0e2e8 !important;
-            box-shadow: none !important;
-            border-radius: 12px;
-        }
-        .card-minimalist-header {
-            border-bottom: 1px solid #e0e2e8 !important;
-            background-color: #fafbfe;
-            border-top-left-radius: 12px !important;
-            border-top-right-radius: 12px !important;
-        }
         .nav-tabs .nav-link {
-            border-radius: 6px 6px 0 0;
-            font-weight: 500;
+            border: 1px solid transparent;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            color: #6c757d;
+            transition: all 0.2s;
+        }
+        .nav-tabs .nav-link:hover {
+            color: #696cff;
         }
         .nav-tabs .nav-link.active {
             border-color: #e0e2e8 #e0e2e8 #fff !important;
             background-color: #ffffff;
-            font-weight: 600;
+            color: #696cff !important;
+            font-weight: 700;
+        }
+        table.dataTable thead th {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+        table.dataTable input.form-control {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
         }
     </style>
 @endpush
@@ -663,6 +672,35 @@
             var metricsTab = $(this).data('metrics-tab');
             $('.aging-metrics-pane').addClass('d-none');
             $('.aging-metrics-pane[data-tab="' + metricsTab + '"]').removeClass('d-none');
+        });
+
+        // Initialize DataTable inside Detail Modals (Outstanding, Overdue, OnDue)
+        $('#detailOutstanding, #detailOverdue, #detailOnDue').on('shown.bs.modal', function () {
+            var $table = $(this).find('table');
+            if (!$.fn.DataTable.isDataTable($table)) {
+                $table.DataTable({
+                    pageLength: 10,
+                    lengthMenu: [10, 25, 50, 100],
+                    language: {
+                        search: "",
+                        searchPlaceholder: "Cari invoice / customer...",
+                        lengthMenu: "Tampilkan _MENU_ data",
+                        info: "Menampilkan _START_ - _END_ dari _TOTAL_ invoice",
+                        infoEmpty: "Tidak ada data",
+                        zeroRecords: "Data tidak ditemukan",
+                        paginate: {
+                            first: '<i class="mdi mdi-chevron-double-left"></i>',
+                            last: '<i class="mdi mdi-chevron-double-right"></i>',
+                            next: '<i class="mdi mdi-chevron-right"></i>',
+                            previous: '<i class="mdi mdi-chevron-left"></i>'
+                        }
+                    },
+                    order: [[0, 'asc']],
+                    dom: '<"d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"lf>rt<"d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3"ip>'
+                });
+            } else {
+                $table.DataTable().columns.adjust().responsive.recalc();
+            }
         });
 
         window.agingYearFilter = $('#aging-year-filter').val() || 'all';

@@ -755,7 +755,11 @@ class PendingController extends Controller
             $order->sales_image = $order->unitQuotation?->sales?->image
                 ?? $order->quote?->sales?->image
                 ?? null;
-            $order->revenue = $order->unitQuotation ? ($order->unitQuotation->total ?? 0) : ($order->quote?->nett ?? 0);
+            $uqSub = $order->unitQuotation ? (floatval($order->unitQuotation->subtotal ?? 0) - floatval($order->unitQuotation->diskon ?? 0)) : 0;
+            if ($order->unitQuotation && $uqSub <= 0) {
+                $uqSub = floatval($order->unitQuotation->total ?? 0) - floatval($order->unitQuotation->tax_amount ?? 0);
+            }
+            $order->revenue = $order->unitQuotation ? $uqSub : floatval($order->quote?->nett ?? 0);
             $order->no_po = $order->unitQuotation ? ($order->unitQuotation->po_number ?? '-') : ($order->quote?->invoice->first()?->no_po ?? '-');
             $order->detail_route = route('pending-po.show', $order->id);
             $order->material_cost = (float) $materialCostByOrder->get($order->id, 0);
@@ -829,7 +833,11 @@ class PendingController extends Controller
             $project->sales_image = $project->unitQuotation?->sales?->image
                 ?? $project->quote?->sales?->image
                 ?? null;
-            $project->revenue = $project->unitQuotation ? ($project->unitQuotation->total ?? 0) : ($project->quote?->nett ?? 0);
+            $uqSub = $project->unitQuotation ? (floatval($project->unitQuotation->subtotal ?? 0) - floatval($project->unitQuotation->diskon ?? 0)) : 0;
+            if ($project->unitQuotation && $uqSub <= 0) {
+                $uqSub = floatval($project->unitQuotation->total ?? 0) - floatval($project->unitQuotation->tax_amount ?? 0);
+            }
+            $project->revenue = $project->unitQuotation ? $uqSub : floatval($project->quote?->nett ?? 0);
             $project->no_po = $project->unitQuotation ? ($project->unitQuotation->po_number ?? '-') : ($project->quote?->invoice->first()?->no_po ?? '-');
             $project->detail_route = $project->id_unit_quotation
                 ? route('pending-po.show', $project->id)

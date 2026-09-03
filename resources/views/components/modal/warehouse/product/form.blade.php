@@ -58,6 +58,8 @@
                                     </option>
                                     <option value="Pail" {{ @$product->unit == 'Pail' ? 'selected' : '' }}>Pail
                                     </option>
+                                    <option value="Drum" {{ @$product->unit == 'Drum' ? 'selected' : '' }}>Drum
+                                    </option>
                                     <option value="Unit" {{ @$product->unit == 'Unit' ? 'selected' : '' }}>Unit
                                     </option>
                                     <option value="Lot" {{ @$product->unit == 'Lot' ? 'selected' : '' }}>Lot

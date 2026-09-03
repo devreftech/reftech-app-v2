@@ -261,6 +261,60 @@ class ChatController extends Controller
     }
 
     /**
+     * Format a chat message for JSON response, handling Developer audit visibility.
+     */
+    private function formatMessage($msg, $myId, $isViewerDeveloper = false): array
+    {
+        $created = $msg->created_at ? $msg->created_at->setTimezone('Asia/Jakarta') : null;
+        $edited = $msg->edited_at ? $msg->edited_at->setTimezone('Asia/Jakarta') : null;
+
+        $isDeleted = (bool)$msg->is_deleted;
+        $isEdited = (bool)$msg->is_edited;
+
+        $messageContent = $msg->message;
+        $attachmentUrl = $msg->attachment_url;
+        $attachmentName = $msg->attachment_name;
+        $attachmentType = $msg->attachment_type;
+        $originalMessage = null;
+
+        if ($isDeleted) {
+            if ($isViewerDeveloper) {
+                // Developer sees original text with deleted badge
+                $originalMessage = $msg->original_message ?: $msg->message;
+            } else {
+                // Regular users see deleted placeholder
+                $messageContent = '🚫 Pesan ini telah dihapus';
+                $attachmentUrl = null;
+                $attachmentName = null;
+                $attachmentType = null;
+            }
+        } elseif ($isEdited && $isViewerDeveloper) {
+            $originalMessage = $msg->original_message;
+        }
+
+        return [
+            'id' => $msg->id,
+            'sender_id' => $msg->sender_id,
+            'receiver_id' => $msg->receiver_id,
+            'is_outgoing' => ($msg->sender_id == $myId),
+            'message' => $messageContent,
+            'attachment_url' => $attachmentUrl,
+            'attachment_name' => $attachmentName,
+            'attachment_type' => $attachmentType,
+            'is_read' => (bool)$msg->is_read,
+            'is_edited' => $isEdited,
+            'edited_time' => $edited ? $edited->format('H:i') : null,
+            'original_message' => $originalMessage,
+            'is_deleted' => $isDeleted,
+            'can_modify' => ($msg->sender_id == $myId && !$isDeleted),
+            'is_developer_audit' => $isViewerDeveloper,
+            'time' => $created ? $created->format('H:i') : '',
+            'date' => $created ? $created->format('Y-m-d') : '',
+            'date_label' => $created ? ($created->isToday() ? 'Hari ini' : ($created->isYesterday() ? 'Kemarin' : $created->format('d M Y'))) : '',
+        ];
+    }
+
+    /**
      * Get chat conversation history with a specific user.
      */
     public function getMessages(Request $request, $userId)
@@ -293,36 +347,25 @@ class ChatController extends Controller
                 'read_at' => Carbon::now('Asia/Jakarta'),
             ]);
 
+        $isViewerDeveloper = Auth::user() && Auth::user()->isDeveloper();
+
         // Fetch last 60 messages between the two users sorted by indexed primary key
         $messages = ChatMessage::where(function ($q) use ($myId, $userId) {
             $q->where('sender_id', $myId)->where('receiver_id', $userId);
         })->orWhere(function ($q) use ($myId, $userId) {
             $q->where('sender_id', $userId)->where('receiver_id', $myId);
         })
-        ->select('id', 'sender_id', 'receiver_id', 'message', 'attachment', 'attachment_name', 'attachment_type', 'is_read', 'created_at')
         ->orderBy('id', 'desc')
         ->take(60)
         ->get()
         ->reverse()
         ->values();
 
-        $formattedMessages = $messages->map(function ($msg) use ($myId) {
-            $created = $msg->created_at ? $msg->created_at->setTimezone('Asia/Jakarta') : null;
-            return [
-                'id' => $msg->id,
-                'sender_id' => $msg->sender_id,
-                'receiver_id' => $msg->receiver_id,
-                'is_outgoing' => ($msg->sender_id == $myId),
-                'message' => $msg->message,
-                'attachment_url' => $msg->attachment_url,
-                'attachment_name' => $msg->attachment_name,
-                'attachment_type' => $msg->attachment_type,
-                'is_read' => (bool)$msg->is_read,
-                'time' => $created ? $created->format('H:i') : '',
-                'date' => $created ? $created->format('Y-m-d') : '',
-                'date_label' => $created ? ($created->isToday() ? 'Hari ini' : ($created->isYesterday() ? 'Kemarin' : $created->format('d M Y'))) : '',
-            ];
+        $formattedMessages = $messages->map(function ($msg) use ($myId, $isViewerDeveloper) {
+            return $this->formatMessage($msg, $myId, $isViewerDeveloper);
         });
+
+        $isPartnerTyping = (bool)Cache::get("chat_typing_{$userId}_{$myId}");
 
         return response()->json([
             'status' => 'success',
@@ -334,6 +377,8 @@ class ChatController extends Controller
                 'presence' => self::getUserPresence($targetUser->id),
             ],
             'messages' => $formattedMessages,
+            'is_partner_typing' => $isPartnerTyping,
+            'is_viewer_developer' => $isViewerDeveloper,
         ]);
     }
 
@@ -389,25 +434,136 @@ class ChatController extends Controller
             'is_read' => false,
         ]);
 
-        $created = $chatMessage->created_at ? $chatMessage->created_at->setTimezone('Asia/Jakarta') : Carbon::now('Asia/Jakarta');
+        // Clear typing indicator when message is sent
+        Cache::forget("chat_typing_{$myId}_{$request->receiver_id}");
+
+        $isViewerDeveloper = Auth::user() && Auth::user()->isDeveloper();
+        $formatted = $this->formatMessage($chatMessage, $myId, $isViewerDeveloper);
 
         return response()->json([
             'status' => 'success',
-            'message_data' => [
-                'id' => $chatMessage->id,
-                'sender_id' => $chatMessage->sender_id,
-                'receiver_id' => $chatMessage->receiver_id,
-                'is_outgoing' => true,
-                'message' => $chatMessage->message,
-                'attachment_url' => $chatMessage->attachment_url,
-                'attachment_name' => $chatMessage->attachment_name,
-                'attachment_type' => $chatMessage->attachment_type,
-                'is_read' => false,
-                'time' => $created->format('H:i'),
-                'date' => $created->format('Y-m-d'),
-                'date_label' => 'Hari ini',
-            ],
+            'message' => $formatted,
+            'message_data' => $formatted,
         ]);
+    }
+
+    /**
+     * Edit an existing message (only author can edit).
+     */
+    public function editMessage(Request $request, $id)
+    {
+        $myId = Auth::id();
+        if (!$myId) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'message' => 'required|string|max:5000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        $chatMessage = ChatMessage::find($id);
+        if (!$chatMessage) {
+            return response()->json(['status' => 'error', 'message' => 'Pesan tidak ditemukan'], 404);
+        }
+
+        if ($chatMessage->sender_id != $myId) {
+            return response()->json(['status' => 'error', 'message' => 'Anda hanya dapat mengedit pesan milik Anda sendiri.'], 403);
+        }
+
+        if ($chatMessage->is_deleted) {
+            return response()->json(['status' => 'error', 'message' => 'Pesan yang sudah dihapus tidak dapat diedit.'], 400);
+        }
+
+        // Preserve original text for developer audit before first edit
+        if (!$chatMessage->original_message) {
+            $chatMessage->original_message = $chatMessage->message;
+        }
+
+        $chatMessage->message = $request->message;
+        $chatMessage->is_edited = true;
+        $chatMessage->edited_at = Carbon::now('Asia/Jakarta');
+        $chatMessage->save();
+
+        $isViewerDeveloper = Auth::user() && Auth::user()->isDeveloper();
+        $formatted = $this->formatMessage($chatMessage, $myId, $isViewerDeveloper);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $formatted,
+            'message_data' => $formatted,
+        ]);
+    }
+
+    /**
+     * Soft-delete a message.
+     */
+    public function deleteMessage(Request $request, $id)
+    {
+        $myId = Auth::id();
+        if (!$myId) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $chatMessage = ChatMessage::find($id);
+        if (!$chatMessage) {
+            return response()->json(['status' => 'error', 'message' => 'Pesan tidak ditemukan'], 404);
+        }
+
+        $isViewerDeveloper = Auth::user() && Auth::user()->isDeveloper();
+
+        if ($chatMessage->sender_id != $myId && !$isViewerDeveloper) {
+            return response()->json(['status' => 'error', 'message' => 'Anda hanya dapat menghapus pesan milik Anda sendiri.'], 403);
+        }
+
+        if (!$chatMessage->original_message) {
+            $chatMessage->original_message = $chatMessage->message;
+        }
+
+        $chatMessage->is_deleted = true;
+        $chatMessage->deleted_at = Carbon::now('Asia/Jakarta');
+        $chatMessage->deleted_by = $myId;
+        $chatMessage->save();
+
+        $formatted = $this->formatMessage($chatMessage, $myId, $isViewerDeveloper);
+
+        return response()->json([
+            'status' => 'success',
+            'message_id' => $chatMessage->id,
+            'message' => $formatted,
+            'message_data' => $formatted,
+        ]);
+    }
+
+    /**
+     * Broadcast / update typing status in-memory cache.
+     */
+    public function setTypingStatus(Request $request)
+    {
+        $myId = Auth::id();
+        if (!$myId) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+        }
+
+        $receiverId = $request->input('receiver_id');
+        $isTyping = $request->boolean('is_typing', true);
+
+        if ($receiverId) {
+            $cacheKey = "chat_typing_{$myId}_{$receiverId}";
+            if ($isTyping) {
+                Cache::put($cacheKey, true, now()->addSeconds(6));
+            } else {
+                Cache::forget($cacheKey);
+            }
+        }
+
+        return response()->json(['status' => 'success']);
     }
 
     /**
@@ -439,7 +595,7 @@ class ChatController extends Controller
     }
 
     /**
-     * Delta-polling endpoint to check for incoming new messages.
+     * Delta-polling endpoint to check for incoming new messages, typing indicator, and live edits/deletes.
      */
     public function poll(Request $request)
     {
@@ -450,6 +606,12 @@ class ChatController extends Controller
 
         $lastId = (int)$request->input('last_id', 0);
         $activeUserId = $request->input('active_user_id');
+        $isViewerDeveloper = Auth::user() && Auth::user()->isDeveloper();
+
+        $isPartnerTyping = false;
+        if ($activeUserId) {
+            $isPartnerTyping = (bool)Cache::get("chat_typing_{$activeUserId}_{$myId}");
+        }
 
         // If last_id is 0 (initial poll upon page load), establish baseline cursor without returning old historical messages as "new"
         if ($lastId === 0) {
@@ -467,9 +629,12 @@ class ChatController extends Controller
                 'status' => 'success',
                 'last_id' => $currentMaxId,
                 'new_messages' => [],
+                'updated_messages' => [],
                 'read_message_ids' => [],
                 'total_unread' => $totalUnread,
                 'target_user_presence' => $targetUserPresence,
+                'is_partner_typing' => $isPartnerTyping,
+                'is_viewer_developer' => $isViewerDeveloper,
             ]);
         }
 
@@ -493,34 +658,38 @@ class ChatController extends Controller
 
         // Query status updates for outgoing messages (e.g. mark as read by receiver)
         $readUpdates = [];
+        $updatedInConversation = [];
+
         if ($activeUserId) {
             $readUpdates = ChatMessage::where('sender_id', $myId)
                 ->where('receiver_id', $activeUserId)
                 ->where('is_read', true)
                 ->pluck('id')
                 ->toArray();
+
+            // Sync recently edited/deleted messages for the active conversation
+            $recentUpdates = ChatMessage::where(function ($q) use ($myId, $activeUserId) {
+                $q->where('sender_id', $myId)->where('receiver_id', $activeUserId);
+            })->orWhere(function ($q) use ($myId, $activeUserId) {
+                $q->where('sender_id', $activeUserId)->where('receiver_id', $myId);
+            })
+            ->where(function ($q) {
+                $q->where('is_edited', true)->orWhere('is_deleted', true);
+            })
+            ->where('updated_at', '>=', Carbon::now('Asia/Jakarta')->subSeconds(6))
+            ->get();
+
+            $updatedInConversation = $recentUpdates->map(function ($msg) use ($myId, $isViewerDeveloper) {
+                return $this->formatMessage($msg, $myId, $isViewerDeveloper);
+            });
         }
 
         $totalUnread = ChatMessage::where('receiver_id', $myId)
             ->where('is_read', false)
             ->count();
 
-        $formatted = $newIncoming->map(function ($msg) use ($myId) {
-            $created = $msg->created_at ? $msg->created_at->setTimezone('Asia/Jakarta') : null;
-            return [
-                'id' => $msg->id,
-                'sender_id' => $msg->sender_id,
-                'receiver_id' => $msg->receiver_id,
-                'is_outgoing' => ($msg->sender_id == $myId),
-                'message' => $msg->message,
-                'attachment_url' => $msg->attachment_url,
-                'attachment_name' => $msg->attachment_name,
-                'attachment_type' => $msg->attachment_type,
-                'is_read' => (bool)$msg->is_read,
-                'time' => $created ? $created->format('H:i') : '',
-                'date' => $created ? $created->format('Y-m-d') : '',
-                'date_label' => $created ? ($created->isToday() ? 'Hari ini' : ($created->isYesterday() ? 'Kemarin' : $created->format('d M Y'))) : '',
-            ];
+        $formatted = $newIncoming->map(function ($msg) use ($myId, $isViewerDeveloper) {
+            return $this->formatMessage($msg, $myId, $isViewerDeveloper);
         });
 
         $targetUserPresence = null;
@@ -531,9 +700,12 @@ class ChatController extends Controller
         return response()->json([
             'status' => 'success',
             'new_messages' => $formatted,
+            'updated_messages' => $updatedInConversation,
             'read_message_ids' => $readUpdates,
             'total_unread' => $totalUnread,
             'target_user_presence' => $targetUserPresence,
+            'is_partner_typing' => $isPartnerTyping,
+            'is_viewer_developer' => $isViewerDeveloper,
         ]);
     }
 }

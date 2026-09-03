@@ -48,7 +48,7 @@
                         <div>
                             <span class="text-muted small text-uppercase fw-semibold">Quotation Forecast</span>
                             <h4 class="fw-bold mb-1 text-primary">Rp {{ number_format(Auth::user()->role == 'Admin' ? $forecastAdmin : $forecast, 0, ',', '.') }}</h4>
-                            <small class="text-muted">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->whereIn('status', ['20', '30', '40', '60', '80'])->count() }} Dokumen Penawaran</small>
+                            <small class="text-muted">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->whereIn('status', ['20', '30', '40', '60', '80'])->count() + (Auth::user()->role == 'Admin' ? $sqDocForecastAdmin : $sqDocForecast) }} Dokumen Penawaran</small>
                         </div>
                     </div>
                 </div>
@@ -69,7 +69,7 @@
                         <div>
                             <span class="text-muted small text-uppercase fw-semibold">Hot Prospects</span>
                             <h4 class="fw-bold mb-1 text-warning">Rp {{ number_format(Auth::user()->role == 'Admin' ? $prospectAdmin : $prospect, 0, ',', '.') }}</h4>
-                            <small class="text-muted">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->where('status', '80')->count() }} Prospek Probabilitas Tinggi</small>
+                            <small class="text-muted">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->where('status', '80')->count() + (Auth::user()->role == 'Admin' ? $sqDocProspectAdmin : $sqDocProspect) }} Prospek Probabilitas Tinggi</small>
                         </div>
                     </div>
                 </div>
@@ -90,7 +90,7 @@
                         <div>
                             <span class="text-muted small text-uppercase fw-semibold">Purchase Order (PO)</span>
                             <h4 class="fw-bold mb-1 text-success">Rp {{ number_format(Auth::user()->role == 'Admin' ? $poAdmin : $po, 0, ',', '.') }}</h4>
-                            <small class="text-muted">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->where('status', '100')->count() }} Transaksi Sukses PO</small>
+                            <small class="text-muted">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->where('status', '100')->count() + (Auth::user()->role == 'Admin' ? $sqDocPoAdmin : $sqDocPo) }} Transaksi Sukses PO</small>
                         </div>
                     </div>
                 </div>
@@ -111,7 +111,7 @@
                         <div>
                             <span class="text-muted small text-uppercase fw-semibold">Loss Orders</span>
                             <h4 class="fw-bold mb-1 text-danger">Rp {{ number_format(Auth::user()->role == 'Admin' ? $lossAdmin : $loss, 0, ',', '.') }}</h4>
-                            <small class="text-muted">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->where('status', '0')->count() }} Penawaran Tidak Deal</small>
+                            <small class="text-muted">{{ (Auth::user()->role == 'Admin' ? $quotationAdmin : $quotation)->where('status', '0')->count() + (Auth::user()->role == 'Admin' ? $sqDocLossAdmin : $sqDocLoss) }} Penawaran Tidak Deal</small>
                         </div>
                     </div>
                 </div>

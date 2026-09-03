@@ -80,21 +80,87 @@
                         </div>
                     </div>
                     <div class="tab-pane fade p-3" id="navs-pills-top-cust" role="tabpanel">
-                        <div class="card-datatable table-responsive pt-0">
-                            <table class="datatable-customer-search table table-bordered" id="dataTableCrm" data-badge="badge-customers">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Company</th>
-                                        <th>R/U</th>
-                                        <th>Status</th>
-                                        <th>Address</th>
-                                        <th>Note</th>
-                                        <th>Last Contact</th>
-                                        <th>Next FU</th>
-                                        <th>Flag</th>
-                                    </tr>
-                                </thead>
-                            </table>
+                        <ul class="nav nav-pills mb-3 gap-2" id="cust-status-tab-nav" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active fw-semibold" data-bs-toggle="tab" data-bs-target="#tab-cust-active" type="button" role="tab">
+                                    <i class="mdi mdi-check-circle-outline me-1 text-success"></i> Active
+                                    <span class="badge rounded-pill bg-success ms-1" id="badge-cust-active">-</span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tab-cust-non-active" type="button" role="tab">
+                                    <i class="mdi mdi-close-circle-outline me-1 text-warning"></i> Non-Active
+                                    <span class="badge rounded-pill bg-warning ms-1" id="badge-cust-non-active">-</span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tab-cust-bangkrupt" type="button" role="tab">
+                                    <i class="mdi mdi-alert-circle-outline me-1 text-danger"></i> Bangkrupt
+                                    <span class="badge rounded-pill bg-danger ms-1" id="badge-cust-bangkrupt">-</span>
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content border-0 p-0 m-0">
+                            {{-- Sub-tab 1: Active --}}
+                            <div class="tab-pane fade show active" id="tab-cust-active" role="tabpanel">
+                                <div class="card-datatable table-responsive pt-0">
+                                    <table class="datatable-customer-active table table-bordered" data-badge="badge-cust-active">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Company</th>
+                                                <th>R/U</th>
+                                                <th>Status</th>
+                                                <th>Area</th>
+                                                <th>Note</th>
+                                                <th>Last Contact</th>
+                                                <th>Next FU</th>
+                                                <th>Flag</th>
+                                            </tr>
+                                        </thead>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {{-- Sub-tab 2: Non-Active --}}
+                            <div class="tab-pane fade" id="tab-cust-non-active" role="tabpanel">
+                                <div class="card-datatable table-responsive pt-0">
+                                    <table class="datatable-customer-non-active table table-bordered" data-badge="badge-cust-non-active">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Company</th>
+                                                <th>R/U</th>
+                                                <th>Status</th>
+                                                <th>Area</th>
+                                                <th>Note</th>
+                                                <th>Last Contact</th>
+                                                <th>Next FU</th>
+                                                <th>Flag</th>
+                                            </tr>
+                                        </thead>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {{-- Sub-tab 3: Bangkrupt --}}
+                            <div class="tab-pane fade" id="tab-cust-bangkrupt" role="tabpanel">
+                                <div class="card-datatable table-responsive pt-0">
+                                    <table class="datatable-customer-bangkrupt table table-bordered" data-badge="badge-cust-bangkrupt">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Company</th>
+                                                <th>R/U</th>
+                                                <th>Status</th>
+                                                <th>Area</th>
+                                                <th>Note</th>
+                                                <th>Last Contact</th>
+                                                <th>Next FU</th>
+                                                <th>Flag</th>
+                                            </tr>
+                                        </thead>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

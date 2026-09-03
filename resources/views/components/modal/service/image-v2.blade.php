@@ -1,4 +1,4 @@
-<form action="{{ route('service-reports.image-v2', $service->id) }}" method="post" enctype="multipart/form-data">
+<form id="formInputImageV2" action="{{ route('service-reports.image-v2', $service->id) }}" method="post" enctype="multipart/form-data">
     @csrf
     <div class="modal modal-xl animate__animated animate__fadeIn" id="inputImageV2" tabindex="-1" style="display: none;"
         aria-hidden="true">
@@ -27,15 +27,18 @@
                                     otomatis dipotong square)</label>
                                 <input class="form-control" type="file" id="formFileMultiplePictV2" name="image[]"
                                     multiple accept="image/*" required>
+                                <div class="form-text text-muted mt-1">
+                                    <i class="mdi mdi-information-outline me-1"></i>Maksimal total <strong>40 MB</strong> per upload. Jika memiliki banyak foto resolusi tinggi, silakan upload bertahap menggunakan tombol <em>"Add More Photos"</em>.
+                                </div>
                                 <div class="row mt-3" id="photo-preview-v2"></div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-label-secondary waves-effect"
+                    <button type="button" class="btn btn-label-secondary waves-effect" id="btnCloseImageV2"
                         data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary waves-effect waves-light">Save changes</button>
+                    <button type="submit" class="btn btn-primary waves-effect waves-light" id="btnSubmitImageV2">Save changes</button>
                 </div>
             </div>
         </div>

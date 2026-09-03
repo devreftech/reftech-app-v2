@@ -6,8 +6,9 @@
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title text-center" id="exampleModalLabel5">Add PPH
-                    </h4>
+                    <h5 class="modal-title fw-bold text-dark" id="exampleModalLabel5">
+                        <i class="mdi mdi-calculator-variant-outline me-1 text-primary"></i> {{ $product->pph > 0 ? 'Edit' : 'Add' }} PPH
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">

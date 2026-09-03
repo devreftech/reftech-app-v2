@@ -271,7 +271,7 @@
             $remaining       = $quote->total - $issuedTotal;
             $isOwnerAdmin    = Auth::user()->role === 'Admin' && $quote->sales?->role === 'Admin';
         @endphp
-        @if (Auth::user()->role !== 'Accounting' && (Auth::user()->role !== 'Admin' || $quote->sales?->role === 'Admin'))
+        @if (Auth::user()->role !== 'Accounting' && Auth::user()->role !== 'Admin')
         <div class="card mb-3 border-0 shadow-sm overflow-hidden">
             <div class="card-header bg-primary bg-gradient py-3 px-4 d-flex align-items-center justify-content-between text-white">
                 <h6 class="card-title mb-0 fw-bold text-white d-flex align-items-center">
@@ -354,6 +354,22 @@
                        class="btn btn-sm btn-label-secondary d-flex align-items-center justify-content-center w-100 mb-2 fw-semibold {{ $quote->po_file ? '' : 'd-none' }}">
                         <i class="mdi mdi-file-pdf-box text-danger me-1"></i> Lihat File PO
                     </a>
+
+                    {{-- Edit No PO — hanya selama belum ada invoice yang diterbitkan.
+                         Setelah invoice terbit, edit No PO pindah ke halaman Invoice (Accounting). --}}
+                    @if ($quote->status === 'po_received' && $quote->po_number && !$quote->cancel_request
+                        && $issuedInvoices->isEmpty()
+                        && (Auth::user()->role === 'Sales' || $isOwnerAdmin))
+                        <div class="d-flex align-items-center justify-content-between rounded-2 px-2 py-1 mb-2" style="background:#f6f7ff; border:1px solid #e5e5ff;">
+                            <span class="text-truncate" style="font-size:10.5px; color:#555;">
+                                <i class="mdi mdi-pound me-1 text-primary"></i>{{ $quote->po_number }}
+                            </span>
+                            <button type="button" class="btn btn-xs btn-label-primary fw-semibold px-2 flex-shrink-0"
+                                data-bs-toggle="modal" data-bs-target="#modalEditPoUnit" style="font-size:10px;">
+                                <i class="mdi mdi-pencil-outline me-1"></i> Edit No PO
+                            </button>
+                        </div>
+                    @endif
 
                     {{-- Selling Contract & SUO (Berdampingan) --}}
                     <div class="row g-2 mt-1">
@@ -613,7 +629,8 @@
         </div>
         @endif
 
-        {{-- Kanban Action Card --}}
+        {{-- Kanban Action Card (Hanya muncul jika status sudah PO Received & bukan role Admin) --}}
+        @if (($quote->status === 'po_received' || $kanbanTask) && Auth::user()->role !== 'Admin')
         <div class="card mb-3">
             <div class="card-header py-3">
                 <h5 class="mb-0">Action</h5>
@@ -631,6 +648,7 @@
                 @endif
             </div>
         </div>
+        @endif
 
         {{-- Payment Card --}}
         @if ($payments->isNotEmpty() || $quote->status === 'po_received')
@@ -793,11 +811,309 @@
             </div>
         </div>
 
+        {{-- Management Fee Card (Pengurang Achievement Sales) --}}
+        @php
+            $quotePreTax = floatval($quote->subtotal ?? 0) - floatval($quote->diskon ?? 0);
+            if ($quotePreTax <= 0) {
+                $quotePreTax = floatval($quote->total ?? 0) - floatval($quote->tax_amount ?? 0);
+            }
+            $quoteFee = floatval($quote->fee ?? 0);
+            $salesAchievement = max(0, $quotePreTax - $quoteFee);
+            $feeTaxData = $quote->fee_tax_data;
+            $itemsWithFee = $quote->details->whereNotIn('type', ['header', 'heading'])->where('fee', '>', 0);
+        @endphp
+        <div class="card mb-3 border-0 shadow-sm overflow-hidden" id="card-management-fee">
+            <div class="card-header bg-light border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="mdi mdi-cash-minus text-warning fs-5"></i>
+                    <h6 class="fw-bold mb-0 text-dark" style="font-size: 13px;">Management Fee</h6>
+                </div>
+                @if ($quoteFee > 0)
+                    <span class="badge bg-warning text-dark px-2.5 py-1 fw-bold" style="font-size: 10.5px;">
+                        Rp {{ number_format($quoteFee, 0, ',', '.') }}
+                    </span>
+                @else
+                    <span class="badge bg-label-secondary px-2 py-1" style="font-size: 10px;">
+                        Rp 0
+                    </span>
+                @endif
+            </div>
+            <div class="card-body p-3">
+                <div class="p-3 rounded-3 mb-3 bg-light-subtle border">
+                    <div class="d-flex justify-content-between align-items-center mb-2" style="font-size: 12px;">
+                        <span class="text-muted">Nilai Quote (Pre-PPN):</span>
+                        <span class="fw-semibold text-dark">Rp {{ number_format($quotePreTax, 0, ',', '.') }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2" style="font-size: 12px;">
+                        <span class="text-muted">Total Fee (Gross):</span>
+                        <span class="fw-bold {{ $quoteFee > 0 ? 'text-danger' : 'text-muted' }}">
+                            {{ $quoteFee > 0 ? '- Rp ' . number_format($quoteFee, 0, ',', '.') : 'Rp 0' }}
+                        </span>
+                    </div>
+                    <div style="border-top: 1px dashed #dcdcdc; margin: 8px 0;"></div>
+                    <div class="d-flex justify-content-between align-items-center mb-2" style="font-size: 12.5px;">
+                        <span class="fw-bold text-dark">Omset Masuk Sales:</span>
+                        <span class="fw-bolder text-success fs-6">Rp {{ number_format($salesAchievement, 0, ',', '.') }}</span>
+                    </div>
+
+                    @if ($quoteFee > 0)
+                    <div style="border-top: 1px solid #e0e0e0; margin: 8px 0 6px;"></div>
+                    <div class="p-2 rounded bg-warning-subtle border border-warning-subtle text-dark" style="font-size: 11px;">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted">Pajak Fee ({{ $feeTaxData->tax_rate_label }}):</span>
+                            <span class="text-danger fw-semibold">{{ $feeTaxData->tax_amount > 0 ? '- Rp ' . number_format($feeTaxData->tax_amount, 0, ',', '.') : 'Rp 0 (Bebas Pajak)' }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-dark">Nett Fee Diterima:</span>
+                            <span class="fw-bold text-primary">Rp {{ number_format($feeTaxData->net_fee, 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+                    @endif
+                </div>
+
+                @if ($quote->fee_note)
+                    <div class="p-2 mb-3 rounded-2 bg-warning-subtle text-warning-emphasis small" style="font-size: 11.5px; line-height: 1.4;">
+                        <div class="fw-bold mb-1"><i class="mdi mdi-text-box-outline me-1"></i>Catatan Fee:</div>
+                        <div class="text-dark">{{ $quote->fee_note }}</div>
+                    </div>
+                @endif
+
+                <div class="text-muted small" style="font-size: 11px; line-height: 1.4;">
+                    <i class="mdi mdi-information-outline me-1 text-primary"></i>
+                    <em>Nominal penawaran &amp; invoice ke customer tetap normal <strong>Rp {{ number_format($quotePreTax, 0, ',', '.') }}</strong> (sebelum PPN). Fee hanya membagi potongan omset sales.</em>
+                </div>
+            </div>
+            @if (in_array(Auth::user()->role, ['Sales', 'Sales Manager']))
+            <div class="card-footer p-3 bg-transparent border-top d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center flex-grow-1 waves-effect"
+                    data-bs-toggle="modal" data-bs-target="#modalManagementFee">
+                    <i class="mdi mdi-pencil-outline me-1"></i> {{ $quoteFee > 0 ? 'Edit Fee Item' : 'Input Fee Item' }}
+                </button>
+                @if ($quoteFee > 0)
+                    <form action="{{ route('unit-quotation.delete-fee', $quote->id) }}" method="POST" class="d-inline" id="form-delete-fee">
+                        @csrf
+                        @method('DELETE')
+                        <button type="button" class="btn btn-sm btn-icon btn-outline-danger btn-delete-fee-confirm" title="Hapus Fee">
+                            <i class="mdi mdi-trash-can-outline"></i>
+                        </button>
+                    </form>
+                @endif
+            </div>
+            @endif
+        </div>
+
 
 
     </div>
     {{-- END RIGHT --}}
 
+{{-- Modal Management Fee (Pembagian per Item & Kebijakan Pajak 2026) --}}
+@php
+    $modalItems = $quote->details->whereNotIn('type', ['header', 'heading']);
+    $maxFeeAllowed = round($quotePreTax * 0.10, 2);
+    $feePercent = $quotePreTax > 0 ? round(($quoteFee / $quotePreTax) * 100, 2) : 0;
+@endphp
+<div class="modal fade" id="modalManagementFee" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl" style="max-width: 1100px;">
+        <div class="modal-content">
+            <div class="modal-header border-bottom py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar avatar-sm bg-label-warning rounded-circle d-flex align-items-center justify-content-center">
+                        <i class="mdi mdi-cash-minus fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">Kelola Management Fee Penawaran</h5>
+                        <span class="text-muted small" style="font-size: 11px;">Alokasikan nominal fee per item dan perhitungan otomatis pajak fee (Maksimal 10% dari Pre-PPN)</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('unit-quotation.update-fee', $quote->id) }}" method="POST" id="form-management-fee">
+                @csrf
+                <div class="modal-body p-3 p-md-4">
+                    {{-- Alert Kebijakan Fee 2026 & Batas Maksimal 10% --}}
+                    <div class="alert alert-primary py-2.5 px-3 mb-3" role="alert">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="mdi mdi-information-outline fs-4 flex-shrink-0 mt-0.5"></i>
+                            <div class="small w-100">
+                                <div class="fw-bold mb-1"><i class="mdi mdi-shield-check-outline me-1"></i>Kebijakan Pajak &amp; Batas Management Fee 2026:</div>
+                                <div class="d-flex flex-wrap gap-2 align-items-center mb-1">
+                                    <span class="badge bg-white text-dark border fw-medium px-2 py-1">&lt; Rp 1,5 Juta : <strong>Pajak 0%</strong> (Bebas Pajak)</span>
+                                    <span class="badge bg-white text-dark border fw-medium px-2 py-1">Rp 1,5 Juta - Rp 5 Juta : <strong>Pajak 3.68%</strong></span>
+                                    <span class="badge bg-white text-dark border fw-medium px-2 py-1">&gt; Rp 5 Juta : <strong>Pajak 10%</strong></span>
+                                    <span class="badge bg-warning text-dark border fw-semibold px-2 py-1"><i class="mdi mdi-lock-outline me-1"></i>Batas Maksimal Total Fee: <strong>10%</strong> (Maks. Rp {{ number_format($maxFeeAllowed, 0, ',', '.') }})</span>
+                                </div>
+                                <div class="text-muted" style="font-size: 10.5px;">
+                                    * Nominal penawaran &amp; invoice customer tetap normal <strong>Rp {{ number_format($quotePreTax, 0, ',', '.') }}</strong> (sebelum PPN). Fee hanya memotong pencatatan omset sales.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Warning jika Fee melebihi 10% --}}
+                    <div id="modal-fee-max-warning" class="alert alert-danger py-2 px-3 mb-3 {{ $quoteFee > ($maxFeeAllowed + 1) ? 'd-flex' : 'd-none' }} align-items-center gap-2" role="alert">
+                        <i class="mdi mdi-alert-octagon fs-4 flex-shrink-0"></i>
+                        <div class="small">
+                            <strong>Perhatian:</strong> Total Management Fee melebihi batas maksimal <strong>10%</strong> dari nilai penawaran (Batas Maksimal: <strong>Rp {{ number_format($maxFeeAllowed, 0, ',', '.') }}</strong>). Harap kurangi nominal fee per item sebelum menyimpan.
+                        </div>
+                    </div>
+
+                    {{-- Table Form Input Fee per Item --}}
+                    <div class="card border mb-3 overflow-hidden shadow-none">
+                        <div class="card-header bg-light py-2 px-3 d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-dark" style="font-size: 12px;">
+                                <i class="mdi mdi-format-list-numbered me-1"></i> Rincian Item Penawaran &amp; Alokasi Fee
+                            </span>
+                            <span class="badge bg-primary" style="font-size: 10.5px;">{{ $modalItems->count() }} Item</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered m-0 align-middle" style="font-size: 12px;">
+                                <thead class="table-light" style="font-size: 11px;">
+                                    <tr>
+                                        <th class="text-center py-2" style="width: 4%;">No</th>
+                                        <th class="py-2" style="width: 36%;">Deskripsi Item</th>
+                                        <th class="text-center py-2" style="width: 10%;">Qty</th>
+                                        <th class="text-end py-2" style="width: 16%;">Harga Jual (IDR)</th>
+                                        <th class="text-center py-2" style="width: 20%;">Fee Item (IDR)</th>
+                                        <th class="text-end py-2" style="width: 14%;">Masuk Sales</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @php $noModal = 1; @endphp
+                                    @forelse ($modalItems as $item)
+                                        @php
+                                            $itemTitle = $item->label ?: ($item->unit ? $item->unit->brand . ' ' . $item->unit->sku : 'Item');
+                                            $itemSubtitle = '';
+                                            if ($item->equivalent) {
+                                                $itemSubtitle = 'Brand: ' . $item->equivalent->brand . ' | PN: ' . $item->equivalent->pn;
+                                            } elseif ($item->description) {
+                                                $itemSubtitle = \Illuminate\Support\Str::limit($item->description, 80);
+                                            }
+                                            $itemAmount = floatval($item->amount ?? 0);
+                                            if ($itemAmount <= 0) {
+                                                $itemAmount = floatval($item->price ?? 0) * floatval($item->qty ?? 1);
+                                            }
+                                            $itemFee = floatval($item->fee ?? 0);
+                                            $itemNet = max(0, $itemAmount - $itemFee);
+                                        @endphp
+                                        <tr class="modal-fee-row" data-detail-id="{{ $item->id }}" data-amount="{{ $itemAmount }}">
+                                            <td class="text-center text-muted fw-semibold">{{ $noModal++ }}</td>
+                                            <td>
+                                                <div class="fw-semibold text-dark" title="{{ $itemTitle }}">
+                                                    {{ $itemTitle }}
+                                                </div>
+                                                @if ($itemSubtitle)
+                                                    <div class="text-muted small" style="font-size: 11px;">{{ $itemSubtitle }}</div>
+                                                @endif
+                                            </td>
+                                            <td class="text-center fw-semibold text-dark" style="font-size: 11.5px;">
+                                                {{ (int)$item->qty }} {{ $item->info_qty ?? 'Unit' }}
+                                            </td>
+                                            <td class="text-end fw-semibold text-dark">
+                                                Rp {{ number_format($itemAmount, 0, ',', '.') }}
+                                            </td>
+                                            <td>
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text px-1.5 fw-bold" style="font-size: 11px;">Rp</span>
+                                                    <input type="text"
+                                                        class="form-control form-control-sm text-end text-danger fw-bold item-fee-input"
+                                                        name="item_fee[{{ $item->id }}]"
+                                                        data-item-id="{{ $item->id }}"
+                                                        data-item-amount="{{ $itemAmount }}"
+                                                        value="{{ $itemFee > 0 ? number_format($itemFee, 0, ',', '.') : '' }}"
+                                                        placeholder="0"
+                                                        autocomplete="off">
+                                                </div>
+                                            </td>
+                                            <td class="text-end fw-bold text-success item-net-sales-display">
+                                                Rp {{ number_format($itemNet, 0, ',', '.') }}
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-3">Tidak ada item penawaran.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- Summary Total & Tax Realtime --}}
+                    <div class="p-3 rounded-3 bg-light border mb-3">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-6 col-md-3">
+                                <div class="p-2 rounded bg-white border text-center">
+                                    <span class="text-muted small d-block" style="font-size: 10px;">Total Quote (Pre-PPN)</span>
+                                    <span class="fw-bold text-dark" style="font-size: 12.5px;">Rp {{ number_format($quotePreTax, 0, ',', '.') }}</span>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="p-2 rounded bg-white border text-center border-warning-subtle">
+                                    <span class="text-muted small d-block" style="font-size: 10px;">Total Fee (Gross)</span>
+                                    <span class="fw-bold text-danger" id="modal-total-fee-display" style="font-size: 12.5px;">
+                                        {{ $quoteFee > 0 ? 'Rp ' . number_format($quoteFee, 0, ',', '.') : 'Rp 0' }}
+                                    </span>
+                                    <div class="text-muted small" style="font-size: 9.5px;" id="modal-fee-percent-display">
+                                        {{ $feePercent }}% dari quote (Maks. 10%)
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="p-2 rounded bg-white border text-center border-primary-subtle">
+                                    <span class="text-muted small d-block" style="font-size: 10px;" id="modal-tax-rate-label">Pajak Fee ({{ $feeTaxData->tax_rate_label }})</span>
+                                    <span class="fw-bold text-danger" id="modal-fee-tax-display" style="font-size: 12.5px;">
+                                        {{ $feeTaxData->tax_amount > 0 ? '- Rp ' . number_format($feeTaxData->tax_amount, 0, ',', '.') : 'Rp 0' }}
+                                    </span>
+                                    <div class="text-muted small" style="font-size: 9.5px;" id="modal-net-fee-received-display">Nett Fee: <strong class="text-primary">Rp {{ number_format($feeTaxData->net_fee, 0, ',', '.') }}</strong></div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="p-2 rounded bg-white border text-center border-success-subtle">
+                                    <span class="text-muted small d-block" style="font-size: 10px;">Omset Masuk Sales</span>
+                                    <span class="fw-bolder text-success" id="modal-net-sales-display" style="font-size: 12.5px;">
+                                        Rp {{ number_format($salesAchievement, 0, ',', '.') }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="fee" id="hidden-total-fee" value="{{ $quoteFee }}">
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold" for="input-fee-bank-name">Nama Bank Tujuan</label>
+                            <input type="text" class="form-control form-control-sm" id="input-fee-bank-name" name="fee_bank_name"
+                                value="{{ $quote->fee_bank_name }}" placeholder="Contoh: BCA, Mandiri, BRI">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold" for="input-fee-bank-account">Nomor Rekening</label>
+                            <input type="text" class="form-control form-control-sm" id="input-fee-bank-account" name="fee_bank_account"
+                                value="{{ $quote->fee_bank_account }}" placeholder="Contoh: 1234567890">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold" for="input-fee-bank-holder">Nama Pemilik Rekening (A/N)</label>
+                            <input type="text" class="form-control form-control-sm" id="input-fee-bank-holder" name="fee_bank_holder"
+                                value="{{ $quote->fee_bank_holder }}" placeholder="Contoh: John Doe">
+                        </div>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold" for="input-fee-note">Keterangan / Catatan Fee <span class="text-muted small">(Opsional)</span></label>
+                        <textarea class="form-control" id="input-fee-note" name="fee_note" rows="2"
+                            placeholder="Contoh: Pembagian fee mediator / komisi referensi pihak ketiga...">{{ $quote->fee_note }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top py-2 px-3">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary" id="btn-submit-management-fee" {{ $quoteFee > ($maxFeeAllowed + 1) ? 'disabled' : '' }}>
+                        <i class="mdi mdi-content-save-outline me-1"></i> Simpan Pembagian Fee
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 {{-- Modal Upload PO --}}
@@ -883,6 +1199,44 @@
         </div>
     </div>
 </div>
+
+{{-- Modal Edit No PO (Sales — hanya sebelum invoice diterbitkan) --}}
+@if ($quote->status === 'po_received' && $quote->po_number && !$quote->cancel_request
+    && $issuedInvoices->isEmpty()
+    && (Auth::user()->role === 'Sales' || $isOwnerAdmin))
+<div class="modal fade" id="modalEditPoUnit" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="mdi mdi-pencil-outline me-1"></i> Edit No PO</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('unit-quotation.update-po-number', $quote->id) }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">No. PO <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="po_number"
+                               value="{{ old('po_number', $quote->po_number) }}"
+                               placeholder="Masukkan nomor PO dari customer" maxlength="100" required>
+                    </div>
+                    <div class="alert alert-warning mb-0 py-2" style="font-size:12px;">
+                        <i class="mdi mdi-information-outline me-1"></i>
+                        Perubahan hanya bisa dilakukan selama <strong>belum ada invoice yang diterbitkan</strong>.
+                        Setelah invoice terbit, edit No PO dilakukan lewat halaman Invoice (Accounting).
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="mdi mdi-content-save-outline me-1"></i> Simpan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 
 {{-- Modal Create Selling Contract / Confirm Order (Admin/Accounting) --}}
 @if (!isset($sellingContract) || !$sellingContract)
@@ -1000,14 +1354,39 @@
                                 @endforeach
                             </select>
                         </div>
+
                         <div class="mb-3">
+                            <label class="form-label fw-semibold d-block">Mode</label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="mode" id="kanban-mode-new" value="new" checked>
+                                <label class="form-check-label" for="kanban-mode-new">Buat kartu baru</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="mode" id="kanban-mode-link" value="link">
+                                <label class="form-check-label" for="kanban-mode-link">Hubungkan ke kartu yang sudah ada</label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3" id="kanban-column-wrap">
                             <label class="form-label fw-semibold">Kolom <span class="text-danger">*</span></label>
                             <select class="form-select" name="column_id" id="kanban-column-select" required disabled>
                                 <option value="">-- Pilih Board dulu --</option>
                             </select>
                         </div>
-                        <p class="text-muted small mb-0">
+
+                        <div class="mb-3" id="kanban-existing-task-wrap" style="display: none;">
+                            <label class="form-label fw-semibold">Kartu Tujuan <span class="text-danger">*</span></label>
+                            <select class="form-select" name="task_id" id="kanban-existing-task-select" disabled>
+                                <option value="">-- Pilih Board dulu --</option>
+                            </select>
+                            <small class="text-muted">Hanya kartu yang belum tertaut ke quotation/PO yang bisa dipilih.</small>
+                        </div>
+
+                        <p class="text-muted small mb-0" id="kanban-mode-new-note">
                             Kartu akan dibuat dengan judul "{{ $quote->no_quote }} — {{ $quote->client?->company }}" dan langsung tautkan ke quotation ini.
+                        </p>
+                        <p class="text-muted small mb-0" id="kanban-mode-link-note" style="display: none;">
+                            Quotation ini akan ditautkan ke kartu yang dipilih. Biaya & monitoring yang sudah ada di kartu tetap ikut.
                         </p>
                     @endif
                 </div>
@@ -1412,28 +1791,68 @@
             $('#add-payment-escrow-channel').val('');
         }
     });
-    // Post to Kanban — kolom cuma bisa dipilih setelah board-nya dipilih, karena
-    // tiap board punya set kolom sendiri-sendiri (fetch via kanban.boards.data).
+    // Post to Kanban — kolom / kartu tujuan cuma bisa dipilih setelah board-nya
+    // dipilih (tiap board punya set kolom & kartu sendiri).
+    function kanbanPtkMode() {
+        return $('input[name="mode"]:checked').val() || 'new';
+    }
+    function applyKanbanPtkMode() {
+        var isLink = kanbanPtkMode() === 'link';
+        $('#kanban-column-wrap').toggle(!isLink);
+        $('#kanban-column-select').prop('required', !isLink);
+        $('#kanban-existing-task-wrap').toggle(isLink);
+        $('#kanban-existing-task-select').prop('required', isLink);
+        $('#kanban-mode-new-note').toggle(!isLink);
+        $('#kanban-mode-link-note').toggle(isLink);
+        $('#kanban-board-select').trigger('change');
+    }
+    $('input[name="mode"]').on('change', applyKanbanPtkMode);
+
     $('#kanban-board-select').on('change', function () {
         var boardId = $(this).val();
+        var isLink = kanbanPtkMode() === 'link';
         var $columnSelect = $('#kanban-column-select');
-        $columnSelect.prop('disabled', true).html('<option value="">Memuat...</option>');
-        if (!boardId) {
-            $columnSelect.html('<option value="">-- Pilih Board dulu --</option>');
-            return;
-        }
-        $.get('/kanban/boards/' + boardId + '/data', function (columns) {
-            var options = '<option value="">-- Pilih Kolom --</option>';
-            (columns || []).forEach(function (col) {
-                options += '<option value="' + col.id + '">' + col.title + '</option>';
+        var $taskSelect = $('#kanban-existing-task-select');
+
+        if (!isLink) {
+            $columnSelect.prop('disabled', true).html('<option value="">Memuat...</option>');
+            if (!boardId) {
+                $columnSelect.html('<option value="">-- Pilih Board dulu --</option>');
+                return;
+            }
+            $.get('/kanban/boards/' + boardId + '/data', function (columns) {
+                var options = '<option value="">-- Pilih Kolom --</option>';
+                (columns || []).forEach(function (col) {
+                    options += '<option value="' + col.id + '">' + col.title + '</option>';
+                });
+                $columnSelect.html(options).prop('disabled', false);
+            }).fail(function () {
+                $columnSelect.html('<option value="">Gagal memuat kolom</option>');
             });
-            $columnSelect.html(options).prop('disabled', false);
-        }).fail(function () {
-            $columnSelect.html('<option value="">Gagal memuat kolom</option>');
-        });
+        } else {
+            $taskSelect.prop('disabled', true).html('<option value="">Memuat...</option>');
+            if (!boardId) {
+                $taskSelect.html('<option value="">-- Pilih Board dulu --</option>');
+                return;
+            }
+            $.get('/smart-quote/kanban/linkable-tasks/' + boardId, function (res) {
+                var options = '<option value="">-- Pilih Kartu --</option>';
+                (res.tasks || []).forEach(function (t) {
+                    options += '<option value="' + t.id + '">[' + t.column + '] ' + t.title + '</option>';
+                });
+                if (!(res.tasks || []).length) {
+                    options = '<option value="">Tidak ada kartu yang bisa ditautkan</option>';
+                }
+                $taskSelect.html(options).prop('disabled', false);
+            }).fail(function () {
+                $taskSelect.html('<option value="">Gagal memuat kartu</option>');
+            });
+        }
     });
     $('#modalPostToKanban').on('hidden.bs.modal', function () {
-        $('#kanban-board-select').val('').trigger('change');
+        $('#kanban-mode-new').prop('checked', true);
+        $('#kanban-board-select').val('');
+        applyKanbanPtkMode();
     });
 
     $('#modalAddPayment').on('show.bs.modal', function () {
@@ -1960,14 +2379,86 @@
         }
     });
 
-    // Initialize Tooltips for Stock Badges
-    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
-        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
-            new bootstrap.Tooltip(el);
+    // Kebijakan Pajak Fee 2026 Helper
+    function getFeeTax(fee) {
+        if (fee < 1500000) {
+            return { rate: 0, label: '0%', tax: 0, net: fee };
+        } else if (fee <= 5000000) {
+            var tax = Math.round(fee * 0.0368);
+            return { rate: 0.0368, label: '3.68%', tax: tax, net: fee - tax };
+        } else {
+            var tax = Math.round(fee * 0.10);
+            return { rate: 0.10, label: '10%', tax: tax, net: fee - tax };
+        }
+    }
+
+    // Management Fee Modal: Live recalculation per item & total & tax 2026
+    $(document).on('input', '.item-fee-input', function () {
+        var raw = $(this).val().replace(/\D/g, '');
+        var itemFee = parseFloat(raw) || 0;
+        $(this).val(itemFee > 0 ? itemFee.toLocaleString('id-ID') : '');
+
+        var row = $(this).closest('.modal-fee-row');
+        var itemAmount = parseFloat(row.data('amount')) || 0;
+        var itemNet = Math.max(0, itemAmount - itemFee);
+        row.find('.item-net-sales-display').text('Rp ' + itemNet.toLocaleString('id-ID'));
+
+        // Recalculate total fee
+        var totalFee = 0;
+        $('.item-fee-input').each(function () {
+            var val = parseFloat($(this).val().replace(/\D/g, '')) || 0;
+            totalFee += val;
         });
-    }
-    if (typeof $.fn.tooltip !== 'undefined') {
-        $('[data-bs-toggle="tooltip"]').tooltip({ html: true });
-    }
+
+        var preTax = {{ $quotePreTax }};
+        var maxAllowed = {{ $maxFeeAllowed }};
+        var netGrand = Math.max(0, preTax - totalFee);
+        var taxInfo = getFeeTax(totalFee);
+        var percent = preTax > 0 ? ((totalFee / preTax) * 100).toFixed(2) : 0;
+
+        $('#hidden-total-fee').val(totalFee);
+        $('#modal-total-fee-display').text(totalFee > 0 ? 'Rp ' + totalFee.toLocaleString('id-ID') : 'Rp 0');
+        $('#modal-fee-percent-display').text(percent + '% dari quote (Maks. 10%)');
+        $('#modal-tax-rate-label').text('Pajak Fee (' + taxInfo.label + ')');
+        $('#modal-fee-tax-display').text(taxInfo.tax > 0 ? '- Rp ' + taxInfo.tax.toLocaleString('id-ID') : 'Rp 0 (Bebas Pajak)');
+        $('#modal-net-fee-received-display').html('Nett Fee: <strong class="text-primary">Rp ' + taxInfo.net.toLocaleString('id-ID') + '</strong>');
+        $('#modal-net-sales-display').text('Rp ' + netGrand.toLocaleString('id-ID'));
+
+        // Check 10% limit
+        if (totalFee > (maxAllowed + 1)) {
+            $('#modal-fee-max-warning').removeClass('d-none').addClass('d-flex');
+            $('#btn-submit-management-fee').prop('disabled', true);
+            $('#modal-total-fee-display').addClass('text-danger fw-bolder');
+        } else {
+            $('#modal-fee-max-warning').removeClass('d-flex').addClass('d-none');
+            $('#btn-submit-management-fee').prop('disabled', false);
+        }
+    });
+
+    $(document).on('click', '.btn-delete-fee-confirm', function (e) {
+        e.preventDefault();
+        var form = $(this).closest('form');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Hapus Management Fee?',
+                text: 'Nominal fee akan di-reset menjadi Rp 0 dan achievement sales kembali penuh.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Hapus Fee',
+                cancelButtonText: 'Batal',
+                customClass: {
+                    confirmButton: 'btn btn-danger me-3 waves-effect waves-light',
+                    cancelButton: 'btn btn-label-secondary waves-effect'
+                },
+                buttonsStyling: false,
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        } else if (confirm('Hapus Management Fee?')) {
+            form.submit();
+        }
+    });
 </script>
 @endpush

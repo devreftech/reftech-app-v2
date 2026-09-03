@@ -16,6 +16,8 @@ use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
 
+use App\Models\SubtitleQuotation;
+
 class PaymentController extends Controller
 {
     protected PurchaseRequestService $prService;
@@ -38,25 +40,11 @@ class PaymentController extends Controller
             ->where('quotation.tax', '11')
             ->sum('harga_total');
         $fullPayment = Invoice::join('quotation', 'quotation.id', '=', 'invoice.id_quotation')
-            ->leftJoin(
-                DB::raw('(SELECT id_quotation, SUM(amount) as total_payment 
-                  FROM payment 
-                  GROUP BY id_quotation) as pay'),
-                'quotation.id',
-                '=',
-                'pay.id_quotation'
-            )
             ->where('status', '100')
             ->where('invoice.flag', 'Reftech')
             ->where('quotation.tax', '11')
-            ->sum(DB::raw('IFNULL(pay.total_payment, 0)'));
+            ->sum('payment.amount');
         $sisa = $fullInvoice - $fullPayment;
-
-        $lastPaymentSub = DB::table('payment as p1')
-            ->select('p1.id', 'p1.id_quotation', 'p1.amount', 'p1.type', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment GROUP BY id_quotation) as p2'), 'p1.id', '=', DB::raw('p2.max_id'));
-        // dd($lastPaymentSub);
-        // dd(DB::select('SELECT p1.* FROM payment p1 INNER JOIN (SELECT id_quotation, MAX(id) as max_id FROM payment GROUP BY id_quotation) p2 ON p1.id = p2.max_id'));
         // dd(DB::select('SELECT id_quotation, SUM(amount) as total_payment FROM payment GROUP BY id_quotation'));
         return view('pages.accounting.payment.ahmad.index-invoice', compact('fullInvoice', 'fullPayment', 'sisa'));
     }
@@ -64,29 +52,15 @@ class PaymentController extends Controller
     {
         $fullInvoice = Invoice::join('quotation', 'quotation.id', '=', 'invoice.id_quotation')
             ->where('status', '100')
-            ->where('invoice.flag', 'Reftech')
+            ->where('invoice.flag', 'Kojisha')
             ->where('quotation.tax', '11')
             ->sum('harga_total');
         $fullPayment = Invoice::join('quotation', 'quotation.id', '=', 'invoice.id_quotation')
-            ->leftJoin(
-                DB::raw('(SELECT id_quotation, SUM(amount) as total_payment 
-                  FROM payment 
-                  GROUP BY id_quotation) as pay'),
-                'quotation.id',
-                '=',
-                'pay.id_quotation'
-            )
             ->where('status', '100')
-            ->where('invoice.flag', 'Reftech')
+            ->where('invoice.flag', 'Kojisha')
             ->where('quotation.tax', '11')
-            ->sum(DB::raw('IFNULL(pay.total_payment, 0)'));
+            ->sum('payment.amount');
         $sisa = $fullInvoice - $fullPayment;
-
-        $lastPaymentSub = DB::table('payment as p1')
-            ->select('p1.id', 'p1.id_quotation', 'p1.amount', 'p1.type', 'p1.due_date', 'p1.method', 'p1.created_at')
-            ->join(DB::raw('(SELECT id_quotation, MAX(id) as max_id FROM payment GROUP BY id_quotation) as p2'), 'p1.id', '=', DB::raw('p2.max_id'));
-        // dd($lastPaymentSub);
-        // dd(DB::select('SELECT p1.* FROM payment p1 INNER JOIN (SELECT id_quotation, MAX(id) as max_id FROM payment GROUP BY id_quotation) p2 ON p1.id = p2.max_id'));
         // dd(DB::select('SELECT id_quotation, SUM(amount) as total_payment FROM payment GROUP BY id_quotation'));
         return view('pages.accounting.payment.rayi.index-invoice', compact('fullInvoice', 'fullPayment', 'sisa'));
     }
@@ -100,8 +74,9 @@ class PaymentController extends Controller
 
         $quote = Quotation::find($invoice->id_quotation);
         $dQuote = DetailQuotation::where('id_quotation', $quote->id)->get();
+        $subQuote = SubtitleQuotation::with('detail')->where('id_quotation', $quote->id)->get();
         $payment = Payment::where('id_quotation', $quote->id)->get();
-        return view('pages.accounting.payment.detail-invoice', compact('invoice', 'quote', 'dQuote', 'payment'));
+        return view('pages.accounting.payment.detail-invoice', compact('invoice', 'quote', 'dQuote', 'subQuote', 'payment'));
     }
     public function index_payment()
     {

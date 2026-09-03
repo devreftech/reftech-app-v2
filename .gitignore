@@ -28,4 +28,4 @@ public/asset/machines/
 *.sql.gz
 *.gz
 storage/scratch/
-
+CLAUDE.md

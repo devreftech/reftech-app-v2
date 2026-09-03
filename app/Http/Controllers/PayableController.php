@@ -17,7 +17,22 @@ class PayableController extends Controller
 
     public function index_invoice()
     {
-        return view('pages.finance.payable.index-invoice');
+        $base = ProductIn::whereNotNull('invoice');
+        $totalCount = $base->count();
+        $totalAmount = $base->sum('total');
+        $paidCount = $base->clone()->where('accept', '1')->count();
+        $paidAmount = $base->clone()->where('accept', '1')->sum('total');
+        $unpaidCount = $base->clone()->where('accept', '0')->count();
+        $unpaidAmount = $base->clone()->where('accept', '0')->sum('total');
+
+        return view('pages.finance.payable.index-invoice', compact(
+            'totalCount',
+            'totalAmount',
+            'paidCount',
+            'paidAmount',
+            'unpaidCount',
+            'unpaidAmount'
+        ));
     }
     public function show_invoice($id)
     {
@@ -56,11 +71,22 @@ class PayableController extends Controller
     }
     public function index_receipt()
     {
-        $product = ProductIn::all();
-        $receipt = $product->sum('total');
-        $paid = $product->where('accept', '1')->sum('total');
-        $unpaid = $product->where('accept', '0')->sum('total');
-        return view('pages.finance.payable.index-receipt', compact('receipt', 'paid', 'unpaid'));
+        $base = ProductIn::whereNotNull('invoice');
+        $totalCount = $base->count();
+        $receipt = $base->sum('total');
+        $paidCount = $base->clone()->where('accept', '1')->count();
+        $paid = $base->clone()->where('accept', '1')->sum('total');
+        $unpaidCount = $base->clone()->where('accept', '0')->count();
+        $unpaid = $base->clone()->where('accept', '0')->sum('total');
+
+        return view('pages.finance.payable.index-receipt', compact(
+            'totalCount',
+            'receipt',
+            'paidCount',
+            'paid',
+            'unpaidCount',
+            'unpaid'
+        ));
     }
     public function show_receipt($id)
     {
@@ -178,6 +204,43 @@ class PayableController extends Controller
         if ($paymentSave) {
             return redirect('/payable/receipt/' . $id)->with('success', 'Date Telah Diubah!');
         }
+    }
+
+    public function confirmReceipt(Request $request, $id)
+    {
+        $product = ProductIn::findOrFail($id);
+        $product->accept = '1';
+        if ($request->filled('date_payment')) {
+            $product->date_payment = $request->date_payment;
+        } elseif (!$product->date_payment) {
+            $product->date_payment = Carbon::now()->toDateString();
+        }
+        $product->save();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Pembayaran berhasil dikonfirmasi (PAID).'
+            ]);
+        }
+
+        return redirect()->route('payable.show_receipt', $id)->with('success', 'Pembayaran berhasil dikonfirmasi (PAID).');
+    }
+
+    public function unconfirmReceipt(Request $request, $id)
+    {
+        $product = ProductIn::findOrFail($id);
+        $product->accept = '0';
+        $product->save();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Konfirmasi pembayaran berhasil dibatalkan (UNPAID).'
+            ]);
+        }
+
+        return redirect()->route('payable.show_receipt', $id)->with('success', 'Konfirmasi pembayaran berhasil dibatalkan (UNPAID).');
     }
 
     private function terbilang($number)

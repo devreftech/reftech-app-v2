@@ -10,6 +10,8 @@ use App\Models\Expense;
 use App\Models\ExpenseInvoice;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\PendingPO;
+use App\Models\Pic;
 use App\Models\ProductOut;
 use App\Models\Prospect;
 use App\Models\Quotation;
@@ -204,6 +206,7 @@ class InvoiceController extends Controller
         $rule = [
             'invoice' => 'required',
             'payment' => 'required',
+            'no_po'   => 'nullable|string|max:100',
         ];
         $message = [
             'invoice.required' => 'Field invoice Wajib Diisi',
@@ -211,16 +214,28 @@ class InvoiceController extends Controller
         ];
         $this->validate($request, $rule, $message);
         $invoice = Invoice::findOrFail($id);
-        
+
         $invoice->no_invoice = $request->invoice;
         $invoice->term = $request->payment;
 
         if ($invoice->id_unit_quotation) {
+            if ($request->filled('no_po')) {
+                $invoice->no_po = trim($request->no_po);
+            }
             $invoice->invoiceTo = '1';
             $invoiceSave = $invoice->save();
             if ($invoiceSave) {
                 $quote = UnitQuotation::find($invoice->id_unit_quotation);
                 if ($quote) {
+                    // No PO itu satu per quote — rambatkan ke Smart Quote & invoice
+                    // lain pada quote yang sama biar konsisten.
+                    if ($request->filled('no_po') && $quote->po_number !== trim($request->no_po)) {
+                        $quote->po_number = trim($request->no_po);
+                        $quote->save();
+                        Invoice::where('id_unit_quotation', $quote->id)
+                            ->where('id', '!=', $invoice->id)
+                            ->update(['no_po' => trim($request->no_po)]);
+                    }
                     $this->syncMonitoringDocumentCardUnit($quote);
                 }
                 return redirect()->route('invoice.show_unit', $id)->with('success', 'Invoice has been updated');
@@ -805,17 +820,19 @@ class InvoiceController extends Controller
 
     public function label_detail($id)
     {
-        $invoice = Invoice::find($id);
-        $quote = Quotation::find($invoice->id_quotation);
+        $invoice = Invoice::findOrFail($id);
+        $quote = Quotation::with(['pic.client'])->findOrFail($invoice->id_quotation);
+        $pendingPO = PendingPO::where('id_quotation', $quote->id)->with(['doc_recipient', 'shipping_recipient'])->first();
 
-        return view("pages.accounting.label.detail", compact('quote', 'invoice'));
+        return view("pages.accounting.label.detail", compact('quote', 'invoice', 'pendingPO'));
     }
     public function label_print($id)
     {
-        $invoice = Invoice::find($id);
-        $quote = Quotation::find($invoice->id_quotation);
+        $invoice = Invoice::findOrFail($id);
+        $quote = Quotation::with(['pic.client'])->findOrFail($invoice->id_quotation);
+        $pendingPO = PendingPO::where('id_quotation', $quote->id)->with(['doc_recipient', 'shipping_recipient'])->first();
 
-        return view("pages.accounting.label.detail-print", compact('quote', 'invoice'));
+        return view("pages.accounting.label.detail-print", compact('quote', 'invoice', 'pendingPO'));
     }
 
     public function add_pph(Request $request, $id)
@@ -965,6 +982,8 @@ class InvoiceController extends Controller
             }
             $payment->save();
 
+            $this->prService->evaluatePaymentGate($payment, Auth::id());
+
             return redirect()->route('invoice.show_unit', $id)
                 ->with('success', 'Tanggal jatuh tempo berhasil disimpan: ' . $dueDate->format('d M Y'));
         } else {
@@ -994,6 +1013,8 @@ class InvoiceController extends Controller
                 $payment->note = $request->note;
             }
             $payment->save();
+
+            $this->prService->evaluatePaymentGate($payment, Auth::id());
 
             return redirect()->route('invoice.show', $id)
                 ->with('message', 'Tanggal jatuh tempo berhasil disimpan: ' . $dueDate->format('d M Y'));
@@ -1127,16 +1148,148 @@ class InvoiceController extends Controller
 
     public function label_detail_unit($id)
     {
-        $invoice = Invoice::findOrFail($id);
-        $quote   = UnitQuotation::with(['client', 'pic'])->findOrFail($invoice->id_unit_quotation);
-        return view('pages.accounting.label.detail-unit', compact('invoice', 'quote'));
+        $invoice   = Invoice::findOrFail($id);
+        $quote     = UnitQuotation::with(['client.pic', 'client.plants', 'pic'])->findOrFail($invoice->id_unit_quotation);
+        $pendingPO = PendingPO::where('id_unit_quotation', $quote->id)->with(['doc_recipient', 'shipping_recipient'])->first();
+
+        return view('pages.accounting.label.detail-unit', compact('invoice', 'quote', 'pendingPO'));
     }
 
     public function label_print_unit($id)
     {
-        $invoice = Invoice::findOrFail($id);
-        $quote   = UnitQuotation::with(['client', 'pic'])->findOrFail($invoice->id_unit_quotation);
-        return view('pages.accounting.label.detail-print-unit', compact('invoice', 'quote'));
+        $invoice   = Invoice::findOrFail($id);
+        $quote     = UnitQuotation::with(['client.pic', 'client.plants', 'pic'])->findOrFail($invoice->id_unit_quotation);
+        $pendingPO = PendingPO::where('id_unit_quotation', $quote->id)->with(['doc_recipient', 'shipping_recipient'])->first();
+
+        return view('pages.accounting.label.detail-print-unit', compact('invoice', 'quote', 'pendingPO'));
+    }
+
+    public function update_label_recipient_unit(Request $request, $id)
+    {
+        $invoice   = Invoice::findOrFail($id);
+        $quote     = UnitQuotation::with(['client.pic', 'client.plants'])->findOrFail($invoice->id_unit_quotation);
+        $client    = $quote->client;
+        $pendingPO = PendingPO::where('id_unit_quotation', $quote->id)->first();
+
+        // 1. PIC & Phone handling
+        $picId = null;
+        if ($request->pic_mode === 'select' && $request->filled('pic_id')) {
+            $picId = $request->pic_id;
+            if ($request->filled('manual_pic_phone')) {
+                $selectedPic = Pic::find($picId);
+                if ($selectedPic && $selectedPic->phone_pic !== $request->manual_pic_phone) {
+                    $selectedPic->phone_pic = $request->manual_pic_phone;
+                    $selectedPic->save();
+                }
+            }
+        } elseif ($request->filled('manual_pic_name')) {
+            if ($client) {
+                $pic = Pic::firstOrCreate(
+                    ['id_client' => $client->id, 'name_pic' => $request->manual_pic_name],
+                    ['phone_pic' => $request->manual_pic_phone, 'position' => 'PIC']
+                );
+                if ($request->filled('manual_pic_phone') && $pic->phone_pic !== $request->manual_pic_phone) {
+                    $pic->phone_pic = $request->manual_pic_phone;
+                    $pic->save();
+                }
+                $picId = $pic->id;
+            }
+        }
+
+        // 2. Address handling
+        $addressType   = $request->address_type ?? 'customer';
+        $addressManual = null;
+        if ($addressType === 'manual' || $addressType === 'plant') {
+            $addressManual = $request->address_manual;
+        }
+
+        if ($request->filled('destination')) {
+            $invoice->invoiceTo = $request->destination;
+            $invoice->save();
+        }
+
+        // 3. Update PendingPO
+        if ($pendingPO) {
+            $pendingPO->doc_address_type   = ($addressType === 'customer' ? 'customer' : 'manual');
+            $pendingPO->doc_address_manual = $addressManual;
+            if ($picId) {
+                $pendingPO->doc_recipient_id = $picId;
+            }
+            if ($pendingPO->combine_shipping_and_parts) {
+                $pendingPO->shipping_address_type   = ($addressType === 'customer' ? 'customer' : 'manual');
+                $pendingPO->shipping_address_manual = $addressManual;
+                if ($picId) {
+                    $pendingPO->shipping_recipient_id = $picId;
+                }
+            }
+            $pendingPO->save();
+        }
+
+        return redirect()->route('invoice.unit.label_detail', $id)->with('success', 'Alamat dan PIC penerima label berhasil diperbarui.');
+    }
+
+    public function update_label_recipient(Request $request, $id)
+    {
+        $invoice   = Invoice::findOrFail($id);
+        $quote     = Quotation::with(['pic.client.pic', 'pic.client.plants'])->findOrFail($invoice->id_quotation);
+        $client    = $quote->pic?->client;
+        $pendingPO = PendingPO::where('id_quotation', $quote->id)->first();
+
+        // 1. PIC & Phone handling
+        $picId = null;
+        if ($request->pic_mode === 'select' && $request->filled('pic_id')) {
+            $picId = $request->pic_id;
+            if ($request->filled('manual_pic_phone')) {
+                $selectedPic = Pic::find($picId);
+                if ($selectedPic && $selectedPic->phone_pic !== $request->manual_pic_phone) {
+                    $selectedPic->phone_pic = $request->manual_pic_phone;
+                    $selectedPic->save();
+                }
+            }
+        } elseif ($request->filled('manual_pic_name')) {
+            if ($client) {
+                $pic = Pic::firstOrCreate(
+                    ['id_client' => $client->id, 'name_pic' => $request->manual_pic_name],
+                    ['phone_pic' => $request->manual_pic_phone, 'position' => 'PIC']
+                );
+                if ($request->filled('manual_pic_phone') && $pic->phone_pic !== $request->manual_pic_phone) {
+                    $pic->phone_pic = $request->manual_pic_phone;
+                    $pic->save();
+                }
+                $picId = $pic->id;
+            }
+        }
+
+        // 2. Address handling
+        $addressType   = $request->address_type ?? 'customer';
+        $addressManual = null;
+        if ($addressType === 'manual' || $addressType === 'plant') {
+            $addressManual = $request->address_manual;
+        }
+
+        if ($request->filled('destination')) {
+            $invoice->invoiceTo = $request->destination;
+            $invoice->save();
+        }
+
+        // 3. Update PendingPO
+        if ($pendingPO) {
+            $pendingPO->doc_address_type   = ($addressType === 'customer' ? 'customer' : 'manual');
+            $pendingPO->doc_address_manual = $addressManual;
+            if ($picId) {
+                $pendingPO->doc_recipient_id = $picId;
+            }
+            if ($pendingPO->combine_shipping_and_parts) {
+                $pendingPO->shipping_address_type   = ($addressType === 'customer' ? 'customer' : 'manual');
+                $pendingPO->shipping_address_manual = $addressManual;
+                if ($picId) {
+                    $pendingPO->shipping_recipient_id = $picId;
+                }
+            }
+            $pendingPO->save();
+        }
+
+        return redirect()->route('invoice.label_detail', $id)->with('success', 'Alamat dan PIC penerima label berhasil diperbarui.');
     }
 
     public function show_unit($id)
