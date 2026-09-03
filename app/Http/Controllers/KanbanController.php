@@ -253,6 +253,7 @@ class KanbanController extends Controller
                 $salesName = null;
                 $entityType = null;
                 $noPo = null;
+                $noSo = null;
                 $company = null;
 
                 if ($task->pendingPo || $task->unitQuotation) {
@@ -269,14 +270,34 @@ class KanbanController extends Controller
                         $company = $isUnit ? ($quoteRef->client->company ?? null) : ($quoteRef->pic->client->company ?? null);
                     }
                     if ($po) {
-                        $noPo = $po->no_po ?: $po->no_pending;
+                        $noSo = $po->no_pending;
                     }
 
-                    // Check invoice flag / invoice number
+                    // Resolve actual Customer PO number
                     $invoices = $isUnit
                         ? ($quoteRef ? $quoteRef->invoices : collect())
                         : ($quoteRef ? $quoteRef->invoice : collect());
 
+                    $firstInvoiceWithPo = $invoices ? $invoices->whereNotNull('no_po')->where('no_po', '!=', '')->first() : null;
+                    if ($firstInvoiceWithPo && $firstInvoiceWithPo->no_po) {
+                        $noPo = $firstInvoiceWithPo->no_po;
+                    } elseif ($isUnit && $quoteRef && !empty($quoteRef->po_number)) {
+                        $noPo = $quoteRef->po_number;
+                    }
+
+                    // Fallback to title extraction if formatted like [PO] - Company
+                    if (!$noPo && $task->title && preg_match('/^\[(.*?)\]\s*-\s*(.*)$/', $task->title, $m)) {
+                        $extracted = trim($m[1]);
+                        if (!empty($extracted) && $extracted !== 'No PO' && $extracted !== 'Belum ada PO' && !str_starts_with($extracted, 'SO-')) {
+                            $noPo = $extracted;
+                        }
+                    }
+
+                    if (!$noPo) {
+                        $noPo = 'Belum ada PO';
+                    }
+
+                    // Check invoice flag / invoice number
                     $firstInvoice = $invoices ? ($invoices->whereNotNull('no_invoice')->where('no_invoice', '!=', '')->first() ?: $invoices->first()) : null;
                     if ($firstInvoice) {
                         if ($firstInvoice->flag === 'Kojisha' || ($firstInvoice->no_invoice && str_contains($firstInvoice->no_invoice, '/KII/'))) {
@@ -320,6 +341,7 @@ class KanbanController extends Controller
                     'sales_name' => $salesName,
                     'entity_type' => $entityType,
                     'no_po' => $noPo,
+                    'no_so' => $noSo,
                     'company' => $company,
                 ];
             }
@@ -759,7 +781,16 @@ class KanbanController extends Controller
                 $quoteRefId = $isUnit ? $po->id_unit_quotation : $po->id_quotation;
 
                 $invoicePo = \App\Models\Invoice::where($quoteIdCol, $quoteRefId)->whereNotNull('no_po')->where('no_po', '!=', '')->value('no_po');
-                $poNumber = $invoicePo ?: ($po->no_pending ?? 'No PO');
+                $poNumber = $invoicePo ?: ($isUnit && $quoteRef && !empty($quoteRef->po_number) ? $quoteRef->po_number : null);
+                if (!$poNumber && $task->title && preg_match('/^\[(.*?)\]\s*-\s*(.*)$/', $task->title, $m)) {
+                    $extracted = trim($m[1]);
+                    if (!empty($extracted) && $extracted !== 'No PO' && $extracted !== 'Belum ada PO' && !str_starts_with($extracted, 'SO-')) {
+                        $poNumber = $extracted;
+                    }
+                }
+                if (!$poNumber) {
+                    $poNumber = 'Belum ada PO';
+                }
                 $companyName = 'Unknown Client';
                 $clientAddress = '';
                 $clientId = null;
@@ -873,6 +904,7 @@ class KanbanController extends Controller
                 $soDetails = [
                     'id' => $po->id,
                     'no_po' => $poNumber,
+                    'no_so' => $po->no_pending ?? null,
                     'company' => $companyName,
                     'address' => $clientAddress,
                     'entity_type' => $entityType,
@@ -1361,6 +1393,10 @@ class KanbanController extends Controller
             ->whereNotNull('no_po')->where('no_po', '!=', '')
             ->pluck('no_po', 'id_unit_quotation');
 
+        $unitQuotationsPo = \App\Models\UnitQuotation::whereIn('id', $unitQuotationIds)
+            ->whereNotNull('po_number')->where('po_number', '!=', '')
+            ->pluck('po_number', 'id');
+
         $existingTaskPoIds = KanbanTask::where('board_id', $board->id)
             ->whereNotNull('pending_po_id')
             ->pluck('pending_po_id')
@@ -1388,8 +1424,8 @@ class KanbanController extends Controller
 
                 if ($column) {
                     $poNumber = $isUnitNew
-                        ? ($invoicePoByUnitQuotation->get($po->id_unit_quotation) ?: ($po->no_pending ?? 'No PO'))
-                        : ($invoicePoByQuotation->get($po->id_quotation) ?: ($po->no_pending ?? 'No PO'));
+                        ? ($invoicePoByUnitQuotation->get($po->id_unit_quotation) ?: ($unitQuotationsPo->get($po->id_unit_quotation) ?: 'Belum ada PO'))
+                        : ($invoicePoByQuotation->get($po->id_quotation) ?: 'Belum ada PO');
                     $companyName = 'Unknown Client';
                     if ($isUnitNew && $po->unitQuotation && $po->unitQuotation->client) {
                         $companyName = $po->unitQuotation->client->company;
@@ -1425,8 +1461,8 @@ class KanbanController extends Controller
                     : (($quoteRef && $quoteRef->pic) ? $quoteRef->pic->client : null);
 
                 $poNumber = $isUnit
-                    ? ($invoicePoByUnitQuotation->get($po->id_unit_quotation) ?: ($po->no_pending ?? 'No PO'))
-                    : ($invoicePoByQuotation->get($po->id_quotation) ?: ($po->no_pending ?? 'No PO'));
+                    ? ($invoicePoByUnitQuotation->get($po->id_unit_quotation) ?: ($unitQuotationsPo->get($po->id_unit_quotation) ?: 'Belum ada PO'))
+                    : ($invoicePoByQuotation->get($po->id_quotation) ?: 'Belum ada PO');
                 $companyName = $client ? $client->company : 'Unknown Client';
 
                 $expectedTitle = "[$poNumber] - $companyName";
@@ -1522,13 +1558,17 @@ class KanbanController extends Controller
             ->whereNotNull('no_po')->where('no_po', '!=', '')
             ->pluck('no_po', 'id_unit_quotation');
 
-        $pos = $pos->map(function ($po) use ($invoicePoByQuotation, $invoicePoByUnitQuotation) {
+        $unitQuotationsPo = \App\Models\UnitQuotation::whereIn('id', $pos->pluck('id_unit_quotation')->filter()->unique())
+            ->whereNotNull('po_number')->where('po_number', '!=', '')
+            ->pluck('po_number', 'id');
+
+        $pos = $pos->map(function ($po) use ($invoicePoByQuotation, $invoicePoByUnitQuotation, $unitQuotationsPo) {
             $isUnit = (bool) $po->id_unit_quotation;
             $quoteRef = $isUnit ? $po->unitQuotation : $po->quote;
 
             $poNumber = $isUnit
-                ? ($invoicePoByUnitQuotation->get($po->id_unit_quotation) ?: ($po->no_pending ?? 'No PO'))
-                : ($invoicePoByQuotation->get($po->id_quotation) ?: ($po->no_pending ?? 'No PO'));
+                ? ($invoicePoByUnitQuotation->get($po->id_unit_quotation) ?: ($unitQuotationsPo->get($po->id_unit_quotation) ?: 'Belum ada PO'))
+                : ($invoicePoByQuotation->get($po->id_quotation) ?: 'Belum ada PO');
 
             $companyName = 'Unknown Client';
             if ($isUnit && $po->unitQuotation && $po->unitQuotation->client) {
@@ -1572,6 +1612,7 @@ class KanbanController extends Controller
             return [
                 'id' => $po->id,
                 'no_po' => $poNumber,
+                'no_so' => $po->no_pending,
                 'company' => $companyName,
                 'sales' => $salesName,
                 'entity_type' => $entityType,

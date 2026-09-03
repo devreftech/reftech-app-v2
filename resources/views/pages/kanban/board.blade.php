@@ -226,6 +226,10 @@
                                                  <strong id="soPoNumber" class="text-dark" style="font-size: 13.5px;"></strong>
                                              </div>
                                              <div class="col-sm-6">
+                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Nomor SO</span>
+                                                 <span id="soSoNumber" class="text-dark fw-semibold" style="font-size: 13.5px;">-</span>
+                                             </div>
+                                             <div class="col-sm-6">
                                                  <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Entity / Tipe Invoice</span>
                                                  <span id="soEntityType" class="badge" style="font-size: 11px; font-weight: 700; padding: 3px 8px;">-</span>
                                              </div>
@@ -1414,8 +1418,9 @@
                             currentTaskData = response.task;
 
                             if (response.so_details) {
-                                $('#soPoNumber').text(response.so_details.no_po);
-                                $('#soClientName').text(response.so_details.company);
+                                $('#soPoNumber').text(response.so_details.no_po || '-');
+                                $('#soSoNumber').text(response.so_details.no_so || '-');
+                                $('#soClientName').text(response.so_details.company || '-');
 
                                 if (response.so_details.entity_type === 'KII') {
                                     $('#soEntityType').removeClass('bg-primary text-white').addClass('bg-danger text-white').text('KII (Kojisha)');
@@ -2888,13 +2893,15 @@
                 }
 
                 $('.kanban-item').each(function() {
-                    const titleText = $(this).find('.text-heading, .text-primary').text().toLowerCase();
+                    const titleText = $(this).find('.text-heading, .text-primary, .text-danger').text().toLowerCase();
                     const descText = $(this).find('.text-muted').text().toLowerCase();
                     const taskData = $(this).find('.kanban-item-content').data('task') || {};
                     const entityText = (taskData.entity_type || '').toLowerCase();
                     const entityFullName = (taskData.entity_type === 'KII' ? 'kojisha' : (taskData.entity_type === 'RJO' ? 'reftech' : ''));
+                    const poText = (taskData.no_po || '').toLowerCase();
+                    const soText = (taskData.no_so || '').toLowerCase();
 
-                    const matchesSearch = !query || titleText.includes(query) || descText.includes(query) || (boardType === 'monitoring' && (entityText.includes(query) || entityFullName.includes(query)));
+                    const matchesSearch = !query || titleText.includes(query) || descText.includes(query) || poText.includes(query) || soText.includes(query) || (boardType === 'monitoring' && (entityText.includes(query) || entityFullName.includes(query)));
                     const matchesAccounting = (boardType !== 'monitoring') || !allowedSalesIds || allowedSalesIds.includes(String(taskData.id_sales));
 
                     if (matchesSearch && matchesAccounting) {
