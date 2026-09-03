@@ -180,21 +180,47 @@
 
 {{-- Financial Summary (Right Aligned Box) --}}
 @php
-    $afterDisc = $optTotals->diskon > 0
-        ? $optTotals->subtotal - $optTotals->discount_amount
-        : $optTotals->subtotal;
+    $sumItemsAmount = $items->whereNotIn('type', ['header', 'heading'])->sum('amount');
+    $optSubtotal = floatval($optTotals->subtotal ?? 0);
+    if ($optSubtotal <= 0 && $sumItemsAmount > 0) {
+        $optSubtotal = $sumItemsAmount;
+    }
+
+    $optDiskon = floatval($optTotals->diskon ?? 0);
+    $optDiskonType = $optTotals->diskon_type ?? 'percent';
+    $optDiscountAmount = 0;
+    if ($optDiskon > 0) {
+        $optDiscountAmount = ($optDiskonType === 'amount')
+            ? $optDiskon
+            : ($optSubtotal * $optDiskon / 100);
+    } elseif (isset($optTotals->discount_amount) && $optTotals->discount_amount > 0) {
+        $optDiscountAmount = (float) $optTotals->discount_amount;
+    }
+
+    $afterDisc = max(0, $optSubtotal - $optDiscountAmount);
+    $optTax = (bool) ($optTotals->tax ?? false);
+    $optTaxAmount = floatval($optTotals->tax_amount ?? 0);
+    if ($optTax && $optTaxAmount <= 0) {
+        $optTaxAmount = round($afterDisc * 0.11);
+    }
+
+    $optShipping = floatval($optTotals->shipping ?? 0);
+    $optTotal = floatval($optTotals->total ?? 0);
+    if ($optTotal <= 0) {
+        $optTotal = $afterDisc + $optTaxAmount + $optShipping;
+    }
 @endphp
 <div class="d-flex justify-content-end mb-3">
     <div style="min-width:270px; font-size:12px; border:1px solid #d0d0ff; border-left:4px solid #696cff; border-radius:6px; overflow:hidden; background:#fff;">
         <table style="width:100%; border-collapse:collapse;">
             <tr>
                 <td style="padding:6px 16px 6px 14px; color:#555;">Subtotal</td>
-                <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($optTotals->subtotal, 0, '', '.') }}</td>
+                <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($optSubtotal, 0, '', '.') }}</td>
             </tr>
-            @if ($optTotals->diskon > 0)
+            @if ($optDiscountAmount > 0)
                 <tr style="border-top:1px solid #eeeeff;">
-                    <td style="padding:6px 16px 6px 14px; color:#555;">Discount{{ $optTotals->discount_label ? ' ' . $optTotals->discount_label : '' }}</td>
-                    <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#dc3545;">- Rp {{ number_format($optTotals->discount_amount, 0, '', '.') }}</td>
+                    <td style="padding:6px 16px 6px 14px; color:#555;">Discount{{ !empty($optTotals->discount_label) ? ' ' . $optTotals->discount_label : '' }}</td>
+                    <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#dc3545;">- Rp {{ number_format($optDiscountAmount, 0, '', '.') }}</td>
                 </tr>
                 <tr style="border-top:1px solid #eeeeff;">
                     <td style="padding:6px 16px 6px 14px; color:#555;">After Discount</td>
@@ -202,20 +228,20 @@
                 </tr>
             @endif
             <tr style="border-top:1px solid #eeeeff;">
-                <td style="padding:6px 16px 6px 14px; color:#555;">Tax {{ $optTotals->tax ? '(12%)' : '' }}</td>
+                <td style="padding:6px 16px 6px 14px; color:#555;">Tax {{ $optTax ? '(11%)' : '' }}</td>
                 <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">
-                    {{ $optTotals->tax ? 'Rp ' . number_format($optTotals->tax_amount, 0, '', '.') : '-' }}
+                    {{ $optTax ? 'Rp ' . number_format($optTaxAmount, 0, '', '.') : '-' }}
                 </td>
             </tr>
-            @if ($optTotals->shipping > 0)
+            @if ($optShipping > 0)
                 <tr style="border-top:1px solid #eeeeff;">
                     <td style="padding:6px 16px 6px 14px; color:#555;">Shipping Cost</td>
-                    <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($optTotals->shipping, 0, '', '.') }}</td>
+                    <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($optShipping, 0, '', '.') }}</td>
                 </tr>
             @endif
             <tr style="border-top:2px solid #d0d0ff; background:#f0f0ff;">
                 <td style="padding:9px 16px 9px 14px; font-weight:700; font-size:13px !important; color:#3d3d8f;">TOTAL PRICE</td>
-                <td style="padding:9px 14px 9px 0; text-align:right; font-weight:700; font-size:13px !important; color:#696cff;">Rp {{ number_format($optTotals->total, 0, '', '.') }}</td>
+                <td style="padding:9px 14px 9px 0; text-align:right; font-weight:700; font-size:13px !important; color:#696cff;">Rp {{ number_format($optTotal, 0, '', '.') }}</td>
             </tr>
         </table>
     </div>

@@ -265,12 +265,20 @@ class SalesDashboardService
 
     protected function getQuotationSales($salesUserId, $yearNow, $monthNow)
     {
-        return Quotation::whereYear('estimated_date', $yearNow)
+        $quotes = Quotation::whereYear('estimated_date', $yearNow)
             ->whereMonth("estimated_date", $monthNow)
             ->where("id_sales", $salesUserId)
             ->where('level', '1')
             ->where('is_primary', '1')
             ->get();
+
+        $unitQuotes = UnitQuotation::where('is_latest', 1)
+            ->whereYear('date', $yearNow)
+            ->whereMonth('date', $monthNow)
+            ->where('id_sales', $salesUserId)
+            ->get();
+
+        return $quotes->concat($unitQuotes);
     }
 
     protected function getVisitSales($salesUserId, $yearNow, $monthNow)
@@ -401,21 +409,37 @@ class SalesDashboardService
             ->groupBy('status')
             ->pluck('total', 'status');
 
+        $unitStatusCounts = UnitQuotation::where('id_sales', $salesId)
+            ->where('is_latest', 1)
+            ->whereYear('date', $yearNow)
+            ->whereMonth('date', $monthNow)
+            ->select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
         $inProgress = 0;
         $hotProspect = 0;
+        $loss = (int) $statusCounts->get('0', 0) + (int) $unitStatusCounts->get('loss', 0);
+        $poWon = (int) $statusCounts->get('100', 0) + (int) $unitStatusCounts->get('po_received', 0);
+
         foreach (['20', '30', '40', '60'] as $s) {
-            $inProgress += $statusCounts->get($s, 0);
+            $inProgress += (int) $statusCounts->get($s, 0);
         }
+        foreach (['draft', 'sent', 'negotiation', 'revision'] as $s) {
+            $inProgress += (int) $unitStatusCounts->get($s, 0);
+        }
+
         foreach (['80', '90'] as $s) {
-            $hotProspect += $statusCounts->get($s, 0);
+            $hotProspect += (int) $statusCounts->get($s, 0);
         }
+        $hotProspect += (int) $unitStatusCounts->get('hot_prospect', 0);
 
         $salesStatusLabels = ['Loss', 'In Progress', 'Hot Prospect', 'PO Won'];
         $salesStatusSeries = [
-            $statusCounts->get('0', 0),
+            $loss,
             $inProgress,
             $hotProspect,
-            $statusCounts->get('100', 0),
+            $poWon,
         ];
 
         $monthlyRangeStart = Carbon::now()->subMonths(5)->startOfMonth();
@@ -428,11 +452,26 @@ class SalesDashboardService
             ->groupBy('ym')
             ->pluck('total', 'ym');
 
+        $unitQuoteCountByMonth = UnitQuotation::where('id_sales', $salesId)
+            ->where('is_latest', 1)
+            ->whereBetween('date', [$monthlyRangeStart, $monthlyRangeEnd])
+            ->selectRaw("DATE_FORMAT(date, '%Y-%m') as ym, COUNT(*) as total")
+            ->groupBy('ym')
+            ->pluck('total', 'ym');
+
         $poCountByMonth = Quotation::where('id_sales', $salesId)
             ->where('level', '1')->where('is_primary', '1')
             ->where('status', '100')
             ->whereBetween('po_date', [$monthlyRangeStart, $monthlyRangeEnd])
             ->selectRaw("DATE_FORMAT(po_date, '%Y-%m') as ym, COUNT(*) as total")
+            ->groupBy('ym')
+            ->pluck('total', 'ym');
+
+        $unitPoCountByMonth = UnitQuotation::where('id_sales', $salesId)
+            ->where('is_latest', 1)
+            ->where('status', 'po_received')
+            ->whereBetween('po_received', [$monthlyRangeStart, $monthlyRangeEnd])
+            ->selectRaw("DATE_FORMAT(po_received, '%Y-%m') as ym, COUNT(*) as total")
             ->groupBy('ym')
             ->pluck('total', 'ym');
 
@@ -443,8 +482,8 @@ class SalesDashboardService
             $m = Carbon::now()->subMonths($i);
             $ym = $m->format('Y-m');
             $salesMonthlyLabels[] = $m->locale('id')->translatedFormat('M Y');
-            $salesMonthlyQuote[] = (int) $quoteCountByMonth->get($ym, 0);
-            $salesMonthlyPO[] = (int) $poCountByMonth->get($ym, 0);
+            $salesMonthlyQuote[] = (int) $quoteCountByMonth->get($ym, 0) + (int) $unitQuoteCountByMonth->get($ym, 0);
+            $salesMonthlyPO[] = (int) $poCountByMonth->get($ym, 0) + (int) $unitPoCountByMonth->get($ym, 0);
         }
 
         $sourceData = Client::where('id_sales', $salesId)

@@ -5,6 +5,7 @@ namespace App\Services\Dashboard;
 use App\Models\Prospect;
 use App\Models\Quotation;
 use App\Models\Target;
+use App\Models\UnitQuotation;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 
@@ -32,12 +33,19 @@ class SupportDashboardService
             ->where('id_support', $support)
             ->count();
 
+        // Jumlah penawaran: quotation lama (semua status, per `estimated_date`) +
+        // Smart Quote (semua status, per `date` — analog `estimated_date`).
         $quotation = Quotation::whereYear('estimated_date', $yearNow)
             ->whereMonth('estimated_date', $monthNow)
             ->where('id_support', $support)
             ->where('level', '1')
             ->where('is_primary', '1')
-            ->count();
+            ->count()
+            + UnitQuotation::where('is_latest', 1)
+                ->whereYear('date', $yearNow)
+                ->whereMonth('date', $monthNow)
+                ->where('id_support', $support)
+                ->count();
 
         $po = Quotation::whereYear('po_date', $yearNow)
             ->whereMonth('po_date', $monthNow)
@@ -45,7 +53,13 @@ class SupportDashboardService
             ->where('status', '100')
             ->where('level', '1')
             ->where('is_primary', '1')
-            ->count();
+            ->count()
+            + UnitQuotation::where('is_latest', 1)
+                ->where('status', 'po_received')
+                ->whereYear('po_received', $yearNow)
+                ->whereMonth('po_received', $monthNow)
+                ->where('id_support', $support)
+                ->count();
 
         $loss = Quotation::whereYear('estimated_date', $yearNow)
             ->whereMonth('estimated_date', $monthNow)
@@ -53,7 +67,13 @@ class SupportDashboardService
             ->where('status', '0')
             ->where('level', '1')
             ->where('is_primary', '1')
-            ->count();
+            ->count()
+            + UnitQuotation::where('is_latest', 1)
+                ->where('status', 'loss')
+                ->whereYear('date', $yearNow)
+                ->whereMonth('date', $monthNow)
+                ->where('id_support', $support)
+                ->count();
 
         $prospectLastMonth = Prospect::whereYear('date', $yearPrev)
             ->whereMonth('date', $monthPrev)

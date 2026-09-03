@@ -85,12 +85,23 @@
             <h3 class="fw-bold mb-0 text-heading">Overview Kinerja Tim Sales</h3>
             <small class="text-muted">Ringkasan pencapaian dan aktivitas target bulan {{ $bulanLabel }}</small>
         </div>
-        @if ($semesterNow)
-            <a href="{{ route('report.semester', $semesterNow->id) }}"
-               class="btn btn-primary rounded-pill px-4 shadow-sm waves-effect">
-                <i class="mdi mdi-chart-box-outline me-1 fs-5"></i> Lihat Report Semester
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('kanban.boards.show', 2) }}" class="btn btn-sm btn-label-info rounded-pill px-3 waves-effect fw-semibold shadow-sm">
+                <i class="mdi mdi-view-column-outline me-1"></i> Kanban Project HVAC
             </a>
-        @endif
+            <a href="{{ route('piping-rab.index') }}" class="btn btn-sm btn-label-primary rounded-pill px-3 waves-effect fw-semibold shadow-sm">
+                <i class="mdi mdi-pipe me-1"></i> RAB Piping
+            </a>
+            <a href="{{ route('report.monthly') }}" class="btn btn-sm btn-label-success rounded-pill px-3 waves-effect fw-semibold shadow-sm">
+                <i class="mdi mdi-chart-line me-1"></i> Report Sales
+            </a>
+            @if ($semesterNow)
+                <a href="{{ route('report.semester', $semesterNow->id) }}"
+                   class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm waves-effect fw-semibold">
+                    <i class="mdi mdi-chart-box-outline me-1"></i> Report Semester
+                </a>
+            @endif
+        </div>
     </div>
 
     {{-- Global KPI Summary Cards --}}

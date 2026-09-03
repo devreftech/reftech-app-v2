@@ -355,6 +355,39 @@ class KanbanController extends Controller
         return response()->json($data);
     }
 
+    public function reorderColumns(Request $request)
+    {
+        $request->validate([
+            'board_id' => 'required|exists:kanban_boards,id',
+            'order' => 'required|array|min:1',
+        ]);
+
+        $user = Auth::user();
+        $board = KanbanBoard::with('members')->findOrFail($request->board_id);
+
+        $isMember = $board->members->contains($user->id);
+        $isCreator = $board->created_by == $user->id;
+        $hasAccess = $user->role === 'Admin' ||
+                     ($board->type === 'monitoring' && in_array($user->role, ['Admin', 'Accounting', 'Finance Manager'])) ||
+                     $isCreator ||
+                     $isMember;
+
+        if (!$hasAccess) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        DB::transaction(function () use ($request, $board) {
+            foreach ($request->order as $position => $rawId) {
+                $columnId = (int) str_replace('column_', '', $rawId);
+                KanbanColumn::where('board_id', $board->id)
+                    ->where('id', $columnId)
+                    ->update(['position' => $position]);
+            }
+        });
+
+        return response()->json(['success' => true, 'message' => 'Urutan kolom berhasil disimpan!']);
+    }
+
     public function moveTask(Request $request)
     {
         $request->validate([
@@ -424,6 +457,8 @@ class KanbanController extends Controller
             'column_id' => 'required|string',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'assignees' => 'nullable|array',
+            'assignees.*' => 'exists:users,id',
             'assigned_to' => 'nullable|exists:users,id',
             'due_date' => 'nullable|date',
             'priority' => 'nullable|string|in:high,medium,low',
@@ -436,12 +471,18 @@ class KanbanController extends Controller
         $maxPos = KanbanTask::where('column_id', $columnId)->max('position');
         $position = is_null($maxPos) ? 0 : $maxPos + 1;
 
+        // Terima multiple assignee (assignees[]) sekaligus tetap kompatibel dengan assigned_to tunggal
+        $assigneeIds = $request->assignees ?? [];
+        if (empty($assigneeIds) && $request->assigned_to) {
+            $assigneeIds = [$request->assigned_to];
+        }
+
         $task = KanbanTask::create([
             'board_id' => $request->board_id,
             'column_id' => $columnId,
             'title' => $request->title,
             'description' => $request->description,
-            'assigned_to' => $request->assigned_to,
+            'assigned_to' => !empty($assigneeIds) ? $assigneeIds[0] : null,
             'due_date' => $request->due_date,
             'position' => $position,
             'priority' => $request->priority ?? 'medium',
@@ -451,8 +492,8 @@ class KanbanController extends Controller
         // Log creation activity
         $this->logActivity($task->id, 'create');
 
-        if ($request->assigned_to) {
-            $task->assignees()->sync([$request->assigned_to]);
+        if (!empty($assigneeIds)) {
+            $task->assignees()->sync($assigneeIds);
         }
 
         $taskLoad = KanbanTask::with('assignees')->find($task->id);
@@ -607,6 +648,7 @@ class KanbanController extends Controller
     {
         $task = KanbanTask::with([
             'board',
+            'board.members',
             'column',
             'assignees',
             'comments.user',
@@ -686,6 +728,22 @@ class KanbanController extends Controller
                     break;
                 case 'request_delete':
                     $text = 'mengajukan penghapusan tugas ini kepada Admin';
+                    break;
+                case 'add_expense':
+                    $name = isset($data['name']) ? $data['name'] : 'biaya';
+                    $text = "mencatat pengeluaran \"{$name}\"";
+                    break;
+                case 'delete_expense':
+                    $name = isset($data['name']) ? $data['name'] : 'biaya';
+                    $text = "menghapus pengeluaran \"{$name}\"";
+                    break;
+                case 'link_quotation':
+                    $no = isset($data['no_quote']) ? $data['no_quote'] : 'quotation';
+                    $text = "menghubungkan tugas ini ke quotation \"{$no}\"";
+                    break;
+                case 'unlink_quotation':
+                    $no = isset($data['no_quote']) ? $data['no_quote'] : 'quotation';
+                    $text = "memutuskan hubungan tugas ini dari quotation \"{$no}\"";
                     break;
                 default:
                     $text = 'memperbarui tugas ini';
@@ -901,6 +959,23 @@ class KanbanController extends Controller
                     $entityType = ($bastEntity === 'Kojisha') ? 'KII' : 'RJO';
                 }
 
+                $getQuoteRevenuePreTax = function ($quote, $isUnitQuote = false) {
+                    if (!$quote) return 0;
+                    if ($isUnitQuote) {
+                        $sub = floatval($quote->subtotal ?? 0);
+                        $disc = floatval($quote->diskon ?? 0);
+                        if ($sub > 0) {
+                            return $sub - $disc;
+                        }
+                        $tot = floatval($quote->total ?? 0);
+                        $tax = floatval($quote->tax_amount ?? 0);
+                        return $tot - $tax;
+                    }
+                    return floatval($quote->nett ?? ($quote->total_no_tax ?? ($quote->subtotal - ($quote->diskon ?? 0))));
+                };
+
+                $revenuePreTax = $getQuoteRevenuePreTax($quoteRef, $isUnit);
+
                 $soDetails = [
                     'id' => $po->id,
                     'no_po' => $poNumber,
@@ -912,9 +987,9 @@ class KanbanController extends Controller
                     'quote_id' => $quoteRefId,
                     'quote_no' => $quoteRef ? $quoteRef->no_quote : 'N/A',
                     'quote_link' => $isUnit ? route('unit-quotation.show', $quoteRefId) : route('quotation.show', $quoteRefId),
-                    'quote_nett' => $quoteRef ? number_format($isUnit ? $quoteRef->total : $quoteRef->nett, 2, ',', '.') : '0',
+                    'quote_nett' => number_format($revenuePreTax, 2, ',', '.'),
                     'project_monitoring_link' => route('project-monitoring.show', $po->id),
-                    'financial_health' => $computeFinancialHealth($po->id, (float) ($quoteRef ? ($isUnit ? $quoteRef->total : $quoteRef->nett) : 0)),
+                    'financial_health' => $computeFinancialHealth($po->id, $revenuePreTax),
                     'type' => $po->type,
                     'date' => $po->date ? $po->date : '',
                     'invoices' => $invoiceList,
@@ -950,6 +1025,10 @@ class KanbanController extends Controller
                 // & Ringkasan Kesehatan Keuangan-nya.
                 $relatedPo = \App\Models\PendingPO::where('id_unit_quotation', $quoteRef->id)->first();
 
+                $sub = floatval($quoteRef->subtotal ?? 0);
+                $disc = floatval($quoteRef->diskon ?? 0);
+                $revenuePreTax = ($sub > 0) ? ($sub - $disc) : (floatval($quoteRef->total ?? 0) - floatval($quoteRef->tax_amount ?? 0));
+
                 $soDetails = [
                     'id' => null,
                     'no_po' => 'Belum ada PO',
@@ -960,12 +1039,12 @@ class KanbanController extends Controller
                     'quote_id' => $quoteRef->id,
                     'quote_no' => $quoteRef->no_quote,
                     'quote_link' => route('unit-quotation.show', $quoteRef->id),
-                    'quote_nett' => number_format($quoteRef->total, 2, ',', '.'),
+                    'quote_nett' => number_format($revenuePreTax, 2, ',', '.'),
                     // Fallback ke halaman quotation kalau belum ada PendingPO sama sekali.
                     'project_monitoring_link' => $relatedPo
                         ? route('project-monitoring.show', $relatedPo->id)
                         : route('unit-quotation.show', $quoteRef->id),
-                    'financial_health' => $computeFinancialHealth($relatedPo?->id, (float) $quoteRef->total),
+                    'financial_health' => $computeFinancialHealth($relatedPo?->id, $revenuePreTax),
                     'type' => $quoteRef->type,
                     'date' => $quoteRef->date ?: '',
                     'invoices' => [],
@@ -996,6 +1075,47 @@ class KanbanController extends Controller
             }
         }
 
+        // Manajemen biaya per kartu — biaya yang nempel ke kartu ini (id_kanban_task)
+        // maupun ke PO-nya (id_pending) ditampilkan menyatu.
+        $canManageExpense = $this->userCanManageTaskExpense($task);
+        $expenseQuery = ProjectExpense::with('user')
+            ->where(function ($q) use ($task) {
+                $q->where('id_kanban_task', $task->id);
+                if ($task->pending_po_id) {
+                    $q->orWhere('id_pending', $task->pending_po_id);
+                }
+            })
+            ->orderBy('date', 'desc')
+            ->orderBy('id', 'desc');
+        $expenses = $expenseQuery->get()->map(function ($e) use ($user, $canManageExpense) {
+            return [
+                'id' => $e->id,
+                'name' => $e->name,
+                'category' => $e->category,
+                'amount' => (float) $e->amount,
+                'date' => $e->date ? \Carbon\Carbon::parse($e->date)->format('Y-m-d') : null,
+                'receipt' => $e->receipt ? '/' . ltrim($e->receipt, '/') : null,
+                'user_name' => $e->user ? $e->user->name : '-',
+                'can_delete' => $canManageExpense || ($e->id_user == ($user->id ?? null)),
+                'source' => $e->id_kanban_task ? 'card' : 'po',
+            ];
+        });
+
+        // Info quotation yang ter-link ke kartu ini (buat tombol Hubungkan / Putuskan).
+        $linkedQuotation = null;
+        if ($task->unitQuotation) {
+            $uq = $task->unitQuotation;
+            $linkedQuotation = [
+                'id' => $uq->id,
+                'no_quote' => $uq->no_quote,
+                'title' => $uq->title,
+                'company' => $uq->client->company ?? null,
+                'link' => route('unit-quotation.show', $uq->id),
+                'is_po' => (bool) $task->pending_po_id,
+            ];
+        }
+        $canLinkQuotation = ($user && ($user->role === 'Admin' || $task->board->members->contains($user->id)));
+
         return response()->json([
             'success' => true,
             'task' => [
@@ -1009,13 +1129,222 @@ class KanbanController extends Controller
                 'labels' => $task->labels ?? [],
                 'priority' => $task->priority ?? 'medium',
                 'pending_po_id' => $task->pending_po_id,
+                'id_unit_quotation' => $task->id_unit_quotation,
                 'service_report_id' => $task->service_report_id,
             ],
             'feed' => $feed,
             'checklists' => $checklists,
             'attachments' => $attachments,
             'so_details' => $soDetails,
+            'expenses' => $expenses,
+            'expense_total' => (float) $expenses->sum('amount'),
+            'can_manage_expense' => $canManageExpense,
+            'linked_quotation' => $linkedQuotation,
+            'can_link_quotation' => $canLinkQuotation,
         ]);
+    }
+
+    /**
+     * Cek apakah user boleh mencatat/menghapus biaya di kartu — aturan sama dengan
+     * ProjectMonitoringController: role finance, atau anggota board, atau assignee kartu.
+     */
+    private function userCanManageTaskExpense(KanbanTask $task): bool
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return false;
+        }
+        if (in_array($user->role, ['Admin', 'Finance', 'Finance Manager', 'Accounting'], true)) {
+            return true;
+        }
+        $task->loadMissing('board.members', 'assignees');
+        if ($task->board && $task->board->members->contains($user->id)) {
+            return true;
+        }
+        return $task->assignees->contains($user->id);
+    }
+
+    public function storeTaskExpense(Request $request, $id)
+    {
+        $task = KanbanTask::with('board.members', 'assignees')->findOrFail($id);
+
+        if (!$this->userCanManageTaskExpense($task)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'category' => 'required|string|in:Transport,Akomodasi,Konsumsi,Material,Alat,Lain-lain',
+            'amount' => 'required|numeric|min:0',
+            'date' => 'required|date',
+            'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
+        ]);
+
+        $expense = new ProjectExpense();
+        $expense->id_kanban_task = $task->id;
+        $expense->id_pending = $task->pending_po_id; // ikut ke PO kalau kartu sudah jadi PO
+        $expense->id_user = Auth::id();
+        $expense->name = $request->name;
+        $expense->category = $request->category;
+        $expense->amount = $request->amount;
+        $expense->date = $request->date;
+
+        if ($request->hasFile('receipt')) {
+            $file = $request->file('receipt');
+            $filename = 'expense_' . \Illuminate\Support\Str::random(10) . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $uploadPath = public_path('asset/expenses');
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0755, true);
+            }
+            $file->move($uploadPath, $filename);
+            $expense->receipt = 'asset/expenses/' . $filename;
+        }
+
+        $expense->save();
+
+        $this->logActivity($task->id, 'add_expense', ['name' => $expense->name]);
+
+        return response()->json(['success' => true, 'expense' => $expense]);
+    }
+
+    public function destroyTaskExpense($id)
+    {
+        $expense = ProjectExpense::findOrFail($id);
+        $task = $expense->id_kanban_task
+            ? KanbanTask::with('board.members', 'assignees')->find($expense->id_kanban_task)
+            : null;
+
+        $user = Auth::user();
+        $allowed = in_array($user->role, ['Admin', 'Finance', 'Finance Manager', 'Accounting'], true)
+            || ($expense->id_user == $user->id)
+            || ($task && $this->userCanManageTaskExpense($task));
+
+        if (!$allowed) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if ($expense->receipt && file_exists(public_path($expense->receipt))) {
+            @unlink(public_path($expense->receipt));
+        }
+
+        $expenseName = $expense->name;
+        $taskId = $expense->id_kanban_task;
+        $expense->delete();
+
+        if ($taskId) {
+            $this->logActivity($taskId, 'delete_expense', ['name' => $expenseName]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Cari Unit Quotation yang belum ter-link ke kartu manapun — buat picker
+     * "Hubungkan ke Quotation" di modal kartu.
+     */
+    public function getLinkableQuotations(Request $request)
+    {
+        $q = trim((string) $request->get('q', ''));
+
+        $linkedIds = KanbanTask::whereNotNull('id_unit_quotation')->pluck('id_unit_quotation')->all();
+
+        $rows = \App\Models\UnitQuotation::with('client')
+            ->whereNotIn('id', $linkedIds)
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($sub) use ($q) {
+                    $sub->where('no_quote', 'like', "%{$q}%")
+                        ->orWhere('title', 'like', "%{$q}%")
+                        ->orWhereHas('client', function ($c) use ($q) {
+                            $c->where('company', 'like', "%{$q}%");
+                        });
+                });
+            })
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get()
+            ->map(function ($uq) {
+                return [
+                    'id' => $uq->id,
+                    'no_quote' => $uq->no_quote,
+                    'title' => $uq->title,
+                    'company' => $uq->client->company ?? '-',
+                ];
+            });
+
+        return response()->json(['success' => true, 'quotations' => $rows]);
+    }
+
+    public function linkQuotation(Request $request, $id)
+    {
+        $task = KanbanTask::with('board.members')->findOrFail($id);
+        $user = Auth::user();
+
+        if ($user->role !== 'Admin' && !$task->board->members->contains($user->id)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'id_unit_quotation' => 'required|exists:unit_quotation,id',
+        ]);
+
+        if ($task->id_unit_quotation || $task->pending_po_id) {
+            return response()->json(['error' => 'Kartu ini sudah terhubung ke quotation/PO lain.'], 422);
+        }
+
+        $alreadyLinked = KanbanTask::where('id_unit_quotation', $request->id_unit_quotation)
+            ->where('id', '!=', $task->id)
+            ->exists();
+        if ($alreadyLinked) {
+            return response()->json(['error' => 'Quotation ini sudah terhubung ke kartu lain.'], 422);
+        }
+
+        $uq = \App\Models\UnitQuotation::findOrFail($request->id_unit_quotation);
+
+        // Kalau quotation-nya sudah punya PendingPO, sekalian isi pending_po_id.
+        $pendingPo = \App\Models\PendingPO::where('id_unit_quotation', $uq->id)->first();
+
+        $task->id_unit_quotation = $uq->id;
+        if ($pendingPo) {
+            $task->pending_po_id = $pendingPo->id;
+        }
+        $task->save();
+
+        // Biaya yang tadinya cuma nempel ke kartu, sekarang ikut ke PO-nya juga.
+        if ($pendingPo) {
+            ProjectExpense::where('id_kanban_task', $task->id)
+                ->whereNull('id_pending')
+                ->update(['id_pending' => $pendingPo->id]);
+        }
+
+        $this->logActivity($task->id, 'link_quotation', ['no_quote' => $uq->no_quote]);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function unlinkQuotation(Request $request, $id)
+    {
+        $task = KanbanTask::with('board.members')->findOrFail($id);
+        $user = Auth::user();
+
+        if ($user->role !== 'Admin' && !$task->board->members->contains($user->id)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if ($task->pending_po_id) {
+            return response()->json(['error' => 'Kartu sudah jadi PO — tidak bisa diputuskan.'], 422);
+        }
+
+        $noQuote = $task->unitQuotation ? $task->unitQuotation->no_quote : null;
+
+        // Lepas juga id_pending dari biaya kartu ini (kembali jadi biaya kartu saja).
+        ProjectExpense::where('id_kanban_task', $task->id)->update(['id_pending' => null]);
+
+        $task->id_unit_quotation = null;
+        $task->save();
+
+        $this->logActivity($task->id, 'unlink_quotation', ['no_quote' => $noQuote]);
+
+        return response()->json(['success' => true]);
     }
 
     public function storeComment(Request $request, $id)

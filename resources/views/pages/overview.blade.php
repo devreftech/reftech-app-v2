@@ -561,25 +561,27 @@
                     $item++;
                 @endphp
             @endforeach
-            <div class="col-6 col-lg-4 mb-3">
-                <a href="{{ Route('overview.semester', $support->id) }}" class="text-decoration-none text-black">
-                    <div class="card">
-                        <div class="row">
-                            <div class="col-4">
-                                <img src="{{ url('') . '/' . $support->image }}" alt="" srcset=""
-                                    class="rounded-circle" style="width : 100%; height:100%;">
-                            </div>
-                            <div class="col-8 m-auto">
-                                {{-- @php
-                                    $lastDetail = $sale->detail->last();
-                                @endphp --}}
-                                <h3>{{ $support->name }}</h3>
-                                <p>Online</p>
+            @if (isset($support) && $support)
+                <div class="col-6 col-lg-4 mb-3">
+                    <a href="{{ Route('overview.semester', $support->id) }}" class="text-decoration-none text-black">
+                        <div class="card h-100 shadow-sm border" style="border-left: 4px solid #666cff !important;">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <img src="{{ $support->image ? url($support->image) : asset('assets/img/avatars/1.png') }}"
+                                         alt="{{ $support->name }}"
+                                         class="rounded-circle shadow-sm"
+                                         style="width: 54px; height: 54px; object-fit: cover;">
+                                    <div>
+                                        <div class="badge bg-label-info mb-1">Marketing Support</div>
+                                        <h5 class="mb-0 fw-bold text-dark">{{ $support->name }}</h5>
+                                        <small class="text-muted"><i class="mdi mdi-circle text-success me-1" style="font-size: 8px;"></i>Online</small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </a>
-            </div>
+                    </a>
+                </div>
+            @endif
         </div>
     @endif
     @include('pages.warehouse.reports.form')

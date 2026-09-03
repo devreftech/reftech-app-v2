@@ -1051,7 +1051,7 @@
     <div class="card clean-card mb-4 p-3">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-label-primary fs-7 px-3 py-2 rounded-pill">
+                <span class="badge bg-label-secondary fs-7 px-3 py-2 rounded-pill">
                     <i class="mdi mdi-shield-account me-1"></i> Admin View
                 </span>
                 <small class="text-muted fw-semibold d-none d-sm-inline">Pilih Sudut Pandang Dashboard Departemen:</small>
@@ -2060,6 +2060,13 @@
                     $pane.find('.filtered-all-prospect').text('/ ' + response);
                 }
             });
+            $.ajax({
+                url: '/dashboard/filteredPo/' + id,
+                type: 'GET',
+                success: function(response) {
+                    $pane.find('.filtered-po-count').text(response);
+                }
+            });
 
             // Ajax Sales Kanan
             $.ajax({
@@ -2841,6 +2848,36 @@
                         $('.datatable-prospect-quote:not(.dataTable)').DataTable();
                     }
                 }
+            });
+        </script>
+
+        {{-- Lazy-load "Rekap KPI Mingguan" ke dalam modal Info (card Sales Overview) --}}
+        <script>
+            document.addEventListener('show.bs.modal', function (e) {
+                var modal = e.target;
+                if (!modal || typeof modal.id !== 'string' || modal.id.indexOf('overview-sales-') !== 0) return;
+
+                var mount = modal.querySelector('.weekly-kpi-mount');
+                if (!mount || mount.dataset.loaded === '1' || mount.dataset.loading === '1') return;
+
+                mount.dataset.loading = '1';
+                fetch(mount.dataset.url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.text();
+                    })
+                    .then(function (html) {
+                        mount.innerHTML = html;
+                        mount.dataset.loaded = '1';
+                    })
+                    .catch(function () {
+                        mount.innerHTML = '<div class="text-center text-danger py-4">'
+                            + '<i class="mdi mdi-alert-circle-outline mdi-24px d-block mb-1"></i>'
+                            + 'Gagal memuat rekap KPI mingguan. Coba tutup dan buka lagi.</div>';
+                    })
+                    .finally(function () {
+                        delete mount.dataset.loading;
+                    });
             });
         </script>
 @endpush

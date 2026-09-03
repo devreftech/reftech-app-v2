@@ -509,12 +509,14 @@
     {{-- Pane untuk 1 Opsi: judul, line items sendiri, summary sendiri --}}
     <template id="tmpl-option-pane">
         <div class="option-pane tab-pane fade" id="option-pane-__OPT__" data-option-idx="__OPT__">
-            <div class="p-3 border-bottom bg-light-subtle d-flex align-items-center gap-2 flex-wrap">
-                <label class="fw-semibold small text-muted mb-0">Judul Opsi:</label>
-                <input type="text" class="form-control form-control-sm fw-bold option-title-input" style="max-width:320px;"
-                    name="options[__OPT__][title]" placeholder="Judul Opsi (mis. Unit Baru, Unit Second)">
+            <div class="p-3 border-bottom bg-light-subtle d-flex align-items-center gap-2 flex-wrap option-header-toolbar" style="display: none;">
+                <div class="option-title-wrapper align-items-center gap-2" style="display: none;">
+                    <label class="fw-semibold small text-muted mb-0">Judul Opsi:</label>
+                    <input type="text" class="form-control form-control-sm fw-bold option-title-input" style="max-width:320px;"
+                        name="options[__OPT__][title]" placeholder="Judul Opsi (mis. Unit Baru, Unit Second)">
+                </div>
                 <span class="badge bg-label-secondary items-count-badge">0 Items</span>
-                <button type="button" class="btn btn-sm btn-outline-danger ms-auto btn-remove-option">
+                <button type="button" class="btn btn-sm btn-outline-danger ms-auto btn-remove-option" style="display: none;">
                     <i class="mdi mdi-delete-outline me-1"></i> Hapus Opsi Ini
                 </button>
             </div>
@@ -602,6 +604,10 @@
         .btn-drag-handle { cursor: grab; padding: 2px 4px; border-radius: 4px; transition: background 0.15s; }
         .btn-drag-handle:hover { background: #e8e8ff; color: #696cff !important; }
         .btn-drag-handle:active { cursor: grabbing; }
+        /* Sembunyikan toolbar header opsi (badge items, judul opsi, tombol hapus) jika opsi cuma 1 */
+        .tab-content:not(.has-multi-options) .option-header-toolbar {
+            display: none !important;
+        }
     </style>
 @endpush
 

@@ -94,7 +94,7 @@ class DashboardController extends Controller
                 ->whereYear('po_received', $yearNow)
                 ->whereMonth('po_received', $monthNow)
                 ->groupBy('id_sales')
-                ->selectRaw('id_sales, SUM(total - tax_amount) as total_nett')
+                ->selectRaw('id_sales, SUM(total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)) as total_nett')
                 ->pluck('total_nett', 'id_sales');
 
             foreach ($sales as $sale) {
@@ -239,7 +239,7 @@ class DashboardController extends Controller
             ->whereYear('po_received', $yearNow)
             ->whereMonth('po_received', $monthNow)
             ->groupBy('id_sales')
-            ->selectRaw('id_sales, SUM(total - tax_amount) as total_nett')
+            ->selectRaw('id_sales, SUM(total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)) as total_nett')
             ->pluck('total_nett', 'id_sales');
 
         foreach ($sales as $sale) {
@@ -756,7 +756,8 @@ class DashboardController extends Controller
         $dateNow = Carbon::now();
         $monthNow = $dateNow->month;
         $yearNow = $dateNow->year;
-        $totalQuotation = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_sales', $sales)->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $totalQuotation = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_sales', $sales)->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + UnitQuotation::where('is_latest', 1)->whereYear('date', $yearNow)->whereMonth('date', $monthNow)->where('id_sales', $sales)->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
         return $totalQuotation;
     }
     public function totalProspectAdmin($sales)
@@ -780,7 +781,8 @@ class DashboardController extends Controller
         $dateNow = Carbon::now();
         $monthNow = $dateNow->month;
         $yearNow = $dateNow->year;
-        $totalHotProspect = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_sales', $sales)->whereIn('status', ['80', '90'])->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $totalHotProspect = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_sales', $sales)->whereIn('status', ['80', '90'])->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + UnitQuotation::where('is_latest', 1)->where('status', 'hot_prospect')->whereYear('date', $yearNow)->whereMonth('date', $monthNow)->where('id_sales', $sales)->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
         return $totalHotProspect;
     }
 
@@ -789,7 +791,8 @@ class DashboardController extends Controller
         $dateNow = Carbon::now();
         $monthNow = $dateNow->month;
         $yearNow = $dateNow->year;
-        $totalProspect = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_sales', $sales)->where('status', '0')->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $totalProspect = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_sales', $sales)->where('status', '0')->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + UnitQuotation::where('is_latest', 1)->where('status', 'loss')->whereYear('date', $yearNow)->whereMonth('date', $monthNow)->where('id_sales', $sales)->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
         return $totalProspect;
     }
     public function totalPoAdmin($sales)
@@ -810,7 +813,7 @@ class DashboardController extends Controller
                 ->whereYear('po_received', $yearNow)
                 ->whereMonth('po_received', $monthNow)
                 ->where('id_sales', $sales)
-                ->sum(DB::raw('total - tax_amount'));
+                ->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
 
         return $totalPO;
     }
@@ -832,7 +835,7 @@ class DashboardController extends Controller
                 ->whereYear('po_received', $yearNow)
                 ->whereMonth('po_received', $monthNow)
                 ->where('id_sales', $sales)
-                ->sum(DB::raw('total - tax_amount'));
+                ->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
 
         $target = Target::where('id_sales', $sales)->first('total');
 
@@ -949,7 +952,8 @@ class DashboardController extends Controller
         $dateNow = Carbon::now();
         $monthNow = $dateNow->month;
         $yearNow = $dateNow->year;
-        $filteredQuote = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_sales', $sales)->where('level', '1')->where('is_primary', '1')->count();
+        $filteredQuote = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_sales', $sales)->where('level', '1')->where('is_primary', '1')->count()
+            + UnitQuotation::where('is_latest', 1)->whereYear('date', $yearNow)->whereMonth('date', $monthNow)->where('id_sales', $sales)->count();
         return $filteredQuote;
     }
     public function filteredTargetQuoteAdmin($sales)
@@ -962,7 +966,8 @@ class DashboardController extends Controller
         $dateNow = Carbon::now();
         $monthNow = $dateNow->month;
         $yearNow = $dateNow->year;
-        $filteredQuote = Quotation::whereYear('po_date', $yearNow)->whereMonth('po_date', $monthNow)->where('id_sales', $sales)->where('level', '1')->where('is_primary', '1')->count();
+        $filteredQuote = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_sales', $sales)->where('level', '1')->where('is_primary', '1')->count()
+            + UnitQuotation::where('is_latest', 1)->whereYear('date', $yearNow)->whereMonth('date', $monthNow)->where('id_sales', $sales)->count();
         $target = Target::where('id_sales', $sales)->first('quote');
         if (!$target || $target->quote == 0) {
             return 0;
@@ -1184,7 +1189,8 @@ class DashboardController extends Controller
         $dateNow = Carbon::now();
         $monthNow = $dateNow->month;
         $yearNow = $dateNow->year;
-        $filteredProspectQuote = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_support', $support)->where('level', '1')->where('is_primary', '1')->count();
+        $filteredProspectQuote = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_support', $support)->where('level', '1')->where('is_primary', '1')->count()
+            + UnitQuotation::where('is_latest', 1)->whereYear('date', $yearNow)->whereMonth('date', $monthNow)->where('id_support', $support)->count();
         $filteredProvide = Prospect::whereYear('date', $yearNow)->whereMonth('date', $monthNow)->where('provide', '!=', '0')->where('id_support', $support)->count();
         $percentedQuotation = $filteredProvide > 0
             ? round(($filteredProspectQuote / $filteredProvide) * 100, 2)
@@ -1218,7 +1224,8 @@ class DashboardController extends Controller
         $yearNow = $dateNow->year;
         $filteredProspectPO = Quotation::whereYear('po_date', $yearNow)->whereMonth('po_date', $monthNow)->where('id_support', $support)->where('status', '100')->where('level', '1')->where('is_primary', '1')->count()
             + UnitQuotation::where('status', 'po_received')->where('is_latest', 1)->whereYear('po_received', $yearNow)->whereMonth('po_received', $monthNow)->where('id_support', $support)->count();
-        $filteredProspectQuote = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_support', $support)->where('level', '1')->where('is_primary', '1')->count();
+        $filteredProspectQuote = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_support', $support)->where('level', '1')->where('is_primary', '1')->count()
+            + UnitQuotation::where('is_latest', 1)->whereYear('date', $yearNow)->whereMonth('date', $monthNow)->where('id_support', $support)->count();
         $percentedQuotation = $filteredProspectQuote > 0
             ? round(($filteredProspectPO / $filteredProspectQuote) * 100, 2)
             : 0;
@@ -1233,7 +1240,8 @@ class DashboardController extends Controller
         $dateNow = Carbon::now();
         $monthNow = $dateNow->month;
         $yearNow = $dateNow->year;
-        $totalProspectQuote = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_support', $support)->where('status', '!=', '100')->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $totalProspectQuote = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_support', $support)->where('status', '!=', '100')->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + UnitQuotation::where('is_latest', 1)->whereYear('date', $yearNow)->whereMonth('date', $monthNow)->where('id_support', $support)->where('status', '!=', 'po_received')->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
         $formattedQuote = number_format($totalProspectQuote, 0, ",", ".");
         return $formattedQuote;
     }
@@ -1242,7 +1250,8 @@ class DashboardController extends Controller
         $dateNow = Carbon::now();
         $monthNow = $dateNow->month;
         $yearNow = $dateNow->year;
-        $totalProspectProspect = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_support', $support)->whereIn('status', ['80', '90'])->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $totalProspectProspect = Quotation::whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)->where('id_support', $support)->whereIn('status', ['80', '90'])->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + UnitQuotation::where('is_latest', 1)->whereYear('date', $yearNow)->whereMonth('date', $monthNow)->where('id_support', $support)->whereIn('status', ['hot_prospect', 'negotiation'])->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
         $formattedProspect = number_format($totalProspectProspect, 0, ",", ".");
         return $formattedProspect;
     }
@@ -1252,7 +1261,7 @@ class DashboardController extends Controller
         $monthNow = $dateNow->month;
         $yearNow = $dateNow->year;
         $totalProspectPO = Quotation::whereYear('po_date', $yearNow)->whereMonth('po_date', $monthNow)->where('id_support', $support)->where('status', '100')->where('level', '1')->where('is_primary', '1')->sum('nett')
-            + UnitQuotation::where('status', 'po_received')->where('is_latest', 1)->whereYear('po_received', $yearNow)->whereMonth('po_received', $monthNow)->where('id_support', $support)->sum(DB::raw('total - tax_amount'));
+            + UnitQuotation::where('status', 'po_received')->where('is_latest', 1)->whereYear('po_received', $yearNow)->whereMonth('po_received', $monthNow)->where('id_support', $support)->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
         $formattedPO = number_format($totalProspectPO, 0, ",", ".");
         return $formattedPO;
     }

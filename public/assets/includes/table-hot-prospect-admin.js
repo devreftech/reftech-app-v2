@@ -170,7 +170,7 @@ $(function () {
                             ' data-bs-custom-class="tooltip-warning" title="' + tip + '">' +
                             label + '</span>';
                         if (rowType === 'unit') {
-                            badge += ' <span class="badge bg-label-danger ms-1">Unit</span>';
+                            badge += ' <span class="badge bg-label-info ms-1">Smart</span>';
                         }
                         return badge;
                     },

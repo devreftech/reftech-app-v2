@@ -7,19 +7,20 @@ $(function () {
             const tooltipTriggerList = document.querySelectorAll(
                 '[data-bs-toggle="tooltip"]'
             );
-            const tooltipList = [...tooltipTriggerList].map(
-                (el) => new bootstrap.Tooltip(el)
-            );
+            [...tooltipTriggerList].map((el) => new bootstrap.Tooltip(el));
         };
         initTooltips();
+
         // Setup - add a text input to each footer cell
         $(".datatable-aging-report-rayi thead tr")
             .clone(true)
             .appendTo(".datatable-aging-report-rayi thead");
         $(".datatable-aging-report-rayi thead tr:eq(1) th").each(function (i) {
-            var title = $(this).text();
+            var title = $(this).text().trim();
             $(this).html(
-                '<input type="text" class="form-control" placeholder="Search" />'
+                '<input type="text" class="form-control form-control-sm bg-white" placeholder="Filter ' +
+                    title +
+                    '" />'
             );
 
             $("input", this).on("keyup change", function () {
@@ -36,117 +37,139 @@ $(function () {
                 headers: {
                     "Content-Type": "application/json",
                 },
-
-                // success: function (hasil, Url) {
-                //     console.log("Url:", Url);
-                //     console.log(hasil);
-                // },
-                // error: function (error) {
-                //     console.log("Url:", Url);
-                //     console.error("Error:", error);
-                //     console.log("error disini");
-                // },
+                data: function (d) {
+                    d.year = window.agingYearFilter || "all";
+                    d.sales_id = window.agingSalesFilter || "all";
+                    return d;
+                },
             },
             columns: [
-                { data: "short_invoice" },
-                { data: "date" },
-                { data: "short_po" },
-                { data: "company" },
-                { data: "amount" },
-                { data: "due_date" },
-                { data: "due_status" },
-                { data: "tax" },
-                { data: "name" },
-                { data: "info" },
-            ],
-            columnDefs: [
                 {
-                    targets: 0,
-                    render: function (data, type, full, row) {
+                    data: "short_invoice",
+                    render: function (data, type, full) {
                         if (type === "display") {
                             var id = full["id"];
-                            var diff = full["diff"];
-                            if (diff >= 10) {
-                                var condition_class = " bg-success";
-                            } else if (diff >= 0) {
-                                var condition_class = " bg-warning";
+                            var detailRoute = typeof route === "function" 
+                                ? route("payment_detail.aging", id) 
+                                : "/payment-detail/aging/" + id;
+                            var flagBadge = full["flag"] 
+                                ? '<span class="badge bg-label-info py-0 px-2 ms-1" style="font-size:10px;">' + full["flag"] + '</span>' 
+                                : '';
+                            return (
+                                '<div class="d-flex flex-column gap-1">' +
+                                    '<div class="d-flex align-items-center">' +
+                                        '<a class="fw-bold text-primary text-decoration-none" href="' + detailRoute + '">' +
+                                            '<i class="mdi mdi-file-document-outline me-1"></i>' + (full["no_invoice"] || data || "-") +
+                                        '</a>' + flagBadge +
+                                    '</div>' +
+                                    '<div class="small text-muted d-flex align-items-center gap-2">' +
+                                        '<span><i class="mdi mdi-pound me-1"></i>PO: ' + (full["no_po"] || "-") + '</span>' +
+                                        '<span>•</span>' +
+                                        '<span><i class="mdi mdi-calendar-blank-outline me-1"></i>' + (full["date"] || "-") + '</span>' +
+                                    '</div>' +
+                                '</div>'
+                            );
+                        }
+                        return (full["no_invoice"] || data || "") + " " + (full["no_po"] || "") + " " + (full["date"] || "");
+                    }
+                },
+                {
+                    data: "company",
+                    render: function (data, type, full) {
+                        if (type === "display") {
+                            var salesName = full["name"] ? full["name"] : "Unassigned";
+                            return (
+                                '<div class="d-flex flex-column gap-1">' +
+                                    '<span class="fw-bold text-dark">' + (data || "-") + '</span>' +
+                                    '<small class="text-muted"><i class="mdi mdi-account-tie-outline me-1 text-secondary"></i>Sales: <span class="fw-medium text-secondary">' + salesName + '</span></small>' +
+                                '</div>'
+                            );
+                        }
+                        return (data || "") + " " + (full["name"] || "");
+                    }
+                },
+                {
+                    data: "amount",
+                    render: function (data, type, full) {
+                        if (type === "display") {
+                            var taxBadge = full["tax"] 
+                                ? '<span class="badge bg-label-primary px-2 py-0" style="font-size:10px;">PPN ' + full["tax"] + '%</span>'
+                                : '<span class="badge bg-label-secondary px-2 py-0" style="font-size:10px;">Non PPN</span>';
+                            return (
+                                '<div class="text-end d-flex flex-column align-items-end gap-1">' +
+                                    '<span class="fw-bold text-dark fs-6">Rp ' + new Intl.NumberFormat("id-ID").format(data || full["harga_total"] || 0) + '</span>' +
+                                    taxBadge +
+                                '</div>'
+                            );
+                        }
+                        return data || full["harga_total"] || 0;
+                    }
+                },
+                {
+                    data: "due_date",
+                    render: function (data, type, full) {
+                        if (type === "display") {
+                            var diff = full["diff"] !== undefined ? Number(full["diff"]) : null;
+                            var statusBadge = "";
+                            if (!data || data === "null" || data === "-") {
+                                statusBadge = '<span class="badge bg-label-warning rounded-pill px-2 py-1"><i class="mdi mdi-clock-alert-outline me-1"></i>Belum Set Tempo</span>';
+                            } else if (diff !== null && diff < 0) {
+                                statusBadge = '<span class="badge bg-label-danger rounded-pill px-2 py-1"><i class="mdi mdi-alert-circle-outline me-1"></i>Overdue ' + Math.abs(diff) + ' Hari</span>';
+                            } else if (diff !== null && diff >= 0) {
+                                statusBadge = '<span class="badge bg-label-success rounded-pill px-2 py-1"><i class="mdi mdi-check-circle-outline me-1"></i>On Due (' + diff + ' Hari)</span>';
                             } else {
-                                var condition_class = " bg-danger";
+                                statusBadge = '<span class="badge bg-label-info rounded-pill px-2 py-1">' + (full["due_status"] || "-") + '</span>';
                             }
-                            detailRoute = route("payment_detail.aging", id);
+
                             return (
-                                '<a class="text-black" href="' +
-                                detailRoute +
-                                '"><span class="badge badge-dot ' +
-                                condition_class +
-                                '"></span> ' +
-                                data +
-                                "</a>"
+                                '<div class="d-flex flex-column align-items-center gap-1 text-center">' +
+                                    '<span class="small fw-semibold text-dark"><i class="mdi mdi-calendar-clock-outline me-1 text-muted"></i>' + (data || "-") + '</span>' +
+                                    statusBadge +
+                                '</div>'
                             );
                         }
-                        return data;
-                    },
+                        return (data || "") + " " + (full["due_status"] || "");
+                    }
                 },
                 {
-                    targets: [1, 2, 5, 6, 6, 7, 8],
-                    className: "text-center",
-                },
-                {
-                    targets: 4,
-                    className: "text-end",
-                    render: function (data, type, row) {
-                        if (type === "display" || type === "filter") {
+                    data: "reminder_status",
+                    render: function (data, type, full) {
+                        if (type === "display") {
+                            var id = full["id"];
+                            var date = full["reminder_date"] && full["reminder_date"] !== "null" ? full["reminder_date"] : "-";
+                            var note = full["reminder_note"] && full["reminder_note"] !== "null" ? full["reminder_note"] : "Belum Ada Reminder";
+                            var tooltipTitle = date + " - " + note;
+
+                            var detailRoute = typeof route === "function" 
+                                ? route("payment_detail.aging", id) 
+                                : "/payment-detail/aging/" + id;
+
                             return (
-                                "Rp " +
-                                new Intl.NumberFormat("id-ID").format(data)
+                                '<div class="d-flex align-items-center justify-content-center gap-2">' +
+                                    '<span data-bs-toggle="tooltip" data-bs-placement="top" title="' + tooltipTitle + '" class="badge rounded-pill bg-label-warning px-2 py-1" style="cursor:pointer;">' +
+                                        '<i class="mdi mdi-bell-ring-outline me-1"></i>' + (data ? 'Reminder (' + data + ')' : 'No Reminder') +
+                                    '</span>' +
+                                    '<a href="' + detailRoute + '" class="btn btn-icon btn-sm btn-label-primary rounded-pill" data-bs-toggle="tooltip" title="Lihat Detail">' +
+                                        '<i class="mdi mdi-eye-outline"></i>' +
+                                    '</a>' +
+                                '</div>'
                             );
                         }
-                        return data;
-                    },
-                },
-                {
-                    targets: 7,
-                    render: function (data, type, row) {
-                        var vat;
-                        if (data == 11) {
-                            vat = "VAT";
-                        } else {
-                            vat = "Non VAT";
-                        }
-                        return vat;
-                    },
-                },
-                {
-                    targets: -1,
-                    render: function (data, type, full, row) {
-                        var title, label;
-                        if (data == "Reftech") {
-                            title = "RJO";
-                            label = "bg-label-primary";
-                        } else {
-                            title = "KII";
-                            label = "bg-label-danger";
-                        }
-                        return (
-                            '<span class="badge rounded-pill ' +
-                            label +
-                            '">' +
-                            title +
-                            "</span>"
-                        );
-                    },
+                        return (data || "") + " " + (full["reminder_note"] || "");
+                    }
                 },
             ],
-            drawCallback: function (settings) {
-                console.log("drawCallback");
+            drawCallback: function () {
                 initTooltips();
             },
             order: [],
-            // orderCellsTop: true,
-            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>><"table-responsive"t><"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
+            dom: '<"card-header d-flex flex-wrap justify-content-between align-items-center gap-2 py-3 bg-transparent border-bottom"<"d-flex align-items-center gap-2"l><"d-flex align-items-center gap-2"f>><"table-responsive"t><"card-footer d-flex flex-wrap justify-content-between align-items-center gap-2 py-3 bg-transparent border-top"<"small text-muted"i><"pagination-wrapper"p>>',
         });
+
+        window.agingDataTables = window.agingDataTables || {};
+        window.agingDataTables.rayi = dt_filter;
     }
     dt_table_aging_report_rayi.on("draw", function () {
-        initTooltips();
+        $('[data-toggle="tooltip"]').tooltip();
     });
 });

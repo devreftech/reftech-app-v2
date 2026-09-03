@@ -24,51 +24,74 @@
         </div>
 
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            <a href="{{ route('report.finance', [$prevYear, $prevMonth]) }}"
-               class="btn btn-sm btn-outline-secondary waves-effect">
-                <i class="mdi mdi-chevron-left"></i>
-            </a>
+            {{-- Segmented Date Navigator Pill Group --}}
+            <div class="d-inline-flex align-items-center bg-body-tertiary border rounded-pill p-1 shadow-2xs">
+                {{-- Prev Month --}}
+                <a href="{{ route('report.finance', [$prevYear, $prevMonth]) }}"
+                   class="btn btn-icon btn-sm btn-label-secondary rounded-circle"
+                   style="width: 28px; height: 28px;"
+                   data-bs-toggle="tooltip" title="Bulan Sebelumnya ({{ $bulanMap[$prevMonth] }})">
+                    <i class="mdi mdi-chevron-left fs-5"></i>
+                </a>
 
-            <div class="dropdown">
-                <button type="button"
-                    class="btn btn-sm btn-outline-secondary dropdown-toggle waves-effect"
-                    data-bs-toggle="dropdown" aria-expanded="false">
-                    {{ $bulanMap[$month] }}
-                </button>
-                <ul class="dropdown-menu">
-                    @for ($m = 1; $m <= 12; $m++)
-                        <li>
-                            <a class="dropdown-item waves-effect {{ $m == $month ? 'active' : '' }}"
-                               href="{{ route('report.finance', [$year, $m]) }}">
-                                {{ $bulanMap[$m] }}
-                            </a>
-                        </li>
-                    @endfor
-                </ul>
+                {{-- Dropdown Bulan --}}
+                <div class="dropdown">
+                    <button type="button"
+                        class="btn btn-sm border-0 bg-transparent fw-semibold text-dark dropdown-toggle py-0 px-2"
+                        style="font-size: 0.82rem;"
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                        {{ $bulanMap[$month] }}
+                    </button>
+                    <ul class="dropdown-menu shadow-sm">
+                        @for ($m = 1; $m <= 12; $m++)
+                            <li>
+                                <a class="dropdown-item waves-effect {{ $m == $month ? 'active' : '' }}"
+                                   href="{{ route('report.finance', [$year, $m]) }}">
+                                    {{ $bulanMap[$m] }}
+                                </a>
+                            </li>
+                        @endfor
+                    </ul>
+                </div>
+
+                <span class="text-muted opacity-25">|</span>
+
+                {{-- Dropdown Tahun --}}
+                <div class="dropdown">
+                    <button type="button"
+                        class="btn btn-sm border-0 bg-transparent fw-semibold text-dark dropdown-toggle py-0 px-2"
+                        style="font-size: 0.82rem;"
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                        {{ $year }}
+                    </button>
+                    <ul class="dropdown-menu shadow-sm">
+                        @foreach ($yearList as $yr)
+                            <li>
+                                <a class="dropdown-item waves-effect {{ $yr == $year ? 'active' : '' }}"
+                                   href="{{ route('report.finance', [$yr, $month]) }}">
+                                    {{ $yr }}
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+
+                {{-- Next Month --}}
+                <a href="{{ route('report.finance', [$nextYear, $nextMonth]) }}"
+                   class="btn btn-icon btn-sm btn-label-secondary rounded-circle"
+                   style="width: 28px; height: 28px;"
+                   data-bs-toggle="tooltip" title="Bulan Berikutnya ({{ $bulanMap[$nextMonth] }})">
+                    <i class="mdi mdi-chevron-right fs-5"></i>
+                </a>
             </div>
 
-            <div class="dropdown">
-                <button type="button"
-                    class="btn btn-sm btn-outline-secondary dropdown-toggle waves-effect"
-                    data-bs-toggle="dropdown" aria-expanded="false">
-                    {{ $year }}
-                </button>
-                <ul class="dropdown-menu">
-                    @foreach ($yearList as $yr)
-                        <li>
-                            <a class="dropdown-item waves-effect {{ $yr == $year ? 'active' : '' }}"
-                               href="{{ route('report.finance', [$yr, $month]) }}">
-                                {{ $yr }}
-                            </a>
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
-
-            <a href="{{ route('report.finance', [$nextYear, $nextMonth]) }}"
-               class="btn btn-sm btn-outline-secondary waves-effect">
-                <i class="mdi mdi-chevron-right"></i>
-            </a>
+            @if ($month != now()->month || $year != now()->year)
+                <a href="{{ route('report.finance', [now()->year, now()->month]) }}" 
+                   class="btn btn-sm btn-label-primary rounded-pill px-3 fw-semibold shadow-2xs" 
+                   data-bs-toggle="tooltip" title="Kembali ke Bulan Sekarang">
+                    <i class="mdi mdi-calendar-today me-1"></i> Bulan Ini
+                </a>
+            @endif
         </div>
     </div>
 

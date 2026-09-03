@@ -22,9 +22,9 @@
                                 </span>
                             </div>
                         </div>
-                        <h4 class="mb-2 fw-bold text-dark">{{ $newCount }}</h4>
+                        <h4 class="mb-2 fw-bold text-dark stat-count-new">{{ $newCount }}</h4>
                         <div class="d-flex align-items-center gap-1">
-                            <span class="badge bg-label-primary rounded-pill fw-semibold">{{ $newCount }}</span>
+                            <span class="badge bg-label-primary rounded-pill fw-semibold stat-badge-new">{{ $newCount }}</span>
                             <span class="text-muted small">Menunggu ACC</span>
                         </div>
                     </div>
@@ -41,9 +41,9 @@
                                 </span>
                             </div>
                         </div>
-                        <h4 class="mb-2 fw-bold text-dark">{{ $accCount }}</h4>
+                        <h4 class="mb-2 fw-bold text-dark stat-count-acc">{{ $accCount }}</h4>
                         <div class="d-flex align-items-center gap-1">
-                            <span class="badge bg-label-warning rounded-pill fw-semibold">{{ $accCount }}</span>
+                            <span class="badge bg-label-warning rounded-pill fw-semibold stat-badge-acc">{{ $accCount }}</span>
                             <span class="text-muted small">Telah Disetujui</span>
                         </div>
                     </div>
@@ -60,9 +60,9 @@
                                 </span>
                             </div>
                         </div>
-                        <h4 class="mb-2 fw-bold text-dark">{{ $poCount }}</h4>
+                        <h4 class="mb-2 fw-bold text-dark stat-count-po">{{ $poCount }}</h4>
                         <div class="d-flex align-items-center gap-1">
-                            <span class="badge bg-label-dark rounded-pill fw-semibold">{{ $poCount }}</span>
+                            <span class="badge bg-label-dark rounded-pill fw-semibold stat-badge-po">{{ $poCount }}</span>
                             <span class="text-muted small">PO Terbit</span>
                         </div>
                     </div>
@@ -79,9 +79,9 @@
                                 </span>
                             </div>
                         </div>
-                        <h4 class="mb-2 fw-bold text-dark">{{ $deliveryCount }}</h4>
+                        <h4 class="mb-2 fw-bold text-dark stat-count-delivery">{{ $deliveryCount }}</h4>
                         <div class="d-flex align-items-center gap-1">
-                            <span class="badge bg-label-info rounded-pill fw-semibold">{{ $deliveryCount }}</span>
+                            <span class="badge bg-label-info rounded-pill fw-semibold stat-badge-delivery">{{ $deliveryCount }}</span>
                             <span class="text-muted small">Dalam Pengiriman</span>
                         </div>
                     </div>
@@ -98,9 +98,9 @@
                                 </span>
                             </div>
                         </div>
-                        <h4 class="mb-2 fw-bold text-dark">{{ $doneCount }}</h4>
+                        <h4 class="mb-2 fw-bold text-dark stat-count-done">{{ $doneCount }}</h4>
                         <div class="d-flex align-items-center gap-1">
-                            <span class="badge bg-label-success rounded-pill fw-semibold">{{ $doneCount }}</span>
+                            <span class="badge bg-label-success rounded-pill fw-semibold stat-badge-done">{{ $doneCount }}</span>
                             <span class="text-muted small">Selesai</span>
                         </div>
                     </div>
@@ -117,9 +117,7 @@
                             data-bs-target="#navs-pills-top-new" aria-controls="navs-pills-top-new"
                             aria-selected="true">
                             <i class="mdi mdi-file-plus-outline me-1"></i>New Purchase
-                            @if (@$newCount >= 1)
-                                <span class="badge bg-danger rounded-pill ms-1">{{ $newCount }}</span>
-                            @endif
+                            <span class="badge bg-danger rounded-pill ms-1 tab-badge-new" style="{{ @$newCount >= 1 ? '' : 'display:none;' }}">{{ $newCount }}</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -127,9 +125,7 @@
                             data-bs-target="#navs-pills-top-acc" aria-controls="navs-pills-top-acc"
                             aria-selected="false">
                             <i class="mdi mdi-clipboard-check-outline me-1"></i>Approved
-                            @if (@$accCount >= 1)
-                                <span class="badge bg-warning rounded-pill ms-1">{{ $accCount }}</span>
-                            @endif
+                            <span class="badge bg-warning rounded-pill ms-1 tab-badge-acc" style="{{ @$accCount >= 1 ? '' : 'display:none;' }}">{{ $accCount }}</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -137,9 +133,7 @@
                             data-bs-target="#navs-pills-top-po" aria-controls="navs-pills-top-po"
                             aria-selected="false">
                             <i class="mdi mdi-file-document-outline me-1"></i>Purchase Order
-                            @if (@$poCount >= 1)
-                                <span class="badge bg-dark rounded-pill ms-1">{{ $poCount }}</span>
-                            @endif
+                            <span class="badge bg-dark rounded-pill ms-1 tab-badge-po" style="{{ @$poCount >= 1 ? '' : 'display:none;' }}">{{ $poCount }}</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -147,9 +141,7 @@
                             data-bs-target="#navs-pills-top-delivery" aria-controls="navs-pills-top-delivery"
                             aria-selected="false">
                             <i class="mdi mdi-truck-delivery-outline me-1"></i>Delivery
-                            @if (@$deliveryCount >= 1)
-                                <span class="badge bg-info rounded-pill ms-1">{{ $deliveryCount }}</span>
-                            @endif
+                            <span class="badge bg-info rounded-pill ms-1 tab-badge-delivery" style="{{ @$deliveryCount >= 1 ? '' : 'display:none;' }}">{{ $deliveryCount }}</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -158,9 +150,7 @@
                             role="tab" data-bs-toggle="tab" data-bs-target="#navs-pills-top-done"
                             aria-controls="navs-pills-top-done" aria-selected="false">
                             <i class="mdi mdi-check-all me-1"></i>Good Receipt
-                            @if (@$doneCount >= 1)
-                                <span class="badge bg-success rounded-pill ms-1">{{ $doneCount }}</span>
-                            @endif
+                            <span class="badge bg-success rounded-pill ms-1 tab-badge-done" style="{{ @$doneCount >= 1 ? '' : 'display:none;' }}">{{ $doneCount }}</span>
                         </button>
                     </li>
                 </ul>
@@ -330,8 +320,7 @@
 
 @push('page-script')
     <script src="{{ asset('assets') }}/js/extended-ui-sweetalert2.js"></script>
-    <script src="{{ asset('assets') }}/js/tables-datatables-advanced.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-purchase-request.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-purchase-request.js?v={{ time() }}"></script>
 @endpush
 
 @push('script')

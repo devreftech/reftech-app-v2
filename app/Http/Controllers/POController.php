@@ -205,7 +205,9 @@ class POController extends Controller
     {
         $purchase = PurchaseOrder::with('supplier')->find($id);
         $dPurchase = DetailPurchaseOrder::where('id_purchase_order', $id)->get();
-        $tax = $purchase->total * 11 / 100;
+        $hargaSebelumPpn = ($purchase->subtotal ?? 0) - ($purchase->diskon ?? 0);
+        $dpp = ($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 12) : 0;
+        $tax = ($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 100) : 0;
         $totalPph = 0;
         foreach ($dPurchase as $product) {
             $pph = ($product->amount * $product->pph) / 100;
@@ -231,7 +233,7 @@ class POController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('pages.accounting.purchase.detail', compact('purchase', 'dPurchase', 'tax', 'totalPph', 'sourcePr', 'prDeliveryDone', 'prDeliveryType', 'productIns'));
+        return view('pages.accounting.purchase.detail', compact('purchase', 'dPurchase', 'dpp', 'tax', 'totalPph', 'sourcePr', 'prDeliveryDone', 'prDeliveryType', 'productIns'));
     }
 
     private function resolvePurchaseType(?string $supplierInfo): string
@@ -254,9 +256,9 @@ class POController extends Controller
         ];
         $this->validate($request, $rule);
 
-        $purchase = PurchaseOrder::with('supplier')->find($id);
+        $purchase = PurchaseOrder::find($id);
         if (!$purchase || !$purchase->id_purchase_request) {
-            return response()->json(['message' => 'Purchase Order ini tidak terhubung ke Purchase Request.'], 422);
+            return response()->json(['message' => 'Purchase Order ini tidak terkait dengan Purchase Request.'], 422);
         }
 
         $purchaseType = $this->resolvePurchaseType($purchase->supplier->info ?? null);
@@ -359,11 +361,11 @@ class POController extends Controller
      */
     public function edit($id)
     {
-        $purchase = PurchaseOrder::find($id);
+        $suppliers = Supplier::whereNull('deleted_at')->get();
+        $purchase = PurchaseOrder::with('supplier')->find($id);
         $dPurchase = DetailPurchaseOrder::where('id_purchase_order', $id)->get();
-        $suppliers = Supplier::all();
-        $units = \App\Models\Unit::where('type', 'global')->orderBy('brand')->get();
-        $products = Product::orderBy('commodity')->get();
+        $units = Unit::all();
+        $products = Product::all();
         $poTypes = PurchaseOrderType::orderBy('name')->get();
         return view('pages.accounting.purchase.form', compact('suppliers', 'purchase', 'dPurchase', 'units', 'products', 'poTypes'));
     }
@@ -460,13 +462,15 @@ class POController extends Controller
     {
         $purchase = PurchaseOrder::find($id);
         $dPurchase = DetailPurchaseOrder::where('id_purchase_order', $id)->get();
-        $tax = $purchase->total * 11 / 100;
+        $hargaSebelumPpn = ($purchase->subtotal ?? 0) - ($purchase->diskon ?? 0);
+        $dpp = ($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 12) : 0;
+        $tax = ($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 100) : 0;
         $totalPph = 0;
         foreach ($dPurchase as $item) {
             $pph = ($item->amount * $item->pph) / 100;
             $totalPph += $pph;
         }
-        return view('pages.accounting.purchase.detail-print', compact('purchase', 'dPurchase', 'tax', 'totalPph'));
+        return view('pages.accounting.purchase.detail-print', compact('purchase', 'dPurchase', 'dpp', 'tax', 'totalPph'));
     }
 
     public function add_pph(Request $request, $id)

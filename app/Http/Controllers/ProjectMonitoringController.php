@@ -92,13 +92,22 @@ class ProjectMonitoringController extends Controller
         $generalCostByProject = ProjectExpense::whereIn('id_pending', $projectIds)
             ->groupBy('id_pending')->selectRaw('id_pending, SUM(amount) as total')
             ->pluck('total', 'id_pending');
+        // Biaya yang cuma nempel ke kartu Kanban (id_pending belum ke-backfill) tapi
+        // kartunya sudah jadi PO milik salah satu project di daftar ini.
+        $kanbanTaskCostByProject = ProjectExpense::query()
+            ->join('kanban_tasks', 'kanban_tasks.id', '=', 'project_expenses.id_kanban_task')
+            ->whereNull('project_expenses.id_pending')
+            ->whereIn('kanban_tasks.pending_po_id', $projectIds)
+            ->groupBy('kanban_tasks.pending_po_id')
+            ->selectRaw('kanban_tasks.pending_po_id as id_pending, SUM(project_expenses.amount) as total')
+            ->pluck('total', 'id_pending');
         $shippingCostByProject = Expanse::whereIn('id_pending', $projectIds)
             ->where('type', 'Resi')
             ->groupBy('id_pending')->selectRaw('id_pending, SUM(cost) as total')
             ->pluck('total', 'id_pending');
 
         // Calculate profitability metrics for each project
-        $projects = $projects->map(function ($project) use ($materialCostByProject, $generalCostByProject, $shippingCostByProject) {
+        $projects = $projects->map(function ($project) use ($materialCostByProject, $generalCostByProject, $kanbanTaskCostByProject, $shippingCostByProject) {
             $project->order_date = $project->date;
             $project->company = $project->unitQuotation?->client?->company
                 ?? $project->quote?->pic?->client?->company
@@ -112,14 +121,19 @@ class ProjectMonitoringController extends Controller
             $project->sales_image = $project->unitQuotation?->sales?->image
                 ?? $project->quote?->sales?->image
                 ?? null;
-            $project->revenue = $project->unitQuotation ? ($project->unitQuotation->total ?? 0) : ($project->quote?->nett ?? 0);
+            $uqSub = $project->unitQuotation ? (floatval($project->unitQuotation->subtotal ?? 0) - floatval($project->unitQuotation->diskon ?? 0)) : 0;
+            if ($project->unitQuotation && $uqSub <= 0) {
+                $uqSub = floatval($project->unitQuotation->total ?? 0) - floatval($project->unitQuotation->tax_amount ?? 0);
+            }
+            $project->revenue = $project->unitQuotation ? $uqSub : floatval($project->quote?->nett ?? 0);
             $project->no_quote = $project->unitQuotation?->no_quote ?? $project->quote?->no_quote ?? '-';
             $project->no_po = $project->unitQuotation ? ($project->unitQuotation->po_number ?? '-') : ($project->quote?->invoice->first()?->no_po ?? '-');
             $project->detail_route = $project->id_unit_quotation
                 ? route('unit-quotation.show', $project->id_unit_quotation)
                 : route('project-monitoring.show', $project->id);
             $project->material_cost = (float) $materialCostByProject->get($project->id, 0);
-            $project->general_cost = (float) $generalCostByProject->get($project->id, 0);
+            $project->general_cost = (float) $generalCostByProject->get($project->id, 0)
+                + (float) $kanbanTaskCostByProject->get($project->id, 0);
             $project->shipping_cost = (float) $shippingCostByProject->get($project->id, 0);
 
             $project->total_cost = $project->material_cost + $project->general_cost + $project->shipping_cost;
@@ -175,7 +189,7 @@ class ProjectMonitoringController extends Controller
 
         if ($isUnit) {
             // Project lahir dari Smart Quote (UnitQuotation) — beda skema dari Quotation
-            // lama (gak ada pic/client lewat join, revenue-nya dari unit_quotation.total,
+            // lama (gak ada pic/client lewat join, revenue-nya dari unit_quotation sebelum PPN,
             // item-nya dari unit_quotation_detail bukan detail_quotation/subtitle_quotation).
             $uq = UnitQuotation::with('client', 'pic', 'sales')->findOrFail($pendingRow->id_unit_quotation);
 
@@ -183,7 +197,11 @@ class ProjectMonitoringController extends Controller
             $project->company = $uq->client->company ?? '-';
             $project->pic_name = $uq->pic->name_pic ?? '-';
             $project->sales_name = $uq->sales->name ?? '-';
-            $project->revenue = $uq->total ?? 0;
+            $preTaxRev = floatval($uq->subtotal ?? 0) - floatval($uq->diskon ?? 0);
+            if ($preTaxRev <= 0) {
+                $preTaxRev = floatval($uq->total ?? 0) - floatval($uq->tax_amount ?? 0);
+            }
+            $project->revenue = $preTaxRev;
             $project->no_quote = $uq->no_quote;
             $project->quote_type = 'Unit';
             $project->id_quotation = null;
@@ -246,9 +264,21 @@ class ProjectMonitoringController extends Controller
             ->with('details.equivalent.product')
             ->get();
 
-        // General Expenses
-        $expenses = ProjectExpense::where('id_pending', $project->id)
-            ->with('user')
+        // General Expenses — termasuk biaya yang dicatat lewat kartu Kanban terkait
+        // (id_kanban_task), baik yang di-post pre-PO maupun setelah jadi PO.
+        $relatedTaskIds = \App\Models\KanbanTask::where('pending_po_id', $pendingRow->id)
+            ->when($pendingRow->id_unit_quotation, function ($q) use ($pendingRow) {
+                $q->orWhere('id_unit_quotation', $pendingRow->id_unit_quotation);
+            })
+            ->pluck('id');
+
+        $expenses = ProjectExpense::with('user')
+            ->where(function ($q) use ($project, $relatedTaskIds) {
+                $q->where('id_pending', $project->id);
+                if ($relatedTaskIds->isNotEmpty()) {
+                    $q->orWhereIn('id_kanban_task', $relatedTaskIds);
+                }
+            })
             ->orderBy('date', 'desc')
             ->get();
 

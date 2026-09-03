@@ -9,9 +9,9 @@ $(function () {
             .clone(true)
             .appendTo(".datatable-sales-aging-ap thead");
         $(".datatable-sales-aging-ap thead tr:eq(1) th").each(function (i) {
-            var title = $(this).text();
+            var title = $(this).text().trim();
             $(this).html(
-                '<input type="text" class="form-control" placeholder="Search ' +
+                '<input type="text" class="form-control form-control-sm bg-white" placeholder="Filter ' +
                     title +
                     '" />'
             );
@@ -30,60 +30,38 @@ $(function () {
                 headers: {
                     "Content-Type": "application/json",
                 },
-
-                // success: function (hasil, Url) {
-                //     console.log("Url:", Url);
-                //     console.log(hasil);
-                // },
-                // error: function (error) {
-                //     console.log("Url:", Url);
-                //     console.error("Error:", error);
-                //     console.log("error disini");
-                // },
             },
             columns: [
-                // { data: "" },
-                // { data: "id" },
-                // { data: "id" },
                 { data: "invoice" },
                 { data: "tanggal" },
                 { data: "overdue" },
                 {
+                    data: "bucket",
+                    render: function (data, type, full) {
+                        if (type !== "display") return data;
+                        var badgeClass = "bg-label-" + (full.bucket_class || "secondary");
+                        return '<span class="badge ' + badgeClass + ' rounded-pill px-2 py-1 fw-semibold">' + (data || "-") + '</span>';
+                    },
+                },
+                {
                     data: "supplier",
                     render: (data, type, full) =>
-                        data ? data : full.d_supplier,
+                        data ? data : (full.d_supplier || "-"),
                 },
                 { data: "total" },
                 { data: "total_qty" },
-                // { data: "total_payment_level1" },
                 {
                     data: "accept",
                     render: function (data, type, full) {
                         if (type !== "display") return data;
 
                         return data == 1
-                            ? '<span class="badge bg-label-success">Paid</span>'
-                            : '<span class="badge bg-label-danger">UnPaid</span>';
+                            ? '<span class="badge bg-label-success rounded-pill px-3 py-1 fw-semibold"><i class="mdi mdi-check-circle-outline me-1"></i>Paid</span>'
+                            : '<span class="badge bg-label-danger rounded-pill px-3 py-1 fw-semibold"><i class="mdi mdi-clock-outline me-1"></i>Unpaid</span>';
                     },
                 },
             ],
             columnDefs: [
-                // {
-                //     // For Responsive
-                //     className: "control",
-                //     orderable: false,
-                //     searchable: false,
-                //     responsivePriority: 2,
-                //     targets: 0,
-                //     render: function (data, type, full, meta) {
-                //         return "";
-                //     },
-                // },
-                // {
-                //     targets: 0,
-                //     searchable: true,
-                //     visible: false,
-                // },
                 {
                     responsivePriority: 1,
                     targets: 0,
@@ -93,12 +71,14 @@ $(function () {
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             var id = full["id"];
-                            detailRoute = route("payable.show_aging", id);
+                            var detailRoute = typeof route === "function"
+                                ? route("payable.show_aging", id)
+                                : "/payable/aging/" + id;
                             return (
-                                '<a class="text-black" href="' +
+                                '<a class="fw-bold text-primary text-decoration-none" href="' +
                                 detailRoute +
-                                '">' +
-                                data +
+                                '"><i class="mdi mdi-file-document-outline me-1"></i>' +
+                                (data || "-") +
                                 "</a>"
                             );
                         }
@@ -111,27 +91,40 @@ $(function () {
                         if (type !== "display") return data;
 
                         return row.accept == 1
-                            ? '<span class="badge bg-success">PAID</span>'
-                            : data + ' Days';
+                            ? '<span class="badge bg-label-success rounded-pill px-2 py-1">PAID</span>'
+                            : '<span class="fw-semibold text-danger">' + (data || 0) + ' Days</span>';
                     },
                 },
                 {
-                    targets: 4,
+                    targets: 5,
                     render: function (data, type, row) {
                         if (type === "display" || type === "filter") {
                             return (
-                                '<div class="text-end">Rp ' +
-                                new Intl.NumberFormat("id-ID").format(data) +
+                                '<div class="text-end fw-bold text-dark">Rp ' +
+                                new Intl.NumberFormat("id-ID").format(data || 0) +
                                 "</div>"
                             );
                         }
                         return data;
                     },
                 },
+                {
+                    targets: 6,
+                    className: "text-center",
+                    render: function (data, type, row) {
+                        if (type === "display") {
+                            return '<span class="badge bg-label-secondary px-2 py-1">' + (data || 0) + ' items</span>';
+                        }
+                        return data;
+                    },
+                },
+                {
+                    targets: 7,
+                    className: "text-center",
+                },
             ],
             order: [],
-            // orderCellsTop: true,
-            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>><"table-responsive"t><"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
+            dom: '<"card-header d-flex flex-wrap justify-content-between align-items-center gap-2 py-3 bg-transparent border-bottom"<"d-flex align-items-center gap-2"l><"d-flex align-items-center gap-2"f>><"table-responsive"t><"card-footer d-flex flex-wrap justify-content-between align-items-center gap-2 py-3 bg-transparent border-top"<"small text-muted"i><"pagination-wrapper"p>>',
         });
     }
     dt_table_sales_aging_ap.on("draw", function () {

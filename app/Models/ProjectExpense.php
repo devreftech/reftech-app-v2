@@ -13,6 +13,7 @@ class ProjectExpense extends Model
 
     protected $fillable = [
         'id_pending',
+        'id_kanban_task',
         'id_user',
         'name',
         'category',
@@ -26,6 +27,11 @@ class ProjectExpense extends Model
     public function pending()
     {
         return $this->belongsTo('App\Models\PendingPO', 'id_pending', 'id');
+    }
+
+    public function kanbanTask()
+    {
+        return $this->belongsTo('App\Models\KanbanTask', 'id_kanban_task', 'id');
     }
 
     public function user()

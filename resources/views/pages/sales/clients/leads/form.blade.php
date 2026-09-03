@@ -81,6 +81,27 @@
                                 </div>
                             </div>
                         @endif
+                    <div class="row g-2 mb-3">
+                        <div class="col-12">
+                            <div class="p-2 border rounded-3 d-flex align-items-center justify-content-between bg-light" id="canvasingContainer{{ @$leads ? @$leads->id : 'New' }}">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar avatar-sm">
+                                        <div class="avatar-initial bg-label-primary rounded">
+                                            <i class="mdi mdi-map-search-outline mdi-18px"></i>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="form-check-label fw-bold text-dark mb-0" for="toggleCanvasing{{ @$leads ? @$leads->id : 'New' }}" style="cursor: pointer; font-size: 0.85rem;">
+                                            Leads Hasil Canvasing
+                                        </label>
+                                        <small class="text-muted d-block" style="font-size: 0.72rem;">Aktifkan jika data client/leads ini hasil pencarian mandiri oleh sales (Canvasing)</small>
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input toggle-canvasing-lead" type="checkbox" id="toggleCanvasing{{ @$leads ? @$leads->id : 'New' }}" {{ old('source', @$leads->source) == 'Canvasing' ? 'checked' : '' }} style="cursor: pointer; width: 38px; height: 20px;">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col mb-2">
@@ -246,6 +267,28 @@
                     data: function (params) { return { q: params.term }; },
                     processResults: function (data) { return { results: data }; },
                     cache: true
+                }
+            });
+
+            $('.toggle-canvasing-lead').on('change', function() {
+                var modal = $(this).closest('.modal');
+                var select = modal.find('select[name="source"]');
+                if ($(this).is(':checked')) {
+                    select.val('Canvasing').trigger('change');
+                } else {
+                    if (select.val() === 'Canvasing') {
+                        select.val('Direct Whatsapp').trigger('change');
+                    }
+                }
+            });
+
+            $('select[name="source"]').on('change', function() {
+                var modal = $(this).closest('.modal');
+                var toggle = modal.find('.toggle-canvasing-lead');
+                if ($(this).val() === 'Canvasing') {
+                    toggle.prop('checked', true);
+                } else {
+                    toggle.prop('checked', false);
                 }
             });
 

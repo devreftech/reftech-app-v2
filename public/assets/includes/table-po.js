@@ -48,7 +48,7 @@ $(function () {
                             ? "/smart-quote/" + full["id"]
                             : route("quotation.show", full["id"]);
                         var badge = full["row_type"] === "unit"
-                            ? ' <span class="badge bg-label-danger ms-1">Unit</span>'
+                            ? ' <span class="badge bg-label-info ms-1">Smart</span>'
                             : "";
                         return '<a class="fw-bold text-primary" href="' + url + '">' + (data || "-") + "</a>" + badge;
                     },

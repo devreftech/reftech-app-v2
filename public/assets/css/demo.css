@@ -161,14 +161,6 @@ textarea,
   box-shadow: 0 4px 18px 0 rgba(24, 28, 33, 0.03) !important;
   border-radius: 10px !important;
   background-color: #ffffff !important;
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-}
-
-.card:hover,
-.clean-card:hover,
-.custom-stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px 0 rgba(24, 28, 33, 0.07) !important;
 }
 
 /* Card Header & Title */
@@ -281,14 +273,6 @@ html.dark-style .quote-filter-card {
   color: #cfcde4;
 }
 
-html.dark-style .card:hover,
-html.dark-style .clean-card:hover,
-html.dark-style .custom-stat-card:hover,
-html.dark-style .metric-card:hover,
-html.dark-style .form-section-card:hover {
-  border-color: rgba(105, 108, 255, 0.4) !important;
-  box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.08) !important;
-}
 
 html.dark-style .card-header {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;

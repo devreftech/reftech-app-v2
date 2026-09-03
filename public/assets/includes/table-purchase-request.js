@@ -1,12 +1,15 @@
 $(function () {
+    // Pastikan tidak ada filter global DataTables dari script demo lain yang menyaring data
+    if ($.fn.dataTableExt && $.fn.dataTableExt.afnFiltering) {
+        $.fn.dataTableExt.afnFiltering.length = 0;
+    }
+
     function dateCol(data) {
         if (!data) return "-";
         var m = moment(data);
         return m.isValid() ? m.format("DD-MM-YYYY") : data;
     }
 
-    // Sama seperti format nomor quotation di tab Quotation Sales — cuma 5 karakter
-    // pertama + "…", nomor lengkapnya tetap kelihatan lewat tooltip.
     function shortCode(data) {
         var full = data || "-";
         var short = full.length > 6 ? full.substring(0, 6) + "…" : full;
@@ -14,7 +17,7 @@ $(function () {
     }
 
     function signCol(data, type, full) {
-        var name = full.user_name || "-";
+        var name = (full && full.user_name) ? full.user_name : "-";
         if (type !== "display") return name;
         var initials = name
             .split(" ")
@@ -26,17 +29,15 @@ $(function () {
             .toUpperCase();
         var colors = ["bg-label-primary", "bg-label-success", "bg-label-warning", "bg-label-danger", "bg-label-info", "bg-label-secondary"];
         var colorClass = colors[name.charCodeAt(0) % colors.length];
-        var av = full.user_image
+        var av = (full && full.user_image)
             ? '<img src="/' + full.user_image + '" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;" alt="' + name + '">'
             : '<div class="avatar-initial rounded-circle ' + colorClass + '" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;font-size:11px;font-weight:700;">' + initials + "</div>";
         return '<span data-bs-toggle="tooltip" data-bs-placement="top" title="' + name + '">' + av + "</span>";
     }
 
-    // Kolom Item — kalau lebih dari 1 item, teksnya jadi tombol expand (bukan cuma
-    // "N item" mati) yang saat diklik buka child row berisi rincian tiap item.
     function itemCol(data, type, full) {
         if (type !== "display") return data || "-";
-        if ((full.item_count || 0) > 1 && full.items_detail) {
+        if (full && (full.item_count || 0) > 1 && full.items_detail) {
             return '<a href="javascript:;" class="item-expand-toggle text-primary fw-semibold text-decoration-none">' +
                 '<i class="mdi mdi-chevron-right item-expand-icon me-1"></i>' + (data || "-") + "</a>";
         }
@@ -53,8 +54,6 @@ $(function () {
         return '<div class="p-2 ps-4"><ul class="mb-0 ps-3 small">' + rows + "</ul></div>";
     }
 
-    // Dipasang sekali per tabel (event delegation), toggle child row DataTables
-    // buat baris yang tombol expand item-nya diklik.
     function bindItemExpand($table, dt) {
         $table.on("click", ".item-expand-toggle", function (e) {
             e.preventDefault();
@@ -65,7 +64,7 @@ $(function () {
                 row.child.hide();
                 $icon.removeClass("mdi-chevron-down").addClass("mdi-chevron-right");
             } else {
-                row.child(itemsChildHtml(row.data().items_detail)).show();
+                row.child(itemsChildHtml(row.data() ? row.data().items_detail : "")).show();
                 $icon.removeClass("mdi-chevron-right").addClass("mdi-chevron-down");
             }
         });
@@ -73,8 +72,23 @@ $(function () {
 
     function paymentStatusCol(data, type) {
         if (type !== "display") return data || "";
-        if (data === "tempo") {
-            return '<span class="badge bg-label-info">Credit / Tempo</span>';
+        if (!data) return '<span class="text-muted">-</span>';
+        if (data.indexOf("tempo") === 0) {
+            var raw = data.substring(6).trim();
+            var label = "Credit";
+            if (raw && raw.toLowerCase() !== "credit" && raw.toLowerCase() !== "tempo") {
+                if (/^\d+$/.test(raw)) {
+                    label = "Credit (" + raw + " Days)";
+                } else {
+                    var match = raw.match(/(\d+)\s*(days?|hari)/i);
+                    if (match) {
+                        label = "Credit (" + match[1] + " Days)";
+                    } else {
+                        label = "Credit (" + raw + ")";
+                    }
+                }
+            }
+            return '<span class="badge bg-label-info">' + label + '</span>';
         }
         if (data === "confirmed") {
             return '<span class="badge bg-label-success">Sudah Dikonfirmasi</span>';
@@ -85,108 +99,82 @@ $(function () {
         return '<span class="text-muted">-</span>';
     }
 
-    function initPurchaseRequestTable(selector, ajaxUrl, withDelivery, hideNoPo, showPayment, showGr) {
+    function initPurchaseRequestTable(selector, ajaxUrl, withDelivery, hideNoPo, showPayment, showGr, badgeKey) {
         var $table = $(selector);
         if (!$table.length) return;
 
-        // Kolom "No GR" (kalau ada) dipasang paling depan, jadi semua target kolom
-        // lain yang tadinya hardcode geser +1 — offset ini yang ngurus pergeserannya.
         var offset = showGr ? 1 : 0;
-
         var columns = [];
         if (showGr) {
-            columns.push({ data: "no_gr" });
+            columns.push({ data: "no_gr", defaultContent: "-" });
         }
         columns.push(
-            { data: "no_pr" },
-            { data: "no_po" },
-            { data: "no_pending" },
-            { data: "company" },
-            { data: "item" },
-            { data: "qty_full" }
+            { data: "no_pr", defaultContent: "-" },
+            { data: "no_po", defaultContent: "-" },
+            { data: "no_pending", defaultContent: "-" },
+            { data: "company", defaultContent: "-" },
+            { data: "item", defaultContent: "-" },
+            { data: "qty_full", defaultContent: "-" },
+            { data: "date", defaultContent: "-" }
         );
-
-        // Tab Delivery tidak punya kolom Date/Tgl Pembelian terpisah — tanggal
-        // pembeliannya digabung ke dalam kolom Pengiriman.
-        columns.push(withDelivery ? { data: null } : { data: "date" });
-
         if (showPayment) {
-            columns.push({ data: "payment_status" });
+            columns.push({ data: "payment_status", defaultContent: "" });
         }
+        columns.push({ data: "user_name", defaultContent: "-" });
 
-        columns.push({ data: null }); // Sign — selalu di kolom paling kanan
         var signTarget = columns.length - 1;
-
-        // Kolom tersembunyi biar search box ikut nyari nama part di rincian item
-        // (bukan cuma teks ringkasan "N item" yang tampil di kolom Item).
-        columns.push({ data: "items_detail" });
-        var itemsDetailTarget = columns.length - 1;
 
         var columnDefs = [
             {
-                targets: offset,
+                targets: offset + 0,
                 render: function (data, type, full) {
                     if (type !== "display") return data || "-";
-                    var url = route("purchase-request.show", full.id);
                     var code = shortCode(data);
-                    return '<a href="' + url + '" class="fw-semibold text-primary"' +
-                        ' data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' +
-                        code.short + "</a>";
+                    if (!full || !full.id) return '<span data-bs-toggle="tooltip" title="' + code.full + '">' + code.short + "</span>";
+                    return '<a href="/purchase-request/' + full.id + '" class="fw-semibold text-primary" data-bs-toggle="tooltip" title="' + code.full + '">' + code.short + "</a>";
                 },
             },
             {
-                // No SO — record yang sama dengan No PR (satu baris pending_po),
-                // jadi linknya ke halaman yang sama.
-                targets: offset + 2,
-                render: function (data, type, full) {
-                    if (type !== "display") return data || "-";
-                    var url = route("purchase-request.show", full.id);
-                    var code = shortCode(data);
-                    return '<a href="' + url + '" class="fw-semibold text-primary"' +
-                        ' data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' +
-                        code.short + "</a>";
-                },
-            },
-            {
-                // No PO — sama kayak No SO, diklik ke halaman detail PO-nya. Cuma bisa
-                // dibikin link kalau PR ini persis 1 PO (full.id_po keisi); kalau pecah ke
-                // beberapa PO ("N PO") atau belum ada PO sama sekali, tetap teks biasa.
                 targets: offset + 1,
                 render: function (data, type, full) {
                     if (type !== "display") return data || "-";
-                    if (!data || !full.id_po) return data || "-";
-                    var url = route("purchase.show", full.id_po);
+                    if (!data) return "-";
+                    if (full && full.id_po) {
+                        var code = shortCode(data);
+                        return '<a href="/purchase/' + full.id_po + '" class="fw-semibold text-primary" data-bs-toggle="tooltip" title="' + code.full + '">' + code.short + "</a>";
+                    }
+                    return data;
+                },
+            },
+            {
+                targets: offset + 2,
+                render: function (data, type, full) {
+                    if (type !== "display") return data || "-";
                     var code = shortCode(data);
-                    return '<a href="' + url + '" class="fw-semibold text-primary"' +
-                        ' data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' +
-                        code.short + "</a>";
+                    if (!full || !full.id) return '<span data-bs-toggle="tooltip" title="' + code.full + '">' + code.short + "</span>";
+                    return '<a href="/purchase-request/' + full.id + '" data-bs-toggle="tooltip" title="' + code.full + '">' + code.short + "</a>";
                 },
             },
             { targets: offset + 3, render: function (data) { return data || "-"; } },
             { targets: offset + 4, render: itemCol },
+            { targets: offset + 5, className: "text-center", render: function (data) { return data || "-"; } },
             { targets: signTarget, className: "text-center", orderable: false, searchable: false, render: signCol },
-            { targets: itemsDetailTarget, visible: false, orderable: false },
         ];
 
         if (showGr) {
             columnDefs.push({
-                // No GR — sama polanya, diklik ke halaman detail Goods Receipt-nya. Cuma
-                // bisa dibikin link kalau PR ini persis 1 PO (full.id_gr keisi).
                 targets: 0,
                 render: function (data, type, full) {
-                    if (type !== "display") return data || "-";
-                    if (!data || !full.id_gr) return data || "-";
-                    var url = route("product-in.show", full.id_gr);
-                    var code = shortCode(data);
-                    return '<a href="' + url + '" class="fw-semibold text-primary"' +
-                        ' data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' +
-                        code.short + "</a>";
+                    if (!showGr || type !== "display") return data || "-";
+                    if (!data) return "-";
+                    if (full && full.id_gr) {
+                        return '<a href="/product-in/' + full.id_gr + '" class="fw-semibold text-primary" data-bs-toggle="tooltip" title="Lihat detail Barang Masuk">' + data + "</a>";
+                    }
+                    return '<span class="fw-semibold text-dark">' + data + "</span>";
                 },
             });
         }
 
-        // No PO belum relevan di tab New — PO baru dibuat setelah PR di-Acc,
-        // jadi kolomnya disembunyikan dulu di sini (bukan dihapus, tinggal diaktifkan lagi nanti).
         if (hideNoPo) {
             columnDefs.push({ targets: offset + 1, visible: false });
         }
@@ -199,10 +187,10 @@ $(function () {
             columnDefs.push({
                 targets: offset + 6,
                 render: function (data, type, full) {
-                    if (type !== "display") return full.purchase_date || "";
-                    var cargo = full.cargo || "-";
-                    var resi = full.no_resi || "Belum ada resi";
-                    var tglBeli = full.purchase_date ? dateCol(full.purchase_date) : "-";
+                    if (type !== "display") return (full && full.purchase_date) ? full.purchase_date : "";
+                    var cargo = (full && full.cargo) ? full.cargo : "-";
+                    var resi = (full && full.no_resi) ? full.no_resi : "Belum ada resi";
+                    var tglBeli = (full && full.purchase_date) ? dateCol(full.purchase_date) : "-";
                     return '<div class="small">' + cargo + '<div class="text-muted">' + resi + '</div>' +
                         '<div class="text-muted">Tgl Beli: ' + tglBeli + "</div></div>";
                 },
@@ -212,9 +200,12 @@ $(function () {
         }
 
         var dt = $table.DataTable({
+            processing: true,
+            serverSide: false,
             ajax: {
                 type: "GET",
                 url: ajaxUrl,
+                dataSrc: "data",
                 headers: { "Content-Type": "application/json" },
             },
             columns: columns,
@@ -229,48 +220,59 @@ $(function () {
             language: { emptyTable: "Tidak ada data Purchase Request." },
             drawCallback: function () {
                 $('[data-bs-toggle="tooltip"]').tooltip();
+                if (badgeKey) {
+                    var api = this.api ? this.api() : null;
+                    var total = (api && api.page && api.page.info()) ? (api.page.info().recordsTotal || 0) : 0;
+                    $('.stat-count-' + badgeKey).text(total);
+                    $('.stat-badge-' + badgeKey).text(total);
+                    var $tabBadge = $('.tab-badge-' + badgeKey);
+                    if (total >= 1) {
+                        $tabBadge.text(total).show();
+                    } else {
+                        $tabBadge.hide();
+                    }
+                }
             },
         });
 
         bindItemExpand($table, dt);
     }
 
-    initPurchaseRequestTable(".datatable-purchase-request-new", "/db/purchase-request/new", false, true, true);
-    initPurchaseRequestTable(".datatable-purchase-request-acc", "/db/purchase-request/acc", false, true, true);
-    initPurchaseRequestTable(".datatable-purchase-request-delivery", "/db/purchase-request/delivery", true);
-    initPurchaseRequestTable(".datatable-purchase-request-done", "/db/purchase-request/done", false, false, false, true);
+    initPurchaseRequestTable(".datatable-purchase-request-new", "/db/purchase-request/new", false, true, true, false, "new");
+    initPurchaseRequestTable(".datatable-purchase-request-acc", "/db/purchase-request/acc", false, true, true, false, "acc");
+    initPurchaseRequestTable(".datatable-purchase-request-delivery", "/db/purchase-request/delivery", true, false, false, false, "delivery");
+    initPurchaseRequestTable(".datatable-purchase-request-done", "/db/purchase-request/done", false, false, false, true, "done");
 
-    function initPurchaseOrderTable(selector, ajaxUrl) {
+    function initPurchaseOrderTable(selector, ajaxUrl, badgeKey) {
         var $table = $(selector);
         if (!$table.length) return;
 
         var dt = $table.DataTable({
+            processing: true,
+            serverSide: false,
             ajax: {
                 type: "GET",
                 url: ajaxUrl,
+                dataSrc: "data",
                 headers: { "Content-Type": "application/json" },
             },
             columns: [
-                { data: "no_po" },
-                { data: "no_pr" },
-                { data: "no_pending" },
-                { data: "company" },
-                { data: "item_count" },
-                { data: "date" },
-                { data: "receipt_status" },
-                // Kolom tersembunyi biar search box ikut nyari nama part di rincian item.
-                { data: "items_detail" },
+                { data: "no_po", defaultContent: "-" },
+                { data: "no_pr", defaultContent: "-" },
+                { data: "no_pending", defaultContent: "-" },
+                { data: "company", defaultContent: "-" },
+                { data: "item_count", defaultContent: "0" },
+                { data: "date", defaultContent: "-" },
+                { data: "receipt_status", defaultContent: "-" },
             ],
             columnDefs: [
                 {
                     targets: 0,
                     render: function (data, type, full) {
                         if (type !== "display") return data || "-";
-                        var url = route("purchase.show", full.id);
                         var code = shortCode(data);
-                        return '<a href="' + url + '" class="fw-semibold text-primary"' +
-                            ' data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' +
-                            code.short + "</a>";
+                        if (!full || !full.id) return '<span data-bs-toggle="tooltip" title="' + code.full + '">' + code.short + "</span>";
+                        return '<a href="/purchase/' + full.id + '" class="fw-semibold text-primary" data-bs-toggle="tooltip" title="' + code.full + '">' + code.short + "</a>";
                     },
                 },
                 {
@@ -278,24 +280,21 @@ $(function () {
                     render: function (data, type, full) {
                         if (type !== "display") return data || "-";
                         var code = shortCode(data);
-                        if (!full.id_pending) {
+                        if (!full || !full.id_pending) {
                             return '<span data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' + code.short + "</span>";
                         }
-                        var url = route("purchase-request.show", full.id_pending);
-                        return '<a href="' + url + '" data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' + code.short + "</a>";
+                        return '<a href="/purchase-request/' + full.id_pending + '" data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' + code.short + "</a>";
                     },
                 },
                 {
-                    // Sales Order — record pending_po yang sama dengan No PR, jadi linknya ke halaman yang sama.
                     targets: 2,
                     render: function (data, type, full) {
                         if (type !== "display") return data || "-";
                         var code = shortCode(data);
-                        if (!full.id_pending) {
+                        if (!full || !full.id_pending) {
                             return '<span data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' + code.short + "</span>";
                         }
-                        var url = route("purchase-request.show", full.id_pending);
-                        return '<a href="' + url + '" data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' + code.short + "</a>";
+                        return '<a href="/purchase-request/' + full.id_pending + '" data-bs-toggle="tooltip" data-bs-placement="top" title="' + code.full + '">' + code.short + "</a>";
                     },
                 },
                 { targets: 3, render: function (data) { return data || "-"; } },
@@ -305,7 +304,7 @@ $(function () {
                     render: function (data, type, full) {
                         if (type !== "display") return data;
                         var text = data + " item";
-                        if (full.items_detail) {
+                        if (full && full.items_detail) {
                             return '<a href="javascript:;" class="item-expand-toggle text-primary fw-semibold text-decoration-none">' +
                                 '<i class="mdi mdi-chevron-right item-expand-icon me-1"></i>' + text + "</a>";
                         }
@@ -324,7 +323,6 @@ $(function () {
                         return '<span class="badge bg-label-warning">Menunggu Pengiriman</span>';
                     },
                 },
-                { targets: 7, visible: false, orderable: false },
             ],
             order: [[5, "desc"]],
             displayLength: 10,
@@ -336,11 +334,28 @@ $(function () {
             language: { emptyTable: "Belum ada Purchase Order." },
             drawCallback: function () {
                 $('[data-bs-toggle="tooltip"]').tooltip();
+                if (badgeKey) {
+                    var api = this.api ? this.api() : null;
+                    var total = (api && api.page && api.page.info()) ? (api.page.info().recordsTotal || 0) : 0;
+                    $('.stat-count-' + badgeKey).text(total);
+                    $('.stat-badge-' + badgeKey).text(total);
+                    var $tabBadge = $('.tab-badge-' + badgeKey);
+                    if (total >= 1) {
+                        $tabBadge.text(total).show();
+                    } else {
+                        $tabBadge.hide();
+                    }
+                }
             },
         });
 
         bindItemExpand($table, dt);
     }
 
-    initPurchaseOrderTable(".datatable-purchase-order", "/db/purchase-request/po");
+    initPurchaseOrderTable(".datatable-purchase-order", "/db/purchase-request/po", "po");
+
+    // Adjust columns when switching tabs
+    $('#purchaseRequestTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function () {
+        $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+    });
 });

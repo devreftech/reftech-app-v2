@@ -79,9 +79,20 @@ class UnitQuotationController extends Controller
         return view('pages.unit-quotation.create', compact('clients', 'defaultNoQuote', 'paymentTemplates', 'isManager', 'salesUsers', 'transportationPrices', 'selectedClient', 'selectedPic', 'selectedProspect'));
     }
 
-    public function getClientsBySales($salesId)
+    public function getClientsBySales(Request $request, $salesId)
     {
-        $clients = Client::where('id_sales', $salesId)->orderBy('company')->get(['id', 'company', 'role']);
+        $query = Client::query();
+
+        if ($salesId === 'self_leads' || $salesId === 'self') {
+            // Data leads / client yang diinput sendiri oleh user yang sedang login
+            $query->where('id_sales', Auth::id());
+        } elseif ($salesId === 'all' || empty($salesId) || $salesId === '0') {
+            // Semua client
+        } else {
+            $query->where('id_sales', $salesId);
+        }
+
+        $clients = $query->orderBy('company')->get(['id', 'company', 'role']);
 
         return response()->json(['clients' => $clients]);
     }
@@ -122,12 +133,24 @@ class UnitQuotationController extends Controller
         $prospect = $request->id_prospect ? \App\Models\Prospect::find($request->id_prospect) : null;
         $idSupport = $prospect ? ($prospect->id_support ?: ($client->id_support ?? null)) : ($client->id_support ?? null);
 
+        $isManager = in_array(Auth::user()->role, ['Admin', 'Sales Manager']);
+        $idSales = Auth::id();
+        if ($isManager) {
+            if ($request->input('client_source_type') === 'self_leads') {
+                $idSales = Auth::id();
+            } elseif ($request->filled('id_sales')) {
+                $idSales = $request->id_sales;
+            } elseif ($client && $client->id_sales) {
+                $idSales = $client->id_sales;
+            }
+        }
+
         $quote = UnitQuotation::create([
             'id_client'        => $request->id_client ?: null,
             'id_pic'           => $request->id_pic ?: null,
             'id_plant'         => $request->id_plant ?: null,
             'address'          => $request->address ?: null,
-            'id_sales'         => Auth::id(),
+            'id_sales'         => $idSales,
             'id_support'       => $idSupport,
             'no_quote'         => $request->no_quote ?: $this->generateNoQuote($request->type),
             'attn'             => $request->attn,
@@ -218,12 +241,44 @@ class UnitQuotationController extends Controller
 
         $request->validate([
             'board_id' => 'required|exists:kanban_boards,id',
-            'column_id' => 'required|string',
+            'mode' => 'nullable|in:new,link',
+            'column_id' => 'required_without:task_id|nullable|string',
+            'task_id' => 'required_if:mode,link|nullable|exists:kanban_tasks,id',
         ]);
 
         $board = KanbanBoard::findOrFail($request->board_id);
         if (Auth::user()->role !== 'Admin' && !$board->members->contains(Auth::id())) {
             abort(403, 'Anda bukan anggota board ini.');
+        }
+
+        // Satu quotation cuma boleh nempel ke satu kartu aktif.
+        if (KanbanTask::where('id_unit_quotation', $quote->id)->exists()) {
+            return redirect()->route('unit-quotation.show', $quote->id)
+                ->with('error', 'Quotation ini sudah terhubung ke sebuah kartu Kanban.');
+        }
+
+        if ($request->mode === 'link' && $request->task_id) {
+            $task = KanbanTask::where('id', $request->task_id)
+                ->where('board_id', $board->id)
+                ->firstOrFail();
+
+            if ($task->id_unit_quotation || $task->pending_po_id) {
+                return redirect()->route('unit-quotation.show', $quote->id)
+                    ->with('error', 'Kartu yang dipilih sudah terhubung ke quotation/PO lain.');
+            }
+
+            $pendingPo = PendingPO::where('id_unit_quotation', $quote->id)->first();
+            $task->id_unit_quotation = $quote->id;
+            if ($pendingPo) {
+                $task->pending_po_id = $pendingPo->id;
+                \App\Models\ProjectExpense::where('id_kanban_task', $task->id)
+                    ->whereNull('id_pending')
+                    ->update(['id_pending' => $pendingPo->id]);
+            }
+            $task->save();
+
+            return redirect()->route('unit-quotation.show', $quote->id)
+                ->with('success', 'Quotation berhasil dihubungkan ke kartu "' . $task->title . '".');
         }
 
         $columnId = (int) str_replace('column_', '', $request->column_id);
@@ -242,6 +297,35 @@ class UnitQuotationController extends Controller
 
         return redirect()->route('unit-quotation.show', $quote->id)
             ->with('success', 'Quotation berhasil di-post ke board "' . $board->title . '".');
+    }
+
+    /**
+     * Daftar kartu di sebuah board yang masih bisa dihubungkan (belum nempel ke
+     * quotation/PO manapun) — dipakai dropdown "Hubungkan ke kartu" di modal Post to Kanban.
+     */
+    public function getLinkableKanbanTasks($boardId)
+    {
+        $board = KanbanBoard::with('members')->findOrFail($boardId);
+        if (Auth::user()->role !== 'Admin' && !$board->members->contains(Auth::id())) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $tasks = KanbanTask::with('column')
+            ->where('board_id', $board->id)
+            ->whereNull('id_unit_quotation')
+            ->whereNull('pending_po_id')
+            ->orderBy('column_id')
+            ->orderBy('position')
+            ->get()
+            ->map(function ($t) {
+                return [
+                    'id' => $t->id,
+                    'title' => $t->title,
+                    'column' => $t->column ? $t->column->title : '-',
+                ];
+            });
+
+        return response()->json(['success' => true, 'tasks' => $tasks]);
     }
 
     public function storeComment(Request $request, $id)
@@ -749,6 +833,55 @@ class UnitQuotationController extends Controller
         return redirect()->route('unit-quotation.show', $id)->with($flashData);
     }
 
+    /**
+     * Edit No PO dari sisi Sales — hanya boleh selama BELUM ada invoice yang
+     * diterbitkan (no_invoice terisi). Setelah invoice terbit, perubahan No PO
+     * dilakukan Accounting lewat halaman detail invoice (barengan Edit No
+     * Invoice & Term).
+     */
+    public function updatePoNumber(Request $request, $id)
+    {
+        $request->validate([
+            'po_number' => 'required|string|max:100',
+        ]);
+
+        $quote = UnitQuotation::findOrFail($id);
+
+        if ($quote->status !== 'po_received' || !$quote->po_number) {
+            return back()->with('error', 'PO belum diupload untuk quotation ini.');
+        }
+
+        if ($quote->cancel_request) {
+            return back()->with('error', 'Ada pengajuan pembatalan PO yang masih diproses. Selesaikan dulu sebelum mengubah No PO.');
+        }
+
+        if (Invoice::where('id_unit_quotation', $quote->id)->whereNotNull('no_invoice')->exists()) {
+            return back()->with('error', 'Invoice sudah diterbitkan. Perubahan No PO harus dilakukan lewat halaman Invoice (Accounting).');
+        }
+
+        $old = $quote->po_number;
+        $new = trim($request->po_number);
+
+        if ($old === $new) {
+            return back()->with('success', 'No PO tidak berubah.');
+        }
+
+        $quote->update(['po_number' => $new]);
+
+        // Sinkronkan ke shell invoice yang masih pending (belum diterbitkan).
+        Invoice::where('id_unit_quotation', $quote->id)
+            ->whereNull('no_invoice')
+            ->update(['no_po' => $new]);
+
+        $quote->statusHistory()->create([
+            'status' => 'po_received',
+            'note'   => 'No PO diubah: ' . ($old ?: '-') . ' -> ' . $new,
+        ]);
+
+        return redirect()->route('unit-quotation.show', $id)
+            ->with('success', 'No PO berhasil diperbarui.');
+    }
+
     public function requestNextInvoice(Request $request, $id)
     {
         $request->validate([
@@ -792,6 +925,129 @@ class UnitQuotationController extends Controller
         $quote = UnitQuotation::findOrFail($id);
         $quote->delete();
         return response()->json(1);
+    }
+
+    /**
+     * Update / input Management Fee for Smart Quote.
+     * Nominal Fee mengurangi pencatatan achievement / omset sales, namun
+     * nominal penawaran/invoice customer tetap utuh normal (sebelum PPN).
+     */
+    public function updateFee(Request $request, $id)
+    {
+        $quote = UnitQuotation::with('details')->findOrFail($id);
+
+        $request->validate([
+            'fee'               => 'nullable',
+            'fee_note'          => 'nullable|string|max:1000',
+            'fee_bank_name'     => 'nullable|string|max:100',
+            'fee_bank_account'  => 'nullable|string|max:100',
+            'fee_bank_holder'   => 'nullable|string|max:150',
+            'item_fee'          => 'nullable|array',
+        ]);
+
+        $rawFee = $request->fee;
+        if (is_string($rawFee)) {
+            $rawFee = (float) preg_replace('/[^\d]/', '', $rawFee);
+        } else {
+            $rawFee = (float) ($rawFee ?? 0);
+        }
+
+        // Simpan fee per-item jika ada input alokasi fee per item
+        $totalItemFee = 0;
+        if ($request->has('item_fee') && is_array($request->item_fee)) {
+            foreach ($request->item_fee as $detailId => $itemFeeVal) {
+                $detail = UnitQuotationDetail::where('id_unit_quotation', $quote->id)->where('id', $detailId)->first();
+                if ($detail) {
+                    $cleanedVal = is_string($itemFeeVal) ? (float) preg_replace('/[^\d]/', '', $itemFeeVal) : (float) ($itemFeeVal ?? 0);
+                    $totalItemFee += $cleanedVal;
+                }
+            }
+            $rawFee = $totalItemFee;
+        }
+
+        // Batas maksimal fee 10% dari nilai penawaran sebelum PPN
+        $preTax = floatval($quote->subtotal ?? 0) - floatval($quote->diskon ?? 0);
+        if ($preTax <= 0) {
+            $preTax = floatval($quote->total ?? 0) - floatval($quote->tax_amount ?? 0);
+        }
+        $maxFeeAllowed = round($preTax * 0.10, 2);
+
+        if ($rawFee > ($maxFeeAllowed + 1) && $maxFeeAllowed > 0) {
+            $errMessage = 'Total Management Fee (Rp ' . number_format($rawFee, 0, ',', '.') . ') melebihi batas maksimal 10% dari nilai penawaran (Maks. Rp ' . number_format($maxFeeAllowed, 0, ',', '.') . ').';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $errMessage,
+                ], 422);
+            }
+            return redirect()->route('unit-quotation.show', $id)
+                ->with('error', $errMessage);
+        }
+
+        // Simpan detail fee setelah lolos validasi
+        if ($request->has('item_fee') && is_array($request->item_fee)) {
+            foreach ($request->item_fee as $detailId => $itemFeeVal) {
+                $detail = UnitQuotationDetail::where('id_unit_quotation', $quote->id)->where('id', $detailId)->first();
+                if ($detail) {
+                    $cleanedVal = is_string($itemFeeVal) ? (float) preg_replace('/[^\d]/', '', $itemFeeVal) : (float) ($itemFeeVal ?? 0);
+                    $detail->fee = $cleanedVal;
+                    $detail->save();
+                }
+            }
+        }
+
+        $quote->fee = $rawFee;
+        $quote->fee_note = $request->fee_note;
+        if ($request->has('fee_bank_name')) {
+            $quote->fee_bank_name = $request->fee_bank_name;
+        }
+        if ($request->has('fee_bank_account')) {
+            $quote->fee_bank_account = $request->fee_bank_account;
+        }
+        if ($request->has('fee_bank_holder')) {
+            $quote->fee_bank_holder = $request->fee_bank_holder;
+        }
+        $quote->save();
+
+        foreach ($quote->options as $opt) {
+            $opt->fee = $rawFee;
+            $opt->save();
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Management Fee berhasil disimpan.',
+                'fee'     => $quote->fee,
+                'fee_note'=> $quote->fee_note,
+            ]);
+        }
+
+        return redirect()->route('unit-quotation.show', $id)
+            ->with('success', 'Management Fee berhasil diperbarui.');
+    }
+
+    /**
+     * Delete / reset Management Fee for Smart Quote.
+     */
+    public function deleteFee(Request $request, $id)
+    {
+        $quote = UnitQuotation::with('details')->findOrFail($id);
+
+        UnitQuotationDetail::where('id_unit_quotation', $quote->id)->update(['fee' => 0]);
+        $quote->fee = 0;
+        $quote->fee_note = null;
+        $quote->save();
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Management Fee berhasil dihapus.',
+            ]);
+        }
+
+        return redirect()->route('unit-quotation.show', $id)
+            ->with('success', 'Management Fee berhasil dihapus.');
     }
 
     public function addPayment(Request $request, $id)
@@ -894,22 +1150,39 @@ class UnitQuotationController extends Controller
         // menghilangkan penanda merahnya, bukan menghapusnya dari daftar. Badge merah
         // (count) tetap dihitung dari yang unread saja.
         $notifs = \App\Models\UnitQuotationPaymentNotification::where('id_user', Auth::id())
-            ->with(['unitQuotation.client', 'payment', 'invoice'])
+            ->with(['unitQuotation.client', 'unitQuotation.sales', 'payment', 'invoice'])
             ->orderByDesc('created_at')
             ->take(15)
             ->get();
 
         $items = $notifs->map(function ($n) {
+            $quote = $n->unitQuotation;
+            $inv = $n->invoice;
+            $poUrl = null;
+            if ($quote && !empty($quote->po_file)) {
+                $poUrl = \Illuminate\Support\Facades\Storage::disk('public')->exists($quote->po_file)
+                    ? \Illuminate\Support\Facades\Storage::url($quote->po_file)
+                    : asset('storage/' . $quote->po_file);
+            }
+
             return [
                 'id' => $n->id,
                 'type' => $n->type,
                 'is_read' => (bool) $n->is_read,
-                'no_quote' => $n->unitQuotation->no_quote ?? '-',
-                'company' => $n->unitQuotation->client->company ?? '-',
+                'no_quote' => $quote->no_quote ?? '-',
+                'quote_id' => $quote->id ?? null,
+                'company' => $quote->client->company ?? '-',
+                'sales_name' => $quote->sales->name ?? null,
+                'po_number' => $quote->po_number ?? null,
+                'po_url' => $poUrl,
+                'invoice_id' => $inv->id ?? null,
+                'invoice_type' => $inv->type ?? null,
+                'invoice_percent' => $inv->percent ?? null,
                 'amount' => $n->type === 'payment'
                     ? (float) ($n->payment->amount ?? 0)
-                    : (float) ($n->unitQuotation->total ?? 0) * (float) ($n->invoice->percent ?? 100) / 100,
+                    : (float) ($quote->total ?? 0) * (float) ($inv->percent ?? 100) / 100,
                 'url' => $this->resolveInvoiceNotificationUrl($n),
+                'quote_url' => $n->id_unit_quotation ? route('unit-quotation.show', $n->id_unit_quotation) : null,
                 'created_at' => $n->created_at->diffForHumans(),
             ];
         });
@@ -1251,8 +1524,12 @@ class UnitQuotationController extends Controller
         $sortOrder = 0;
         foreach ($items as $item) {
             $isHeader = (($item['type'] ?? '') === 'header' || ($item['type'] ?? '') === 'heading');
+            $rawPrice = $item['price'] ?? 0;
+            if (is_string($rawPrice) && str_contains($rawPrice, '.')) {
+                $rawPrice = preg_replace('/[^\d]/', '', $rawPrice);
+            }
             $qty      = $isHeader ? 0 : floatval($item['qty']   ?? 1);
-            $price    = $isHeader ? 0 : floatval($item['price'] ?? 0);
+            $price    = $isHeader ? 0 : floatval($rawPrice);
             $disc     = $isHeader ? 0 : floatval($item['disc']  ?? 0);
             $amount   = $isHeader ? 0 : ($qty * $price * (1 - $disc / 100));
 
@@ -1290,18 +1567,31 @@ class UnitQuotationController extends Controller
                 if (in_array($item['type'] ?? '', ['header', 'heading'], true)) {
                     continue;
                 }
+                $rawPrice = $item['price'] ?? 0;
+                if (is_string($rawPrice) && str_contains($rawPrice, '.')) {
+                    // Thousand separators (e.g. 1.500.000)
+                    $rawPrice = preg_replace('/[^\d]/', '', $rawPrice);
+                }
                 $qty   = floatval($item['qty']   ?? 1);
-                $price = floatval($item['price'] ?? 0);
+                $price = floatval($rawPrice);
                 $disc  = floatval($item['disc']  ?? 0);
                 $subtotal += $qty * $price * (1 - $disc / 100);
             }
 
             $diskonType  = ($opt['diskon_type'] ?? 'percent') === 'amount' ? 'amount' : 'percent';
-            $diskon      = floatval($opt['diskon'] ?? 0);
+            $rawDiskon   = $opt['diskon'] ?? 0;
+            if ($diskonType === 'amount' && is_string($rawDiskon) && str_contains($rawDiskon, '.')) {
+                $rawDiskon = preg_replace('/[^\d]/', '', $rawDiskon);
+            }
+            $diskon      = floatval($rawDiskon);
             $afterDiskon = $diskonType === 'amount' ? ($subtotal - $diskon) : ($subtotal - ($subtotal * $diskon / 100));
             $tax         = filter_var($opt['tax'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $taxAmount   = $tax ? round($afterDiskon * 0.11) : 0;
-            $shipping    = floatval(str_replace('.', '', (string) ($opt['shipping'] ?? 0)));
+            $rawShipping = $opt['shipping'] ?? 0;
+            if (is_string($rawShipping)) {
+                $rawShipping = preg_replace('/[^\d]/', '', $rawShipping);
+            }
+            $shipping    = floatval($rawShipping);
             $total       = $afterDiskon + $taxAmount + $shipping;
 
             $result[] = [
@@ -1384,6 +1674,18 @@ class UnitQuotationController extends Controller
         $pending->shipping_recipient_id = null;
         $pending->date = Carbon::now();
         $pending->save();
+
+        // Kalau quotation ini sudah nempel ke kartu Kanban (di-post/di-link sebelum jadi
+        // PO), isi pending_po_id kartunya + tarik biaya kartu ke PO ini biar ke-rollup
+        // di Project Monitoring.
+        $linkedTasks = KanbanTask::where('id_unit_quotation', $quote->id)->whereNull('pending_po_id')->get();
+        foreach ($linkedTasks as $linkedTask) {
+            $linkedTask->pending_po_id = $pending->id;
+            $linkedTask->save();
+            \App\Models\ProjectExpense::where('id_kanban_task', $linkedTask->id)
+                ->whereNull('id_pending')
+                ->update(['id_pending' => $pending->id]);
+        }
 
         // Create detail rows and apply stock allocation logic similar to QuotationController::convert_po
         foreach ($quote->details as $item) {

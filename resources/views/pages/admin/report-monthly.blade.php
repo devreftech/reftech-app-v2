@@ -84,20 +84,22 @@
 
                 {{-- Kanan: Navigasi Bulan & Tahun + Shortcut --}}
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <div class="btn-group shadow-xs" role="group">
+                    {{-- Segmented Date Navigator Pill Group --}}
+                    <div class="d-inline-flex align-items-center bg-body-tertiary border rounded-pill p-1">
                         {{-- Prev Month --}}
                         <a href="{{ route('report.monthly', [$prevYear, $prevMonth]) }}"
-                           class="btn btn-outline-secondary waves-effect px-2"
-                           data-bs-toggle="tooltip" data-bs-placement="top" title="Previous Month ({{ $bulanMap[$prevMonth] }})">
+                           class="btn btn-icon btn-sm btn-label-secondary rounded-circle shadow-none"
+                           style="width: 28px; height: 28px;"
+                           data-bs-toggle="tooltip" data-bs-placement="top" title="Bulan Sebelumnya ({{ $bulanMap[$prevMonth] }})">
                             <i class="mdi mdi-chevron-left fs-5"></i>
                         </a>
 
                         {{-- Dropdown Bulan --}}
-                        <div class="btn-group" role="group">
+                        <div class="dropdown">
                             <button type="button"
-                                class="btn btn-outline-secondary dropdown-toggle waves-effect fw-semibold"
+                                class="btn btn-sm border-0 bg-transparent fw-semibold text-dark dropdown-toggle py-0 px-2 shadow-none"
+                                style="font-size: 0.82rem; box-shadow: none !important; background: transparent !important;"
                                 data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="mdi mdi-calendar-month-outline me-1 text-primary"></i>
                                 {{ $bulanMap[$month] }}
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="z-index: 1055;">
@@ -115,12 +117,14 @@
                             </ul>
                         </div>
 
+                        <span class="text-muted opacity-25">|</span>
+
                         {{-- Dropdown Tahun --}}
-                        <div class="btn-group" role="group">
+                        <div class="dropdown">
                             <button type="button"
-                                class="btn btn-outline-secondary dropdown-toggle waves-effect fw-semibold"
+                                class="btn btn-sm border-0 bg-transparent fw-semibold text-dark dropdown-toggle py-0 px-2 shadow-none"
+                                style="font-size: 0.82rem; box-shadow: none !important; background: transparent !important;"
                                 data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="mdi mdi-calendar-range me-1 text-primary"></i>
                                 {{ $year }}
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="z-index: 1055;">
@@ -140,14 +144,24 @@
 
                         {{-- Next Month --}}
                         <a href="{{ route('report.monthly', [$nextYear, $nextMonth]) }}"
-                           class="btn btn-outline-secondary waves-effect px-2"
-                           data-bs-toggle="tooltip" data-bs-placement="top" title="Next Month ({{ $bulanMap[$nextMonth] }})">
+                           class="btn btn-icon btn-sm btn-label-secondary rounded-circle shadow-none"
+                           style="width: 28px; height: 28px;"
+                           data-bs-toggle="tooltip" data-bs-placement="top" title="Bulan Berikutnya ({{ $bulanMap[$nextMonth] }})">
                             <i class="mdi mdi-chevron-right fs-5"></i>
                         </a>
                     </div>
 
-                    {{-- Quick Action: Annual Report --}}
-                    <a href="{{ route('report.year', $year) }}" class="btn btn-primary waves-effect shadow-sm">
+                    {{-- Tombol Bulan Ini jika sedang tidak di bulan sekarang --}}
+                    @if ($month != now()->month || $year != now()->year)
+                        <a href="{{ route('report.monthly', [now()->year, now()->month]) }}" 
+                           class="btn btn-sm btn-label-primary rounded-pill px-3 fw-semibold" 
+                           data-bs-toggle="tooltip" title="Kembali ke Bulan Sekarang">
+                            <i class="mdi mdi-calendar-today me-1"></i> Bulan Ini
+                        </a>
+                    @endif
+
+                    {{-- Quick Action Button --}}
+                    <a href="{{ route('report.year', $year) }}" class="btn btn-sm btn-primary rounded-pill px-3 waves-effect shadow-sm fw-semibold">
                         <i class="mdi mdi-chart-box-outline me-1"></i> Annual Report
                     </a>
                 </div>
@@ -292,6 +306,7 @@
                     @forelse ($rows as $i => $s)
                         @php
                             $isEco    = $s['id'] === 0;
+                            $reportUrl = $isEco ? null : route('detail-overview.semester', ['sales' => $s['id'], 'date' => sprintf('%02d-%d', $month, $year)]);
                             $pct      = $s['target'] > 0 ? round(($s['poTotal'] / $s['target']) * 100, 1) : 0;
                             $pctColor = $pct >= 100 ? 'success' : ($pct >= 70 ? 'warning' : 'danger');
 
@@ -323,16 +338,24 @@
                                             </div>
                                         </div>
                                     @else
-                                        <div class="avatar avatar-md flex-shrink-0">
+                                        <a href="{{ $reportUrl }}"
+                                           class="avatar avatar-md flex-shrink-0 sales-profile-link"
+                                           title="Lihat detail performance {{ $s['name'] }} ({{ $bulanMap[$month] }} {{ $year }})">
                                             <img src="{{ url('') . '/' . $s['image'] }}"
                                                  alt="{{ $s['name'] }}"
                                                  class="rounded-circle shadow-xs object-fit-cover"
                                                  onerror="this.onerror=null; this.src='{{ asset('assets/img/avatars/1.png') }}'">
-                                        </div>
+                                        </a>
                                     @endif
 
                                     <div class="sales-info">
-                                        <span class="fw-bold text-heading d-block">{{ $s['name'] }}</span>
+                                        <span class="fw-bold text-heading d-block">
+                                            @if ($reportUrl)
+                                                <a href="{{ $reportUrl }}" class="text-heading sales-name-link">{{ $s['name'] }}</a>
+                                            @else
+                                                {{ $s['name'] }}
+                                            @endif
+                                        </span>
                                         
                                         @if (($s['mktProspect'] ?? 0) > 0)
                                             @php
@@ -1020,11 +1043,10 @@
     /* KPI Summary Cards */
     .report-kpi-card {
         border-radius: 12px;
-        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+        transition: box-shadow 0.2s ease;
         border: 1px solid rgba(0, 0, 0, 0.06);
     }
     .report-kpi-card:hover {
-        transform: translateY(-3px);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
     }
     .border-start-primary { border-left: 4px solid var(--bs-primary) !important; }
@@ -1077,10 +1099,10 @@
     /* Funnel Box Style */
     .report-funnel-box {
         border-radius: 14px;
-        transition: transform 0.2s ease;
+        transition: box-shadow 0.2s ease;
     }
     .report-funnel-box:hover {
-        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
     }
 
     .funnel-connector-pill {
@@ -1137,6 +1159,25 @@
     }
     .dark-style .bg-light-subtle {
         background-color: rgba(255, 255, 255, 0.02) !important;
+    }
+
+    /* Avatar & nama sales -> link ke laporan bulanan per-sales */
+    .sales-profile-link {
+        display: block;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .sales-profile-link:hover {
+        transform: translateY(-1px);
+    }
+    .sales-profile-link:hover img {
+        box-shadow: 0 0 0 2px var(--bs-primary);
+    }
+    .sales-name-link {
+        text-decoration: none;
+    }
+    .sales-name-link:hover {
+        text-decoration: underline;
+        color: var(--bs-primary) !important;
     }
 </style>
 @endpush

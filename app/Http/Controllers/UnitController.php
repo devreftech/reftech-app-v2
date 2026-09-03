@@ -696,7 +696,7 @@ class UnitController extends Controller
             'items' => $items,
             'note' => $serviceNote,
             'service_suggestion' => [
-                'label' => 'Preventive Maintenance ' . $level,
+                'label' => 'Preventive Maintenance ' . str_replace('PM', '', $level),
                 'description' => $serviceDesc,
                 'amount' => $serviceFee,
                 'matched' => (bool) $servicePrice,

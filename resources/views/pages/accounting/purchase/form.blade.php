@@ -241,6 +241,9 @@
             </div>
             <div class="card-body p-0">
                 <div class="form-invoice-repeater source-item">
+                    @php
+                        $unitList = ['Pcs', 'Set', 'Pail', 'Drum', 'Unit', 'Lot', 'Meter', 'Can', 'Hari', 'Bulan', 'Kg', 'Tube', 'Titik', 'Box', 'Roll', 'Liter', 'Lembar', 'Paket', 'Karton', 'Pallet', 'Botol', 'Batang'];
+                    @endphp
                     @if (@$purchase)
                         <div class="mb-0" data-repeater-list="group-a">
                             @php
@@ -327,6 +330,28 @@
                                                         name="price[]" id="price-{{ $no }}"
                                                         value="{{ old('price[]', $item->price) }}" hidden>
                                                 </div>
+                                                <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
+                                                    <div class="hint-calc-wrapper">
+                                                        <div class="text-secondary mb-1">
+                                                            <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
+                                                            Harga Exc. PPN: <strong class="text-primary exc-ppn-val">Rp 0</strong> <span class="ppn-val text-muted" style="font-size: 10px;">(PPN: Rp 0)</span><br>
+                                                            DPP (11/12): <strong class="text-dark dpp-val" style="font-size: 10.5px;">Rp 0</strong>
+                                                        </div>
+                                                        <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
+                                                            <i class="mdi mdi-check me-1"></i> Gunakan Harga Exc. PPN
+                                                        </button>
+                                                    </div>
+                                                    <div class="hint-applied-wrapper d-none">
+                                                        <div class="d-flex align-items-center justify-content-between text-success">
+                                                            <span style="font-size: 10px;">
+                                                                <i class="mdi mdi-check-circle-outline me-1"></i>Exc. PPN: <strong class="applied-dpp-text">Rp 0</strong> <span class="text-muted applied-dpp-calc" style="font-size: 9.5px;">(DPP: Rp 0)</span>
+                                                            </span>
+                                                            <button type="button" class="btn btn-xs btn-link text-danger p-0 ms-1 btn-reset-dpp" style="font-size: 10px; text-decoration: underline; line-height: 1;">
+                                                                Batal
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div class="col-md-1 col-12 mb-md-0 mb-3">
                                                 <p class="mb-2 repeater-title small text-muted">Qty</p>
@@ -337,23 +362,17 @@
                                             </div>
                                             <div class="col-md-1 col-12 mb-md-0 mb-3">
                                                 <p class="mb-2 repeater-title small text-muted">Info Qty</p>
-                                                <select class="form-select form-select-sm invoice-item-info"
+                                                <select class="form-select form-select-sm invoice-item-info select2-info-qty"
                                                     id="info-qty-{{ $no }}"
                                                     data-id="{{ $no }}"
                                                     aria-label="Default select example" name="info_qty[]">
-                                                    <option disabled>---Info---</option>
-                                                    <option value="Pcs" {{ $item->info_qty == 'Pcs' ? 'selected' : '' }}>Pcs</option>
-                                                    <option value="Set" {{ $item->info_qty == 'Set' ? 'selected' : '' }}>Set</option>
-                                                    <option value="Pail" {{ $item->info_qty == 'Pail' ? 'selected' : '' }}>Pail</option>
-                                                    <option value="Unit" {{ $item->info_qty == 'Unit' ? 'selected' : '' }}>Unit</option>
-                                                    <option value="Lot" {{ $item->info_qty == 'Lot' ? 'selected' : '' }}>Lot</option>
-                                                    <option value="Meter" {{ $item->info_qty == 'Meter' ? 'selected' : '' }}>Meter</option>
-                                                    <option value="Can" {{ $item->info_qty == 'Can' ? 'selected' : '' }}>Can</option>
-                                                    <option value="Hari" {{ $item->info_qty == 'Hari' ? 'selected' : '' }}>Hari</option>
-                                                    <option value="Bulan" {{ $item->info_qty == 'Bulan' ? 'selected' : '' }}>Bulan</option>
-                                                    <option value="Kg" {{ $item->info_qty == 'Kg' ? 'selected' : '' }}>Kg</option>
-                                                    <option value="Tube" {{ $item->info_qty == 'Tube' ? 'selected' : '' }}>Tube</option>
-                                                    <option value="Titik" {{ $item->info_qty == 'Titik' ? 'selected' : '' }}>Titik</option>
+                                                    <option disabled value="">---Info---</option>
+                                                    @foreach ($unitList as $uOpt)
+                                                        <option value="{{ $uOpt }}" {{ strcasecmp($item->info_qty, $uOpt) === 0 ? 'selected' : '' }}>{{ $uOpt }}</option>
+                                                    @endforeach
+                                                    @if (!empty($item->info_qty) && !collect($unitList)->contains(fn($u) => strcasecmp($u, $item->info_qty) === 0))
+                                                        <option value="{{ $item->info_qty }}" selected>{{ $item->info_qty }}</option>
+                                                    @endif
                                                 </select>
                                             </div>
                                             <div class="col-md-1 col-12 mb-md-0 mb-3">
@@ -461,6 +480,28 @@
                                                     <input class="form-control invoice-item-price" type="number"
                                                         name="price[]" id="price-{{ $rno }}" value="" hidden>
                                                 </div>
+                                                <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
+                                                    <div class="hint-calc-wrapper">
+                                                        <div class="text-secondary mb-1">
+                                                            <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
+                                                            Harga Exc. PPN: <strong class="text-primary exc-ppn-val">Rp 0</strong> <span class="ppn-val text-muted" style="font-size: 10px;">(PPN: Rp 0)</span><br>
+                                                            DPP (11/12): <strong class="text-dark dpp-val" style="font-size: 10.5px;">Rp 0</strong>
+                                                        </div>
+                                                        <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
+                                                            <i class="mdi mdi-check me-1"></i> Gunakan Harga Exc. PPN
+                                                        </button>
+                                                    </div>
+                                                    <div class="hint-applied-wrapper d-none">
+                                                        <div class="d-flex align-items-center justify-content-between text-success">
+                                                            <span style="font-size: 10px;">
+                                                                <i class="mdi mdi-check-circle-outline me-1"></i>Exc. PPN: <strong class="applied-dpp-text">Rp 0</strong> <span class="text-muted applied-dpp-calc" style="font-size: 9.5px;">(DPP: Rp 0)</span>
+                                                            </span>
+                                                            <button type="button" class="btn btn-xs btn-link text-danger p-0 ms-1 btn-reset-dpp" style="font-size: 10px; text-decoration: underline; line-height: 1;">
+                                                                Batal
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div class="col-md-1 col-12 mb-md-0 mb-3">
                                                 <p class="mb-2 repeater-title small text-muted">Qty</p>
@@ -476,21 +517,12 @@
                                             </div>
                                             <div class="col-md-1 col-12 mb-md-0 mb-3">
                                                 <p class="mb-2 repeater-title small text-muted">Info Qty</p>
-                                                <select class="form-select form-select-sm invoice-item-info" id="info-qty-{{ $rno }}"
+                                                <select class="form-select form-select-sm invoice-item-info select2-info-qty" id="info-qty-{{ $rno }}"
                                                     data-id="{{ $rno }}" aria-label="Default select example" name="info_qty[]">
-                                                    <option disabled>---Info---</option>
-                                                    <option value="Pcs">Pcs</option>
-                                                    <option value="Set">Set</option>
-                                                    <option value="Pail">Pail</option>
-                                                    <option value="Unit">Unit</option>
-                                                    <option value="Lot">Lot</option>
-                                                    <option value="Meter">Meter</option>
-                                                    <option value="Can">Can</option>
-                                                    <option value="Hari">Hari</option>
-                                                    <option value="Bulan">Bulan</option>
-                                                    <option value="Kg">Kg</option>
-                                                    <option value="Tube">Tube</option>
-                                                    <option value="Titik">Titik</option>
+                                                    <option disabled value="">---Info---</option>
+                                                    @foreach ($unitList as $uOpt)
+                                                        <option value="{{ $uOpt }}" {{ $uOpt === 'Pcs' ? 'selected' : '' }}>{{ $uOpt }}</option>
+                                                    @endforeach
                                                 </select>
                                             </div>
                                             <div class="col-md-1 col-12 mb-md-0 mb-3">
@@ -590,6 +622,28 @@
                                                 <input class="form-control invoice-item-price" type="number"
                                                     name="price[]" id="price-1" value="{{ old('price[]') }}" hidden>
                                             </div>
+                                            <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
+                                                <div class="hint-calc-wrapper">
+                                                    <div class="text-secondary mb-1">
+                                                        <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
+                                                        Harga Exc. PPN: <strong class="text-primary exc-ppn-val">Rp 0</strong> <span class="ppn-val text-muted" style="font-size: 10px;">(PPN: Rp 0)</span><br>
+                                                        DPP (11/12): <strong class="text-dark dpp-val" style="font-size: 10.5px;">Rp 0</strong>
+                                                    </div>
+                                                    <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
+                                                        <i class="mdi mdi-check me-1"></i> Gunakan Harga Exc. PPN
+                                                    </button>
+                                                </div>
+                                                <div class="hint-applied-wrapper d-none">
+                                                    <div class="d-flex align-items-center justify-content-between text-success">
+                                                        <span style="font-size: 10px;">
+                                                            <i class="mdi mdi-check-circle-outline me-1"></i>Exc. PPN: <strong class="applied-dpp-text">Rp 0</strong> <span class="text-muted applied-dpp-calc" style="font-size: 9.5px;">(DPP: Rp 0)</span>
+                                                        </span>
+                                                        <button type="button" class="btn btn-xs btn-link text-danger p-0 ms-1 btn-reset-dpp" style="font-size: 10px; text-decoration: underline; line-height: 1;">
+                                                            Batal
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div class="col-md-1 col-12 mb-md-0 mb-3">
                                             <p class="mb-2 repeater-title small text-muted">Qty</p>
@@ -599,21 +653,12 @@
                                         </div>
                                         <div class="col-md-1 col-12 mb-md-0 mb-3">
                                             <p class="mb-2 repeater-title small text-muted">Info Qty</p>
-                                            <select class="form-select form-select-sm invoice-item-info" id="info-qty-1"
+                                            <select class="form-select form-select-sm invoice-item-info select2-info-qty" id="info-qty-1"
                                                 data-id="1" aria-label="Default select example" name="info_qty[]">
-                                                <option disabled>---Info---</option>
-                                                <option value="Pcs">Pcs</option>
-                                                <option value="Set">Set</option>
-                                                <option value="Pail">Pail</option>
-                                                <option value="Unit">Unit</option>
-                                                <option value="Lot">Lot</option>
-                                                <option value="Meter">Meter</option>
-                                                <option value="Can">Can</option>
-                                                <option value="Hari">Hari</option>
-                                                <option value="Bulan">Bulan</option>
-                                                <option value="Kg">Kg</option>
-                                                <option value="Tube">Tube</option>
-                                                <option value="Titik">Titik</option>
+                                                <option disabled value="">---Info---</option>
+                                                @foreach ($unitList as $uOpt)
+                                                    <option value="{{ $uOpt }}" {{ $uOpt === 'Pcs' ? 'selected' : '' }}>{{ $uOpt }}</option>
+                                                @endforeach
                                             </select>
                                         </div>
                                         <div class="col-md-1 col-12 mb-md-0 mb-3">
@@ -707,14 +752,14 @@
 
                                 <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
                                     <div class="d-flex align-items-center gap-2">
-                                        <span class="text-muted small">Tax (PPN 12%)</span>
+                                        <span class="text-muted small">Tax (PPN 11%)</span>
                                         <div class="form-check form-switch mb-0">
                                             <input class="form-check-input" type="checkbox" role="switch"
-                                                id="taxSwitch" {{ @$purchase->vat == '11' ? 'checked' : '' }}>
+                                                id="taxSwitch" {{ (@$purchase->vat == '12' || @$purchase->vat == '11') ? 'checked' : '' }}>
                                         </div>
                                     </div>
                                     <span class="fw-semibold tax-amount-label text-muted small" id="taxAmountLabel">
-                                        @if (@$purchase && $purchase->vat == '11')
+                                        @if (@$purchase && ($purchase->vat == '12' || $purchase->vat == '11'))
                                             {{ 'RP ' . number_format(($purchase->subtotal - $purchase->diskon) * $purchase->vat / 100, 0, '', '.') }}
                                         @endif
                                     </span>
@@ -943,7 +988,9 @@
             // Format Integer menjadi Currency ID Rupiah
             let formatter = new Intl.NumberFormat('id-ID', {
                 style: 'currency',
-                currency: 'IDR'
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
             });
 
             // Tampilkan Badge - Code - Nama Supplier
@@ -1407,109 +1454,202 @@
 
                 input_val = formatNumber(input_val);
                 input.val(input_val);
-                var nomorInt = parseFloat(input_val.replace(/[.,]/g, ''));
+                var nomorInt = parseFloat(input_val.replace(/[.,]/g, '')) || 0;
                 $('#delivery-cost').val(nomorInt);
             }
 
-            $(document).on('keyup', '#delivery-cost-label', function() {
+            $(document).on('keyup input', '#delivery-cost-label', function() {
                 formatCurrencyDeliveryCost($(this));
+                recalculateTotals();
             });
 
-            // Toggle Tax (PPN 12%) on/off
+            $(document).on('keyup input', '#diskon-label', function() {
+                formatCurrencyDiscount($(this));
+                recalculateTotals();
+            });
+
+            // Toggle Tax (PPN 11%) on/off
             $(document).on('change', '#taxSwitch', function() {
-                $('#tax').val($(this).is(':checked') ? 11 : 0).trigger('change');
+                $('#tax').val($(this).is(':checked') ? 11 : 0);
+                recalculateTotals();
             });
 
-            $(document).on('keyup', '.invoice-item-price-label', function() {
-                var input = $(this)
-                var id = input.data('id');
+            // Live calculation helper: Hitung Harga Exc. PPN & DPP Nilai Lain jika harga yang diinput adalah include PPN (11%)
+            function updatePriceTaxHint($input) {
+                var $col = $input.closest('.col-md-3');
+                var $hint = $col.find('.price-tax-hint');
+                if (!$hint.length) return;
+
+                // Jika baris ini sudah dalam state "DPP diterapkan", jangan hitung ulang dari nilai DPP
+                if ($col.data('dpp-applied')) {
+                    return;
+                }
+
+                var inputVal = $input.val();
+                var nomorInt = parseFloat((inputVal || '').replace(/[.,]/g, '')) || 0;
+
+                if (nomorInt > 0) {
+                    var hargaExcPpn = Math.round((nomorInt * 100) / 111);
+                    var ppn = nomorInt - hargaExcPpn;
+                    var dpp = Math.round((hargaExcPpn * 11) / 12);
+
+                    $hint.find('.exc-ppn-val').text('Rp ' + formatNumber(String(hargaExcPpn)));
+                    $hint.find('.ppn-val').text('(PPN: Rp ' + formatNumber(String(ppn)) + ')');
+                    $hint.find('.dpp-val').text('Rp ' + formatNumber(String(dpp)));
+                    $hint.find('.btn-apply-dpp').data('exc-ppn', hargaExcPpn).data('dpp', dpp).data('orig-price', nomorInt);
+                    $hint.find('.hint-calc-wrapper').removeClass('d-none');
+                    $hint.find('.hint-applied-wrapper').addClass('d-none');
+                    $hint.removeClass('d-none');
+                } else {
+                    $hint.addClass('d-none');
+                }
+            }
+
+            $(document).on('keyup input', '.invoice-item-price-label', function() {
+                var input = $(this);
+                var $col = input.closest('.col-md-3');
+                var $row = input.closest('.repeater-wrapper');
+
+                // User mengetik manual -> reset state DPP applied pada baris ini
+                $col.data('dpp-applied', false);
+
                 var input_val = input.val();
-
-                // original length
                 var original_len = input_val.length;
+                var caret_pos = input.prop("selectionStart") || 0;
 
-                // initial caret position
-                var caret_pos = input.prop("selectionStart");
-
-                // add commas to number
-                // remove all non-digits
                 input_val = formatNumber(input_val);
-
-                // send updated string to input
                 input.val(input_val);
-                var nomorInt = parseFloat(input_val.replace(/[.,]/g, ''));
-                $(`#price-${id}`).val(nomorInt);
 
-                // put caret back in the right position
+                var nomorInt = parseFloat(input_val.replace(/[.,]/g, '')) || 0;
+                $row.find('.invoice-item-price').val(nomorInt);
+
                 var updated_len = input_val.length;
                 caret_pos = updated_len - original_len + caret_pos;
-                input[0].setSelectionRange(caret_pos, caret_pos);
+                if (input[0] && input[0].setSelectionRange) {
+                    input[0].setSelectionRange(caret_pos, caret_pos);
+                }
+
+                updatePriceTaxHint(input);
+                recalculateTotals();
+            });
+
+            // Handler tombol "Gunakan Harga Exc. PPN"
+            $(document).on('click', '.btn-apply-dpp', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                var $col = $(this).closest('.col-md-3');
+                var $row = $(this).closest('.repeater-wrapper');
+                var excPpn = $(this).data('exc-ppn');
+                var dpp = $(this).data('dpp');
+                var origPrice = $(this).data('orig-price');
+                var $priceLabel = $col.find('.invoice-item-price-label');
+                var $priceHidden = $row.find('.invoice-item-price');
+                var $hint = $col.find('.price-tax-hint');
+
+                if (excPpn && excPpn > 0) {
+                    $col.data('dpp-applied', true);
+                    $col.data('orig-price', origPrice);
+                    $col.data('exc-ppn-val', excPpn);
+                    $col.data('dpp-val', dpp);
+
+                    $priceLabel.val(formatNumber(String(excPpn)));
+                    $priceHidden.val(excPpn);
+
+                    // Switch ke status diterapkan
+                    $hint.find('.applied-dpp-text').text('Rp ' + formatNumber(String(excPpn)));
+                    $hint.find('.applied-dpp-calc').text('(DPP: Rp ' + formatNumber(String(dpp)) + ')');
+                    $hint.find('.hint-calc-wrapper').addClass('d-none');
+                    $hint.find('.hint-applied-wrapper').removeClass('d-none');
+                    $hint.removeClass('d-none');
+
+                    // Auto-aktifkan toggle Tax PPN 11% di summary jika belum aktif
+                    if (!$('#taxSwitch').is(':checked')) {
+                        $('#taxSwitch').prop('checked', true);
+                        $('#tax').val(11);
+                    }
+
+                    recalculateTotals();
+                }
+            });
+
+            // Handler tombol "Batal / Reset DPP"
+            $(document).on('click', '.btn-reset-dpp', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                var $col = $(this).closest('.col-md-3');
+                var $row = $(this).closest('.repeater-wrapper');
+                var origPrice = $col.data('orig-price');
+                var $priceLabel = $col.find('.invoice-item-price-label');
+                var $priceHidden = $row.find('.invoice-item-price');
+
+                if (origPrice && origPrice > 0) {
+                    $col.data('dpp-applied', false);
+                    $priceLabel.val(formatNumber(String(origPrice)));
+                    $priceHidden.val(origPrice);
+
+                    updatePriceTaxHint($priceLabel);
+                    recalculateTotals();
+                }
             });
 
             // Info "qty lebih dari kebutuhan PR = tambahan stok" — live update pas qty diubah
-            $(document).on('keyup change', '.invoice-item-qty', function () {
+            $(document).on('keyup change input', '.invoice-item-qty', function () {
                 var id = $(this).data('id');
                 var prRemaining = parseInt($(this).data('pr-remaining'), 10);
                 var qty = parseInt($(this).val(), 10) || 0;
                 var $hint = $('#qty-stock-hint-' + id);
-                if (!$hint.length || isNaN(prRemaining)) return;
-
-                if (qty > prRemaining) {
-                    $hint.removeClass('d-none').html(
-                        '<i class="mdi mdi-information-outline"></i> ' + prRemaining + ' pcs utk PR, +' + (qty - prRemaining) + ' stok'
-                    );
-                } else {
-                    $hint.addClass('d-none');
+                if ($hint.length && !isNaN(prRemaining)) {
+                    if (qty > prRemaining) {
+                        $hint.removeClass('d-none').html(
+                            '<i class="mdi mdi-information-outline"></i> ' + prRemaining + ' pcs utk PR, +' + (qty - prRemaining) + ' stok'
+                        );
+                    } else {
+                        $hint.addClass('d-none');
+                    }
                 }
+                recalculateTotals();
             });
 
-            // Logic amount + Subtotal
-            $(document).on('keyup change click', '.invoice-item-price-label, .invoice-item-qty, .invoice-item-disc',
-                function(ev) {
-                    // mengambil ID
-                    var id = $(this).data('id');
-                    // prepare data
-                    var sTotal = 0,
-                        row = 0,
-                        amount = 0,
-                        hasil = 0,
-                        valHarga = $(`#price-${id}`).val(),
-                        harga = Number(valHarga),
-                        disc = isNaN(parseInt($(`#disc-${id}`).val())) ? 0 : parseInt($(`#disc-${id}`).val());
-                    // menghitung hasil
-                    hasil = harga * $(`#qty-${id}`).val();
-                    // menghitung amount
-                    amount = (hasil - (hasil * disc / 100));
-                    // memasukan data amount dan subtotal
-                    $(`#amount-${id}`).val(amount);
-                    $(`#amount-label-${id}`).html(`${formatter.format(amount)}`);
-                    $('.amount-label').each(() => {
-                        row++;
-                        sTotal += parseInt($(`#amount-${row}`).val())
-                    });
-                    $('#subtotal-label').html(`${formatter.format(sTotal)}`);
-                    $('#subtotal').val(sTotal);
+            $(document).on('keyup change input', '.invoice-item-disc', function() {
+                recalculateTotals();
+            });
+
+            // Unified calculation function for row amounts, subtotal, discount, tax, delivery, and grand total
+            function recalculateTotals() {
+                var sTotal = 0;
+                $('.repeater-wrapper').each(function() {
+                    var $row = $(this);
+                    var harga = parseFloat($row.find('.invoice-item-price').val()) || 0;
+                    var qty = parseFloat($row.find('.invoice-item-qty').val()) || 0;
+                    var disc = parseFloat($row.find('.invoice-item-disc').val()) || 0;
+                    var hasil = harga * qty;
+                    var amount = Math.round(hasil - (hasil * disc / 100));
+
+                    $row.find('.invoice-item-amount').val(amount);
+                    $row.find('.amount-label').html(formatter.format(amount));
+                    sTotal += amount;
                 });
 
-            // Logic Harga Total
-            $(document).on('keyup change',
-                '#subtotal, #tax, #diskon-label, #delivery-cost-label, .invoice-item-price-label, .invoice-item-qty, .invoice-item-disc',
-                () => {
-                    var noTax = 0;
-                    var hTotal = 0;
-                    var sTotal = isNaN(parseInt($('#subtotal').val())) ? 0 : parseInt($('#subtotal').val());
-                    var discount = isNaN(parseInt($('#diskon').val())) ? 0 : parseInt($('#diskon').val());
-                    var deliveryCost = isNaN(parseInt($('#delivery-cost').val())) ? 0 : parseInt($('#delivery-cost').val());
-                    var dTotal = sTotal - discount;
-                    var tax = isNaN(parseInt($('#tax').val())) ? 0 : parseInt($('#tax').val());
-                    var taxAmount = parseInt(dTotal * tax / 100);
-                    hTotal = parseInt(dTotal + taxAmount + deliveryCost);
-                    noTax = parseInt(dTotal);
-                    $('#taxAmountLabel').html(tax > 0 ? formatter.format(taxAmount) : '');
-                    $('#hargaTotalLabel').html(`${formatter.format(hTotal)}`);
-                    $('#hargaTotal').val(hTotal);
-                    $('#totalNoTax').val(noTax);
-                });
+                $('#subtotal').val(sTotal);
+                $('#subtotal-label').html(formatter.format(sTotal));
+
+                var discount = parseFloat($('#diskon').val()) || 0;
+                var deliveryCost = parseFloat($('#delivery-cost').val()) || 0;
+                var dTotal = Math.max(0, sTotal - discount);
+                var taxPercent = parseFloat($('#tax').val()) || 0;
+                var taxAmount = Math.round(dTotal * taxPercent / 100);
+                var hTotal = Math.round(dTotal + taxAmount + deliveryCost);
+
+                $('#taxAmountLabel').html(taxPercent > 0 ? formatter.format(taxAmount) : '');
+                $('#hargaTotal').val(hTotal);
+                $('#hargaTotalLabel').html(formatter.format(hTotal));
+                $('#totalNoTax').val(dTotal);
+            }
+
+            // Jalankan recalculate saat pertama load
+            recalculateTotals();
 
             // Kategori per-item: Sparepart (select2 dari tabel Product) vs Unit Global (select2 dari tabel Unit)
 
@@ -1556,25 +1696,43 @@
                         });
                     }
                 });
+                $scope.find('.select2-info-qty').each(function() {
+                    var $el = $(this);
+                    if (!$el.data('select2')) {
+                        $el.select2({
+                            placeholder: 'Satuan...',
+                            tags: true,
+                            width: '100%',
+                            dropdownParent: $el.parent()
+                        });
+                    }
+                });
             }
 
             // Info Qty ikut otomatis dari master: Sparepart -> unit di tabel Product, Unit Global -> selalu "Unit"
             function lockInfoQty($fields, forcedValue) {
                 var $info = $fields.closest('.row').find('.invoice-item-info');
+                var $container = $info.next('.select2-container');
                 $info.addClass('pe-none bg-light').attr('tabindex', '-1').attr('aria-readonly', 'true');
+                $container.addClass('pe-none opacity-75');
                 if (forcedValue) {
                     var matched = $info.find('option').filter(function() {
                         return $(this).val().toLowerCase() === String(forcedValue).toLowerCase();
                     });
                     if (matched.length) {
-                        $info.val(matched.val());
+                        $info.val(matched.val()).trigger('change.select2');
+                    } else {
+                        var newOpt = new Option(forcedValue, forcedValue, true, true);
+                        $info.append(newOpt).trigger('change.select2');
                     }
                 }
             }
 
             function unlockInfoQty($fields) {
-                $fields.closest('.row').find('.invoice-item-info')
-                    .removeClass('pe-none bg-light').removeAttr('tabindex').removeAttr('aria-readonly');
+                var $info = $fields.closest('.row').find('.invoice-item-info');
+                var $container = $info.next('.select2-container');
+                $info.removeClass('pe-none bg-light').removeAttr('tabindex').removeAttr('aria-readonly');
+                $container.removeClass('pe-none opacity-75');
             }
 
             function applyRowCategory($fields) {
@@ -1640,9 +1798,20 @@
                 }
                 applyRowCategory($newFields);
                 updateItemsCountBadge();
+                recalculateTotals();
             });
 
-            $(document).on('repeater:deleted', updateItemsCountBadge);
+            $(document).on('repeater:deleted', function() {
+                updateItemsCountBadge();
+                recalculateTotals();
+            });
+
+            $(document).on('click', '[data-repeater-delete]', function() {
+                setTimeout(function() {
+                    updateItemsCountBadge();
+                    recalculateTotals();
+                }, 50);
+            });
 
             // Add Custom Item: pakai mekanisme "Add Item" yang sama, lalu langsung set ke mode Custom
             $('#btn-add-custom-item').on('click', function() {
