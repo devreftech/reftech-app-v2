@@ -45,6 +45,7 @@ use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\SalesOnlineController;
 use App\Http\Controllers\SalesReportController;
 use App\Http\Controllers\ServiceReportsController;
+use App\Http\Controllers\ProjectReportsController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\UnitController;
@@ -150,6 +151,7 @@ Route::get('/db/machine-monitoring-visit/{id}', [MonitoringController::class, 'g
 Route::get('/db/dryer-monitoring-visit/{id}', [MonitoringController::class, 'getMonitoringDryerThisMonth']);
 
 Route::get('/service-reports/print/{id}', [ServiceReportsController::class, 'print_reports'])->name('service-reports.print');
+Route::get('/project-reports/print/{id}', [ProjectReportsController::class, 'print'])->name('project-reports.print');
 
 Route::get('/watermark/index', [WatermarkController::class, 'index'])->name('watermark.index');
 Route::post('/watermark/upload', [WatermarkController::class, 'upload'])->name('watermark.upload');
@@ -252,6 +254,14 @@ Route::group(["middleware" => "auth"], function () {
     // Baru setelah approve report kehitung di badge Sales.
     Route::post('/service-reports/{id}/approve', [ServiceReportsController::class, 'approve'])->name('service-reports.approve');
     Route::post('/service-reports/{id}/reject', [ServiceReportsController::class, 'reject'])->name('service-reports.reject');
+
+    // Route untuk Project Reports (Daily Project Reports)
+    Route::get('/db/project-reports', [ProjectReportsController::class, 'data'])->name('project-reports.data');
+    Route::resource('/project-reports', ProjectReportsController::class);
+    Route::post('/project-reports/sign/{id}', [ProjectReportsController::class, 'saveSignature'])->name('project-reports.sign');
+    Route::post('/project-reports/photo/{id}', [ProjectReportsController::class, 'uploadPhoto'])->name('project-reports.photo.upload');
+    Route::delete('/project-reports/photo/{photo_id}', [ProjectReportsController::class, 'deletePhoto'])->name('project-reports.photo.delete');
+    Route::patch('/project-reports/photo/{photo_id}', [ProjectReportsController::class, 'updatePhotoCaption'])->name('project-reports.photo.caption');
 
     // Route untuk audit
     Route::resource('/audit-tools', AuditController::class);

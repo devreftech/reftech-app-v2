@@ -55,6 +55,10 @@ class DashboardController extends Controller
             return redirect()->route('service-reports.manager');
         }
 
+        if (Auth::user()->role == 'Guest') {
+            return redirect()->route('service-reports.index', ['tab' => 'project']);
+        }
+
         $dateNow = Carbon::now();
         $monthNow = $dateNow->month;
         $yearNow = $dateNow->year;
