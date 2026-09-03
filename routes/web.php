@@ -45,6 +45,7 @@ use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\SalesOnlineController;
 use App\Http\Controllers\SalesReportController;
 use App\Http\Controllers\ServiceReportsController;
+use App\Http\Controllers\ProjectReportsController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\UnitController;
@@ -150,6 +151,7 @@ Route::get('/db/machine-monitoring-visit/{id}', [MonitoringController::class, 'g
 Route::get('/db/dryer-monitoring-visit/{id}', [MonitoringController::class, 'getMonitoringDryerThisMonth']);
 
 Route::get('/service-reports/print/{id}', [ServiceReportsController::class, 'print_reports'])->name('service-reports.print');
+Route::get('/project-reports/print/{id}', [ProjectReportsController::class, 'print'])->name('project-reports.print');
 
 Route::get('/watermark/index', [WatermarkController::class, 'index'])->name('watermark.index');
 Route::post('/watermark/upload', [WatermarkController::class, 'upload'])->name('watermark.upload');
@@ -252,6 +254,14 @@ Route::group(["middleware" => "auth"], function () {
     // Baru setelah approve report kehitung di badge Sales.
     Route::post('/service-reports/{id}/approve', [ServiceReportsController::class, 'approve'])->name('service-reports.approve');
     Route::post('/service-reports/{id}/reject', [ServiceReportsController::class, 'reject'])->name('service-reports.reject');
+
+    // Route untuk Project Reports (Daily Project Reports)
+    Route::get('/db/project-reports', [ProjectReportsController::class, 'data'])->name('project-reports.data');
+    Route::resource('/project-reports', ProjectReportsController::class);
+    Route::post('/project-reports/sign/{id}', [ProjectReportsController::class, 'saveSignature'])->name('project-reports.sign');
+    Route::post('/project-reports/photo/{id}', [ProjectReportsController::class, 'uploadPhoto'])->name('project-reports.photo.upload');
+    Route::delete('/project-reports/photo/{photo_id}', [ProjectReportsController::class, 'deletePhoto'])->name('project-reports.photo.delete');
+    Route::patch('/project-reports/photo/{photo_id}', [ProjectReportsController::class, 'updatePhotoCaption'])->name('project-reports.photo.caption');
 
     // Route untuk audit
     Route::resource('/audit-tools', AuditController::class);
@@ -1503,6 +1513,7 @@ Route::group(["middleware" => "auth"], function () {
     })->name('project-monitoring.index');
     Route::get('/project-monitoring/{id}', [ProjectMonitoringController::class, 'show'])->name('project-monitoring.show');
     Route::post('/project-monitoring/{id}/expense', [ProjectMonitoringController::class, 'storeExpense'])->name('project-monitoring.store-expense');
+    Route::put('/project-monitoring/expense/{id}', [ProjectMonitoringController::class, 'updateExpense'])->name('project-monitoring.update-expense');
     Route::delete('/project-monitoring/expense/{id}', [ProjectMonitoringController::class, 'destroyExpense'])->name('project-monitoring.destroy-expense');
     Route::post('/project-monitoring/{id}/status-step', [ProjectMonitoringController::class, 'updateStatusStep'])->name('project-monitoring.update-status-step');
 
@@ -6333,19 +6344,18 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         return response()->json(['data' => $result]);
     });
     Route::get('/db/machine/prokemas', function () {
-
-        $today = Carbon::now();
+        $today = Carbon::now()->toDateString();
         $month = Carbon::now()->month;
 
         $machines = Machine::leftJoin('monitoring as m', function ($join) use ($today) {
             $join->on('machine.id', '=', 'm.id_machine')
                 ->whereDate('m.date', '=', $today);
         })
-            ->leftJoin('users as us', 'us.id', '=', 'm.id_pic') // pakai leftJoin biar nggak hilang
+            ->leftJoin('users as us', 'us.id', '=', 'm.id_pic')
             ->join('serial_product as sp', 'sp.id', '=', 'machine.id_unit')
             ->join('unit as u', 'u.id', '=', 'sp.id_product')
-            ->whereIn('machine.id', [495, 496])
-            ->groupBy('machine.id')
+            ->where('machine.id_client', 5711)
+            ->groupBy('machine.id', 'us.name', 'm.created_at', 'sp.brand', 'u.sku', 'sp.pn', 'u.unit', 'machine.serial')
             ->addSelect(
                 'machine.id',
                 'us.name',
@@ -6362,15 +6372,14 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         return response()->json(['data' => $machines]);
     });
     Route::get('/db/issue/prokemas', function () {
-
-        $today = Carbon::now();
+        $today = Carbon::now()->toDateString();
         $month = Carbon::now()->month;
 
         $issue = Monitoring::join('machine as mc', 'mc.id', '=', 'monitoring.id_machine')
             ->leftJoin('users as us', 'us.id', '=', 'monitoring.id_pic')
             ->join('serial_product as sp', 'sp.id', '=', 'mc.id_unit')
             ->join('unit as u', 'u.id', '=', 'sp.id_product')
-            ->whereIn('mc.id', [495, 496])
+            ->where('mc.id_client', 5711)
             ->whereNotNull('monitoring.issue')
             ->where('monitoring.issue_level', 0)
             ->whereDate('monitoring.date', $today)

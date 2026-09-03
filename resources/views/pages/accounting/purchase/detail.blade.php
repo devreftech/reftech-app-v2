@@ -202,17 +202,6 @@
                                                 </td>
                                             </tr>
                                         @endif
-                                        @if ($purchase->delivery_cost > 0)
-                                            <tr>
-                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">DELIVERY COST</td>
-                                                <td class="py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #111; vertical-align: middle;">
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <span>Rp</span>
-                                                        <span class="fw-semibold">{{ number_format($purchase->delivery_cost, 0, '', '.') }}</span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @endif
                                         @if ($totalPph > 0)
                                             <tr>
                                                 <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">TOTAL PPH</td>

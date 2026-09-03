@@ -669,50 +669,71 @@
             </div>
 
             {{-- Summary (subtotal/diskon/tax/shipping/total) khusus opsi ini --}}
-            <div class="p-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span class="text-muted small">Subtotal</span>
-                    <span class="fw-bold text-dark fs-6 display-subtotal">Rp 0</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span class="text-muted small">Discount</span>
-                    <div style="width: 160px;">
-                        <div class="input-group input-group-sm">
-                            <select class="form-select flex-grow-0 select-diskon-type" name="options[__OPT__][diskon_type]" style="max-width:65px; font-size:11px;">
-                                <option value="percent" selected>%</option>
-                                <option value="amount">Rp</option>
-                            </select>
-                            <input type="text" class="form-control text-end fw-semibold input-diskon" name="options[__OPT__][diskon]" value="0" autocomplete="off">
+            <div class="p-4 bg-light-subtle border-top">
+                <div class="row justify-content-end">
+                    <div class="col-lg-5 col-md-8 col-12">
+                        <div class="d-flex flex-column gap-3 py-2">
+                            {{-- Subtotal --}}
+                            <div class="d-flex justify-content-between align-items-center py-1">
+                                <span class="text-muted fw-semibold" style="font-size: 13.5px;">Subtotal</span>
+                                <span class="fw-bold text-dark fs-6 display-subtotal">Rp 0</span>
+                            </div>
+
+                            {{-- Discount --}}
+                            <div class="d-flex justify-content-between align-items-center gap-3 py-1">
+                                <div class="flex-grow-1" style="max-width: 200px;">
+                                    <select class="form-select form-select-sm fw-semibold select-diskon-type border-primary-subtle text-heading shadow-xs" name="options[__OPT__][diskon_type]" style="font-size: 12px; border-radius: 6px; cursor: pointer; padding-top: 6px; padding-bottom: 6px;">
+                                        <option value="percent" selected>Diskon Persentase ( % )</option>
+                                        <option value="amount">Diskon Nominal ( Rp )</option>
+                                    </select>
+                                </div>
+                                <div style="width: 165px;">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text fw-bold text-primary diskon-prefix-addon" style="display: none; font-size: 11px;">Rp</span>
+                                        <input type="text" class="form-control text-end fw-bold input-diskon" name="options[__OPT__][diskon]" value="0" placeholder="0" autocomplete="off" style="font-size: 13px; padding-top: 5px; padding-bottom: 5px;">
+                                        <span class="input-group-text fw-bold text-primary diskon-suffix-addon" style="font-size: 11px;">%</span>
+                                    </div>
+                                    <div class="text-end mt-1">
+                                        <span class="badge bg-label-info diskon-feedback-badge" style="font-size: 10px; font-weight: 500;">Potongan: Rp 0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- PPN --}}
+                            <div class="d-flex justify-content-between align-items-center py-1">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="text-muted fw-semibold" style="font-size: 13.5px;">PPN 12%</span>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input toggle-tax" type="checkbox" name="options[__OPT__][tax]" value="1" checked>
+                                    </div>
+                                </div>
+                                <span class="display-tax fw-semibold text-muted small">Rp 0</span>
+                            </div>
+
+                            {{-- Shipping Cost --}}
+                            <div class="d-flex justify-content-between align-items-center pb-3 border-bottom">
+                                <div>
+                                    <span class="text-muted fw-semibold d-block" style="font-size: 13.5px;">Shipping Cost</span>
+                                    <span class="text-muted" style="font-size: 10.5px;">( Non-taxable )</span>
+                                </div>
+                                <div style="width: 165px;">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text fw-semibold" style="font-size:11px;">Rp</span>
+                                        <input type="text" class="form-control text-end fw-semibold rupiah-input input-shipping" name="options[__OPT__][shipping]" value="0" placeholder="0" autocomplete="off" style="padding-top: 5px; padding-bottom: 5px;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Total Amount --}}
+                            <div class="p-3 rounded-3 d-flex justify-content-between align-items-center mt-2" style="background: linear-gradient(135deg, #f0f2ff 0%, #e8ebff 100%); border: 1px dashed #696cff;">
+                                <div>
+                                    <div class="text-uppercase fw-bold text-primary" style="font-size: 11px; letter-spacing: 0.8px;">Total Amount</div>
+                                    <div class="text-muted" style="font-size: 10.5px;">( Inclusive of Tax &amp; Discount )</div>
+                                </div>
+                                <div class="fw-bolder text-primary fs-3 display-total" style="letter-spacing: -0.5px;">Rp 0</div>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="text-muted small">PPN 12%</span>
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input toggle-tax" type="checkbox" name="options[__OPT__][tax]" value="1" checked>
-                        </div>
-                    </div>
-                    <span class="display-tax fw-semibold text-muted small">Rp 0</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
-                    <div>
-                        <span class="text-muted small d-block">Shipping Cost</span>
-                        <span class="text-muted" style="font-size: 10px;">( Non-taxable )</span>
-                    </div>
-                    <div style="width: 160px;">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text fw-semibold" style="font-size:11px;">Rp</span>
-                            <input type="text" class="form-control text-end fw-semibold rupiah-input input-shipping" name="options[__OPT__][shipping]" value="0" placeholder="0" autocomplete="off">
-                        </div>
-                    </div>
-                </div>
-                <div class="p-3 rounded-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #f0f2ff 0%, #e8ebff 100%); border: 1px dashed #696cff;">
-                    <div>
-                        <div class="text-uppercase fw-bold text-primary" style="font-size: 10px; letter-spacing: 0.8px;">Total Amount</div>
-                        <div class="text-muted" style="font-size: 10px;">( Inclusive of Tax &amp; Discount )</div>
-                    </div>
-                    <div class="fw-bolder text-primary fs-3 display-total" style="letter-spacing: -0.5px;">Rp 0</div>
                 </div>
             </div>
         </div>

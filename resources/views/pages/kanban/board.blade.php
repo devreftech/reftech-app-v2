@@ -144,6 +144,14 @@
                             <label for="createTaskDueDate" class="form-label">Due Date</label>
                             <input type="text" class="form-control flatpickr" id="createTaskDueDate" placeholder="YYYY-MM-DD">
                         </div>
+                        <div class="mb-3">
+                            <label for="createTaskPriority" class="form-label">Prioritas</label>
+                            <select class="form-select" id="createTaskPriority">
+                                <option value="low">Rendah</option>
+                                <option value="medium" selected>Sedang</option>
+                                <option value="high">Tinggi</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
@@ -442,6 +450,30 @@
                             </div>
                             @endif
 
+                            <!-- Daily Project Reports Section (Laporan Harian Proyek) -->
+                            <div class="mb-4" id="taskProjectReportsContainer">
+                                <div class="card border border-light-subtle shadow-sm" style="background-color: #f6faff; border-radius: 12px; border: 1px solid #d9e9ff !important;">
+                                    <div class="card-body p-3.5">
+                                        <div class="d-flex align-items-center justify-content-between pb-2 mb-3" style="border-bottom: 2px solid #007bff;">
+                                            <h6 class="fw-bold mb-0 text-dark d-flex align-items-center" style="font-size: 14.5px;">
+                                                <i class="mdi mdi-clipboard-text-clock-outline me-2 text-primary" style="font-size: 18px;"></i> Laporan Harian Proyek
+                                            </h6>
+                                            <span class="badge bg-label-primary fw-bold" id="taskProjectReportsCount" style="font-size: 12px;">0 Laporan</span>
+                                        </div>
+
+                                        <div id="taskProjectReportsList" class="d-flex flex-column gap-2 mb-3" style="font-size: 12.5px;">
+                                            <!-- Dynamically populated via JS -->
+                                        </div>
+
+                                        <div class="text-end">
+                                            <a href="#" target="_blank" class="btn btn-xs btn-primary" id="btnCreateDailyReport">
+                                                <i class="mdi mdi-plus me-1"></i>Buat Daily Report Hari Ini
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Labels section -->
                             <div class="mb-4">
                                 <label class="form-label text-muted fw-semibold" style="font-size: 11px;">Labels</label>
@@ -481,6 +513,14 @@
                                 <div class="col-sm-6">
                                     <label for="editTaskDueDate" class="form-label text-muted fw-semibold" style="font-size: 11px;">Tanggal Batas Waktu</label>
                                     <input type="text" class="form-control flatpickr" id="editTaskDueDate" placeholder="YYYY-MM-DD">
+                                </div>
+                                <div class="col-sm-6">
+                                    <label for="editTaskPriority" class="form-label text-muted fw-semibold" style="font-size: 11px;">Prioritas</label>
+                                    <select class="form-select" id="editTaskPriority">
+                                        <option value="low">Rendah</option>
+                                        <option value="medium">Sedang</option>
+                                        <option value="high">Tinggi</option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -1253,14 +1293,23 @@
                                         </div>
                                     `;
 
-                                    let labelsHtml = '';
+                                    let priorityHtml = '';
+                                    const taskPriority = task.priority || 'medium';
+                                    if (taskPriority === 'high') {
+                                        priorityHtml = `<span class="badge bg-danger" style="font-size: 8px; padding: 2px 5px; border-radius: 3px; line-height: 1;">Tinggi</span>`;
+                                    } else if (taskPriority === 'low') {
+                                        priorityHtml = `<span class="badge bg-info" style="font-size: 8px; padding: 2px 5px; border-radius: 3px; line-height: 1;">Rendah</span>`;
+                                    } else {
+                                        priorityHtml = `<span class="badge bg-warning" style="font-size: 8px; padding: 2px 5px; border-radius: 3px; line-height: 1;">Sedang</span>`;
+                                    }
+                                    let labelsHtml = '<div class="d-flex flex-wrap gap-1 mb-2 align-items-center">';
+                                    labelsHtml += priorityHtml;
                                     if (task.labels && task.labels.length > 0) {
-                                        labelsHtml = '<div class="d-flex flex-wrap gap-1 mb-2 align-items-center">';
                                         task.labels.forEach(function(color) {
                                             labelsHtml += `<span class="badge bg-${color}" style="font-size: 8px; padding: 2px 5px; border-radius: 3px; line-height: 1;">${getLabelName(color)}</span>`;
                                         });
-                                        labelsHtml += '</div>';
                                     }
+                                    labelsHtml += '</div>';
 
                                     let poNum = '';
                                     let companyName = '';
@@ -1488,6 +1537,7 @@
                 const desc = $('#createTaskDescription').val();
                 const assignees = $('#createTaskAssignee').val() || [];
                 const dueDate = $('#createTaskDueDate').val();
+                const priority = $('#createTaskPriority').val();
                 const pendingPoId = $('#createTaskPendingPoId').length ? $('#createTaskPendingPoId').val() : null;
 
                 $.ajax({
@@ -1500,6 +1550,7 @@
                         description: desc,
                         assignees: assignees,
                         due_date: dueDate,
+                        priority: priority,
                         pending_po_id: pendingPoId,
                         _token: csrfToken
                     },
@@ -1760,6 +1811,9 @@
                                     $('#editTaskDueDate').val(currentTaskData.due_date || '');
                                 }
                             }
+                            if ($('#editTaskPriority').val() !== currentTaskData.priority) {
+                                $('#editTaskPriority').val(currentTaskData.priority || 'medium');
+                            }
                             isProgrammaticChange = false;
                             
                             // Set Description (only if user is not actively editing it)
@@ -1792,6 +1846,9 @@
                                 renderTaskExpenses(response);
                                 renderQuotationLink(response);
                             }
+
+                            // Render Laporan Harian Proyek (Daily Project Reports)
+                            renderProjectReports(response);
                         }
                     },
                     error: function() {
@@ -1802,10 +1859,61 @@
 
             const rpFmt = function (n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); };
 
+            function renderProjectReports(response) {
+                const colTitle = (response.task && response.task.column_title ? response.task.column_title : '').toLowerCase();
+                const isAllowedColumn = colTitle.includes('progress') || colTitle.includes('proses') || colTitle.includes('done') || colTitle.includes('selesai');
+
+                if (!isAllowedColumn) {
+                    $('#taskProjectReportsContainer').hide();
+                    return;
+                }
+                $('#taskProjectReportsContainer').show();
+
+                const reports = response.project_reports || [];
+                const createUrl = response.create_project_report_url || '#';
+
+                $('#btnCreateDailyReport').attr('href', createUrl);
+                $('#taskProjectReportsCount').text(`${reports.length} Laporan`);
+
+                let html = '';
+                if (reports.length === 0) {
+                    html = '<p class="text-muted small mb-0"><i class="mdi mdi-information-outline me-1"></i>Belum ada Laporan Harian untuk project ini.</p>';
+                } else {
+                    reports.forEach(function (r) {
+                        const dayBadge = r.day_number ? `<span class="badge bg-primary me-1">Hari ke-${r.day_number}</span>` : '';
+                        const dateStr = r.report_date ? `${r.day_name ? r.day_name + ', ' : ''}${r.report_date}` : '-';
+
+                        html += `
+                            <div class="p-2.5 rounded bg-white border d-flex flex-column gap-1">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        ${dayBadge}
+                                        <span class="fw-semibold text-dark" style="font-size: 12px;">${dateStr}</span>
+                                    </div>
+                                    <div class="d-inline-block text-nowrap">
+                                        <a href="${r.show_url}" target="_blank" class="btn btn-xs btn-label-info me-1" title="Lihat Detail"><i class="mdi mdi-eye-outline me-1"></i>Detail</a>
+                                        <a href="${r.print_url}" target="_blank" class="btn btn-xs btn-label-secondary" title="Cetak PDF"><i class="mdi mdi-printer me-1"></i>Print</a>
+                                    </div>
+                                </div>
+                                ${r.achievement_today ? `<div class="text-muted text-truncate" style="font-size: 11px;"><i class="mdi mdi-check-all text-success me-1"></i>${r.achievement_today}</div>` : ''}
+                                <div class="text-muted d-flex align-items-center justify-content-between" style="font-size: 10.5px;">
+                                    <span><i class="mdi mdi-account-outline me-1"></i>${r.creator_name}</span>
+                                    <span>${r.days_remaining ? 'Sisa: ' + r.days_remaining : ''}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                $('#taskProjectReportsList').html(html);
+            }
+
             function renderTaskExpenses(response) {
                 const expenses = response.expenses || [];
                 const canManage = !!response.can_manage_expense;
                 $('#taskExpenseTotal').text(rpFmt(response.expense_total));
+
+                const colTitle = (response.task && response.task.column_title ? response.task.column_title : '').toLowerCase();
+                const isProgressOrDone = colTitle.includes('progress') || colTitle.includes('proses') || colTitle.includes('done') || colTitle.includes('selesai');
 
                 let html = '';
                 if (expenses.length === 0) {
@@ -1838,6 +1946,12 @@
 
                 if (canManage) {
                     $('#taskExpenseFormWrap').show();
+                    if (isProgressOrDone) {
+                        $('#btnShowExpenseForm').prop('disabled', true).addClass('disabled').attr('title', 'Penambahan biaya dinonaktifkan pada tahap In Progress & Done');
+                        $('#taskExpenseForm').hide();
+                    } else {
+                        $('#btnShowExpenseForm').prop('disabled', false).removeClass('disabled').removeAttr('title');
+                    }
                 } else {
                     $('#taskExpenseFormWrap').hide();
                 }
@@ -2166,6 +2280,7 @@
                             description: $('#editTaskDescription').val(),
                             assignees: $('#editTaskAssignee').val(),
                             due_date: $('#editTaskDueDate').val(),
+                            priority: $('#editTaskPriority').val(),
                             column_id: 'column_' + currentTaskData.column_id,
                             _token: csrfToken
                         },
@@ -2201,6 +2316,7 @@
                         description: desc,
                         assignees: $('#editTaskAssignee').val(),
                         due_date: $('#editTaskDueDate').val(),
+                        priority: $('#editTaskPriority').val(),
                         column_id: 'column_' + currentTaskData.column_id,
                         _token: csrfToken
                     },
@@ -2228,6 +2344,7 @@
                         description: $('#editTaskDescription').val(),
                         assignees: newAssignees,
                         due_date: $('#editTaskDueDate').val(),
+                        priority: $('#editTaskPriority').val(),
                         column_id: 'column_' + currentTaskData.column_id,
                         _token: csrfToken
                     },
@@ -2253,6 +2370,32 @@
                         description: $('#editTaskDescription').val(),
                         assignees: $('#editTaskAssignee').val(),
                         due_date: newDate,
+                        priority: $('#editTaskPriority').val(),
+                        column_id: 'column_' + currentTaskData.column_id,
+                        _token: csrfToken
+                    },
+                    success: function() {
+                        loadTaskDetails(taskId);
+                        loadKanbanBoard();
+                    }
+                });
+            });
+
+            $('#editTaskPriority').change(function() {
+                if (isProgrammaticChange) return;
+                const taskId = $('#editTaskId').val();
+                if (!taskId || !currentTaskData) return;
+                const newPriority = $(this).val();
+                if (newPriority == currentTaskData.priority) return;
+                $.ajax({
+                    url: `/kanban/tasks/${taskId}/update`,
+                    method: 'POST',
+                    data: {
+                        title: currentTaskData.title,
+                        description: $('#editTaskDescription').val(),
+                        assignees: $('#editTaskAssignee').val(),
+                        due_date: $('#editTaskDueDate').val(),
+                        priority: newPriority,
                         column_id: 'column_' + currentTaskData.column_id,
                         _token: csrfToken
                     },
@@ -2276,6 +2419,7 @@
                         description: $('#editTaskDescription').val(),
                         assignees: $('#editTaskAssignee').val(),
                         due_date: $('#editTaskDueDate').val(),
+                        priority: $('#editTaskPriority').val(),
                         column_id: colId,
                         _token: csrfToken
                     },
@@ -2744,8 +2888,9 @@
                     data: {
                         title: title,
                         description: desc,
-                        assigned_to: assignee,
+                        assignees: assignee,
                         due_date: dueDate,
+                        priority: $('#editTaskPriority').val(),
                         column_id: columnId,
                         _token: csrfToken
                     },
@@ -2781,6 +2926,7 @@
                         description: $('#editTaskDescription').val(),
                         assignees: $('#editTaskAssignee').val(),
                         due_date: $('#editTaskDueDate').val(),
+                        priority: $('#editTaskPriority').val(),
                         column_id: 'column_' + currentTaskData.column_id,
                         service_report_id: selectedReportId,
                         _token: csrfToken
@@ -2809,6 +2955,7 @@
                             description: $('#editTaskDescription').val(),
                             assignees: $('#editTaskAssignee').val(),
                             due_date: $('#editTaskDueDate').val(),
+                            priority: $('#editTaskPriority').val(),
                             column_id: 'column_' + currentTaskData.column_id,
                             service_report_id: null,
                             _token: csrfToken

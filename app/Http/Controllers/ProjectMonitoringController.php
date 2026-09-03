@@ -89,7 +89,23 @@ class ProjectMonitoringController extends Controller
             ->groupBy('purchase_request.id_pending')
             ->selectRaw('purchase_request.id_pending, SUM(purchase_request_detail.amount) as total')
             ->pluck('total', 'id_pending');
+        $materialExpenseByProject = ProjectExpense::whereIn('id_pending', $projectIds)
+            ->where('category', 'Material')
+            ->groupBy('id_pending')->selectRaw('id_pending, SUM(amount) as total')
+            ->pluck('total', 'id_pending');
+        $kanbanTaskMaterialExpenseByProject = ProjectExpense::query()
+            ->join('kanban_tasks', 'kanban_tasks.id', '=', 'project_expenses.id_kanban_task')
+            ->whereNull('project_expenses.id_pending')
+            ->where('project_expenses.category', 'Material')
+            ->whereIn('kanban_tasks.pending_po_id', $projectIds)
+            ->groupBy('kanban_tasks.pending_po_id')
+            ->selectRaw('kanban_tasks.pending_po_id as id_pending, SUM(project_expenses.amount) as total')
+            ->pluck('total', 'id_pending');
+
         $generalCostByProject = ProjectExpense::whereIn('id_pending', $projectIds)
+            ->where(function ($q) {
+                $q->whereNull('category')->orWhere('category', '!=', 'Material');
+            })
             ->groupBy('id_pending')->selectRaw('id_pending, SUM(amount) as total')
             ->pluck('total', 'id_pending');
         // Biaya yang cuma nempel ke kartu Kanban (id_pending belum ke-backfill) tapi
@@ -97,6 +113,9 @@ class ProjectMonitoringController extends Controller
         $kanbanTaskCostByProject = ProjectExpense::query()
             ->join('kanban_tasks', 'kanban_tasks.id', '=', 'project_expenses.id_kanban_task')
             ->whereNull('project_expenses.id_pending')
+            ->where(function ($q) {
+                $q->whereNull('project_expenses.category')->orWhere('project_expenses.category', '!=', 'Material');
+            })
             ->whereIn('kanban_tasks.pending_po_id', $projectIds)
             ->groupBy('kanban_tasks.pending_po_id')
             ->selectRaw('kanban_tasks.pending_po_id as id_pending, SUM(project_expenses.amount) as total')
@@ -107,7 +126,7 @@ class ProjectMonitoringController extends Controller
             ->pluck('total', 'id_pending');
 
         // Calculate profitability metrics for each project
-        $projects = $projects->map(function ($project) use ($materialCostByProject, $generalCostByProject, $kanbanTaskCostByProject, $shippingCostByProject) {
+        $projects = $projects->map(function ($project) use ($materialCostByProject, $materialExpenseByProject, $kanbanTaskMaterialExpenseByProject, $generalCostByProject, $kanbanTaskCostByProject, $shippingCostByProject) {
             $project->order_date = $project->date;
             $project->company = $project->unitQuotation?->client?->company
                 ?? $project->quote?->pic?->client?->company
@@ -131,7 +150,9 @@ class ProjectMonitoringController extends Controller
             $project->detail_route = $project->id_unit_quotation
                 ? route('unit-quotation.show', $project->id_unit_quotation)
                 : route('project-monitoring.show', $project->id);
-            $project->material_cost = (float) $materialCostByProject->get($project->id, 0);
+            $project->material_cost = (float) $materialCostByProject->get($project->id, 0)
+                + (float) $materialExpenseByProject->get($project->id, 0)
+                + (float) $kanbanTaskMaterialExpenseByProject->get($project->id, 0);
             $project->general_cost = (float) $generalCostByProject->get($project->id, 0)
                 + (float) $kanbanTaskCostByProject->get($project->id, 0);
             $project->shipping_cost = (float) $shippingCostByProject->get($project->id, 0);
@@ -282,14 +303,17 @@ class ProjectMonitoringController extends Controller
             ->orderBy('date', 'desc')
             ->get();
 
+        $materialExpenses = $expenses->where('category', 'Material');
+        $operationalExpenses = $expenses->where('category', '!=', 'Material');
+
         // Shipping Costs
         $shippingCosts = Expanse::where('id_pending', $project->id)
             ->where('type', 'Resi')
             ->get();
 
         // Financial Math
-        $materialCost = $purchases->where('status', '3')->flatMap->details->sum('amount');
-        $generalCost = $expenses->sum('amount');
+        $materialCost = $purchases->where('status', '3')->flatMap->details->sum('amount') + $materialExpenses->sum('amount');
+        $generalCost = $operationalExpenses->sum('amount');
         $shippingCost = $shippingCosts->sum('cost');
         $totalCost = $materialCost + $generalCost + $shippingCost;
         $profit = $project->revenue - $totalCost;
@@ -323,6 +347,8 @@ class ProjectMonitoringController extends Controller
             'quoteItems',
             'purchases',
             'expenses',
+            'materialExpenses',
+            'operationalExpenses',
             'shippingCosts',
             'materialCost',
             'generalCost',
@@ -341,10 +367,17 @@ class ProjectMonitoringController extends Controller
      */
     public function storeExpense(Request $request, $id)
     {
+        if ($request->has('amount')) {
+            $cleanAmount = str_replace('.', '', $request->amount);
+            $cleanAmount = str_replace(',', '.', $cleanAmount);
+            $request->merge(['amount' => $cleanAmount]);
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'category' => 'required|string|in:Transport,Akomodasi,Konsumsi,Material,Alat,Lain-lain',
             'amount' => 'required|numeric|min:0',
+            'payment_info' => 'nullable|string|max:255',
             'date' => 'required|date',
             'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
         ]);
@@ -357,6 +390,7 @@ class ProjectMonitoringController extends Controller
         $expense->name = $request->name;
         $expense->category = $request->category;
         $expense->amount = $request->amount;
+        $expense->payment_info = $request->payment_info;
         $expense->date = $request->date;
 
         if ($request->hasFile('receipt')) {
@@ -377,6 +411,72 @@ class ProjectMonitoringController extends Controller
 
         return redirect()->route('project-monitoring.show', $id)
             ->with('success', 'Biaya operasional berhasil dicatat.');
+    }
+
+    /**
+     * Update an expense entry for the project.
+     */
+    public function updateExpense(Request $request, $id)
+    {
+        if ($request->has('amount')) {
+            $cleanAmount = str_replace('.', '', $request->amount);
+            $cleanAmount = str_replace(',', '.', $cleanAmount);
+            $request->merge(['amount' => $cleanAmount]);
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'category' => 'required|string|in:Transport,Akomodasi,Konsumsi,Material,Alat,Lain-lain',
+            'amount' => 'required|numeric|min:0',
+            'payment_info' => 'nullable|string|max:255',
+            'date' => 'required|date',
+            'receipt' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
+        ]);
+
+        $user = Auth::user();
+        $expense = ProjectExpense::findOrFail($id);
+        $projectId = $expense->id_pending;
+
+        $hasFinancialAccess = in_array($user->role, ['Admin', 'Finance', 'Finance Manager', 'Accounting'], true) || ($expense->id_user == $user->id);
+        if (!$hasFinancialAccess && $projectId) {
+            $relatedTasks = \App\Models\KanbanTask::where('pending_po_id', $projectId)->with('board.members', 'assignees')->get();
+            $hasFinancialAccess = $relatedTasks->contains(function ($task) use ($user) {
+                return ($task->board && $task->board->members->contains($user->id)) || $task->assignees->contains($user->id);
+            });
+        }
+
+        if (!$hasFinancialAccess) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $expense->name = $request->name;
+        $expense->category = $request->category;
+        $expense->amount = $request->amount;
+        $expense->payment_info = $request->payment_info;
+        $expense->date = $request->date;
+
+        if ($request->hasFile('receipt')) {
+            if ($expense->receipt && file_exists(public_path($expense->receipt))) {
+                @unlink(public_path($expense->receipt));
+            }
+
+            $file = $request->file('receipt');
+            $ext = $file->getClientOriginalExtension();
+            $filename = 'expense_' . Str::random(10) . '_' . time() . '.' . $ext;
+
+            $uploadPath = public_path('asset/expenses');
+            if (!file_exists($uploadPath)) {
+                mkdir($uploadPath, 0755, true);
+            }
+            $file->move($uploadPath, $filename);
+
+            $expense->receipt = 'asset/expenses/' . $filename;
+        }
+
+        $expense->save();
+
+        return redirect()->back()
+            ->with('success', 'Data biaya berhasil diperbarui.');
     }
 
     /**

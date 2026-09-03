@@ -87,10 +87,28 @@ $(function () {
             });
 
             var diskonType  = $pane.find('.select-diskon-type').val() || 'percent';
+            var rawDiskonVal = String($pane.find('.input-diskon').val() || '0');
             var diskon      = diskonType === 'amount'
-                ? parseRupiah($pane.find('.input-diskon').val())
-                : (parseFloat($pane.find('.input-diskon').val()) || 0);
-            var afterDiskon = diskonType === 'amount' ? (subtotal - diskon) : (subtotal - (subtotal * diskon / 100));
+                ? parseRupiah(rawDiskonVal)
+                : (parseFloat(rawDiskonVal.replace(',', '.')) || 0);
+
+            var discountNominal = 0;
+            if (diskonType === 'amount') {
+                discountNominal = Math.min(diskon, subtotal);
+                var percentEquivalent = subtotal > 0 ? ((discountNominal / subtotal) * 100).toFixed(1) : 0;
+                $pane.find('.diskon-helper-label').text('Setara Persentase:');
+                $pane.find('.diskon-feedback-badge').text('- ' + percentEquivalent + ' %');
+                $pane.find('.diskon-prefix-addon').show();
+                $pane.find('.diskon-suffix-addon').hide();
+            } else {
+                discountNominal = Math.round(subtotal * diskon / 100);
+                $pane.find('.diskon-helper-label').text('Nilai Potongan:');
+                $pane.find('.diskon-feedback-badge').text('- Rp ' + formatRupiah(discountNominal));
+                $pane.find('.diskon-prefix-addon').hide();
+                $pane.find('.diskon-suffix-addon').show();
+            }
+
+            var afterDiskon = Math.max(0, subtotal - discountNominal);
             var tax         = $pane.find('.toggle-tax').is(':checked');
             var taxAmount   = tax ? Math.round(afterDiskon * 0.11) : 0;
             var shipping    = parseRupiah($pane.find('.input-shipping').val());
@@ -522,12 +540,20 @@ $(function () {
         var $pane = $(paneHtml);
         $pane.toggleClass('show active', isFirst);
         $pane.find('.option-title-input').val(title);
-        $pane.find('.select-diskon-type').val(optData.diskon_type || 'percent');
-        $pane.find('.input-diskon').val(
-            (optData.diskon_type === 'amount')
-                ? formatRupiah(Math.round(optData.diskon || 0))
-                : (optData.diskon || 0)
-        );
+
+        var diskonType = optData.diskon_type || 'percent';
+        $pane.find('.select-diskon-type').val(diskonType);
+
+        if (diskonType === 'amount') {
+            $pane.find('.diskon-prefix-addon').show();
+            $pane.find('.diskon-suffix-addon').hide();
+            $pane.find('.input-diskon').val(formatRupiah(Math.round(optData.diskon || 0)));
+        } else {
+            $pane.find('.diskon-prefix-addon').hide();
+            $pane.find('.diskon-suffix-addon').show();
+            $pane.find('.input-diskon').val(optData.diskon !== undefined ? optData.diskon : 0);
+        }
+
         $pane.find('.toggle-tax').prop('checked', optData.tax !== undefined ? !!optData.tax : true);
         $pane.find('.input-shipping').val(formatRupiah(Math.round(optData.shipping || 0)));
         $('#options-tab-content').append($pane);
@@ -614,18 +640,26 @@ $(function () {
     });
 
     // ── Summary input handlers — delegated per opsi ─────────────────────────
+    $(document).on('change', '.select-diskon-type', function () {
+        var mode = $(this).val();
+        var $pane = $(this).closest('.option-pane');
+        if (mode === 'amount') {
+            $pane.find('.diskon-prefix-addon').show();
+            $pane.find('.diskon-suffix-addon').hide();
+        } else {
+            $pane.find('.diskon-prefix-addon').hide();
+            $pane.find('.diskon-suffix-addon').show();
+        }
+        $pane.find('.input-diskon').val('0').attr('placeholder', '0');
+        recalcSummary();
+    });
+
     $(document).on('input', '.input-diskon', function () {
         var $pane = $(this).closest('.option-pane');
         if ($pane.find('.select-diskon-type').val() === 'amount') {
             var raw = $(this).val().replace(/\D/g, '');
             $(this).val(formatRupiah(raw));
         }
-        recalcSummary();
-    });
-    $(document).on('change', '.select-diskon-type', function () {
-        // Format ulang tampilan diskon sesuai tipe baru; nilai di-reset
-        // supaya angka % tidak salah dibaca sebagai nominal Rp (atau sebaliknya).
-        $(this).closest('.option-pane').find('.input-diskon').val('0');
         recalcSummary();
     });
     $(document).on('input', '.input-shipping', function () {

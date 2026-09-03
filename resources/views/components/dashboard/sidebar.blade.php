@@ -392,10 +392,16 @@
                     </li>
                 </ul>
             </li>
-            <li class="menu-item {{ request()->is('service-reports') || request()->is('service-reports/*') ? 'active' : '' }}">
+            <li class="menu-item {{ (request()->is('service-reports') || request()->is('service-reports/*')) && request('tab') != 'project' && !request()->is('project-reports*') ? 'active' : '' }}">
                 <a href="{{ route('service-reports.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-list-box-outline"></i>
                     <div data-i18n="Service Report">Service Report</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('project-reports*') || (request()->is('service-reports*') && request('tab') == 'project') ? 'active' : '' }}">
+                <a href="{{ route('service-reports.index', ['tab' => 'project']) }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-clipboard-text-clock-outline"></i>
+                    <div data-i18n="Daily Project Report">Daily Project Report</div>
                 </a>
             </li>
             <li class="menu-item {{ request()->is('tool-assignment') || request()->is('tool-assignment/*') ? 'active' : '' }}">
@@ -1978,13 +1984,20 @@
                 </a>
             </li>
             <li class="menu-header fw-light mt-4">
-                <span class="menu-header-text">Technician</span>
+                <span class="menu-header-text">Technician & Service</span>
             </li>
             <li
-                class="menu-item {{ request()->is('service-reports') || request()->is('service-reports/*') ? 'active' : '' }}">
+                class="menu-item {{ (request()->is('service-reports') || request()->is('service-reports/*')) && request('tab') != 'project' && !request()->is('project-reports*') ? 'active' : '' }}">
                 <a href="{{ route('service-reports.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-file-chart-outline"></i>
+                    <i class="menu-icon tf-icons mdi mdi-wrench-outline"></i>
                     <div data-i18n="Service Report">Service Report</div>
+                </a>
+            </li>
+            <li
+                class="menu-item {{ request()->is('project-reports*') || (request()->is('service-reports*') && request('tab') == 'project') ? 'active' : '' }}">
+                <a href="{{ route('service-reports.index', ['tab' => 'project']) }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-clipboard-text-clock-outline"></i>
+                    <div data-i18n="Daily Project Report">Daily Project Report</div>
                 </a>
             </li>
             <li
@@ -2740,5 +2753,22 @@
             </li>
         @endif
 
+        @if (auth::user()?->role == 'Guest')
+            <li class="menu-header fw-light mt-4">
+                <span class="menu-header-text">Daily Project Reports</span>
+            </li>
+            <li class="menu-item {{ request()->is('service-reports*') || request()->is('project-reports') || (request()->is('project-reports/*') && !request()->is('project-reports/create')) || request()->is('/') ? 'active' : '' }}">
+                <a href="{{ route('service-reports.index', ['tab' => 'project']) }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-clipboard-text-clock-outline"></i>
+                    <div data-i18n="Daily Reports">Daily Reports</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('project-reports/create') ? 'active' : '' }}">
+                <a href="{{ route('project-reports.create') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-plus-box-outline"></i>
+                    <div data-i18n="Buat Daily Report">Buat Daily Report</div>
+                </a>
+            </li>
+        @endif
     </ul>
 </aside>

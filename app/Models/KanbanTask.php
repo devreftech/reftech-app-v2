@@ -87,4 +87,9 @@ class KanbanTask extends Model
     {
         return $this->hasMany(ProjectExpense::class, 'id_kanban_task');
     }
+
+    public function projectReports()
+    {
+        return $this->hasMany(ProjectReport::class, 'kanban_task_id')->orderBy('report_date', 'asc')->orderBy('day_number', 'asc');
+    }
 }

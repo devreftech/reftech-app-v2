@@ -752,7 +752,7 @@
                             @else
                                 <div style="padding: 30px 0;"></div>
                             @endif
-                            <p class="mb-0 fw-bold text-dark" style="font-size:13px; border-bottom:1px solid #ddd; display:inline-block; padding-bottom:2px;">Ariep Rachman</p>
+                            <p class="mb-0 fw-bold text-dark" style="font-size:13px; border-bottom:1px solid #ddd; display:inline-block; padding-bottom:2px;">{{ $isKojisha ? 'Dedeh Sulastri' : 'Ariep Rachman' }}</p>
                             <p class="mb-0 text-muted" style="font-size:11px;">Director</p>
                         </div>
                     </div>

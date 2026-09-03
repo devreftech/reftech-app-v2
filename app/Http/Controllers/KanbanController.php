@@ -1116,6 +1116,25 @@ class KanbanController extends Controller
         }
         $canLinkQuotation = ($user && ($user->role === 'Admin' || $task->board->members->contains($user->id)));
 
+        // Laporan Harian Proyek (Daily Project Reports) yang terhubung ke task ini
+        $projectReports = $task->projectReports()->with(['client', 'creator'])->orderBy('report_date', 'asc')->orderBy('day_number', 'asc')->get()->map(function ($pr) {
+            return [
+                'id' => $pr->id,
+                'report_number' => $pr->report_number,
+                'job_name' => $pr->job_name,
+                'day_number' => $pr->day_number,
+                'day_name' => $pr->day_name,
+                'report_date' => $pr->report_date ? $pr->report_date->format('d/m/Y') : '-',
+                'days_remaining' => $pr->days_remaining,
+                'status' => $pr->status,
+                'creator_name' => $pr->creator ? $pr->creator->name : '-',
+                'show_url' => route('project-reports.show', $pr->id),
+                'print_url' => route('project-reports.print', $pr->id),
+                'edit_url' => route('project-reports.edit', $pr->id),
+                'achievement_today' => $pr->achievement_today,
+            ];
+        });
+
         return response()->json([
             'success' => true,
             'task' => [
@@ -1141,6 +1160,8 @@ class KanbanController extends Controller
             'can_manage_expense' => $canManageExpense,
             'linked_quotation' => $linkedQuotation,
             'can_link_quotation' => $canLinkQuotation,
+            'project_reports' => $projectReports,
+            'create_project_report_url' => route('project-reports.create', ['kanban_task_id' => $task->id]),
         ]);
     }
 
