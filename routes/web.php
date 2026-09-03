@@ -6344,19 +6344,18 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         return response()->json(['data' => $result]);
     });
     Route::get('/db/machine/prokemas', function () {
-
-        $today = Carbon::now();
+        $today = Carbon::now()->toDateString();
         $month = Carbon::now()->month;
 
         $machines = Machine::leftJoin('monitoring as m', function ($join) use ($today) {
             $join->on('machine.id', '=', 'm.id_machine')
                 ->whereDate('m.date', '=', $today);
         })
-            ->leftJoin('users as us', 'us.id', '=', 'm.id_pic') // pakai leftJoin biar nggak hilang
+            ->leftJoin('users as us', 'us.id', '=', 'm.id_pic')
             ->join('serial_product as sp', 'sp.id', '=', 'machine.id_unit')
             ->join('unit as u', 'u.id', '=', 'sp.id_product')
-            ->whereIn('machine.id', [495, 496])
-            ->groupBy('machine.id')
+            ->where('machine.id_client', 5711)
+            ->groupBy('machine.id', 'us.name', 'm.created_at', 'sp.brand', 'u.sku', 'sp.pn', 'u.unit', 'machine.serial')
             ->addSelect(
                 'machine.id',
                 'us.name',
@@ -6373,15 +6372,14 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         return response()->json(['data' => $machines]);
     });
     Route::get('/db/issue/prokemas', function () {
-
-        $today = Carbon::now();
+        $today = Carbon::now()->toDateString();
         $month = Carbon::now()->month;
 
         $issue = Monitoring::join('machine as mc', 'mc.id', '=', 'monitoring.id_machine')
             ->leftJoin('users as us', 'us.id', '=', 'monitoring.id_pic')
             ->join('serial_product as sp', 'sp.id', '=', 'mc.id_unit')
             ->join('unit as u', 'u.id', '=', 'sp.id_product')
-            ->whereIn('mc.id', [495, 496])
+            ->where('mc.id_client', 5711)
             ->whereNotNull('monitoring.issue')
             ->where('monitoring.issue_level', 0)
             ->whereDate('monitoring.date', $today)
