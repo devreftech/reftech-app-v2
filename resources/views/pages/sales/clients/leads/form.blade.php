@@ -81,6 +81,7 @@
                                 </div>
                             </div>
                         @endif
+                    </div>
                     <div class="row g-2 mb-3">
                         <div class="col-12">
                             <div class="p-2 border rounded-3 d-flex align-items-center justify-content-between bg-light" id="canvasingContainer{{ @$leads ? @$leads->id : 'New' }}">
