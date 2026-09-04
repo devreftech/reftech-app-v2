@@ -1495,11 +1495,13 @@ class UnitQuotationController extends Controller
         ]);
     }
 
-    // Entitas penerbit invoice mengikuti client-nya (Reftech / Kojisha) supaya
-    // invoice, surat jalan, & label pengiriman konsisten.
     private function invoiceFlagFor(UnitQuotation $quote): string
     {
-        return optional($quote->client)->info === 'Kojisha' ? 'Kojisha' : 'Reftech';
+        if (optional($quote->client)->info === 'Kojisha' || str_contains((string) $quote->no_quote, 'KII')) {
+            return 'Kojisha';
+        }
+
+        return 'Reftech';
     }
 
     // Notifikasi Accounting & Admin: ada invoice yang menunggu diterbitkan (muncul di

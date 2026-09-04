@@ -797,7 +797,37 @@ class OverviewController extends Controller
         $weeklyKpi = $this->overviewService->buildWeeklyKpi($sales, $dateCarbon->month, $dateCarbon->year);
         $monthLabel = $dateCarbon->locale('id')->isoFormat('MMMM Y');
 
-        return view('components.overview.weekly-kpi-card', compact('weeklyKpi', 'monthLabel'));
+        return view('components.overview.weekly-kpi-card', [
+            'weeklyKpi' => $weeklyKpi,
+            'monthLabel' => $monthLabel,
+            'salesId' => $sales,
+            'dateFormatted' => $date,
+        ]);
+    }
+
+    /**
+     * Endpoint AJAX rincian KPI Mingguan (modal detail saat angka W1-W5 / Total diklik).
+     */
+    public function weeklyKpiDetail(Request $request, $sales, $date)
+    {
+        $dateCarbon = Carbon::createFromFormat('d-m-Y', '01-' . $date);
+        $section = $request->get('section');
+        $rowName = $request->get('row_name');
+        $week = $request->get('week');
+
+        $detail = $this->overviewService->getWeeklyKpiDetail(
+            $sales,
+            $dateCarbon->month,
+            $dateCarbon->year,
+            $section,
+            $rowName,
+            $week
+        );
+
+        $monthLabel = $dateCarbon->locale('id')->isoFormat('MMMM Y');
+        $user = User::find($sales);
+
+        return view('components.overview.weekly-kpi-modal-content', compact('detail', 'monthLabel', 'rowName', 'week', 'user'));
     }
 
     public function overviewAdmin($semester, $sales)

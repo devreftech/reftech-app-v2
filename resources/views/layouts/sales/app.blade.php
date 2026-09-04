@@ -180,7 +180,7 @@
     @stack('after-script')
 
     {{-- Main JS --}}
-    <script src="{{ asset('assets') }}/js/main.js"></script>
+    <script src="{{ asset('assets') }}/js/main.js?v={{ file_exists(public_path('assets/js/main.js')) ? filemtime(public_path('assets/js/main.js')) : time() }}"></script>
 
     @if (Auth::check() && in_array(Auth::user()->role, ['Accounting', 'Admin', 'Sales']))
         {{-- Polling notifikasi payment & PO menunggu invoice (Unit Quotation) — bell bergerak + suara tanpa reload --}}

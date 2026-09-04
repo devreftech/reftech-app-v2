@@ -1,21 +1,23 @@
 $(function () {
-    var $table = $(".datatable-unit-compressor");
+    var $table = $(".datatable-unit-chiller");
     if (!$table.length) return;
 
-    $table.DataTable({
+    var dt = $table.DataTable({
         ajax: {
             type: "GET",
-            url: "/db/unit/global",
+            url: "/db/unit/global/chiller",
             headers: { "Content-Type": "application/json" },
             dataSrc: "data",
         },
         columns: [
             { data: "sku" },
             { data: "brand" },
-            { data: "type_unit" },
+            { data: "model" },
+            { data: "cooling_capacity" },
+            { data: "power_input" },
             { data: "power" },
-            { data: "bar" },
-            { data: "air_cap" },
+            { data: "voltage" },
+            { data: "evaporator" },
             { data: "connect" },
         ],
         columnDefs: [
@@ -29,20 +31,7 @@ $(function () {
                     return '<a href="' + url + '">' + data + "</a>";
                 },
             },
-            {
-                targets: 2,
-                className: "text-center",
-                render: function (data, type, full) {
-                    if (type !== "display") return data || "-";
-                    var out = data ? '<span>' + data + '</span>' : "-";
-                    if (full.speed_type) {
-                        var isVsd = full.speed_type === 'Variable Speed';
-                        out += '<div class="mt-1"><span class="badge ' + (isVsd ? 'bg-label-warning' : 'bg-label-secondary') + ' rounded-pill px-2 py-0" style="font-size:0.7rem;">' + full.speed_type + '</span></div>';
-                    }
-                    return out;
-                }
-            },
-            { targets: [1, 3, 4, 5, 6], className: "text-center", render: function (data) { return data || "-"; } },
+            { targets: [1, 2, 3, 4, 5, 6, 7, 8], className: "text-center", render: function (data) { return data || "-"; } },
         ],
         order: [[0, "desc"]],
         displayLength: 10,
@@ -52,5 +41,9 @@ $(function () {
             '<"table-responsive"t>' +
             '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
         language: { emptyTable: "Belum ada data unit." },
+    });
+
+    $("#btn-tab-chiller").on("shown.bs.tab", function () {
+        dt.columns.adjust().draw(false);
     });
 });

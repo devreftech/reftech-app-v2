@@ -22,7 +22,7 @@
         // Kolom spesifikasi per kategori — dijaga sinkron dengan halaman admin
         // (pages/warehouse/unit-acquisition/index.blade.php + table-unit-*.js).
         $bekasSpecs = [
-            'screw'  => ['Lubricant', 'Power', 'Air Capacity'],
+            'screw'  => ['Lubricant', 'Power', 'Pressure', 'Air Capacity'],
             'dryer'  => ['Type', 'PDP', 'FAD'],
             'filter' => ['FAD', 'Grade', 'Connection'],
             'tank'   => ['Capacity', 'Material', 'Type'],

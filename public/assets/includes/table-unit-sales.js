@@ -15,6 +15,11 @@ $(function () {
         return /m.?\/min/i.test(d) ? d : d + " m³/min";
     }
 
+    function barCol(d) {
+        if (!d && d !== 0) return "-";
+        return /bar/i.test(d) ? d : d + " Bar";
+    }
+
     function currency(d) {
         if (d === null || d === undefined || d === "") return '<span class="text-muted">Belum diset</span>';
         return "Rp " + Number(d).toLocaleString("id-ID");
@@ -80,6 +85,7 @@ $(function () {
         { key: "unit_category", label: "Kategori", render: categoryCol },
         { key: "lubricant", label: "Type / Lubricant" },
         { key: "power", label: "Motor Power" },
+        { key: "bar", label: "Max. Working Pressure", render: barCol },
         { key: "air_cap", label: "Air Capacity", render: airCapCol },
         { key: "pdp", label: "PDP" },
         { key: "grade", label: "Grade" },
@@ -124,6 +130,7 @@ $(function () {
         screw: [
             { data: "lubricant", render: dash },
             { data: "power", render: dash },
+            { data: "bar", render: barCol },
             { data: "air_cap", render: airCapCol },
         ],
         dryer: [

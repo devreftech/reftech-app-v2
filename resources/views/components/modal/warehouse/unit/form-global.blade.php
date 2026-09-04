@@ -55,6 +55,8 @@
                                         {{ @$product->unit == 'BOOSTER COMPRESSOR' ? 'selected' : '' }}>Booster Compressor</option>
                                     <option value="AIR RECEIVER TANK"
                                         {{ @$product->unit == 'AIR RECEIVER TANK' ? 'selected' : '' }}>Air Receiver Tank</option>
+                                    <option value="WATER CHILLER"
+                                        {{ @$product->unit == 'WATER CHILLER' ? 'selected' : '' }}>Water Chiller</option>
                                 </select>
                                 <label>Kategori</label>
                             </div>
@@ -85,9 +87,21 @@
                             </div>
                         </div>
 
-                        {{-- Generation: muncul hanya untuk Oil-injected + AIR COMPRESSOR SCREW --}}
-                        <div class="row g-2 mb-3" id="field-generation" style="display:none;">
-                            <div class="col-6">
+                        {{-- Speed Type & Generation: muncul untuk AIR COMPRESSOR SCREW --}}
+                        <div class="row g-2 mb-3" id="field-screw-specs" style="display:none;">
+                            <div class="col-6" id="wrapper-speed-type" style="display:none;">
+                                <div class="form-floating form-floating-outline">
+                                    <select class="form-select" name="speed_type" id="select-speed-type">
+                                        <option value="">-- Speed Control Type --</option>
+                                        <option value="Fixed Speed"
+                                            {{ @$product->speed_type == 'Fixed Speed' ? 'selected' : '' }}>Fixed Speed</option>
+                                        <option value="Variable Speed"
+                                            {{ @$product->speed_type == 'Variable Speed' ? 'selected' : '' }}>Variable Speed (VSD)</option>
+                                    </select>
+                                    <label>Speed Type</label>
+                                </div>
+                            </div>
+                            <div class="col-6" id="wrapper-generation" style="display:none;">
                                 <div class="form-floating form-floating-outline">
                                     <select class="form-select" name="generation" id="select-generation">
                                         <option value="">-- Model Generation --</option>
@@ -760,6 +774,124 @@
                         </div>
                     </div>
 
+                    {{-- FIELD GRUP: WATER CHILLER --}}
+                    <div class="fields-chiller" style="display:none;">
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="brand"
+                                        placeholder="Brand" value="{{ old('brand', @$product->brand ?? '') }}">
+                                    <label>Brand</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="model"
+                                        placeholder="Model" value="{{ old('model', @$product->model ?? '') }}">
+                                    <label>Model</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="cooling_capacity"
+                                        placeholder="Cooling Capacity" value="{{ old('cooling_capacity', @$product->cooling_capacity ?? '') }}">
+                                    <label>Cooling Capacity</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="power_input"
+                                        placeholder="Power Input" value="{{ old('power_input', @$product->power_input ?? '') }}">
+                                    <label>Power Input</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="power"
+                                        placeholder="Rated Power" value="{{ old('power', @$product->power ?? '') }}">
+                                    <label>Rated Power</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-floating form-floating-outline">
+                                    <select class="form-select" name="voltage">
+                                        <option value="" disabled {{ !@$product->voltage ? 'selected' : '' }}>-- Voltage --</option>
+                                        <option value="220V/50Hz/1Phase" {{ @$product->voltage == '220V/50Hz/1Phase' ? 'selected' : '' }}>220V/50Hz/1Phase</option>
+                                        <option value="380V/50Hz/3Phase" {{ (@$product->voltage ?? '380V/50Hz/3Phase') == '380V/50Hz/3Phase' ? 'selected' : '' }}>380V/50Hz/3Phase</option>
+                                    </select>
+                                    <label>Voltage</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="evaporator"
+                                        placeholder="Evaporator" value="{{ old('evaporator', @$product->evaporator ?? 'Shell and Tube') }}">
+                                    <label>Evaporator</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="refrigerant_type"
+                                        placeholder="Refrigerant" value="{{ old('refrigerant_type', @$product->refrigerant_type ?? '') }}">
+                                    <label>Refrigerant</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" name="connect"
+                                        placeholder="Connection" value="{{ old('connect', @$product->connect ?? '') }}">
+                                    <label>Connection</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-floating form-floating-outline input-group">
+                                    <input type="text" class="form-control" name="weight"
+                                        placeholder="Weight" value="{{ old('weight', @$product->weight ?? '') }}">
+                                    <span class="input-group-text">Kg</span>
+                                </div>
+                            </div>
+                        </div>
+                        @php
+                            $dimPartsChl = array_map('trim', explode('x', @$product->dimension ?? ''));
+                        @endphp
+                        <div class="row g-2 mb-3">
+                            <div class="col-12">
+                                <label class="form-label text-muted small mb-1">Dimension (mm) — L × W × H</label>
+                            </div>
+                            <div class="col-4">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control dim-input" id="dim_l_chl"
+                                        placeholder="Length" value="{{ old('dim_l_chl', $dimPartsChl[0] ?? '') }}">
+                                    <label>Length (L)</label>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control dim-input" id="dim_w_chl"
+                                        placeholder="Width" value="{{ old('dim_w_chl', $dimPartsChl[1] ?? '') }}">
+                                    <label>Width (W)</label>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control dim-input" id="dim_h_chl"
+                                        placeholder="Height" value="{{ old('dim_h_chl', $dimPartsChl[2] ?? '') }}">
+                                    <label>Height (H)</label>
+                                </div>
+                            </div>
+                            <input type="hidden" name="dimension" id="dim_combined_chl"
+                                value="{{ old('dimension', @$product->dimension ?? '') }}">
+                        </div>
+                    </div>
+
                     {{-- Note (semua kategori) --}}
                     <div class="row g-2 mb-3 fields-all" style="display:none;">
                         <div class="col">
@@ -788,15 +920,16 @@
     var FILTRATION  = ['FILTRATION SYSTEM'];
     var TANK        = ['AIR RECEIVER TANK'];
     var BOOSTER     = ['BOOSTER COMPRESSOR'];
+    var CHILLER     = ['WATER CHILLER'];
 
     function showFields(category) {
-        $('.fields-compressor, .fields-booster, .fields-ref-dryer, .fields-desiccant, .fields-filtration, .fields-tank, .fields-all').hide();
+        $('.fields-compressor, .fields-booster, .fields-ref-dryer, .fields-desiccant, .fields-filtration, .fields-tank, .fields-chiller, .fields-all').hide();
         $('#field-generation').hide();
         if (category === '') return;
         $('.fields-all').show();
         if (COMPRESSOR.includes(category)) {
             $('.fields-compressor').show();
-            updateGenerationVisibility(category);
+            updateScrewSpecsVisibility(category);
         } else if (BOOSTER.includes(category)) {
             $('.fields-booster').show();
         } else if (category === 'REFRIGERANT AIR DRYER') {
@@ -807,15 +940,28 @@
             $('.fields-filtration').show();
         } else if (TANK.includes(category)) {
             $('.fields-tank').show();
+        } else if (CHILLER.includes(category)) {
+            $('.fields-chiller').show();
         }
     }
 
-    function updateGenerationVisibility(category) {
+    function updateScrewSpecsVisibility(category) {
         var typeUnit = $('#select-type-unit').val();
-        if (category === 'AIR COMPRESSOR SCREW' && typeUnit === 'Oil-injected') {
-            $('#field-generation').show();
+        if (category === 'AIR COMPRESSOR SCREW') {
+            $('#field-screw-specs').show();
+            $('#wrapper-speed-type').show();
+
+            if (typeUnit === 'Oil-injected') {
+                $('#wrapper-generation').show();
+            } else {
+                $('#wrapper-generation').hide();
+                $('#select-generation').val('');
+            }
         } else {
-            $('#field-generation').hide();
+            $('#field-screw-specs').hide();
+            $('#wrapper-speed-type').hide();
+            $('#select-speed-type').val('');
+            $('#wrapper-generation').hide();
             $('#select-generation').val('');
         }
     }
@@ -826,7 +972,7 @@
 
     $(document).on('change', '#select-type-unit', function () {
         var category = $('#unit-category').val();
-        updateGenerationVisibility(category);
+        updateScrewSpecsVisibility(category);
     });
 
     // Live check SKU
@@ -865,13 +1011,17 @@
     // Sebelum submit: disable input di section yang hidden + gabung dimension
     $(document).on('submit', 'form', function () {
         // Disable semua input dalam section yang sedang disembunyikan
-        $('.fields-compressor, .fields-booster, .fields-ref-dryer, .fields-desiccant, .fields-filtration, .fields-tank').each(function () {
+        $('.fields-compressor, .fields-booster, .fields-ref-dryer, .fields-desiccant, .fields-filtration, .fields-tank, .fields-chiller').each(function () {
             if ($(this).is(':hidden')) {
                 $(this).find('input, select, textarea').prop('disabled', true);
             }
         });
 
-        if ($('#field-generation').is(':hidden')) {
+        if ($('#wrapper-speed-type').is(':hidden')) {
+            $('#select-speed-type').prop('disabled', true);
+        }
+
+        if ($('#wrapper-generation').is(':hidden')) {
             $('#select-generation').prop('disabled', true);
         }
 
@@ -906,13 +1056,25 @@
         if (ldes || wdes || hdes) {
             $('#dim_combined_des').val(ldes + ' x ' + wdes + ' x ' + hdes + ' mm');
         }
+
+        // Gabungkan L x W x H ke field dimension (chiller)
+        var lchl = $('#dim_l_chl').val().trim();
+        var wchl = $('#dim_w_chl').val().trim();
+        var hchl = $('#dim_h_chl').val().trim();
+        if (lchl || wchl || hchl) {
+            $('#dim_combined_chl').val(lchl + ' x ' + wchl + ' x ' + hchl + ' mm');
+        }
     });
 
     // Saat edit — tampilkan field sesuai data yang sudah ada
     @if (@$product)
         showFields('{{ @$product->unit }}');
-        @if (@$product->unit == 'AIR COMPRESSOR SCREW' && @$product->type_unit == 'Oil-injected')
-            $('#field-generation').show();
+        @if (@$product->unit == 'AIR COMPRESSOR SCREW')
+            $('#field-screw-specs').show();
+            $('#wrapper-speed-type').show();
+            @if (@$product->type_unit == 'Oil-injected')
+                $('#wrapper-generation').show();
+            @endif
         @endif
         @if (@$product->unit == 'DESICANT DRYER')
             // voltage default '220v/50Hz/1phase' already pre-selected via PHP; nothing extra needed

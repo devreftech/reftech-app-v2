@@ -8,6 +8,7 @@
         $isPriv = in_array($role, ['Admin', 'Sales', 'Logistic']);
         $isCompressor = in_array($product->unit, ['PISTON COMPRESSOR', 'AIR COMPRESSOR SCREW']);
         $isDryer      = in_array($product->unit, ['REFRIGERANT AIR DRYER', 'DESICANT DRYER']);
+        $isChiller    = $product->unit == 'WATER CHILLER';
     @endphp
 
     {{-- Top Header Action Bar & Title --}}
@@ -70,8 +71,13 @@
                             <i class="mdi mdi-fan fs-3"></i>
                         </div>
                         <div>
-                            <span class="metric-label d-block text-muted">Air Capacity / FAD</span>
-                            <h6 class="mb-0 fw-bold text-dark">{{ $product->air_cap ? $product->air_cap . ' m³/min' : '-' }}</h6>
+                            @if ($isChiller)
+                                <span class="metric-label d-block text-muted">Cooling Capacity</span>
+                                <h6 class="mb-0 fw-bold text-dark">{{ $product->cooling_capacity ?: '-' }}</h6>
+                            @else
+                                <span class="metric-label d-block text-muted">Air Capacity / FAD</span>
+                                <h6 class="mb-0 fw-bold text-dark">{{ $product->air_cap ? $product->air_cap . ' m³/min' : '-' }}</h6>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -125,6 +131,20 @@
                                                     <div class="col-5 spec-label">Type Compressor</div>
                                                     <div class="col-7 spec-val">{{ $product->type_unit ?: '-' }}</div>
                                                 </div>
+                                                @if ($product->unit == 'AIR COMPRESSOR SCREW' || $product->speed_type)
+                                                    <div class="row spec-item align-items-center">
+                                                        <div class="col-5 spec-label">Speed Type</div>
+                                                        <div class="col-7 spec-val">
+                                                            @if ($product->speed_type == 'Variable Speed')
+                                                                <span class="badge bg-label-warning"><i class="mdi mdi-speedometer me-1"></i>Variable Speed (VSD)</span>
+                                                            @elseif ($product->speed_type == 'Fixed Speed')
+                                                                <span class="badge bg-label-secondary">Fixed Speed</span>
+                                                            @else
+                                                                -
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                @endif
                                                 <div class="row spec-item align-items-center">
                                                     <div class="col-5 spec-label">Short Description</div>
                                                     <div class="col-7 spec-val">{{ $product->desc ?: '-' }}</div>
@@ -187,6 +207,47 @@
                                                 <div class="row spec-item align-items-center">
                                                     <div class="col-5 spec-label">Rated Voltage</div>
                                                     <div class="col-7 spec-val">{{ $product->voltage ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Dimension</div>
+                                                    <div class="col-7 spec-val">{{ $product->dimension ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Weight</div>
+                                                    <div class="col-7 spec-val">{{ $product->weight ? $product->weight . ' Kg' : '-' }}</div>
+                                                </div>
+                                            </div>
+                                        @elseif ($isChiller)
+                                            <div class="col-md-6">
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Cooling Capacity</div>
+                                                    <div class="col-7 spec-val">{{ $product->cooling_capacity ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Power Input</div>
+                                                    <div class="col-7 spec-val">{{ $product->power_input ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Rated Power</div>
+                                                    <div class="col-7 spec-val"><span class="badge bg-label-primary">{{ $product->power ?: '-' }}</span></div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Rated Voltage</div>
+                                                    <div class="col-7 spec-val">{{ $product->voltage ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Evaporator</div>
+                                                    <div class="col-7 spec-val">{{ $product->evaporator ?: '-' }}</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Refrigerant</div>
+                                                    <div class="col-7 spec-val">{{ $product->refrigerant_type ?: '-' }}</div>
+                                                </div>
+                                                <div class="row spec-item align-items-center">
+                                                    <div class="col-5 spec-label">Connection</div>
+                                                    <div class="col-7 spec-val">{{ $product->connect ?: '-' }}</div>
                                                 </div>
                                                 <div class="row spec-item align-items-center">
                                                     <div class="col-5 spec-label">Dimension</div>

@@ -1415,13 +1415,19 @@ class InvoiceController extends Controller
         $effectiveLast = max($lastSeqFromService, $lastSeqFromUnit, $lastSuoSeq);
         $nextSeq       = $effectiveLast > 0 ? $effectiveLast + 1 : 1;
 
+        // Tentukan apakah entitas adalah Kojisha (KII) atau Reftech (RJO)
+        $isKojisha = optional($quote->client)->info === 'Kojisha'
+            || str_contains((string) $quote->no_quote, 'KII')
+            || $invoice->flag === 'Kojisha';
+        $entityCode = $isKojisha ? 'KII' : 'RJO';
+
         // Format: {seq}/SJ-P/RJO/{month}/{year} (PPN) atau SJ-NP (non-PPN)
         $sjCode = $quote->tax ? 'SJ-P' : 'SJ-NP';
 
         // Untuk DP & BP: siapkan 2 nomor berurutan
         $nextNumbers = [];
         foreach ($allInvoices as $i => $inv) {
-            $nextNumbers[$inv->id] = str_pad($nextSeq + $i, 3, '0', STR_PAD_LEFT) . '/' . $sjCode . '/RJO/' . $monthCode . '/' . $year;
+            $nextNumbers[$inv->id] = str_pad($nextSeq + $i, 3, '0', STR_PAD_LEFT) . '/' . $sjCode . '/' . $entityCode . '/' . $monthCode . '/' . $year;
         }
 
         $requestContract = Contract::join('quotation as q', 'q.id', '=', 'contract.id_quotation')
@@ -1446,7 +1452,7 @@ class InvoiceController extends Controller
     public function accept_unit(Request $request, $id)
     {
         $invoice = Invoice::findOrFail($id);
-        $quote   = UnitQuotation::findOrFail($invoice->id_unit_quotation);
+        $quote   = UnitQuotation::with('client')->findOrFail($invoice->id_unit_quotation);
 
         $pendingInvoices = Invoice::where('id_unit_quotation', $quote->id)
             ->whereNull('no_invoice')
@@ -1457,10 +1463,16 @@ class InvoiceController extends Controller
         $term        = $request->input('term');
 
         foreach ($pendingInvoices as $inv) {
-            $inv->no_invoice = $request->input('no_invoice_' . $inv->id);
+            $noInv = $request->input('no_invoice_' . $inv->id);
+            $inv->no_invoice = $noInv;
             $inv->date       = $invoiceDate;
             $inv->invoiceTo  = '1';
             $inv->term       = $term;
+            if (str_contains((string) $noInv, '/KII/') || optional($quote->client)->info === 'Kojisha' || str_contains((string) $quote->no_quote, 'KII')) {
+                $inv->flag = 'Kojisha';
+            } else {
+                $inv->flag = 'Reftech';
+            }
             $inv->save();
         }
 

@@ -5,11 +5,16 @@
       - components/modal/overview.blade.php (dimuat via AJAX di modal Info dashboard admin)
 
     Parameter:
-      $weeklyKpi  => hasil OverviewService::buildWeeklyKpi()
-      $monthLabel => label bulan, mis. "Agustus 2026" (opsional)
+      $weeklyKpi      => hasil OverviewService::buildWeeklyKpi()
+      $monthLabel     => label bulan, mis. "Agustus 2026" (opsional)
+      $salesId        => ID sales (opsional)
+      $dateFormatted  => Format tanggal m-Y (opsional)
 --}}
 @php
     $monthLabel = $monthLabel ?? '';
+    $salesId = $salesId ?? request()->route('sales') ?? ($user->id ?? '');
+    $dateFormatted = $dateFormatted ?? request()->route('date') ?? ($dates ?? ($date ?? ''));
+
     $rekapMeta = [
         'newleads'    => ['accent' => 'primary', 'icon' => 'mdi-account-multiple-plus-outline'],
         'crm'         => ['accent' => 'success', 'icon' => 'mdi-account-heart-outline'],
@@ -83,13 +88,11 @@
             color: #566a7f;
         }
         .rekap-kpi-table thead th:not(:first-child):not(.rekap-total-col) {
-            /* kolom W1-W5 membagi rata sisa lebar tabel (table-layout: fixed) */
             width: auto;
             min-width: 56px;
         }
         .rekap-kpi-table thead th:first-child,
         .rekap-kpi-table tbody td:first-child {
-            /* kolom "Data Monitoring" dibatasi supaya tidak terlalu lebar di layar besar */
             width: 320px;
         }
         .rekap-kpi-table tbody td:first-child {
@@ -208,6 +211,32 @@
             background: #696cff;
             opacity: 0.55;
         }
+
+        /* Interactive Drilldown Links */
+        .rekap-trigger-detail {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-block;
+            border-radius: 6px;
+            padding: 2px 6px;
+            color: #696cff !important;
+            font-weight: 700 !important;
+        }
+        .rekap-trigger-detail:hover {
+            background: rgba(105, 108, 255, 0.15);
+            color: #5558e6 !important;
+            transform: translateY(-1px);
+            text-decoration: underline;
+        }
+        .rekap-total-badge.rekap-trigger-detail {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .rekap-total-badge.rekap-trigger-detail:hover {
+            transform: scale(1.08);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+            text-decoration: underline;
+        }
     </style>
 @endonce
 
@@ -219,7 +248,7 @@
             </div>
             <div>
                 <h5 class="mb-0 fw-bold">Rekap KPI Mingguan</h5>
-                <span class="text-muted small">Breakdown performa sales per minggu @if ($monthLabel) &mdash; {{ $monthLabel }} @endif</span>
+                <span class="text-muted small">Breakdown performa sales per minggu @if ($monthLabel) &mdash; {{ $monthLabel }} @endif (Klik angka untuk rincian)</span>
             </div>
         </div>
         <div class="text-end">
@@ -293,13 +322,44 @@
                                         {{ $row['name'] }}
                                     </td>
                                     @foreach ($weekVals as $val)
+                                        @php
+                                            $weekNum = $loop->iteration;
+                                        @endphp
                                         <td class="rekap-week-cell @if ($val === 0) is-zero @endif @if ($peak > 0 && $val === $peak) is-peak @endif">
-                                            <span class="rekap-week-val">{{ $val }}</span>
+                                            @if ($val > 0)
+                                                <a href="javascript:void(0);" 
+                                                   class="rekap-week-val rekap-trigger-detail"
+                                                   data-sales="{{ $salesId }}"
+                                                   data-date="{{ $dateFormatted }}"
+                                                   data-section="{{ $key }}"
+                                                   data-row-name="{{ $row['name'] }}"
+                                                   data-week="{{ $weekNum }}"
+                                                   data-bs-toggle="tooltip"
+                                                   title="Lihat {{ $val }} rincian {{ $row['name'] }} (W{{ $weekNum }})">
+                                                    {{ $val }}
+                                                </a>
+                                            @else
+                                                <span class="rekap-week-val">{{ $val }}</span>
+                                            @endif
                                             <span class="rekap-week-bar" style="--w: {{ $peak > 0 ? round($val / $peak * 100) : 0 }}%"></span>
                                         </td>
                                     @endforeach
                                     <td class="rekap-total-col">
-                                        <span class="rekap-total-badge bg-label-{{ $accent }}">{{ $row['data']['total'] }}</span>
+                                        @if (($row['data']['total'] ?? 0) > 0)
+                                            <a href="javascript:void(0);" 
+                                               class="rekap-total-badge bg-label-{{ $accent }} rekap-trigger-detail"
+                                               data-sales="{{ $salesId }}"
+                                               data-date="{{ $dateFormatted }}"
+                                               data-section="{{ $key }}"
+                                               data-row-name="{{ $row['name'] }}"
+                                               data-week="all"
+                                               data-bs-toggle="tooltip"
+                                               title="Lihat total {{ $row['data']['total'] }} rincian {{ $row['name'] }}">
+                                                {{ $row['data']['total'] }}
+                                            </a>
+                                        @else
+                                            <span class="rekap-total-badge bg-label-{{ $accent }}">{{ $row['data']['total'] }}</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @endif
@@ -309,14 +369,107 @@
             </table>
         </div>
 
-        <div class="d-flex flex-wrap align-items-center gap-3 mt-3 pt-3 border-top">
-            <span class="d-inline-flex align-items-center gap-2 small text-muted">
-                <span class="rekap-legend-swatch"></span> Bar = kontribusi minggu, minggu tertinggi diberi warna penuh
-            </span>
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 pt-3 border-top">
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <span class="d-inline-flex align-items-center gap-2 small text-muted">
+                    <span class="rekap-legend-swatch"></span> Bar = kontribusi minggu, minggu tertinggi diberi warna penuh
+                </span>
+                <span class="d-inline-flex align-items-center gap-1 small text-muted">
+                    <i class="mdi mdi-cursor-default-click-outline text-primary"></i>
+                    Angka bergaris bawah dapat diklik untuk membuka modal rincian detail.
+                </span>
+            </div>
             <span class="d-inline-flex align-items-center gap-1 small text-muted">
                 <i class="mdi mdi-information-outline"></i>
-                Aktivitas &amp; quotation memakai minggu input sales; PO diturunkan dari tanggal PO. Quotation non-smart tidak dihitung.
+                Aktivitas &amp; quotation memakai minggu input sales; PO diturunkan dari tanggal PO.
             </span>
         </div>
     </div>
 </div>
+
+@once
+    <!-- Modal Detail Rincian Rekap KPI Mingguan -->
+    <div class="modal fade" id="rekapKpiDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-white border-bottom py-3 px-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="avatar avatar-sm bg-label-primary rounded p-1 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                            <i class="mdi mdi-clipboard-text-search-outline fs-4 text-primary"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-0" id="rekapModalTitle">Rincian KPI Mingguan</h5>
+                            <small class="text-muted" id="rekapModalSubtitle">Detail data transaksi & aktivitas sales</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4" id="rekapModalBody">
+                    <div id="rekapModalLoading" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status" style="width: 2.5rem; height: 2.5rem;">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div class="mt-3 text-muted fw-semibold">Mengambil data rincian KPI...</div>
+                    </div>
+                    <div id="rekapModalContainer"></div>
+                </div>
+                <div class="modal-footer border-top bg-light py-2 px-4">
+                    <button type="button" class="btn btn-label-secondary btn-sm px-3" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            $(document).on('click', '.rekap-trigger-detail', function (e) {
+                e.preventDefault();
+                var $btn = $(this);
+                var salesId = $btn.data('sales');
+                var date = $btn.data('date');
+                var section = $btn.data('section');
+                var rowName = $btn.data('row-name');
+                var week = $btn.data('week');
+
+                var $modal = $('#rekapKpiDetailModal');
+                var $loading = $('#rekapModalLoading');
+                var $container = $('#rekapModalContainer');
+
+                $('#rekapModalTitle').text(rowName);
+                var weekText = (week === 'all' || !week) ? 'Semua Minggu' : 'Minggu ' + week + ' (W' + week + ')';
+                $('#rekapModalSubtitle').text('Rincian data periode ' + weekText);
+
+                $loading.show();
+                $container.empty().hide();
+
+                var modalObj = bootstrap.Modal.getOrCreateInstance($modal[0]);
+                modalObj.show();
+
+                var ajaxUrl = '/detail-overview/' + salesId + '/' + date + '/weekly-kpi-detail';
+
+                $.ajax({
+                    url: ajaxUrl,
+                    type: 'GET',
+                    data: {
+                        section: section,
+                        row_name: rowName,
+                        week: week
+                    },
+                    success: function (response) {
+                        $loading.hide();
+                        $container.html(response).fadeIn(150);
+                    },
+                    error: function (xhr) {
+                        $loading.hide();
+                        $container.html(
+                            '<div class="alert alert-danger mb-0">' +
+                            '<i class="mdi mdi-alert-circle me-2"></i>' +
+                            'Gagal memuat rincian data (' + (xhr.statusText || 'Error') + '). Silakan coba lagi.' +
+                            '</div>'
+                        ).show();
+                    }
+                });
+            });
+        });
+    </script>
+@endonce
