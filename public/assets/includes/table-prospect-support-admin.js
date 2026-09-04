@@ -252,7 +252,17 @@ $(function () {
                 $('[data-bs-toggle="tooltip"]').tooltip();
             },
             order: [[2, "desc"]],
-            dom: '<"card-header flex-column flex-md-row d-flex justify-content-between align-items-center py-3"<"head-label hl-admin"><"d-flex align-items-center gap-2"f>>t<"card-footer d-flex flex-column flex-md-row justify-content-between align-items-center py-3"<"small text-muted"i><"pagination-wrapper"p>>',
+            dom: '<"card-header flex-column flex-md-row d-flex justify-content-between align-items-center py-3"<"head-label hl-admin"><"d-flex align-items-center gap-2"fB>>t<"card-footer d-flex flex-column flex-md-row justify-content-between align-items-center py-3"<"small text-muted"i><"pagination-wrapper"p>>',
+            buttons: [
+                {
+                    text: '<i class="mdi mdi-plus me-sm-1"></i><span class="d-none d-sm-inline-block">Tambah Prospect</span>',
+                    className: "btn btn-primary btn-sm rounded-pill",
+                    attr: {
+                        "data-bs-toggle": "modal",
+                        "data-bs-target": "#createProspect",
+                    },
+                },
+            ],
             displayLength: 10,
             lengthMenu: [10, 25, 50, 100],
             language: {
