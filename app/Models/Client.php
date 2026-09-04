@@ -69,7 +69,7 @@ class Client extends Model
     }
     public function pic()
     {
-        return $this->hasMany('App\Models\PIC', 'id_client');
+        return $this->hasMany('App\Models\Pic', 'id_client');
     }
     public function machine()
     {
