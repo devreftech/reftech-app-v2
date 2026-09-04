@@ -6,10 +6,12 @@ use App\Http\Controllers\AuditController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ChangeWarehouseController;
 use App\Http\Controllers\ContractController;
+use App\Http\Controllers\ContractSignController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\FixedController;
+use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MachineController;
 use App\Http\Controllers\MonitoringClientController;
@@ -271,6 +273,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::resource('/overview', OverviewController::class);
     Route::get('/overview/sales/{id}', [OverviewController::class, 'semesterOverviewSales'])->name('overview.semester');
     Route::get('/detail-overview/{sales}/{date}/weekly-kpi', [OverviewController::class, 'weeklyKpiPartial'])->name('detail-overview.weekly-kpi');
+    Route::get('/detail-overview/{sales}/{date}/weekly-kpi-detail', [OverviewController::class, 'weeklyKpiDetail'])->name('detail-overview.weekly-kpi-detail');
     Route::get('/detail-overview/{sales}/{date}', [OverviewController::class, 'detailSemesterOverview'])->name('detail-overview.semester');
     Route::get('/overview/{semester}/{sales}', [OverviewController::class, 'overviewAdmin'])->name('overview-sales.semester');
     Route::get('/report/monthly/{year?}/{month?}', [OverviewController::class, 'reportMonthly'])->name('report.monthly');
@@ -1296,6 +1299,11 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/smart-quote/{id}/request-selling-contract', [ContractController::class, 'request_selling_contract_unit'])->name('unit-quotation.request-selling-contract');
     Route::post('/smart-quote/{id}/selling-contract', [ContractController::class, 'create_selling_contract_unit'])->name('unit-quotation.selling-contract');
     Route::get('/contract/print/{id}', [ContractController::class, 'contract_print'])->name('contract.print');
+    Route::delete('/contract/{id}/reset-signature', [ContractSignController::class, 'resetSign'])->name('contract.reset-signature');
+    Route::get('/contract/sign/{token}', [ContractSignController::class, 'show'])->name('contract.customer.sign');
+    Route::post('/contract/sign/{token}', [ContractSignController::class, 'sign'])->name('contract.customer.sign.submit');
+    Route::post('/contract/sign/{token}/reset', [ContractSignController::class, 'customerReset'])->name('contract.customer.sign.reset');
+    Route::get('/contract/sign/{token}/pdf', [ContractSignController::class, 'downloadPdf'])->name('contract.customer.pdf');
     Route::get('/selling/contract', [ContractController::class, 'index_selling'])->name('index.selling');
     Route::get('/order/contract', [ContractController::class, 'index_order'])->name('index.order');
     Route::post('/contract/accept/{id}', [ContractController::class, 'accept_contract'])->name('accept.contract');
@@ -2152,12 +2160,7 @@ Route::group(["middleware" => "auth"], function () {
             ->when($id, function ($q) use ($id) {
                 $q->where('u.id', $id);
             })
-            ->groupBy(
-                'c.id',
-                'p.name_pic',
-                'i.issue',
-                'u.name'
-            )
+            ->groupBy('c.id')
             ->orderByDesc('c.id')
             ->get();
 
@@ -2318,7 +2321,16 @@ Route::group(["middleware" => "auth"], function () {
             ->join('client', 'client.id', '=', 'pic.id_client')
             ->join('users', 'users.id', '=', 'quotation.id_sales')
             ->where('status', '100')
-            ->where('invoice.flag', 'Reftech')
+            ->where(function ($q) {
+                $q->where('invoice.flag', 'Reftech')
+                    ->orWhere('client.info', 'Reftech');
+            })
+            ->where(function ($q) {
+                $q->whereNull('client.info')->orWhere('client.info', '!=', 'Kojisha');
+            })
+            ->where('invoice.flag', '!=', 'Kojisha')
+            ->where('invoice.no_invoice', 'NOT LIKE', '%/KII/%')
+            ->where('quotation.no_quote', 'NOT LIKE', '%/KII%')
             ->whereNotNull('quotation.po_file')
             ->whereNotNull('invoice.no_invoice')
             ->whereNotExists(function ($q) { // Escrow tampil di tab Marketplace, bukan di sini
@@ -2335,7 +2347,16 @@ Route::group(["middleware" => "auth"], function () {
         $unitInvoices = Invoice::join('unit_quotation', 'unit_quotation.id', '=', 'invoice.id_unit_quotation')
             ->join('client', 'client.id', '=', 'unit_quotation.id_client')
             ->join('users', 'users.id', '=', 'unit_quotation.id_sales')
-            ->where('invoice.flag', 'Reftech')
+            ->where(function ($q) {
+                $q->where('invoice.flag', 'Reftech')
+                    ->orWhere('client.info', 'Reftech');
+            })
+            ->where(function ($q) {
+                $q->whereNull('client.info')->orWhere('client.info', '!=', 'Kojisha');
+            })
+            ->where('invoice.flag', '!=', 'Kojisha')
+            ->where('invoice.no_invoice', 'NOT LIKE', '%/KII/%')
+            ->where('unit_quotation.no_quote', 'NOT LIKE', '%/KII%')
             ->whereNotNull('invoice.no_invoice')
             ->where('invoice.type', '!=', 'Escrow') // Escrow tampil di tab Marketplace, bukan di sini
             ->whereYear('invoice.date', $year)
@@ -2358,7 +2379,12 @@ Route::group(["middleware" => "auth"], function () {
             ->join('client', 'client.id', '=', 'pic.id_client')
             ->join('users', 'users.id', '=', 'quotation.id_sales')
             ->where('status', '100')
-            ->where('invoice.flag', 'Kojisha')
+            ->where(function ($q) {
+                $q->where('invoice.flag', 'Kojisha')
+                    ->orWhere('client.info', 'Kojisha')
+                    ->orWhere('invoice.no_invoice', 'LIKE', '%/KII/%')
+                    ->orWhere('quotation.no_quote', 'LIKE', '%/KII%');
+            })
             ->whereNotNull('quotation.po_file')
             ->whereNotNull('invoice.no_invoice')
             ->whereNotExists(function ($q) { // Escrow tampil di tab Marketplace, bukan di sini
@@ -2375,7 +2401,12 @@ Route::group(["middleware" => "auth"], function () {
         $unitInvoices = Invoice::join('unit_quotation', 'unit_quotation.id', '=', 'invoice.id_unit_quotation')
             ->join('client', 'client.id', '=', 'unit_quotation.id_client')
             ->join('users', 'users.id', '=', 'unit_quotation.id_sales')
-            ->where('invoice.flag', 'Kojisha')
+            ->where(function ($q) {
+                $q->where('invoice.flag', 'Kojisha')
+                    ->orWhere('client.info', 'Kojisha')
+                    ->orWhere('invoice.no_invoice', 'LIKE', '%/KII/%')
+                    ->orWhere('unit_quotation.no_quote', 'LIKE', '%/KII%');
+            })
             ->whereNotNull('invoice.no_invoice')
             ->where('invoice.type', '!=', 'Escrow') // Escrow tampil di tab Marketplace, bukan di sini
             ->whereYear('invoice.date', $year)
@@ -3386,6 +3417,13 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/db/sales/unit/global/booster', function () {
         require_once base_path('app/api/product/connectionSalesUnitBoosterGlobal.php');
     });
+    Route::get('/db/unit/global/chiller', function () {
+        require_once base_path('app/api/product/connectionUnitChillerGlobal.php');
+    });
+    Route::get('/db/sales/unit/global/chiller', function () {
+        require_once base_path('app/api/product/connectionSalesUnitChillerGlobal.php');
+    });
+    Route::get('/db/global-search', [GlobalSearchController::class, 'search'])->name('global.search');
     Route::get('/db/unit/global/search', function () {
         require_once base_path('app/api/product/connectionUnitGlobalSearch.php');
     });
@@ -7100,6 +7138,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                 'u.unit as unit_category',
                 'u.type_unit as lubricant',
                 'u.power',
+                'u.bar',
                 'u.air_cap',
                 'u.pdp',
                 'u.grade',

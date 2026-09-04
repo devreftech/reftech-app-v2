@@ -148,7 +148,7 @@
                                 <span class="fw-bold text-uppercase text-muted small" style="letter-spacing: 0.05em;">FROM (Pengirim):</span>
                             </div>
                             <div class="ps-3 border-start border-2 border-primary">
-                                <div class="fw-bold text-dark fs-6">{{ $senderName }}</div>
+                                <div class="fw-bold text-dark fs-6">Mr. {{ $senderName }}</div>
                                 <div class="text-muted small">{{ $senderRole }} &bull; {{ $isKojisha ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima' }}</div>
                             </div>
                         </div>
@@ -161,8 +161,8 @@
                         @endif
                     </div>
 
-                    {{-- SPACING FOR REALISTIC ENVELOPE FEEL --}}
-                    <div style="height: 36px;"></div>
+                    {{-- SPACING FOR REALISTIC ENVELOPE FEEL (Shifted down) --}}
+                    <div style="height: 5.3cm;"></div>
 
                     {{-- TO / RECIPIENT BOX --}}
                     @php
@@ -235,10 +235,7 @@
                     </div>
 
                     {{-- BOTTOM METADATA STRIP --}}
-                    <div class="doc-meta-strip d-flex justify-content-between align-items-center text-muted small mt-5">
-                        <div>
-                            <i class="mdi mdi-barcode-scan me-1"></i>Ref: {{ $quote->no_quote ?? '-' }}
-                        </div>
+                    <div class="doc-meta-strip d-flex justify-content-end align-items-center text-muted small mt-5">
                         <div class="fst-italic small">
                             Mohon konfirmasi setelah dokumen diterima dengan baik.
                         </div>

@@ -420,41 +420,82 @@ if (typeof $ !== 'undefined') {
     });
 
     if (searchInput.length) {
-      // Filter config
-      var filterConfig = function (data) {
-        return function findMatches(q, cb) {
-          let matches;
-          matches = [];
-          data.filter(function (i) {
-            if (i.name.toLowerCase().startsWith(q.toLowerCase())) {
-              matches.push(i);
-            } else if (
-              !i.name.toLowerCase().startsWith(q.toLowerCase()) &&
-              i.name.toLowerCase().includes(q.toLowerCase())
-            ) {
-              matches.push(i);
-              matches.sort(function (a, b) {
-                return b.name < a.name ? 1 : -1;
+      var cachedResults = {};
+      var pendingCallbacks = {};
+      var searchTimer = null;
+      var activeAjax = null;
+
+      function requestSearch(category, query, asyncResults) {
+        var q = (query || '').trim();
+        if (!q) {
+          asyncResults([]);
+          return;
+        }
+
+        // If result already cached in memory for exact query, return immediately
+        if (cachedResults[q]) {
+          asyncResults(cachedResults[q][category] || []);
+          return;
+        }
+
+        // Register callback for this query & category
+        if (!pendingCallbacks[q]) {
+          pendingCallbacks[q] = [];
+        }
+        pendingCallbacks[q].push({ category: category, cb: asyncResults });
+
+        // Debounce single AJAX call across all datasets
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function () {
+          if (activeAjax && activeAjax.readyState !== 4) {
+            activeAjax.abort();
+          }
+
+          activeAjax = $.ajax({
+            url: '/db/global-search',
+            type: 'GET',
+            data: { q: q },
+            dataType: 'json',
+            success: function (res) {
+              cachedResults[q] = res || {};
+              var callbacks = pendingCallbacks[q] || [];
+              delete pendingCallbacks[q];
+              callbacks.forEach(function (item) {
+                if (typeof item.cb === 'function') {
+                  item.cb((res && res[item.category]) || []);
+                }
               });
-            } else {
-              return [];
+            },
+            error: function (xhr, status) {
+              if (status !== 'abort') {
+                var callbacks = pendingCallbacks[q] || [];
+                delete pendingCallbacks[q];
+                callbacks.forEach(function (item) {
+                  if (typeof item.cb === 'function') {
+                    item.cb([]);
+                  }
+                });
+              }
             }
           });
-          cb(matches);
+        }, 150);
+      }
+
+      var makeSearchSource = function (category) {
+        return function (q, syncResults, asyncResults) {
+          var trimmed = (q || '').trim();
+          if (trimmed.length === 0) {
+            syncResults([]);
+            return;
+          }
+          if (cachedResults[trimmed]) {
+            syncResults(cachedResults[trimmed][category] || []);
+            return;
+          }
+          requestSearch(category, trimmed, asyncResults);
         };
       };
 
-      // Search JSON
-      var searchJson = 'search-vertical.json'; // For vertical layout
-      if ($('#layout-menu').hasClass('menu-horizontal')) {
-        var searchJson = 'search-horizontal.json'; // For vertical layout
-      }
-      // Search API AJAX call
-      var searchData = $.ajax({
-        url: assetsPath + 'json/' + searchJson, //? Use your own search api instead
-        dataType: 'json',
-        async: false
-      }).responseJSON;
       // Init typeahead on searchInput
       searchInput.each(function () {
         var $this = $(this);
@@ -462,144 +503,219 @@ if (typeof $ !== 'undefined') {
           .typeahead(
             {
               hint: false,
+              minLength: 1,
               classNames: {
                 menu: 'tt-menu navbar-search-suggestion',
                 cursor: 'active',
                 suggestion: 'suggestion d-flex justify-content-between px-3 py-2 w-100'
               }
             },
-            // ? Add/Update blocks as per need
             // Pages
             {
               name: 'pages',
               display: 'name',
               limit: 5,
-              source: filterConfig(searchData.pages),
+              source: makeSearchSource('pages'),
               templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Pages</h6>',
-                suggestion: function ({ url, icon, name }) {
+                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2"><i class="mdi mdi-view-grid-outline me-1"></i>Menu / Halaman</h6>',
+                suggestion: function (data) {
                   return (
-                    '<a href="' +
-                    url +
-                    '">' +
+                    '<a href="' + (data.url || 'javascript:void(0);') + '" class="d-flex align-items-center justify-content-between w-100 text-decoration-none">' +
                     '<div>' +
-                    '<i class="mdi ' +
-                    icon +
-                    ' me-2"></i>' +
-                    '<span class="align-middle">' +
-                    name +
-                    '</span>' +
+                    '<i class="mdi ' + (data.icon || 'mdi-file-outline') + ' me-2 text-primary"></i>' +
+                    '<span class="align-middle fw-semibold text-body">' + (data.name || '') + '</span>' +
                     '</div>' +
+                    (data.category ? '<span class="badge bg-label-secondary small">' + data.category + '</span>' : '') +
                     '</a>'
                   );
-                },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Pages</h6>' +
-                  '<p class="py-2 mb-0"><i class="mdi mdi-alert-circle-outline me-2 mdi-14px"></i> No Results Found</p>' +
-                  '</div>'
+                }
               }
             },
-            // Files
+            // Clients / Customers
             {
-              name: 'files',
+              name: 'clients',
               display: 'name',
-              limit: 4,
-              source: filterConfig(searchData.files),
+              limit: 5,
+              source: makeSearchSource('clients'),
               templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Files</h6>',
-                suggestion: function ({ src, name, subtitle, meta }) {
+                header: '<h6 class="suggestions-header text-success mb-0 mx-3 mt-3 pb-2"><i class="mdi mdi-account-group-outline me-1"></i>Client & Customer</h6>',
+                suggestion: function (data) {
                   return (
-                    '<a href="javascript:;">' +
-                    '<div class="d-flex w-50">' +
-                    '<img class="me-3" src="' +
-                    assetsPath +
-                    src +
-                    '" alt="' +
-                    name +
-                    '" height="32">' +
-                    '<div class="w-75">' +
-                    '<h6 class="mb-0">' +
-                    name +
-                    '</h6>' +
-                    '<small class="text-muted">' +
-                    subtitle +
-                    '</small>' +
-                    '</div>' +
-                    '</div>' +
-                    '<small class="text-muted">' +
-                    meta +
-                    '</small>' +
-                    '</a>'
-                  );
-                },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Files</h6>' +
-                  '<p class="py-2 mb-0"><i class="mdi mdi-alert-circle-outline me-2 mdi-14px"></i> No Results Found</p>' +
-                  '</div>'
-              }
-            },
-            // Members
-            {
-              name: 'members',
-              display: 'name',
-              limit: 4,
-              source: filterConfig(searchData.members),
-              templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Members</h6>',
-                suggestion: function ({ name, src, subtitle }) {
-                  return (
-                    '<a href="app-user-view-account.html">' +
+                    '<a href="' + (data.url || 'javascript:void(0);') + '" class="d-flex align-items-center justify-content-between w-100 text-decoration-none">' +
                     '<div class="d-flex align-items-center">' +
-                    '<img class="rounded-circle me-3" src="' +
-                    assetsPath +
-                    src +
-                    '" alt="' +
-                    name +
-                    '" height="32">' +
-                    '<div class="user-info">' +
-                    '<h6 class="mb-0">' +
-                    name +
-                    '</h6>' +
-                    '<small class="text-muted">' +
-                    subtitle +
-                    '</small>' +
+                    '<i class="mdi ' + (data.icon || 'mdi-domain') + ' me-2 text-success fs-5"></i>' +
+                    '<div>' +
+                    '<div class="fw-semibold text-body">' + (data.name || '') + '</div>' +
+                    '<small class="text-muted">' + (data.subtitle || '') + '</small>' +
                     '</div>' +
                     '</div>' +
+                    (data.badge ? '<span class="badge ' + (data.badge_class || 'bg-label-primary') + ' small">' + data.badge + '</span>' : '') +
                     '</a>'
                   );
-                },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Members</h6>' +
-                  '<p class="py-2 mb-0"><i class="mdi mdi-alert-circle-outline me-2 mdi-14px"></i> No Results Found</p>' +
-                  '</div>'
+                }
+              }
+            },
+            // Quotations
+            {
+              name: 'quotations',
+              display: 'name',
+              limit: 5,
+              source: makeSearchSource('quotations'),
+              templates: {
+                header: '<h6 class="suggestions-header text-info mb-0 mx-3 mt-3 pb-2"><i class="mdi mdi-file-document-outline me-1"></i>Quotation</h6>',
+                suggestion: function (data) {
+                  return (
+                    '<a href="' + (data.url || 'javascript:void(0);') + '" class="d-flex align-items-center justify-content-between w-100 text-decoration-none">' +
+                    '<div class="d-flex align-items-center">' +
+                    '<i class="mdi ' + (data.icon || 'mdi-file-document-outline') + ' me-2 text-info fs-5"></i>' +
+                    '<div>' +
+                    '<div class="fw-semibold text-body">' + (data.name || '') + '</div>' +
+                    '<small class="text-muted text-truncate d-inline-block" style="max-width:320px;">' + (data.subtitle || '') + '</small>' +
+                    '</div>' +
+                    '</div>' +
+                    (data.badge ? '<span class="badge ' + (data.badge_class || 'bg-label-info') + ' small">' + data.badge + '</span>' : '') +
+                    '</a>'
+                  );
+                }
+              }
+            },
+            // Invoices
+            {
+              name: 'invoices',
+              display: 'name',
+              limit: 4,
+              source: makeSearchSource('invoices'),
+              templates: {
+                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2"><i class="mdi mdi-receipt-text-outline me-1"></i>Invoice</h6>',
+                suggestion: function (data) {
+                  return (
+                    '<a href="' + (data.url || 'javascript:void(0);') + '" class="d-flex align-items-center justify-content-between w-100 text-decoration-none">' +
+                    '<div class="d-flex align-items-center">' +
+                    '<i class="mdi ' + (data.icon || 'mdi-receipt-text-outline') + ' me-2 text-primary fs-5"></i>' +
+                    '<div>' +
+                    '<div class="fw-semibold text-body">' + (data.name || '') + '</div>' +
+                    '<small class="text-muted">' + (data.subtitle || '') + '</small>' +
+                    '</div>' +
+                    '</div>' +
+                    (data.badge ? '<span class="badge ' + (data.badge_class || 'bg-label-primary') + ' small">' + data.badge + '</span>' : '') +
+                    '</a>'
+                  );
+                }
+              }
+            },
+            // Units (Master Unit Global)
+            {
+              name: 'units',
+              display: 'name',
+              limit: 4,
+              source: makeSearchSource('units'),
+              templates: {
+                header: '<h6 class="suggestions-header text-warning mb-0 mx-3 mt-3 pb-2"><i class="mdi mdi-cog-outline me-1"></i>Unit Master</h6>',
+                suggestion: function (data) {
+                  return (
+                    '<a href="' + (data.url || 'javascript:void(0);') + '" class="d-flex align-items-center justify-content-between w-100 text-decoration-none">' +
+                    '<div class="d-flex align-items-center">' +
+                    '<i class="mdi ' + (data.icon || 'mdi-cog-outline') + ' me-2 text-warning fs-5"></i>' +
+                    '<div>' +
+                    '<div class="fw-semibold text-body">' + (data.name || '') + '</div>' +
+                    '<small class="text-muted">' + (data.subtitle || '') + '</small>' +
+                    '</div>' +
+                    '</div>' +
+                    (data.badge ? '<span class="badge ' + (data.badge_class || 'bg-label-secondary') + ' small">' + data.badge + '</span>' : '') +
+                    '</a>'
+                  );
+                }
+              }
+            },
+            // Service Reports
+            {
+              name: 'service_reports',
+              display: 'name',
+              limit: 4,
+              source: makeSearchSource('service_reports'),
+              templates: {
+                header: '<h6 class="suggestions-header text-danger mb-0 mx-3 mt-3 pb-2"><i class="mdi mdi-wrench-outline me-1"></i>Service Reports</h6>',
+                suggestion: function (data) {
+                  return (
+                    '<a href="' + (data.url || 'javascript:void(0);') + '" class="d-flex align-items-center justify-content-between w-100 text-decoration-none">' +
+                    '<div class="d-flex align-items-center">' +
+                    '<i class="mdi ' + (data.icon || 'mdi-wrench-outline') + ' me-2 text-danger fs-5"></i>' +
+                    '<div>' +
+                    '<div class="fw-semibold text-body">' + (data.name || '') + '</div>' +
+                    '<small class="text-muted">' + (data.subtitle || '') + '</small>' +
+                    '</div>' +
+                    '</div>' +
+                    (data.badge ? '<span class="badge ' + (data.badge_class || 'bg-label-danger') + ' small">' + data.badge + '</span>' : '') +
+                    '</a>'
+                  );
+                }
+              }
+            },
+            // Purchase Orders
+            {
+              name: 'purchase_orders',
+              display: 'name',
+              limit: 4,
+              source: makeSearchSource('purchase_orders'),
+              templates: {
+                header: '<h6 class="suggestions-header text-dark mb-0 mx-3 mt-3 pb-2"><i class="mdi mdi-cart-outline me-1"></i>Purchase Orders</h6>',
+                suggestion: function (data) {
+                  return (
+                    '<a href="' + (data.url || 'javascript:void(0);') + '" class="d-flex align-items-center justify-content-between w-100 text-decoration-none">' +
+                    '<div class="d-flex align-items-center">' +
+                    '<i class="mdi ' + (data.icon || 'mdi-cart-outline') + ' me-2 text-dark fs-5"></i>' +
+                    '<div>' +
+                    '<div class="fw-semibold text-body">' + (data.name || '') + '</div>' +
+                    '<small class="text-muted">' + (data.subtitle || '') + '</small>' +
+                    '</div>' +
+                    '</div>' +
+                    (data.badge ? '<span class="badge ' + (data.badge_class || 'bg-label-warning') + ' small">' + data.badge + '</span>' : '') +
+                    '</a>'
+                  );
+                }
               }
             }
           )
-          //On typeahead result render.
+          // On typeahead result render
           .bind('typeahead:render', function () {
-            // Show content backdrop,
             contentBackdrop.addClass('show').removeClass('fade');
           })
           // On typeahead select
           .bind('typeahead:select', function (ev, suggestion) {
-            // Open selected page
-            if (suggestion.url) {
-              window.location = suggestion.url;
+            if (suggestion && suggestion.url) {
+              window.location.href = suggestion.url;
             }
           })
           // On typeahead close
           .bind('typeahead:close', function () {
-            // Clear search
             searchInput.val('');
             $this.typeahead('val', '');
-            // Hide search input wrapper
             searchInputWrapper.addClass('d-none');
-            // Fade content backdrop
             contentBackdrop.addClass('fade').removeClass('show');
           });
+
+        // Quick enter support
+        searchInput.on('keydown', function (e) {
+          if (e.which === 13) {
+            var $active = searchInputWrapper.find('.tt-suggestion.active a');
+            if ($active.length && $active.attr('href')) {
+              window.location.href = $active.attr('href');
+            } else {
+              var $first = searchInputWrapper.find('.tt-suggestion a').first();
+              if ($first.length && $first.attr('href')) {
+                window.location.href = $first.attr('href');
+              }
+            }
+          }
+        });
+
+        // Fallback for direct clicks on suggestion link
+        $(document).on('click', '.navbar-search-suggestion .suggestion a', function (e) {
+          var href = $(this).attr('href');
+          if (href && href !== 'javascript:void(0);') {
+            window.location.href = href;
+          }
+        });
 
         // On searchInput keyup, Fade content backdrop if search input is blank
         searchInput.on('keyup', function () {
@@ -619,7 +735,7 @@ if (typeof $ !== 'undefined') {
       });
 
       searchInput.on('keyup', function () {
-        psSearch.update();
+        if (psSearch) psSearch.update();
       });
     }
   });

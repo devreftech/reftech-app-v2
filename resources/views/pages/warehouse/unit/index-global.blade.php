@@ -65,6 +65,13 @@
                         Booster Compressor
                     </button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link px-4 py-3" id="btn-tab-chiller"
+                        data-bs-toggle="tab" data-bs-target="#tab-chiller"
+                        type="button" role="tab">
+                        Water Chiller
+                    </button>
+                </li>
             </ul>
         </div>
 
@@ -193,6 +200,25 @@
                     </table>
                 </div>
             </div>
+            <div class="tab-pane fade" id="tab-chiller" role="tabpanel">
+                <div class="card-datatable table-responsive pt-0">
+                    <table class="datatable-unit-chiller table table-bordered">
+                        <thead>
+                            <tr>
+                                <th class="text-center">SKU</th>
+                                <th class="text-center">Brand</th>
+                                <th class="text-center">Model</th>
+                                <th class="text-center">Cooling Capacity</th>
+                                <th class="text-center">Power Input</th>
+                                <th class="text-center">Rated Power</th>
+                                <th class="text-center">Voltage</th>
+                                <th class="text-center">Evaporator</th>
+                                <th class="text-center">Connection</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -228,6 +254,7 @@
     <script src="{{ asset('assets') }}/includes/table-unit-filtration-global.js"></script>
     <script src="{{ asset('assets') }}/includes/table-unit-tank-global.js"></script>
     <script src="{{ asset('assets') }}/includes/table-unit-booster-global.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-unit-chiller-global.js"></script>
     <script src="{{ asset('assets') }}/js/forms-selects.js"></script>
 @endpush
 

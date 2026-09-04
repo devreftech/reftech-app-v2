@@ -473,78 +473,12 @@
         @include('components.overview.weekly-kpi-card', [
             'weeklyKpi' => $weeklyKpi,
             'monthLabel' => \Carbon\Carbon::createFromDate($yearNow, $monthNow, 1)->locale('id')->translatedFormat('F Y'),
+            'salesId' => $salesId ?? ($user->id ?? ''),
+            'dateFormatted' => sprintf('%02d-%04d', $monthNow, $yearNow),
         ])
     </div>
 
-    {{-- Card 2: Activities & Communication (Daily Call & CRM) --}}
-    <div class="card clean-card mb-4 overflow-hidden" id="activities">
-        <div class="card-header border-bottom bg-white p-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-            <div class="d-flex align-items-center gap-2">
-                <i class="mdi mdi-phone-log-outline text-info mdi-24px"></i>
-                <h5 class="card-title mb-0 fw-bold">Aktivitas Sales (Daily Call & CRM)</h5>
-            </div>
-            <ul class="nav nav-pills nav-pills-custom flex-wrap gap-2" id="activityTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active d-flex align-items-center gap-2" id="calls-tab" data-bs-toggle="tab" data-bs-target="#tab-calls" type="button" role="tab" aria-controls="tab-calls" aria-selected="true">
-                        <i class="mdi mdi-phone-outline"></i>
-                        <span>Daily Call</span>
-                        <span class="badge rounded-pill bg-label-info">{{ $totalDC }}</span>
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link d-flex align-items-center gap-2" id="crm-tab" data-bs-toggle="tab" data-bs-target="#tab-crm" type="button" role="tab" aria-controls="tab-crm" aria-selected="false">
-                        <i class="mdi mdi-account-multiple-outline"></i>
-                        <span>CRM Touchpoints</span>
-                        <span class="badge rounded-pill bg-label-primary">{{ $totalCRM }}</span>
-                    </button>
-                </li>
-            </ul>
-        </div>
-
-        <div class="card-body p-0">
-            <div class="tab-content p-0" id="activityTabsContent">
-                {{-- Tab 1: Daily Calls --}}
-                <div class="tab-pane fade show active" id="tab-calls" role="tabpanel" aria-labelledby="calls-tab">
-                    <div class="card-datatable table-responsive">
-                        <table class="datatable-overview-call table table-hover border-top" id="tableOverviewCall" data-url="{{ url('/db/overview/call/' . $user->id . '/' . $dateFormatted) }}">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 40px;"></th>
-                                    <th>ID</th>
-                                    <th>Perusahaan / Customer</th>
-                                    <th class="text-center" style="width: 130px;">Interaksi</th>
-                                    <th class="text-nowrap" style="width: 140px;">Tgl Terakhir</th>
-                                    <th class="text-center" style="width: 120px;">Status</th>
-                                    <th>Catatan Terakhir</th>
-                                </tr>
-                            </thead>
-                        </table>
-                    </div>
-                </div>
-
-                {{-- Tab 2: CRM Touchpoints --}}
-                <div class="tab-pane fade" id="tab-crm" role="tabpanel" aria-labelledby="crm-tab">
-                    <div class="card-datatable table-responsive">
-                        <table class="datatable-overview-crm table table-hover border-top" id="tableOverviewCrm" data-url="{{ url('/db/overview/crm/' . $user->id . '/' . $dateFormatted) }}">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 40px;"></th>
-                                    <th>ID</th>
-                                    <th>Perusahaan / Customer</th>
-                                    <th class="text-center" style="width: 130px;">Interaksi</th>
-                                    <th class="text-nowrap" style="width: 140px;">Tgl Terakhir</th>
-                                    <th class="text-center" style="width: 120px;">Status</th>
-                                    <th>Catatan Terakhir</th>
-                                </tr>
-                            </thead>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Card 3: Commercial Pipeline (Quotation, Purchase Order & Lost) --}}
+    {{-- Commercial Pipeline (Quotation, Purchase Order & Lost) --}}
     <div class="card clean-card mb-4 overflow-hidden" id="pipeline">
         <div class="card-header border-bottom bg-white p-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
             <div class="d-flex align-items-center gap-2">
@@ -912,8 +846,6 @@
 
 @push('page-script')
     <script src="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-overview-call.js?v={{ time() }}"></script>
-    <script src="{{ asset('assets') }}/includes/table-overview-crm.js?v={{ time() }}"></script>
     <script src="{{ asset('assets') }}/includes/table-overview-quotation.js?v={{ time() }}"></script>
     <script src="{{ asset('assets') }}/includes/table-overview-quotation-active.js?v={{ time() }}"></script>
     <script src="{{ asset('assets') }}/includes/table-overview-po.js?v={{ time() }}"></script>

@@ -123,14 +123,20 @@
             background: #ffffff;
         }
 
+        .box-to-wrap {
+            width: 100%;
+            margin-top: 5.3cm;
+            margin-bottom: 15px;
+            border-collapse: collapse;
+        }
+
         .box-to {
             border: 2px solid #000000;
             border-radius: 12px;
-            padding: 18px 22px;
-            width: 58%;
-            float: right;
-            margin-top: 25px;
+            padding: 16px 20px;
             background: #ffffff;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .box-to table {
@@ -147,8 +153,8 @@
 
         .doc-footer {
             border-top: 1px dashed #666666;
-            padding-top: 10px;
-            margin-top: 115px;
+            padding-top: 12px;
+            margin-top: 25px;
             clear: both;
             font-size: 11px;
             color: #555555;
@@ -257,7 +263,7 @@
                             FROM (Pengirim):
                         </div>
                         <div style="border-left: 2px solid #0284c7; padding-left: 8px;">
-                            <div style="font-weight: 700; font-size: 13px; color: #000;">{{ $senderName }}</div>
+                            <div style="font-weight: 700; font-size: 13px; color: #000;">Mr. {{ $senderName }}</div>
                             <div style="font-size: 11px; color: #444;">{{ $senderRole }} &bull; {{ $isKojisha ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima' }}</div>
                         </div>
                     </div>
@@ -304,41 +310,45 @@
                 }
             }
         @endphp
-        <div class="box-to">
-            <div style="border-bottom: 1.5px solid #000; padding-bottom: 5px; margin-bottom: 8px; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">
-                KEPADA YTH. (TO):
-            </div>
-            <table>
-                <tr>
-                    <td style="width: 100px; font-weight: 600; color: #444;">Perusahaan</td>
-                    <td style="width: 10px;">:</td>
-                    <td style="font-weight: 700; font-size: 14px; color: #000;">{{ $toCompany }}</td>
-                </tr>
-                <tr>
-                    <td style="font-weight: 600; color: #444;">Alamat</td>
-                    <td>:</td>
-                    <td style="font-weight: 500; line-height: 1.35;">{{ $recipientAddress }}</td>
-                </tr>
-                <tr>
-                    <td style="font-weight: 600; color: #444;">Attn. (PIC)</td>
-                    <td>:</td>
-                    <td style="font-weight: 700; color: #0284c7;">{{ $toPicName }}</td>
-                </tr>
-                <tr>
-                    <td style="font-weight: 600; color: #444;">Telepon / HP</td>
-                    <td>:</td>
-                    <td style="font-weight: 500;">{{ $toPicPhone }}</td>
-                </tr>
-            </table>
-        </div>
+        <table class="box-to-wrap">
+            <tr>
+                <td style="width: 40%;"></td>
+                <td style="width: 60%; vertical-align: top;">
+                    <div class="box-to">
+                        <div style="border-bottom: 1.5px solid #000; padding-bottom: 5px; margin-bottom: 8px; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">
+                            KEPADA YTH. (TO):
+                        </div>
+                        <table>
+                            <tr>
+                                <td style="width: 100px; font-weight: 600; color: #444;">Perusahaan</td>
+                                <td style="width: 10px;">:</td>
+                                <td style="font-weight: 700; font-size: 14px; color: #000;">{{ $toCompany }}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: #444;">Alamat</td>
+                                <td>:</td>
+                                <td style="font-weight: 500; line-height: 1.35;">{{ $recipientAddress }}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: #444;">Attn. (PIC)</td>
+                                <td>:</td>
+                                <td style="font-weight: 700; color: #0284c7;">{{ $toPicName }}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: #444;">Telepon / HP</td>
+                                <td>:</td>
+                                <td style="font-weight: 500;">{{ $toPicPhone }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </td>
+            </tr>
+        </table>
 
         {{-- FOOTER META --}}
         <div class="doc-footer">
             <table style="width: 100%;">
                 <tr>
-                    <td style="text-align: left;">
-                        Ref: {{ $quote->no_quote ?? '-' }}
-                    </td>
                     <td style="text-align: right; font-style: italic;">
                         Mohon konfirmasi setelah dokumen diterima dengan baik.
                     </td>

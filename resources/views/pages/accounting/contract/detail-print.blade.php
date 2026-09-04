@@ -1,503 +1,774 @@
-@extends('layouts.sales.app')
-@section('title', $sellcon->no_contract)
-<div class="invoice-print contract-print p-4 text-black">
-    <div class="container-fluid flex-grow-1 container-p-y">
+@php
+    $isKojisha  = ($quote->pic?->client?->info ?? '') === 'Kojisha' || $sellcon->type == 'Order';
+    $docHeading = $sellcon->type == 'Order' ? 'CONFIRM ORDER' : 'SELLING CONTRACT';
+    $docNoun    = $sellcon->type == 'Order' ? 'Confirm Order' : 'Selling Contract';
+    $entityName = $isKojisha ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima';
+    $hasTax     = $quote->tax != '0';
+@endphp
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ $docHeading }} — {{ $sellcon->no_contract }}</title>
 
-        {{-- ===================== HEADER ===================== --}}
-        @if ($sellcon->type == 'Selling')
-            <div class="doc-header {{ $quote->tax == 0 ? 'justify-content-end' : '' }}">
-                @if ($quote->tax != '0')
-                    <div class="brand">
-                        <div class="brand-logo mb-2">
-                            <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="Reftech" width="150">
-                        </div>
-                        <p class="brand-name mb-1">PT Reftech Jaya Optima</p>
-                        <div class="brand-address">
-                            <p class="mb-1">Taman Kopo Indah V, Soho Sommerville No. 31</p>
-                            <p class="mb-1">Bandung – Jawa Barat 40218</p>
-                            <p class="mb-0">
-                                <i class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-13px"></i>022 54417653
-                                {{ '   ' }}<i class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-13px"></i>info@reftech.id
-                            </p>
-                        </div>
-                    </div>
-                @endif
-                <div class="doc-meta">
-                    <h3 class="doc-title">Selling Contract</h3>
-                    <div class="doc-number">#{{ $sellcon->no_contract }}</div>
-                    <div class="doc-date">{{ Carbon\Carbon::parse($sellcon->date)->format('d-m-Y') }}</div>
-                </div>
-            </div>
-        @else
-            <div class="doc-header {{ $quote->tax == 0 ? 'justify-content-end' : '' }}">
-                @if ($quote->tax != '0')
-                    <div class="brand">
-                        <div class="brand-logo mb-2">
-                            <img src="{{ asset('/asset') }}/logo/Logo-update-size.png" alt="Kojisha" width="150">
-                        </div>
-                        <p class="brand-name mb-1">PT Kojisha Innotiv Indonesia</p>
-                        <div class="brand-address">
-                            <p class="mb-1">Jl. Nancep No. 45A, Setu</p>
-                            <p class="mb-1">Cibitung - Kab. Bekasi 17320</p>
-                            <p class="mb-0">
-                                <i class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-13px"></i>+62 812-1000-0997
-                                {{ ' | ' }}<i class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-13px"></i>admin@kojisha.com
-                            </p>
-                        </div>
-                    </div>
-                @endif
-                <div class="doc-meta">
-                    <h3 class="doc-title">Confirm Order</h3>
-                    <div class="doc-number">#{{ $sellcon->no_contract }}</div>
-                    <div class="doc-date">{{ Carbon\Carbon::parse($quote->estimated_date)->format('d-m-Y') }}</div>
-                </div>
-            </div>
-        @endif
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('assets/vendor/fonts/materialdesignicons.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/css/core.css') }}" />
 
-        <hr class="divider">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-        {{-- ===================== QUOTE TO ===================== --}}
-        <div class="panel mb-3">
-            <p class="panel-title">Quote To</p>
-            <div class="d-flex justify-content-between flex-wrap">
-                <div class="info-grid">
-                    <span class="label">Company</span>
-                    <span class="value">: {{ $quote->pic->client->company }}</span>
-                    <span class="label">Name PIC</span>
-                    <span class="value">: {{ $quote->pic->name_pic }}</span>
-                    <span class="label">Phone</span>
-                    <span class="value">: {{ $quote->pic->client->phone }}</span>
+        body {
+            background-color: #f1f5f9;
+            color: #0f172a;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 12px;
+            line-height: 1.45;
+            padding: 24px;
+        }
+
+        /* Screen Toolbar */
+        .screen-toolbar {
+            max-width: 210mm;
+            margin: 0 auto 20px auto;
+            background: #1e293b;
+            color: #ffffff;
+            border-radius: 8px;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+        }
+
+        .screen-toolbar .btn-print {
+            background-color: #0284c7;
+            color: #ffffff;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+
+        .screen-toolbar .btn-print:hover {
+            background-color: #0369a1;
+        }
+
+        .screen-toolbar .btn-close-window {
+            background-color: transparent;
+            color: #cbd5e1;
+            border: 1px solid #475569;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .screen-toolbar .btn-close-window:hover {
+            background-color: #334155;
+            color: #ffffff;
+        }
+
+        /* Printable Sheet Canvas */
+        .contract-sheet {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 14mm 16mm;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            position: relative;
+        }
+
+        /* Header */
+        .doc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #0f172a;
+        }
+
+        .brand-logo img {
+            max-height: 48px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .brand-name {
+            font-weight: 700;
+            font-size: 14px;
+            color: #0f172a;
+            margin-top: 4px;
+        }
+
+        .brand-address {
+            font-size: 11px;
+            color: #475569;
+            line-height: 1.5;
+            margin-top: 2px;
+        }
+
+        .doc-title-block {
+            text-align: right;
+        }
+
+        .doc-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .doc-number {
+            font-size: 13px;
+            font-weight: 700;
+            color: #0284c7;
+        }
+
+        .doc-date {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* Info Section (Quote To & Order Info) */
+        .info-section {
+            display: flex;
+            gap: 14px;
+            margin: 14px 0;
+        }
+
+        .info-card {
+            flex: 1;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px 14px;
+        }
+
+        .info-card-title {
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #0284c7;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .info-card-company {
+            font-size: 13px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .info-row {
+            display: flex;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #334155;
+            margin-bottom: 2px;
+        }
+
+        .info-row .label {
+            width: 75px;
+            color: #64748b;
+            flex-shrink: 0;
+        }
+
+        .info-row .value {
+            font-weight: 500;
+        }
+
+        /* Items Table */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 14px 0 10px 0;
+            font-size: 11.5px;
+        }
+
+        .items-table thead th {
+            background-color: #f1f5f9;
+            color: #334155;
+            font-weight: 700;
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            padding: 8px 10px;
+            border-top: 1px solid #cbd5e1;
+            border-bottom: 2px solid #cbd5e1;
+        }
+
+        .items-table tbody td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: top;
+        }
+
+        .items-table .subtitle-row td {
+            background-color: #f1f5f9;
+            font-weight: 700;
+            color: #0f172a;
+            padding: 6px 10px;
+        }
+
+        .items-table .item-title {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+
+        .items-table .item-desc {
+            font-size: 10.5px;
+            color: #475569;
+            line-height: 1.45;
+            white-space: pre-wrap;
+        }
+
+        /* Totals Block (Right Aligned) */
+        .totals-section {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 4px;
+            margin-bottom: 12px;
+        }
+
+        .totals-table {
+            width: 300px;
+            border-collapse: collapse;
+            font-size: 11.5px;
+        }
+
+        .totals-table td {
+            padding: 3px 0;
+        }
+
+        .totals-table .label {
+            color: #64748b;
+        }
+
+        .totals-table .val {
+            text-align: right;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .totals-table .grand-total-row td {
+            padding-top: 8px;
+            border-top: 1.5px solid #0f172a;
+            font-weight: 800;
+            font-size: 13px;
+            color: #0f172a;
+        }
+
+        .totals-table .grand-total-row .val {
+            font-size: 14px;
+            color: #0284c7;
+        }
+
+        /* Single Term & Condition Card */
+        .terms-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+
+        .terms-card-header {
+            background: #f1f5f9;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #0f172a;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .terms-card-body {
+            padding: 8px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .term-row {
+            display: flex;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #334155;
+        }
+
+        .term-row .term-label {
+            width: 140px;
+            color: #64748b;
+            flex-shrink: 0;
+        }
+
+        .term-row .term-sep {
+            width: 14px;
+            color: #64748b;
+            flex-shrink: 0;
+        }
+
+        .term-row .term-val {
+            font-weight: 500;
+            color: #0f172a;
+        }
+
+        /* Thank you note below */
+        .business-thanks-note {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-left: 3px solid #0284c7;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-top: 12px;
+            font-size: 11px;
+            color: #475569;
+        }
+
+        .business-thanks-note .thanks-title {
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 2px;
+        }
+
+        .business-thanks-note .thanks-desc {
+            line-height: 1.4;
+        }
+
+        /* Signatures */
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 24px;
+            page-break-inside: avoid;
+        }
+
+        .signature-box {
+            width: 45%;
+            text-align: center;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px 14px;
+        }
+
+        .signature-label {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+
+        .signature-img-wrap {
+            height: 65px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 4px 0;
+        }
+
+        .signature-img-wrap img {
+            max-height: 60px;
+            max-width: 120px;
+            object-fit: contain;
+        }
+
+        .signature-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
+            border-top: 1px solid #cbd5e1;
+            padding-top: 4px;
+            margin-top: 4px;
+        }
+
+        .signature-role {
+            font-size: 10.5px;
+            color: #64748b;
+        }
+
+        /* Print Media Styles */
+        @media print {
+            body {
+                background: #ffffff;
+                padding: 0;
+                font-size: 11px;
+            }
+
+            .screen-toolbar {
+                display: none !important;
+            }
+
+            .contract-sheet {
+                width: 100%;
+                min-height: auto;
+                margin: 0;
+                padding: 0;
+                border: none;
+                box-shadow: none;
+            }
+
+            @page {
+                size: A4 portrait;
+                margin: 12mm 14mm 12mm 14mm;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    {{-- Screen Toolbar --}}
+    <div class="screen-toolbar">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-primary px-2.5 py-1">{{ $docHeading }}</span>
+            <span class="fw-semibold">#{{ $sellcon->no_contract }}</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button onclick="window.print()" class="btn-print">
+                <i class="mdi mdi-printer"></i> Print / Save as PDF
+            </button>
+            <button onclick="window.close()" class="btn-close-window">
+                Tutup
+            </button>
+        </div>
+    </div>
+
+    {{-- Printable Sheet --}}
+    <div class="contract-sheet">
+        {{-- Header --}}
+        <div class="doc-header">
+            <div class="brand-info">
+                <div class="brand-logo">
+                    @if ($sellcon->type == 'Selling')
+                        <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="PT Reftech Jaya Optima">
+                    @else
+                        <img src="{{ asset('/asset') }}/logo/Logo-update-size.png" alt="PT Kojisha Innotiv Indonesia">
+                    @endif
                 </div>
-                <div class="info-grid">
-                    <span class="label">Seller</span>
-                    <span class="value">:
-                        @if ($quote->tax != '0')
-                            {{ $sellcon->type == 'Selling' ? 'PT Reftech Jaya Optima' : 'PT Kojisha Innotiv Indonesia' }}
-                        @else
-                            {{ $quote->sales_name }}
+                <div class="brand-name">{{ $entityName }}</div>
+                <div class="brand-address">
+                    @if ($sellcon->type == 'Selling')
+                        <p>Taman Kopo Indah V, Ruko Sommerville No. 31, Bandung – Jawa Barat 40218</p>
+                        <p>Telp: 022 54417653 &nbsp;|&nbsp; Email: info@reftech.id</p>
+                        @if ($hasTax)
+                            <p><strong>NPWP:</strong> 07.372.857.1-842.9000</p>
                         @endif
-                    </span>
-                    <span class="label">Email</span>
-                    <span class="value">: {{ $quote->pic->client->email }}</span>
+                    @else
+                        <p>Jl. Nancep No. 45A, Setu, Cibitung - Kab. Bekasi 17320</p>
+                        <p>Telp: +62 812-1000-0997 &nbsp;|&nbsp; Email: admin@kojisha.com</p>
+                        @if ($hasTax)
+                            <p><strong>NPWP:</strong> 96.484.859.2-413.000</p>
+                        @endif
+                    @endif
+                </div>
+            </div>
+
+            <div class="doc-title-block">
+                <h1 class="doc-title">{{ $docHeading }}</h1>
+                <div class="doc-number">#{{ $sellcon->no_contract }}</div>
+                <div class="doc-date">Date: {{ Carbon\Carbon::parse($sellcon->date)->format('d-m-Y') }}</div>
+            </div>
+        </div>
+
+        {{-- Info Section --}}
+        <div class="info-section">
+            {{-- Quote To --}}
+            <div class="info-card">
+                <div class="info-card-title">Customer / Quote To</div>
+                <div class="info-card-company">{{ $quote->pic?->client?->company ?? '-' }}</div>
+                <div class="info-row">
+                    <span class="label">Attn:</span>
+                    <span class="value">{{ $quote->pic?->name_pic ?? '-' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Phone:</span>
+                    <span class="value">{{ $quote->pic?->phone_pic ?? $quote->pic?->client?->phone ?? '-' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Email:</span>
+                    <span class="value">{{ $quote->pic?->email_pic ?? $quote->pic?->client?->email ?? '-' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Address:</span>
+                    <span class="value">{{ $quote->pic?->client?->address ?? '-' }}</span>
+                </div>
+            </div>
+
+            {{-- Contract Details --}}
+            <div class="info-card">
+                <div class="info-card-title">Order Information</div>
+                <div class="info-row">
+                    <span class="label">Quotation:</span>
+                    <span class="value"><strong>{{ $quote->no_quote }}</strong></span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Seller:</span>
+                    <span class="value">{{ $entityName }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Sales:</span>
+                    <span class="value">{{ $quote->sales?->name ?? '-' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Tax Status:</span>
+                    <span class="value">{{ $hasTax ? 'PPN ' . $quote->tax . '% (Taxable)' : 'Non-PPN (0%)' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Type:</span>
+                    <span class="value">{{ $quote->type }}</span>
                 </div>
             </div>
         </div>
 
-        {{-- ===================== ITEMS ===================== --}}
+        {{-- Items Table --}}
         @if ($quote->type == 'Sparepart')
-            <div class="mb-3">
-                <table class="table table-borderless items-table m-0" style="width: 100%">
-                    <thead class="text-center">
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th style="width: 4%; text-align: center;">No</th>
+                        <th style="width: 50%;">Item Description</th>
+                        <th style="width: 16%; text-align: right;">Price (IDR)</th>
+                        <th style="width: 8%; text-align: center;">Qty</th>
+                        <th style="width: 6%; text-align: center;">Disc</th>
+                        <th style="width: 16%; text-align: right;">Amount (IDR)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @php $no = 0; @endphp
+                    @foreach ($dquote as $product)
+                        @php $no++; @endphp
                         <tr>
-                            <th class="no">No.</th>
-                            <th class="item text-nowrap">Item</th>
-                            <th class="price">Price (IDR)</th>
-                            <th class="qty">Qty</th>
-                            <th class="disc">Disc</th>
-                            <th class="amount">Amount (IDR)</th>
+                            <td style="text-align: center; color: #64748b;">{{ $no }}</td>
+                            <td>
+                                <div class="item-title">
+                                    @if ($product->id_equivalent == '0')
+                                        -
+                                    @else
+                                        {{ $product->equivalent->brand }} {{ $product->equivalent->pn }}
+                                    @endif
+                                </div>
+                                <div class="item-desc">{{ $product->detail_product }}</div>
+                            </td>
+                            <td style="text-align: right;">
+                                {{ $product->amount == 0 ? 'SBO' : number_format($product->price, 0, '', '.') }}
+                            </td>
+                            <td style="text-align: center; font-weight: 600;">
+                                {{ $product->qty }} {{ $product->info_qty }}
+                            </td>
+                            <td style="text-align: center;">
+                                {{ $product->disc }}%
+                            </td>
+                            <td style="text-align: right; font-weight: 700;">
+                                {{ number_format($product->amount, 0, '', '.') }}
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @php $no = 0; @endphp
-                        @foreach ($dquote as $product)
+                    @endforeach
+                </tbody>
+            </table>
+        @else
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th style="width: 4%; text-align: center;">No</th>
+                        <th style="width: 52%;">Item Description</th>
+                        <th style="width: 10%; text-align: center;">Qty</th>
+                        <th style="width: 17%; text-align: right;">Price (IDR)</th>
+                        <th style="width: 17%; text-align: right;">Amount (IDR)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @php $abjad = 64; @endphp
+                    @foreach ($subQuote as $subJudul)
+                        @php
+                            $no = 0;
+                            $abjad++;
+                        @endphp
+                        <tr class="subtitle-row">
+                            <td style="text-align: center; font-weight: 700; color: #0284c7;">{{ chr($abjad) }}</td>
+                            <td colspan="4" style="font-weight: 700;">{{ $subJudul->subtitle }}</td>
+                        </tr>
+                        @foreach ($subJudul->detail as $product)
                             @php $no++; @endphp
                             <tr>
-                                <td class="align-middle">{{ $no }}</td>
-                                <td class="text-nowrap align-top">
-                                    <p class="mb-0 fw-semibold item-title">
-                                        @if ($product->id_equivalent == '0')
-                                            -
-                                        @else
-                                            {{ $product->equivalent->brand }} {{ $product->equivalent->pn }}
-                                        @endif
-                                    </p>
-                                    <pre class="mb-0 item-detail">{{ $product->detail_product }}</pre>
+                                <td style="text-align: center; color: #64748b;">{{ $no }}</td>
+                                <td>
+                                    <div class="item-title">{{ $product->product }}</div>
+                                    @if ($product->detail != '-')
+                                        <div class="item-desc">{{ $product->detail }}</div>
+                                    @endif
                                 </td>
-                                <td class="align-top text-end">RP {{ number_format($product->price, 0, '', '.') }}</td>
-                                <td class="align-top">{{ $product->qty }} {{ $product->info_qty }}</td>
-                                <td class="align-top">{{ $product->disc }}%</td>
-                                <td class="align-top text-end">RP {{ number_format($product->amount, 0, '', '.') }}</td>
-                            </tr>
-                        @endforeach
-                        <tr class="totals-row">
-                            <td colspan="3" rowspan="2" class="align-top pt-4"></td>
-                            <td colspan="2" class="text-end pt-4 pb-0">
-                                <p class="mb-2">Subtotal:</p>
-                                @if ($quote->diskon != 0)
-                                    <p class="mb-2">Discount:</p>
-                                    <p class="mb-2">Total After Discount:</p>
-                                @endif
-                                <p class="mb-2">{{ $quote->tax == '11' ? 'Vat (11%)' : 'Vat' }}:</p>
-                                <p class="mb-2">Shipping Cost:</p>
-                            </td>
-                            @php
-                                if ($quote->diskon > 0) {
-                                    $afterDisc = $quote->subtotal - $quote->diskon;
-                                } else {
-                                    $afterDisc = $quote->subtotal;
-                                }
-
-                                if ($quote->tax > 0) {
-                                    $vat = ($afterDisc * $quote->tax) / 100;
-                                } else {
-                                    $vat = 0;
-                                }
-                            @endphp
-                            <td colspan="2" class="text-end pt-4 pb-0">
-                                <p class="fw-semibold mb-2">RP {{ number_format($quote->subtotal, 0, '', '.') }}</p>
-                                @if ($quote->diskon != 0)
-                                    <p class="fw-semibold mb-2">RP {{ number_format($quote->diskon, 0, '', '.') }}</p>
-                                    <p class="fw-semibold mb-2">RP {{ number_format($quote->subtotal - $quote->diskon, 0, '', '.') }}</p>
-                                @endif
-                                <p class="fw-semibold mb-2">{{ $tax == '0' ? '0' : 'RP ' . number_format($vat, 0, '', '.') }}</p>
-                                <p class="fw-semibold mb-2">RP {{ number_format($quote->shipping, 0, '', '.') }}</p>
-                            </td>
-                        </tr>
-                        <tr class="grand-total">
-                            <td colspan="2">
-                                <p class="mb-0 text-end">Total:</p>
-                            </td>
-                            <td colspan="2">
-                                <p class="fw-semibold mb-0 text-end">Rp {{ number_format($quote->harga_total, 0, '', '.') }}</p>
-                            </td>
-                        </tr>
-                        <tr class="spacer-row">
-                            <td colspan="5"></td>
-                        </tr>
-                        <tr class="note-row">
-                            <td colspan="3" rowspan="2" class="align-top pt-4"></td>
-                            <td colspan="2" class="note text-end align-top">
-                                <p class="mb-0">Note:</p>
-                            </td>
-                            <td colspan="2" class="note">
-                                <pre class="fw-semibold mb-0">{{ $quote->termncon[0]->note }}</pre>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="panel mb-3">
-                <p class="panel-title">Term &amp; Condition</p>
-                <div class="info-grid info-grid-wide">
-                    <span class="label">Validity Of Quotation</span>
-                    <span class="value">: {{ $quote->termncon[0]->validity }}</span>
-                    <span class="label">Price</span>
-                    <span class="value">: {{ $quote->termncon[0]->pricing }}</span>
-                    <span class="label">Delivery Process</span>
-                    <span class="value">: {{ $quote->termncon[0]->delivery_process }}</span>
-                    <span class="label">Payment</span>
-                    <span class="value">: {{ $quote->termncon[0]->payment }}</span>
-                </div>
-            </div>
-        @else
-            <div class="mb-3">
-                <table class="table table-bordered items-table m-0" style="width: 100%">
-                    <thead class="text-center">
-                        <tr class="align-middle">
-                            <th class="no" style="width: 1%;">No.</th>
-                            <th style="width: 49%;">Item</th>
-                            <th class="price" style="width: 10%;">Price (IDR)</th>
-                            <th class="qty" style="width: 10%;">Qty</th>
-                            <th class="disc" style="width: 5%;">Disc</th>
-                            <th style="width: 15%;">Amount (IDR)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @php $abjad = 64; @endphp
-                        @foreach ($subQuote as $subJudul)
-                            @php
-                                $no = 0;
-                                $abjad++;
-                            @endphp
-                            <tr class="subtitle-row">
-                                <td class="align-middle">
-                                    <p class="fw-bold mb-0">{{ chr($abjad) }}</p>
+                                <td style="text-align: center; font-weight: 600;">
+                                    {{ $product->qty }} {{ $product->info_qty }}
                                 </td>
-                                <td class="text-nowrap align-middle" colspan="5">
-                                    <p class="fw-bold mb-0">{{ $subJudul->subtitle }}</p>
+                                <td style="text-align: right;">
+                                    {{ number_format($product->price, 0, '', '.') }}
+                                </td>
+                                <td style="text-align: right; font-weight: 700;">
+                                    {{ number_format($product->amount, 0, '', '.') }}
                                 </td>
                             </tr>
-                            @foreach ($subJudul->detail as $product)
-                                @php $no++; @endphp
-                                <tr class="detail-row">
-                                    <td class="align-top py-1">
-                                        <p class="mb-1">{{ $no }}</p>
-                                    </td>
-                                    <td class="align-top">
-                                        <p class="mb-1">{{ $product->product }}</p>
-                                        @if ($product->detail != '-')
-                                            <pre class="mb-0 item-detail">{{ $product->detail }}</pre>
-                                        @endif
-                                    </td>
-                                    <td class="align-top py-1 text-end">
-                                        <p class="mb-0">{{ number_format($product->price, 0, '', '.') }}</p>
-                                    </td>
-                                    <td class="align-top py-1">
-                                        <p class="mb-0">{{ $product->qty }} {{ $product->info_qty }}</p>
-                                    </td>
-                                    <td class="align-top py-1 text-end">
-                                        <p class="mb-0">{{ number_format($product->disc, 0, '', '.') }}%</p>
-                                    </td>
-                                    <td class="align-top py-1 text-end">
-                                        <p class="mb-0">{{ number_format($product->amount, 0, '', '.') }}</p>
-                                    </td>
-                                </tr>
-                            @endforeach
                         @endforeach
-                        <tr class="grand-total">
-                            <td colspan="4" class="border-right">
-                                <p class="fw-bold mb-0 text-black text-end">
-                                    TOTAL PRICE, {{ $quote->tax != 0 ? 'INCLUDE' : 'EXCLUDE' }} VAT 11%
-                                </p>
-                            </td>
-                            <td colspan="2" class="text-end border-left">
-                                <p class="fw-bold mb-0 text-end text-black">RP {{ number_format($quote->harga_total, 0, '', '.') }}</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
 
-            <div class="panel mb-3">
-                <p class="panel-title">Term &amp; Condition</p>
-                <div class="info-grid info-grid-wide">
-                    <span class="label">Validity of Quote</span>
-                    <span class="value">: {{ $quote->termncon[0]->validity }}</span>
-                    <span class="label">Price</span>
-                    <span class="value">: {{ $quote->termncon[0]->pricing }}</span>
-                    <span class="label">Delivery Process</span>
-                    <span class="value">: {{ $quote->termncon[0]->delivery_process }}</span>
-                    <span class="label">Payment</span>
-                    <span class="value">: {{ $quote->termncon[0]->payment }}</span>
-                    <span class="label">Warranty</span>
-                    <span class="value">: {{ $quote->termncon[0]->warranty }}</span>
+        {{-- Totals Section (Right Aligned) --}}
+        @php
+            $afterDisc = $quote->diskon > 0 ? $quote->subtotal - $quote->diskon : $quote->subtotal;
+            $vat = $quote->tax != 0 ? ($afterDisc * $quote->tax) / 100 : 0;
+        @endphp
+        <div class="totals-section">
+            <table class="totals-table">
+                <tr>
+                    <td class="label">Subtotal:</td>
+                    <td class="val">Rp {{ number_format($quote->subtotal, 0, '', '.') }}</td>
+                </tr>
+                @if ($quote->diskon > 0)
+                    <tr>
+                        <td class="label" style="color: #dc2626;">Discount:</td>
+                        <td class="val" style="color: #dc2626;">- Rp {{ number_format($quote->diskon, 0, '', '.') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">After Discount:</td>
+                        <td class="val">Rp {{ number_format($afterDisc, 0, '', '.') }}</td>
+                    </tr>
+                @endif
+                @if ($hasTax)
+                    <tr>
+                        <td class="label">VAT / Tax ({{ $quote->tax }}%):</td>
+                        <td class="val">Rp {{ number_format($vat, 0, '', '.') }}</td>
+                    </tr>
+                @endif
+                @if ($quote->shipping > 0)
+                    <tr>
+                        <td class="label">Shipping:</td>
+                        <td class="val">Rp {{ number_format($quote->shipping, 0, '', '.') }}</td>
+                    </tr>
+                @endif
+                <tr class="grand-total-row">
+                    <td class="label">{{ $hasTax ? 'TOTAL (INC PPN):' : 'TOTAL (EXC PPN):' }}</td>
+                    <td class="val">Rp {{ number_format($quote->harga_total, 0, '', '.') }}</td>
+                </tr>
+            </table>
+        </div>
+
+        {{-- Single Term & Condition Card --}}
+        @if (isset($quote->termncon[0]))
+            <div class="terms-card">
+                <div class="terms-card-header">TERM &amp; CONDITION</div>
+                <div class="terms-card-body">
+                    <div class="term-row">
+                        <span class="term-label">Validity of Quote</span>
+                        <span class="term-sep">:</span>
+                        <span class="term-val">{{ $quote->termncon[0]->validity ?: '-' }}</span>
+                    </div>
+                    <div class="term-row">
+                        <span class="term-label">Price</span>
+                        <span class="term-sep">:</span>
+                        <span class="term-val">{{ $quote->termncon[0]->pricing ?: '-' }}</span>
+                    </div>
+                    <div class="term-row">
+                        <span class="term-label">Delivery Process</span>
+                        <span class="term-sep">:</span>
+                        <span class="term-val">{{ $quote->termncon[0]->delivery_process ?: '-' }}</span>
+                    </div>
+                    <div class="term-row">
+                        <span class="term-label">Payment</span>
+                        <span class="term-sep">:</span>
+                        <span class="term-val">{{ $quote->termncon[0]->payment ?: '-' }}</span>
+                    </div>
+                    @if (!empty($quote->termncon[0]->note))
+                        <div class="term-row">
+                            <span class="term-label">Note</span>
+                            <span class="term-sep">:</span>
+                            <span class="term-val">{{ $quote->termncon[0]->note }}</span>
+                        </div>
+                    @endif
                 </div>
             </div>
         @endif
 
-        {{-- ===================== SIGNATURES ===================== --}}
-        @if ($sellcon->type == 'Selling')
-            <div class="signature-row">
-                <div class="signature-col">
-                    <p class="signature-label">Authorized By,</p>
-                    @if ($quote->tax != '0')
-                        <img src="{{ asset('/asset') }}/contract/sign-irene.jpeg" alt="Signature">
+        {{-- Thank you for your business Note (Moved to bottom) --}}
+        <div class="business-thanks-note">
+            <p class="thanks-title">Thank you for your business!</p>
+            <p class="thanks-desc mb-0">Dokumen ini merupakan konfirmasi kesepakatan penjualan/pesanan resmi antara <strong>{{ $entityName }}</strong> dan <strong>{{ $quote->pic?->client?->company ?? 'Customer' }}</strong>.</p>
+        </div>
+
+        {{-- Signatures Section --}}
+        <div class="signature-section">
+            {{-- Authorized By --}}
+            <div class="signature-box">
+                <div class="signature-label">Authorized By,</div>
+                <div class="signature-img-wrap">
+                    @if ($sellcon->type == 'Selling')
+                        @if ($hasTax)
+                            <img src="{{ asset('/asset') }}/contract/sign-irene.jpeg" alt="Signature Irene">
+                        @else
+                            <img src="{{ asset('/asset') }}/sign/ttdirene.jpg" alt="Signature Irene">
+                        @endif
                     @else
-                        <img src="{{ asset('/asset') }}/sign/ttdirene.jpg" alt="Signature">
-                    @endif
-                    <p class="signature-name">Mrs. Irene</p>
-                    @if ($quote->tax != '0')
-                        <p class="signature-role">PT. Reftech Jaya Optima</p>
+                        <img src="{{ asset('/asset') }}/contract/sign-dedeh.png" alt="Signature Dedeh">
                     @endif
                 </div>
-                <div class="signature-col"></div>
-                <div class="signature-col">
-                    <p class="signature-label">Accepted By Customer,</p>
-                    <div class="signature-spacer"></div>
-                    <p class="signature-name">{{ $quote->pic->name_pic }}</p>
-                    <p class="signature-role">{{ $quote->pic->client->company }}</p>
-                </div>
+                <div class="signature-name">{{ $sellcon->type == 'Selling' ? 'Mrs. Irene' : 'Dedeh Sulastri' }}</div>
+                <div class="signature-role">{{ $entityName }}</div>
             </div>
-        @else
-            <div class="signature-row">
-                <div class="signature-col">
-                    <p class="signature-label">Authorized By,</p>
-                    <img src="{{ asset('/asset') }}/contract/sign-dedeh.png" alt="Signature">
-                    <p class="signature-name">Dedeh Sulastri</p>
-                    <p class="signature-role">Director</p>
+
+            {{-- Accepted By Customer --}}
+            <div class="signature-box">
+                <div class="signature-label">Accepted By Customer,</div>
+                <div class="signature-img-wrap">
+                    @if ($sellcon->isSignedByCustomer() && $sellcon->customer_signature)
+                        <img src="{{ asset($sellcon->customer_signature) }}" alt="Customer Signature" style="max-height: 52px; max-width: 140px; object-fit: contain;">
+                    @else
+                        {{-- Blank area for physical stamp & sign --}}
+                    @endif
                 </div>
-                <div class="signature-col"></div>
-                <div class="signature-col">
-                    <p class="signature-label">Accepted By Customer,</p>
-                    <div class="signature-spacer"></div>
-                    <p class="signature-name">{{ $quote->pic->name_pic }}</p>
-                    <p class="signature-role">{{ $quote->pic->client->company }}</p>
+                <div class="signature-name">
+                    {{ $sellcon->isSignedByCustomer() ? $sellcon->customer_signer_name : ($quote->pic?->name_pic ?: '..............................') }}
                 </div>
+                <div class="signature-role">
+                    {{ $sellcon->isSignedByCustomer() ? ($sellcon->customer_signer_position ?: ($quote->pic?->client?->company ?? '-')) : ($quote->pic?->client?->company ?? '-') }}
+                </div>
+                @if ($sellcon->isSignedByCustomer() && $sellcon->signed_at)
+                    <div style="font-size: 8.5px; color: #16a34a; font-weight: 600; margin-top: 2px;">
+                        ✓ Signed on {{ date('d-m-Y H:i', strtotime($sellcon->signed_at)) }}
+                    </div>
+                @endif
             </div>
-        @endif
+        </div>
     </div>
-</div>
-@push('after-style')
-    <!-- Page CSS -->
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/css/pages/app-invoice-print.css" />
-    <link rel="stylesheet" href="style.css">
-    <style>
-        .contract-print,
-        .contract-print p,
-        .contract-print h1,
-        .contract-print h2,
-        .contract-print h3,
-        .contract-print h4,
-        .contract-print h5,
-        .contract-print h6 {
-            color: #1a1a1a;
-        }
 
-        /* Header: always a top-aligned row, never lets Bootstrap's responsive
-           flex-column classes or a missing stylesheet break the alignment. */
-        .contract-print .doc-header {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            align-items: flex-start !important;
-            justify-content: space-between;
-            gap: 24px;
-        }
-        .contract-print .brand-logo img {
-            width: 150px;
-        }
-        .contract-print .brand-name {
-            font-weight: 700;
-            font-size: 15px;
-        }
-        .contract-print .brand-address {
-            font-size: 12px;
-            color: #555;
-        }
-        .contract-print .doc-meta {
-            text-align: right;
-            white-space: nowrap;
-        }
-        .contract-print .doc-title {
-            font-weight: 700;
-            font-size: 22px;
-            letter-spacing: .3px;
-            margin-bottom: 2px;
-            text-transform: uppercase;
-        }
-        .contract-print .doc-number {
-            font-weight: 700;
-            font-size: 14px;
-        }
-        .contract-print .doc-date {
-            color: #888;
-            font-size: 13px;
-            margin-top: 2px;
-        }
-        .contract-print .divider {
-            margin: 16px 0 20px;
-        }
-
-        /* Panels (Quote To / Term & Condition) */
-        .contract-print .panel {
-            background: #f7f7f8;
-            border-radius: 6px;
-            padding: 16px 20px;
-        }
-        .contract-print .panel-title {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-        .contract-print .info-grid {
-            display: grid;
-            grid-template-columns: max-content 1fr;
-            column-gap: 10px;
-            row-gap: 4px;
-            font-size: 13px;
-        }
-        .contract-print .info-grid .label {
-            font-weight: 500;
-            color: #444;
-        }
-        .contract-print .info-grid-wide {
-            grid-template-columns: 170px 1fr;
-            max-width: 520px;
-        }
-
-        /* Items table */
-        .contract-print .items-table thead th {
-            background: #eef0f2 !important;
-            color: #1a1a1a !important;
-            font-weight: 600;
-            font-size: 12px;
-            padding: 8px 10px;
-        }
-        .contract-print .items-table td {
-            padding: 6px 10px;
-            font-size: 12px;
-        }
-        .contract-print .items-table .item-title {
-            font-size: 11px;
-        }
-        .contract-print .items-table .item-detail {
-            font-size: 11px;
-            font-family: 'Inter', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 100%;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            margin: 0;
-        }
-        .contract-print .items-table .subtitle-row td {
-            background: #f0f0f0;
-        }
-        .contract-print .items-table .detail-row td {
-            border-top: none !important;
-            border-bottom: none !important;
-        }
-        .contract-print .items-table .totals-row td,
-        .contract-print .items-table .note-row td {
-            font-size: 12px;
-        }
-        .contract-print .items-table .spacer-row td {
-            height: 10px;
-            padding: 0;
-        }
-        .contract-print .items-table .note {
-            background: #fbfbfb;
-        }
-        .contract-print .items-table .note pre {
-            font-family: 'Inter', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 100%;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            font-size: 12px;
-        }
-        .contract-print .items-table .grand-total td {
-            background: #eef0f2;
-            font-size: 13px;
-            padding-top: 8px;
-            padding-bottom: 8px;
-        }
-        .contract-print .items-table .grand-total.border-right {
-            border-right: 1px solid rgba(0, 0, 0, .1);
-        }
-
-        /* Signatures */
-        .contract-print .signature-row {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 56px;
-        }
-        .contract-print .signature-col {
-            flex: 1;
-            text-align: center;
-        }
-        .contract-print .signature-col img {
-            width: 100px;
-            height: 77px;
-            object-fit: contain;
-        }
-        .contract-print .signature-label {
-            font-weight: 500;
-            font-size: 14px;
-            margin-bottom: 4px;
-        }
-        .contract-print .signature-spacer {
-            height: 77px;
-        }
-        .contract-print .signature-name {
-            font-weight: 600;
-            margin: 8px 0 0;
-        }
-        .contract-print .signature-role {
-            margin: 0;
-            font-size: 13px;
-            color: #555;
-        }
-    </style>
-@endpush
-@push('after-script')
-    <script src="{{ asset('assets') }}/js/app-invoice-print.js"></script>
-@endpush
+</body>
+</html>

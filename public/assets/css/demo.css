@@ -482,5 +482,97 @@ html.dark-style .nav-tabs .nav-link:not(.active) {
   color: #a1a0b5;
 }
 
+/* ==========================================================================
+   Global Smooth Modals & Backdrop Blur Animation (Bootstrap & SweetAlert2)
+   ========================================================================== */
+
+/* 1. Global SweetAlert2 Backdrop Blur & Smooth Scale-in Animation */
+.swal2-container {
+  transition: background-color 0.25s ease !important;
+}
+
+.swal2-container.swal2-backdrop-show {
+  background: rgba(30, 41, 59, 0.45) !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+}
+
+.swal2-popup {
+  border-radius: 16px !important;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.08) !important;
+}
+
+.swal2-popup.swal2-show,
+.swal2-show {
+  animation: swalSmoothIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.swal2-popup.swal2-hide,
+.swal2-hide {
+  animation: swalSmoothOut 0.2s cubic-bezier(0.7, 0, 0.84, 0) forwards !important;
+}
+
+@keyframes swalSmoothIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(-12px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes swalSmoothOut {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+}
+
+/* 2. Global Bootstrap Modals Smooth Scale-in & Backdrop Blur (Identical to SweetAlert2) */
+.modal.fade {
+  transition: background-color 0.25s ease, backdrop-filter 0.25s ease, opacity 0.25s ease-out !important;
+}
+
+.modal.fade .modal-dialog {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease-out !important;
+  transform: scale(0.94) translateY(-14px) !important;
+}
+
+.modal.show .modal-dialog {
+  transform: scale(1) translateY(0) !important;
+}
+
+.modal.show {
+  background-color: rgba(30, 41, 59, 0.45) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+
+.modal-content {
+  border-radius: 14px !important;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25), 0 6px 18px rgba(15, 23, 42, 0.1) !important;
+}
+
+/* Let .modal handle backdrop & blur cleanly without stacking context conflict */
+.modal-backdrop.show {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Dark mode backdrop adjustment */
+html.dark-style .modal.show {
+  background-color: rgba(11, 17, 32, 0.65) !important;
+}
+
+html.dark-style .swal2-container.swal2-backdrop-show {
+  background: rgba(11, 17, 32, 0.65) !important;
+}
+
 
 
