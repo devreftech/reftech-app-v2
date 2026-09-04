@@ -28,4 +28,6 @@ public/asset/machines/
 *.sql.gz
 *.gz
 storage/scratch/
+# Claude Code (tooling lokal, tidak dipakai runtime aplikasi)
 CLAUDE.md
+.claude/

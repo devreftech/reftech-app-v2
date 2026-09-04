@@ -4597,7 +4597,8 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
     Route::get('/db/prospect/support', function () {
         $prospect = Prospect::join('pic', 'pic.id', '=', 'prospect.id_pic')
             ->join('client', 'client.id', '=', 'pic.id_client')
-            ->leftJoin('users', 'users.id', '=', 'prospect.id_sales')
+            ->leftJoin('users as sale', 'sale.id', '=', 'prospect.id_sales')
+            ->leftJoin('users as supp', 'supp.id', '=', 'prospect.id_support')
             ->leftJoin('quotation', 'quotation.id', '=', 'prospect.id_quotation')
             ->leftJoin('unit_quotation', function ($join) {
                 $join->on('unit_quotation.id', '=', 'prospect.id_quotation')
@@ -4609,7 +4610,10 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             ->orderByDesc('prospect.id')
             ->get([
                 'prospect.id', 'prospect.category', 'prospect.kebutuhan', 'prospect.provide', 'prospect.date',
-                'client.company', 'users.name', 'users.image', 'pic.name_pic',
+                'client.company', 'client.area', 'client.source',
+                'supp.name as support', 'supp.image as support_image',
+                'sale.name as sales', 'sale.image as sales_image',
+                'pic.name_pic', 'pic.phone_pic',
                 DB::raw('COALESCE(unit_quotation.id, quotation.id) as quotation_id'),
                 DB::raw('COALESCE(unit_quotation.no_quote, quotation.no_quote) as no_quote'),
                 DB::raw('COALESCE(unit_quotation.status, quotation.status) as status'),
