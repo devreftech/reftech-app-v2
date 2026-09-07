@@ -12,6 +12,25 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Ensure columns exist first
+        Schema::table('bank', function (Blueprint $table) {
+            if (!Schema::hasColumn('bank', 'initial_balance')) {
+                $table->decimal('initial_balance', 18, 2)->default(0)->after('bank');
+            }
+            if (!Schema::hasColumn('bank', 'atas_nama')) {
+                $table->string('atas_nama')->nullable()->after('no_rek');
+            }
+            if (!Schema::hasColumn('bank', 'branch')) {
+                $table->string('branch')->nullable()->after('atas_nama');
+            }
+            if (!Schema::hasColumn('bank', 'is_active')) {
+                $table->boolean('is_active')->default(1)->after('saldo');
+            }
+            if (!Schema::hasColumn('bank', 'description')) {
+                $table->text('description')->nullable()->after('is_active');
+            }
+        });
+
         // 1. Update ID 1 (Mandiri)
         $b1 = Bank::find(1);
         if ($b1) {
