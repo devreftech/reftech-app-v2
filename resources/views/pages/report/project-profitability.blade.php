@@ -15,23 +15,37 @@
             transform: translateY(-3px);
             box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
         }
+        .badge.badge-healthy,
         .badge-healthy {
-            background-color: #dcfce7;
-            color: #15803d;
-            border: 1px solid #bbf7d0;
-            font-weight: 700;
+            background-color: #d1fae5 !important;
+            color: #065f46 !important;
+            border: 1px solid #6ee7b7 !important;
+            font-weight: 700 !important;
         }
+        .badge.badge-moderate,
         .badge-moderate {
-            background-color: #fef3c7;
-            color: #b45309;
-            border: 1px solid #fde68a;
-            font-weight: 700;
+            background-color: #fef3c7 !important;
+            color: #92400e !important;
+            border: 1px solid #fcd34d !important;
+            font-weight: 700 !important;
         }
+        .badge.badge-critical,
         .badge-critical {
-            background-color: #fee2e2;
-            color: #b91c1c;
-            border: 1px solid #fecaca;
-            font-weight: 700;
+            background-color: #fee2e2 !important;
+            color: #991b1b !important;
+            border: 1px solid #fca5a5 !important;
+            font-weight: 700 !important;
+        }
+        .filter-btn-health {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .filter-btn-health:hover {
+            transform: scale(1.03);
+            filter: brightness(0.95);
+        }
+        .filter-btn-health.active-filter {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5) !important;
         }
     </style>
 @endpush
@@ -123,25 +137,26 @@
             <div class="row align-items-center g-3">
                 <div class="col-12 col-md-3">
                     <span class="fw-bold text-dark d-block">Distribusi Margin Proyek</span>
-                    <small class="text-muted">Kesehatan profitabilitas portofolio proyek</small>
+                    <small class="text-muted">Klik kategori untuk filter cepat:</small>
                 </div>
                 <div class="col-12 col-md-9">
-                    <div class="d-flex flex-wrap gap-3 align-items-center">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge badge-healthy px-3 py-2 rounded-pill fs-6">
-                                <i class="mdi mdi-check-circle-outline me-1"></i> {{ $healthyCount }} Proyek Sehat (&ge; 25%)
-                            </span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge badge-moderate px-3 py-2 rounded-pill fs-6">
-                                <i class="mdi mdi-alert-outline me-1"></i> {{ $moderateCount }} Proyek Moderat (10-24%)
-                            </span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge badge-critical px-3 py-2 rounded-pill fs-6">
-                                <i class="mdi mdi-alert-circle-outline me-1"></i> {{ $criticalCount }} Proyek Kritis (&lt; 10%)
-                            </span>
-                        </div>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <a href="{{ request()->fullUrlWithQuery(['health' => '']) }}"
+                           class="badge filter-btn-health {{ empty($healthFilter) ? 'bg-primary text-white active-filter' : 'bg-label-secondary' }} px-3 py-2 rounded-pill fs-6 text-decoration-none fw-bold">
+                            <i class="mdi mdi-view-grid-outline me-1"></i> Semua ({{ $healthyCount + $moderateCount + $criticalCount }})
+                        </a>
+                        <a href="{{ request()->fullUrlWithQuery(['health' => 'healthy']) }}"
+                           class="badge badge-healthy filter-btn-health px-3 py-2 rounded-pill fs-6 text-decoration-none {{ $healthFilter === 'healthy' ? 'active-filter' : '' }}">
+                            <i class="mdi mdi-check-circle-outline me-1"></i> {{ $healthyCount }} Proyek Sehat (&ge; 25%)
+                        </a>
+                        <a href="{{ request()->fullUrlWithQuery(['health' => 'moderate']) }}"
+                           class="badge badge-moderate filter-btn-health px-3 py-2 rounded-pill fs-6 text-decoration-none {{ $healthFilter === 'moderate' ? 'active-filter' : '' }}">
+                            <i class="mdi mdi-alert-outline me-1"></i> {{ $moderateCount }} Proyek Moderat (10-24%)
+                        </a>
+                        <a href="{{ request()->fullUrlWithQuery(['health' => 'critical']) }}"
+                           class="badge badge-critical filter-btn-health px-3 py-2 rounded-pill fs-6 text-decoration-none {{ $healthFilter === 'critical' ? 'active-filter' : '' }}">
+                            <i class="mdi mdi-alert-circle-outline me-1"></i> {{ $criticalCount }} Proyek Kritis (&lt; 10%)
+                        </a>
                     </div>
                 </div>
             </div>

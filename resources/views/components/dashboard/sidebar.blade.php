@@ -49,12 +49,6 @@
                     <div data-i18n="Reports">Reports</div>
                 </a>
             </li>
-            <li class="menu-item {{ request()->is('report/project-profitability*') ? 'active' : '' }}">
-                <a href="{{ route('report.project_profitability') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-chart-box-outline"></i>
-                    <div data-i18n="Laba Rugi Proyek">Laba Rugi Proyek</div>
-                </a>
-            </li>
             <li
                 class="menu-item {{ request()->is('report/*') && !request()->is('report/monthly*') && !request()->is('report/project-profitability*') ? 'active' : '' }}">
                 <a href="{{ route('report.current') }}" class="menu-link">
@@ -701,6 +695,12 @@
                     <a href="{{ route('fixed.index') }}" class="menu-link">
                         <i class="menu-icon tf-icons mdi mdi-domain"></i>
                         <div data-i18n="Fixed Asset">Fixed Asset</div>
+                    </a>
+                </li>
+                <li class="menu-item {{ request()->is('report/project-profitability*') ? 'active' : '' }}">
+                    <a href="{{ route('report.project_profitability') }}" class="menu-link">
+                        <i class="menu-icon tf-icons mdi mdi-chart-box-outline"></i>
+                        <div data-i18n="Laba Rugi Proyek">Laba Rugi Proyek</div>
                     </a>
                 </li>
                 <li class="menu-item {{ request()->is('tool-finance') ? 'active' : '' }}">

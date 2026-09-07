@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Client;
 use App\Models\PendingPO;
 use App\Models\ProjectExpense;
 use App\Models\Quotation;
@@ -18,6 +19,10 @@ class ProjectProfitabilityController extends Controller
         $startDate = $request->get('start_date', Carbon::now()->startOfYear()->toDateString());
         $endDate = $request->get('end_date', Carbon::now()->toDateString());
         $healthFilter = $request->get('health'); // all, healthy, moderate, critical
+        $selectedClientId = $request->get('client_id');
+        $selectedStatus = $request->get('status');
+
+        $clients = Client::orderBy('company')->get();
 
         $query = PendingPO::with([
             'quote.pic.client',
@@ -28,6 +33,20 @@ class ProjectProfitabilityController extends Controller
             'projectExpenses'
         ])
         ->whereBetween('date', [$startDate, $endDate]);
+
+        if ($selectedClientId) {
+            $query->where(function ($q) use ($selectedClientId) {
+                $q->whereHas('quote.pic', function ($q2) use ($selectedClientId) {
+                    $q2->where('id_client', $selectedClientId);
+                })->orWhereHas('unitQuotation', function ($q3) use ($selectedClientId) {
+                    $q3->where('id_client', $selectedClientId);
+                });
+            });
+        }
+
+        if ($selectedStatus !== null && $selectedStatus !== '') {
+            $query->where('status', $selectedStatus);
+        }
 
         $projects = $query->orderByDesc('date')->get()->map(function ($project) {
             $revenue = (float) $project->revenue;
@@ -61,10 +80,13 @@ class ProjectProfitabilityController extends Controller
                 $salesName = $project->quote->sales?->name ?? '-';
             }
 
-            return (object) [
+            return [
                 'id' => $project->id,
-                'no_pending' => $project->no_pending,
-                'title' => $project->title ?: ($project->quote?->title ?: 'Project #' . $project->id),
+                'po_number' => $project->no_pending ?: ('PO #' . $project->id),
+                'no_pending' => $project->no_pending ?: ('PO #' . $project->id),
+                'project_name' => $project->title ?: ($project->quote?->title ?: ($project->unitQuotation?->title ?: 'Project #' . $project->id)),
+                'title' => $project->title ?: ($project->quote?->title ?: ($project->unitQuotation?->title ?: 'Project #' . $project->id)),
+                'po_date' => $project->date,
                 'date' => $project->date,
                 'client_name' => $clientName,
                 'sales_name' => $salesName,
@@ -74,7 +96,9 @@ class ProjectProfitabilityController extends Controller
                 'total_cost' => $totalCost,
                 'net_profit' => $netProfit,
                 'margin' => $margin,
+                'margin_percent' => $margin,
                 'health' => $health,
+                'health_status' => $health,
                 'health_badge' => $healthBadge,
                 'health_label' => $healthLabel,
                 'expense_count' => $project->projectExpenses->count(),
@@ -82,7 +106,7 @@ class ProjectProfitabilityController extends Controller
         });
 
         if ($healthFilter && in_array($healthFilter, ['healthy', 'moderate', 'critical'])) {
-            $projects = $projects->where('health', $healthFilter)->values();
+            $projects = $projects->where('health_status', $healthFilter)->values();
         }
 
         $totalRevenue = $projects->sum('revenue');
@@ -92,12 +116,15 @@ class ProjectProfitabilityController extends Controller
         $totalNetProfit = $totalRevenue - $totalCost;
         $overallMargin = $totalRevenue > 0 ? round(($totalNetProfit / $totalRevenue) * 100, 1) : 0;
 
-        $healthyCount = $projects->where('health', 'healthy')->count();
-        $moderateCount = $projects->where('health', 'moderate')->count();
-        $criticalCount = $projects->where('health', 'critical')->count();
+        $healthyCount = $projects->where('health_status', 'healthy')->count();
+        $moderateCount = $projects->where('health_status', 'moderate')->count();
+        $criticalCount = $projects->where('health_status', 'critical')->count();
 
         return view('pages.report.project-profitability', compact(
             'projects',
+            'clients',
+            'selectedClientId',
+            'selectedStatus',
             'startDate',
             'endDate',
             'healthFilter',

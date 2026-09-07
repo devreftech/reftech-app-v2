@@ -286,8 +286,9 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/report/finance/{year?}/{month?}', [OverviewController::class, 'reportFinance'])->name('report.finance');
     Route::get('/report/year/{year}', [OverviewController::class, 'reportsByYear'])->name('report.year');
     Route::get('/report/project/{year?}', [OverviewController::class, 'reportProject'])->name('report.project');
+    Route::get('/report/project-profitability', [\App\Http\Controllers\ProjectProfitabilityController::class, 'index'])->name('report.project_profitability');
     Route::get('/report/current', [OverviewController::class, 'reportCurrent'])->name('report.current');
-    Route::get('/report/{semester}', [OverviewController::class, 'reportsSemester'])->name('report.semester');
+    Route::get('/report/{semester}', [OverviewController::class, 'reportsSemester'])->where('semester', '[0-9]+|full')->name('report.semester');
     Route::get('/sales-target', [SalesTargetController::class, 'index'])->name('sales-target.index');
     Route::post('/sales-target/add-year', [SalesTargetController::class, 'addYear'])->name('sales-target.add-year');
     Route::post('/sales-target/{year}/save', [SalesTargetController::class, 'saveYearTargets'])->name('sales-target.save-year');
@@ -1403,9 +1404,6 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/customer-statement/{id}/export', [PaymentController::class, 'exportCustomerStatementExcel'])->name('customer.statement_export');
     Route::get('/customer-statement-print/{id}', [PaymentController::class, 'customerStatementPrint'])->name('customer.statement_print');
     Route::get('/payment-detail/kwitansi/{id}', [PaymentController::class, 'showKwitansi'])->name('payment.kwitansi');
-
-    // Project Profitability Report Dashboard
-    Route::get('/report/project-profitability', [\App\Http\Controllers\ProjectProfitabilityController::class, 'index'])->name('report.project_profitability');
 
     Route::resource('/delivery', DeliveryController::class);
     Route::get('/delivery/print/{id}', [DeliveryController::class, 'print_delivery'])->name('print.delivery');
