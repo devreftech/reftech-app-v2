@@ -389,7 +389,8 @@
                         </button>
             </div>
 
-            {{-- Online Customer Signature Card --}}
+            {{-- Online Customer Signature Card (Hanya muncul jika sudah di-approve, atau jika bukan role Sales) --}}
+            @if ($isApproved || Auth::user()->role !== 'Sales')
             <div class="card shadow-sm border mb-3" style="border-radius: 8px; border-color: #e2e8f0 !important;">
                 <div class="card-header py-3 px-3.5 border-bottom d-flex align-items-center justify-content-between" style="background-color: #f8fafc;">
                     <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-1.5" style="font-size: 13px;">
@@ -481,6 +482,7 @@
                     @endif
                 </div>
             </div>
+            @endif
 
             {{-- Contract Info Widget --}}
             <div class="card shadow-sm border mb-3" style="border-radius: 8px; border-color: #e2e8f0 !important;">
@@ -970,12 +972,24 @@
                                     window.location.href = '/contract';
                                 });
                             } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    text: 'Data Failed to Delete!'
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
         function copySignUrl() {
             var input = document.getElementById('contract-sign-url');
             if (!input) return;
-            input.select();
-            input.setSelectionRange(0, 99999);
-            navigator.clipboard.writeText(input.value).then(function () {
+            var textToCopy = input.value;
+
+            function showSuccessAlert() {
                 Swal.fire({
                     icon: 'success',
                     title: 'Link Berhasil Disalin!',
@@ -983,15 +997,33 @@
                     timer: 2000,
                     showConfirmButton: false,
                 });
-            }).catch(function () {
-                document.execCommand('copy');
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Link Disalin!',
-                    timer: 2000,
-                    showConfirmButton: false,
+            }
+
+            function fallbackCopy() {
+                input.focus();
+                input.select();
+                input.setSelectionRange(0, 99999);
+                try {
+                    var successful = document.execCommand('copy');
+                    if (successful) {
+                        showSuccessAlert();
+                    } else {
+                        throw new Error('execCommand failed');
+                    }
+                } catch (err) {
+                    window.prompt('Salin link berikut secara manual:', textToCopy);
+                }
+            }
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy).then(function () {
+                    showSuccessAlert();
+                }).catch(function () {
+                    fallbackCopy();
                 });
-            });
+            } else {
+                fallbackCopy();
+            }
         }
 
         $(document).on('click', '#btn-copy-sign-url, #btn-copy-link-action', function (e) {

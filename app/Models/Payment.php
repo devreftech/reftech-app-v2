@@ -13,6 +13,7 @@ class Payment extends Model
     protected $fillable = [
         'id_quotation',
         'id_unit_quotation',
+        'id_bank',
         'file',
         'percent',
         'amount',
@@ -38,5 +39,10 @@ class Payment extends Model
     public function unitQuotation()
     {
         return $this->belongsTo('App\Models\UnitQuotation', 'id_unit_quotation', 'id');
+    }
+
+    public function bank()
+    {
+        return $this->belongsTo('App\Models\Bank', 'id_bank', 'id');
     }
 }

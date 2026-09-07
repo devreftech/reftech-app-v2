@@ -114,12 +114,6 @@ class ProjectReportsController extends Controller
             ->whereHas('board', function ($q) {
                 $q->where('title', 'like', '%HVAC%');
             })
-            ->whereHas('column', function ($q) {
-                $q->where('title', 'like', '%progress%')
-                  ->orWhere('title', 'like', '%proses%')
-                  ->orWhere('title', 'like', '%done%')
-                  ->orWhere('title', 'like', '%selesai%');
-            })
             ->orderBy('id', 'desc')
             ->get();
 
@@ -341,16 +335,8 @@ class ProjectReportsController extends Controller
         $clients = Client::select('id', 'company')->orderBy('company', 'asc')->get();
         $kanbanTasks = KanbanTask::with(['board', 'column'])
             ->where(function ($query) use ($report) {
-                $query->where(function ($sub) {
-                    $sub->whereHas('board', function ($q) {
-                        $q->where('title', 'like', '%HVAC%');
-                    })
-                    ->whereHas('column', function ($q) {
-                        $q->where('title', 'like', '%progress%')
-                          ->orWhere('title', 'like', '%proses%')
-                          ->orWhere('title', 'like', '%done%')
-                          ->orWhere('title', 'like', '%selesai%');
-                    });
+                $query->whereHas('board', function ($q) {
+                    $q->where('title', 'like', '%HVAC%');
                 });
                 if ($report->kanban_task_id) {
                     $query->orWhere('id', $report->kanban_task_id);

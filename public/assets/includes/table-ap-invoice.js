@@ -46,9 +46,13 @@ $(function () {
                     render: function (data, type, full) {
                         if (type !== "display") return data;
 
-                        return data == 1
-                            ? '<span class="badge bg-label-success rounded-pill px-3 py-1 fw-semibold"><i class="mdi mdi-check-circle-outline me-1"></i>Paid</span>'
-                            : '<span class="badge bg-label-danger rounded-pill px-3 py-1 fw-semibold"><i class="mdi mdi-clock-outline me-1"></i>Unpaid</span>';
+                        if (data == 1) {
+                            return '<span class="badge bg-label-success rounded-pill px-3 py-1 fw-semibold"><i class="mdi mdi-check-circle-outline me-1"></i>Paid</span>';
+                        } else if (data == 2) {
+                            return '<span class="badge bg-label-warning rounded-pill px-3 py-1 fw-semibold"><i class="mdi mdi-progress-clock me-1"></i>Partial</span>';
+                        } else {
+                            return '<span class="badge bg-label-danger rounded-pill px-3 py-1 fw-semibold"><i class="mdi mdi-clock-outline me-1"></i>Unpaid</span>';
+                        }
                     },
                 },
             ],
@@ -77,14 +81,32 @@ $(function () {
                     },
                 },
                 {
+                    targets: 1,
+                    render: function (data, type, full) {
+                        if (type === "display") {
+                            var html = '<div>' + (data || "-") + '</div>';
+                            if (full.due_status === 'overdue') {
+                                html += '<span class="badge bg-label-danger rounded-pill mt-1" style="font-size:10px;"><i class="mdi mdi-alert-circle-outline me-1"></i>Overdue (' + (full.due_days || 0) + 'd)</span>';
+                            } else if (full.due_status === 'due_soon') {
+                                html += '<span class="badge bg-label-warning rounded-pill mt-1" style="font-size:10px;"><i class="mdi mdi-timer-sand me-1"></i>Due Soon (' + (full.due_days || 0) + 'd)</span>';
+                            }
+                            return html;
+                        }
+                        return data;
+                    }
+                },
+                {
                     targets: 3,
                     render: function (data, type, row) {
                         if (type === "display" || type === "filter") {
-                            return (
-                                '<div class="text-end fw-bold text-dark">Rp ' +
+                            var formatted = '<div class="text-end fw-bold text-dark">Rp ' +
                                 new Intl.NumberFormat("id-ID").format(data || 0) +
-                                "</div>"
-                            );
+                                '</div>';
+                            if (row.accept == 2 && row.remaining > 0) {
+                                formatted += '<div class="text-end text-danger fw-semibold" style="font-size: 11px;">Sisa: Rp ' +
+                                    new Intl.NumberFormat("id-ID").format(row.remaining || 0) + '</div>';
+                            }
+                            return formatted;
                         }
                         return data;
                     },
@@ -112,3 +134,4 @@ $(function () {
         $('[data-toggle="tooltip"]').tooltip();
     });
 });
+

@@ -160,6 +160,12 @@ Route::post('/watermark/upload', [WatermarkController::class, 'upload'])->name('
 Route::get('/watermark/download', [WatermarkController::class, 'downloadAll'])->name('watermark.download');
 Route::post('/watermark/reset', [WatermarkController::class, 'reset'])->name('watermark.reset');
 
+// Public Customer Contract Sign Portal (No Login Required)
+Route::get('/contract/sign/{token}', [ContractSignController::class, 'show'])->name('contract.customer.sign');
+Route::post('/contract/sign/{token}', [ContractSignController::class, 'sign'])->name('contract.customer.sign.submit');
+Route::post('/contract/sign/{token}/reset', [ContractSignController::class, 'customerReset'])->name('contract.customer.sign.reset');
+Route::get('/contract/sign/{token}/pdf', [ContractSignController::class, 'downloadPdf'])->name('contract.customer.pdf');
+
 require base_path('routes/modules/crm.php');
 
 Route::group(["middleware" => "auth"], function () {
@@ -280,8 +286,9 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/report/finance/{year?}/{month?}', [OverviewController::class, 'reportFinance'])->name('report.finance');
     Route::get('/report/year/{year}', [OverviewController::class, 'reportsByYear'])->name('report.year');
     Route::get('/report/project/{year?}', [OverviewController::class, 'reportProject'])->name('report.project');
+    Route::get('/report/project-profitability', [\App\Http\Controllers\ProjectProfitabilityController::class, 'index'])->name('report.project_profitability');
     Route::get('/report/current', [OverviewController::class, 'reportCurrent'])->name('report.current');
-    Route::get('/report/{semester}', [OverviewController::class, 'reportsSemester'])->name('report.semester');
+    Route::get('/report/{semester}', [OverviewController::class, 'reportsSemester'])->where('semester', '[0-9]+|full')->name('report.semester');
     Route::get('/sales-target', [SalesTargetController::class, 'index'])->name('sales-target.index');
     Route::post('/sales-target/add-year', [SalesTargetController::class, 'addYear'])->name('sales-target.add-year');
     Route::post('/sales-target/{year}/save', [SalesTargetController::class, 'saveYearTargets'])->name('sales-target.save-year');
@@ -1300,10 +1307,6 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/smart-quote/{id}/selling-contract', [ContractController::class, 'create_selling_contract_unit'])->name('unit-quotation.selling-contract');
     Route::get('/contract/print/{id}', [ContractController::class, 'contract_print'])->name('contract.print');
     Route::delete('/contract/{id}/reset-signature', [ContractSignController::class, 'resetSign'])->name('contract.reset-signature');
-    Route::get('/contract/sign/{token}', [ContractSignController::class, 'show'])->name('contract.customer.sign');
-    Route::post('/contract/sign/{token}', [ContractSignController::class, 'sign'])->name('contract.customer.sign.submit');
-    Route::post('/contract/sign/{token}/reset', [ContractSignController::class, 'customerReset'])->name('contract.customer.sign.reset');
-    Route::get('/contract/sign/{token}/pdf', [ContractSignController::class, 'downloadPdf'])->name('contract.customer.pdf');
     Route::get('/selling/contract', [ContractController::class, 'index_selling'])->name('index.selling');
     Route::get('/order/contract', [ContractController::class, 'index_order'])->name('index.order');
     Route::post('/contract/accept/{id}', [ContractController::class, 'accept_contract'])->name('accept.contract');
@@ -1394,6 +1397,13 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/payment/addPph/{id}', [PaymentController::class, 'addPph'])->name('payment.addPph');
     Route::post('/payment/addCost/{id}', [PaymentController::class, 'addCost'])->name('payment.addCost');
     Route::post('/payment/editDate/{id}', [PaymentController::class, 'editDate'])->name('payment.editDate');
+    
+    // Customer Statement of Account (SOA / Kartu Piutang) & Digital Kwitansi
+    Route::get('/payment-index/aging-export', [PaymentController::class, 'exportAgingExcel'])->name('payment_index.aging_export');
+    Route::get('/customer-statement', [PaymentController::class, 'customerStatement'])->name('customer.statement');
+    Route::get('/customer-statement/{id}/export', [PaymentController::class, 'exportCustomerStatementExcel'])->name('customer.statement_export');
+    Route::get('/customer-statement-print/{id}', [PaymentController::class, 'customerStatementPrint'])->name('customer.statement_print');
+    Route::get('/payment-detail/kwitansi/{id}', [PaymentController::class, 'showKwitansi'])->name('payment.kwitansi');
 
     Route::resource('/delivery', DeliveryController::class);
     Route::get('/delivery/print/{id}', [DeliveryController::class, 'print_delivery'])->name('print.delivery');
@@ -1559,6 +1569,25 @@ Route::group(["middleware" => "auth"], function () {
     Route::resource('/change-warehouse', ChangeWarehouseController::class);
     Route::post('/change-warehouse/accept/{id}', [ChangeWarehouseController::class, 'accept'])->name('change-warehouse.accept');
 
+    // Master Kas & Bank Account
+    Route::get('/finance/bank', [\App\Http\Controllers\BankController::class, 'index'])->name('bank.index');
+    Route::post('/finance/bank', [\App\Http\Controllers\BankController::class, 'store'])->name('bank.store');
+    Route::post('/finance/bank/transfer', [\App\Http\Controllers\BankController::class, 'transfer'])->name('bank.transfer');
+    Route::put('/finance/bank/{id}', [\App\Http\Controllers\BankController::class, 'update'])->name('bank.update');
+    Route::delete('/finance/bank/{id}', [\App\Http\Controllers\BankController::class, 'destroy'])->name('bank.destroy');
+    Route::post('/finance/bank/{id}/toggle-status', [\App\Http\Controllers\BankController::class, 'toggleStatus'])->name('bank.toggle_status');
+    Route::get('/finance/bank/{id}/statement', [\App\Http\Controllers\BankController::class, 'statement'])->name('bank.statement');
+    Route::get('/finance/bank/{id}/statement-print', [\App\Http\Controllers\BankController::class, 'statementPrint'])->name('bank.statement_print');
+
+    // Petty Cash (Kas Kecil) Management
+    Route::get('/finance/petty-cash', [\App\Http\Controllers\PettyCashController::class, 'index'])->name('petty_cash.index');
+    Route::post('/finance/petty-cash/disbursement', [\App\Http\Controllers\PettyCashController::class, 'storeDisbursement'])->name('petty_cash.disbursement');
+    Route::post('/finance/petty-cash/topup', [\App\Http\Controllers\PettyCashController::class, 'storeTopup'])->name('petty_cash.topup');
+    Route::delete('/finance/petty-cash/{id}', [\App\Http\Controllers\PettyCashController::class, 'destroy'])->name('petty_cash.destroy');
+    Route::get('/finance/petty-cash/{id}/print-voucher', [\App\Http\Controllers\PettyCashController::class, 'printVoucher'])->name('petty_cash.print_voucher');
+    Route::get('/finance/petty-cash/print-statement', [\App\Http\Controllers\PettyCashController::class, 'printStatement'])->name('petty_cash.print_statement');
+
+
     // account
     Route::get('/expense-account', [ExpenseController::class, 'indexAccount'])->name('expense-account.index');
     Route::post('/expense-account', [ExpenseController::class, 'storeAccount'])->name('expense-account.store');
@@ -1686,11 +1715,19 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/payable/invoice', [PayableController::class, 'index_invoice'])->name('payable.index_invoice');
     Route::get('/payable/invoice/{id}', [PayableController::class, 'show_invoice'])->name('payable.show_invoice');
     Route::get('/payable/aging', [PayableController::class, 'index_aging'])->name('payable.index_aging');
+    Route::get('/payable/aging-export', [PayableController::class, 'exportAgingExcel'])->name('payable.aging_export');
     Route::get('/payable/aging/{id}', [PayableController::class, 'show_aging'])->name('payable.show_aging');
     Route::get('/payable/receipt', [PayableController::class, 'index_receipt'])->name('payable.index_receipt');
     Route::get('/payable/receipt/{id}', [PayableController::class, 'show_receipt'])->name('payable.show_receipt');
     Route::post('/payable/receipt/{id}/confirm', [PayableController::class, 'confirmReceipt'])->name('payable.confirm_receipt');
     Route::post('/payable/receipt/{id}/unconfirm', [PayableController::class, 'unconfirmReceipt'])->name('payable.unconfirm_receipt');
+    Route::post('/payable/receipt/{id}/payment', [PayableController::class, 'storePayment'])->name('payable.store_payment');
+    Route::delete('/payable/payment/{id}', [PayableController::class, 'destroyPayment'])->name('payable.destroy_payment');
+    Route::get('/payable/statement', [PayableController::class, 'supplierStatement'])->name('payable.statement');
+    Route::get('/payable/statement/{id}/export', [PayableController::class, 'exportStatementExcel'])->name('payable.statement_export');
+    Route::get('/payable/statement/{id}/print', [PayableController::class, 'supplierStatementPrint'])->name('payable.statement_print');
+    Route::get('/payable/expenses', [PayableController::class, 'index_expenses'])->name('payable.expenses');
+    Route::post('/payable/expenses/{id}/pay', [PayableController::class, 'payExpense'])->name('payable.pay_expense');
     Route::post('/payable/pph/{id}', [PayableController::class, 'addPph'])->name('payable.addPph');
     Route::post('/payable/date/{id}', [PayableController::class, 'editDate'])->name('payable.editDate');
 
@@ -1764,7 +1801,9 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/tool-audit', [ToolAuditController::class, 'index'])->name('tool-audit.index');
     Route::get('/tool-audit/{id}', [ToolAuditController::class, 'show'])->name('tool-audit.show');
     Route::post('/tool-audit/{id}/submit', [ToolAuditController::class, 'submit'])->name('tool-audit.submit');
+    Route::post('/tool-audit/{id}/save-draft', [ToolAuditController::class, 'saveDraft'])->name('tool-audit.save-draft');
     Route::post('/tool-audit/item/{itemId}/upload-photo', [ToolAuditController::class, 'uploadPhotoAjax'])->name('tool-audit.upload-photo');
+    Route::post('/tool-audit/item/{itemId}/auto-save', [ToolAuditController::class, 'autoSaveItemAjax'])->name('tool-audit.auto-save');
 
     // Tools — Verifikasi Audit (role Admin)
     Route::get('/tool-audit-verification', [ToolAuditVerificationController::class, 'index'])->name('tool-audit-verification.index');
@@ -6917,15 +6956,27 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         return response()->json(['data' => $data]);
     });
     Route::get('/db/payable/invoice', function () {
+        $paymentsSub = DB::table('purchase_payments')
+            ->select('id_product_in', DB::raw('SUM(amount) as paid_amount'))
+            ->whereNotNull('id_product_in')
+            ->groupBy('id_product_in');
+
         $payable = ProductIn::leftJoin('supplier as s', 'product_in.id_supplier', '=', 's.id')
             ->leftJoin('detail_product_in as d', 'product_in.id', '=', 'd.id_product_in')
+            ->leftJoinSub($paymentsSub, 'pp', function ($join) {
+                $join->on('product_in.id', '=', 'pp.id_product_in');
+            })
             ->select(
                 'product_in.id',
                 'product_in.invoice',
                 'product_in.accept',
                 'product_in.total',
+                'product_in.date',
+                'product_in.date_payment',
+                'product_in.date_invoice',
                 'product_in.supplier as d_supplier',
                 's.supplier',
+                DB::raw('COALESCE(pp.paid_amount, CASE WHEN product_in.accept = "1" THEN product_in.total ELSE 0 END) as total_paid'),
                 DB::raw('SUM(d.qty) as total_qty'),
                 DB::raw("DATE_FORMAT(product_in.date, '%d-%m-%Y') as tanggal")
             )
@@ -6934,19 +6985,53 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                 'product_in.invoice',
                 'product_in.accept',
                 'product_in.total',
+                'product_in.date',
+                'product_in.date_payment',
+                'product_in.date_invoice',
                 'product_in.supplier',
                 's.supplier',
-                'product_in.date'
+                'pp.paid_amount'
             )
             ->orderByDesc('product_in.date')
             ->whereNotNull('product_in.invoice')
-            ->get();
+            ->get()
+            ->map(function ($row) {
+                $total = (float) $row->total;
+                $paid = (float) $row->total_paid;
+                $row->remaining = max(0, $total - $paid);
+                
+                $today = \Carbon\Carbon::today();
+                $dueDate = $row->date_payment ? \Carbon\Carbon::parse($row->date_payment) : \Carbon\Carbon::parse($row->date)->addDays(30);
+                $row->due_date_formatted = $dueDate->format('d-m-Y');
+                
+                if ($row->accept == '1' || $row->remaining <= 0) {
+                    $row->due_status = 'paid';
+                } elseif ($today->gt($dueDate)) {
+                    $row->due_status = 'overdue';
+                    $row->due_days = $today->diffInDays($dueDate);
+                } elseif ($today->diffInDays($dueDate, false) <= 7) {
+                    $row->due_status = 'due_soon';
+                    $row->due_days = $today->diffInDays($dueDate, false);
+                } else {
+                    $row->due_status = 'current';
+                    $row->due_days = $today->diffInDays($dueDate, false);
+                }
+                return $row;
+            });
 
         return response()->json(['data' => $payable]);
     });
     Route::get('/db/payable/aging', function () {
+        $paymentsSub = DB::table('purchase_payments')
+            ->select('id_product_in', DB::raw('SUM(amount) as paid_amount'))
+            ->whereNotNull('id_product_in')
+            ->groupBy('id_product_in');
+
         $payable = ProductIn::leftJoin('supplier as s', 'product_in.id_supplier', '=', 's.id')
             ->leftJoin('detail_product_in as d', 'product_in.id', '=', 'd.id_product_in')
+            ->leftJoinSub($paymentsSub, 'pp', function ($join) {
+                $join->on('product_in.id', '=', 'pp.id_product_in');
+            })
             ->select(
                 'product_in.id',
                 'product_in.invoice',
@@ -6954,12 +7039,13 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                 'product_in.total',
                 'product_in.supplier as d_supplier',
                 's.supplier',
+                DB::raw('COALESCE(pp.paid_amount, 0) as total_paid'),
                 DB::raw('SUM(d.qty) as total_qty'),
                 DB::raw("DATE_FORMAT(product_in.date, '%d-%m-%Y') as tanggal"),
                 DB::raw("
                 CASE
-                    WHEN DATEDIFF(CURDATE(), product_in.date) > 0
-                    THEN DATEDIFF(CURDATE(), product_in.date)
+                    WHEN DATEDIFF(CURDATE(), COALESCE(product_in.date_invoice, product_in.date)) > 0
+                    THEN DATEDIFF(CURDATE(), COALESCE(product_in.date_invoice, product_in.date))
                     ELSE 0
                 END as overdue
             ")
@@ -6971,10 +7057,13 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                 'product_in.total',
                 'product_in.supplier',
                 's.supplier',
-                'product_in.date'
+                'product_in.date',
+                'product_in.date_invoice',
+                'pp.paid_amount'
             )
             ->orderByDesc('product_in.date')
-            ->where('accept', '0')
+            ->whereIn('accept', ['0', '2'])
+            ->whereNotNull('product_in.invoice')
             ->get()
             ->map(function ($row) {
                 $days = (int) $row->overdue;
@@ -6991,14 +7080,23 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                     $row->bucket = '90+ Hari';
                     $row->bucket_class = 'danger';
                 }
+                $row->remaining = max(0, (float) $row->total - (float) $row->total_paid);
                 return $row;
             });
 
         return response()->json(['data' => $payable]);
     });
     Route::get('/db/payable/receipt', function () {
+        $paymentsSub = DB::table('purchase_payments')
+            ->select('id_product_in', DB::raw('SUM(amount) as paid_amount'))
+            ->whereNotNull('id_product_in')
+            ->groupBy('id_product_in');
+
         $payable = ProductIn::leftJoin('supplier as s', 'product_in.id_supplier', '=', 's.id')
             ->leftJoin('detail_product_in as d', 'product_in.id', '=', 'd.id_product_in')
+            ->leftJoinSub($paymentsSub, 'pp', function ($join) {
+                $join->on('product_in.id', '=', 'pp.id_product_in');
+            })
             ->select(
                 'product_in.id',
                 'product_in.invoice',
@@ -7007,6 +7105,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                 'product_in.info',
                 'product_in.supplier as d_supplier',
                 's.supplier',
+                DB::raw('COALESCE(pp.paid_amount, CASE WHEN product_in.accept = "1" THEN product_in.total ELSE 0 END) as total_paid'),
                 DB::raw('SUM(d.qty) as total_qty'),
                 DB::raw("DATE_FORMAT(product_in.date, '%d-%m-%Y') as tanggal"),
                 DB::raw("
@@ -7035,11 +7134,16 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                 'product_in.info',
                 'product_in.supplier',
                 's.supplier',
-                'product_in.date'
+                'product_in.date',
+                'pp.paid_amount'
             )
-            ->whereNotNULL('invoice')
+            ->whereNotNull('invoice')
             ->orderByDesc('product_in.date')
-            ->get();
+            ->get()
+            ->map(function ($row) {
+                $row->remaining = max(0, (float) $row->total - (float) $row->total_paid);
+                return $row;
+            });
 
         return response()->json(['data' => $payable]);
     });
@@ -7435,6 +7539,10 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
     Route::prefix('finance/management-fee')->name('finance.management-fee.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ManagementFeeController::class, 'index'])->name('index');
         Route::post('/{id}/disbursement', [\App\Http\Controllers\ManagementFeeController::class, 'updateDisbursement'])->name('update-disbursement');
+        Route::post('/manual', [\App\Http\Controllers\ManagementFeeController::class, 'storeManual'])->name('store-manual');
+        Route::post('/manual/{id}/update', [\App\Http\Controllers\ManagementFeeController::class, 'updateManual'])->name('update-manual');
+        Route::delete('/manual/{id}', [\App\Http\Controllers\ManagementFeeController::class, 'destroyManual'])->name('destroy-manual');
+        Route::post('/manual/{id}/disbursement', [\App\Http\Controllers\ManagementFeeController::class, 'updateManualDisbursement'])->name('update-manual-disbursement');
     });
 });
 Auth::routes();

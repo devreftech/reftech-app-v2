@@ -279,6 +279,19 @@ class ContractController extends Controller
             'type'              => $type,
             'date'              => Carbon::today(),
         ]);
+
+        if ($sellcon) {
+            $notifyUserIds = \App\Models\User::getAccountingRecipientsForSales($quote->id_sales, true);
+            foreach ($notifyUserIds as $userId) {
+                \App\Models\UnitQuotationPaymentNotification::create([
+                    'id_unit_quotation' => $quote->id,
+                    'id_user' => $userId,
+                    'type' => 'contract_requested',
+                    'is_read' => false,
+                ]);
+            }
+        }
+
         return $sellcon ? 1 : 0;
     }
 

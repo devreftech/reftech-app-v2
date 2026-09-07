@@ -14,6 +14,9 @@
                 </p>
             </div>
             <div class="d-flex gap-2">
+                <a href="{{ route('payment_index.aging_export') }}" class="btn btn-label-success btn-sm">
+                    <i class="mdi mdi-file-excel-outline me-1"></i> Ekspor Excel
+                </a>
                 <a href="{{ route('payment_index.invoice') }}" class="btn btn-label-primary btn-sm">
                     <i class="mdi mdi-receipt-text-outline me-1"></i> Sales Invoice
                 </a>

@@ -211,6 +211,7 @@
                         if (@$prMentions && $prMentions->count() >= 1) $hasBadge = true;
                         if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && @$pendingCancelQuotes && $pendingCancelQuotes->count() >= 1) $hasBadge = true;
                         if (in_array(Auth::user()?->role, ['Accounting', 'Admin', 'Sales']) && @$paymentUnreadCount >= 1) $hasBadge = true;
+                        if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && (@$apDueTodayCount >= 1 || @$apDueSoonCount >= 1 || @$apOverdueCount >= 1)) $hasBadge = true;
                     @endphp
                     <span id="navbarBellDot" class="position-absolute top-0 start-50 translate-middle-y badge badge-dot bg-danger mt-2 border {{ $hasBadge ? '' : 'd-none' }}"></span>
                 </a>
@@ -218,6 +219,13 @@
                     <li class="dropdown-menu-header border-bottom">
                         <div class="dropdown-header d-flex align-items-center py-3">
                             <h6 class="mb-0 me-auto">Notification</h6>
+                            @if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']))
+                                @if (@$apDueTodayCount > 0)
+                                    <span class="badge rounded-pill bg-danger me-1">{{ $apDueTodayCount }} Hutang Hari Ini</span>
+                                @elseif (@$apDueSoonCount > 0)
+                                    <span class="badge rounded-pill bg-warning text-dark me-1">{{ $apDueSoonCount }} Hutang Segera</span>
+                                @endif
+                            @endif
                             @if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && @$pendingCancelQuotes && $pendingCancelQuotes->count() > 0)
                                 <span class="badge rounded-pill bg-danger me-1">{{ $pendingCancelQuotes->count() }} Cancel PO</span>
                             @endif
@@ -244,6 +252,41 @@
                     </li>
                     <li class="dropdown-notifications-list scrollable-container">
                         <ul class="list-group list-group-flush">
+                            {{-- Notifikasi Hutang Jatuh Tempo / Overdue untuk Admin, Accounting, Finance --}}
+                            @if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && @$apNotifications && $apNotifications->count() > 0)
+                                @foreach ($apNotifications as $apNotif)
+                                    <a href="{{ $apNotif->url }}"
+                                        class="list-group-item list-group-item-action dropdown-notifications-item"
+                                        style="{{ $apNotif->status_type === 'today' ? 'background:#fff5f5; border-left: 3px solid #dc3545;' : ($apNotif->status_type === 'due_soon' ? 'background:#fffdf5; border-left: 3px solid #f59e0b;' : '') }}">
+                                        <div class="d-flex gap-2">
+                                            <div class="flex-shrink-0">
+                                                <div class="avatar me-1">
+                                                    <span class="avatar-initial rounded-circle {{ $apNotif->avatar_bg }} text-white">
+                                                        <i class="mdi {{ $apNotif->icon }}"></i>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex flex-column flex-grow-1 overflow-hidden w-px-200">
+                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                    <h6 class="mb-0 text-truncate fw-bold text-dark fs-7">
+                                                        {{ $apNotif->invoice }}
+                                                    </h6>
+                                                    <span class="badge {{ $apNotif->badge_class }} py-0 px-1" style="font-size: 9px;">
+                                                        {{ $apNotif->status_badge }}
+                                                    </span>
+                                                </div>
+                                                <small class="text-truncate text-body">
+                                                    <strong class="text-dark">{{ $apNotif->supplier_name }}</strong> • Sisa: <strong class="text-danger">Rp {{ number_format($apNotif->remaining, 0, ',', '.') }}</strong>
+                                                </small>
+                                            </div>
+                                            <div class="flex-shrink-0 dropdown-notifications-actions d-flex flex-column align-items-end">
+                                                <small class="text-muted" style="font-size: 10px;">Due {{ \Carbon\Carbon::parse($apNotif->due_date)->format('d/m/Y') }}</small>
+                                            </div>
+                                        </div>
+                                    </a>
+                                @endforeach
+                            @endif
+
                             {{-- Notifikasi Cancel PO untuk Accounting / Admin / Finance --}}
                             @if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && @$pendingCancelQuotes && $pendingCancelQuotes->count() > 0)
                                 @foreach ($pendingCancelQuotes as $cancelQ)
@@ -388,9 +431,13 @@
                                         @php
                                             $isInvoiceRequested = $pn->type === 'invoice_requested';
                                             $isInvoiceApproved = $pn->type === 'invoice_approved';
+                                            $isContractRequested = $pn->type === 'contract_requested';
+                                            $isContractSigned = $pn->type === 'contract_signed';
                                             $pnAmount = $pn->type === 'payment'
                                                 ? ($pn->payment->amount ?? 0)
-                                                : ($pn->unitQuotation->total ?? 0) * ($pn->invoice->percent ?? 100) / 100;
+                                                : (($isContractRequested || $isContractSigned)
+                                                    ? ($pn->unitQuotation->total ?? 0)
+                                                    : ($pn->unitQuotation->total ?? 0) * ($pn->invoice->percent ?? 100) / 100);
                                             $pnUrl = route('unit-quotation.show', $pn->id_unit_quotation);
                                             if ($pn->id_invoice) {
                                                 if ($isInvoiceRequested) {
@@ -398,6 +445,24 @@
                                                 } elseif ($pn->type === 'payment' || $isInvoiceApproved) {
                                                     $pnUrl = route('invoice.show_unit', $pn->id_invoice);
                                                 }
+                                            } elseif ($isContractRequested) {
+                                                $pnUrl = route('contract.index');
+                                            }
+                                            
+                                            $avatarBg = 'bg-label-success';
+                                            $iconClass = 'mdi-cash-multiple';
+                                            if ($isInvoiceRequested) {
+                                                $avatarBg = 'bg-label-primary';
+                                                $iconClass = 'mdi-file-document-outline';
+                                            } elseif ($isInvoiceApproved) {
+                                                $avatarBg = 'bg-label-info';
+                                                $iconClass = 'mdi-check-decagram-outline';
+                                            } elseif ($isContractRequested) {
+                                                $avatarBg = 'bg-label-warning';
+                                                $iconClass = 'mdi-file-sign';
+                                            } elseif ($isContractSigned) {
+                                                $avatarBg = 'bg-label-success';
+                                                $iconClass = 'mdi-draw-pen';
                                             }
                                         @endphp
                                         <a href="{{ $pnUrl }}"
@@ -407,8 +472,8 @@
                                                 <div class="d-flex gap-2">
                                                     <div class="flex-shrink-0">
                                                         <div class="avatar me-1">
-                                                            <span class="avatar-initial rounded-circle {{ $isInvoiceRequested ? 'bg-label-primary' : ($isInvoiceApproved ? 'bg-label-info' : 'bg-label-success') }}">
-                                                                <i class="mdi {{ $isInvoiceRequested ? 'mdi-file-document-outline' : ($isInvoiceApproved ? 'mdi-check-decagram-outline' : 'mdi-cash-multiple') }}"></i>
+                                                            <span class="avatar-initial rounded-circle {{ $avatarBg }}">
+                                                                <i class="mdi {{ $iconClass }}"></i>
                                                             </span>
                                                         </div>
                                                     </div>
@@ -419,6 +484,10 @@
                                                                 Invoice senilai Rp {{ number_format($pnAmount, 0, '', '.') }} menunggu diterbitkan ({{ $pn->unitQuotation->client->company ?? '-' }})
                                                             @elseif ($isInvoiceApproved)
                                                                 Invoice senilai Rp {{ number_format($pnAmount, 0, '', '.') }} sudah di-acc Accounting ({{ $pn->unitQuotation->client->company ?? '-' }})
+                                                            @elseif ($isContractRequested)
+                                                                Pengajuan Selling Contract baru ({{ $pn->unitQuotation->client->company ?? '-' }})
+                                                            @elseif ($isContractSigned)
+                                                                Selling Contract telah ditandatangani Customer ({{ $pn->unitQuotation->client->company ?? '-' }})
                                                             @else
                                                                 Payment Rp {{ number_format($pnAmount, 0, '', '.') }} ditambahkan ({{ $pn->unitQuotation->client->company ?? '-' }})
                                                             @endif

@@ -1,15 +1,42 @@
+@php
+    $isSigned   = $contract->isSignedByCustomer();
+    $sellcon    = $contract;
+    $docHeading = $sellcon->type == 'Order' ? 'CONFIRM ORDER' : 'SELLING CONTRACT';
+    $docNoun    = $sellcon->type == 'Order' ? 'Confirm Order' : 'Selling Contract';
+
+    if ($isUnit) {
+        $isKojisha  = $unitQuote->isKojisha();
+        $entityName = $isKojisha ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima';
+        $hasTax     = (bool) $unitQuote->tax;
+        $client     = $unitQuote->client;
+        $pic        = $unitQuote->pic;
+        $sales      = $unitQuote->sales;
+        $afterDisc  = $unitQuote->diskon > 0 ? $unitQuote->subtotal - $unitQuote->discount_amount : $unitQuote->subtotal;
+    } else {
+        $isKojisha  = ($quote->pic?->client?->info ?? '') === 'Kojisha' || $sellcon->type == 'Order';
+        $entityName = $isKojisha ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima';
+        $hasTax     = $quote->tax != '0';
+        $client     = $quote->pic?->client;
+        $pic        = $quote->pic;
+        $sales      = $quote->sales;
+        $afterDisc  = $quote->diskon > 0 ? $quote->subtotal - $quote->diskon : $quote->subtotal;
+        $vat        = $quote->tax != 0 ? ($afterDisc * $quote->tax) / 100 : 0;
+    }
+@endphp
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ ($contract->type == 'Order' ? 'Confirm Order' : 'Selling Contract') . ' — ' . ($contract->no_contract ?: 'Contract #' . $contract->id) }}</title>
+    <title>{{ $docHeading }} — {{ $sellcon->no_contract ?: 'Contract #' . $sellcon->id }}</title>
 
+    <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css">
+    <link rel="stylesheet" href="{{ asset('assets/vendor/css/core.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css">
 
     <style>
@@ -20,10 +47,11 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: #f1f5f9;
             color: #0f172a;
-            line-height: 1.5;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 12px;
+            line-height: 1.45;
             -webkit-font-smoothing: antialiased;
             padding-bottom: 60px;
         }
@@ -145,34 +173,35 @@
 
         /* Container Layout */
         .portal-container {
-            max-width: 900px;
+            max-width: 210mm;
             margin: 24px auto;
             padding: 0 16px;
         }
 
-        /* Paper Document Card */
-        .document-paper {
+        /* Printable Sheet Canvas - Identical to detail-print */
+        .contract-sheet {
+            width: 100%;
+            min-height: 297mm;
+            margin: 0 auto;
             background: #ffffff;
+            padding: 14mm 16mm;
             border: 1px solid #cbd5e1;
-            border-radius: 10px;
-            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.06);
-            padding: 36px 40px;
-            margin-bottom: 24px;
+            border-radius: 4px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            position: relative;
         }
 
-        @media (max-width: 640px) {
-            .document-paper {
-                padding: 20px 16px;
-            }
-        }
-
-        /* Document Header */
+        /* Header */
         .doc-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            padding-bottom: 16px;
+            padding-bottom: 12px;
             border-bottom: 2px solid #0f172a;
+        }
+
+        .brand-info {
+            max-width: 60%;
         }
 
         .brand-logo img {
@@ -224,13 +253,7 @@
         .info-section {
             display: flex;
             gap: 14px;
-            margin: 16px 0;
-        }
-
-        @media (max-width: 640px) {
-            .info-section {
-                flex-direction: column;
-            }
+            margin: 14px 0;
         }
 
         .info-card {
@@ -238,7 +261,7 @@
             background: #f8fafc;
             border: 1px solid #e2e8f0;
             border-radius: 6px;
-            padding: 12px 14px;
+            padding: 10px 14px;
         }
 
         .info-card-title {
@@ -261,14 +284,14 @@
 
         .info-row {
             display: flex;
-            font-size: 11.5px;
+            font-size: 11px;
             line-height: 1.5;
             color: #334155;
             margin-bottom: 2px;
         }
 
         .info-row .label {
-            width: 80px;
+            width: 75px;
             color: #64748b;
             flex-shrink: 0;
         }
@@ -281,12 +304,12 @@
         .table-responsive-wrapper {
             width: 100%;
             overflow-x: auto;
-            margin: 14px 0 10px 0;
         }
 
         .items-table {
             width: 100%;
             border-collapse: collapse;
+            margin: 14px 0 10px 0;
             font-size: 11.5px;
         }
 
@@ -338,16 +361,16 @@
             color: #334155;
         }
 
-        /* Totals Block */
+        /* Totals Block (Right Aligned) */
         .totals-section {
             display: flex;
             justify-content: flex-end;
             margin-top: 4px;
-            margin-bottom: 14px;
+            margin-bottom: 12px;
         }
 
         .totals-table {
-            width: 320px;
+            width: 300px;
             border-collapse: collapse;
             font-size: 11.5px;
         }
@@ -374,135 +397,134 @@
             color: #0f172a;
         }
 
-        /* Single Unified Term & Condition Card */
+        .totals-table .grand-total-row .val {
+            font-size: 14px;
+            color: #0284c7;
+        }
+
+        /* Single Term & Condition Card */
         .terms-card {
-            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
             border-radius: 6px;
+            margin-top: 12px;
             overflow: hidden;
-            margin: 14px 0;
-            background: #ffffff;
         }
 
         .terms-card-header {
-            background-color: #0f172a;
-            color: #ffffff;
-            font-weight: 800;
-            font-size: 10px;
-            letter-spacing: 0.8px;
-            padding: 5px 12px;
+            background: #f1f5f9;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 700;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #0f172a;
+            border-bottom: 1px solid #e2e8f0;
         }
 
         .terms-card-body {
             padding: 8px 12px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4px 16px;
-            background-color: #fafbfc;
-        }
-
-        @media (max-width: 640px) {
-            .terms-card-body {
-                grid-template-columns: 1fr;
-            }
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
         }
 
         .term-row {
             display: flex;
-            align-items: flex-start;
-            font-size: 10.5px;
-            line-height: 1.45;
+            font-size: 11px;
+            line-height: 1.5;
             color: #334155;
         }
 
         .term-row .term-label {
             width: 140px;
-            font-weight: 600;
-            color: #475569;
+            color: #64748b;
             flex-shrink: 0;
         }
 
         .term-row .term-sep {
-            width: 12px;
-            text-align: center;
-            color: #94a3b8;
+            width: 14px;
+            color: #64748b;
             flex-shrink: 0;
         }
 
         .term-row .term-val {
-            flex: 1;
             font-weight: 500;
             color: #0f172a;
         }
 
-        /* Thank You Note */
-        .thankyou-note {
-            margin: 12px 0 16px 0;
-            padding: 8px 12px;
+        /* Thank you note below */
+        .business-thanks-note {
             background: #f8fafc;
+            border: 1px solid #e2e8f0;
             border-left: 3px solid #0284c7;
-            border-radius: 0 4px 4px 0;
-            font-size: 10.5px;
-            color: #475569;
-            font-style: italic;
-        }
-
-        /* Signatures Layout */
-        .signatures-grid {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-            padding-top: 14px;
-            border-top: 1px dashed #cbd5e1;
-            gap: 20px;
-        }
-
-        @media (max-width: 640px) {
-            .signatures-grid {
-                flex-direction: column;
-                gap: 16px;
-            }
-        }
-
-        .signature-col {
-            flex: 1;
-            text-align: center;
-        }
-
-        .signature-title {
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-top: 12px;
             font-size: 11px;
+            color: #475569;
+        }
+
+        .business-thanks-note .thanks-title {
             font-weight: 700;
             color: #0f172a;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
+            margin-bottom: 2px;
         }
 
-        .signature-box-display {
-            height: 85px;
+        .business-thanks-note .thanks-desc {
+            line-height: 1.4;
+        }
+
+        /* Signatures Section */
+        .signature-section {
             display: flex;
-            align-items: center;
-            justify-content: center;
+            justify-content: space-between;
+            margin-top: 24px;
+            page-break-inside: avoid;
+        }
+
+        .signature-box {
+            width: 45%;
+            text-align: center;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px 14px;
+        }
+
+        .signature-label {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #475569;
             margin-bottom: 6px;
         }
 
-        .signature-box-display img {
-            max-height: 80px;
-            max-width: 180px;
+        .signature-img-wrap {
+            height: 65px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 4px 0;
+        }
+
+        .signature-img-wrap img {
+            max-height: 60px;
+            max-width: 140px;
             object-fit: contain;
         }
 
         .signature-name {
-            font-size: 11.5px;
+            font-size: 12px;
             font-weight: 700;
             color: #0f172a;
-            text-decoration: underline;
+            border-top: 1px solid #cbd5e1;
+            padding-top: 4px;
+            margin-top: 4px;
         }
 
         .signature-role {
-            font-size: 10px;
+            font-size: 10.5px;
             color: #64748b;
-            margin-top: 2px;
         }
 
         /* Signature Action Card (Portal Interactive) */
@@ -512,7 +534,7 @@
             border-radius: 10px;
             box-shadow: 0 8px 30px rgba(2, 132, 199, 0.12);
             padding: 24px;
-            margin-top: 20px;
+            margin-top: 24px;
         }
 
         .sign-card-title {
@@ -604,12 +626,6 @@
             margin-bottom: 16px;
         }
 
-        @media (max-width: 640px) {
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
         .form-group label {
             display: block;
             font-size: 12px;
@@ -687,7 +703,7 @@
             border-radius: 8px;
             padding: 20px;
             text-align: center;
-            margin-top: 20px;
+            margin-top: 24px;
         }
 
         .success-signed-icon {
@@ -717,34 +733,93 @@
             max-width: 500px;
             margin: 0 auto 16px auto;
         }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 768px) {
+            body {
+                padding-bottom: 40px;
+            }
+
+            .portal-container {
+                padding: 0 8px;
+                margin: 12px auto;
+            }
+
+            .contract-sheet {
+                padding: 12px 10px;
+            }
+
+            .doc-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .brand-info {
+                max-width: 100%;
+            }
+
+            .doc-title-block {
+                text-align: left;
+            }
+
+            .info-section {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .signature-section {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .signature-box {
+                width: 100%;
+            }
+
+            .totals-table {
+                width: 100%;
+            }
+        }
+
+        /* Print Media Styles */
+        @media print {
+            body {
+                background: #ffffff;
+                padding: 0;
+                font-size: 11px;
+            }
+
+            .portal-navbar, #section-sign {
+                display: none !important;
+            }
+
+            .portal-container {
+                max-width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            .contract-sheet {
+                width: 100%;
+                min-height: auto;
+                margin: 0;
+                padding: 0;
+                border: none;
+                box-shadow: none;
+            }
+
+            @page {
+                size: A4 portrait;
+                margin: 12mm 14mm 12mm 14mm;
+            }
+        }
     </style>
 </head>
 <body>
-
-    @php
-        $isSigned = $contract->isSignedByCustomer();
-        $docHeading = $contract->type == 'Order' ? 'CONFIRM ORDER' : 'SELLING CONTRACT';
-        $docNoun    = $contract->type == 'Order' ? 'Confirm Order' : 'Selling Contract';
-
-        if ($isUnit) {
-            $isKojisha  = $unitQuote->isKojisha() || $contract->type == 'Order';
-            $entityName = $isKojisha ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima';
-            $hasTax     = !empty($unitQuote->tax) && $unitQuote->tax > 0;
-            $client     = $unitQuote->client;
-            $pic        = $unitQuote->pic;
-            $sales      = $unitQuote->sales;
-            $afterDisc  = $unitQuote->diskon > 0 ? $unitQuote->subtotal - $unitQuote->discount_amount : $unitQuote->subtotal;
-        } else {
-            $isKojisha  = ($quote->pic?->client?->info ?? '') === 'Kojisha' || $contract->type == 'Order';
-            $entityName = $isKojisha ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima';
-            $hasTax     = !empty($quote->tax) && $quote->tax != 0;
-            $client     = $quote->pic?->client;
-            $pic        = $quote->pic;
-            $sales      = $quote->sales;
-            $afterDisc  = $quote->diskon > 0 ? $quote->subtotal - $quote->diskon : $quote->subtotal;
-            $vat        = $quote->tax != 0 ? ($afterDisc * $quote->tax) / 100 : 0;
-        }
-    @endphp
 
     {{-- Top Sticky Navbar --}}
     <header class="portal-navbar">
@@ -762,13 +837,13 @@
                         </span>
                     @endif
                 </div>
-                <div class="doc-info-subtitle">{{ $contract->no_contract ?: 'Contract #' . $contract->id }} &bull; {{ $client->company ?? 'Customer' }}</div>
+                <div class="doc-info-subtitle">{{ $sellcon->no_contract ?: 'Contract #' . $sellcon->id }} &bull; {{ $client->company ?? 'Customer' }}</div>
             </div>
         </div>
 
         <div class="nav-actions">
             @if ($isSigned)
-                <a href="{{ route('contract.customer.pdf', $contract->sign_token) }}" target="_blank" class="btn-portal btn-portal-success">
+                <a href="{{ route('contract.customer.pdf', $sellcon->sign_token) }}" target="_blank" class="btn-portal btn-portal-success">
                     <i class="mdi mdi-download"></i> Download PDF Resmi
                 </a>
             @else
@@ -781,82 +856,115 @@
 
     <div class="portal-container">
 
-        {{-- Document Paper --}}
-        <div class="document-paper">
-            {{-- Header --}}
-            <div class="doc-header">
-                <div class="brand-block">
-                    <div class="brand-logo">
-                        @if ($isKojisha)
-                            <img src="{{ asset('assets/img/icon/logo/logo-kojisha.png') }}" alt="PT Kojisha Innotiv Indonesia">
-                        @else
-                            <img src="{{ asset('assets/img/icon/logo/logo-reftech.png') }}" alt="PT Reftech Jaya Optima">
+        {{-- Printable Sheet (Exact match to detail-print / detail-print-unit) --}}
+        <div class="contract-sheet">
+            @if ($isUnit)
+                {{-- ==================== UNIT QUOTATION SELLING CONTRACT / CONFIRM ORDER ==================== --}}
+                {{-- Header --}}
+                <div class="doc-header">
+                    <div class="brand-info">
+                        <div class="brand-logo">
+                            <img src="{{ asset('/asset') }}/logo/{{ $isKojisha ? 'Kojisha-Log.png' : 'Reftech-Log.png' }}" alt="{{ $entityName }}">
+                        </div>
+                        <div class="brand-name">{{ $entityName }}</div>
+                        <div class="brand-address">
+                            @if ($isKojisha)
+                                <p>Jl. Nancep No. 45A, Setu, Cibitung - Kab. Bekasi 17320</p>
+                                <p>Telp: +62 812-1000-0997 &nbsp;|&nbsp; Email: admin@kojisha.com</p>
+                                @if ($hasTax)
+                                    <p><strong>NPWP:</strong> 96.484.859.2-413.000</p>
+                                @endif
+                            @else
+                                <p>Taman Kopo Indah V, Ruko Sommerville No. 31, Bandung – Jawa Barat 40218</p>
+                                <p>Telp: 022 54417653 &nbsp;|&nbsp; Email: info@reftech.id</p>
+                                @if ($hasTax)
+                                    <p><strong>NPWP:</strong> 07.372.857.1-842.9000</p>
+                                @endif
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="doc-title-block">
+                        <h1 class="doc-title">{{ $docHeading }}</h1>
+                        <div class="doc-number">#{{ $sellcon->no_contract }}</div>
+                        <div class="doc-date">Date: {{ $sellcon->date ? Carbon\Carbon::parse($sellcon->date)->format('d-m-Y') : date('d-m-Y') }}</div>
+                    </div>
+                </div>
+
+                {{-- Info Section --}}
+                <div class="info-section">
+                    {{-- Quote To --}}
+                    <div class="info-card">
+                        <div class="info-card-title">Customer / Quote To</div>
+                        <div class="info-card-company">{{ $unitQuote->client?->company ?? '-' }}</div>
+                        <div class="info-row">
+                            <span class="label">Attn:</span>
+                            <span class="value">{{ $unitQuote->pic?->name_pic ?? ($unitQuote->attn ?: '-') }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Phone:</span>
+                            <span class="value">{{ $unitQuote->pic?->phone_pic ?? $unitQuote->client?->phone ?? '-' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Email:</span>
+                            <span class="value">{{ $unitQuote->pic?->email_pic ?? $unitQuote->client?->email ?? '-' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Address:</span>
+                            <span class="value">{{ $unitQuote->address ?: ($unitQuote->client?->address ?? '-') }}</span>
+                        </div>
+                    </div>
+
+                    {{-- Contract Details --}}
+                    <div class="info-card">
+                        <div class="info-card-title">Order Information</div>
+                        <div class="info-row">
+                            <span class="label">Quotation:</span>
+                            <span class="value"><strong>{{ $unitQuote->no_quote }}</strong></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Seller:</span>
+                            <span class="value">{{ $entityName }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Sales:</span>
+                            <span class="value">{{ $unitQuote->sales?->name ?? 'Sales Representative' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Tax Status:</span>
+                            <span class="value">{{ $hasTax ? 'PPN 11% (Taxable)' : 'Non-PPN (0%)' }}</span>
+                        </div>
+                        @if ($unitQuote->title)
+                            <div class="info-row">
+                                <span class="label">Subject:</span>
+                                <span class="value">{{ $unitQuote->title }}</span>
+                            </div>
                         @endif
                     </div>
-                    <div class="brand-name">{{ $entityName }}</div>
-                    <div class="brand-address">
-                        @if ($isKojisha)
-                            Komplek Pergudangan Era Prima Blok S-07<br>
-                            Jl. Daan Mogot KM 21, Tangerang, Banten<br>
-                            Telp: 0811-9293-948 | Email: sales@kojisha.co.id
-                        @else
-                            Grand Slipi Tower 42nd Floor Unit A-G<br>
-                            Jl. S. Parman Kav 22-24, Palmerah, Jakarta Barat 11480<br>
-                            Telp: 021-2902-2300 | Email: sales@reftech.co.id
-                        @endif
-                    </div>
                 </div>
 
-                <div class="doc-title-block">
-                    <div class="doc-title">{{ $docHeading }}</div>
-                    <div class="doc-number">{{ $contract->no_contract ?: '-' }}</div>
-                    <div class="doc-date">Date: {{ $contract->date ? date('d-m-Y', strtotime($contract->date)) : date('d-m-Y') }}</div>
-                </div>
-            </div>
+                {{-- Items Table --}}
+                @php
+                    $specLabels = [
+                        'brand'=>'Brand','model'=>'Model','type_unit'=>'Type',
+                        'bar'=>'Max Pressure','air_cap'=>'Air Capacity','power'=>'Motor Power',
+                        'voltage'=>'Voltage','connect'=>'Drive','cooling'=>'Cooling Method',
+                        'exhaust'=>'Connection','refrigerant_type'=>'Refrigerant Type','pdp'=>'PDP',
+                        'filtration'=>'Filtration','oil_content'=>'Oil Content','grade'=>'Grade',
+                        'capacity'=>'Capacity','material'=>'Material','test_pressure'=>'Test Pressure',
+                        'inlet_pressure'=>'Inlet Pressure','outlet_pressure'=>'Outlet Pressure',
+                        'inlet_cap'=>'Inlet Capacity (LP)','outlet_cap'=>'Outlet Capacity (HP)',
+                        'dimension'=>'Dimension','weight'=>'Weight',
+                    ];
+                    $specUnits = [
+                        'bar'=>' Bar','air_cap'=>' m³/min','test_pressure'=>' Bar',
+                        'inlet_pressure'=>' Bar','outlet_pressure'=>' Bar',
+                        'inlet_cap'=>' m³/min','outlet_cap'=>' m³/min',
+                        'weight'=>' Kg','capacity'=>' Liter',
+                    ];
+                @endphp
 
-            {{-- Info Section --}}
-            <div class="info-section">
-                <div class="info-card">
-                    <div class="info-card-title">Quote To</div>
-                    <div class="info-card-company">{{ $client->company ?? '-' }}</div>
-                    <div class="info-row">
-                        <span class="label">Address</span>
-                        <span class="value">{{ $client->address ?? '-' }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">Attn / PIC</span>
-                        <span class="value">{{ $pic->name ?? '-' }} {{ !empty($pic->phone) ? '(' . $pic->phone . ')' : '' }}</span>
-                    </div>
-                </div>
-
-                <div class="info-card">
-                    <div class="info-card-title">Order Information</div>
-                    <div class="info-row">
-                        <span class="label">PO Number</span>
-                        <span class="value" style="font-weight: 700; color: #0284c7;">
-                            {{ ($isUnit ? $unitQuote->po_number : ($contract->quotation->po_number ?? '-')) ?: '-' }}
-                        </span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">PO Date</span>
-                        <span class="value">
-                            @php
-                                $poDateVal = $isUnit ? $unitQuote->po_date : ($contract->quotation->po_date ?? null);
-                            @endphp
-                            {{ $poDateVal ? date('d-m-Y', strtotime($poDateVal)) : '-' }}
-                        </span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">Sales Exec</span>
-                        <span class="value">{{ $sales->name ?? '-' }}</span>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Items Table --}}
-            <div class="table-responsive-wrapper">
-                @if ($isUnit)
-                    {{-- Unit Quotation Table --}}
+                <div class="table-responsive-wrapper">
                     <table class="items-table">
                         <thead>
                             <tr>
@@ -880,10 +988,10 @@
                                                     @foreach ($specs as $field)
                                                         @if ($field === 'unit') @continue @endif
                                                         @php $val = $item->unit->$field ?? null; @endphp
-                                                        @if ($val)
+                                                        @if ($val && isset($specLabels[$field]))
                                                             <div>
-                                                                <span style="color:#64748b;">{{ ucfirst(str_replace('_', ' ', $field)) }}:</span>
-                                                                <strong>{{ $val }}</strong>
+                                                                <span style="color:#64748b;">{{ $specLabels[$field] }}:</span>
+                                                                <strong>{{ $val }}{{ $specUnits[$field] ?? '' }}</strong>
                                                             </div>
                                                         @endif
                                                     @endforeach
@@ -909,101 +1017,11 @@
                             @endforeach
                         </tbody>
                     </table>
-                @elseif ($quote->type == 'Sparepart')
-                    {{-- Service Sparepart Table --}}
-                    <table class="items-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 4%; text-align: center;">No</th>
-                                <th style="width: 44%;">Item Description</th>
-                                <th style="width: 15%; text-align: right;">Price (IDR)</th>
-                                <th style="width: 11%; text-align: center;">Qty</th>
-                                <th style="width: 10%; text-align: center;">Disc</th>
-                                <th style="width: 16%; text-align: right;">Amount (IDR)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @php $no = 0; @endphp
-                            @foreach ($dquote as $product)
-                                @php $no++; @endphp
-                                <tr>
-                                    <td style="text-align: center; color: #64748b;">{{ $no }}</td>
-                                    <td>
-                                        <div class="item-title">
-                                            {{ $product->id_equivalent == '0' ? '-' : ($product->equivalent->brand . ' ' . $product->equivalent->pn) }}
-                                        </div>
-                                        <div class="item-desc">{{ $product->detail_product }}</div>
-                                    </td>
-                                    <td style="text-align: right;">
-                                        {{ $product->amount == 0 ? 'SBO' : number_format($product->price, 0, '', '.') }}
-                                    </td>
-                                    <td style="text-align: center; font-weight: 600;">
-                                        {{ $product->qty }} {{ $product->info_qty }}
-                                    </td>
-                                    <td style="text-align: center;">
-                                        {{ $product->disc }}%
-                                    </td>
-                                    <td style="text-align: right; font-weight: 700;">
-                                        {{ number_format($product->amount, 0, '', '.') }}
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                @else
-                    {{-- Subtitle Table --}}
-                    <table class="items-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 4%; text-align: center;">No</th>
-                                <th style="width: 52%;">Item Description</th>
-                                <th style="width: 10%; text-align: center;">Qty</th>
-                                <th style="width: 17%; text-align: right;">Price (IDR)</th>
-                                <th style="width: 17%; text-align: right;">Amount (IDR)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @php $abjad = 64; @endphp
-                            @foreach ($subQuote as $subJudul)
-                                @php
-                                    $no = 0;
-                                    $abjad++;
-                                @endphp
-                                <tr class="subtitle-row">
-                                    <td style="text-align: center; font-weight: 700; color: #0284c7;">{{ chr($abjad) }}</td>
-                                    <td colspan="4" style="font-weight: 700;">{{ $subJudul->subtitle }}</td>
-                                </tr>
-                                @foreach ($subJudul->detail as $product)
-                                    @php $no++; @endphp
-                                    <tr>
-                                        <td style="text-align: center; color: #64748b;">{{ $no }}</td>
-                                        <td>
-                                            <div class="item-title">{{ $product->product }}</div>
-                                            @if ($product->detail != '-')
-                                                <div class="item-desc">{{ $product->detail }}</div>
-                                            @endif
-                                        </td>
-                                        <td style="text-align: center; font-weight: 600;">
-                                            {{ $product->qty }} {{ $product->info_qty }}
-                                        </td>
-                                        <td style="text-align: right;">
-                                            {{ number_format($product->price, 0, '', '.') }}
-                                        </td>
-                                        <td style="text-align: right; font-weight: 700;">
-                                            {{ number_format($product->amount, 0, '', '.') }}
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            @endforeach
-                        </tbody>
-                    </table>
-                @endif
-            </div>
+                </div>
 
-            {{-- Totals Section --}}
-            <div class="totals-section">
-                <table class="totals-table">
-                    @if ($isUnit)
+                {{-- Totals Section (Right Aligned) --}}
+                <div class="totals-section">
+                    <table class="totals-table">
                         <tr>
                             <td class="label">Subtotal:</td>
                             <td class="val">Rp {{ number_format($unitQuote->subtotal, 0, '', '.') }}</td>
@@ -1034,7 +1052,280 @@
                             <td class="label">{{ $hasTax ? 'TOTAL (INC PPN):' : 'TOTAL (EXC PPN):' }}</td>
                             <td class="val">Rp {{ number_format($unitQuote->total, 0, '', '.') }}</td>
                         </tr>
+                    </table>
+                </div>
+
+                {{-- Single Term & Condition Card --}}
+                <div class="terms-card">
+                    <div class="terms-card-header">TERM &amp; CONDITION</div>
+                    <div class="terms-card-body">
+                        <div class="term-row">
+                            <span class="term-label">Validity Of Quotation</span>
+                            <span class="term-sep">:</span>
+                            <span class="term-val">{{ $unitQuote->validity ?: '1 (one) Month' }}</span>
+                        </div>
+                        <div class="term-row">
+                            <span class="term-label">Price</span>
+                            <span class="term-sep">:</span>
+                            <span class="term-val">{{ $unitQuote->pricing ?: 'Franco Factory' }}</span>
+                        </div>
+                        <div class="term-row">
+                            <span class="term-label">Delivery Process</span>
+                            <span class="term-sep">:</span>
+                            <span class="term-val">{{ $unitQuote->delivery_process ?: 'Ready stock' }}</span>
+                        </div>
+                        <div class="term-row">
+                            <span class="term-label">Payment</span>
+                            <span class="term-sep">:</span>
+                            <span class="term-val">{{ $unitQuote->payment ?: 'Cash Before Delivery' }}</span>
+                        </div>
+                        @if ($unitQuote->note)
+                            <div class="term-row">
+                                <span class="term-label">Note</span>
+                                <span class="term-sep">:</span>
+                                <span class="term-val">{{ $unitQuote->note }}</span>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Thank you for your business Note --}}
+                <div class="business-thanks-note">
+                    <p class="thanks-title">Thank you for your business!</p>
+                    <p class="thanks-desc mb-0">Dokumen ini merupakan konfirmasi kesepakatan penjualan/pesanan resmi antara <strong>{{ $entityName }}</strong> dan <strong>{{ $unitQuote->client?->company ?? 'Customer' }}</strong>.</p>
+                </div>
+
+                {{-- Signatures Section --}}
+                <div class="signature-section">
+                    {{-- Authorized By --}}
+                    <div class="signature-box">
+                        <div class="signature-label">Authorized By,</div>
+                        <div class="signature-img-wrap">
+                            @if ($isKojisha)
+                                <img src="{{ asset('/asset') }}/sign/kojisha-nm.jpeg" alt="Signature Kojisha">
+                            @else
+                                @if ($hasTax)
+                                    <img src="{{ asset('/asset') }}/contract/sign-irene.jpeg" alt="Signature Irene">
+                                @else
+                                    <img src="{{ asset('/asset') }}/sign/ttdirene.jpg" alt="Signature Irene">
+                                @endif
+                            @endif
+                        </div>
+                        <div class="signature-name">{{ $isKojisha ? 'Dedeh Sulastri' : 'Mrs. Irene' }}</div>
+                        <div class="signature-role">{{ $entityName }}</div>
+                    </div>
+
+                    {{-- Accepted By Customer --}}
+                    <div class="signature-box">
+                        <div class="signature-label">Accepted By Customer,</div>
+                        <div class="signature-img-wrap">
+                            @if ($isSigned && $sellcon->customer_signature)
+                                <img src="{{ asset($sellcon->customer_signature) }}" alt="Customer Signature">
+                            @else
+                                <div style="color: #94a3b8; font-size: 11px; font-style: italic;">
+                                    (Bubuhi tanda tangan pada formulir di bawah)
+                                </div>
+                            @endif
+                        </div>
+                        <div class="signature-name">
+                            {{ $isSigned ? $sellcon->customer_signer_name : ($unitQuote->pic?->name_pic ?: ($unitQuote->attn ?: '..............................')) }}
+                        </div>
+                        <div class="signature-role">
+                            {{ $isSigned ? ($sellcon->customer_signer_position ?: ($unitQuote->client?->company ?? '-')) : ($unitQuote->client?->company ?? '-') }}
+                        </div>
+                        @if ($isSigned && $sellcon->signed_at)
+                            <div style="font-size: 8.5px; color: #16a34a; font-weight: 600; margin-top: 2px;">
+                                ✓ Signed on {{ date('d-m-Y H:i', strtotime($sellcon->signed_at)) }}
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+            @else
+                {{-- ==================== SERVICE / SPAREPART SELLING CONTRACT / CONFIRM ORDER ==================== --}}
+                {{-- Header --}}
+                <div class="doc-header">
+                    <div class="brand-info">
+                        <div class="brand-logo">
+                            @if ($sellcon->type == 'Selling')
+                                <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="PT Reftech Jaya Optima">
+                            @else
+                                <img src="{{ asset('/asset') }}/logo/Logo-update-size.png" alt="PT Kojisha Innotiv Indonesia">
+                            @endif
+                        </div>
+                        <div class="brand-name">{{ $entityName }}</div>
+                        <div class="brand-address">
+                            @if ($sellcon->type == 'Selling')
+                                <p>Taman Kopo Indah V, Ruko Sommerville No. 31, Bandung – Jawa Barat 40218</p>
+                                <p>Telp: 022 54417653 &nbsp;|&nbsp; Email: info@reftech.id</p>
+                                @if ($hasTax)
+                                    <p><strong>NPWP:</strong> 07.372.857.1-842.9000</p>
+                                @endif
+                            @else
+                                <p>Jl. Nancep No. 45A, Setu, Cibitung - Kab. Bekasi 17320</p>
+                                <p>Telp: +62 812-1000-0997 &nbsp;|&nbsp; Email: admin@kojisha.com</p>
+                                @if ($hasTax)
+                                    <p><strong>NPWP:</strong> 96.484.859.2-413.000</p>
+                                @endif
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="doc-title-block">
+                        <h1 class="doc-title">{{ $docHeading }}</h1>
+                        <div class="doc-number">#{{ $sellcon->no_contract }}</div>
+                        <div class="doc-date">Date: {{ $sellcon->date ? Carbon\Carbon::parse($sellcon->date)->format('d-m-Y') : date('d-m-Y') }}</div>
+                    </div>
+                </div>
+
+                {{-- Info Section --}}
+                <div class="info-section">
+                    {{-- Quote To --}}
+                    <div class="info-card">
+                        <div class="info-card-title">Customer / Quote To</div>
+                        <div class="info-card-company">{{ $quote->pic?->client?->company ?? '-' }}</div>
+                        <div class="info-row">
+                            <span class="label">Attn:</span>
+                            <span class="value">{{ $quote->pic?->name_pic ?? '-' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Phone:</span>
+                            <span class="value">{{ $quote->pic?->phone_pic ?? $quote->pic?->client?->phone ?? '-' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Email:</span>
+                            <span class="value">{{ $quote->pic?->email_pic ?? $quote->pic?->client?->email ?? '-' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Address:</span>
+                            <span class="value">{{ $quote->pic?->client?->address ?? '-' }}</span>
+                        </div>
+                    </div>
+
+                    {{-- Contract Details --}}
+                    <div class="info-card">
+                        <div class="info-card-title">Order Information</div>
+                        <div class="info-row">
+                            <span class="label">Quotation:</span>
+                            <span class="value"><strong>{{ $quote->no_quote }}</strong></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Seller:</span>
+                            <span class="value">{{ $entityName }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Sales:</span>
+                            <span class="value">{{ $quote->sales?->name ?? '-' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Tax Status:</span>
+                            <span class="value">{{ $hasTax ? 'PPN ' . $quote->tax . '% (Taxable)' : 'Non-PPN (0%)' }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Type:</span>
+                            <span class="value">{{ $quote->type }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Items Table --}}
+                <div class="table-responsive-wrapper">
+                    @if ($quote->type == 'Sparepart')
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 4%; text-align: center;">No</th>
+                                    <th style="width: 50%;">Item Description</th>
+                                    <th style="width: 16%; text-align: right;">Price (IDR)</th>
+                                    <th style="width: 8%; text-align: center;">Qty</th>
+                                    <th style="width: 6%; text-align: center;">Disc</th>
+                                    <th style="width: 16%; text-align: right;">Amount (IDR)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php $no = 0; @endphp
+                                @foreach ($dquote as $product)
+                                    @php $no++; @endphp
+                                    <tr>
+                                        <td style="text-align: center; color: #64748b;">{{ $no }}</td>
+                                        <td>
+                                            <div class="item-title">
+                                                @if ($product->id_equivalent == '0')
+                                                    -
+                                                @else
+                                                    {{ $product->equivalent->brand ?? '' }} {{ $product->equivalent->pn ?? '' }}
+                                                @endif
+                                            </div>
+                                            <div class="item-desc">{{ $product->detail_product }}</div>
+                                        </td>
+                                        <td style="text-align: right;">
+                                            {{ $product->amount == 0 ? 'SBO' : number_format($product->price, 0, '', '.') }}
+                                        </td>
+                                        <td style="text-align: center; font-weight: 600;">
+                                            {{ $product->qty }} {{ $product->info_qty }}
+                                        </td>
+                                        <td style="text-align: center;">
+                                            {{ $product->disc }}%
+                                        </td>
+                                        <td style="text-align: right; font-weight: 700;">
+                                            {{ number_format($product->amount, 0, '', '.') }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     @else
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 4%; text-align: center;">No</th>
+                                    <th style="width: 52%;">Item Description</th>
+                                    <th style="width: 10%; text-align: center;">Qty</th>
+                                    <th style="width: 17%; text-align: right;">Price (IDR)</th>
+                                    <th style="width: 17%; text-align: right;">Amount (IDR)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php $abjad = 64; @endphp
+                                @foreach ($subQuote as $subJudul)
+                                    @php
+                                        $no = 0;
+                                        $abjad++;
+                                    @endphp
+                                    <tr class="subtitle-row">
+                                        <td style="text-align: center; font-weight: 700; color: #0284c7;">{{ chr($abjad) }}</td>
+                                        <td colspan="4" style="font-weight: 700;">{{ $subJudul->subtitle }}</td>
+                                    </tr>
+                                    @foreach ($subJudul->detail as $product)
+                                        @php $no++; @endphp
+                                        <tr>
+                                            <td style="text-align: center; color: #64748b;">{{ $no }}</td>
+                                            <td>
+                                                <div class="item-title">{{ $product->product }}</div>
+                                                @if ($product->detail != '-')
+                                                    <div class="item-desc">{{ $product->detail }}</div>
+                                                @endif
+                                            </td>
+                                            <td style="text-align: center; font-weight: 600;">
+                                                {{ $product->qty }} {{ $product->info_qty }}
+                                            </td>
+                                            <td style="text-align: right;">
+                                                {{ number_format($product->price, 0, '', '.') }}
+                                            </td>
+                                            <td style="text-align: right; font-weight: 700;">
+                                                {{ number_format($product->amount, 0, '', '.') }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endif
+                </div>
+
+                {{-- Totals Section (Right Aligned) --}}
+                <div class="totals-section">
+                    <table class="totals-table">
                         <tr>
                             <td class="label">Subtotal:</td>
                             <td class="val">Rp {{ number_format($quote->subtotal, 0, '', '.') }}</td>
@@ -1065,104 +1356,97 @@
                             <td class="label">{{ $hasTax ? 'TOTAL (INC PPN):' : 'TOTAL (EXC PPN):' }}</td>
                             <td class="val">Rp {{ number_format($quote->harga_total, 0, '', '.') }}</td>
                         </tr>
-                    @endif
-                </table>
-            </div>
-
-            {{-- Terms & Conditions --}}
-            <div class="terms-card">
-                <div class="terms-card-header">TERM &amp; CONDITION</div>
-                <div class="terms-card-body">
-                    @if ($isUnit)
-                        <div class="term-row">
-                            <span class="term-label">Validity Of Quotation</span>
-                            <span class="term-sep">:</span>
-                            <span class="term-val">{{ $unitQuote->validity ?: '1 (one) Month' }}</span>
-                        </div>
-                        <div class="term-row">
-                            <span class="term-label">Delivery Time</span>
-                            <span class="term-sep">:</span>
-                            <span class="term-val">{{ $unitQuote->delivery_time ?: 'Indent 4-6 Weeks' }}</span>
-                        </div>
-                        <div class="term-row">
-                            <span class="term-label">Term Of Payment</span>
-                            <span class="term-sep">:</span>
-                            <span class="term-val">{{ $unitQuote->payment_term ?: 'CBD / DP 50%' }}</span>
-                        </div>
-                        <div class="term-row">
-                            <span class="term-label">Warranty</span>
-                            <span class="term-sep">:</span>
-                            <span class="term-val">{{ $unitQuote->warranty ?: '1 Year' }}</span>
-                        </div>
-                    @elseif (isset($quote->termncon[0]))
-                        <div class="term-row">
-                            <span class="term-label">Validity of Quote</span>
-                            <span class="term-sep">:</span>
-                            <span class="term-val">{{ $quote->termncon[0]->validity ?: '-' }}</span>
-                        </div>
-                        <div class="term-row">
-                            <span class="term-label">Delivery Time</span>
-                            <span class="term-sep">:</span>
-                            <span class="term-val">{{ $quote->termncon[0]->delivery ?: '-' }}</span>
-                        </div>
-                        <div class="term-row">
-                            <span class="term-label">Term of Payment</span>
-                            <span class="term-sep">:</span>
-                            <span class="term-val">{{ $quote->termncon[0]->payment ?: '-' }}</span>
-                        </div>
-                        <div class="term-row">
-                            <span class="term-label">Warranty</span>
-                            <span class="term-sep">:</span>
-                            <span class="term-val">{{ $quote->termncon[0]->garansi ?: '-' }}</span>
-                        </div>
-                    @endif
+                    </table>
                 </div>
-            </div>
 
-            {{-- Thank You Note --}}
-            <div class="thankyou-note">
-                Thank you for your business! Please confirm your acceptance by digitally signing below.
-            </div>
-
-            {{-- Document Signatures Block --}}
-            <div class="signatures-grid">
-                <div class="signature-col">
-                    <div class="signature-title">{{ $entityName }}</div>
-                    <div class="signature-box-display">
-                        @if ($isKojisha)
-                            <img src="{{ asset('assets/img/icon/signature/ttd-kojisha.png') }}" alt="Authorized Signature" onerror="this.style.display='none'">
-                        @else
-                            <img src="{{ asset('assets/img/icon/signature/ttd-reftech.png') }}" alt="Authorized Signature" onerror="this.style.display='none'">
-                        @endif
+                {{-- Single Term & Condition Card --}}
+                @if (isset($quote->termncon[0]))
+                    <div class="terms-card">
+                        <div class="terms-card-header">TERM &amp; CONDITION</div>
+                        <div class="terms-card-body">
+                            <div class="term-row">
+                                <span class="term-label">Validity of Quote</span>
+                                <span class="term-sep">:</span>
+                                <span class="term-val">{{ $quote->termncon[0]->validity ?: '-' }}</span>
+                            </div>
+                            <div class="term-row">
+                                <span class="term-label">Price</span>
+                                <span class="term-sep">:</span>
+                                <span class="term-val">{{ $quote->termncon[0]->pricing ?: '-' }}</span>
+                            </div>
+                            <div class="term-row">
+                                <span class="term-label">Delivery Process</span>
+                                <span class="term-sep">:</span>
+                                <span class="term-val">{{ $quote->termncon[0]->delivery_process ?: '-' }}</span>
+                            </div>
+                            <div class="term-row">
+                                <span class="term-label">Payment</span>
+                                <span class="term-sep">:</span>
+                                <span class="term-val">{{ $quote->termncon[0]->payment ?: '-' }}</span>
+                            </div>
+                            @if (!empty($quote->termncon[0]->note))
+                                <div class="term-row">
+                                    <span class="term-label">Note</span>
+                                    <span class="term-sep">:</span>
+                                    <span class="term-val">{{ $quote->termncon[0]->note }}</span>
+                                </div>
+                            @endif
+                        </div>
                     </div>
-                    <div class="signature-name">Authorized Representative</div>
-                    <div class="signature-role">Sales &amp; Marketing Dept</div>
+                @endif
+
+                {{-- Thank you for your business Note --}}
+                <div class="business-thanks-note">
+                    <p class="thanks-title">Thank you for your business!</p>
+                    <p class="thanks-desc mb-0">Dokumen ini merupakan konfirmasi kesepakatan penjualan/pesanan resmi antara <strong>{{ $entityName }}</strong> dan <strong>{{ $quote->pic?->client?->company ?? 'Customer' }}</strong>.</p>
                 </div>
 
-                <div class="signature-col">
-                    <div class="signature-title">Accepted By Customer</div>
-                    <div class="signature-box-display">
-                        @if ($isSigned && $contract->customer_signature)
-                            <img src="{{ asset($contract->customer_signature) }}" alt="Customer Signature">
-                        @else
-                            <div style="color: #94a3b8; font-size: 11px; font-style: italic;">
-                                (Tanda tangan di bawah)
+                {{-- Signatures Section --}}
+                <div class="signature-section">
+                    {{-- Authorized By --}}
+                    <div class="signature-box">
+                        <div class="signature-label">Authorized By,</div>
+                        <div class="signature-img-wrap">
+                            @if ($sellcon->type == 'Selling')
+                                @if ($hasTax)
+                                    <img src="{{ asset('/asset') }}/contract/sign-irene.jpeg" alt="Signature Irene">
+                                @else
+                                    <img src="{{ asset('/asset') }}/sign/ttdirene.jpg" alt="Signature Irene">
+                                @endif
+                            @else
+                                <img src="{{ asset('/asset') }}/contract/sign-dedeh.png" alt="Signature Dedeh">
+                            @endif
+                        </div>
+                        <div class="signature-name">{{ $sellcon->type == 'Selling' ? 'Mrs. Irene' : 'Dedeh Sulastri' }}</div>
+                        <div class="signature-role">{{ $entityName }}</div>
+                    </div>
+
+                    {{-- Accepted By Customer --}}
+                    <div class="signature-box">
+                        <div class="signature-label">Accepted By Customer,</div>
+                        <div class="signature-img-wrap">
+                            @if ($isSigned && $sellcon->customer_signature)
+                                <img src="{{ asset($sellcon->customer_signature) }}" alt="Customer Signature">
+                            @else
+                                <div style="color: #94a3b8; font-size: 11px; font-style: italic;">
+                                    (Bubuhi tanda tangan pada formulir di bawah)
+                                </div>
+                            @endif
+                        </div>
+                        <div class="signature-name">
+                            {{ $isSigned ? $sellcon->customer_signer_name : ($quote->pic?->name_pic ?: '..............................') }}
+                        </div>
+                        <div class="signature-role">
+                            {{ $isSigned ? ($sellcon->customer_signer_position ?: ($quote->pic?->client?->company ?? '-')) : ($quote->pic?->client?->company ?? '-') }}
+                        </div>
+                        @if ($isSigned && $sellcon->signed_at)
+                            <div style="font-size: 8.5px; color: #16a34a; font-weight: 600; margin-top: 2px;">
+                                ✓ Signed on {{ date('d-m-Y H:i', strtotime($sellcon->signed_at)) }}
                             </div>
                         @endif
                     </div>
-                    <div class="signature-name">
-                        {{ $isSigned ? $contract->customer_signer_name : ($pic->name ?? 'Customer Name') }}
-                    </div>
-                    <div class="signature-role">
-                        {{ $isSigned ? ($contract->customer_signer_position ?: 'Authorized Signer') : ($client->company ?? 'Customer') }}
-                    </div>
-                    @if ($isSigned && $contract->signed_at)
-                        <div style="font-size: 9.5px; color: #16a34a; font-weight: 600; margin-top: 2px;">
-                            <i class="mdi mdi-check-decagram"></i> Signed on {{ date('d-m-Y H:i', strtotime($contract->signed_at)) }}
-                        </div>
-                    @endif
                 </div>
-            </div>
+            @endif
         </div>
 
         {{-- Interactive Customer Signature Section --}}
@@ -1174,10 +1458,10 @@
                     </div>
                     <div class="success-signed-title">Kontrak Telah Ditandatangani</div>
                     <div class="success-signed-desc">
-                        Dokumen ini telah resmi disetujui dan ditandatangani secara digital oleh <strong>{{ $contract->customer_signer_name }}</strong> ({{ $contract->customer_signer_position }}) pada {{ date('d F Y, H:i', strtotime($contract->signed_at)) }} WIB.
+                        Dokumen ini telah resmi disetujui dan ditandatangani secara digital oleh <strong>{{ $sellcon->customer_signer_name }}</strong>{{ $sellcon->customer_signer_position ? ' (' . $sellcon->customer_signer_position . ')' : '' }} pada {{ date('d F Y, H:i', strtotime($sellcon->signed_at)) }} WIB.
                     </div>
                     <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px;">
-                        <a href="{{ route('contract.customer.pdf', $contract->sign_token) }}" target="_blank" class="btn-portal btn-portal-success" style="padding: 10px 20px; font-size: 13.5px;">
+                        <a href="{{ route('contract.customer.pdf', $sellcon->sign_token) }}" target="_blank" class="btn-portal btn-portal-success" style="padding: 10px 20px; font-size: 13.5px;">
                             <i class="mdi mdi-file-pdf-box"></i> Unduh Salinan PDF Kontrak
                         </a>
                         <button type="button" class="btn-portal btn-portal-danger" id="btn-customer-reset-sign" style="padding: 10px 18px; font-size: 13.5px;">
@@ -1195,7 +1479,7 @@
                         Silakan buat tanda tangan Anda pada area kotak di bawah menggunakan jari (Touchscreen) atau mouse kursor.
                     </div>
 
-                    <form id="form-sign-contract" action="{{ route('contract.customer.sign.submit', $contract->sign_token) }}" method="POST" enctype="multipart/form-data">
+                    <form id="form-sign-contract" action="{{ route('contract.customer.sign.submit', $sellcon->sign_token) }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         <input type="hidden" name="signature_data" id="signature_data">
 
@@ -1217,11 +1501,11 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label for="signer_name">Nama Lengkap Penandatangan <span style="color: #dc2626;">*</span></label>
-                                <input type="text" id="signer_name" name="signer_name" value="{{ $pic->name ?? '' }}" placeholder="Contoh: Budi Santoso" required>
+                                <input type="text" id="signer_name" name="signer_name" value="{{ $isUnit ? ($unitQuote->pic?->name_pic ?? ($unitQuote->attn ?? '')) : ($quote->pic?->name_pic ?? '') }}" placeholder="Contoh: Budi Santoso" required>
                             </div>
                             <div class="form-group">
-                                <label for="signer_position">Jabatan / Posisi <span style="color: #dc2626;">*</span></label>
-                                <input type="text" id="signer_position" name="signer_position" placeholder="Contoh: Direktur / Procurement Manager" required>
+                                <label for="signer_position">Jabatan / Posisi <span style="color: #64748b; font-weight: normal;">(Opsional)</span></label>
+                                <input type="text" id="signer_position" name="signer_position" placeholder="Contoh: Direktur / Procurement Manager">
                             </div>
                         </div>
 
@@ -1278,7 +1562,7 @@
                                 }
                             });
 
-                            fetch("{{ route('contract.customer.sign.reset', $contract->sign_token) }}", {
+                            fetch("{{ route('contract.customer.sign.reset', $sellcon->sign_token) }}", {
                                 method: 'POST',
                                 headers: {
                                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -1334,7 +1618,7 @@
             window.addEventListener("resize", resizeCanvas);
             resizeCanvas();
 
-            signaturePad.addEventListener("beginStroke", () => {
+            signaturePad.addEventListener("beginStroke", function () {
                 hint.style.display = 'none';
                 wrapper.classList.add('has-drawn');
             });

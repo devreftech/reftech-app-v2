@@ -39,13 +39,13 @@
 
                 <!-- Search Box -->
                 <div class="input-group input-group-merge input-group-sm ms-sm-2" style="width: 240px;">
-                    <span class="input-group-text bg-white border-end-0"><i class="mdi mdi-magnify text-muted"></i></span>
+                    <span class="input-group-text border-end-0" id="boardHeaderSearchAddon"><i class="mdi mdi-magnify text-muted"></i></span>
                     <input type="text" class="form-control border-start-0 ps-0" id="kanbanSearchInput" placeholder="{{ $board->type === 'monitoring' ? 'Cari PO, Client, RJO, KII...' : 'Cari kartu tugas...' }}">
                 </div>
 
                 @if ($board->type === 'monitoring')
                     <!-- Accounting Multi-Toggle Tab Switcher -->
-                    <div class="accounting-filter-tabs d-inline-flex align-items-center p-1 bg-white border rounded-pill shadow-xs ms-sm-2" style="border-color: #e2e8f0 !important;">
+                    <div class="accounting-filter-tabs d-inline-flex align-items-center p-1 rounded-pill shadow-xs ms-sm-2">
                         @foreach ($accountingUsers ?? [] as $accountingUser)
                             @php
                                 $firstName = explode(' ', trim($accountingUser->name))[0];
@@ -144,14 +144,6 @@
                             <label for="createTaskDueDate" class="form-label">Due Date</label>
                             <input type="text" class="form-control flatpickr" id="createTaskDueDate" placeholder="YYYY-MM-DD">
                         </div>
-                        <div class="mb-3">
-                            <label for="createTaskPriority" class="form-label">Prioritas</label>
-                            <select class="form-select" id="createTaskPriority">
-                                <option value="low">Rendah</option>
-                                <option value="medium" selected>Sedang</option>
-                                <option value="high">Tinggi</option>
-                            </select>
-                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
@@ -214,19 +206,19 @@
                             
                             <!-- Sales Order / PO details if exists -->
                              <div id="soDetailsContainer" class="mb-4" style="display: none;">
-                                 <div class="card border border-light-subtle shadow-sm" style="background-color: #fbfbfc; border-radius: 12px; border: 1px solid #eef0f4 !important;">
+                                 <div class="card border border-light-subtle shadow-sm task-detail-card">
                                      <div class="card-body p-3.5">
-                                         <h6 class="fw-bold mb-3 text-dark d-flex align-items-center pb-2" style="font-size: 14.5px; border-bottom: 2px solid #5a8dee;">
+                                         <h6 class="fw-bold mb-3 text-heading d-flex align-items-center pb-2" style="font-size: 14.5px; border-bottom: 2px solid #5a8dee;">
                                              <i class="mdi mdi-file-document-outline me-2 text-primary" style="font-size: 18px;"></i> Detail Purchase Order
                                          </h6>
                                          <div class="row g-3" style="font-size: 13px;">
                                              <div class="col-sm-6">
                                                  <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Nomor PO</span>
-                                                 <strong id="soPoNumber" class="text-dark" style="font-size: 13.5px;"></strong>
+                                                 <strong id="soPoNumber" class="text-heading" style="font-size: 13.5px;"></strong>
                                              </div>
                                              <div class="col-sm-6">
                                                  <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Nomor SO</span>
-                                                 <span id="soSoNumber" class="text-dark fw-semibold" style="font-size: 13.5px;">-</span>
+                                                 <span id="soSoNumber" class="text-heading fw-semibold" style="font-size: 13.5px;">-</span>
                                              </div>
                                              <div class="col-sm-6">
                                                  <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Entity / Tipe Invoice</span>
@@ -234,11 +226,11 @@
                                              </div>
                                              <div class="col-sm-6">
                                                  <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Client / Perusahaan</span>
-                                                 <strong id="soClientName" class="text-dark" style="font-size: 13.5px;"></strong>
+                                                 <strong id="soClientName" class="text-heading" style="font-size: 13.5px;"></strong>
                                              </div>
                                              <div class="col-sm-6">
                                                  <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Nomor Penawaran (Quote)</span>
-                                                 <span id="soQuoteNumber" style="font-size: 13px;"></span>
+                                                 <span id="soQuoteNumber" class="text-heading" style="font-size: 13px;"></span>
                                              </div>
                                              @if (auth()->user()->role !== 'ServiceM')
                                              <div class="col-sm-6">
@@ -248,7 +240,7 @@
                                              @endif
                                              <div class="col-sm-6">
                                                  <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Sales Person</span>
-                                                 <span id="soSalesPerson" class="text-dark" style="font-size: 13px;"></span>
+                                                 <span id="soSalesPerson" class="text-heading" style="font-size: 13px;"></span>
                                              </div>
 
                                              <!-- Invoices & Payments status -->
@@ -276,7 +268,7 @@
                                                  
                                                  <!-- Connected Service Report Card Display -->
                                                  <div id="connectedReportContainer" style="display: none;" class="mb-2">
-                                                     <div class="d-flex align-items-center justify-content-between p-2.5 rounded border border-success bg-white" style="font-size: 12.5px; border-color: #71dd37 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                                                     <div class="d-flex align-items-center justify-content-between p-2.5 rounded border border-success dynamic-subcard" style="font-size: 12.5px; border-color: #71dd37 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                                                          <div class="d-flex align-items-center gap-2">
                                                              <i class="mdi mdi-file-check-outline text-success" style="font-size: 20px;"></i>
                                                              <div>
@@ -336,9 +328,9 @@
 
                              <!-- Ringkasan Kesehatan Keuangan (data sama kayak halaman Project Monitoring) -->
                              <div id="financialHealthContainer" class="mb-4" style="display: none;">
-                                 <div class="card border border-light-subtle shadow-sm" style="background-color: #fbfbfc; border-radius: 12px; border: 1px solid #eef0f4 !important;">
+                                 <div class="card border border-light-subtle shadow-sm task-detail-card">
                                      <div class="card-body p-3.5">
-                                         <h6 class="fw-bold mb-3 text-dark d-flex align-items-center pb-2" style="font-size: 14.5px; border-bottom: 2px solid #71dd37;">
+                                         <h6 class="fw-bold mb-3 text-heading d-flex align-items-center pb-2" style="font-size: 14.5px; border-bottom: 2px solid #71dd37;">
                                              <i class="mdi mdi-chart-line me-2 text-success" style="font-size: 18px;"></i> Ringkasan Kesehatan Keuangan
                                          </h6>
                                          <div class="row g-3" style="font-size: 13px;">
@@ -378,7 +370,7 @@
                             <!-- Quotation terhubung -->
                             <div class="mb-4" id="quotationLinkContainer">
                                 <label class="form-label text-muted fw-semibold" style="font-size: 11px;">Quotation Terhubung</label>
-                                <div id="quotationLinkedView" class="align-items-center justify-content-between p-2 rounded border bg-white" style="display: none; font-size: 12.5px;">
+                                <div id="quotationLinkedView" class="align-items-center justify-content-between p-2 rounded border dynamic-subcard" style="display: none; font-size: 12.5px;">
                                     <div class="d-flex align-items-center gap-2 min-width-0">
                                         <i class="mdi mdi-file-document-outline text-primary" style="font-size: 18px;"></i>
                                         <div class="min-width-0">
@@ -401,10 +393,10 @@
 
                             <!-- Pengeluaran Project (manajemen biaya per kartu) -->
                             <div class="mb-4" id="taskExpenseContainer">
-                                <div class="card border border-light-subtle shadow-sm" style="background-color: #fbfbfc; border-radius: 12px; border: 1px solid #eef0f4 !important;">
+                                <div class="card border border-light-subtle shadow-sm task-detail-card">
                                     <div class="card-body p-3.5">
                                         <div class="d-flex align-items-center justify-content-between pb-2 mb-3" style="border-bottom: 2px solid #ff9f43;">
-                                            <h6 class="fw-bold mb-0 text-dark d-flex align-items-center" style="font-size: 14.5px;">
+                                            <h6 class="fw-bold mb-0 text-heading d-flex align-items-center" style="font-size: 14.5px;">
                                                 <i class="mdi mdi-cash-multiple me-2 text-warning" style="font-size: 18px;"></i> Pengeluaran Project
                                             </h6>
                                             <span class="badge bg-label-warning fw-bold" id="taskExpenseTotal" style="font-size: 12px;">Rp 0</span>
@@ -414,7 +406,7 @@
 
                                         <div id="taskExpenseFormWrap" style="display: none;">
                                             <button type="button" class="btn btn-xs btn-outline-primary" id="btnShowExpenseForm"><i class="mdi mdi-plus me-1"></i>Tambah Biaya</button>
-                                            <form id="taskExpenseForm" class="mt-2 border rounded p-2 bg-white" style="display: none;" enctype="multipart/form-data">
+                                            <form id="taskExpenseForm" class="mt-2 border rounded p-2 dynamic-subcard" style="display: none;" enctype="multipart/form-data">
                                                 <div class="row g-2">
                                                     <div class="col-12">
                                                         <input type="text" class="form-control form-control-sm" id="expenseName" placeholder="Nama biaya" required>
@@ -452,10 +444,10 @@
 
                             <!-- Daily Project Reports Section (Laporan Harian Proyek) -->
                             <div class="mb-4" id="taskProjectReportsContainer">
-                                <div class="card border border-light-subtle shadow-sm" style="background-color: #f6faff; border-radius: 12px; border: 1px solid #d9e9ff !important;">
+                                <div class="card border border-light-subtle shadow-sm task-report-card">
                                     <div class="card-body p-3.5">
                                         <div class="d-flex align-items-center justify-content-between pb-2 mb-3" style="border-bottom: 2px solid #007bff;">
-                                            <h6 class="fw-bold mb-0 text-dark d-flex align-items-center" style="font-size: 14.5px;">
+                                            <h6 class="fw-bold mb-0 text-heading d-flex align-items-center" style="font-size: 14.5px;">
                                                 <i class="mdi mdi-clipboard-text-clock-outline me-2 text-primary" style="font-size: 18px;"></i> Laporan Harian Proyek
                                             </h6>
                                             <span class="badge bg-label-primary fw-bold" id="taskProjectReportsCount" style="font-size: 12px;">0 Laporan</span>
@@ -510,17 +502,9 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="col-sm-6">
+                                <div class="{{ $board->type === 'monitoring' ? 'col-sm-12' : 'col-sm-6' }}">
                                     <label for="editTaskDueDate" class="form-label text-muted fw-semibold" style="font-size: 11px;">Tanggal Batas Waktu</label>
                                     <input type="text" class="form-control flatpickr" id="editTaskDueDate" placeholder="YYYY-MM-DD">
-                                </div>
-                                <div class="col-sm-6">
-                                    <label for="editTaskPriority" class="form-label text-muted fw-semibold" style="font-size: 11px;">Prioritas</label>
-                                    <select class="form-select" id="editTaskPriority">
-                                        <option value="low">Rendah</option>
-                                        <option value="medium">Sedang</option>
-                                        <option value="high">Tinggi</option>
-                                    </select>
                                 </div>
                             </div>
 
@@ -532,7 +516,7 @@
                                 </div>
                                 
                                 <!-- Static description view -->
-                                <div id="descriptionStaticView" class="p-3 rounded bg-light" style="font-size: 13.5px; white-space: pre-wrap; min-height: 50px; color: #4f5157;">
+                                <div id="descriptionStaticView" class="p-3 rounded bg-light" style="font-size: 13.5px; white-space: pre-wrap; min-height: 50px;">
                                     Tambahkan deskripsi detail tugas...
                                 </div>
                                 
@@ -708,7 +692,7 @@
                                     <div class="p-2 bg-light rounded border mb-3" style="max-height: 420px; overflow-y: auto;">
                                         <div id="settingsColumnsContainer" class="d-flex flex-column gap-2">
                                             @foreach ($board->columns as $index => $column)
-                                                <div class="settings-column-item card border shadow-xs mb-0 bg-white" data-id="{{ $column->id }}" draggable="true" style="cursor: grab; transition: all 0.2s ease;">
+                                                <div class="settings-column-item card border shadow-xs mb-0" data-id="{{ $column->id }}" draggable="true" style="cursor: grab; transition: all 0.2s ease;">
                                                     <div class="card-body p-2 d-flex align-items-center gap-2">
                                                         <div class="col-drag-handle text-muted px-1" title="Tahan & geser untuk mengubah urutan" style="cursor: grab;">
                                                             <i class="mdi mdi-drag-vertical" style="font-size: 20px;"></i>
@@ -817,11 +801,16 @@
         }
 
         /* Column cards container takes remaining height and scrolls internally */
+        .app-kanban .kanban-wrapper .kanban-container .kanban-board .kanban-drag,
         .kanban-wrapper main.kanban-drag {
             height: calc(100vh - 225px) !important;
             overflow-y: auto !important;
             overflow-x: hidden !important;
-            padding: 8px 12px 12px 12px !important;
+            padding: 4px 4px 14px 4px !important;
+            min-width: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
         }
 
         /* Webkit scrollbars styling for kanban columns */
@@ -918,32 +907,66 @@
             cursor: grabbing !important;
             user-select: none;
         }
+        .app-kanban .kanban-wrapper .kanban-container .kanban-board,
         .kanban-board {
             min-height: 480px;
+            width: 290px !important;
+            min-width: 290px !important;
+            max-width: 290px !important;
             background-color: #f8fafc;
-            border-radius: 12px;
-            padding: 10px 10px 14px 10px;
+            border-radius: 14px;
+            padding: 12px 12px 16px 12px !important;
             cursor: default;
             border: 1px solid #e2e8f0;
-            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
             transition: all 0.2s ease;
+            box-sizing: border-box !important;
         }
         .kanban-board:hover {
             border-color: #cbd5e1;
         }
         .kanban-board header {
-            padding: 8px 10px;
+            padding: 9px 12px;
             background: linear-gradient(135deg, #666cff 0%, #545be8 100%);
-            border-radius: 8px;
-            margin-bottom: 12px;
+            border-radius: 10px;
+            margin-bottom: 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 6px rgba(102, 108, 255, 0.25);
+            box-shadow: 0 4px 12px rgba(102, 108, 255, 0.28);
             border: none;
+            width: 100%;
+            min-width: 0;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        .kanban-board header .kanban-title-board,
+        .kanban-title-board {
+            font-size: 15px;
+            font-weight: 700;
+            color: #4f5157;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            flex-grow: 1 !important;
+            overflow: hidden !important;
+            white-space: nowrap !important;
         }
         .kanban-col-header-custom {
             user-select: none;
+            width: 100% !important;
+            min-width: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+        }
+        .kanban-col-title {
+            display: inline-block;
+            max-width: 100%;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            min-width: 0 !important;
         }
         .btn-add-task-custom {
             opacity: 0.9;
@@ -959,9 +982,12 @@
             transform: scale(1.08);
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
         }
+
         /* Segmented Control / Tab Switcher for Accounting Filter */
         .accounting-filter-tabs {
             gap: 2px;
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
         }
         .accounting-tab-btn {
             border: none;
@@ -979,37 +1005,69 @@
             color: #ffffff !important;
             box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
         }
-        .kanban-title-board {
-            font-size: 15px;
-            font-weight: 700;
-            color: #4f5157;
-        }
+
+        .app-kanban .kanban-wrapper .kanban-container .kanban-board .kanban-item,
         .kanban-item {
-            background: #fff;
-            padding: 12px;
-            margin-bottom: 10px;
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            background: #ffffff;
+            padding: 16px 18px !important;
+            margin-bottom: 14px !important;
+            border-radius: 10px !important;
+            box-shadow: 0 4px 18px 0 rgba(75, 70, 92, 0.1), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
             cursor: grab;
-            border-left: 3px solid #666cff;
-            transition: all 0.2s ease;
+            border-left: 4px solid #666cff !important;
+            border-top: none !important;
+            border-right: none !important;
+            border-bottom: none !important;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
         }
-        .kanban-item.border-left-primary { border-left: 3px solid #666cff !important; }
-        .kanban-item.border-left-success { border-left: 3px solid #28c76f !important; }
-        .kanban-item.border-left-danger { border-left: 3px solid #ea5455 !important; }
-        .kanban-item.border-left-warning { border-left: 3px solid #ff9f43 !important; }
-        .kanban-item.border-left-info { border-left: 3px solid #03c3ec !important; }
-        .kanban-item.border-left-secondary { border-left: 3px solid #8592a3 !important; }
+        .kanban-item.border-left-primary { border-left: 4px solid #666cff !important; }
+        .kanban-item.border-left-success { border-left: 4px solid #28c76f !important; }
+        .kanban-item.border-left-danger { border-left: 4px solid #ea5455 !important; }
+        .kanban-item.border-left-warning { border-left: 4px solid #ff9f43 !important; }
+        .kanban-item.border-left-info { border-left: 4px solid #03c3ec !important; }
+        .kanban-item.border-left-secondary { border-left: 4px solid #8592a3 !important; }
         .kanban-item:active {
             cursor: grabbing;
         }
         .kanban-item:hover {
-            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 6px 22px 0 rgba(75, 70, 92, 0.16), 0 3px 8px rgba(0, 0, 0, 0.06) !important;
             transform: translateY(-2px);
         }
+        .app-kanban .kanban-wrapper .kanban-container .kanban-board .kanban-drag,
         .kanban-drag {
             min-height: 380px !important;
-            padding-bottom: 20px !important;
+            min-width: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 2px 2px 20px 2px !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Dragula mirror card during dragging */
+        .gu-mirror,
+        .kanban-item.gu-mirror,
+        .kanban-item.is-moving.gu-mirror {
+            position: fixed !important;
+            margin: 0 !important;
+            z-index: 9999 !important;
+            width: 266px !important;
+            max-width: 266px !important;
+            box-sizing: border-box !important;
+            transform: rotate(2.5deg) scale(1.02) !important;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2) !important;
+            opacity: 0.95 !important;
+            pointer-events: none !important;
+        }
+
+        .gu-transit,
+        .kanban-item.gu-transit {
+            opacity: 0.35 !important;
+            border: 2px dashed #666cff !important;
+            background: rgba(102, 108, 255, 0.05) !important;
+            box-shadow: none !important;
         }
         .kanban-title-button {
             position: static !important;
@@ -1041,6 +1099,170 @@
         .kanban-scroll-wrapper:hover .btn-board-scroll.scroll-active:hover {
             opacity: 1 !important;
             transform: scale(1.1) translateY(-50%) !important;
+        }
+
+        /* Task Details Modal Cards Base */
+        .task-detail-card {
+            background-color: #fbfbfc;
+            border-radius: 12px;
+            border: 1px solid #eef0f4 !important;
+        }
+        .task-report-card {
+            background-color: #f6faff;
+            border-radius: 12px;
+            border: 1px solid #d9e9ff !important;
+        }
+
+        /* =========================================================
+           DARK MODE STYLES FOR KANBAN BOARD & ALL COMPONENTS
+           ========================================================= */
+        .dark-style .app-kanban .kanban-wrapper .kanban-container .kanban-board,
+        .dark-style .kanban-board {
+            background-color: #23253b !important;
+            border-color: #3b3e5b !important;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+        }
+        .dark-style .kanban-board:hover {
+            border-color: #4b507d !important;
+        }
+
+        .dark-style .app-kanban .kanban-wrapper .kanban-container .kanban-board .kanban-item,
+        .dark-style .kanban-item {
+            background: #2b2c40 !important;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18) !important;
+        }
+        .dark-style .kanban-item:hover {
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25) !important;
+        }
+        .dark-style .kanban-item .text-heading {
+            color: #dbdade !important;
+        }
+        .dark-style .kanban-item .text-muted {
+            color: #868aae !important;
+        }
+        .dark-style .kanban-item .progress {
+            background-color: #383b56 !important;
+        }
+        .dark-style .avatar img,
+        .dark-style .avatar .avatar-initial {
+            border-color: #2b2c40 !important;
+        }
+
+        .dark-style .gu-mirror,
+        .dark-style .kanban-item.gu-mirror {
+            background-color: #2b2c40 !important;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6) !important;
+        }
+        .dark-style .gu-transit,
+        .dark-style .kanban-item.gu-transit {
+            background: rgba(102, 108, 255, 0.15) !important;
+        }
+
+        .dark-style .btn-add-task-custom:hover {
+            background-color: #383b56 !important;
+            border-color: #383b56 !important;
+            color: #ffffff !important;
+        }
+
+        .dark-style #boardHeaderSearchAddon {
+            background-color: #2b2c40 !important;
+            border-color: #434968 !important;
+        }
+        .dark-style .accounting-filter-tabs {
+            background-color: #2b2c40 !important;
+            border-color: #3b3e5b !important;
+        }
+        .dark-style .accounting-tab-btn {
+            color: #a8aaae !important;
+        }
+        .dark-style .accounting-tab-btn:hover {
+            color: #ffffff !important;
+            background-color: #383b56 !important;
+        }
+
+        .dark-style .kanban-wrapper main.kanban-drag::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.15) !important;
+        }
+
+        /* Task Details Modal Dark Styles */
+        .dark-style .task-detail-card {
+            background-color: #23253b !important;
+            border-color: #3b3e5b !important;
+        }
+        .dark-style .task-report-card {
+            background-color: rgba(102, 108, 255, 0.08) !important;
+            border-color: rgba(102, 108, 255, 0.25) !important;
+        }
+        .dark-style #descriptionStaticView {
+            background-color: #23253b !important;
+            color: #dbdade !important;
+        }
+        .dark-style #connectedReportContainer > div,
+        .dark-style #quotationLinkedView,
+        .dark-style #taskExpenseForm,
+        .dark-style .dynamic-subcard {
+            background-color: #2b2c40 !important;
+            border-color: #3b3e5b !important;
+        }
+        .dark-style .dynamic-subcard .text-heading,
+        .dark-style .dynamic-subcard .text-dark {
+            color: #dbdade !important;
+        }
+
+        .dark-style .checklist-block {
+            border-color: #3b3e5b !important;
+            background-color: #23253b !important;
+        }
+        .dark-style .comment-bubble-box {
+            background-color: #23253b !important;
+            border-color: #3b3e5b !important;
+            color: #dbdade !important;
+        }
+        .dark-style #mentionDropdown {
+            background-color: #2b2c40 !important;
+            border-color: #3b3e5b !important;
+        }
+        .dark-style #mentionDropdown .dropdown-item {
+            color: #dbdade !important;
+        }
+        .dark-style #mentionDropdown .dropdown-item:hover {
+            background-color: #383b56 !important;
+        }
+
+        /* Board Settings Modal Dark Styles */
+        .dark-style #boardSettingsModal .modal-header,
+        .dark-style #boardSettingsModal .modal-footer {
+            background-color: #23253b !important;
+            border-color: #3b3e5b !important;
+        }
+        .dark-style #boardSettingsModal .bg-light {
+            background-color: #23253b !important;
+            border-color: #3b3e5b !important;
+        }
+        .dark-style .settings-column-item {
+            background-color: #2b2c40 !important;
+            border-color: #3b3e5b !important;
+        }
+        .dark-style .settings-column-item input {
+            color: #dbdade !important;
+        }
+        .dark-style .settings-column-item.dragging {
+            background-color: #23253b !important;
+            border-color: #666cff !important;
+        }
+
+        /* Toast Notifications Dark Styles */
+        .dark-style .custom-toast {
+            background: rgba(43, 44, 64, 0.95) !important;
+            border-color: rgba(255, 255, 255, 0.12) !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+        }
+        .dark-style .custom-toast .text-muted {
+            color: #a8aaae !important;
+        }
+        .dark-style .toast-bell-icon {
+            background: rgba(102, 108, 255, 0.2) !important;
+            color: #8589ff !important;
         }
     </style>
 @endpush
@@ -1213,18 +1435,18 @@
                                 id: column.id,
                                 title: `
                                     <div class="kanban-col-header-custom d-flex align-items-center justify-content-between w-100" style="user-select: none;">
-                                        <div class="d-flex align-items-center gap-2 min-width-0 flex-grow-1 pe-1">
+                                        <div class="d-flex align-items-center gap-2 min-width-0 flex-grow-1 overflow-hidden pe-2">
                                             <div class="col-indicator-pill d-flex align-items-center justify-content-center" style="width: 26px; height: 26px; border-radius: 6px; background: rgba(255, 255, 255, 0.2); color: #ffffff; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.06);">
                                                 <i class="mdi ${colTheme.icon}" style="font-size: 15px;"></i>
                                             </div>
-                                            <span class="kanban-col-title text-truncate fw-bold" style="font-size: 12.5px; color: #ffffff; letter-spacing: 0.2px;" title="${column.title}">
+                                            <span class="kanban-col-title text-truncate fw-bold flex-grow-1" style="font-size: 12.5px; color: #ffffff; letter-spacing: 0.2px;" title="${column.title}">
                                                 ${column.title}
                                             </span>
                                             <span class="badge rounded-pill" style="background: rgba(255, 255, 255, 0.22); color: #ffffff; font-size: 10.5px; font-weight: 700; padding: 2px 7px; flex-shrink: 0; border: 1px solid rgba(255, 255, 255, 0.35);">
                                                 ${count}
                                             </span>
                                         </div>
-                                        <button class="btn btn-xs btn-icon btn-add-task-custom" data-column-id="${column.id}" style="width: 26px; height: 26px; min-width: 26px; border-radius: 6px; color: #ffffff; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); transition: all 0.2s ease;" type="button" title="Tambah Tugas ke ${column.title}">
+                                        <button class="btn btn-xs btn-icon btn-add-task-custom ms-auto flex-shrink-0" data-column-id="${column.id}" style="width: 26px; height: 26px; min-width: 26px; border-radius: 6px; color: #ffffff; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); transition: all 0.2s ease;" type="button" title="Tambah Tugas ke ${column.title}">
                                             <i class="mdi mdi-plus" style="font-size: 15px;"></i>
                                         </button>
                                     </div>
@@ -1293,23 +1515,14 @@
                                         </div>
                                     `;
 
-                                    let priorityHtml = '';
-                                    const taskPriority = task.priority || 'medium';
-                                    if (taskPriority === 'high') {
-                                        priorityHtml = `<span class="badge bg-danger" style="font-size: 8px; padding: 2px 5px; border-radius: 3px; line-height: 1;">Tinggi</span>`;
-                                    } else if (taskPriority === 'low') {
-                                        priorityHtml = `<span class="badge bg-info" style="font-size: 8px; padding: 2px 5px; border-radius: 3px; line-height: 1;">Rendah</span>`;
-                                    } else {
-                                        priorityHtml = `<span class="badge bg-warning" style="font-size: 8px; padding: 2px 5px; border-radius: 3px; line-height: 1;">Sedang</span>`;
-                                    }
-                                    let labelsHtml = '<div class="d-flex flex-wrap gap-1 mb-2 align-items-center">';
-                                    labelsHtml += priorityHtml;
+                                    let labelsHtml = '';
                                     if (task.labels && task.labels.length > 0) {
+                                        labelsHtml = '<div class="d-flex flex-wrap gap-1 mb-2 align-items-center">';
                                         task.labels.forEach(function(color) {
                                             labelsHtml += `<span class="badge bg-${color}" style="font-size: 8px; padding: 2px 5px; border-radius: 3px; line-height: 1;">${getLabelName(color)}</span>`;
                                         });
+                                        labelsHtml += '</div>';
                                     }
-                                    labelsHtml += '</div>';
 
                                     let poNum = '';
                                     let companyName = '';
@@ -1377,8 +1590,8 @@
 
                         kanbanBoardInstance = new jKanban({
                             element: '.kanban-wrapper',
-                            gutter: '15px',
-                            widthBoard: '260px',
+                            gutter: '20px',
+                            widthBoard: '290px',
                             dragBoards: false,
                             boards: boards,
                             addItemButton: false,
@@ -1537,7 +1750,7 @@
                 const desc = $('#createTaskDescription').val();
                 const assignees = $('#createTaskAssignee').val() || [];
                 const dueDate = $('#createTaskDueDate').val();
-                const priority = $('#createTaskPriority').val();
+                const priority = 'medium';
                 const pendingPoId = $('#createTaskPendingPoId').length ? $('#createTaskPendingPoId').val() : null;
 
                 $.ajax({
@@ -1681,7 +1894,7 @@
                                     response.so_details.invoices.forEach(function(inv) {
                                         const statusBadge = inv.status === 'Paid' ? 'bg-label-success' : (inv.status === 'Pending Confirmation' ? 'bg-label-warning' : 'bg-label-danger');
                                         invoicesHtml += `
-                                            <div class="d-flex align-items-center justify-content-between p-2 rounded bg-white border mb-1" style="font-size:12px;">
+                                            <div class="d-flex align-items-center justify-content-between p-2 rounded dynamic-subcard mb-1" style="font-size:12px;">
                                                 <a href="${inv.link}" target="_blank" class="fw-semibold text-heading"><i class="mdi mdi-link-variant me-1" style="font-size:12px;"></i>${inv.no_invoice} (${inv.term_name})</a>
                                                 <span class="badge ${statusBadge}" style="font-size:9.5px; padding: 2px 6px;">${inv.status}</span>
                                             </div>
@@ -1811,9 +2024,6 @@
                                     $('#editTaskDueDate').val(currentTaskData.due_date || '');
                                 }
                             }
-                            if ($('#editTaskPriority').val() !== currentTaskData.priority) {
-                                $('#editTaskPriority').val(currentTaskData.priority || 'medium');
-                            }
                             isProgrammaticChange = false;
                             
                             // Set Description (only if user is not actively editing it)
@@ -1884,11 +2094,11 @@
                         const dateStr = r.report_date ? `${r.day_name ? r.day_name + ', ' : ''}${r.report_date}` : '-';
 
                         html += `
-                            <div class="p-2.5 rounded bg-white border d-flex flex-column gap-1">
+                            <div class="p-2.5 rounded dynamic-subcard d-flex flex-column gap-1">
                                 <div class="d-flex align-items-center justify-content-between">
                                     <div>
                                         ${dayBadge}
-                                        <span class="fw-semibold text-dark" style="font-size: 12px;">${dateStr}</span>
+                                        <span class="fw-semibold text-heading" style="font-size: 12px;">${dateStr}</span>
                                     </div>
                                     <div class="d-inline-block text-nowrap">
                                         <a href="${r.show_url}" target="_blank" class="btn btn-xs btn-label-info me-1" title="Lihat Detail"><i class="mdi mdi-eye-outline me-1"></i>Detail</a>
@@ -1927,7 +2137,7 @@
                             ? `<button type="button" class="btn btn-xs btn-text-danger btn-icon btn-delete-task-expense" data-id="${e.id}" style="width:20px;height:20px;padding:0;"><i class="mdi mdi-close"></i></button>`
                             : '';
                         html += `
-                            <div class="d-flex align-items-center justify-content-between p-2 rounded bg-white border">
+                            <div class="d-flex align-items-center justify-content-between p-2 rounded dynamic-subcard">
                                 <div class="min-width-0">
                                     <span class="fw-semibold text-heading">${e.name}</span>${receipt}
                                     <div class="text-muted" style="font-size:10.5px;">
@@ -1936,7 +2146,7 @@
                                     </div>
                                 </div>
                                 <div class="d-flex align-items-center gap-1 flex-shrink-0">
-                                    <span class="fw-bold text-dark">${rpFmt(e.amount)}</span>
+                                    <span class="fw-bold text-heading">${rpFmt(e.amount)}</span>
                                     ${del}
                                 </div>
                             </div>`;
@@ -2118,7 +2328,7 @@
                         }
 
                         html += `
-                            <div class="d-flex align-items-center border p-2 rounded bg-white shadow-xs attachment-item" data-id="${att.id}">
+                            <div class="d-flex align-items-center border p-2 rounded dynamic-subcard shadow-xs attachment-item" data-id="${att.id}">
                                 ${previewHtml}
                                 <div class="flex-grow-1 min-width-0">
                                     <h6 class="mb-0 small fw-bold text-truncate" style="font-size: 13px;"><a href="${att.file_path}" target="_blank" class="text-body">${att.file_name}</a></h6>
@@ -2143,7 +2353,7 @@
                         if (c.items && c.items.length > 0) {
                             c.items.forEach(function(item) {
                                 const checkedAttr = item.is_completed ? 'checked' : '';
-                                const textStyle = item.is_completed ? 'text-decoration: line-through; color: #a1acb8;' : '';
+                                const textStyle = item.is_completed ? 'text-decoration: line-through; opacity: 0.6;' : '';
                                 itemsHtml += `
                                     <div class="d-flex align-items-center mb-2 checklist-item-row" data-item-id="${item.id}">
                                         <input type="checkbox" class="form-check-input me-2 btn-toggle-checklist-item" ${checkedAttr}>
@@ -2225,7 +2435,7 @@
                                         <small class="text-muted" style="font-size: 10px;">${item.created_at}</small>
                                     </div>
                                     <!-- Comment bubble -->
-                                    <div class="p-2 border rounded bg-white shadow-xs" style="margin-left: 32px; font-size: 13px; color: #4f5157;">
+                                    <div class="p-2 border rounded comment-bubble-box shadow-xs" style="margin-left: 32px; font-size: 13px;">
                                         <div class="comment-display-text" id="comment-display-text-${item.id}" style="white-space: pre-wrap;">${commentText}</div>
                                         <div class="comment-edit-area d-none" id="comment-edit-area-${item.id}">
                                             <textarea class="form-control form-control-sm mb-1" id="comment-edit-input-${item.id}" rows="2">${item.text}</textarea>
@@ -2280,7 +2490,7 @@
                             description: $('#editTaskDescription').val(),
                             assignees: $('#editTaskAssignee').val(),
                             due_date: $('#editTaskDueDate').val(),
-                            priority: $('#editTaskPriority').val(),
+                            priority: currentTaskData.priority || 'medium',
                             column_id: 'column_' + currentTaskData.column_id,
                             _token: csrfToken
                         },
@@ -2316,7 +2526,7 @@
                         description: desc,
                         assignees: $('#editTaskAssignee').val(),
                         due_date: $('#editTaskDueDate').val(),
-                        priority: $('#editTaskPriority').val(),
+                        priority: currentTaskData.priority || 'medium',
                         column_id: 'column_' + currentTaskData.column_id,
                         _token: csrfToken
                     },
@@ -2344,7 +2554,7 @@
                         description: $('#editTaskDescription').val(),
                         assignees: newAssignees,
                         due_date: $('#editTaskDueDate').val(),
-                        priority: $('#editTaskPriority').val(),
+                        priority: currentTaskData.priority || 'medium',
                         column_id: 'column_' + currentTaskData.column_id,
                         _token: csrfToken
                     },
@@ -2370,32 +2580,7 @@
                         description: $('#editTaskDescription').val(),
                         assignees: $('#editTaskAssignee').val(),
                         due_date: newDate,
-                        priority: $('#editTaskPriority').val(),
-                        column_id: 'column_' + currentTaskData.column_id,
-                        _token: csrfToken
-                    },
-                    success: function() {
-                        loadTaskDetails(taskId);
-                        loadKanbanBoard();
-                    }
-                });
-            });
-
-            $('#editTaskPriority').change(function() {
-                if (isProgrammaticChange) return;
-                const taskId = $('#editTaskId').val();
-                if (!taskId || !currentTaskData) return;
-                const newPriority = $(this).val();
-                if (newPriority == currentTaskData.priority) return;
-                $.ajax({
-                    url: `/kanban/tasks/${taskId}/update`,
-                    method: 'POST',
-                    data: {
-                        title: currentTaskData.title,
-                        description: $('#editTaskDescription').val(),
-                        assignees: $('#editTaskAssignee').val(),
-                        due_date: $('#editTaskDueDate').val(),
-                        priority: newPriority,
+                        priority: currentTaskData.priority || 'medium',
                         column_id: 'column_' + currentTaskData.column_id,
                         _token: csrfToken
                     },
@@ -2419,7 +2604,7 @@
                         description: $('#editTaskDescription').val(),
                         assignees: $('#editTaskAssignee').val(),
                         due_date: $('#editTaskDueDate').val(),
-                        priority: $('#editTaskPriority').val(),
+                        priority: currentTaskData.priority || 'medium',
                         column_id: colId,
                         _token: csrfToken
                     },
@@ -2890,7 +3075,7 @@
                         description: desc,
                         assignees: assignee,
                         due_date: dueDate,
-                        priority: $('#editTaskPriority').val(),
+                        priority: currentTaskData ? (currentTaskData.priority || 'medium') : 'medium',
                         column_id: columnId,
                         _token: csrfToken
                     },
@@ -2926,7 +3111,7 @@
                         description: $('#editTaskDescription').val(),
                         assignees: $('#editTaskAssignee').val(),
                         due_date: $('#editTaskDueDate').val(),
-                        priority: $('#editTaskPriority').val(),
+                        priority: currentTaskData.priority || 'medium',
                         column_id: 'column_' + currentTaskData.column_id,
                         service_report_id: selectedReportId,
                         _token: csrfToken
@@ -2955,7 +3140,7 @@
                             description: $('#editTaskDescription').val(),
                             assignees: $('#editTaskAssignee').val(),
                             due_date: $('#editTaskDueDate').val(),
-                            priority: $('#editTaskPriority').val(),
+                            priority: currentTaskData.priority || 'medium',
                             column_id: 'column_' + currentTaskData.column_id,
                             service_report_id: null,
                             _token: csrfToken
@@ -3143,7 +3328,7 @@
             $('#settingsAddColBtn').click(function() {
                 const count = $('.settings-column-item').length + 1;
                 const html = `
-                    <div class="settings-column-item card border shadow-xs mb-0 bg-white" data-id="" draggable="true" style="cursor: grab; transition: all 0.2s ease;">
+                    <div class="settings-column-item card border shadow-xs mb-0" data-id="" draggable="true" style="cursor: grab; transition: all 0.2s ease;">
                         <div class="card-body p-2 d-flex align-items-center gap-2">
                             <div class="col-drag-handle text-muted px-1" title="Tahan & geser untuk mengubah urutan" style="cursor: grab;">
                                 <i class="mdi mdi-drag-vertical" style="font-size: 20px;"></i>

@@ -25,6 +25,7 @@ class Product extends Model
         'warehouse_stock',
         'frist_stock',
         'stock',
+        'min_stock',
         'weight',
         'unit',
         'note',
@@ -37,5 +38,10 @@ class Product extends Model
     public function serial()
     {
         return $this->hasMany('App\Models\SerialProduct', 'id_product');
+    }
+
+    public function getIsLowStockAttribute()
+    {
+        return (int) $this->stock <= (int) ($this->min_stock ?? 5);
     }
 }

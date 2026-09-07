@@ -1081,19 +1081,50 @@ class InvoiceController extends Controller
     {
         $invoice           = Invoice::findOrFail($id);
         $invoice->status_p = 1;
+        if ($request->filled('note')) {
+            $invoice->note_p = $request->note;
+        }
         $invoice->save();
+
+        $pphRaw  = $request->input('pph', 0);
+        $costRaw = $request->input('cost', $request->input('admin_bank', 0));
+
+        $pph  = (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', (string) $pphRaw));
+        $cost = (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', (string) $costRaw));
 
         $confirmedPayments = Payment::where('id_unit_quotation', $invoice->id_unit_quotation)
             ->where('level', 0)
             ->get();
 
-        Payment::where('id_unit_quotation', $invoice->id_unit_quotation)
-            ->where('level', 0)
-            ->update(['level' => 1, 'date_confirm' => now()]);
+        if ($confirmedPayments->isNotEmpty()) {
+            foreach ($confirmedPayments as $idx => $payment) {
+                $payment->level        = 1;
+                $payment->date_confirm = now();
+                if ($idx === 0) {
+                    $payment->pph  = $pph;
+                    $payment->cost = $cost;
+                }
+                if ($request->filled('note') && empty($payment->note)) {
+                    $payment->note = $request->note;
+                }
+                $payment->save();
 
-        foreach ($confirmedPayments as $payment) {
-            $payment->date_confirm = now();
-            $this->prService->evaluatePaymentGate($payment, Auth::id());
+                $this->prService->evaluatePaymentGate($payment, Auth::id());
+            }
+        } else {
+            $latestPayment = Payment::where('id_unit_quotation', $invoice->id_unit_quotation)
+                ->latest('id')
+                ->first();
+            if ($latestPayment) {
+                $latestPayment->level        = 1;
+                $latestPayment->date_confirm = now();
+                $latestPayment->pph          = $pph;
+                $latestPayment->cost         = $cost;
+                if ($request->filled('note')) {
+                    $latestPayment->note = $request->note;
+                }
+                $latestPayment->save();
+            }
         }
 
         return redirect()->route('invoice.show_unit', $id)->with('success', 'Pembayaran telah dikonfirmasi.');
@@ -1111,11 +1142,12 @@ class InvoiceController extends Controller
     {
         $invoice           = Invoice::findOrFail($id);
         $invoice->status_p = 0;
+        $invoice->note_p   = null;
         $invoice->save();
 
         Payment::where('id_unit_quotation', $invoice->id_unit_quotation)
             ->where('level', 1)
-            ->update(['level' => 0, 'date_confirm' => null]);
+            ->update(['level' => 0, 'date_confirm' => null, 'pph' => 0, 'cost' => 0]);
 
         return 1;
     }

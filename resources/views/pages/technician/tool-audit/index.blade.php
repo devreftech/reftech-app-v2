@@ -29,7 +29,7 @@
                             @forelse ($audits as $audit)
                                 <tr>
                                     <td>{{ $audit->no_audit }}</td>
-                                    <td>{{ $audit->period->tahun }} - Semester {{ $audit->period->semester }}</td>
+                                    <td>{{ $audit->period->tahun }} - Triwulan {{ $audit->period->semester }} (Q{{ $audit->period->semester }})</td>
                                     <td>
                                         {{ \Carbon\Carbon::parse($audit->period->tanggal_mulai)->format('d M') }} -
                                         {{ \Carbon\Carbon::parse($audit->period->tanggal_selesai)->format('d M Y') }}
@@ -54,8 +54,9 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="text-center">
-                                        Belum ada periode audit yang aktif untuk kamu. Audit tools dibuka otomatis di 10 hari terakhir bulan Juni & Desember.
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        <i class="mdi mdi-clipboard-text-clock-outline fs-3 d-block mb-1"></i>
+                                        Belum ada periode audit yang aktif untuk kamu. Audit tools dibuka otomatis setiap 3 bulan (10 hari terakhir bulan Maret, Juni, September, &amp; Desember).
                                     </td>
                                 </tr>
                             @endforelse

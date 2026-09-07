@@ -149,6 +149,34 @@ class User extends Authenticatable
         return $this->belongsToMany(User::class, 'accounting_sales_mapping', 'id_accounting', 'id_sales');
     }
 
+    /**
+     * Dapatkan daftar ID user Accounting yang menangani sales tertentu berdasarkan
+     * tabel accounting_sales_mapping. Jika includeAdmin true, sertakan juga Admin.
+     * Jika sales belum dimapping ke siapapun, fallback ke semua user Accounting aktif.
+     */
+    public static function getAccountingRecipientsForSales(?int $salesId, bool $includeAdmin = true): array
+    {
+        $accountingIds = [];
+        if ($salesId) {
+            $accountingIds = \Illuminate\Support\Facades\DB::table('accounting_sales_mapping')
+                ->where('id_sales', $salesId)
+                ->pluck('id_accounting')
+                ->toArray();
+        }
+
+        // Fallback jika belum dimapping ke accounting manapun: kirim ke semua Accounting aktif
+        if (empty($accountingIds)) {
+            $accountingIds = self::where('role', 'Accounting')->where('active', '1')->pluck('id')->toArray();
+        }
+
+        if ($includeAdmin) {
+            $adminIds = self::where('role', 'Admin')->where('active', '1')->pluck('id')->toArray();
+            $accountingIds = array_merge($accountingIds, $adminIds);
+        }
+
+        return array_values(array_unique(array_filter($accountingIds)));
+    }
+
     public function sentMessages()
     {
         return $this->hasMany(ChatMessage::class, 'sender_id');

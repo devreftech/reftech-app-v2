@@ -71,4 +71,64 @@ class PendingPO extends Model
     {
         return $this->belongsTo('App\Models\Expanse', 'id_pending', 'id');
     }
+    public function projectExpenses()
+    {
+        return $this->hasMany('App\Models\ProjectExpense', 'id_pending');
+    }
+
+    public function getRevenueAttribute()
+    {
+        if ($this->id_unit_quotation && $this->unitQuotation) {
+            return (float) ($this->unitQuotation->total ?? 0);
+        }
+        if ($this->id_quotation && $this->quote) {
+            return (float) ($this->quote->harga_total ?? 0);
+        }
+        return 0;
+    }
+
+    public function getTotalHppAttribute()
+    {
+        if ($this->id_quotation && $this->quote) {
+            if ($this->quote->relationLoaded('detail_quotation')) {
+                return (float) $this->quote->detail_quotation->sum(function ($d) {
+                    return (float) ($d->modal ?? 0) * (int) ($d->qty ?? 1);
+                });
+            }
+            $detQuotes = \App\Models\DetailQuotation::where('id_quotation', $this->quote->id)->get();
+            return (float) $detQuotes->sum(function ($d) {
+                return (float) ($d->modal ?? 0) * (int) ($d->qty ?? 1);
+            });
+        }
+        return 0;
+    }
+
+    public function getTotalExpensesAttribute()
+    {
+        return (float) $this->projectExpenses()->sum('amount');
+    }
+
+    public function getNetProfitAttribute()
+    {
+        return $this->revenue - ($this->total_hpp + $this->total_expenses);
+    }
+
+    public function getMarginPercentAttribute()
+    {
+        if ($this->revenue > 0) {
+            return round(($this->net_profit / $this->revenue) * 100, 1);
+        }
+        return 0;
+    }
+
+    public function getHealthStatusAttribute()
+    {
+        $margin = $this->margin_percent;
+        if ($margin >= 25) {
+            return 'healthy';
+        } elseif ($margin >= 10) {
+            return 'moderate';
+        }
+        return 'critical';
+    }
 }

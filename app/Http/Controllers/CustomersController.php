@@ -302,5 +302,43 @@ class CustomersController extends Controller
             'search'
         ));
     }
+
+    /**
+     * Quick update NPWP for client via AJAX modal.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function quickUpdateNpwp(Request $request, $id)
+    {
+        $cleanNpwp = preg_replace('/[^0-9a-zA-Z]/', '', $request->npwp ?? '');
+        if (strlen($cleanNpwp) < 14) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nomor NPWP tidak valid. Minimal harus terdiri dari 15 digit angka/karakter.',
+            ], 422);
+        }
+
+        $client = Client::find($id);
+        if (!$client) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data client tidak ditemukan.',
+            ], 404);
+        }
+
+        $client->npwp = trim($request->npwp);
+        $client->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'NPWP client berhasil diperbarui!',
+            'npwp' => $client->npwp,
+            'client_id' => $client->id,
+            'company' => $client->company,
+        ]);
+    }
 }
+
 

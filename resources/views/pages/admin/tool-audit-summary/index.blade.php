@@ -10,7 +10,7 @@
             <select class="form-select" name="period_id" onchange="this.form.submit()">
                 @forelse ($periods as $p)
                     <option value="{{ $p->id }}" {{ $period && $period->id == $p->id ? 'selected' : '' }}>
-                        {{ $p->tahun }} - Semester {{ $p->semester }}
+                        {{ $p->tahun }} - Triwulan {{ $p->semester }} (Q{{ $p->semester }})
                         ({{ \Carbon\Carbon::parse($p->tanggal_mulai)->format('d M') }} -
                         {{ \Carbon\Carbon::parse($p->tanggal_selesai)->format('d M Y') }})
                     </option>

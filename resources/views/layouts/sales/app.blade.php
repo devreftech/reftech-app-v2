@@ -190,7 +190,7 @@
             window.csrfToken = '{{ csrf_token() }}';
             window.currentUserRole = '{{ Auth::user()->role }}';
         </script>
-        <script src="{{ asset('assets') }}/includes/navbar-payment-notif.js"></script>
+        <script src="{{ asset('assets') }}/includes/navbar-payment-notif.js?v={{ file_exists(public_path('assets/includes/navbar-payment-notif.js')) ? filemtime(public_path('assets/includes/navbar-payment-notif.js')) : time() }}"></script>
     @endif
 
     {{-- Patch setStyle so icon updates on click without page reload --}}
@@ -299,23 +299,48 @@
     @stack('page-script')
 
     @stack('script')
+    @stack('scripts')
 
-    {{-- Modal NPWP Error (dipakai saat klik Upload PO dengan NPWP tidak valid) --}}
+    {{-- Modal NPWP Error / Quick Input (dipakai saat klik Upload PO dengan NPWP tidak valid) --}}
     <div class="modal fade" id="modalNpwpError" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
-            <div class="modal-content text-center">
-                <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <img src="{{ asset('assets/img/illustrations/npwp-warning.jpg') }}" alt="NPWP Belum Lengkap" class="img-fluid" style="max-width: 180px;">
-                    </div>
-                    <h5 class="fw-bold text-danger mb-2">NPWP Belum Lengkap!</h5>
-                    <p class="text-muted mb-4">Jangan Ngide Mau Req. Invoice.</p>
-                    <div class="d-flex justify-content-center gap-2">
-                        <button type="button" class="btn btn-label-secondary waves-effect"
-                            data-bs-dismiss="modal">Tutup</button>
-                        <a href="#" id="btnEditClientNpwp" class="btn btn-primary waves-effect waves-light">Isi NPWP Sekarang</a>
-                    </div>
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+            <div class="modal-content">
+                <div class="modal-header border-bottom py-3">
+                    <h5 class="modal-title fw-bold text-danger d-flex align-items-center mb-0">
+                        <i class="mdi mdi-alert-circle-outline me-2 fs-4"></i> NPWP Client Belum Diisi
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
+                <form id="formQuickNpwp" autocomplete="off">
+                    @csrf
+                    <input type="hidden" id="quickNpwpClientId" value="">
+                    <div class="modal-body p-4">
+                        <div class="text-center mb-3">
+                            <img src="{{ asset('assets/img/illustrations/npwp-warning.jpg') }}" alt="NPWP Belum Lengkap" class="img-fluid rounded" style="max-height: 120px; object-fit: contain;">
+                        </div>
+                        <p class="text-muted small text-center mb-3">
+                            Quotation ini menggunakan PPN. Masukkan No. NPWP untuk <strong id="quickNpwpClientName" class="text-dark">Client</strong> agar dapat melanjutkan proses Upload PO.
+                        </p>
+                        <div class="mb-2">
+                            <label for="inputQuickNpwp" class="form-label fw-semibold text-dark">Nomor NPWP Client <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="mdi mdi-card-account-details-outline"></i></span>
+                                <input type="text" class="form-control" id="inputQuickNpwp" name="npwp"
+                                    placeholder="00.000.000.0-000.000" maxlength="25" required>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-1">
+                                <small class="text-muted" style="font-size: 11px;">Format 15 atau 16 digit NPWP / NIK</small>
+                            </div>
+                            <div id="quickNpwpError" class="text-danger small mt-2 d-none"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top py-2 d-flex justify-content-between">
+                        <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" id="btnSaveQuickNpwp" class="btn btn-primary waves-effect waves-light">
+                            <i class="mdi mdi-check-circle-outline me-1"></i> Simpan & Lanjut Upload PO
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -327,50 +352,199 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            var activeTriggerBtn = null;
+            var activeUploadType = 'general'; // 'general' or 'unit'
+            var modalNpwpEl = document.getElementById('modalNpwpError');
+            var modalNpwp = modalNpwpEl ? new bootstrap.Modal(modalNpwpEl) : null;
+            var inputNpwp = document.getElementById('inputQuickNpwp');
+            var inputClientId = document.getElementById('quickNpwpClientId');
+            var clientNameEl = document.getElementById('quickNpwpClientName');
+            var errorEl = document.getElementById('quickNpwpError');
+            var formQuickNpwp = document.getElementById('formQuickNpwp');
+            var btnSaveNpwp = document.getElementById('btnSaveQuickNpwp');
+
+            // Auto-format NPWP input as user types
+            if (inputNpwp) {
+                inputNpwp.addEventListener('input', function(e) {
+                    var val = this.value.replace(/\D/g, '');
+                    if (val.length > 16) val = val.substring(0, 16);
+                    if (val.length <= 15) {
+                        var formatted = '';
+                        if (val.length > 0) formatted += val.substring(0, 2);
+                        if (val.length > 2) formatted += '.' + val.substring(2, 5);
+                        if (val.length > 5) formatted += '.' + val.substring(5, 8);
+                        if (val.length > 8) formatted += '.' + val.substring(8, 9);
+                        if (val.length > 9) formatted += '-' + val.substring(9, 12);
+                        if (val.length > 12) formatted += '.' + val.substring(12, 15);
+                        this.value = formatted;
+                    } else {
+                        this.value = val;
+                    }
+                    if (errorEl) errorEl.classList.add('d-none');
+                });
+            }
+
+            function openNpwpModal(btn, type) {
+                activeTriggerBtn = btn;
+                activeUploadType = type;
+                if (inputClientId) inputClientId.value = btn.dataset.clientId || '';
+                if (clientNameEl) clientNameEl.textContent = btn.dataset.clientName || 'Client';
+                if (inputNpwp) {
+                    inputNpwp.value = btn.dataset.npwp || '';
+                    if (inputNpwp.value) {
+                        inputNpwp.dispatchEvent(new Event('input'));
+                    }
+                }
+                if (errorEl) {
+                    errorEl.textContent = '';
+                    errorEl.classList.add('d-none');
+                }
+                if (modalNpwp) {
+                    modalNpwp.show();
+                    setTimeout(function() {
+                        if (inputNpwp) inputNpwp.focus();
+                    }, 400);
+                }
+            }
+
             // General / Parts / Service / Overhaul / Unit-Sales
             document.querySelectorAll('.btn-upload-po').forEach(function(btn) {
                 btn.addEventListener('click', function(e) {
-                    var isNonPPN = this.dataset.tax === '0';
+                    var isNonPPN = this.dataset.tax === '0' || this.dataset.tax === '0.00' || !this.dataset.tax || parseFloat(this.dataset.tax) === 0;
                     var npwp = (this.dataset.npwp || '').replace(/[^0-9a-zA-Z]/g, '');
                     if (!isNonPPN && npwp.length < 14) {
                         e.preventDefault();
                         e.stopPropagation();
-                        
-                        var clientUrl = this.dataset.clientUrl || '#';
-                        var btnEdit = document.getElementById('btnEditClientNpwp');
-                        if (btnEdit) {
-                            btnEdit.setAttribute('href', clientUrl);
-                        }
-                        
-                        new bootstrap.Modal(document.getElementById('modalNpwpError')).show();
+                        openNpwpModal(this, 'general');
                     } else {
                         if (!this.hasAttribute('data-bs-toggle')) {
-                            new bootstrap.Modal(document.getElementById('uploadPo')).show();
+                            var uploadPoModal = document.getElementById('uploadPo');
+                            if (uploadPoModal) new bootstrap.Modal(uploadPoModal).show();
                         }
                     }
                 });
             });
 
-            // Unit-Quotation page
+            // Unit-Quotation page (Smart Quote)
             document.querySelectorAll('.btn-upload-po-unit').forEach(function(btn) {
                 btn.addEventListener('click', function(e) {
+                    var isNonPPN = this.dataset.tax === '0' || this.dataset.tax === '0.00' || !this.dataset.tax || parseFloat(this.dataset.tax) === 0;
                     var npwp = (this.dataset.npwp || '').replace(/[^0-9a-zA-Z]/g, '');
-                    if (npwp.length < 14) {
+                    if (!isNonPPN && npwp.length < 14) {
                         e.preventDefault();
                         e.stopPropagation();
-                        
-                        var clientUrl = this.dataset.clientUrl || '#';
-                        var btnEdit = document.getElementById('btnEditClientNpwp');
-                        if (btnEdit) {
-                            btnEdit.setAttribute('href', clientUrl);
-                        }
-                        
-                        new bootstrap.Modal(document.getElementById('modalNpwpError')).show();
+                        openNpwpModal(this, 'unit');
                     } else {
-                        new bootstrap.Modal(document.getElementById('modalUploadPO')).show();
+                        var modalUploadPO = document.getElementById('modalUploadPO');
+                        if (modalUploadPO) new bootstrap.Modal(modalUploadPO).show();
                     }
                 });
             });
+
+            // Handle Quick NPWP Save via AJAX
+            if (formQuickNpwp) {
+                formQuickNpwp.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    var rawNpwp = (inputNpwp ? inputNpwp.value : '').trim();
+                    var cleanNpwp = rawNpwp.replace(/[^0-9a-zA-Z]/g, '');
+                    var clientId = inputClientId ? inputClientId.value : '';
+
+                    if (!cleanNpwp || cleanNpwp.length < 14) {
+                        if (errorEl) {
+                            errorEl.textContent = 'Nomor NPWP harus minimal 15 digit angka.';
+                            errorEl.classList.remove('d-none');
+                        }
+                        if (inputNpwp) inputNpwp.focus();
+                        return;
+                    }
+
+                    if (!clientId) {
+                        if (errorEl) {
+                            errorEl.textContent = 'ID Client tidak ditemukan. Silakan refresh halaman.';
+                            errorEl.classList.remove('d-none');
+                        }
+                        return;
+                    }
+
+                    if (btnSaveNpwp) {
+                        btnSaveNpwp.disabled = true;
+                        btnSaveNpwp.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...';
+                    }
+
+                    fetch('/client/' + clientId + '/quick-update-npwp', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({ npwp: rawNpwp })
+                    })
+                    .then(function(response) {
+                        return response.json().then(function(data) {
+                            return { status: response.status, ok: response.ok, data: data };
+                        });
+                    })
+                    .then(function(result) {
+                        if (btnSaveNpwp) {
+                            btnSaveNpwp.disabled = false;
+                            btnSaveNpwp.innerHTML = '<i class="mdi mdi-check-circle-outline me-1"></i> Simpan & Lanjut Upload PO';
+                        }
+
+                        if (!result.ok || !result.data.success) {
+                            var errMsg = (result.data && (result.data.message || result.data.error)) || 'Gagal menyimpan NPWP.';
+                            if (errorEl) {
+                                errorEl.textContent = errMsg;
+                                errorEl.classList.remove('d-none');
+                            }
+                            return;
+                        }
+
+                        // Update dataset npwp on buttons
+                        if (activeTriggerBtn) {
+                            activeTriggerBtn.dataset.npwp = result.data.npwp;
+                        }
+                        document.querySelectorAll('[data-client-id="' + clientId + '"]').forEach(function(el) {
+                            el.dataset.npwp = result.data.npwp;
+                        });
+
+                        // Hide NPWP modal
+                        if (modalNpwp) {
+                            modalNpwp.hide();
+                        }
+
+                        // Show success toast and trigger PO modal
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'NPWP Berhasil Disimpan!',
+                            text: 'Membuka form upload PO...',
+                            timer: 1200,
+                            timerProgressBar: true,
+                            showConfirmButton: false
+                        });
+
+                        setTimeout(function() {
+                            if (activeUploadType === 'unit') {
+                                var modalUploadPO = document.getElementById('modalUploadPO');
+                                if (modalUploadPO) new bootstrap.Modal(modalUploadPO).show();
+                            } else {
+                                var uploadPoModal = document.getElementById('uploadPo');
+                                if (uploadPoModal) new bootstrap.Modal(uploadPoModal).show();
+                            }
+                        }, 500);
+                    })
+                    .catch(function(err) {
+                        if (btnSaveNpwp) {
+                            btnSaveNpwp.disabled = false;
+                            btnSaveNpwp.innerHTML = '<i class="mdi mdi-check-circle-outline me-1"></i> Simpan & Lanjut Upload PO';
+                        }
+                        if (errorEl) {
+                            errorEl.textContent = 'Terjadi kesalahan sistem saat menyimpan data.';
+                            errorEl.classList.remove('d-none');
+                        }
+                    });
+                });
+            }
 
             // Show Session Alerts
             @if(session('error'))

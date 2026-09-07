@@ -15,10 +15,21 @@ class StockController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
-        return view('pages.warehouse.stock.index',compact('noSaleProspect'));
+        $totalProducts = Product::count();
+        $totalStock = Product::sum('stock');
+        $lowStockCount = Product::whereRaw('stock <= COALESCE(min_stock, 5)')->where('stock', '>', 0)->count();
+        $outOfStockCount = Product::where('stock', '<=', 0)->count();
+
+        return view('pages.warehouse.stock.index', compact(
+            'noSaleProspect',
+            'totalProducts',
+            'totalStock',
+            'lowStockCount',
+            'outOfStockCount'
+        ));
     }
 
     /**

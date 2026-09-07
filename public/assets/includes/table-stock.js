@@ -73,8 +73,25 @@ $(function () {
                             var $dataId = full["id_p"];
                             var detailRoute = route("product.show", $dataId);
                             return (
-                                '<a class="text-dark" href="' + detailRoute + '">' + data + "</a>"
+                                '<a class="text-dark fw-bold" href="' + detailRoute + '">' + data + "</a>"
                             );
+                        }
+                        return data;
+                    },
+                },
+                {
+                    targets: 6,
+                    render: function (data, type, full, row) {
+                        if (type === "display") {
+                            var stockVal = parseInt(data) || 0;
+                            var minStock = parseInt(full["min_stock"]) || 5;
+                            if (stockVal <= 0) {
+                                return '<span class="badge bg-label-danger rounded-pill px-2.5 py-1"><i class="mdi mdi-close-circle-outline me-1"></i> Habis (0)</span>';
+                            } else if (stockVal <= minStock) {
+                                return '<span class="badge bg-label-warning rounded-pill px-2.5 py-1" title="Safety Stock Alert: &le; ' + minStock + '"><i class="mdi mdi-alert-circle-outline me-1"></i> ' + stockVal + ' (Low &le; ' + minStock + ')</span>';
+                            } else {
+                                return '<span class="badge bg-label-success rounded-pill px-2.5 py-1"><i class="mdi mdi-check-circle-outline me-1"></i> ' + stockVal + '</span>';
+                            }
                         }
                         return data;
                     },
