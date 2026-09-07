@@ -8,6 +8,11 @@
             </h4>
             <p class="text-muted mb-0 small"><i class="mdi mdi-calendar-clock-outline me-1"></i> Umur hutang ke supplier berdasarkan tanggal barang masuk yang belum dibayar</p>
         </div>
+        <div class="d-flex gap-2">
+            <a href="{{ route('payable.aging_export') }}" class="btn btn-label-success btn-sm px-3 shadow-sm">
+                <i class="mdi mdi-file-excel-outline me-1"></i> Ekspor Excel (.csv)
+            </a>
+        </div>
     </div>
 
     {{-- Total Outstanding --}}

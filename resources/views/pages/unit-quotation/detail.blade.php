@@ -343,13 +343,28 @@
                     {{-- Upload / View PO --}}
                     @if (Auth::user()->role === 'Sales' || $isOwnerAdmin)
                         <button type="button" id="btn-upload-po-wrap" class="btn btn-sm btn-label-success d-flex align-items-center justify-content-center w-100 mb-2 btn-upload-po-unit fw-semibold {{ $quote->status === 'po_received' ? 'd-none' : '' }}"
+                            data-tax="{{ $quote->tax ?? '0' }}"
                             data-npwp="{{ $quote->client->npwp ?? '' }}"
-                            data-client-url="{{ $quote->client->role == 'Leads' ? route('detail.leads', $quote->client->id) : route('existing.show', $quote->client->id) }}">
+                            data-client-id="{{ $quote->client->id ?? '' }}"
+                            data-client-name="{{ $quote->client->company ?? ($quote->client->name ?? 'Client') }}"
+                            data-client-url="{{ $quote->client ? ($quote->client->role == 'Leads' ? route('detail.leads', $quote->client->id) : route('existing.show', $quote->client->id)) : '#' }}">
                             <i class="mdi mdi-file-upload-outline me-1"></i> Upload PO
                         </button>
                     @endif
+                    @php
+                        $poFileUrl = '';
+                        if ($quote->po_file) {
+                            if (str_starts_with($quote->po_file, 'http://') || str_starts_with($quote->po_file, 'https://') || str_starts_with($quote->po_file, '/')) {
+                                $poFileUrl = $quote->po_file;
+                            } elseif (str_starts_with($quote->po_file, 'asset/')) {
+                                $poFileUrl = asset($quote->po_file);
+                            } else {
+                                $poFileUrl = Storage::url($quote->po_file);
+                            }
+                        }
+                    @endphp
                     <a href="#" id="btn-view-po-wrap"
-                       data-url="{{ $quote->po_file ? Storage::url($quote->po_file) : '' }}"
+                       data-url="{{ $poFileUrl }}"
                        onclick="openPdfViewer(this.dataset.url, 'File PO {{ $quote->no_quote ?? '' }}'); return false;"
                        class="btn btn-sm btn-label-secondary d-flex align-items-center justify-content-center w-100 mb-2 fw-semibold {{ $quote->po_file ? '' : 'd-none' }}">
                         <i class="mdi mdi-file-pdf-box text-danger me-1"></i> Lihat File PO
@@ -823,20 +838,35 @@
             $itemsWithFee = $quote->details->whereNotIn('type', ['header', 'heading'])->where('fee', '>', 0);
         @endphp
         <div class="card mb-3 border-0 shadow-sm overflow-hidden" id="card-management-fee">
-            <div class="card-header bg-light border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+            <div class="card-header bg-light border-bottom py-3 px-4 d-flex align-items-center justify-content-between flex-wrap gap-1">
                 <div class="d-flex align-items-center gap-2">
                     <i class="mdi mdi-cash-minus text-warning fs-5"></i>
                     <h6 class="fw-bold mb-0 text-dark" style="font-size: 13px;">Management Fee</h6>
                 </div>
-                @if ($quoteFee > 0)
-                    <span class="badge bg-warning text-dark px-2.5 py-1 fw-bold" style="font-size: 10.5px;">
-                        Rp {{ number_format($quoteFee, 0, ',', '.') }}
-                    </span>
-                @else
-                    <span class="badge bg-label-secondary px-2 py-1" style="font-size: 10px;">
-                        Rp 0
-                    </span>
-                @endif
+                <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                    @if ($quoteFee > 0)
+                        @if ($quote->fee_payment_status === 'paid')
+                            <span class="badge bg-success px-2 py-0.5 fw-bold" style="font-size: 10px;">
+                                <i class="mdi mdi-check-circle-outline me-0.5"></i> Fee Paid
+                            </span>
+                        @elseif ($quote->fee_payment_status === 'pending_transfer')
+                            <span class="badge bg-warning text-dark px-2 py-0.5 fw-bold" style="font-size: 10px;">
+                                <i class="mdi mdi-clock-outline me-0.5"></i> Siap Transfer
+                            </span>
+                        @else
+                            <span class="badge bg-label-secondary px-2 py-0.5 fw-semibold" style="font-size: 10px;">
+                                Fee Unpaid
+                            </span>
+                        @endif
+                        <span class="badge bg-warning text-dark px-2.5 py-1 fw-bold" style="font-size: 10.5px;">
+                            Rp {{ number_format($quoteFee, 0, ',', '.') }}
+                        </span>
+                    @else
+                        <span class="badge bg-label-secondary px-2 py-1" style="font-size: 10px;">
+                            Rp 0
+                        </span>
+                    @endif
+                </div>
             </div>
             <div class="card-body p-3">
                 <div class="p-3 rounded-3 mb-3 bg-light-subtle border">
@@ -871,6 +901,70 @@
                     @endif
                 </div>
 
+                {{-- Status Pencairan Fee oleh Tim Finance --}}
+                @if ($quoteFee > 0)
+                    <div class="p-2.5 mb-3 rounded-3 border {{ $quote->fee_payment_status === 'paid' ? 'bg-success-subtle border-success-subtle' : ($quote->fee_payment_status === 'pending_transfer' ? 'bg-warning-subtle border-warning-subtle' : 'bg-light border') }}">
+                        <div class="d-flex align-items-center justify-content-between mb-1.5 flex-wrap gap-1">
+                            <span class="fw-bold text-dark" style="font-size: 11.5px;">
+                                <i class="mdi mdi-cash-fast me-1 text-primary"></i> Status Pencairan Fee:
+                            </span>
+                            @if ($quote->fee_payment_status === 'paid')
+                                <span class="badge bg-success px-2 py-0.5 fw-bold text-uppercase" style="font-size: 9.5px;">
+                                    <i class="mdi mdi-check-decagram me-0.5"></i> Sudah Ditransfer (Paid)
+                                </span>
+                            @elseif ($quote->fee_payment_status === 'pending_transfer')
+                                <span class="badge bg-warning text-dark px-2 py-0.5 fw-bold text-uppercase" style="font-size: 9.5px;">
+                                    <i class="mdi mdi-clock-outline me-0.5"></i> Siap Ditransfer
+                                </span>
+                            @else
+                                <span class="badge bg-label-secondary px-2 py-0.5 fw-semibold text-uppercase" style="font-size: 9.5px;">
+                                    Belum Ditransfer (Unpaid)
+                                </span>
+                            @endif
+                        </div>
+
+                        @if ($quote->fee_payment_status === 'paid')
+                            <div class="small text-dark pt-1 border-top border-success-subtle" style="font-size: 11px; line-height: 1.5;">
+                                <div class="d-flex justify-content-between mb-0.5">
+                                    <span class="text-muted">Tgl Transfer:</span>
+                                    <span class="fw-semibold">{{ $quote->fee_transfer_date ? $quote->fee_transfer_date->format('d/m/Y') : '-' }}</span>
+                                </div>
+                                @if ($quote->feePaidBy)
+                                    <div class="d-flex justify-content-between mb-0.5">
+                                        <span class="text-muted">Diproses Oleh:</span>
+                                        <span class="fw-semibold">{{ $quote->feePaidBy->name }} (Finance)</span>
+                                    </div>
+                                @endif
+                                @if ($quote->fee_bank_account)
+                                    <div class="d-flex justify-content-between mb-0.5">
+                                        <span class="text-muted">Tujuan Transfer:</span>
+                                        <span class="fw-semibold text-truncate ms-2" style="max-width: 180px;" title="{{ $quote->fee_bank_name }} {{ $quote->fee_bank_account }} (a.n {{ $quote->fee_bank_holder }})">
+                                            {{ $quote->fee_bank_name ?: 'Bank' }} {{ $quote->fee_bank_account }} (a.n {{ $quote->fee_bank_holder ?: '-' }})
+                                        </span>
+                                    </div>
+                                @endif
+                                @if ($quote->fee_transfer_note)
+                                    <div class="mt-1 p-1.5 rounded bg-white border small text-muted" style="font-size: 10.5px;">
+                                        <i class="mdi mdi-note-text-outline me-0.5"></i>{{ $quote->fee_transfer_note }}
+                                    </div>
+                                @endif
+                                @if ($quote->fee_transfer_proof)
+                                    <div class="mt-2">
+                                        <a href="{{ \Illuminate\Support\Facades\Storage::url($quote->fee_transfer_proof) }}" target="_blank"
+                                            class="btn btn-xs btn-success w-100 fw-semibold d-flex align-items-center justify-content-center gap-1">
+                                            <i class="mdi mdi-file-document-check-outline"></i> Lihat Bukti Transfer
+                                        </a>
+                                    </div>
+                                @endif
+                            </div>
+                        @elseif ($quote->fee_bank_account)
+                            <div class="small text-muted pt-1 border-top" style="font-size: 10.5px;">
+                                <span>Rekening: {{ $quote->fee_bank_name ?: 'Bank' }} {{ $quote->fee_bank_account }} a.n {{ $quote->fee_bank_holder ?: '-' }}</span>
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
                 @if ($quote->fee_note)
                     <div class="p-2 mb-3 rounded-2 bg-warning-subtle text-warning-emphasis small" style="font-size: 11.5px; line-height: 1.4;">
                         <div class="fw-bold mb-1"><i class="mdi mdi-text-box-outline me-1"></i>Catatan Fee:</div>
@@ -883,22 +977,30 @@
                     <em>Nominal penawaran &amp; invoice ke customer tetap normal <strong>Rp {{ number_format($quotePreTax, 0, ',', '.') }}</strong> (sebelum PPN). Fee hanya membagi potongan omset sales.</em>
                 </div>
             </div>
-            @if (in_array(Auth::user()->role, ['Sales', 'Sales Manager']))
-            <div class="card-footer p-3 bg-transparent border-top d-flex gap-2">
-                <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center flex-grow-1 waves-effect"
-                    data-bs-toggle="modal" data-bs-target="#modalManagementFee">
-                    <i class="mdi mdi-pencil-outline me-1"></i> {{ $quoteFee > 0 ? 'Edit Fee Item' : 'Input Fee Item' }}
-                </button>
-                @if ($quoteFee > 0)
-                    <form action="{{ route('unit-quotation.delete-fee', $quote->id) }}" method="POST" class="d-inline" id="form-delete-fee">
-                        @csrf
-                        @method('DELETE')
-                        <button type="button" class="btn btn-sm btn-icon btn-outline-danger btn-delete-fee-confirm" title="Hapus Fee">
-                            <i class="mdi mdi-trash-can-outline"></i>
+            @if (in_array(Auth::user()->role, ['Sales', 'Sales Manager', 'Admin']))
+                @if ($quote->fee_payment_status !== 'paid')
+                    <div class="card-footer p-3 bg-transparent border-top d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center flex-grow-1 waves-effect"
+                            data-bs-toggle="modal" data-bs-target="#modalManagementFee">
+                            <i class="mdi mdi-pencil-outline me-1"></i> {{ $quoteFee > 0 ? 'Edit Fee Item' : 'Input Fee Item' }}
                         </button>
-                    </form>
+                        @if ($quoteFee > 0)
+                            <form action="{{ route('unit-quotation.delete-fee', $quote->id) }}" method="POST" class="d-inline" id="form-delete-fee">
+                                @csrf
+                                @method('DELETE')
+                                <button type="button" class="btn btn-sm btn-icon btn-outline-danger btn-delete-fee-confirm" title="Hapus Fee">
+                                    <i class="mdi mdi-trash-can-outline"></i>
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                @else
+                    <div class="card-footer py-2.5 px-3 bg-light border-top text-center">
+                        <span class="text-success small fw-semibold" style="font-size: 11px;">
+                            <i class="mdi mdi-lock-outline me-1"></i> Fee telah dicairkan (Paid) &amp; data terkunci.
+                        </span>
+                    </div>
                 @endif
-            </div>
             @endif
         </div>
 
@@ -1082,18 +1184,23 @@
                     <input type="hidden" name="fee" id="hidden-total-fee" value="{{ $quoteFee }}">
 
                     <div class="row g-2 mb-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3 col-6">
                             <label class="form-label small fw-semibold" for="input-fee-bank-name">Nama Bank Tujuan</label>
                             <input type="text" class="form-control form-control-sm" id="input-fee-bank-name" name="fee_bank_name"
                                 value="{{ $quote->fee_bank_name }}" placeholder="Contoh: BCA, Mandiri, BRI">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3 col-6">
+                            <label class="form-label small fw-semibold" for="input-fee-bank-branch">Cabang Bank <span class="text-muted fw-normal">(Opsional)</span></label>
+                            <input type="text" class="form-control form-control-sm" id="input-fee-bank-branch" name="fee_bank_branch"
+                                value="{{ $quote->fee_bank_branch }}" placeholder="Contoh: KCP Dago / BDG">
+                        </div>
+                        <div class="col-md-3 col-6">
                             <label class="form-label small fw-semibold" for="input-fee-bank-account">Nomor Rekening</label>
                             <input type="text" class="form-control form-control-sm" id="input-fee-bank-account" name="fee_bank_account"
                                 value="{{ $quote->fee_bank_account }}" placeholder="Contoh: 1234567890">
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold" for="input-fee-bank-holder">Nama Pemilik Rekening (A/N)</label>
+                        <div class="col-md-3 col-6">
+                            <label class="form-label small fw-semibold" for="input-fee-bank-holder">Nama Pemilik (A/N)</label>
                             <input type="text" class="form-control form-control-sm" id="input-fee-bank-holder" name="fee_bank_holder"
                                 value="{{ $quote->fee_bank_holder }}" placeholder="Contoh: John Doe">
                         </div>
@@ -1208,7 +1315,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="mdi mdi-pencil-outline me-1"></i> Edit No PO</h5>
+                <h5 class="modal-title"><i class="mdi mdi-pencil-outline me-1"></i> Edit No PO &amp; Payment Method</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ route('unit-quotation.update-po-number', $quote->id) }}" method="POST">
@@ -1220,10 +1327,23 @@
                                value="{{ old('po_number', $quote->po_number) }}"
                                placeholder="Masukkan nomor PO dari customer" maxlength="100" required>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Payment Method <span class="text-danger">*</span></label>
+                        <select class="form-select" name="payment_method" id="edit-select-payment-method" required>
+                            <option value="CBD" {{ $quote->payment_method === 'CBD' ? 'selected' : '' }}>CBD (Cash Before Delivery)</option>
+                            <option value="COD" {{ $quote->payment_method === 'COD' ? 'selected' : '' }}>COD (Cash On Delivery)</option>
+                            <option value="DP 50% & Pelunasan NET 50" {{ str_contains($quote->payment_method ?? '', '50%') ? 'selected' : '' }}>DP 50% &amp; Pelunasan NET 50</option>
+                            <option value="DP 30% & Pelunasan NET 70" {{ str_contains($quote->payment_method ?? '', '30%') ? 'selected' : '' }}>DP 30% &amp; Pelunasan NET 70</option>
+                            <option value="Tempo" {{ stripos($quote->payment_method ?? '', 'Tempo') !== false ? 'selected' : '' }}>Tempo</option>
+                            @if (!in_array($quote->payment_method, ['CBD', 'COD', 'DP 50% & Pelunasan NET 50', 'DP 30% & Pelunasan NET 70', 'Tempo']) && !empty($quote->payment_method))
+                                <option value="{{ $quote->payment_method }}" selected>{{ $quote->payment_method }}</option>
+                            @endif
+                        </select>
+                    </div>
                     <div class="alert alert-warning mb-0 py-2" style="font-size:12px;">
                         <i class="mdi mdi-information-outline me-1"></i>
                         Perubahan hanya bisa dilakukan selama <strong>belum ada invoice yang diterbitkan</strong>.
-                        Setelah invoice terbit, edit No PO dilakukan lewat halaman Invoice (Accounting).
+                        Setelah invoice terbit, edit No PO &amp; Term dilakukan lewat halaman Invoice (Accounting).
                     </div>
                 </div>
                 <div class="modal-footer">

@@ -14,6 +14,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('/customers', CustomersController::class);
     Route::get('/customers/detail/{id}', [CustomersController::class, 'show'])->name('detail.customers');
     Route::get('/key-accounts', [CustomersController::class, 'keyAccounts'])->name('key-accounts.index');
+    Route::post('/client/{id}/quick-update-npwp', [CustomersController::class, 'quickUpdateNpwp'])->name('client.quick-update-npwp');
 
     // Leads
     Route::resource('/leads', LeadsController::class);

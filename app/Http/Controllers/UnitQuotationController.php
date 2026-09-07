@@ -196,7 +196,7 @@ class UnitQuotationController extends Controller
     public function show($id)
     {
         $quote       = UnitQuotation::with([
-            'client', 'pic', 'plant', 'sales', 'statusHistory', 'comments.user',
+            'client', 'pic', 'plant', 'sales', 'statusHistory', 'comments.user', 'feePaidBy',
             'details.unit', 'details.equivalent.product',
             'options.details.unit', 'options.details.equivalent.product',
         ])->findOrFail($id);
@@ -758,9 +758,10 @@ class UnitQuotationController extends Controller
                 : redirect()->back()->with('error', $message);
         }
 
+        $tax = floatval($quote->tax ?? 0);
         $npwpClean = preg_replace('/[^a-zA-Z0-9]/', '', $client->npwp ?? '');
-        if (strlen($npwpClean) < 14) {
-            $message = 'NPWP client belum diisi or kurang dari 14 karakter. Pengajuan PO tidak dapat diproses.';
+        if ($tax > 0 && strlen($npwpClean) < 14) {
+            $message = 'NPWP client belum diisi atau kurang dari 14 karakter. Pengajuan PO tidak dapat diproses.';
             return $request->expectsJson()
                 ? response()->json(['error' => $message], 422)
                 : redirect()->route('unit-quotation.show', $id)->with('error', $message);
@@ -842,7 +843,8 @@ class UnitQuotationController extends Controller
     public function updatePoNumber(Request $request, $id)
     {
         $request->validate([
-            'po_number' => 'required|string|max:100',
+            'po_number'      => 'required|string|max:100',
+            'payment_method' => 'nullable|string|max:100',
         ]);
 
         $quote = UnitQuotation::findOrFail($id);
@@ -856,30 +858,45 @@ class UnitQuotationController extends Controller
         }
 
         if (Invoice::where('id_unit_quotation', $quote->id)->whereNotNull('no_invoice')->exists()) {
-            return back()->with('error', 'Invoice sudah diterbitkan. Perubahan No PO harus dilakukan lewat halaman Invoice (Accounting).');
+            return back()->with('error', 'Invoice sudah diterbitkan. Perubahan No PO/Payment harus dilakukan lewat halaman Invoice (Accounting).');
         }
 
-        $old = $quote->po_number;
-        $new = trim($request->po_number);
+        $oldPo = $quote->po_number;
+        $newPo = trim($request->po_number);
+        $oldPayment = $quote->payment_method;
+        $newPayment = $request->filled('payment_method') ? trim($request->payment_method) : $oldPayment;
 
-        if ($old === $new) {
-            return back()->with('success', 'No PO tidak berubah.');
+        $updates = ['po_number' => $newPo];
+        if ($request->filled('payment_method')) {
+            $updates['payment_method'] = $newPayment;
         }
-
-        $quote->update(['po_number' => $new]);
+        $quote->update($updates);
 
         // Sinkronkan ke shell invoice yang masih pending (belum diterbitkan).
+        $invUpdates = ['no_po' => $newPo];
+        if ($oldPayment !== $newPayment) {
+            $parsed = \App\Http\Controllers\ContractSignController::parsePaymentTerm($newPayment);
+            $invUpdates['type'] = $parsed['invoice_type'];
+            $invUpdates['percent'] = $parsed['invoice_type'] === 'DP' ? floatval($parsed['dp_percent'] ?? 50) : 100;
+        }
+
         Invoice::where('id_unit_quotation', $quote->id)
             ->whereNull('no_invoice')
-            ->update(['no_po' => $new]);
+            ->update($invUpdates);
 
-        $quote->statusHistory()->create([
-            'status' => 'po_received',
-            'note'   => 'No PO diubah: ' . ($old ?: '-') . ' -> ' . $new,
-        ]);
+        $notes = [];
+        if ($oldPo !== $newPo) $notes[] = 'No PO: ' . ($oldPo ?: '-') . ' -> ' . $newPo;
+        if ($oldPayment !== $newPayment) $notes[] = 'Payment Method: ' . ($oldPayment ?: '-') . ' -> ' . $newPayment;
+
+        if (!empty($notes)) {
+            $quote->statusHistory()->create([
+                'status' => 'po_received',
+                'note'   => implode(', ', $notes),
+            ]);
+        }
 
         return redirect()->route('unit-quotation.show', $id)
-            ->with('success', 'No PO berhasil diperbarui.');
+            ->with('success', 'Detail PO & Payment Method berhasil diperbarui.');
     }
 
     public function requestNextInvoice(Request $request, $id)
@@ -942,6 +959,7 @@ class UnitQuotationController extends Controller
             'fee_bank_name'     => 'nullable|string|max:100',
             'fee_bank_account'  => 'nullable|string|max:100',
             'fee_bank_holder'   => 'nullable|string|max:150',
+            'fee_bank_branch'   => 'nullable|string|max:100',
             'item_fee'          => 'nullable|array',
         ]);
 
@@ -1006,6 +1024,9 @@ class UnitQuotationController extends Controller
         }
         if ($request->has('fee_bank_holder')) {
             $quote->fee_bank_holder = $request->fee_bank_holder;
+        }
+        if ($request->has('fee_bank_branch')) {
+            $quote->fee_bank_branch = $request->fee_bank_branch;
         }
         $quote->save();
 
@@ -1122,13 +1143,14 @@ class UnitQuotationController extends Controller
         }
 
         // Notifikasi Accounting: ada payment baru masuk, perlu di-follow up (mis. terbitkan invoice).
-        $accountingUsers = User::where('role', 'Accounting')->where('active', '1')->get(['id']);
-        foreach ($accountingUsers as $accUser) {
+        $quote = UnitQuotation::find($id);
+        $notifyUserIds = User::getAccountingRecipientsForSales($quote ? $quote->id_sales : null, true);
+        foreach ($notifyUserIds as $userId) {
             \App\Models\UnitQuotationPaymentNotification::create([
                 'id_payment' => $payment->id,
                 'id_invoice' => $targetInvoice->id ?? null,
                 'id_unit_quotation' => $id,
-                'id_user' => $accUser->id,
+                'id_user' => $userId,
                 'type' => 'payment',
                 'is_read' => false,
             ]);
@@ -1180,7 +1202,9 @@ class UnitQuotationController extends Controller
                 'invoice_percent' => $inv->percent ?? null,
                 'amount' => $n->type === 'payment'
                     ? (float) ($n->payment->amount ?? 0)
-                    : (float) ($quote->total ?? 0) * (float) ($inv->percent ?? 100) / 100,
+                    : (($n->type === 'contract_requested' || $n->type === 'contract_signed')
+                        ? (float) ($quote->total ?? 0)
+                        : (float) ($quote->total ?? 0) * (float) ($inv->percent ?? 100) / 100),
                 'url' => $this->resolveInvoiceNotificationUrl($n),
                 'quote_url' => $n->id_unit_quotation ? route('unit-quotation.show', $n->id_unit_quotation) : null,
                 'created_at' => $n->created_at->diffForHumans(),
@@ -1480,6 +1504,17 @@ class UnitQuotationController extends Controller
             }
         }
 
+        if ($n->type === 'contract_requested') {
+            return route('contract.index');
+        }
+
+        if ($n->type === 'contract_signed') {
+            $contract = \App\Models\Contract::where('id_unit_quotation', $n->id_unit_quotation)->latest('id')->first();
+            if ($contract) {
+                return route('contract.show', $contract->id);
+            }
+        }
+
         return route('unit-quotation.show', $n->id_unit_quotation);
     }
 
@@ -1506,15 +1541,15 @@ class UnitQuotationController extends Controller
 
     // Notifikasi Accounting & Admin: ada invoice yang menunggu diterbitkan (muncul di
     // Invoice > tab Request), dipanggil setiap kali invoice baru dibuat lewat Upload PO
-    // maupun "Ajukan Invoice Selanjutnya" — supaya tidak perlu bolak-balik cek tab itu manual.
+    // maupun "Ajukan Invoice Selanjutnya" — hanya dikirim ke Accounting yang menangani sales terkait (+ Admin).
     private function notifyInvoiceRequested(UnitQuotation $quote, Invoice $invoice): void
     {
-        $notifyUsers = User::whereIn('role', ['Accounting', 'Admin'])->where('active', '1')->get(['id']);
-        foreach ($notifyUsers as $notifyUser) {
+        $notifyUserIds = User::getAccountingRecipientsForSales($quote->id_sales, true);
+        foreach ($notifyUserIds as $userId) {
             \App\Models\UnitQuotationPaymentNotification::create([
                 'id_invoice' => $invoice->id,
                 'id_unit_quotation' => $quote->id,
-                'id_user' => $notifyUser->id,
+                'id_user' => $userId,
                 'type' => 'invoice_requested',
                 'is_read' => false,
             ]);
@@ -1648,7 +1683,7 @@ class UnitQuotationController extends Controller
         }
     }
 
-    protected function createPendingPoForUnitQuotation(UnitQuotation $quote): PendingPO
+    public function createPendingPoForUnitQuotation(UnitQuotation $quote): PendingPO
     {
         $existing = PendingPO::where('id_unit_quotation', $quote->id)->first();
         if ($existing) {

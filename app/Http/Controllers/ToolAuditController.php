@@ -49,6 +49,136 @@ class ToolAuditController extends Controller
         return view('pages.technician.tool-audit.show', compact('audit', 'editable'));
     }
 
+    /**
+     * Simpan perubahan sebagai Draft (tidak dikirim ke admin).
+     */
+    public function saveDraft(Request $request, $id)
+    {
+        $this->guardTechnician();
+
+        $audit = ToolAudit::with('items')
+            ->where('id_technician', Auth::id())
+            ->findOrFail($id);
+
+        if (!in_array($audit->status_submit, ['Draft', 'Rejected'])) {
+            abort(403, 'Audit ini sudah disubmit dan tidak bisa diubah lagi.');
+        }
+
+        $technicianName = Auth::user()->name;
+        $totalAda = 0;
+        $totalRusak = 0;
+        $totalHilang = 0;
+
+        if ($request->has('items') && is_array($request->items)) {
+            foreach ($audit->items as $item) {
+                if (isset($request->items[$item->id])) {
+                    $data = $request->items[$item->id];
+                    if (isset($data['qty_actual'])) {
+                        $item->qty_actual = (int)$data['qty_actual'];
+                    }
+                    if (isset($data['kondisi'])) {
+                        $item->kondisi = $data['kondisi'];
+                        $item->alasan = in_array($data['kondisi'], ['Rusak', 'Hilang']) ? ($data['alasan'] ?? $item->alasan) : null;
+                        $item->metode_ganti = $data['kondisi'] == 'Hilang' ? ($data['metode_ganti'] ?? $item->metode_ganti) : null;
+                    }
+
+                    if ($request->hasFile("items.{$item->id}.foto_audit")) {
+                        $item->foto_audit = $this->uploadFotoAudit(
+                            $request->file("items.{$item->id}.foto_audit"),
+                            Auth::id(),
+                            $technicianName
+                        );
+                    }
+
+                    $item->save();
+                }
+
+                if ($item->kondisi == 'Ada') $totalAda++;
+                if ($item->kondisi == 'Rusak') $totalRusak++;
+                if ($item->kondisi == 'Hilang') $totalHilang++;
+            }
+        }
+
+        $audit->total_tools = $audit->items->count();
+        $audit->total_ada = $totalAda;
+        $audit->total_rusak = $totalRusak;
+        $audit->total_hilang = $totalHilang;
+        $audit->save();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Draft audit berhasil disimpan ke database.',
+                'totals' => [
+                    'ada' => $totalAda,
+                    'rusak' => $totalRusak,
+                    'hilang' => $totalHilang,
+                    'total' => $audit->total_tools,
+                ]
+            ]);
+        }
+
+        return redirect()->route('tool-audit.show', $audit->id)->with('success', 'Perubahan audit berhasil disimpan sebagai Draft.');
+    }
+
+    /**
+     * Auto-save per item via AJAX secara real-time saat teknisi mengubah input / kondisi.
+     */
+    public function autoSaveItemAjax(Request $request, $itemId)
+    {
+        $this->guardTechnician();
+
+        $item = ToolAuditItem::with('audit')
+            ->whereHas('audit', function ($query) {
+                $query->where('id_technician', Auth::id())
+                    ->whereIn('status_submit', ['Draft', 'Rejected']);
+            })
+            ->findOrFail($itemId);
+
+        if ($request->has('qty_actual')) {
+            $item->qty_actual = max(0, (int)$request->input('qty_actual'));
+        }
+
+        if ($request->has('kondisi')) {
+            $kondisi = $request->input('kondisi');
+            if (in_array($kondisi, ['Ada', 'Rusak', 'Hilang'])) {
+                $item->kondisi = $kondisi;
+                $item->alasan = in_array($kondisi, ['Rusak', 'Hilang']) ? $request->input('alasan') : null;
+                $item->metode_ganti = $kondisi == 'Hilang' ? $request->input('metode_ganti') : null;
+            }
+        }
+
+        if ($request->has('alasan')) {
+            $item->alasan = $request->input('alasan');
+        }
+
+        if ($request->has('metode_ganti')) {
+            $item->metode_ganti = $request->input('metode_ganti');
+        }
+
+        $item->save();
+
+        // Recalculate totals on parent audit without changing status
+        $audit = $item->audit;
+        $allItems = $audit->items;
+        $audit->total_ada = $allItems->where('kondisi', 'Ada')->count();
+        $audit->total_rusak = $allItems->where('kondisi', 'Rusak')->count();
+        $audit->total_hilang = $allItems->where('kondisi', 'Hilang')->count();
+        $audit->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tersimpan otomatis sebagai Draft.',
+            'item_id' => $item->id,
+            'totals' => [
+                'ada' => $audit->total_ada,
+                'rusak' => $audit->total_rusak,
+                'hilang' => $audit->total_hilang,
+                'total' => $audit->total_tools,
+            ]
+        ]);
+    }
+
     public function submit(Request $request, $id)
     {
         $this->guardTechnician();

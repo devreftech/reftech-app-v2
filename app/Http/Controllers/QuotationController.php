@@ -1995,15 +1995,81 @@ class QuotationController extends Controller
 
     public function confirm_payment(Request $request, $id)
     {
-        $payment = Payment::find($id);
-        $payment->date_confirm = $request->date;
+        $payment = Payment::findOrFail($id);
+        $wasConfirmed = ($payment->level == 1);
+        $oldBankId = $payment->id_bank;
+        
+        $payment->date_confirm = $request->date ?: ($payment->date_confirm ?: Carbon::now()->toDateString());
         $payment->level = 1;
+        
+        $bankId = $request->input('id_bank') ?: $payment->id_bank;
+        if (!$bankId) {
+            // Auto-detect default bank based on quotation tax / entity
+            $tax = 0;
+            $clientInfo = 'Reftech';
+            if ($payment->id_unit_quotation) {
+                $uq = \App\Models\UnitQuotation::with('client')->find($payment->id_unit_quotation);
+                $tax = (float) ($uq?->tax ?? 0);
+                $clientInfo = $uq?->client?->info ?? 'Reftech';
+            } else {
+                $q = Quotation::with('pic.client')->find($payment->id_quotation);
+                $tax = (float) ($q?->tax ?? 0);
+                $clientInfo = $q?->pic?->client?->info ?? 'Reftech';
+            }
+
+            if (strtolower($clientInfo) === 'kojisha') {
+                $defBank = ($tax > 0) ? \App\Models\Bank::where('no_rek', '5223876543')->first() : \App\Models\Bank::where('no_rek', '1560239137')->first();
+            } else {
+                $defBank = ($tax > 0) ? (\App\Models\Bank::where('no_rek', 'like', '%008%6289%789%')->orWhere('id', 2)->first()) : \App\Models\Bank::where('no_rek', 'like', '%166%2242%271%')->first();
+            }
+            $bankId = $defBank ? $defBank->id : 1;
+        }
+
+        $payment->id_bank = $bankId;
         $paymentSave = $payment->save();
+
+        if (!$wasConfirmed) {
+            // Baru pertama kali dikonfirmasi: tambah saldo bank
+            if ($payment->id_bank && $payment->amount > 0) {
+                \App\Models\Bank::find($payment->id_bank)?->increment('saldo', $payment->amount);
+            }
+        } else {
+            // Sudah terkonfirmasi tapi mengubah rekening bank: pindahkan saldo dari bank lama ke bank baru
+            if ($oldBankId != $payment->id_bank && $payment->amount > 0) {
+                if ($oldBankId) {
+                    \App\Models\Bank::find($oldBankId)?->decrement('saldo', $payment->amount);
+                }
+                if ($payment->id_bank) {
+                    \App\Models\Bank::find($payment->id_bank)?->increment('saldo', $payment->amount);
+                }
+            }
+        }
+
+        if ($payment->id_unit_quotation) {
+            Invoice::where('id_unit_quotation', $payment->id_unit_quotation)
+                ->whereNotNull('no_invoice')
+                ->update(['status_p' => 1]);
+        }
+
+        $currentUser = Auth::user();
+        $currentUserId = $currentUser ? $currentUser->id : (Auth::id() ?: 1);
+
+        $bankObj = \App\Models\Bank::find($payment->id_bank);
+        $bankNote = $bankObj ? " ({$bankObj->bank} - {$bankObj->no_rek})" : "";
+
+        $activity = new ChangeStatus();
+        $activity->id_user = $currentUserId;
+        $activity->id_payment = $payment->id;
+        $activity->note = "Payment diverifikasi " . $bankNote;
+        $activity->status = 2;
+        $activity->date = Carbon::now();
+        $activity->save();
+
         if ($paymentSave) {
             $this->prService->evaluatePaymentGate($payment, Auth::id());
-            return redirect('/payment-detail/payment/' . $id)->with('success', 'Data telah ditambahkan');
+            return redirect('/payment-detail/payment/' . $id)->with('success', 'Pembayaran berhasil diverifikasi dan saldo bank telah disinkronkan.');
         } else {
-            return 0;
+            return redirect('/payment-detail/payment/' . $id)->with('error', 'Gagal memproses pembayaran.');
         }
     }
 

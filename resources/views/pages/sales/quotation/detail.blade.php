@@ -517,7 +517,9 @@
                                         <button type="button" class="btn btn-whatsapp d-grid w-100 waves-effect mb-3 btn-upload-po"
                                             data-npwp="{{ $quote->pic->client->npwp ?? '' }}"
                                             data-tax="{{ $quote->tax }}"
-                                            data-client-url="{{ $quote->pic->client->role == 'Leads' ? route('detail.leads', $quote->pic->client->id) : route('existing.show', $quote->pic->client->id) }}">Upload PO</button>
+                                            data-client-id="{{ $quote->pic->client->id ?? '' }}"
+                                            data-client-name="{{ $quote->pic->client->company ?? ($quote->pic->client->name ?? 'Client') }}"
+                                            data-client-url="{{ $quote->pic->client ? ($quote->pic->client->role == 'Leads' ? route('detail.leads', $quote->pic->client->id) : route('existing.show', $quote->pic->client->id)) : '#' }}">Upload PO</button>
                                     @endif
                                 @endif
                             @endif

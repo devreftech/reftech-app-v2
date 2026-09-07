@@ -30,11 +30,12 @@ $(function () {
     document.addEventListener('touchstart', unlockAudioContext, { passive: true });
     document.addEventListener('pointerdown', unlockAudioContext, { passive: true });
 
-    // Key untuk menyimpan ID toast yang sudah ditutup user di session ini agar tidak berulang-ulang popup
+    // Key untuk menyimpan ID toast yang sudah ditutup user agar tidak berulang-ulang popup
     var STORAGE_DISMISSED_KEY = 'dismissed_invoice_toast_ids';
     function getDismissedToastIds() {
         try {
-            return JSON.parse(sessionStorage.getItem(STORAGE_DISMISSED_KEY) || '[]');
+            var raw = localStorage.getItem(STORAGE_DISMISSED_KEY) || sessionStorage.getItem(STORAGE_DISMISSED_KEY) || '[]';
+            return JSON.parse(raw).map(function(id) { return Number(id); });
         } catch (e) {
             return [];
         }
@@ -42,10 +43,14 @@ $(function () {
 
     function addDismissedToastId(id) {
         try {
+            var numId = Number(id);
+            if (isNaN(numId)) return;
             var dismissed = getDismissedToastIds();
-            if (dismissed.indexOf(id) === -1) {
-                dismissed.push(id);
-                sessionStorage.setItem(STORAGE_DISMISSED_KEY, JSON.stringify(dismissed));
+            if (dismissed.indexOf(numId) === -1) {
+                dismissed.push(numId);
+                var str = JSON.stringify(dismissed);
+                try { localStorage.setItem(STORAGE_DISMISSED_KEY, str); } catch(e){}
+                try { sessionStorage.setItem(STORAGE_DISMISSED_KEY, str); } catch(e){}
             }
         } catch (e) {}
     }
@@ -246,13 +251,20 @@ $(function () {
             var amount = 'Rp ' + Number(item.amount || 0).toLocaleString('id-ID');
             var isInvoiceRequested = item.type === 'invoice_requested';
             var isInvoiceApproved = item.type === 'invoice_approved';
-            var icon = isInvoiceRequested ? 'mdi-file-document-outline' : (isInvoiceApproved ? 'mdi-check-decagram-outline' : 'mdi-cash-multiple');
-            var badgeClass = isInvoiceRequested ? 'bg-label-primary' : (isInvoiceApproved ? 'bg-label-info' : 'bg-label-success');
+            var isContractRequested = item.type === 'contract_requested';
+            var isContractSigned = item.type === 'contract_signed';
+
+            var icon = isInvoiceRequested ? 'mdi-file-document-outline' : (isInvoiceApproved ? 'mdi-check-decagram-outline' : (isContractRequested ? 'mdi-file-sign' : (isContractSigned ? 'mdi-draw-pen' : 'mdi-cash-multiple')));
+            var badgeClass = isInvoiceRequested ? 'bg-label-primary' : (isInvoiceApproved ? 'bg-label-info' : (isContractRequested ? 'bg-label-warning' : (isContractSigned ? 'bg-label-success' : 'bg-label-success')));
             var message = isInvoiceRequested
                 ? 'Invoice senilai ' + amount + ' menunggu diterbitkan (' + escapeHtml(item.company) + ')'
                 : isInvoiceApproved
                     ? 'Invoice senilai ' + amount + ' sudah di-acc Accounting (' + escapeHtml(item.company) + ')'
-                    : 'Payment ' + amount + ' ditambahkan (' + escapeHtml(item.company) + ')';
+                    : isContractRequested
+                        ? 'Pengajuan Selling Contract baru (' + escapeHtml(item.company) + ')'
+                        : isContractSigned
+                            ? 'Selling Contract telah ditandatangani Customer (' + escapeHtml(item.company) + ')'
+                            : 'Payment ' + amount + ' ditambahkan (' + escapeHtml(item.company) + ')';
             var unread = !item.is_read;
             return (
                 '<a href="' + item.url + '" class="payment-notif-item' + (unread ? ' payment-notif-unread' : '') + '"' +
@@ -290,15 +302,37 @@ $(function () {
             $toast.addClass('toast-hiding');
             setTimeout(function () {
                 $toast.remove();
-                activeToastIds.delete(notifId);
+                if (notifId) {
+                    activeToastIds.delete(Number(notifId));
+                    activeToastIds.delete(notifId);
+                }
             }, 320);
         }
         if (notifId) {
             addDismissedToastId(notifId);
+            // Tandai langsung sebagai dibaca ke server agar tidak muncul lagi saat navigasi/reload halaman
+            markRead(notifId);
+
+            // Update badge dan penanda unread di dropdown navbar secara real-time
+            var $item = $list.find('.payment-notif-item[data-notif-id="' + notifId + '"]');
+            if ($item.length && $item.attr('data-read') !== '1') {
+                $item.attr('data-read', '1').removeClass('payment-notif-unread');
+                $item.find('li').removeClass('bg-label-secondary');
+                $item.find('.badge-dot').remove();
+
+                if (lastCount > 0) lastCount -= 1;
+                var remaining = $list.find('.payment-notif-unread').length;
+                if (remaining > 0) {
+                    $countBadge.text(remaining + ' Notifikasi');
+                } else {
+                    $dot.addClass('d-none');
+                    $countBadge.addClass('d-none');
+                }
+            }
         }
     }
 
-    // Tampilkan Popup Toast untuk Invoice Requested (Accounting & Admin) atau Invoice Approved (Sales)
+    // Tampilkan Popup Toast untuk Invoice Requested / Contract (Accounting & Admin) atau Invoice Approved / Contract Signed (Sales)
     function checkAndShowFloatingToasts(items) {
         injectToastStyles();
         var $container = ensureToastContainer();
@@ -306,9 +340,10 @@ $(function () {
         var hasNewToast = false;
 
         items.forEach(function (item) {
+            var numId = Number(item.id);
             if (item.is_read) return;
-            if (dismissed.indexOf(item.id) !== -1) return;
-            if (activeToastIds.has(item.id)) return;
+            if (dismissed.indexOf(numId) !== -1) return;
+            if (activeToastIds.has(numId) || activeToastIds.has(item.id)) return;
 
             var isAccountingAdmin = (userRole === 'Accounting' || userRole === 'Admin');
             var isSales = (userRole === 'Sales');
@@ -325,17 +360,25 @@ $(function () {
                 shouldShow = true;
                 toastTitle = 'Invoice Berhasil Di-ACC';
                 toastIcon = 'mdi-check-decagram-outline';
+            } else if (isAccountingAdmin && item.type === 'contract_requested') {
+                shouldShow = true;
+                toastTitle = 'Pengajuan Selling Contract';
+                toastIcon = 'mdi-file-sign';
+            } else if ((isAccountingAdmin || isSales) && item.type === 'contract_signed') {
+                shouldShow = true;
+                toastTitle = 'Kontrak Ditandatangani Customer';
+                toastIcon = 'mdi-draw-pen';
             }
 
             if (!shouldShow) return;
 
-            activeToastIds.add(item.id);
+            activeToastIds.add(numId);
             hasNewToast = true;
             var toastDomId = 'invoiceToast_' + item.id;
             var amountFormatted = 'Rp ' + Number(item.amount || 0).toLocaleString('id-ID');
             var invoiceTypeBadge = item.invoice_type
                 ? (item.invoice_type + (item.invoice_percent ? ' ' + item.invoice_percent + '%' : ''))
-                : 'Invoice';
+                : (item.type.indexOf('contract') !== -1 ? 'Contract' : 'Invoice');
 
             var poButtonHtml = '';
             if (item.po_url) {
@@ -346,12 +389,22 @@ $(function () {
 
             var primaryActionBtn = '';
             if (isAccountingAdmin) {
-                primaryActionBtn = '<a href="' + escapeHtml(item.url) + '" class="btn btn-xs btn-primary btn-toast-acc d-inline-flex align-items-center gap-1 flex-grow-1" data-notif-id="' + item.id + '">' +
-                    '<i class="mdi mdi-check-circle-outline"></i> ACC & Terbitkan' +
-                '</a>';
+                if (item.type === 'invoice_requested') {
+                    primaryActionBtn = '<a href="' + escapeHtml(item.url) + '" class="btn btn-xs btn-primary btn-toast-acc d-inline-flex align-items-center gap-1 flex-grow-1" data-notif-id="' + item.id + '">' +
+                        '<i class="mdi mdi-check-circle-outline"></i> ACC & Terbitkan' +
+                    '</a>';
+                } else if (item.type === 'contract_requested' || item.type === 'contract_signed') {
+                    primaryActionBtn = '<a href="' + escapeHtml(item.url) + '" class="btn btn-xs btn-primary btn-toast-acc d-inline-flex align-items-center gap-1 flex-grow-1" data-notif-id="' + item.id + '">' +
+                        '<i class="mdi mdi-eye-outline"></i> Buka Kontrak' +
+                    '</a>';
+                } else {
+                    primaryActionBtn = '<a href="' + escapeHtml(item.url) + '" class="btn btn-xs btn-primary btn-toast-acc d-inline-flex align-items-center gap-1 flex-grow-1" data-notif-id="' + item.id + '">' +
+                        '<i class="mdi mdi-eye-outline"></i> Lihat Detail' +
+                    '</a>';
+                }
             } else {
                 primaryActionBtn = '<a href="' + escapeHtml(item.url) + '" class="btn btn-xs btn-primary d-inline-flex align-items-center gap-1 flex-grow-1" data-notif-id="' + item.id + '">' +
-                    '<i class="mdi mdi-eye-outline"></i> Lihat Invoice' +
+                    '<i class="mdi mdi-eye-outline"></i> Lihat Detail' +
                 '</a>';
             }
 

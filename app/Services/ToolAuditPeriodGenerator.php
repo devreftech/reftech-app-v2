@@ -12,9 +12,9 @@ use Carbon\Carbon;
 class ToolAuditPeriodGenerator
 {
     /**
-     * Window audit: 10 hari terakhir bulan Juni (semester 1) & Desember (semester 2).
-     * Return null kalau tanggal hari ini di luar kedua window itu DAN gak ada
-     * semester lewat yang butuh catch-up (lihat missedWindowCatchUp()).
+     * Window audit: 10 hari terakhir pada bulan Maret (Q1), Juni (Q2), September (Q3), & Desember (Q4).
+     * Return null kalau tanggal hari ini di luar keempat window itu DAN gak ada
+     * triwulan lewat yang butuh catch-up (lihat missedWindowCatchUp()).
      */
     public function activeWindow(?Carbon $date = null)
     {
@@ -22,8 +22,10 @@ class ToolAuditPeriodGenerator
         $tahun = $date->year;
 
         $windows = [
-            1 => Carbon::create($tahun, 6, 1)->endOfMonth(),
-            2 => Carbon::create($tahun, 12, 1)->endOfMonth(),
+            1 => Carbon::create($tahun, 3, 1)->endOfMonth(),  // Q1: Akhir Maret
+            2 => Carbon::create($tahun, 6, 1)->endOfMonth(),  // Q2: Akhir Juni
+            3 => Carbon::create($tahun, 9, 1)->endOfMonth(),  // Q3: Akhir September
+            4 => Carbon::create($tahun, 12, 1)->endOfMonth(), // Q4: Akhir Desember
         ];
 
         foreach ($windows as $semester => $endOfMonth) {
@@ -44,22 +46,24 @@ class ToolAuditPeriodGenerator
 
     /**
      * Fallback sementara: kalau window resmi sudah kelewat (mis. cron/lazy-trigger
-     * gak sempat jalan pas H-9 s/d akhir bulan), tetap anggap semester yang baru
+     * gak sempat jalan pas H-9 s/d akhir bulan), tetap anggap triwulan yang baru
      * lewat itu "terbuka utk catch-up" — SELALU dicek ulang tiap kali dipanggil
      * (bukan cuma sekali), soalnya generateIfNeeded() pakai firstOrCreate yang
      * idempotent, jadi sweep berulang ini aman & perlu supaya teknisi yang baru
      * dapat tools SETELAH catch-up pertama tetap ke-sweep juga (bukan cuma
      * technician yang aktif pas trigger pertama). Cuma lihat ke belakang
-     * (semester yang sudah lewat), gak pernah buka semester yang belum waktunya.
+     * (triwulan yang sudah lewat), gak pernah buka triwulan yang belum waktunya.
      */
     protected function missedWindowCatchUp(Carbon $date)
     {
         $tahun = $date->year;
 
         $candidates = [
-            ['tahun' => $tahun, 'semester' => 1, 'end' => Carbon::create($tahun, 6, 1)->endOfMonth()],
-            ['tahun' => $tahun, 'semester' => 2, 'end' => Carbon::create($tahun, 12, 1)->endOfMonth()],
-            ['tahun' => $tahun - 1, 'semester' => 2, 'end' => Carbon::create($tahun - 1, 12, 1)->endOfMonth()],
+            ['tahun' => $tahun, 'semester' => 1, 'end' => Carbon::create($tahun, 3, 1)->endOfMonth()],
+            ['tahun' => $tahun, 'semester' => 2, 'end' => Carbon::create($tahun, 6, 1)->endOfMonth()],
+            ['tahun' => $tahun, 'semester' => 3, 'end' => Carbon::create($tahun, 9, 1)->endOfMonth()],
+            ['tahun' => $tahun, 'semester' => 4, 'end' => Carbon::create($tahun, 12, 1)->endOfMonth()],
+            ['tahun' => $tahun - 1, 'semester' => 4, 'end' => Carbon::create($tahun - 1, 12, 1)->endOfMonth()],
         ];
 
         $candidates = array_filter($candidates, fn ($c) => $c['end']->lt($date));
@@ -103,7 +107,8 @@ class ToolAuditPeriodGenerator
             ]
         );
 
-        $romawi = $window['semester'] == 1 ? 'I' : 'II';
+        $romawiMap = [1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV'];
+        $romawi = $romawiMap[$window['semester']] ?? 'I';
         $technicians = User::where('role', 'Technician')->get();
 
         foreach ($technicians as $technician) {

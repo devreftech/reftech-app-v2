@@ -49,8 +49,14 @@
                     <div data-i18n="Reports">Reports</div>
                 </a>
             </li>
+            <li class="menu-item {{ request()->is('report/project-profitability*') ? 'active' : '' }}">
+                <a href="{{ route('report.project_profitability') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-chart-box-outline"></i>
+                    <div data-i18n="Laba Rugi Proyek">Laba Rugi Proyek</div>
+                </a>
+            </li>
             <li
-                class="menu-item {{ request()->is('report/*') && !request()->is('report/monthly*') ? 'active' : '' }}">
+                class="menu-item {{ request()->is('report/*') && !request()->is('report/monthly*') && !request()->is('report/project-profitability*') ? 'active' : '' }}">
                 <a href="{{ route('report.current') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-chart-areaspline"></i>
                     <div data-i18n="Overview">Overview</div>
@@ -499,7 +505,7 @@
                     </a>
                 </li>
                 <li
-                    class="menu-item {{ request()->is('payment-index/invoice') || request()->is('payment-index/payment') || request()->is('payment-index/aging') || request()->is('payment-detail/invoice/*') || request()->is('payment-detail/payment/*') || request()->is('payment-detail/aging/*') ? 'open' : '' }}">
+                    class="menu-item {{ request()->is('payment-index/invoice') || request()->is('payment-index/payment') || request()->is('payment-index/aging') || request()->is('payment-detail/invoice/*') || request()->is('payment-detail/payment/*') || request()->is('payment-detail/aging/*') || request()->is('customer-statement*') ? 'open' : '' }}">
                     <a href="javascript:void(0);" class="menu-link menu-toggle">
                         <i class="menu-icon tf-icons mdi mdi-book-check-outline"></i>
                         <div data-i18n="Account Receivable (AR)">Account Receivable (AR)</div>
@@ -529,34 +535,49 @@
                                 @endif
                             </a>
                         </li>
+                        <li
+                            class="menu-item {{ request()->is('customer-statement*') ? 'active' : '' }}">
+                            <a href="{{ route('customer.statement') }}" class="menu-link">
+                                <div data-i18n="Kartu Piutang (SOA)">Kartu Piutang (SOA)</div>
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 <li
-                    class="menu-item {{ request()->is('payable/invoice') || request()->is('payable/invoice/*') || request()->is('payable/aging') || request()->is('payable/aging/*') || request()->is('expense-account') || request()->is('expense') || request()->is('payable/receipt') || request()->is('payable/receipt/*') ? 'open' : '' }}">
+                    class="menu-item {{ request()->is('payable/invoice*') || request()->is('payable/aging*') || request()->is('payable/receipt*') || request()->is('payable/statement*') || request()->is('payable/expenses*') ? 'open' : '' }}">
                     <a href="javascript:void(0);" class="menu-link menu-toggle">
                         <i class="menu-icon tf-icons mdi mdi-book-check-outline"></i>
                         <div data-i18n="Account Payable (AP)">Account Payable (AP)</div>
-                        {{-- @if (@$nodueCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $nodueCount }}</div>
-                    @endif --}}
                     </a>
                     <ul class="menu-sub">
                         <li
-                            class="menu-item {{ request()->is('payable/invoice') || request()->is('payable/invoice/*') ? 'active' : '' }}">
+                            class="menu-item {{ request()->is('payable/invoice*') ? 'active' : '' }}">
                             <a href="{{ route('payable.index_invoice') }}" class="menu-link">
                                 <div data-i18n="Purchase Invoice">Purchase Invoice</div>
                             </a>
                         </li>
                         <li
-                            class="menu-item {{ request()->is('payable/receipt') || request()->is('payable/receipt/*') ? 'active' : '' }}">
+                            class="menu-item {{ request()->is('payable/receipt*') ? 'active' : '' }}">
                             <a href="{{ route('payable.index_receipt') }}" class="menu-link">
                                 <div data-i18n="Purchase Payment">Purchase Payment</div>
                             </a>
                         </li>
                         <li
-                            class="menu-item {{ request()->is('payable/aging') || request()->is('payable/aging/*') ? 'active' : '' }}">
+                            class="menu-item {{ request()->is('payable/aging*') ? 'active' : '' }}">
                             <a href="{{ route('payable.index_aging') }}" class="menu-link">
                                 <div data-i18n="Aging Report">Aging Report</div>
+                            </a>
+                        </li>
+                        <li
+                            class="menu-item {{ request()->is('payable/statement*') ? 'active' : '' }}">
+                            <a href="{{ route('payable.statement') }}" class="menu-link">
+                                <div data-i18n="Kartu Hutang (SOA)">Kartu Hutang (SOA)</div>
+                            </a>
+                        </li>
+                        <li
+                            class="menu-item {{ request()->is('payable/expenses*') ? 'active' : '' }}">
+                            <a href="{{ route('payable.expenses') }}" class="menu-link">
+                                <div data-i18n="Biaya Proyek AP">Biaya Proyek AP</div>
                             </a>
                         </li>
                     </ul>
@@ -565,6 +586,20 @@
 
                 <li class="menu-header fw-light mt-4">
                     <span class="menu-header-text">Finance</span>
+                </li>
+
+                <li class="menu-item {{ request()->is('finance/bank*') ? 'active' : '' }}">
+                    <a href="{{ route('bank.index') }}" class="menu-link">
+                        <i class="menu-icon tf-icons mdi mdi-bank"></i>
+                        <div data-i18n="Kas & Bank">Kas &amp; Bank</div>
+                    </a>
+                </li>
+
+                <li class="menu-item {{ request()->is('finance/petty-cash*') ? 'active' : '' }}">
+                    <a href="{{ route('petty_cash.index') }}" class="menu-link">
+                        <i class="menu-icon tf-icons mdi mdi-cash-register"></i>
+                        <div data-i18n="Petty Cash">Petty Cash (Kas Kecil)</div>
+                    </a>
                 </li>
 
                 @php
@@ -1098,10 +1133,21 @@
                     <div data-i18n="Forecast">Forecast</div>
                 </a>
             </li>
-            <li class="menu-item {{ request()->is('schematics*') ? 'active' : '' }}">
-                <a href="{{ route('schematics.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-vector-polyline"></i>
-                    <div data-i18n="Schematic Diagram">Schematic Diagram</div>
+
+            @php
+                $salesPendingFeeCount = \App\Models\UnitQuotation::where('fee', '>', 0)
+                    ->where('id_sales', Auth::id())
+                    ->where('fee_payment_status', '!=', 'paid')
+                    ->where('status', 'po_received')
+                    ->count();
+            @endphp
+            <li class="menu-item {{ request()->is('finance/management-fee*') ? 'active' : '' }}">
+                <a href="{{ route('finance.management-fee.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-cash-refund"></i>
+                    <div data-i18n="Management Fee">Management Fee</div>
+                    @if ($salesPendingFeeCount >= 1)
+                        <div class="badge bg-warning rounded-pill ms-auto">{{ $salesPendingFeeCount }}</div>
+                    @endif
                 </a>
             </li>
             <li class="menu-header fw-light mt-4">
@@ -1361,6 +1407,12 @@
                 <a href="{{ route('calculator.correction') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-desktop-tower"></i>
                     <div data-i18n="Correction Factor Calc">Correction Factor Calc</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('schematics*') ? 'active' : '' }}">
+                <a href="{{ route('schematics.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-vector-polyline"></i>
+                    <div data-i18n="Schematic Diagram">Schematic Diagram</div>
                 </a>
             </li>
             <li
@@ -2285,28 +2337,40 @@
                 </ul>
             </li>
             <li
-                class="menu-item {{ request()->is('payable/invoice') || request()->is('payable/invoice/*') || request()->is('payable/aging') || request()->is('payable/aging/*') || request()->is('payable/receipt') || request()->is('payable/receipt/*') ? 'open' : '' }}">
+                class="menu-item {{ request()->is('payable/invoice*') || request()->is('payable/aging*') || request()->is('payable/receipt*') || request()->is('payable/statement*') || request()->is('payable/expenses*') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-book-check-outline"></i>
                     <div data-i18n="Account Payable (AP)">Account Payable (AP)</div>
                 </a>
                 <ul class="menu-sub">
                     <li
-                        class="menu-item {{ request()->is('payable/invoice') || request()->is('payable/invoice/*') ? 'active' : '' }}">
+                        class="menu-item {{ request()->is('payable/invoice*') ? 'active' : '' }}">
                         <a href="{{ route('payable.index_invoice') }}" class="menu-link">
                             <div data-i18n="Purchase Invoice">Purchase Invoice</div>
                         </a>
                     </li>
                     <li
-                        class="menu-item {{ request()->is('payable/receipt') || request()->is('payable/receipt/*') ? 'active' : '' }}">
+                        class="menu-item {{ request()->is('payable/receipt*') ? 'active' : '' }}">
                         <a href="{{ route('payable.index_receipt') }}" class="menu-link">
                             <div data-i18n="Purchase Payment">Purchase Payment</div>
                         </a>
                     </li>
                     <li
-                        class="menu-item {{ request()->is('payable/aging') || request()->is('payable/aging/*') ? 'active' : '' }}">
+                        class="menu-item {{ request()->is('payable/aging*') ? 'active' : '' }}">
                         <a href="{{ route('payable.index_aging') }}" class="menu-link">
                             <div data-i18n="Aging Report">Aging Report</div>
+                        </a>
+                    </li>
+                    <li
+                        class="menu-item {{ request()->is('payable/statement*') ? 'active' : '' }}">
+                        <a href="{{ route('payable.statement') }}" class="menu-link">
+                            <div data-i18n="Kartu Hutang (SOA)">Kartu Hutang (SOA)</div>
+                        </a>
+                    </li>
+                    <li
+                        class="menu-item {{ request()->is('payable/expenses*') ? 'active' : '' }}">
+                        <a href="{{ route('payable.expenses') }}" class="menu-link">
+                            <div data-i18n="Biaya Proyek AP">Biaya Proyek AP</div>
                         </a>
                     </li>
                 </ul>

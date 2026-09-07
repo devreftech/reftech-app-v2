@@ -39,4 +39,9 @@ class ProjectExpense extends Model
     {
         return $this->belongsTo('App\Models\User', 'id_user', 'id');
     }
+
+    public function payments()
+    {
+        return $this->hasMany('App\Models\PurchasePayment', 'id_project_expense');
+    }
 }

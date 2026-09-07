@@ -8,10 +8,16 @@
                 <span class="text-muted fw-light">Finance / Account Payable /</span> Purchase Invoice
             </h4>
             <p class="text-muted mb-0 small">
-                <i class="mdi mdi-receipt-text-outline me-1"></i> Kelola data faktur pembelian barang & status pelunasan ke supplier
+                <i class="mdi mdi-receipt-text-outline me-1"></i> Kelola data faktur pembelian barang &amp; status pelunasan cicilan ke supplier
             </p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('payable.statement') }}" class="btn btn-label-info btn-sm">
+                <i class="mdi mdi-book-open-outline me-1"></i> Kartu Hutang (SOA)
+            </a>
+            <a href="{{ route('payable.expenses') }}" class="btn btn-label-secondary btn-sm">
+                <i class="mdi mdi-cash-multiple me-1"></i> Biaya Proyek
+            </a>
             <a href="{{ route('payable.index_receipt') }}" class="btn btn-label-primary btn-sm">
                 <i class="mdi mdi-cash-check me-1"></i> Purchase Payment
             </a>
@@ -21,58 +27,82 @@
         </div>
     </div>
 
-    {{-- Metric Cards --}}
+    {{-- Metric Cards (Point 4: Due Date Alert & Badges) --}}
     <div class="row g-3 mb-4">
         {{-- Total Invoice --}}
-        <div class="col-12 col-md-4">
-            <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f8f9ff 0%, #edf0ff 100%); border-left: 5px solid #696cff !important;">
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f8f9ff 0%, #edf0ff 100%); border-left: 4px solid #696cff !important;">
                 <div class="card-body p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-uppercase fw-bold text-primary small" style="letter-spacing: .5px;">
-                            <i class="mdi mdi-file-document-multiple-outline me-1"></i> Total Purchase Invoice
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-uppercase fw-bold text-primary small" style="font-size: 11px;">
+                            Total Invoice
                         </span>
-                        <span class="badge bg-label-primary rounded-pill px-2 py-1">{{ number_format($totalCount ?? 0) }} Invoices</span>
+                        <span class="badge bg-label-primary rounded-pill px-2 py-1">{{ number_format($totalCount ?? 0) }}</span>
                     </div>
-                    <div class="fw-bolder text-primary fs-4 mb-0">
+                    <div class="fw-bolder text-primary fs-5 mb-0">
                         Rp {{ number_format($totalAmount ?? 0, 0, ',', '.') }}
                     </div>
-                    <small class="text-muted" style="font-size: 11px;">Akumulasi seluruh faktur pembelian</small>
+                    <small class="text-muted" style="font-size: 10px;">Semua faktur pembelian</small>
                 </div>
             </div>
         </div>
 
         {{-- Paid Invoices --}}
-        <div class="col-12 col-md-4">
-            <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f3fdf6 0%, #e8f9ee 100%); border-left: 5px solid #28a745 !important;">
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f3fdf6 0%, #e8f9ee 100%); border-left: 4px solid #28a745 !important;">
                 <div class="card-body p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-uppercase fw-bold text-success small" style="letter-spacing: .5px;">
-                            <i class="mdi mdi-check-circle-outline me-1"></i> Sudah Lunas (Paid)
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-uppercase fw-bold text-success small" style="font-size: 11px;">
+                            Sudah Lunas
                         </span>
-                        <span class="badge bg-label-success rounded-pill px-2 py-1">{{ number_format($paidCount ?? 0) }} Invoices</span>
+                        <span class="badge bg-label-success rounded-pill px-2 py-1">{{ number_format($paidCount ?? 0) }}</span>
                     </div>
-                    <div class="fw-bolder text-success fs-4 mb-0">
+                    <div class="fw-bolder text-success fs-5 mb-0">
                         Rp {{ number_format($paidAmount ?? 0, 0, ',', '.') }}
                     </div>
-                    <small class="text-muted" style="font-size: 11px;">Faktur yang telah diselesaikan pembayarannya</small>
+                    <small class="text-muted" style="font-size: 10px;">Faktur terbayar lunas</small>
                 </div>
             </div>
         </div>
 
-        {{-- Unpaid Invoices --}}
-        <div class="col-12 col-md-4">
-            <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #fff8f8 0%, #ffeded 100%); border-left: 5px solid #ff3e1d !important;">
+        {{-- Partial & Unpaid --}}
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #fff8f8 0%, #ffeded 100%); border-left: 4px solid #ff3e1d !important;">
                 <div class="card-body p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-uppercase fw-bold text-danger small" style="letter-spacing: .5px;">
-                            <i class="mdi mdi-clock-alert-outline me-1"></i> Belum Lunas (Outstanding)
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-uppercase fw-bold text-danger small" style="font-size: 11px;">
+                            Belum Lunas / Partial
                         </span>
-                        <span class="badge bg-label-danger rounded-pill px-2 py-1">{{ number_format($unpaidCount ?? 0) }} Invoices</span>
+                        <span class="badge bg-label-danger rounded-pill px-2 py-1">{{ number_format(($unpaidCount ?? 0) + ($partialCount ?? 0)) }}</span>
                     </div>
-                    <div class="fw-bolder text-danger fs-4 mb-0">
-                        Rp {{ number_format($unpaidAmount ?? 0, 0, ',', '.') }}
+                    <div class="fw-bolder text-danger fs-5 mb-0">
+                        Rp {{ number_format(($unpaidAmount ?? 0) + ($partialAmount ?? 0), 0, ',', '.') }}
                     </div>
-                    <small class="text-muted" style="font-size: 11px;">Hutang berjalan yang belum dibayarkan</small>
+                    <small class="text-muted" style="font-size: 10px;">{{ $partialCount ?? 0 }} partial, {{ $unpaidCount ?? 0 }} unpaid</small>
+                </div>
+            </div>
+        </div>
+
+        {{-- Due Alerts (Overdue & Due Soon) --}}
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #fffcf0 0%, #fef3c7 100%); border-left: 4px solid #f59e0b !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-uppercase fw-bold text-warning small" style="font-size: 11px;">
+                            <i class="mdi mdi-alert-circle-outline me-1"></i> Due Date Alert
+                        </span>
+                        @if(($overdueCount ?? 0) > 0)
+                            <span class="badge bg-danger rounded-pill px-2 py-1">{{ $overdueCount }} Overdue</span>
+                        @elseif(($dueSoonCount ?? 0) > 0)
+                            <span class="badge bg-warning text-dark rounded-pill px-2 py-1">{{ $dueSoonCount }} Soon</span>
+                        @else
+                            <span class="badge bg-label-success rounded-pill px-2 py-1">Aman</span>
+                        @endif
+                    </div>
+                    <div class="fw-bolder text-dark fs-5 mb-0">
+                        Rp {{ number_format(($overdueAmount ?? 0) + ($dueSoonAmount ?? 0), 0, ',', '.') }}
+                    </div>
+                    <small class="text-muted" style="font-size: 10px;">{{ $overdueCount ?? 0 }} jatuh tempo, {{ $dueSoonCount ?? 0 }} segera</small>
                 </div>
             </div>
         </div>
@@ -91,9 +121,9 @@
                 <thead class="table-light">
                     <tr>
                         <th class="fw-semibold text-dark">Invoice No.</th>
-                        <th class="fw-semibold text-dark">Date</th>
+                        <th class="fw-semibold text-dark">Date / Due</th>
                         <th class="fw-semibold text-dark">Supplier</th>
-                        <th class="fw-semibold text-dark text-end">Total Invoice</th>
+                        <th class="fw-semibold text-dark text-end">Total &amp; Sisa</th>
                         <th class="fw-semibold text-dark text-center">Total Item</th>
                         <th class="fw-semibold text-dark text-center">Status</th>
                     </tr>

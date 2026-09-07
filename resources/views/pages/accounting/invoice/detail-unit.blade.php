@@ -979,6 +979,9 @@
                         <small class="text-uppercase text-muted fw-semibold" style="font-size:10px">Payment Received</small>
                     </div>
                     @foreach ($payments as $pay)
+                    @php
+                        $netPay = $pay->amount - ($pay->pph ?? 0) - ($pay->cost ?? 0);
+                    @endphp
                     <div class="d-flex align-items-start justify-content-between px-3 py-2 border-bottom" id="pay-row-{{ $pay->id }}">
                         <div>
                             <p class="mb-0 fw-semibold small">
@@ -987,6 +990,17 @@
                                     <span class="badge bg-label-primary ms-1" style="font-size:10px">{{ $pay->type }}</span>
                                 @endif
                             </p>
+                            @if ($pay->pph > 0 || $pay->cost > 0)
+                                <div class="d-flex flex-wrap gap-1 my-1">
+                                    @if ($pay->pph > 0)
+                                        <span class="badge bg-label-danger" style="font-size:10px">PPH 23: -Rp {{ number_format($pay->pph, 0, '', '.') }}</span>
+                                    @endif
+                                    @if ($pay->cost > 0)
+                                        <span class="badge bg-label-warning" style="font-size:10px">Admin Bank: -Rp {{ number_format($pay->cost, 0, '', '.') }}</span>
+                                    @endif
+                                    <span class="badge bg-label-success fw-bold" style="font-size:10px">Nett: Rp {{ number_format($netPay, 0, '', '.') }}</span>
+                                </div>
+                            @endif
                             @if ($pay->method)
                                 <p class="mb-0 text-muted" style="font-size:11px">{{ $pay->method }}</p>
                             @endif
@@ -1766,20 +1780,103 @@
     {{-- Modal Confirm Payment --}}
     <div class="modal fade" id="confirmPayment" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <form action="{{ route('invoice.confirm_payment_unit', $invoice->id) }}" method="POST">
+            <div class="modal-content border-0 shadow">
+                <form action="{{ route('invoice.confirm_payment_unit', $invoice->id) }}" method="POST" id="formConfirmPaymentUnit">
                     @csrf
-                    <div class="modal-header">
-                        <h5 class="modal-title">Confirm Payment</h5>
+                    <div class="modal-header bg-light py-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="mdi mdi-cash-check text-primary fs-4"></i>
+                            <h5 class="modal-title fw-bold mb-0">Konfirmasi Pembayaran</h5>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                    <div class="modal-body">
-                        <label class="form-label fw-semibold">Catatan</label>
-                        <textarea name="note" class="form-control" rows="3" placeholder="Catatan pembayaran..."></textarea>
+                    <div class="modal-body p-4">
+                        @php
+                            $unconfirmedPays = $payments->where('level', 0);
+                            $targetPayAmount = $unconfirmedPays->isNotEmpty() ? $unconfirmedPays->sum('amount') : $payments->sum('amount');
+                            $firstUnconfirmed = $unconfirmedPays->first() ?? $payments->first();
+                            $defaultPph = $firstUnconfirmed?->pph ?? 0;
+                            $defaultCost = $firstUnconfirmed?->cost ?? 0;
+                        @endphp
+
+                        <div class="alert alert-primary d-flex align-items-center justify-content-between p-3 mb-3" style="border-radius: 8px;">
+                            <div>
+                                <small class="d-block text-muted text-uppercase fw-semibold" style="font-size: 11px;">Nominal Pembayaran (Bruto)</small>
+                                <span class="fw-bold fs-5 text-primary" id="dispConfirmGross">Rp {{ number_format($targetPayAmount, 0, ',', '.') }}</span>
+                            </div>
+                            <span class="badge bg-primary">Unit Invoice</span>
+                        </div>
+
+                        {{-- Baris 1: PPH 23 --}}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold d-flex justify-content-between">
+                                <span>PPH 23 <span class="text-muted fw-normal">(Opsional)</span></span>
+                                <span class="text-danger small" style="font-size: 11px;">*Mengurangi nominal payment</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light fw-medium">Rp</span>
+                                <input type="text" class="form-control format-rupiah-confirm" 
+                                    id="confirm_pph_label" 
+                                    placeholder="0"
+                                    value="{{ $defaultPph > 0 ? number_format($defaultPph, 0, ',', '.') : '' }}">
+                                <input type="hidden" name="pph" id="confirm_pph" value="{{ $defaultPph }}">
+                            </div>
+                            <div class="form-text text-muted" style="font-size: 11px;">
+                                Masukkan nominal rupiah PPH 23 jika dipotong oleh customer.
+                            </div>
+                        </div>
+
+                        {{-- Baris 2: Admin Bank --}}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold d-flex justify-content-between">
+                                <span>Admin Bank <span class="text-muted fw-normal">(Opsional)</span></span>
+                                <span class="text-warning small" style="font-size: 11px;">*Biaya transaksi</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light fw-medium">Rp</span>
+                                <input type="text" class="form-control format-rupiah-confirm" 
+                                    id="confirm_cost_label" 
+                                    placeholder="0"
+                                    value="{{ $defaultCost > 0 ? number_format($defaultCost, 0, ',', '.') : '' }}">
+                                <input type="hidden" name="cost" id="confirm_cost" value="{{ $defaultCost }}">
+                            </div>
+                            <div class="form-text text-muted" style="font-size: 11px;">
+                                Masukkan nominal biaya admin bank / transfer jika ada.
+                            </div>
+                        </div>
+
+                        {{-- Ringkasan Realtime --}}
+                        <div class="bg-light p-3 rounded mb-3 border">
+                            <div class="d-flex justify-content-between align-items-center mb-1 small">
+                                <span class="text-muted">Nominal Bruto:</span>
+                                <span class="fw-semibold text-dark">Rp {{ number_format($targetPayAmount, 0, ',', '.') }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1 small text-danger" id="rowPreviewPph" style="display: {{ $defaultPph > 0 ? 'flex' : 'none' }} !important;">
+                                <span>Potongan PPH 23:</span>
+                                <span class="fw-semibold" id="dispPreviewPph">- Rp {{ number_format($defaultPph, 0, ',', '.') }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1 small text-warning" id="rowPreviewCost" style="display: {{ $defaultCost > 0 ? 'flex' : 'none' }} !important;">
+                                <span>Biaya Admin Bank:</span>
+                                <span class="fw-semibold" id="dispPreviewCost">- Rp {{ number_format($defaultCost, 0, ',', '.') }}</span>
+                            </div>
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-dark">Nett Diterima:</span>
+                                <span class="fw-bold text-success fs-6" id="dispPreviewNett">Rp {{ number_format($targetPayAmount - $defaultPph - $defaultCost, 0, ',', '.') }}</span>
+                            </div>
+                        </div>
+
+                        {{-- Catatan --}}
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold">Catatan <span class="text-muted fw-normal">(Opsional)</span></label>
+                            <textarea name="note" class="form-control" rows="2" placeholder="Catatan pembayaran...">{{ $firstUnconfirmed?->note ?? '' }}</textarea>
+                        </div>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer bg-light py-2">
                         <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary waves-effect">Confirm</button>
+                        <button type="submit" class="btn btn-primary fw-bold waves-effect">
+                            <i class="mdi mdi-check-circle-outline me-1"></i> Konfirmasi Pembayaran
+                        </button>
                     </div>
                 </form>
             </div>
@@ -2380,6 +2477,56 @@
             }
         });
     });
+
+    // Realtime live calculation for Confirm Payment Unit modal
+    (function () {
+        var baseGross = {{ (float) ($targetPayAmount ?? 0) }};
+
+        function parseNominal(val) {
+            if (!val) return 0;
+            var num = val.toString().replace(/[^0-9]/g, '');
+            return num ? parseInt(num, 10) : 0;
+        }
+
+        function formatRupiah(num) {
+            return new Intl.NumberFormat('id-ID').format(num);
+        }
+
+        function updateConfirmCalculations() {
+            var pphVal = parseNominal($('#confirm_pph_label').val());
+            var costVal = parseNominal($('#confirm_cost_label').val());
+
+            $('#confirm_pph').val(pphVal);
+            $('#confirm_cost').val(costVal);
+
+            if (pphVal > 0) {
+                $('#rowPreviewPph').attr('style', 'display: flex !important;');
+                $('#dispPreviewPph').text('- Rp ' + formatRupiah(pphVal));
+            } else {
+                $('#rowPreviewPph').attr('style', 'display: none !important;');
+            }
+
+            if (costVal > 0) {
+                $('#rowPreviewCost').attr('style', 'display: flex !important;');
+                $('#dispPreviewCost').text('- Rp ' + formatRupiah(costVal));
+            } else {
+                $('#rowPreviewCost').attr('style', 'display: none !important;');
+            }
+
+            var nett = baseGross - pphVal - costVal;
+            $('#dispPreviewNett').text('Rp ' + formatRupiah(nett));
+        }
+
+        $(document).on('input', '.format-rupiah-confirm', function () {
+            var val = parseNominal($(this).val());
+            $(this).val(val > 0 ? formatRupiah(val) : '');
+            updateConfirmCalculations();
+        });
+
+        $('#confirmPayment').on('shown.bs.modal', function () {
+            updateConfirmCalculations();
+        });
+    })();
 </script>
 
 {{-- Modal Buat BAST (Berita Acara Serah Terima) --}}

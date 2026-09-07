@@ -39,6 +39,9 @@
         </nav>
     </div>
     <div class="d-flex gap-2">
+        <a href="{{ route('payment.kwitansi', $payment->id) }}" target="_blank" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm">
+            <i class="mdi mdi-receipt-text-check-outline me-1"></i> Cetak Kwitansi
+        </a>
         <a href="{{ route('payment_index.payment') }}" class="btn btn-sm btn-label-secondary rounded-pill px-3">
             <i class="mdi mdi-arrow-left me-1"></i> Kembali
         </a>
@@ -228,13 +231,18 @@
                                 </td>
                                 <td class="align-middle px-3 text-center">
                                     @if ($payment->level == 0)
-                                        <button type="button" class="btn btn-xs btn-success rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#confirmPayment">
+                                        <button type="button" class="btn btn-xs btn-success rounded-pill px-3 shadow-xs" data-bs-toggle="modal" data-bs-target="#confirmPayment">
                                             <i class="mdi mdi-check me-1"></i> Konfirmasi
                                         </button>
                                     @else
-                                        <a href="#" class="btn btn-xs btn-label-danger rounded-pill px-3 unconfirm-payment" data-id="{{ $payment->id }}">
-                                            <i class="mdi mdi-close me-1"></i> Batal Konfirmasi
-                                        </a>
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <button type="button" class="btn btn-xs btn-label-primary rounded-pill px-2.5" data-bs-toggle="modal" data-bs-target="#confirmPayment" title="Ubah Rekening Bank">
+                                                <i class="mdi mdi-pencil me-1"></i> Ubah Bank
+                                            </button>
+                                            <a href="#" class="btn btn-xs btn-label-danger rounded-pill px-2.5 unconfirm-payment" data-id="{{ $payment->id }}" title="Batal Konfirmasi">
+                                                <i class="mdi mdi-close me-1"></i> Batal
+                                            </a>
+                                        </div>
                                     @endif
                                 </td>
                             </tr>
@@ -275,7 +283,15 @@
                     </span>
                 </div>
                 <h5 class="fw-bold text-{{ $statusColor }} mb-1">{{ $statusText }}</h5>
-                <small class="text-muted">Diperbarui {{ $payment->updated_at ? $payment->updated_at->diffForHumans() : '-' }}</small>
+                @if ($payment->bank)
+                    <div class="mt-2">
+                        <span class="badge bg-label-primary rounded-pill px-3 py-1.5" style="font-size: 12px;">
+                            <i class="mdi mdi-bank me-1"></i> [{{ strtoupper($payment->bank->entity ?? 'REFTECH') }}] {{ $payment->bank->bank }} - {{ $payment->bank->no_rek }}
+                        </span>
+                        <div class="text-muted small mt-1" style="font-size: 11px;">a/n {{ $payment->bank->atas_nama }}</div>
+                    </div>
+                @endif
+                <small class="text-muted d-block mt-2">Diperbarui {{ $payment->updated_at ? $payment->updated_at->diffForHumans() : '-' }}</small>
             </div>
         </div>
 
@@ -305,21 +321,28 @@
                         </div>
                     @endif
                     @if ($payment->pph > 0 || $payment->cost > 0)
-                        <div class="d-flex justify-content-between align-items-center pt-1">
+                        <div class="d-flex justify-content-between align-items-center pb-2 border-bottom">
                             <span class="fw-bold text-primary"><i class="mdi mdi-cash-check me-1.5"></i> Nett Diterima</span>
                             <span class="fw-bold text-primary" style="font-size: 15px;">Rp {{ number_format($netAmount, 0, ',', '.') }}</span>
                         </div>
                     @endif
+                    <div class="d-flex justify-content-between align-items-center pt-1">
+                        <span class="text-muted"><i class="mdi mdi-bank me-1.5 text-primary"></i> Rekening Masuk</span>
+                        <span class="fw-semibold text-dark text-end">
+                            {{ $payment->bank ? $payment->bank->bank . ' (' . $payment->bank->no_rek . ')' : 'Belum Dipilih' }}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
 
         {{-- Activity Timeline --}}
         <div class="card border-0 shadow-sm overflow-hidden">
-            <div class="card-header bg-body-tertiary border-bottom py-3 px-4">
+            <div class="card-header bg-body-tertiary border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
-                    <i class="mdi mdi-history text-primary"></i> Riwayat Aktivitas
+                    <i class="mdi mdi-history text-primary"></i> Riwayat Aktivitas Pembayaran
                 </h6>
+                <span class="badge bg-label-secondary rounded-pill px-2.5 py-1">{{ $activity->count() }} Histori</span>
             </div>
             <div class="card-body p-4">
                 @if ($activity->count() > 0)
@@ -327,14 +350,16 @@
                         @foreach ($activity as $index => $stats)
                             @php
                                 if ($stats->status == '1') {
-                                    $actStatus = 'Payment Dilihat'; $actColor = 'primary'; $actIcon = 'mdi-eye-outline';
+                                    $actStatus = 'Pembayaran Dilihat'; $actColor = 'primary'; $actIcon = 'mdi-eye-outline';
                                 } elseif ($stats->status == '2') {
-                                    $actStatus = 'Payment Diverifikasi'; $actColor = 'success'; $actIcon = 'mdi-check-circle-outline';
+                                    $actStatus = 'Pembayaran Diverifikasi'; $actColor = 'success'; $actIcon = 'mdi-check-decagram-outline';
                                 } elseif ($stats->status == '3') {
                                     $actStatus = 'Verifikasi Dibatalkan'; $actColor = 'danger'; $actIcon = 'mdi-close-circle-outline';
                                 } else {
-                                    $actStatus = 'Payment Dibuat'; $actColor = 'info'; $actIcon = 'mdi-plus-circle-outline';
+                                    $actStatus = 'Pembayaran Dibuat'; $actColor = 'info'; $actIcon = 'mdi-plus-circle-outline';
                                 }
+                                $logUser = $stats->user;
+                                $logDate = \Carbon\Carbon::parse($stats->date);
                             @endphp
                             <div class="d-flex gap-3 mb-3 position-relative">
                                 {{-- Connector line --}}
@@ -343,20 +368,32 @@
                                 @endif
                                 <div class="avatar avatar-sm flex-shrink-0">
                                     <span class="avatar-initial rounded-circle bg-label-{{ $actColor }}">
-                                        <i class="mdi {{ $actIcon }}" style="font-size: 14px;"></i>
+                                        <i class="mdi {{ $actIcon }}" style="font-size: 15px;"></i>
                                     </span>
                                 </div>
                                 <div class="flex-grow-1">
-                                    <div class="d-flex align-items-center justify-content-between mb-0.5">
-                                        <span class="fw-bold text-dark" style="font-size: 12.5px;">{{ $actStatus }}</span>
+                                    <div class="d-flex align-items-center justify-content-between mb-1 flex-wrap gap-1">
+                                        <span class="fw-bold text-dark" style="font-size: 13px;">{{ $actStatus }}</span>
+                                        <small class="text-muted" style="font-size: 11px;">
+                                            <i class="mdi mdi-clock-outline me-1"></i>
+                                            {{ $logDate->diffInHours(Carbon\Carbon::now()) > 24 ? $logDate->translatedFormat('d M Y, H:i') : $logDate->diffForHumans() }}
+                                        </small>
                                     </div>
-                                    <small class="text-muted d-block" style="font-size: 11px;">
-                                        {{ $stats->note }} {{ $stats->user->name }}
-                                    </small>
-                                    <small class="text-muted" style="font-size: 10.5px;">
-                                        <i class="mdi mdi-clock-outline me-1"></i>
-                                        {{ $stats->date->diffInHours(Carbon\Carbon::now()) > 24 ? $stats->date->format('d M Y, H:i') : $stats->date->diffForHumans() }}
-                                    </small>
+                                    <div class="d-flex align-items-center gap-1.5 flex-wrap mb-1">
+                                        <span class="badge bg-label-dark rounded-pill px-2.5 py-0.5" style="font-size: 11px;">
+                                            <i class="mdi mdi-account-check-outline me-1"></i> {{ $logUser?->name ?? 'User (#' . $stats->id_user . ')' }}
+                                        </span>
+                                        @if($logUser?->role)
+                                            <span class="badge bg-label-info rounded-pill px-2 py-0.5" style="font-size: 10px;">
+                                                {{ $logUser->role }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                    @if ($stats->note && !in_array(trim($stats->note), ['Payment Verif By', 'Payment View By', 'Unconfirmed By', 'Payment Created By']))
+                                        <div class="text-muted small" style="font-size: 11px; line-height: 1.4;">
+                                            {{ $stats->note }}
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         @endforeach
@@ -364,7 +401,7 @@
                 @else
                     <div class="text-center py-3">
                         <i class="mdi mdi-history text-muted fs-1 mb-2 d-block"></i>
-                        <small class="text-muted">Belum ada aktivitas tercatat.</small>
+                        <small class="text-muted">Belum ada aktivitas tercatat pada pembayaran ini.</small>
                     </div>
                 @endif
             </div>
