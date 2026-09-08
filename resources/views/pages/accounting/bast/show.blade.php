@@ -61,7 +61,7 @@
                             @if ($isReftech)
                                 <p class="fw-bolder text-uppercase" style="font-size: 16px; color: #4f46e5; letter-spacing: 0.5px; line-height: 1.2; margin-bottom: 6px !important;">PT REFTECH JAYA OPTIMA</p>
                                 <div style="font-size: 12px; line-height: 1.35; color: #334155; font-weight: 500;">
-                                    <p class="mb-0">Taman Kopo Indah V, Ruko Sommerville No. 31</p>
+                                    <p class="mb-0">Taman Kopo Indah V, Soho Sommerville No. 31</p>
                                     <p class="mb-0">Bandung – Jawa Barat 40218</p>
                                     <p class="mb-0 text-nowrap" style="font-size: 11px; white-space: nowrap;"><i class="mdi mdi-phone-outline me-1 text-primary"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1 text-primary"></i>admin@reftech.id &nbsp;|&nbsp; <i class="mdi mdi-web me-1 text-primary"></i>www.reftech.id</p>
                                 </div>
@@ -81,14 +81,22 @@
 
                     {{-- BAST Title & Intro --}}
                     <div class="text-center mb-4">
-                        <h4 class="fw-bold mb-1 text-uppercase" style="letter-spacing: 0.5px; color: #4f46e5; font-size: 18px;">Berita Acara Serah Terima Pekerjaan</h4>
+                        <h4 class="fw-bold mb-1 text-uppercase" style="letter-spacing: 0.5px; color: #4f46e5; font-size: 18px;">
+                            {{ $bast->type === 'Rental' ? 'Berita Acara Serah Terima Unit Rental' : 'Berita Acara Serah Terima Pekerjaan' }}
+                        </h4>
                         <div class="fw-bold" style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 18px; color: #4f46e5; letter-spacing: 0.5px;">{{ $bast->no_bast }}</div>
                     </div>
 
-                    <p class="mb-3" style="font-size: 13.5px; line-height: 1.6; color: #1e293b;">
-                        Bersama dengan ini kami <strong class="text-uppercase">{{ $entityFullName }}</strong>, telah menyelesaikan pekerjaan hingga
-                        <strong class="text-success">SELESAI</strong> untuk pekerjaan sbb :
-                    </p>
+                    @if ($bast->type === 'Rental')
+                        <p class="mb-3" style="font-size: 13.5px; line-height: 1.6; color: #1e293b;">
+                            Bersama dengan ini kami <strong class="text-uppercase">{{ $entityFullName }}</strong>, telah melakukan pengiriman, instalasi, dan commissioning serta <strong class="text-primary">MENYERAHKAN UNIT RENTAL</strong> dalam kondisi baik dan siap beroperasi kepada <strong>{{ $bast->customer_name }}</strong> untuk unit sbb :
+                        </p>
+                    @else
+                        <p class="mb-3" style="font-size: 13.5px; line-height: 1.6; color: #1e293b;">
+                            Bersama dengan ini kami <strong class="text-uppercase">{{ $entityFullName }}</strong>, telah menyelesaikan pekerjaan hingga
+                            <strong class="text-success">SELESAI</strong> untuk pekerjaan sbb :
+                        </p>
+                    @endif
 
                     <div class="border rounded-3 p-3 text-center fw-bold text-uppercase mb-4 shadow-sm"
                         style="font-size: 18px; border-left: 4px solid #696cff !important;">
@@ -100,12 +108,48 @@
                         <div class="card-body p-3.5">
                             <table class="table table-borderless mb-0" style="font-size: 13.5px;">
                                 <tr>
-                                    <td style="width: 240px; padding: 8px 4px; color: #475569;" class="fw-semibold">Tanggal Pekerjaan</td>
+                                    <td style="width: 240px; padding: 8px 4px; color: #475569;" class="fw-semibold">Tipe BAST</td>
                                     <td style="width: 20px; padding: 8px 4px; color: #475569;">:</td>
-                                    <td style="padding: 8px 4px;" class="fw-bold text-dark">{{ $bast->work_date->format('d-m-Y') }}</td>
+                                    <td style="padding: 8px 4px;">
+                                        <span class="badge {{ $bast->type === 'Rental' ? 'bg-label-info' : 'bg-label-secondary' }} fs-7">
+                                            {{ $bast->type === 'Rental' ? 'BAST Rental' : 'Default BAST' }}
+                                        </span>
+                                    </td>
                                 </tr>
+                                @if ($bast->type === 'Rental')
+                                    <tr>
+                                        <td style="padding: 8px 4px; color: #475569;" class="fw-semibold">Tanggal Commissioning</td>
+                                        <td style="padding: 8px 4px; color: #475569;">:</td>
+                                        <td style="padding: 8px 4px;" class="fw-bold text-dark">
+                                            {{ $bast->work_date ? $bast->work_date->format('d-m-Y') : '........................ (Isi Manual)' }}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 4px; color: #475569;" class="fw-semibold">Masa Rental</td>
+                                        <td style="padding: 8px 4px; color: #475569;">:</td>
+                                        <td style="padding: 8px 4px;" class="fw-bold text-dark">
+                                            @if ($bast->rental_start_date && $bast->rental_end_date)
+                                                {{ $bast->rental_start_date->format('d-m-Y') }} s/d {{ $bast->rental_end_date->format('d-m-Y') }}
+                                            @elseif ($bast->rental_start_date)
+                                                {{ $bast->rental_start_date->format('d-m-Y') }} s/d ............ (Isi Manual)
+                                            @elseif ($bast->rental_end_date)
+                                                ............ (Isi Manual) s/d {{ $bast->rental_end_date->format('d-m-Y') }}
+                                            @else
+                                                ........................ s/d ........................ (Isi Manual)
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @else
+                                    <tr>
+                                        <td style="padding: 8px 4px; color: #475569;" class="fw-semibold">Tanggal Pekerjaan</td>
+                                        <td style="padding: 8px 4px; color: #475569;">:</td>
+                                        <td style="padding: 8px 4px;" class="fw-bold text-dark">
+                                            {{ $bast->work_date ? $bast->work_date->format('d-m-Y') : '........................ (Isi Manual)' }}
+                                        </td>
+                                    </tr>
+                                @endif
                                 <tr>
-                                    <td style="padding: 8px 4px; color: #475569;" class="fw-semibold">Pemberi Pekerjaan / Customer</td>
+                                    <td style="padding: 8px 4px; color: #475569;" class="fw-semibold">{{ $bast->type === 'Rental' ? 'Yang Menerima / Customer' : 'Pemberi Pekerjaan / Customer' }}</td>
                                     <td style="padding: 8px 4px; color: #475569;">:</td>
                                     <td style="padding: 8px 4px;" class="fw-bold text-dark">{{ $bast->customer_name }}</td>
                                 </tr>
@@ -153,42 +197,83 @@
                         <textarea class="form-control" rows="4" style="font-size: 13.5px; background-color: #fff; border: 1px solid #d9dee3; resize: vertical;" readonly placeholder="Hasil pengecekan pada saat test running...">{{ $bast->test_running_result }}</textarea>
                     </div>
 
-                    <p class="mb-2 text-dark" style="font-size: 13px;">
-                        Demikian <strong>BERITA ACARA SERAH TERIMA PEKERJAAN</strong> ini ditandatangani oleh kedua belah pihak:
-                    </p>
-                    <table class="table table-borderless table-sm mb-3 ms-2 text-dark" style="font-size: 13px; width: auto;">
-                        <tr>
-                            <td style="width: 170px; padding: 2px 0;">• Pelaksana pekerjaan</td>
-                            <td style="width: 15px; padding: 2px 0;">:</td>
-                            <td style="padding: 2px 0;"><strong>{{ $entityFullName }}</strong></td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 2px 0;">• Pemberi pekerjaan</td>
-                            <td style="padding: 2px 0;">:</td>
-                            <td style="padding: 2px 0;"><strong>{{ $bast->customer_name }}</strong></td>
-                        </tr>
-                    </table>
-                    <p class="mb-4 text-dark" style="font-size: 13px;">
-                        Dengan ini segala hal yang berhubungan dengan pekerjaan tersebut di atas dinyatakan
-                        <strong class="text-success">SELESAI</strong>.
-                    </p>
+                    @if ($bast->type === 'Rental')
+                        <p class="mb-2 text-dark" style="font-size: 13px;">
+                            Demikian <strong>BERITA ACARA SERAH TERIMA UNIT RENTAL</strong> ini ditandatangani oleh kedua belah pihak:
+                        </p>
+                        <table class="table table-borderless table-sm mb-3 ms-2 text-dark" style="font-size: 13px; width: auto;">
+                            <tr>
+                                <td style="width: 210px; padding: 2px 0;">• Yang Menyerahkan (Penyedia)</td>
+                                <td style="width: 15px; padding: 2px 0;">:</td>
+                                <td style="padding: 2px 0;"><strong>{{ $entityFullName }}</strong></td>
+                            </tr>
+                            <tr>
+                                <td style="width: 210px; padding: 2px 0;">• Yang Menerima (Penyewa)</td>
+                                <td style="width: 15px; padding: 2px 0;">:</td>
+                                <td style="padding: 2px 0;"><strong>{{ $bast->customer_name }}</strong></td>
+                            </tr>
+                        </table>
+                        <p class="mb-4 text-dark" style="font-size: 13px;">
+                            Dengan ini unit rental tersebut di atas dinyatakan telah <strong class="text-primary">DITERIMA DALAM KONDISI BAIK &amp; SIAP BEROPERASI</strong>. Unit tetap merupakan milik/aset <strong>{{ $entityFullName }}</strong> dan akan diambil/ditarik kembali setelah masa sewa/rental berakhir.
+                        </p>
+                    @else
+                        <p class="mb-2 text-dark" style="font-size: 13px;">
+                            Demikian <strong>BERITA ACARA SERAH TERIMA PEKERJAAN</strong> ini ditandatangani oleh kedua belah pihak:
+                        </p>
+                        <table class="table table-borderless table-sm mb-3 ms-2 text-dark" style="font-size: 13px; width: auto;">
+                            <tr>
+                                <td style="width: 170px; padding: 2px 0;">• Pelaksana pekerjaan</td>
+                                <td style="width: 15px; padding: 2px 0;">:</td>
+                                <td style="padding: 2px 0;"><strong>{{ $entityFullName }}</strong></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 170px; padding: 2px 0;">• Pemberi pekerjaan</td>
+                                <td style="width: 15px; padding: 2px 0;">:</td>
+                                <td style="padding: 2px 0;"><strong>{{ $bast->customer_name }}</strong></td>
+                            </tr>
+                        </table>
+                        <p class="mb-4 text-dark" style="font-size: 13px;">
+                            Dengan ini segala hal yang berhubungan dengan pekerjaan tersebut di atas dinyatakan
+                            <strong class="text-success">SELESAI</strong>.
+                        </p>
+                    @endif
 
                     {{-- Signature Box Preview --}}
                     <div class="border rounded-3 p-4 bg-light mt-4">
                         <div class="row text-center">
                             <div class="col-6">
-                                <p class="fw-bold text-muted small text-uppercase mb-1">Pelaksana Pekerjaan</p>
+                                <p class="fw-bold text-muted small text-uppercase mb-1">{{ $bast->type === 'Rental' ? 'Yang Menyerahkan (Penyedia)' : 'Pelaksana Pekerjaan' }}</p>
                                 <p class="fw-bold text-dark text-uppercase mb-0" style="font-size: 13.5px;">{{ $entityFullName }}</p>
-                                <div style="height: 95px;"></div>
-                                <div class="border-top border-dark mx-auto" style="width: 70%;"></div>
+                                @if ($bast->sign)
+                                    <div class="d-flex align-items-center justify-content-center" style="height: 85px; margin: 5px 0;">
+                                        <img src="{{ asset($bast->sign) }}" alt="Hand Sign" style="max-height: 80px; max-width: 175px; object-fit: contain;">
+                                    </div>
+                                    <p class="mb-0 fw-bold text-dark" style="font-size: 13.5px;">( <u>{{ $isReftech ? 'Ariep Rachman' : 'Dedeh Sulastri' }}</u> )</p>
+                                @else
+                                    <div style="height: 95px;"></div>
+                                    <div class="border-top border-dark mx-auto" style="width: 70%;"></div>
+                                @endif
                                 <small class="text-muted d-block mt-1">Project / Service Dept.</small>
                             </div>
                             <div class="col-6">
-                                <p class="fw-bold text-muted small text-uppercase mb-1">Pemberi Pekerjaan</p>
+                                <p class="fw-bold text-muted small text-uppercase mb-1">{{ $bast->type === 'Rental' ? 'Yang Menerima (Penyewa)' : 'Pemberi Pekerjaan' }}</p>
                                 <p class="fw-bold text-dark text-uppercase mb-0" style="font-size: 13.5px;">{{ $bast->customer_name }}</p>
-                                <div style="height: 95px;"></div>
-                                <div class="border-top border-dark mx-auto" style="width: 70%;"></div>
-                                <small class="text-muted d-block mt-1">Authorized Representative</small>
+                                @if ($bast->customer_signature)
+                                    <div class="d-flex align-items-center justify-content-center position-relative" style="height: 85px; margin: 5px 0;">
+                                        <img src="{{ asset($bast->customer_signature) }}" alt="Customer Signature" style="max-height: 80px; max-width: 175px; object-fit: contain; z-index: 2;">
+                                        @if ($bast->customer_signed_stamp)
+                                            <img src="{{ asset($bast->customer_signed_stamp) }}" alt="Stamp" style="position: absolute; max-height: 70px; opacity: 0.75; z-index: 1; transform: rotate(-5deg);">
+                                        @endif
+                                    </div>
+                                    <p class="mb-0 fw-bold text-dark" style="font-size: 13.5px;">( <u>{{ $bast->customer_signer_name }}</u> )</p>
+                                    @if ($bast->customer_signer_position)
+                                        <small class="text-muted d-block" style="font-size: 11px;">{{ $bast->customer_signer_position }}</small>
+                                    @endif
+                                @else
+                                    <div style="height: 95px;"></div>
+                                    <div class="border-top border-dark mx-auto" style="width: 70%;"></div>
+                                    <small class="text-muted d-block mt-1">Authorized Representative</small>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -198,6 +283,96 @@
 
         {{-- RIGHT: Quick Action Sidebar --}}
         <div class="col-xl-3 col-md-4 col-12 invoice-actions">
+            {{-- Share Link TTD Online Customer --}}
+            <div class="card mb-3 border-0 shadow-sm" style="border-radius: 8px;">
+                <div class="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between" style="background-color: #f8fafc;">
+                    <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-1.5" style="font-size: 12.5px;">
+                        <i class="mdi mdi-draw text-primary fs-5"></i>
+                        <span>TTD Online Customer</span>
+                    </h6>
+                    @if ($bast->isSignedByCustomer())
+                        <span class="badge bg-success" style="font-size: 10px;">Sudah TTD</span>
+                    @else
+                        <span class="badge bg-warning text-dark" style="font-size: 10px;">Menunggu TTD</span>
+                    @endif
+                </div>
+                <div class="card-body p-3">
+                    @if ($bast->isSignedByCustomer())
+                        <div class="p-2.5 rounded mb-2.5" style="background-color: #f0fdf4; border: 1px solid #bbf7d0; font-size: 11.5px;">
+                            <div class="d-flex align-items-center gap-1 text-success fw-bold mb-1">
+                                <i class="mdi mdi-check-circle"></i> Ditandatangani Customer
+                            </div>
+                            <div class="text-dark"><strong>{{ $bast->customer_signer_name }}</strong></div>
+                            @if ($bast->customer_signer_position)
+                                <div class="text-muted small">{{ $bast->customer_signer_position }}</div>
+                            @endif
+                            <div class="text-muted mt-1" style="font-size: 10.5px;">
+                                <i class="mdi mdi-clock-outline me-1"></i>{{ $bast->customer_signed_at ? $bast->customer_signed_at->format('d/m/Y H:i') : '-' }} WIB
+                            </div>
+                            @if ($bast->customer_ip)
+                                <div class="text-muted" style="font-size: 10.5px;">
+                                    <i class="mdi mdi-ip-network-outline me-1"></i>IP: {{ $bast->customer_ip }}
+                                </div>
+                            @endif
+                            @if ($bast->customer_signature)
+                                <div class="mt-2 text-center p-1.5 bg-white rounded border">
+                                    <img src="{{ asset($bast->customer_signature) }}" alt="Customer Signature" style="max-height: 45px; max-width: 100%; object-fit: contain;">
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="d-flex flex-column gap-2">
+                            <a href="{{ $bast->sign_url }}" target="_blank" class="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1">
+                                <i class="mdi mdi-eye-outline"></i>
+                                <span>Lihat Halaman TTD</span>
+                            </a>
+                            @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
+                                <form action="{{ route('bast.reset-signature', $bast->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus / mereset tanda tangan customer pada BAST ini? Customer akan dapat menandatangani ulang.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-outline-danger btn-sm w-100 d-flex align-items-center justify-content-center gap-1">
+                                        <i class="mdi mdi-delete-outline"></i>
+                                        <span>Hapus / Reset TTD Customer</span>
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+                    @else
+                        <p class="text-muted mb-2" style="font-size: 11.5px; line-height: 1.4;">
+                            Kirim tautan berikut ke customer agar dapat memeriksa BAST &amp; membubuhkan tanda tangan digital:
+                        </p>
+
+                        <div class="input-group input-group-sm mb-2.5">
+                            <input type="text" class="form-control" id="bast-show-sign-url" value="{{ $bast->sign_url }}" readonly style="font-size: 11px;">
+                            <button class="btn btn-primary" type="button" id="btn-copy-bast-show-url" title="Salin Link">
+                                <i class="mdi mdi-content-copy"></i>
+                            </button>
+                        </div>
+
+                        @php
+                            $docTypeLabel = $bast->type === 'Rental' ? 'Berita Acara Serah Terima Unit Rental' : 'Berita Acara Serah Terima (BAST)';
+                            $waMessage = rawurlencode("Halo Bapak/Ibu (" . ($bast->customer_name ?: '') . "),\n\nBerikut kami lampirkan tautan dokumen " . $docTypeLabel . " (" . ($bast->no_bast ?: '') . ").\nSilakan periksa rincian serah terima dan bubuhi tanda tangan digital melalui tautan berikut:\n" . $bast->sign_url . "\n\nTerima kasih.\n" . $entityFullName);
+                            $waLink = "https://wa.me/?text=" . $waMessage;
+                        @endphp
+
+                        <div class="d-flex flex-column gap-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1" id="btn-copy-bast-show-action">
+                                <i class="mdi mdi-link-variant"></i>
+                                <span>Salin Link TTD</span>
+                            </button>
+                            <a href="{{ $waLink }}" target="_blank" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center gap-1 text-white">
+                                <i class="mdi mdi-whatsapp fs-5"></i>
+                                <span>Kirim via WhatsApp</span>
+                            </a>
+                            <a href="{{ $bast->sign_url }}" target="_blank" class="btn btn-outline-secondary btn-sm w-100 d-flex align-items-center justify-content-center gap-1">
+                                <i class="mdi mdi-open-in-new"></i>
+                                <span>Buka Portal TTD</span>
+                            </a>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             <div class="card mb-3 border-0 shadow-sm overflow-hidden">
                 <div class="card-header bg-primary bg-gradient py-3 px-4 d-flex align-items-center justify-content-between text-white">
                     <h6 class="card-title mb-0 fw-bold text-white d-flex align-items-center">
@@ -217,6 +392,27 @@
                             </span>
                         </a>
                     </div>
+
+                    {{-- Hand Sign --}}
+                    @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
+                        @if ($bast->sign)
+                            <div class="mb-2">
+                                <button type="button" class="btn btn-outline-danger d-grid w-100 btn-delete-sign-bast" data-id="{{ $bast->id }}">
+                                    <span class="d-flex align-items-center justify-content-center gap-1">
+                                        <i class="mdi mdi-signature-freehand"></i> Delete Hand Sign
+                                    </span>
+                                </button>
+                            </div>
+                        @else
+                            <div class="mb-2">
+                                <button type="button" class="btn btn-outline-success d-grid w-100 btn-input-sign-bast" data-id="{{ $bast->id }}">
+                                    <span class="d-flex align-items-center justify-content-center gap-1">
+                                        <i class="mdi mdi-draw"></i> Input Hand Sign
+                                    </span>
+                                </button>
+                            </div>
+                        @endif
+                    @endif
 
                     {{-- Edit BAST --}}
                     <div class="mb-2">
@@ -262,14 +458,50 @@
                 const b = response.bast;
                 window.openBastModal({
                     bastId: b.id,
+                    type: b.type,
                     entity: b.entity,
                     customerName: b.customer_name,
                     workTitle: b.work_title,
                     poNumber: b.po_number,
                     workDate: b.work_date,
+                    rentalStartDate: b.rental_start_date,
+                    rentalEndDate: b.rental_end_date,
                     testRunningResult: b.test_running_result,
                     units: b.units,
                 });
+            });
+        });
+
+        $(document).on('click', '.btn-input-sign-bast', function() {
+            const id = $(this).data('id');
+            if (!confirm('Input Hand Sign pada BAST ini?')) return;
+
+            $.ajax({
+                url: `{{ url('/bast') }}/${id}/sign`,
+                type: 'POST',
+                data: { '_token': '{{ csrf_token() }}' },
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function() {
+                    window.location.reload();
+                }
+            });
+        });
+
+        $(document).on('click', '.btn-delete-sign-bast', function() {
+            const id = $(this).data('id');
+            if (!confirm('Hapus Hand Sign pada BAST ini?')) return;
+
+            $.ajax({
+                url: `{{ url('/bast') }}/${id}/del-sign`,
+                type: 'POST',
+                data: {
+                    '_method': 'DELETE',
+                    '_token': '{{ csrf_token() }}'
+                },
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                success: function() {
+                    window.location.reload();
+                }
             });
         });
 
@@ -296,6 +528,21 @@
 
         $(document).on('bast:saved', function() {
             window.location.reload();
+        });
+
+        // Copy BAST Sign URL
+        $(document).on('click', '#btn-copy-bast-show-url, #btn-copy-bast-show-action', function () {
+            var urlInput = document.getElementById('bast-show-sign-url');
+            if (urlInput) {
+                urlInput.select();
+                urlInput.setSelectionRange(0, 99999);
+                navigator.clipboard.writeText(urlInput.value).then(function () {
+                    alert('Link TTD BAST berhasil disalin ke clipboard!');
+                }).catch(function () {
+                    document.execCommand('copy');
+                    alert('Link TTD BAST berhasil disalin ke clipboard!');
+                });
+            }
         });
     </script>
 @endpush

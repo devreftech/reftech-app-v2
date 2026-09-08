@@ -40,6 +40,13 @@ class ProjectReport extends Model
         'contractor_sign',
         'contractor_pic_name',
         'status',
+        'sign_token',
+        'customer_signature',
+        'customer_signer_name',
+        'customer_signer_position',
+        'customer_signed_stamp',
+        'customer_signed_at',
+        'customer_ip',
     ];
 
     protected $casts = [
@@ -48,7 +55,40 @@ class ProjectReport extends Model
         'weather_hujan' => 'boolean',
         'weather_mendung' => 'boolean',
         'weather_dll' => 'boolean',
+        'customer_signed_at' => 'datetime',
     ];
+
+    /**
+     * Get or auto-generate a secure token for customer online signature.
+     */
+    public function getSignTokenAttribute($value)
+    {
+        if (empty($value)) {
+            $newToken = bin2hex(random_bytes(20));
+            \Illuminate\Support\Facades\DB::table('project_reports')
+                ->where('id', $this->id)
+                ->update(['sign_token' => $newToken]);
+            $this->attributes['sign_token'] = $newToken;
+            return $newToken;
+        }
+        return $value;
+    }
+
+    /**
+     * URL publik untuk customer menandatangani Daily Project Report online.
+     */
+    public function getSignUrlAttribute(): string
+    {
+        return url('/project-report/sign/' . $this->sign_token);
+    }
+
+    /**
+     * Cek apakah Daily Project Report sudah ditandatangani oleh customer secara online.
+     */
+    public function isSignedByCustomer(): bool
+    {
+        return !empty($this->customer_signature) && !empty($this->customer_signed_at);
+    }
 
     public function client()
     {

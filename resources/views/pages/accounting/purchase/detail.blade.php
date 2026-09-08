@@ -33,6 +33,11 @@
                         <div class="text-end">
                             <h3 class="fw-bold mb-1" style="letter-spacing:2px; color:#696cff;">PURCHASE ORDER</h3>
                             <p class="mb-1 fw-bold text-dark" style="font-size:16px;">#{{ $purchase->no_po }}</p>
+                            @if ($purchase->no_reference)
+                                <p class="mb-1 text-muted" style="font-size:12px;">
+                                    <span class="fw-semibold text-dark">Ref:</span> {{ $purchase->no_reference }}
+                                </p>
+                            @endif
                             <p class="mb-1 fw-bold" style="font-size:13px; color:#0f172a !important;">
                                 <i class="mdi mdi-calendar-blank-outline me-1 text-primary"></i>{{ Carbon\Carbon::parse($purchase->date)->format('d-m-Y') }}
                             </p>
@@ -59,11 +64,8 @@
                                 if ($purchase->attn) {
                                     $vendorParts[] = '<i class="mdi mdi-account-outline me-1" style="font-size:11px; color:#444;"></i><span style="color:#222; font-weight:500;">ATTN: ' . e($purchase->attn) . '</span>';
                                 }
-                                if ($purchase->phone || $purchase->mobile) {
-                                    $vendorParts[] = '<i class="mdi mdi-phone-outline me-1" style="font-size:11px; color:#444;"></i><span style="color:#222; font-weight:500;">' . e($purchase->phone ?: $purchase->mobile) . '</span>';
-                                }
-                                if ($purchase->email) {
-                                    $vendorParts[] = '<i class="mdi mdi-email-outline me-1" style="font-size:11px; color:#444;"></i><span style="color:#222; font-weight:500;">' . e($purchase->email) . '</span>';
+                                if ($purchase->mobile || $purchase->phone) {
+                                    $vendorParts[] = '<i class="mdi mdi-phone-outline me-1" style="font-size:11px; color:#444;"></i><span style="color:#222; font-weight:500;">' . e($purchase->mobile ?: $purchase->phone) . '</span>';
                                 }
                             @endphp
                             @if (count($vendorParts) > 0)
@@ -78,23 +80,31 @@
                             @endif
                         </div>
 
-                        {{-- Ship To / Terms Box --}}
-                        <div style="min-width:260px; display:flex; flex-direction:column; align-self:stretch; border:1px solid #dcdcdc; border-radius:6px; padding:10px 14px; background:#fafafa;">
-                            <p class="mb-1 fw-bold text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#555;">Ship To & Commercial Terms</p>
-                            <p class="mb-1 fw-bold" style="font-size:13.5px; color:#111;">PT Reftech Jaya Optima</p>
-                            <p class="mb-1" style="font-size:11.5px; color:#444;">
-                                <i class="mdi mdi-truck-delivery-outline me-1" style="font-size:11px; color:#444;"></i><span style="font-weight:500;">Delivery: {{ $purchase->delivery ?: '-' }}</span>
+                        {{-- Term & Info Box --}}
+                        <div style="min-width:280px; max-width:400px; display:flex; flex-direction:column; align-self:stretch; border:1px solid #dcdcdc; border-radius:6px; padding:10px 14px; background:#fafafa;">
+                            <p class="mb-2 fw-bold text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#555;">
+                                <i class="mdi mdi-information-outline me-1 text-primary"></i> Term & Info
                             </p>
-                            <p class="mb-0" style="font-size:11.5px; color:#222;">
-                                <i class="mdi mdi-credit-card-outline me-1" style="font-size:11px; color:#444;"></i><span style="font-weight:500;">Payment: {{ $purchase->payment ?: '-' }}</span>
-                            </p>
+                            <div style="font-size:11.5px; color:#333;" class="my-auto">
+                                <div class="d-flex align-items-center mb-1 pb-1" style="border-bottom:1px dashed #e8e8e8;">
+                                    <span class="text-muted" style="min-width:95px;"><i class="mdi mdi-pound me-1 text-primary"></i>No. Reference</span>
+                                    <span class="fw-semibold text-dark">: {{ $purchase->no_reference ?: '-' }}</span>
+                                </div>
+                                <div class="d-flex align-items-center mb-1 pb-1" style="border-bottom:1px dashed #e8e8e8;">
+                                    <span class="text-muted" style="min-width:95px;"><i class="mdi mdi-truck-delivery-outline me-1 text-primary"></i>Delivery</span>
+                                    <span class="fw-semibold text-dark">: {{ $purchase->delivery ?: '-' }}</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <span class="text-muted" style="min-width:95px;"><i class="mdi mdi-credit-card-outline me-1 text-primary"></i>Payment</span>
+                                    <span class="fw-semibold text-dark">: {{ $purchase->payment ?: '-' }}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <p class="mb-3" style="font-size:12px; color:#777; font-style:italic;">
                         Dear Sir/Madam, Please find below our official Purchase Order for the following items :
                     </p>
-
                     {{-- Items Table --}}
                     <div class="table-responsive rounded border mb-3">
                         <table class="table table-bordered m-0" style="width:100%; font-size:12px;">
@@ -102,39 +112,57 @@
                                 <tr>
                                     <th class="text-center py-2" style="width:5%; font-weight:700; border-color:#d0d0ff;">No.</th>
                                     <th class="text-center py-2" style="width:45%; font-weight:700; border-color:#d0d0ff;">Item Description</th>
-                                    <th class="text-center py-2" style="width:12%; font-weight:700; border-color:#d0d0ff;">Qty</th>                                    <th class="text-center py-2 text-nowrap" style="width:18%; font-weight:700; border-color:#d0d0ff; white-space:nowrap;">Price (IDR)</th>
+                                    <th class="text-center py-2" style="width:12%; font-weight:700; border-color:#d0d0ff;">Qty</th>
+                                    <th class="text-center py-2 text-nowrap" style="width:18%; font-weight:700; border-color:#d0d0ff; white-space:nowrap;">Price (IDR)</th>
                                     @if ($hasDisc)
                                          <th class="text-center py-2" style="width:7%; font-weight:700; border-color:#d0d0ff;">Disc</th>
-                                    @endif
+                                     @endif
                                     <th class="text-center py-2 text-nowrap" style="width:13%; font-weight:700; border-color:#d0d0ff; white-space:nowrap;">Amount (IDR)</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $no = 0; @endphp
+                                @php
+                                    $itemNo = 1;
+                                    $headerCount = 0;
+                                @endphp
                                 @foreach ($dPurchase as $product)
-                                    @php $no++; @endphp
-                                    <tr style="font-size: 12px">
-                                        <td class="text-center align-top py-2">{{ $no }}</td>
-                                        <td class="align-top py-2">
-                                            <p class="mb-0 fw-semibold" style="font-size: 12px; color:#111;">
-                                                {{ $product->product }}
-                                            </p>
-                                        </td>
-                                        <td class="text-center align-top py-2">
-                                            <span class="fw-bold" style="color:#222;">{{ $product->qty }}</span> {{ $product->info_qty }}
-                                        </td>
-                                        <td class="text-end align-top py-2 text-nowrap" style="white-space:nowrap;">
-                                            {{ number_format($product->price, 0, '', '.') }}
-                                        </td>
-                                        @if ($hasDisc)
-                                            <td class="text-center align-top py-2">
-                                                {{ $product->disc ? $product->disc . '%' : '-' }}
+                                    @if (($product->category ?? '') === 'Header')
+                                        @php
+                                            $lbl = trim($product->product ?? '');
+                                            if (!preg_match('/^[A-Z0-9][\.\)]/i', $lbl)) {
+                                                $lbl = chr(65 + ($headerCount % 26)) . '. ' . $lbl;
+                                            }
+                                            $headerCount++;
+                                        @endphp
+                                        <tr style="background:#f4f5fa;">
+                                            <td colspan="{{ $hasDisc ? '6' : '5' }}" class="fw-bold text-dark text-uppercase px-3 py-1_5" style="font-size:11.5px; border-left:3px solid #696cff;">
+                                                <i class="mdi mdi-bookmark-outline text-primary me-1"></i>{{ $lbl }}
                                             </td>
-                                        @endif
-                                        <td class="text-end align-top py-2 fw-semibold text-nowrap" style="color:#111; white-space:nowrap;">
-                                            {{ number_format($product->amount, 0, '', '.') }}
-                                        </td>
-                                    </tr>
+                                        </tr>
+                                    @else
+                                        <tr style="font-size: 12px">
+                                            <td class="text-center align-top py-2">{{ $itemNo++ }}</td>
+                                            <td class="align-top py-2">
+                                                <p class="mb-0 fw-semibold" style="font-size: 12px; color:#111;">
+                                                    {{ $product->product }}
+                                                </p>
+                                            </td>
+                                            <td class="text-center align-top py-2">
+                                                <span class="fw-bold" style="color:#222;">{{ $product->qty }}</span> {{ $product->info_qty }}
+                                            </td>
+                                            <td class="text-end align-top py-2 text-nowrap" style="white-space:nowrap;">
+                                                {{ number_format($product->price, 0, '', '.') }}
+                                            </td>
+                                            @if ($hasDisc)
+                                                <td class="text-center align-top py-2">
+                                                    {{ $product->disc ? $product->disc . '%' : '-' }}
+                                                </td>
+                                            @endif
+                                            <td class="text-end align-top py-2 fw-semibold text-nowrap" style="color:#111; white-space:nowrap;">
+                                                {{ number_format($product->amount, 0, '', '.') }}
+                                            </td>
+                                        </tr>
+                                    @endif
                                 @endforeach
                             </tbody>
                         </table>
@@ -147,18 +175,9 @@
                         $dpp = ($noTax * 11) / 12;
                     @endphp
 
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <div class="p-3 rounded border h-100" style="background:#fafafa; font-size:12px;">
-                                <p class="fw-bold mb-1 text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#555;">
-                                    <i class="mdi mdi-note-text-outline me-1 text-primary"></i> Note / Catatan
-                                </p>
-                                <p class="mb-0" style="color:#333; font-style:italic;">
-                                    {{ $purchase->note ?: 'Tidak ada catatan khusus.' }}
-                                </p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
+                    {{-- Finance Summary Table --}}
+                    <div class="row justify-content-end mb-3">
+                        <div class="col-md-6 col-12">
                             <div class="table-responsive">
                                 <table class="table table-bordered m-0" style="font-size: 12px; border-color: #c5c5c5;">
                                     <tbody>
@@ -228,19 +247,65 @@
                         </div>
                     </div>
 
+                    {{-- Ship To / Franco Factory --}}
+                    @if ($purchase->ship_to)
+                        <div class="mb-3">
+                            <div class="p-3 rounded border" style="background:#fafafa; font-size:12px;">
+                                <p class="fw-bold mb-1 text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#555;">
+                                    <i class="mdi mdi-map-marker-outline me-1 text-primary"></i> Ship To : Franco Factory
+                                </p>
+                                <p class="mb-0 text-dark fw-medium" style="line-height:1.4;">
+                                    {{ $purchase->ship_to }}
+                                </p>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Note / Catatan --}}
+                    @if (!empty($purchase->note) && trim($purchase->note) !== '-' && trim($purchase->note) !== '')
+                        <div class="mb-4">
+                            <div class="p-3 rounded border" style="background:#fafafa; font-size:12px;">
+                                <p class="fw-bold mb-1 text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#555;">
+                                    <i class="mdi mdi-note-text-outline me-1 text-primary"></i> Note / Catatan
+                                </p>
+                                <p class="mb-0" style="color:#333; font-style:italic;">
+                                    {{ $purchase->note }}
+                                </p>
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- Signatures --}}
                     <div class="row pt-3 text-center" style="font-size:12px;">
                         <div class="col-6">
                             <p class="fw-bold mb-1" style="color:#333;">Authorized By.</p>
-                            <div class="my-1">
-                                <img src="{{ url('') . '/asset/sign/ttdAngel.jpg' }}" alt="TTD Angel" height="70">
+                            <div class="my-1 d-flex justify-content-center align-items-center" style="height:70px;">
+                                <img src="{{ url('') . '/asset/sign/ttdAngel.jpg' }}" alt="TTD Angel" height="70" style="max-height:70px; object-fit:contain;">
                             </div>
                             <p class="fw-bold mb-0" style="color:#111;">PT Reftech Jaya Optima</p>
                         </div>
                         <div class="col-6">
                             <p class="fw-bold mb-1" style="color:#333;">Accepted By Vendor.</p>
-                            <div class="my-1" style="height:70px;"></div>
-                            <p class="fw-bold mb-0" style="color:#111;">{{ $purchase->attn ?: '-' }}</p>
+                            <div class="my-1 d-flex justify-content-center align-items-center" style="height:70px;">
+                                @if ($purchase->isSignedByVendor())
+                                    <div style="position: relative; display: inline-block;">
+                                        <img src="{{ asset($purchase->vendor_signature) }}" alt="TTD Vendor" height="70" style="max-height:70px; object-fit:contain;">
+                                        @if ($purchase->vendor_signed_stamp)
+                                            <img src="{{ asset($purchase->vendor_signed_stamp) }}" alt="Stamp Vendor" style="position:absolute; top:-5px; right:-25px; max-height:50px; opacity:0.85; pointer-events:none;">
+                                        @endif
+                                    </div>
+                                @else
+                                    <div class="text-muted d-flex align-items-center justify-content-center border border-dashed rounded px-3" style="height:60px; font-size:11px; background:#fbfbfb;">
+                                        <i class="mdi mdi-draw-pen me-1"></i> Menunggu TTD Vendor
+                                    </div>
+                                @endif
+                            </div>
+                            <p class="fw-bold mb-0" style="color:#111;">
+                                {{ $purchase->isSignedByVendor() ? $purchase->vendor_signer_name : ($purchase->attn ?: '-') }}
+                                @if ($purchase->isSignedByVendor() && $purchase->vendor_signer_position)
+                                    <span class="text-muted fw-normal">({{ $purchase->vendor_signer_position }})</span>
+                                @endif
+                            </p>
                             <p class="text-muted mb-0" style="font-size:11px;">{{ $purchase->company }}</p>
                         </div>
                     </div>
@@ -334,6 +399,11 @@
                                     href="{{ route('unit-product-in.goods-receipt-form', $purchase->id) }}">
                                     Terima Barang (Unit)
                                 </a>
+                            @elseif ($purchase->category == 'Accessories')
+                                <a class="btn btn-success d-grid w-100 mb-3 waves-effect"
+                                    href="{{ route('rental-accessories.goods-receipt-form', $purchase->id) }}">
+                                    Terima Barang (Aksesoris)
+                                </a>
                             @else
                                 <a class="btn btn-success d-grid w-100 mb-3 waves-effect"
                                     href="{{ route('purchase.goods-receipt-direct', $purchase->id) }}">
@@ -371,6 +441,102 @@
                     </button>
                 </div>
             </div>
+
+            {{-- Vendor Digital Signature Card --}}
+            <div class="card mb-3 shadow-sm border-0">
+                <div class="card-header py-3 px-3.5 border-bottom bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-1.5" style="font-size: 13px;">
+                            <i class="mdi mdi-draw-pen text-primary fs-5"></i>
+                            <span>TTD Vendor (Digital)</span>
+                        </h6>
+                        @if ($purchase->isSignedByVendor())
+                            <span class="badge bg-label-success rounded-pill" style="font-size: 10.5px;">
+                                <i class="mdi mdi-check-circle me-0.5"></i> Signed
+                            </span>
+                        @else
+                            <span class="badge bg-label-warning rounded-pill" style="font-size: 10.5px;">
+                                <i class="mdi mdi-clock-outline me-0.5"></i> Pending
+                            </span>
+                        @endif
+                    </div>
+                </div>
+                <div class="card-body p-3">
+                    @if ($purchase->isSignedByVendor())
+                        <div class="p-2.5 rounded bg-label-success bg-opacity-10 border border-success border-opacity-25 mb-3">
+                            <div class="d-flex align-items-center gap-2 mb-1.5">
+                                <i class="mdi mdi-account-check text-success fs-5"></i>
+                                <div>
+                                    <div class="fw-bold text-dark" style="font-size: 12.5px;">{{ $purchase->vendor_signer_name }}</div>
+                                    <div class="text-muted small" style="font-size: 11px;">{{ $purchase->vendor_signer_position ?: 'Perwakilan Vendor' }}</div>
+                                </div>
+                            </div>
+                            <div class="text-muted" style="font-size: 11px;">
+                                <i class="mdi mdi-calendar-clock text-muted me-1"></i>{{ Carbon\Carbon::parse($purchase->vendor_signed_at)->format('d-m-Y H:i') }} WIB
+                            </div>
+                            @if ($purchase->vendor_ip)
+                                <div class="text-muted" style="font-size: 10.5px;">
+                                    <i class="mdi mdi-map-marker-radius-outline text-muted me-1"></i>IP: {{ $purchase->vendor_ip }}
+                                </div>
+                            @endif
+                            @if ($purchase->vendor_signature)
+                                <div class="mt-2 text-center p-2 bg-white rounded border">
+                                    <img src="{{ asset($purchase->vendor_signature) }}" alt="Vendor Signature" style="max-height: 50px; max-width: 100%; object-fit: contain;">
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="d-flex flex-column gap-2">
+                            <a href="{{ $purchase->sign_url }}" target="_blank" class="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1.5 py-1.5 waves-effect">
+                                <i class="mdi mdi-eye-outline"></i>
+                                <span>Lihat Halaman TTD</span>
+                            </a>
+                            <form action="{{ route('purchase.reset-signature', $purchase->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus / mereset tanda tangan vendor ini? Vendor akan dapat menandatangani ulang.');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-outline-danger btn-sm w-100 d-flex align-items-center justify-content-center gap-1.5 py-1.5 waves-effect">
+                                    <i class="mdi mdi-delete-outline"></i>
+                                    <span>Hapus / Reset TTD Vendor</span>
+                                </button>
+                            </form>
+                        </div>
+                    @else
+                        <p class="text-muted mb-2" style="font-size: 11.5px; line-height: 1.4;">
+                            Kirim tautan berikut ke vendor agar dapat memeriksa PO &amp; tanda tangan secara digital:
+                        </p>
+
+                        <div class="input-group input-group-sm mb-2.5">
+                            <input type="text" class="form-control" id="po-sign-url" value="{{ $purchase->sign_url }}" readonly style="font-size: 11px;">
+                            <button class="btn btn-primary" type="button" id="btn-copy-po-sign-url" title="Salin Link">
+                                <i class="mdi mdi-content-copy"></i>
+                            </button>
+                        </div>
+
+                        @php
+                            $vendorPhone = preg_replace('/[^0-9]/', '', ($purchase->mobile ?: $purchase->phone ?: ''));
+                            if (str_starts_with($vendorPhone, '0')) {
+                                $vendorPhone = '62' . substr($vendorPhone, 1);
+                            }
+                            $attnName = $purchase->attn ?: 'Bapak/Ibu';
+                            $vendorComp = $purchase->company ?: 'Vendor';
+                            $waMessage = rawurlencode("Halo Bapak/Ibu " . $attnName . " (" . $vendorComp . "),\n\nBerikut kami lampirkan tautan Purchase Order (" . $purchase->no_po . ") dari PT Reftech Jaya Optima.\nSilakan periksa rincian pesanan dan bubuhi tanda tangan digital melalui tautan berikut:\n" . $purchase->sign_url . "\n\nTerima kasih.");
+                            $waLink = "https://wa.me/" . ($vendorPhone ?: '') . "?text=" . $waMessage;
+                        @endphp
+
+                        <div class="d-flex flex-column gap-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1.5 py-1.5 waves-effect" id="btn-copy-po-link-action">
+                                <i class="mdi mdi-link-variant"></i>
+                                <span>Salin Link TTD</span>
+                            </button>
+                            <a href="{{ $waLink }}" target="_blank" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center gap-1.5 py-1.5 waves-effect text-white">
+                                <i class="mdi mdi-whatsapp fs-5"></i>
+                                <span>Kirim via WhatsApp</span>
+                            </a>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             <div class="card mb-3 shadow-sm border-0">
                 <div class="card-body">
                     <h6 class="fw-bold text-dark mb-2"><i class="mdi mdi-receipt-text-outline me-1 text-primary"></i>Invoice Supplier</h6>
@@ -755,7 +921,7 @@
                                     customClass: {
                                         confirmButton: "btn btn-success waves-effect",
                                     },
-                                })
+                                });
                                 window.setTimeout(function() {
                                     window.location.href = '/purchase/' + id;
                                 }, 2000);
@@ -768,8 +934,79 @@
                             }
                         }
                     });
+                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                    Swal.fire({
+                        title: "Cancelled",
+                        text: "Your imaginary file is safe :)",
+                        icon: "error",
+                        customClass: {
+                            confirmButton: "btn btn-success waves-effect",
+                        },
+                    });
                 }
             });
+        });
+
+        // Handler Salin Link TTD Vendor
+        function copyPoSignUrl() {
+            var input = document.getElementById('po-sign-url');
+            if (!input) return;
+            var textToCopy = input.value;
+            if (!textToCopy) return;
+
+            input.select();
+            input.setSelectionRange(0, 99999);
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy).then(function() {
+                    showCopySuccess();
+                }).catch(function() {
+                    fallbackCopy(textToCopy);
+                });
+            } else {
+                fallbackCopy(textToCopy);
+            }
+        }
+
+        function fallbackCopy(text) {
+            try {
+                document.execCommand('copy');
+                showCopySuccess();
+            } catch (err) {
+                var textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.opacity = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showCopySuccess();
+                } catch (e) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal Menyalin',
+                        text: 'Silakan salin link secara manual dari input di atas.'
+                    });
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
+        function showCopySuccess() {
+            Swal.fire({
+                icon: 'success',
+                title: 'Link Disalin!',
+                text: 'Tautan tanda tangan vendor berhasil disalin ke clipboard.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        }
+
+        $(document).on('click', '#btn-copy-po-sign-url, #btn-copy-po-link-action', function(e) {
+            e.preventDefault();
+            copyPoSignUrl();
         });
     </script>
 @endpush

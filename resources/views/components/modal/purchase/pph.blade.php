@@ -23,20 +23,22 @@
                         </div>
                     @endif
                     @foreach ($dPurchase as $product)
-                        <div class="row g-2 mb-3">
-                            <div class="col-8">
-                                <p class="fw-medium">
-                                    {{ $product->product }}
-                                </p>
-                            </div>
-                            <div class="col-4">
-                                <div class="input-group input-group-merge">
-                                    <input type="number" class="form-control" placeholder="2" name="pph[]"
-                                        aria-label="Amount (to the nearest dollar)" value="0">
-                                    <span class="input-group-text">%</span>
+                        @if ($product->category !== 'Header')
+                            <div class="row g-2 mb-3">
+                                <div class="col-8">
+                                    <p class="fw-medium">
+                                        {{ $product->product }}
+                                    </p>
+                                </div>
+                                <div class="col-4">
+                                    <div class="input-group input-group-merge">
+                                        <input type="number" class="form-control" placeholder="2" name="pph_by_id[{{ $product->id }}]"
+                                            aria-label="Amount (to the nearest dollar)" value="{{ $product->pph ?? 0 }}">
+                                        <span class="input-group-text">%</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        @endif
                     @endforeach
                 </div>
                 <div class="modal-footer">

@@ -594,7 +594,16 @@ class UnitQuotationController extends Controller
 
     public function print($id)
     {
-        $quote = UnitQuotation::with(['client', 'pic', 'plant', 'sales', 'details.unit', 'details.equivalent.product'])->findOrFail($id);
+        $quote = UnitQuotation::with([
+            'client',
+            'pic',
+            'plant',
+            'sales',
+            'details.unit',
+            'details.equivalent.product',
+            'options.details.unit',
+            'options.details.equivalent.product',
+        ])->findOrFail($id);
         return view('pages.unit-quotation.print', compact('quote'));
     }
 
@@ -735,7 +744,7 @@ class UnitQuotationController extends Controller
         $request->validate([
             'po_number'      => 'required|string|max:100',
             'po_date'        => 'nullable|date',
-            'po_file'        => 'required|file|mimes:pdf|max:5120',
+            'po_file'        => 'required|file|mimes:pdf,jpg,jpeg,png,webp|max:5120',
             'invoice_type'   => 'required|in:DP,CT',
             'dp_percent'     => 'nullable|numeric|min:1|max:99',
             'payment_method' => 'required|string|max:100',
@@ -983,26 +992,14 @@ class UnitQuotationController extends Controller
             $rawFee = $totalItemFee;
         }
 
-        // Batas maksimal fee 10% dari nilai penawaran sebelum PPN
+        // Nilai penawaran sebelum PPN (Pre-Tax)
         $preTax = floatval($quote->subtotal ?? 0) - floatval($quote->diskon ?? 0);
         if ($preTax <= 0) {
             $preTax = floatval($quote->total ?? 0) - floatval($quote->tax_amount ?? 0);
         }
         $maxFeeAllowed = round($preTax * 0.10, 2);
 
-        if ($rawFee > ($maxFeeAllowed + 1) && $maxFeeAllowed > 0) {
-            $errMessage = 'Total Management Fee (Rp ' . number_format($rawFee, 0, ',', '.') . ') melebihi batas maksimal 10% dari nilai penawaran (Maks. Rp ' . number_format($maxFeeAllowed, 0, ',', '.') . ').';
-            if ($request->expectsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $errMessage,
-                ], 422);
-            }
-            return redirect()->route('unit-quotation.show', $id)
-                ->with('error', $errMessage);
-        }
-
-        // Simpan detail fee setelah lolos validasi
+        // Simpan detail fee per item
         if ($request->has('item_fee') && is_array($request->item_fee)) {
             foreach ($request->item_fee as $detailId => $itemFeeVal) {
                 $detail = UnitQuotationDetail::where('id_unit_quotation', $quote->id)->where('id', $detailId)->first();
@@ -1180,12 +1177,9 @@ class UnitQuotationController extends Controller
         $items = $notifs->map(function ($n) {
             $quote = $n->unitQuotation;
             $inv = $n->invoice;
-            $poUrl = null;
-            if ($quote && !empty($quote->po_file)) {
-                $poUrl = \Illuminate\Support\Facades\Storage::disk('public')->exists($quote->po_file)
-                    ? \Illuminate\Support\Facades\Storage::url($quote->po_file)
-                    : asset('storage/' . $quote->po_file);
-            }
+            $poUrl = $quote?->po_file_url;
+            $contract = $quote ? \App\Models\Contract::where('id_unit_quotation', $quote->id)->latest('id')->first() : null;
+            $contractUrl = $contract ? route('contract.show', $contract->id) : null;
 
             return [
                 'id' => $n->id,
@@ -1197,14 +1191,17 @@ class UnitQuotationController extends Controller
                 'sales_name' => $quote->sales->name ?? null,
                 'po_number' => $quote->po_number ?? null,
                 'po_url' => $poUrl,
+                'contract_url' => $contractUrl,
                 'invoice_id' => $inv->id ?? null,
                 'invoice_type' => $inv->type ?? null,
                 'invoice_percent' => $inv->percent ?? null,
                 'amount' => $n->type === 'payment'
                     ? (float) ($n->payment->amount ?? 0)
-                    : (($n->type === 'contract_requested' || $n->type === 'contract_signed')
+                    : (($n->type === 'contract_requested' || $n->type === 'contract_approved')
                         ? (float) ($quote->total ?? 0)
-                        : (float) ($quote->total ?? 0) * (float) ($inv->percent ?? 100) / 100),
+                        : (($n->type === 'contract_signed' && !$inv)
+                            ? (float) ($quote->total ?? 0)
+                            : (float) ($quote->total ?? 0) * (float) ($inv->percent ?? 100) / 100)),
                 'url' => $this->resolveInvoiceNotificationUrl($n),
                 'quote_url' => $n->id_unit_quotation ? route('unit-quotation.show', $n->id_unit_quotation) : null,
                 'created_at' => $n->created_at->diffForHumans(),
@@ -1495,12 +1492,24 @@ class UnitQuotationController extends Controller
     // tidak ada/sudah terhapus (mis. quote-nya sempat di-cancel).
     private function resolveInvoiceNotificationUrl(\App\Models\UnitQuotationPaymentNotification $n): string
     {
+        if ($n->type === 'payment') {
+            if ($n->id_payment) {
+                return route('payment_detail.payment', $n->id_payment);
+            }
+            return route('payment_index.payment');
+        }
+
         if ($n->id_invoice) {
             if ($n->type === 'invoice_requested') {
                 return route('before.accept.unit', $n->id_invoice);
             }
-            if ($n->type === 'payment' || $n->type === 'invoice_approved') {
+            if ($n->type === 'invoice_approved') {
                 return route('invoice.show_unit', $n->id_invoice);
+            }
+            if ($n->type === 'contract_signed') {
+                if (in_array(Auth::user()->role, ['Accounting', 'Admin'])) {
+                    return route('before.accept.unit', $n->id_invoice);
+                }
             }
         }
 
@@ -1508,10 +1517,13 @@ class UnitQuotationController extends Controller
             return route('contract.index');
         }
 
-        if ($n->type === 'contract_signed') {
-            $contract = \App\Models\Contract::where('id_unit_quotation', $n->id_unit_quotation)->latest('id')->first();
-            if ($contract) {
-                return route('contract.show', $contract->id);
+        if ($n->type === 'contract_signed' || $n->type === 'contract_approved') {
+            if ($n->id_unit_quotation) {
+                $contract = \App\Models\Contract::where('id_unit_quotation', $n->id_unit_quotation)->latest('id')->first();
+                if ($contract) {
+                    return route('contract.show', $contract->id);
+                }
+                return route('unit-quotation.show', $n->id_unit_quotation);
             }
         }
 

@@ -9,7 +9,9 @@ use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestDetail;
 use App\Models\PurchaseRequestDetailAllocation;
 use App\Models\PurchaseOrderType;
+use App\Models\RentalAccessory;
 use App\Models\Supplier;
+use App\Models\Unit;
 use App\Services\PurchaseRequestService;
 use Illuminate\Http\Request;
 
@@ -46,6 +48,7 @@ class POController extends Controller
         $poTypes = PurchaseOrderType::orderBy('name')->get();
 
         $sourcePr = null;
+        $sourceProductSet = null;
         $prefillItems = [];
         if ($request->query('from_pr')) {
             $sourcePr = PurchaseRequest::with('details.equivalent.product', 'details.allocations')->find($request->query('from_pr'));
@@ -79,15 +82,53 @@ class POController extends Controller
                             'id_product' => $product->id,
                             'label' => $product->commodity . ' — ' . $product->description,
                             'qty' => $qty,
+                            'unit' => ($product->unit && $product->unit !== '-') ? $product->unit : 'Pcs',
                             'pr_detail_id' => $detail->id,
                             'pr_remaining' => $detail->remainingQty,
                         ];
                     }
                 }
             }
+        } elseif ($request->query('from_product_set') || $request->has('product_ids') || ($request->has('items') && !$request->has('from_pr'))) {
+            if ($request->query('from_product_set')) {
+                $sourceProductSet = \App\Models\ProductSet::with('product')->find($request->query('from_product_set'));
+            }
+
+            $productMap = []; // [product_id => qty]
+            if ($request->has('product_ids')) {
+                foreach ((array) $request->query('product_ids') as $pid) {
+                    if ($pid) {
+                        $productMap[$pid] = 1;
+                    }
+                }
+            }
+            if ($request->has('items')) {
+                foreach ((array) $request->query('items') as $pid => $qty) {
+                    if ($pid) {
+                        $productMap[$pid] = max(1, (int) $qty);
+                    }
+                }
+            }
+
+            if (!empty($productMap)) {
+                $foundProducts = Product::whereIn('id', array_keys($productMap))->get();
+                foreach ($foundProducts as $product) {
+                    $qty = $productMap[$product->id] ?? 1;
+                    $prefillItems[] = [
+                        'id_product' => $product->id,
+                        'label' => $product->commodity . ' — ' . $product->description,
+                        'qty' => $qty,
+                        'unit' => ($product->unit && $product->unit !== '-') ? $product->unit : 'Pcs',
+                        'pr_detail_id' => null,
+                        'pr_remaining' => null,
+                    ];
+                }
+            }
         }
 
-        return view('pages.accounting.purchase.form', compact('suppliers', 'previewNoPo', 'units', 'products', 'sourcePr', 'prefillItems', 'poTypes'));
+        $accessories = RentalAccessory::orderBy('name')->get();
+
+        return view('pages.accounting.purchase.form', compact('suppliers', 'previewNoPo', 'units', 'products', 'accessories', 'sourcePr', 'sourceProductSet', 'prefillItems', 'poTypes'));
     }
 
     public function quickStoreType(Request $request)
@@ -142,11 +183,13 @@ class POController extends Controller
         $purchase->id_supplier = $request->supplier;
         $purchase->id_purchase_request = $request->id_purchase_request ?: null;
         $purchase->no_po = $request->no_po;
-        $purchase->category = $request->category ?: (in_array('Unit', $itemCategories) ? 'Unit' : 'Sparepart');
+        $purchase->no_reference = $request->no_reference ?? null;
+        $purchase->category = $request->category ?: (in_array('Accessories', $itemCategories) ? 'Accessories' : (in_array('Unit', $itemCategories) ? 'Unit' : 'Sparepart'));
         $purchase->company = $supplier->supplier;
         $purchase->attn = $request->attn ?? '';
         $purchase->mobile = $request->mobile ?? '';
         $purchase->delivery = $request->delivery ?? '';
+        $purchase->ship_to = $request->ship_to ?? null;
         $purchase->date = $request->date;
         $purchase->email = $supplier->email ?? '-';
         $purchase->phone = $supplier->phone ?? '-';
@@ -168,24 +211,27 @@ class POController extends Controller
                 $dPurchase->product = $value;
                 $dPurchase->category = $itemCategory;
                 $dPurchase->id_unit = $itemCategory == 'Unit' ? ($request->id_unit[$key] ?? null) : null;
+                $dPurchase->id_rental_accessory = $itemCategory == 'Accessories' ? ($request->id_rental_accessory[$key] ?? null) : null;
                 $dPurchase->kondisi = $itemCategory == 'Unit' ? ($request->kondisi[$key] ?? 'Baru') : null;
                 $dPurchase->id_product = $itemCategory == 'Sparepart' ? ($request->id_product[$key] ?? null) : null;
-                $dPurchase->qty = $request->qty[$key];
-                $dPurchase->info_qty = $request->info_qty[$key];
-                $dPurchase->price = $request->price[$key];
-                $dPurchase->disc = $request->disc[$key];
-                $dPurchase->amount = $request->amount[$key];
+                $dPurchase->qty = $itemCategory == 'Header' ? 0 : ($request->qty[$key] ?? 0);
+                $dPurchase->info_qty = $itemCategory == 'Header' ? '' : ($request->info_qty[$key] ?? '');
+                $dPurchase->price = $itemCategory == 'Header' ? 0 : ($request->price[$key] ?? 0);
+                $dPurchase->disc = $itemCategory == 'Header' ? 0 : ($request->disc[$key] ?? 0);
+                $dPurchase->amount = $itemCategory == 'Header' ? 0 : ($request->amount[$key] ?? 0);
                 $dPurchaseSave = $dPurchase->save();
 
-                $prDetailId = $request->pr_detail_id[$key] ?? null;
-                if ($prDetailId) {
-                    $prDetail = PurchaseRequestDetail::find($prDetailId);
-                    if ($prDetail && $prDetail->remainingQty > 0) {
-                        PurchaseRequestDetailAllocation::create([
-                            'id_purchase_request_detail' => $prDetail->id,
-                            'id_purchase_order' => $purchase->id,
-                            'qty' => min((int) $request->qty[$key], $prDetail->remainingQty),
-                        ]);
+                if ($itemCategory !== 'Header') {
+                    $prDetailId = $request->pr_detail_id[$key] ?? null;
+                    if ($prDetailId) {
+                        $prDetail = PurchaseRequestDetail::find($prDetailId);
+                        if ($prDetail && $prDetail->remainingQty > 0) {
+                            PurchaseRequestDetailAllocation::create([
+                                'id_purchase_request_detail' => $prDetail->id,
+                                'id_purchase_order' => $purchase->id,
+                                'qty' => min((int) ($request->qty[$key] ?? 0), $prDetail->remainingQty),
+                            ]);
+                        }
                     }
                 }
             }
@@ -361,13 +407,14 @@ class POController extends Controller
      */
     public function edit($id)
     {
-        $suppliers = Supplier::whereNull('deleted_at')->get();
+        $suppliers = Supplier::all();
         $purchase = PurchaseOrder::with('supplier')->find($id);
         $dPurchase = DetailPurchaseOrder::where('id_purchase_order', $id)->get();
-        $units = Unit::all();
-        $products = Product::all();
+        $units = Unit::where('type', 'global')->orderBy('brand')->get();
+        $products = Product::orderBy('commodity')->get();
+        $accessories = RentalAccessory::orderBy('name')->get();
         $poTypes = PurchaseOrderType::orderBy('name')->get();
-        return view('pages.accounting.purchase.form', compact('suppliers', 'purchase', 'dPurchase', 'units', 'products', 'poTypes'));
+        return view('pages.accounting.purchase.form', compact('suppliers', 'purchase', 'dPurchase', 'units', 'products', 'accessories', 'poTypes'));
     }
 
     /**
@@ -387,11 +434,13 @@ class POController extends Controller
         $purchase = PurchaseOrder::find($id);
         $purchase->id_supplier = $request->supplier;
         $purchase->no_po = $request->no_po;
-        $purchase->category = $request->category ?: (in_array('Unit', $itemCategories) ? 'Unit' : 'Sparepart');
+        $purchase->no_reference = $request->no_reference ?? null;
+        $purchase->category = $request->category ?: (in_array('Accessories', $itemCategories) ? 'Accessories' : (in_array('Unit', $itemCategories) ? 'Unit' : 'Sparepart'));
         $purchase->company = $supplier->supplier;
         $purchase->attn = $request->attn ?? '';
         $purchase->mobile = $request->mobile ?? '';
         $purchase->delivery = $request->delivery ?? '';
+        $purchase->ship_to = $request->ship_to ?? null;
         $purchase->date = $request->date;
         $purchase->email = $supplier->email ?? '-';
         $purchase->phone = $supplier->phone ?? '-';
@@ -418,13 +467,14 @@ class POController extends Controller
                 $dPurchase->product = $value;
                 $dPurchase->category = $itemCategory;
                 $dPurchase->id_unit = $itemCategory == 'Unit' ? ($request->id_unit[$key] ?? null) : null;
+                $dPurchase->id_rental_accessory = $itemCategory == 'Accessories' ? ($request->id_rental_accessory[$key] ?? null) : null;
                 $dPurchase->kondisi = $itemCategory == 'Unit' ? ($request->kondisi[$key] ?? 'Baru') : null;
                 $dPurchase->id_product = $itemCategory == 'Sparepart' ? ($request->id_product[$key] ?? null) : null;
-                $dPurchase->qty = $request->qty[$key];
-                $dPurchase->info_qty = $request->info_qty[$key];
-                $dPurchase->price = $request->price[$key];
-                $dPurchase->disc = $request->disc[$key];
-                $dPurchase->amount = $request->amount[$key];
+                $dPurchase->qty = $itemCategory == 'Header' ? 0 : ($request->qty[$key] ?? 0);
+                $dPurchase->info_qty = $itemCategory == 'Header' ? '' : ($request->info_qty[$key] ?? '');
+                $dPurchase->price = $itemCategory == 'Header' ? 0 : ($request->price[$key] ?? 0);
+                $dPurchase->disc = $itemCategory == 'Header' ? 0 : ($request->disc[$key] ?? 0);
+                $dPurchase->amount = $itemCategory == 'Header' ? 0 : ($request->amount[$key] ?? 0);
                 $dPurchaseSave = $dPurchase->save();
                 $submittedIds[] = $dPurchase->id;
             }
@@ -475,16 +525,18 @@ class POController extends Controller
 
     public function add_pph(Request $request, $id)
     {
-
-        $PO = PurchaseOrder::find($id);
-        $DPO = DetailPurchaseOrder::where('id_purchase_order', $id)->get();
-        foreach ($DPO as $item => $value) {
-            $value->pph = $request->pph[$item];
-            $status = $value->save();
+        if ($request->has('pph_by_id')) {
+            foreach ($request->pph_by_id as $dId => $pphVal) {
+                DetailPurchaseOrder::where('id', $dId)->update(['pph' => $pphVal ?? 0]);
+            }
+        } else {
+            $DPO = DetailPurchaseOrder::where('id_purchase_order', $id)->get();
+            foreach ($DPO as $item => $value) {
+                $value->pph = $value->category === 'Header' ? 0 : ($request->pph[$item] ?? 0);
+                $value->save();
+            }
         }
-        if ($status) {
-            return redirect('/purchase/' . $id)->with('massage', 'Data telah terkirim');
-        }
+        return redirect('/purchase/' . $id)->with('massage', 'Data telah terkirim');
     }
     public function delete_pph($id)
     {

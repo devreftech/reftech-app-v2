@@ -1293,16 +1293,209 @@ $(function () {
             }
         });
 
-        // Show smooth saving loader
+        // Show rich, modern saving loader with dynamic multi-step ticker & smooth animations
         if (typeof Swal !== 'undefined') {
+            if (!document.getElementById('sq-loader-styles')) {
+                const style = document.createElement('style');
+                style.id = 'sq-loader-styles';
+                style.textContent = `
+                    .sq-saving-popup {
+                        border-radius: 24px !important;
+                        padding: 2.2rem 2rem 2rem !important;
+                        background: #ffffff !important;
+                        box-shadow: 0 25px 60px -15px rgba(105, 108, 255, 0.4), 0 0 0 1px rgba(105, 108, 255, 0.15) !important;
+                        overflow: hidden !important;
+                        position: relative !important;
+                        max-width: 440px !important;
+                    }
+                    .sq-loader-container {
+                        position: relative;
+                        z-index: 1;
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    }
+                    .sq-loader-art {
+                        position: relative;
+                        width: 96px;
+                        height: 96px;
+                        margin: 0 auto 1.35rem;
+                    }
+                    .sq-loader-orbital {
+                        position: absolute;
+                        inset: -8px;
+                        border-radius: 50%;
+                        border: 2.5px dashed rgba(105, 108, 255, 0.45);
+                        animation: sqRotate 12s linear infinite;
+                    }
+                    .sq-loader-pulse {
+                        position: absolute;
+                        inset: -4px;
+                        border-radius: 50%;
+                        background: radial-gradient(circle, rgba(105, 108, 255, 0.3) 0%, rgba(79, 70, 229, 0) 70%);
+                        animation: sqPulse 2s ease-in-out infinite;
+                    }
+                    .sq-loader-icon-wrap {
+                        position: absolute;
+                        inset: 6px;
+                        border-radius: 50%;
+                        background: linear-gradient(135deg, #696cff 0%, #4f46e5 100%);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-shadow: 0 12px 28px -6px rgba(79, 70, 229, 0.55), inset 0 -3px 6px rgba(0, 0, 0, 0.2), inset 0 3px 6px rgba(255, 255, 255, 0.4);
+                        animation: sqFloat 3.2s ease-in-out infinite;
+                    }
+                    .sq-loader-main-icon {
+                        color: #ffffff;
+                        font-size: 42px;
+                        line-height: 1;
+                        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+                    }
+                    .sq-sparkle {
+                        position: absolute;
+                        border-radius: 50%;
+                        background: #38bdf8;
+                        box-shadow: 0 0 10px #38bdf8;
+                    }
+                    .sq-sparkle.s1 { width: 8px; height: 8px; top: 2px; right: 12px; animation: sqSparkle 1.8s ease-in-out infinite; }
+                    .sq-sparkle.s2 { width: 6px; height: 6px; bottom: 8px; left: 6px; animation: sqSparkle 2.2s ease-in-out infinite 0.4s; background: #818cf8; }
+                    .sq-sparkle.s3 { width: 5px; height: 5px; top: 40px; right: -4px; animation: sqSparkle 1.5s ease-in-out infinite 0.8s; background: #fbbf24; }
+
+                    .sq-loader-title {
+                        font-size: 1.35rem;
+                        font-weight: 800;
+                        color: #1e293b;
+                        margin-bottom: 0.35rem;
+                        letter-spacing: -0.3px;
+                    }
+                    .sq-loader-subtitle {
+                        font-size: 0.84rem;
+                        color: #64748b;
+                        margin-bottom: 1.35rem;
+                        line-height: 1.45;
+                    }
+                    .sq-loader-progress-wrap {
+                        width: 100%;
+                        height: 7px;
+                        background: #f1f5f9;
+                        border-radius: 999px;
+                        overflow: hidden;
+                        margin-bottom: 1.25rem;
+                        position: relative;
+                        border: 1px solid #e2e8f0;
+                    }
+                    .sq-loader-progress-bar {
+                        height: 100%;
+                        border-radius: 999px;
+                        background: linear-gradient(90deg, #696cff, #38bdf8, #696cff);
+                        background-size: 200% 100%;
+                        animation: sqProgressMove 1.6s ease-in-out infinite;
+                    }
+                    .sq-loader-steps {
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        background: #f8fafc;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 999px;
+                        padding: 0.45rem 1.15rem;
+                        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+                    }
+                    .sq-step-spinner {
+                        width: 14px;
+                        height: 14px;
+                        border: 2px solid rgba(105, 108, 255, 0.25);
+                        border-top-color: #696cff;
+                        border-radius: 50%;
+                        animation: sqSpin 0.7s linear infinite;
+                        margin-right: 8px;
+                        display: inline-block;
+                        flex-shrink: 0;
+                    }
+                    #sq-step-label {
+                        font-size: 0.78rem;
+                        font-weight: 600;
+                        color: #4338ca;
+                        transition: all 0.22s ease;
+                        display: inline-block;
+                    }
+
+                    @keyframes sqRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                    @keyframes sqSpin { to { transform: rotate(360deg); } }
+                    @keyframes sqPulse {
+                        0%, 100% { transform: scale(1); opacity: 0.7; }
+                        50% { transform: scale(1.22); opacity: 0.15; }
+                    }
+                    @keyframes sqFloat {
+                        0%, 100% { transform: translateY(0) scale(1); }
+                        50% { transform: translateY(-5px) scale(1.02); }
+                    }
+                    @keyframes sqSparkle {
+                        0%, 100% { transform: scale(0.6); opacity: 0.3; }
+                        50% { transform: scale(1.25); opacity: 1; }
+                    }
+                    @keyframes sqProgressMove {
+                        0% { transform: translateX(-100%); width: 45%; }
+                        50% { transform: translateX(45%); width: 65%; }
+                        100% { transform: translateX(200%); width: 45%; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
             Swal.fire({
-                title: 'Saving Quotation...',
-                text: 'Please wait while we process your document.',
+                html: `
+                    <div class="sq-loader-container">
+                        <div class="sq-loader-art">
+                            <div class="sq-loader-orbital"></div>
+                            <div class="sq-loader-pulse"></div>
+                            <div class="sq-loader-icon-wrap">
+                                <i class="mdi mdi-file-document-edit-outline sq-loader-main-icon"></i>
+                            </div>
+                            <div class="sq-sparkle s1"></div>
+                            <div class="sq-sparkle s2"></div>
+                            <div class="sq-sparkle s3"></div>
+                        </div>
+                        <h4 class="sq-loader-title">Menyimpan Smart Quote</h4>
+                        <p class="sq-loader-subtitle">Mohon tunggu, dokumen penawaran sedang diproses &amp; disimpan...</p>
+                        <div class="sq-loader-progress-wrap">
+                            <div class="sq-loader-progress-bar"></div>
+                        </div>
+                        <div class="sq-loader-steps">
+                            <span class="sq-step-spinner"></span>
+                            <span id="sq-step-label">Memvalidasi data &amp; menghitung penawaran...</span>
+                        </div>
+                    </div>
+                `,
                 allowOutsideClick: false,
                 allowEscapeKey: false,
                 showConfirmButton: false,
+                customClass: {
+                    popup: 'sq-saving-popup',
+                },
                 didOpen: function () {
-                    Swal.showLoading();
+                    const steps = [
+                        'Memvalidasi data &amp; menghitung penawaran...',
+                        'Menyusun rincian item &amp; kalkulasi harga...',
+                        'Mengunci parameter PPN &amp; Terms...',
+                        'Menyimpan dokumen ke database...'
+                    ];
+                    let stepIdx = 0;
+                    window._sqSaveInterval = setInterval(function () {
+                        stepIdx = (stepIdx + 1) % steps.length;
+                        const labelEl = document.getElementById('sq-step-label');
+                        if (labelEl) {
+                            labelEl.style.opacity = '0';
+                            labelEl.style.transform = 'translateY(-3px)';
+                            setTimeout(function () {
+                                labelEl.innerHTML = steps[stepIdx];
+                                labelEl.style.opacity = '1';
+                                labelEl.style.transform = 'translateY(0)';
+                            }, 180);
+                        }
+                    }, 1100);
+                },
+                willClose: function () {
+                    if (window._sqSaveInterval) clearInterval(window._sqSaveInterval);
                 }
             });
         }

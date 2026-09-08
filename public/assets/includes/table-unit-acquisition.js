@@ -37,6 +37,11 @@ $(function () {
         return /m.?\/min/i.test(data) ? data : data + " m³/min";
     }
 
+    function barCol(data) {
+        if (!data && data !== 0) return "-";
+        return /bar/i.test(data) ? data : data + " Bar";
+    }
+
     function dash(data) {
         return data || data === 0 ? data : "-";
     }
@@ -48,7 +53,9 @@ $(function () {
             { data: "lubricant", render: dash },
             { data: "power", render: dash },
             { data: "air_cap", render: airCapCol },
+            { data: "bar", render: barCol },
         ],
+
         dryer: [
             { data: "unit_category", render: function (data) { return dryerTypeLabels[data] || data || "-"; } },
             { data: "pdp", render: dash },

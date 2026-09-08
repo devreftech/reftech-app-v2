@@ -178,6 +178,7 @@
     @include('includes.sales.script')
 
     @stack('after-script')
+    @stack('after-scripts')
 
     {{-- Main JS --}}
     <script src="{{ asset('assets') }}/js/main.js?v={{ file_exists(public_path('assets/js/main.js')) ? filemtime(public_path('assets/js/main.js')) : time() }}"></script>

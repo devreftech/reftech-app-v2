@@ -75,6 +75,24 @@ class UnitQuotation extends Model
     }
 
     /**
+     * URL publik file PO: bisa berupa storage path (PDF upload manual), asset path,
+     * ataupun URL rute print kontrak (untuk PO yang terbit via online signature).
+     */
+    public function getPoFileUrlAttribute(): ?string
+    {
+        if (empty($this->po_file)) {
+            return null;
+        }
+        if (str_starts_with($this->po_file, 'http://') || str_starts_with($this->po_file, 'https://') || str_starts_with($this->po_file, '/')) {
+            return $this->po_file;
+        }
+        if (str_starts_with($this->po_file, 'asset/')) {
+            return asset($this->po_file);
+        }
+        return \Illuminate\Support\Facades\Storage::url($this->po_file);
+    }
+
+    /**
      * Entitas penerbit dokumen mengikuti client-nya: 'Kojisha' kalau client.info = 'Kojisha',
      * selain itu Reftech. Dipakai untuk routing kontrak (Selling Contract vs Confirm Order)
      * & branding dokumen.

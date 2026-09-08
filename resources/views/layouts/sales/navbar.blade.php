@@ -198,6 +198,93 @@
             @endif
             <!--/ Quick Action -->
 
+            <!-- Quick Action (Project Manager - Joined Kanbans) -->
+            @if (in_array(Auth::user()?->role, ['Project Manager']) || Auth::user()?->isDeveloper())
+                @php
+                    $pmUser = Auth::user();
+                    $pmKanbanBoards = \App\Models\KanbanBoard::query()
+                        ->where(function ($q) use ($pmUser) {
+                            $q->whereHas('members', function ($mq) use ($pmUser) {
+                                $mq->where('users.id', $pmUser->id);
+                            })
+                            ->orWhere('created_by', $pmUser->id)
+                            ->orWhereHas('tasks', function ($tq) use ($pmUser) {
+                                $tq->where('assigned_to', $pmUser->id)
+                                   ->orWhereHas('assignees', fn($aq) => $aq->where('users.id', $pmUser->id));
+                            });
+                        })
+                        ->withCount(['tasks'])
+                        ->with(['columns' => fn($cq) => $cq->orderBy('position')])
+                        ->orderBy('updated_at', 'desc')
+                        ->get();
+                @endphp
+                <li class="nav-item dropdown me-2 me-xl-1">
+                    <a class="nav-link btn btn-text-primary rounded-pill btn-icon dropdown-toggle hide-arrow position-relative"
+                        href="javascript:void(0);" data-bs-toggle="dropdown" aria-expanded="false" title="Quick Action &bull; Papan Kanban">
+                        <i class="mdi mdi-view-dashboard-outline mdi-24px text-primary"></i>
+                        @if ($pmKanbanBoards->count() > 0)
+                            <span class="position-absolute top-0 start-50 translate-middle-y badge badge-dot bg-success mt-2 border"></span>
+                        @endif
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end py-2 shadow-lg" style="min-width: 320px; max-width: 380px;">
+                        <li class="dropdown-header d-flex align-items-center justify-content-between py-2 border-bottom mb-2">
+                            <span class="fw-bold text-primary d-flex align-items-center">
+                                <i class="mdi mdi-lightning-bolt text-warning me-1"></i>Quick Action &bull; Kanban
+                            </span>
+                            <span class="badge bg-label-primary rounded-pill">{{ $pmKanbanBoards->count() }} Papan</span>
+                        </li>
+
+                        @if ($pmKanbanBoards->count() > 0)
+                            <li class="px-3 py-1">
+                                <small class="text-uppercase text-muted fw-bold" style="font-size: 11px;">Papan Kanban Yang Anda Ikuti</small>
+                            </li>
+                            <div class="overflow-auto" style="max-height: 280px;">
+                                @foreach ($pmKanbanBoards as $board)
+                                    <li>
+                                        <a class="dropdown-item d-flex align-items-center py-2 px-3" href="{{ route('kanban.boards.show', $board->id) }}">
+                                            <div class="avatar avatar-sm me-3 flex-shrink-0">
+                                                <span class="avatar-initial rounded-circle bg-label-primary text-primary fw-bold">
+                                                    <i class="mdi mdi-view-column-outline"></i>
+                                                </span>
+                                            </div>
+                                            <div class="flex-grow-1 text-truncate">
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <span class="fw-semibold text-dark text-truncate d-block">{{ $board->title }}</span>
+                                                    <span class="badge bg-label-secondary rounded-pill text-xs ms-1">{{ $board->tasks_count }} Task</span>
+                                                </div>
+                                                <small class="text-muted d-block">
+                                                    {{ $board->columns->count() }} Kolom: 
+                                                    {{ $board->columns->take(3)->pluck('title')->implode(', ') }}
+                                                    @if ($board->columns->count() > 3)...@endif
+                                                </small>
+                                            </div>
+                                            <i class="mdi mdi-chevron-right text-muted ms-2"></i>
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </div>
+                        @else
+                            <li class="px-3 py-4 text-center text-muted">
+                                <i class="mdi mdi-view-dashboard-off-outline mdi-36px text-secondary d-block mb-1"></i>
+                                <div class="fw-semibold text-dark">Belum Ada Kanban yang Diikuti</div>
+                                <small class="text-muted">Anda belum tergabung di papan Kanban manapun.</small>
+                            </li>
+                        @endif
+
+                        <li class="border-top mt-2 pt-2 px-2">
+                            <div class="d-flex gap-2">
+                                <a class="btn btn-xs btn-outline-primary flex-grow-1" href="{{ route('kanban.index') }}">
+                                    <i class="mdi mdi-view-dashboard me-1"></i> Buka Semua Kanban
+                                </a>
+                                <a class="btn btn-xs btn-outline-secondary" href="{{ route('service-reports.index', ['tab' => 'project']) }}" title="Daily Project Report">
+                                    <i class="mdi mdi-clipboard-text-clock-outline me-1"></i> Project Report
+                                </a>
+                            </div>
+                        </li>
+                    </ul>
+                </li>
+            @endif
+
             <!-- Notification -->
             <li class="nav-item dropdown-notifications navbar-dropdown dropdown me-2 me-xl-1">
                 <a class="nav-link btn btn-text-secondary rounded-pill btn-icon dropdown-toggle hide-arrow" id="navbarBellToggle"
@@ -432,21 +519,37 @@
                                             $isInvoiceRequested = $pn->type === 'invoice_requested';
                                             $isInvoiceApproved = $pn->type === 'invoice_approved';
                                             $isContractRequested = $pn->type === 'contract_requested';
+                                            $isContractApproved = $pn->type === 'contract_approved';
                                             $isContractSigned = $pn->type === 'contract_signed';
                                             $pnAmount = $pn->type === 'payment'
                                                 ? ($pn->payment->amount ?? 0)
-                                                : (($isContractRequested || $isContractSigned)
+                                                : (($isContractRequested || $isContractApproved || ($isContractSigned && !$pn->id_invoice))
                                                     ? ($pn->unitQuotation->total ?? 0)
                                                     : ($pn->unitQuotation->total ?? 0) * ($pn->invoice->percent ?? 100) / 100);
                                             $pnUrl = route('unit-quotation.show', $pn->id_unit_quotation);
-                                            if ($pn->id_invoice) {
+                                            if ($pn->type === 'payment') {
+                                                if ($pn->id_payment) {
+                                                    $pnUrl = route('payment_detail.payment', $pn->id_payment);
+                                                } else {
+                                                    $pnUrl = route('payment_index.payment');
+                                                }
+                                            } elseif ($pn->id_invoice) {
                                                 if ($isInvoiceRequested) {
                                                     $pnUrl = route('before.accept.unit', $pn->id_invoice);
-                                                } elseif ($pn->type === 'payment' || $isInvoiceApproved) {
+                                                } elseif ($isInvoiceApproved) {
                                                     $pnUrl = route('invoice.show_unit', $pn->id_invoice);
+                                                } elseif ($isContractSigned && in_array(Auth::user()->role, ['Accounting', 'Admin'])) {
+                                                    $pnUrl = route('before.accept.unit', $pn->id_invoice);
                                                 }
                                             } elseif ($isContractRequested) {
                                                 $pnUrl = route('contract.index');
+                                            } elseif ($isContractApproved || $isContractSigned) {
+                                                if ($pn->id_unit_quotation) {
+                                                    $contract = \App\Models\Contract::where('id_unit_quotation', $pn->id_unit_quotation)->latest('id')->first();
+                                                    if ($contract) {
+                                                        $pnUrl = route('contract.show', $contract->id);
+                                                    }
+                                                }
                                             }
                                             
                                             $avatarBg = 'bg-label-success';
@@ -460,6 +563,9 @@
                                             } elseif ($isContractRequested) {
                                                 $avatarBg = 'bg-label-warning';
                                                 $iconClass = 'mdi-file-sign';
+                                            } elseif ($isContractApproved) {
+                                                $avatarBg = 'bg-label-success';
+                                                $iconClass = 'mdi-file-check-outline';
                                             } elseif ($isContractSigned) {
                                                 $avatarBg = 'bg-label-success';
                                                 $iconClass = 'mdi-draw-pen';
@@ -486,8 +592,14 @@
                                                                 Invoice senilai Rp {{ number_format($pnAmount, 0, '', '.') }} sudah di-acc Accounting ({{ $pn->unitQuotation->client->company ?? '-' }})
                                                             @elseif ($isContractRequested)
                                                                 Pengajuan Selling Contract baru ({{ $pn->unitQuotation->client->company ?? '-' }})
+                                                            @elseif ($isContractApproved)
+                                                                Selling Contract sudah di-acc Accounting ({{ $pn->unitQuotation->client->company ?? '-' }})
                                                             @elseif ($isContractSigned)
-                                                                Selling Contract telah ditandatangani Customer ({{ $pn->unitQuotation->client->company ?? '-' }})
+                                                                @if (in_array(Auth::user()->role, ['Accounting', 'Admin']) && $pn->id_invoice)
+                                                                    Kontrak ditandatangani & Invoice senilai Rp {{ number_format($pnAmount, 0, '', '.') }} menunggu diterbitkan ({{ $pn->unitQuotation->client->company ?? '-' }})
+                                                                @else
+                                                                    Selling Contract telah ditandatangani Customer ({{ $pn->unitQuotation->client->company ?? '-' }})
+                                                                @endif
                                                             @else
                                                                 Payment Rp {{ number_format($pnAmount, 0, '', '.') }} ditambahkan ({{ $pn->unitQuotation->client->company ?? '-' }})
                                                             @endif

@@ -162,7 +162,7 @@
                                             <p class="mb-1 fw-bold text-dark" style="font-size: 11.5px;">
                                                 <i class="mdi mdi-file-document-outline me-1 text-primary"></i><span class="i18n" data-en="NPWP Address :">Alamat NPWP :</span>
                                             </p>
-                                            <p class="mb-1 text-muted" style="line-height: 1.4;">Komp. Negia Kencana Residence Blok B, No.2 Pasanggrahan, Ujung Berung Kota Bandung - Jawa Barat 40199</p>
+                                            <p class="mb-1 text-muted" style="line-height: 1.4;">Komp. Negla Kencana Residence Blok B, No.2 Pasanggrahan, Ujung Berung Kota Bandung - Jawa Barat 40199</p>
                                             <div class="px-2 py-0.5 rounded-0" style="background:#eef0ff; border:1px solid #d0d0ff; font-size:10.5px; font-weight:600; color:#3d3d8f; display:inline-block; border-radius:0 !important;">
                                                 <i class="mdi mdi-card-account-details-outline me-1"></i>NPWP: 0737285718429000
                                             </div>
@@ -276,7 +276,23 @@
                             </div>
 
                             @php
-                                $tempoPayRec = $payments->firstWhere('type', 'Tempo') ?? $payments->first();
+                                $hasCbdPayment = $payments->contains(fn($p) => in_array(strtoupper($p->type ?? ''), ['CBD', 'CASH', 'ESCROW']));
+                                $hasTempoPayment = $payments->contains(fn($p) => strtoupper($p->type ?? '') === 'TEMPO');
+                                $invTermUpper = strtoupper(trim($invoice->term ?? ''));
+                                $quoteTermUpper = strtoupper(trim($quote->payment ?? ''));
+
+                                $isTempo = false;
+                                if (!$hasCbdPayment && !str_contains($invTermUpper, 'CASH BEFORE DELIVERY') && !str_contains($invTermUpper, 'CBD') && $invTermUpper !== 'CASH' && $invTermUpper !== 'ESCROW') {
+                                    if ($hasTempoPayment) {
+                                        $isTempo = true;
+                                    } elseif (str_contains($invTermUpper, 'TEMPO') || str_contains($invTermUpper, 'HARI') || str_contains($invTermUpper, 'DAYS') || str_contains($invTermUpper, 'NET')) {
+                                        $isTempo = true;
+                                    } elseif (empty($invTermUpper) && (str_contains($quoteTermUpper, 'TEMPO') || str_contains($quoteTermUpper, 'HARI') || str_contains($quoteTermUpper, 'DAYS') || str_contains($quoteTermUpper, 'NET'))) {
+                                        $isTempo = true;
+                                    }
+                                }
+
+                                $tempoPayRec = $isTempo ? ($payments->firstWhere('type', 'Tempo') ?? $payments->first()) : null;
                                 $dueDateDisplay = $tempoPayRec?->due_date ? \Carbon\Carbon::parse($tempoPayRec->due_date) : null;
                             @endphp
 
@@ -285,7 +301,7 @@
                                     <span class="text-muted" style="min-width:110px;"><i class="mdi mdi-clipboard-text-outline me-1 text-primary"></i>PO No</span>
                                     <span class="fw-bold text-dark">: {{ $quote->po_number ?? '-' }}</span>
                                 </div>
-                                @if ($dueDateDisplay)
+                                @if ($isTempo && $dueDateDisplay)
                                     <div class="d-flex align-items-center mb-1.5 pb-1" style="border-bottom:1px dashed #f0f0f0;">
                                         <span class="text-muted" style="min-width:110px;"><i class="mdi mdi-calendar-clock me-1 text-warning"></i><span class="i18n" data-en="Due Date">Jatuh Tempo</span></span>
                                         <span class="fw-bold text-warning">: {{ $dueDateDisplay->format('d F Y') }}</span>
@@ -743,7 +759,7 @@
                             @endphp
                             <p class="mb-1 text-muted" style="font-size:11.5px;">{{ $isKojisha ? 'Bekasi' : 'Bandung' }}, <span class="i18n" data-en="{{ $signDateEn }}">{{ $signDateId }}</span></p>
                             @if ($quote->tax)
-                                <p class="fw-bold mb-1 text-dark" style="font-size:12px;">{{ $isKojisha ? 'PT. Kojisha Innotiv Indonesia' : 'PT. Reftech Jaya Optima' }}</p>
+                                <p class="fw-bold mb-1 text-dark" style="font-size:12px;">{{ $isKojisha ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima' }}</p>
                             @endif
                             @if (isset($invoice->sign))
                                 <div class="my-2">
@@ -831,10 +847,12 @@
                             data-bs-toggle="modal" data-bs-target="#editInvoiceModal">
                             <i class="mdi mdi-pencil-outline me-1 text-primary"></i> Edit No Invoice / PO / Term
                         </button>
-                        <button type="button" class="btn btn-outline-warning btn-sm w-100 waves-effect text-start"
-                            data-bs-toggle="modal" data-bs-target="#dueDate">
-                            <i class="mdi mdi-calendar-clock me-1 text-warning"></i> Set / Edit Due Date
-                        </button>
+                        @if ($isTempo)
+                            <button type="button" class="btn btn-outline-warning btn-sm w-100 waves-effect text-start"
+                                data-bs-toggle="modal" data-bs-target="#dueDate">
+                                <i class="mdi mdi-calendar-clock me-1 text-warning"></i> Set / Edit Due Date
+                            </button>
+                        @endif
                     </div>
                 </div>
             @endif
@@ -853,20 +871,22 @@
                         <span class="text-muted small">Tanggal</span>
                         <span class="fw-semibold small">{{ $invoice->date ? \Carbon\Carbon::parse($invoice->date)->format('d M Y') : '-' }}</span>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-muted small">Jatuh Tempo</span>
-                        @if ($dueDateDisplay)
-                            <span class="fw-bold small text-warning"><i class="mdi mdi-calendar-clock me-1"></i>{{ $dueDateDisplay->format('d M Y') }}</span>
-                        @else
-                            <span class="badge bg-label-secondary" style="font-size:10px;">Belum Di-set</span>
-                        @endif
-                    </div>
+                    @if ($isTempo)
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">Jatuh Tempo</span>
+                            @if ($dueDateDisplay)
+                                <span class="fw-bold small text-warning"><i class="mdi mdi-calendar-clock me-1"></i>{{ $dueDateDisplay->format('d M Y') }}</span>
+                            @else
+                                <span class="badge bg-label-secondary" style="font-size:10px;">Belum Di-set</span>
+                            @endif
+                        </div>
+                    @endif
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="text-muted small">No. PO</span>
                         <span class="fw-semibold small">{{ $quote->po_number ?? '-' }}</span>
                     </div>
                     @if ($quote->po_file)
-                        <a href="{{ Storage::url($quote->po_file) }}" target="_blank"
+                        <a href="{{ $quote->po_file_url }}" target="_blank"
                            class="btn btn-outline-success btn-sm w-100 waves-effect">
                             <i class="mdi mdi-file-pdf-box me-1"></i> Lihat File PO
                         </a>
@@ -887,48 +907,55 @@
                 </div>
             </div>
 
-            {{-- 3. Tax / PPH --}}
+            {{-- 3. Tax / PPH & Hand Sign --}}
             @if (Auth::user()->role != 'Sales')
-            <div class="card mb-3">
-                <div class="card-header py-2 px-3">
-                    <small class="text-uppercase text-muted fw-semibold">Tax / PPH</small>
+            <div class="card mb-3 border-0 shadow-sm">
+                <div class="card-header py-2 px-3 bg-light border-bottom">
+                    <small class="text-uppercase text-muted fw-bold" style="font-size:10px; letter-spacing:0.5px;">Tax (PPH) &amp; Hand Sign</small>
                 </div>
-                <div class="card-body d-grid gap-2">
+                <div class="card-body d-grid gap-2 p-3">
                     @php $pphPerItem = $quote->details->sum(fn($d) => ($d->amount * $d->pph) / 100); @endphp
-                    @if ($pphPerItem > 0)
-                        <a href="#" class="btn btn-danger w-100 waves-effect delete-pph-unit"
-                           data-id="{{ $invoice->id }}">Delete PPH 23</a>
-                    @else
-                        <button type="button" class="btn btn-outline-info w-100 waves-effect"
-                            data-bs-toggle="modal" data-bs-target="#modalAddPph">Input PPH 23</button>
-                    @endif
-                    @if (($invoice->pph ?? 0) > 0)
-                        <a href="#" class="btn btn-danger w-100 waves-effect delete-pph-manual-unit"
-                           data-id="{{ $invoice->id }}">Delete PPH Manual</a>
-                    @else
-                        <button type="button" class="btn btn-outline-secondary w-100 waves-effect"
-                            data-bs-toggle="modal" data-bs-target="#modalAddPphManual">Input PPH Manual</button>
+                    <div class="d-flex gap-2">
+                        @if ($pphPerItem > 0)
+                            <a href="#" class="btn btn-outline-danger btn-sm flex-grow-1 waves-effect delete-pph-unit"
+                               data-id="{{ $invoice->id }}" title="Delete PPH 23">
+                                <i class="mdi mdi-delete-outline me-1"></i>Delete PPH 23
+                            </a>
+                        @else
+                            <button type="button" class="btn btn-outline-info btn-sm flex-grow-1 waves-effect"
+                                data-bs-toggle="modal" data-bs-target="#modalAddPph">
+                                <i class="mdi mdi-calculator me-1"></i>PPH 23
+                            </button>
+                        @endif
+
+                        @if (($invoice->pph ?? 0) > 0)
+                            <a href="#" class="btn btn-outline-danger btn-sm flex-grow-1 waves-effect delete-pph-manual-unit"
+                               data-id="{{ $invoice->id }}" title="Delete PPH Manual">
+                                <i class="mdi mdi-delete-outline me-1"></i>Delete PPH Manual
+                            </a>
+                        @else
+                            <button type="button" class="btn btn-outline-secondary btn-sm flex-grow-1 waves-effect"
+                                data-bs-toggle="modal" data-bs-target="#modalAddPphManual">
+                                <i class="mdi mdi-pencil-box-outline me-1"></i>PPH Manual
+                            </button>
+                        @endif
+                    </div>
+
+                    @if (in_array(Auth::user()->role, ['Admin', 'Accounting']))
+                        @if (isset($invoice->sign))
+                            <a href="#" class="btn btn-outline-danger btn-sm w-100 waves-effect delete-hand-sign-unit"
+                               data-id="{{ $invoice->id }}">
+                                <i class="mdi mdi-signature-freehand me-1"></i>Delete Hand Sign
+                            </a>
+                        @else
+                            <a href="#" class="btn btn-outline-secondary btn-sm w-100 waves-effect input-hand-sign-unit"
+                               data-id="{{ $invoice->id }}">
+                                <i class="mdi mdi-draw me-1"></i>Hand Sign
+                            </a>
+                        @endif
                     @endif
                 </div>
             </div>
-            @endif
-
-            {{-- 4. Hand Sign --}}
-            @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
-                <div class="card mb-3">
-                    <div class="card-header py-2 px-3">
-                        <small class="text-uppercase text-muted fw-semibold">Hand Sign</small>
-                    </div>
-                    <div class="card-body">
-                        @if (isset($invoice->sign))
-                            <a href="#" class="btn btn-danger w-100 waves-effect delete-hand-sign-unit"
-                               data-id="{{ $invoice->id }}">Delete Hand Sign</a>
-                        @else
-                            <a href="#" class="btn btn-outline-secondary w-100 waves-effect input-hand-sign-unit"
-                               data-id="{{ $invoice->id }}">Input Hand Sign</a>
-                        @endif
-                    </div>
-                </div>
             @endif
 
             {{-- 5. Payment --}}
@@ -1020,22 +1047,34 @@
                                     <span class="badge bg-label-success" style="font-size:10px">
                                         <i class="mdi mdi-check-circle-outline"></i> Paid
                                     </span>
+                                @else
+                                    <span class="badge bg-label-warning" style="font-size:10px">
+                                        <i class="mdi mdi-clock-outline"></i> Unconfirmed
+                                    </span>
                                 @endif
                             </div>
                         </div>
-                        <div class="d-flex gap-1 ms-2">
-                        @if (!$pay->file && Auth::user()->role === 'Sales')
-                            <button type="button" class="btn btn-sm btn-icon btn-outline-success btn-upload-proof-inv"
-                                data-id="{{ $pay->id }}" title="Upload Bukti">
-                                <i class="mdi mdi-upload"></i>
-                            </button>
-                        @endif
-                        @if ($pay->file && $pay->level == 0 && Auth::user()->role === 'Sales')
-                            <button type="button" class="btn btn-sm btn-icon btn-outline-danger btn-delete-proof"
-                                data-id="{{ $pay->id }}" title="Hapus Bukti Transfer">
-                                <i class="mdi mdi-file-remove-outline"></i>
-                            </button>
-                        @endif
+                        <div class="d-flex flex-column align-items-end gap-1 ms-2">
+                            <a href="{{ route('payment_detail.payment', $pay->id) }}"
+                               class="btn btn-sm btn-outline-primary waves-effect py-1 px-2"
+                               style="font-size:11px;"
+                               title="Lihat Detail Payment">
+                                <i class="mdi mdi-eye-outline me-1"></i>Detail
+                            </a>
+                            <div class="d-flex gap-1">
+                                @if (!$pay->file && Auth::user()->role === 'Sales')
+                                    <button type="button" class="btn btn-sm btn-icon btn-outline-success btn-upload-proof-inv"
+                                        data-id="{{ $pay->id }}" title="Upload Bukti">
+                                        <i class="mdi mdi-upload"></i>
+                                    </button>
+                                @endif
+                                @if ($pay->file && $pay->level == 0 && Auth::user()->role === 'Sales')
+                                    <button type="button" class="btn btn-sm btn-icon btn-outline-danger btn-delete-proof"
+                                        data-id="{{ $pay->id }}" title="Hapus Bukti Transfer">
+                                        <i class="mdi mdi-file-remove-outline"></i>
+                                    </button>
+                                @endif
+                            </div>
                         </div>
                     </div>
                     @endforeach
@@ -1043,32 +1082,21 @@
                 @endif
 
                 {{-- Actions --}}
-                <div class="card-footer p-3 d-grid gap-2">
-                    @if ($quote->status === 'po_received' && Auth::user()->role === 'Sales')
+                @if ($quote->status === 'po_received' && Auth::user()->role === 'Sales')
+                    <div class="card-footer p-3 d-grid gap-2">
                         <button type="button" class="btn btn-outline-success w-100 waves-effect"
                             data-bs-toggle="modal" data-bs-target="#modalAddPayment">
                             <i class="mdi mdi-cash-plus me-1"></i> Tambah Payment
                         </button>
-                    @endif
-                    @if (in_array(Auth::user()->role, ['Admin', 'Accounting', 'Finance']))
-                        @if (!$invoice->status_p)
-                            @if ($payments->isNotEmpty())
-                                <button type="button" class="btn btn-primary w-100 waves-effect"
-                                    data-bs-toggle="modal" data-bs-target="#confirmPayment">Confirm Payment</button>
-                            @else
-                                <div class="alert alert-warning p-2 mb-0" style="font-size:11px; border-radius:0 !important;">
-                                    <i class="mdi mdi-alert-circle-outline me-1"></i> Menunggu Sales menambahkan data Payment.
-                                </div>
-                            @endif
-                        @else
-                            <a href="#" class="btn btn-danger w-100 waves-effect undo-payment-unit"
-                               data-id="{{ $invoice->id }}">Undo Confirm Payment</a>
-                        @endif
-                    @endif
-                </div>
+                    </div>
+                @elseif ($payments->isEmpty())
+                    <div class="card-footer p-3">
+                        <div class="alert alert-warning p-2 mb-0" style="font-size:11px; border-radius:0 !important;">
+                            <i class="mdi mdi-alert-circle-outline me-1"></i> Menunggu Sales menambahkan data Payment.
+                        </div>
+                    </div>
+                @endif
             </div>
-
-
         </div>
     </div>
     </div> {{-- End Tab 1 (#tab-invoice) --}}
@@ -1362,108 +1390,460 @@
 
     {{-- TAB 3: BAST (BERITA ACARA SERAH TERIMA) --}}
     @if (isset($bast) && $bast)
+        @php
+            $isReftech = $bast->entity === 'Reftech';
+            $entityFullName = $isReftech ? 'PT Reftech Jaya Optima' : 'PT Kojisha Innotiv Indonesia';
+        @endphp
         <div class="tab-pane fade" id="tab-bast" role="tabpanel">
             <div class="row">
-                <div class="col-xl-9 col-md-8 col-12">
-                    <div class="card border-0 shadow-sm mb-4">
-                        <div class="card-header bg-light py-3 d-flex align-items-center justify-content-between">
-                            <div class="d-flex align-items-center gap-2">
-                                <i class="mdi mdi-certificate-outline text-success fs-3"></i>
-                                <div>
-                                    <h5 class="fw-bold mb-0 text-dark">Berita Acara Serah Terima (BAST)</h5>
-                                    <small class="text-muted">No. BAST: <strong class="text-primary">{{ $bast->no_bast }}</strong> &bull; Entitas: {{ $bast->entity }}</small>
-                                </div>
+                {{-- Document Card (Visual matches BAST Print) --}}
+                <div class="col-xl-9 col-md-8 col-12 mb-md-0 mb-4">
+                    <div class="card invoice-preview-card border-0 shadow-sm p-4 p-md-5" style="background: #ffffff; color: #000000; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                        
+                        {{-- Header --}}
+                        <div class="d-flex justify-content-between align-items-start pb-3 mb-3"
+                            style="border-bottom: 2px solid #cbd5e1; display: flex !important; flex-direction: row !important; justify-content: space-between !important; align-items: flex-start !important;">
+                            <div class="mb-0 pb-1">
+                                @if ($isReftech)
+                                    <div class="d-flex svg-illustration align-items-center gap-2 mb-1">
+                                        <span class="app-brand-logo demo">
+                                            <span style="color: var(--bs-primary)">
+                                                <img class="text-md"
+                                                    src="{{ url('https://reftech.id/wp-content/uploads/2021/10/Reftech-Logo-Hitam.png') }}"
+                                                    alt="Reftech Logo" width="160">
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <p class="mb-0 text-uppercase fw-bold" style="font-size: 11.5px; color: #4f46e5 !important; letter-spacing: 0.5px; line-height: 1.2;">
+                                        COMPRESSED AIR SOLUTION
+                                    </p>
+                                    <p class="mb-1" style="font-size: 9.5px; font-weight: 600; color: #000000;">
+                                        Sales &nbsp;|&nbsp; Service &nbsp;|&nbsp; Rental &nbsp;|&nbsp; Measurement Air Audit
+                                    </p>
+                                    <div style="font-size: 9px; color: #000000; font-weight: 500;">
+                                        <i class="mdi mdi-certificate-outline me-1 text-primary"></i>
+                                        <span class="fw-bold" style="color: #696cff !important;">ISO Certified:</span> 
+                                        ISO 9001:2015 &nbsp;|&nbsp; ISO 14001:2015 &nbsp;|&nbsp; ISO 45001:2018
+                                    </div>
+                                @else
+                                    <div class="d-flex svg-illustration align-items-center gap-2 mb-2">
+                                        <span class="app-brand-logo demo">
+                                            <span style="color: var(--bs-primary)">
+                                                <img class="text-md" src="{{ asset('/asset') }}/logo/Kojisha-Log.png" alt="Kojisha Logo" width="160">
+                                            </span>
+                                        </span>
+                                    </div>
+                                @endif
                             </div>
-                            <div class="d-flex gap-2">
-                                <a href="{{ route('bast.print', $bast->id) }}" target="_blank" class="btn btn-primary btn-sm">
-                                    <i class="mdi mdi-printer-outline me-1"></i> Cetak BAST
-                                </a>
-                                @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
-                                    <button type="button" class="btn btn-sm btn-outline-danger delete-bast" data-id="{{ $bast->id }}">
-                                        <i class="mdi mdi-delete-outline me-1"></i> Hapus BAST
-                                    </button>
+                            <div class="text-end" style="padding-top: 4px;">
+                                @if ($isReftech)
+                                    <p class="fw-bolder text-uppercase" style="font-size: 15px; color: #4f46e5 !important; letter-spacing: 0.3px; line-height: 1.2; margin-bottom: 4px !important;">PT REFTECH JAYA OPTIMA</p>
+                                    <div style="font-size: 10px; line-height: 1.35; color: #000000; font-weight: 500;">
+                                        <p class="mb-0" style="color: #000000;">Taman Kopo Indah V, Soho Sommerville No. 31</p>
+                                        <p class="mb-0" style="color: #000000;">Bandung – Jawa Barat 40218</p>
+                                        <p class="mb-0 text-nowrap" style="white-space: nowrap; color: #000000;">
+                                            <i class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-14px text-primary"></i>022 54417653{{ '  |  ' }}<i class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px text-primary"></i>admin@reftech.id{{ '  |  ' }}<i class="mdi mdi-web scaleX-n1-rtl me-1 mdi-14px text-primary"></i>www.reftech.id
+                                        </p>
+                                    </div>
+                                @else
+                                    <p class="fw-bolder text-uppercase" style="font-size: 15px; color: #4f46e5 !important; letter-spacing: 0.3px; line-height: 1.2; margin-bottom: 4px !important;">PT KOJISHA INNOTIV INDONESIA</p>
+                                    <div style="font-size: 10px; line-height: 1.35; color: #000000; font-weight: 500;">
+                                        <p class="mb-0" style="color: #000000;">Jl. Nancep No. 45A, Setu</p>
+                                        <p class="mb-0" style="color: #000000;">Cibitung - Kab. Bekasi 17320</p>
+                                        <p class="mb-0 text-nowrap" style="white-space: nowrap; color: #000000;">
+                                            <i class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-14px text-primary"></i>+62 812-1000-0997
+                                            {{ '   ' }}<i class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px text-primary"></i>admin@kojisha.com
+                                        </p>
+                                    </div>
                                 @endif
                             </div>
                         </div>
-                        <div class="card-body p-4">
-                            <div class="row g-3 mb-4 pb-3 border-bottom" style="font-size: 13px;">
-                                <div class="col-md-6">
-                                    <div class="p-3 bg-light rounded border h-100">
-                                        <span class="text-uppercase text-muted fw-bold small d-block mb-1">Pelaksana Pekerjaan</span>
-                                        <strong class="text-dark fs-6 d-block mb-1">PT {{ $bast->entity == 'Kojisha' ? 'Kojisha' : 'Reftech Jaya Optima' }}</strong>
-                                        <p class="mb-0 text-muted" style="line-height:1.4;">Taman Kopo Indah V, Soho Sommerville No. 31, Bandung – Jawa Barat 40218</p>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="p-3 bg-light rounded border h-100">
-                                        <span class="text-uppercase text-muted fw-bold small d-block mb-1">Penerima Pekerjaan (Customer)</span>
-                                        <strong class="text-dark fs-6 d-block mb-1">{{ $bast->customer_name }}</strong>
-                                        <p class="mb-1 text-muted" style="line-height:1.4;"><i class="mdi mdi-clipboard-outline me-1"></i>Pekerjaan: <strong>{{ $bast->work_title }}</strong></p>
-                                        <p class="mb-0 text-muted" style="line-height:1.4;"><i class="mdi mdi-calendar-clock-outline me-1"></i>Tanggal Pekerjaan: {{ \Carbon\Carbon::parse($bast->work_date)->format('d F Y') }}</p>
-                                        @if ($bast->po_number)
-                                            <div class="mt-2 pt-2 border-top">
-                                                <span class="fw-semibold">No PO / Ref:</span> <span class="badge bg-label-primary">{{ $bast->po_number }}</span>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
 
-                            <h6 class="fw-bold mb-2 text-dark"><i class="mdi mdi-format-list-bulleted me-1 text-success"></i> Rincian Unit / Barang Serah Terima</h6>
-                            <div class="table-responsive border rounded mb-3">
-                                <table class="table table-sm table-striped table-hover m-0" style="font-size: 12.5px;">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="text-center" style="width:6%;">No</th>
-                                            <th>Nama Unit / Barang</th>
-                                            <th>No. Seri / Serial Number</th>
-                                            <th class="text-center" style="width:15%;">Qty</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @if ($bast->units && $bast->units->isNotEmpty())
-                                            @foreach ($bast->units as $idx => $u)
-                                                <tr>
-                                                    <td class="text-center align-middle">{{ $idx + 1 }}</td>
-                                                    <td class="align-middle fw-medium text-dark">{{ $u->unit_name }}</td>
-                                                    <td class="align-middle text-muted">{{ $u->serial_no ?: '-' }}</td>
-                                                    <td class="text-center align-middle fw-bold text-success">{{ $u->qty }}</td>
-                                                </tr>
-                                            @endforeach
-                                        @else
-                                            <tr>
-                                                <td colspan="4" class="text-center py-3 text-muted">Tidak ada unit terdaftar.</td>
-                                            </tr>
-                                        @endif
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            @if ($bast->test_running_result)
-                                <div class="p-3 bg-light rounded border mt-3">
-                                    <h6 class="fw-bold mb-1 text-dark" style="font-size:12.5px;"><i class="mdi mdi-check-decagram-outline me-1 text-success"></i> Hasil Test Running & Catatan Serah Terima</h6>
-                                    <p class="mb-0 text-muted" style="white-space: pre-line; font-size:12px;">{{ $bast->test_running_result }}</p>
-                                </div>
-                            @endif
+                        {{-- Title --}}
+                        <div class="text-center mb-4">
+                            <h4 class="fw-bold mb-1 text-uppercase" style="color: #4f46e5 !important; font-size: 18px; letter-spacing: 0.5px;">{{ $bast->type === 'Rental' ? 'Berita Acara Serah Terima Unit Rental' : 'Berita Acara Serah Terima Pekerjaan' }}</h4>
+                            <div class="fw-bold" style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #4f46e5 !important; font-size: 18px; letter-spacing: 0.5px;">{{ $bast->no_bast }}</div>
                         </div>
+
+                        @if ($bast->type === 'Rental')
+                            <p class="mb-3" style="font-size: 13.5px; line-height: 1.6; color: #000000;">
+                                Bersama dengan ini kami <strong class="text-uppercase" style="color: #000000;">{{ $entityFullName }}</strong>, telah melakukan pengiriman, instalasi, dan commissioning serta <strong style="color: #000000;">MENYERAHKAN UNIT RENTAL</strong> dalam kondisi baik dan siap beroperasi kepada <strong style="color: #000000;">{{ $bast->customer_name }}</strong> untuk unit sbb :
+                            </p>
+                        @else
+                            <p class="mb-3" style="font-size: 13.5px; line-height: 1.6; color: #000000;">
+                                Bersama dengan ini kami <strong class="text-uppercase" style="color: #000000;">{{ $entityFullName }}</strong>, telah menyelesaikan pekerjaan hingga
+                                <strong style="color: #000000;">SELESAI</strong> untuk pekerjaan sbb :
+                            </p>
+                        @endif
+
+                        <div class="border rounded p-3 text-center fw-bold text-uppercase mb-3" style="font-size: 16px; color: #000000; border: 1.5px solid #000000 !important; background: #fafafa;">
+                            {{ $bast->work_title }}
+                        </div>
+
+                        <table class="mb-2" style="font-size: 13.5px; width: 100%; color: #000000;">
+                            @if ($bast->type === 'Rental')
+                                <tr>
+                                    <td style="width: 250px; padding: 4px 0; color: #000000;">Tanggal Commissioning</td>
+                                    <td style="width: 20px; padding: 4px 0; color: #000000;">:</td>
+                                    <td style="padding: 4px 0; color: #000000; font-weight: 600;">
+                                        @if ($bast->work_date)
+                                            {{ \Carbon\Carbon::parse($bast->work_date)->format('d-m-Y') }}
+                                        @else
+                                            <span style="display: inline-block; min-width: 200px; border-bottom: 1.5px dotted #000; height: 16px; vertical-align: middle;"></span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 4px 0; color: #000000;">Masa Rental</td>
+                                    <td style="padding: 4px 0; color: #000000;">:</td>
+                                    <td style="padding: 4px 0; color: #000000; font-weight: 600;">
+                                        @if ($bast->rental_start_date && $bast->rental_end_date)
+                                            {{ \Carbon\Carbon::parse($bast->rental_start_date)->format('d-m-Y') }} s/d {{ \Carbon\Carbon::parse($bast->rental_end_date)->format('d-m-Y') }}
+                                        @elseif ($bast->rental_start_date)
+                                            {{ \Carbon\Carbon::parse($bast->rental_start_date)->format('d-m-Y') }} s/d <span style="display: inline-block; min-width: 120px; border-bottom: 1.5px dotted #000; height: 16px; vertical-align: middle;"></span>
+                                        @elseif ($bast->rental_end_date)
+                                            <span style="display: inline-block; min-width: 120px; border-bottom: 1.5px dotted #000; height: 16px; vertical-align: middle;"></span> s/d {{ \Carbon\Carbon::parse($bast->rental_end_date)->format('d-m-Y') }}
+                                        @else
+                                            <span style="display: inline-block; min-width: 120px; border-bottom: 1.5px dotted #000; height: 16px; vertical-align: middle;"></span> s/d <span style="display: inline-block; min-width: 120px; border-bottom: 1.5px dotted #000; height: 16px; vertical-align: middle;"></span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @else
+                                <tr>
+                                    <td style="width: 250px; padding: 4px 0; color: #000000;">Tanggal Pekerjaan</td>
+                                    <td style="width: 20px; padding: 4px 0; color: #000000;">:</td>
+                                    <td style="padding: 4px 0; color: #000000; font-weight: 600;">
+                                        @if ($bast->work_date)
+                                            {{ \Carbon\Carbon::parse($bast->work_date)->format('d-m-Y') }}
+                                        @else
+                                            <span style="display: inline-block; min-width: 200px; border-bottom: 1.5px dotted #000; height: 16px; vertical-align: middle;"></span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endif
+                            <tr>
+                                <td style="padding: 4px 0; color: #000000;">Sesuai PO/ kontrak no.</td>
+                                <td style="padding: 4px 0; color: #000000;">:</td>
+                                <td style="padding: 4px 0; color: #000000; font-weight: 600;">{{ $bast->po_number ?: '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 4px 0; color: #000000;">Terhadap unit-unit sebagai berikut</td>
+                                <td style="padding: 4px 0; color: #000000;">:</td>
+                                <td style="padding: 4px 0; color: #000000;"></td>
+                            </tr>
+                        </table>
+
+                        <table class="table table-bordered mb-3" style="font-size: 13px; color: #000000; border: 1.5px solid #000000;">
+                            <thead>
+                                <tr style="background-color: #f8f9fa;">
+                                    <th style="width: 8%; color: #000000; font-weight: 700; border: 1px solid #000000; text-align: center;">No.</th>
+                                    <th style="color: #000000; font-weight: 700; border: 1px solid #000000;">Unit</th>
+                                    <th style="color: #000000; font-weight: 700; border: 1px solid #000000;">Serial No.</th>
+                                    <th style="width: 15%; color: #000000; font-weight: 700; border: 1px solid #000000; text-align: center;">Jumlah</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if ($bast->units && $bast->units->isNotEmpty())
+                                    @foreach ($bast->units as $unit)
+                                        <tr>
+                                            <td style="color: #000000; border: 1px solid #000000; text-align: center;">{{ $loop->iteration }}</td>
+                                            <td style="color: #000000; border: 1px solid #000000; font-weight: 500;">{{ $unit->unit_name }}</td>
+                                            <td style="color: #000000; border: 1px solid #000000;">{{ $unit->serial_no ?: '-' }}</td>
+                                            <td style="color: #000000; border: 1px solid #000000; text-align: center; font-weight: 600;">{{ $unit->qty }}</td>
+                                        </tr>
+                                    @endforeach
+                                @else
+                                    <tr>
+                                        <td colspan="4" class="text-center py-2 text-muted" style="border: 1px solid #000000;">Tidak ada unit terdaftar.</td>
+                                    </tr>
+                                @endif
+                            </tbody>
+                        </table>
+
+                        <p class="mb-2" style="font-size: 13.5px; font-weight: 700; color: #000000;">
+                            Hasil Pengecekan Pada Saat Test Running :
+                        </p>
+
+                        <div class="mb-3">
+                            <textarea class="form-control" rows="3" style="font-size: 13px; line-height: 1.5; border: 1.5px solid #000000; width: 100%; resize: none; background: #fff; color: #000000; font-weight: 500;" readonly>{{ $bast->test_running_result }}</textarea>
+                        </div>
+
+                        @if ($bast->type === 'Rental')
+                            <p class="mb-1" style="font-size: 13.5px; color: #000000;">
+                                Demikian <strong style="color: #000000;">BERITA ACARA SERAH TERIMA UNIT RENTAL</strong> ini di tanda tangani oleh kedua belah pihak :
+                            </p>
+
+                            <table class="table-borderless mb-3 ms-2" style="font-size: 13.5px; line-height: 1.6; width: auto; color: #000000;">
+                                <tr>
+                                    <td style="width: 220px; padding: 2px 0; color: #000000;">• Yang Menyerahkan (Penyedia)</td>
+                                    <td style="width: 20px; padding: 2px 0; color: #000000;">:</td>
+                                    <td style="padding: 2px 0; color: #000000;"><strong style="color: #000000;">{{ $entityFullName }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 220px; padding: 2px 0; color: #000000;">• Yang Menerima (Penyewa)</td>
+                                    <td style="width: 20px; padding: 2px 0; color: #000000;">:</td>
+                                    <td style="padding: 2px 0; color: #000000;"><strong style="color: #000000;">{{ $bast->customer_name }}</strong></td>
+                                </tr>
+                            </table>
+
+                            <p class="mb-3" style="font-size: 13.5px; line-height: 1.6; color: #000000;">
+                                Dengan ini unit rental tersebut di atas dinyatakan telah <strong style="color: #000000;">DITERIMA DALAM KONDISI BAIK &amp; SIAP BEROPERASI</strong>. Unit tetap merupakan milik/aset <strong style="color: #000000;">{{ $entityFullName }}</strong> dan akan diambil/ditarik kembali setelah masa sewa/rental berakhir.
+                            </p>
+                        @else
+                            <p class="mb-1" style="font-size: 13.5px; color: #000000;">
+                                Demikian <strong style="color: #000000;">BERITA ACARA SERAH TERIMA PEKERJAAN</strong> ini di tanda tangani oleh kedua belah pihak :
+                            </p>
+
+                            <table class="table-borderless mb-3 ms-2" style="font-size: 13.5px; line-height: 1.6; width: auto; color: #000000;">
+                                <tr>
+                                    <td style="width: 180px; padding: 2px 0; color: #000000;">• Pelaksana pekerjaan</td>
+                                    <td style="width: 20px; padding: 2px 0; color: #000000;">:</td>
+                                    <td style="padding: 2px 0; color: #000000;"><strong style="color: #000000;">{{ $entityFullName }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 180px; padding: 2px 0; color: #000000;">• Pemberi pekerjaan</td>
+                                    <td style="width: 20px; padding: 2px 0; color: #000000;">:</td>
+                                    <td style="padding: 2px 0; color: #000000;"><strong style="color: #000000;">{{ $bast->customer_name }}</strong></td>
+                                </tr>
+                            </table>
+
+                            <p class="mb-3" style="font-size: 13.5px; line-height: 1.6; color: #000000;">
+                                Dengan ini segala hal yang berhubungan dengan pekerjaan tersebut diatas dinyatakan
+                                <strong style="color: #000000;">SELESAI</strong>.
+                            </p>
+                        @endif
+
+                        {{-- Signature --}}
+                        <div class="d-flex justify-content-between pt-4 mt-2" style="font-size: 13.5px; color: #000000;">
+                            <div class="text-center" style="width: 42%;">
+                                <p class="fw-bold text-uppercase mb-0" style="font-size: 13.5px; color: #000000;">{{ $entityFullName }}</p>
+                                @if ($bast->sign)
+                                    <div class="d-flex align-items-center justify-content-center" style="height: 80px; margin: 4px 0;">
+                                        <img src="{{ asset($bast->sign) }}" alt="Hand Sign" style="max-height: 75px; max-width: 170px; object-fit: contain;">
+                                    </div>
+                                    <p class="mb-0 fw-bold text-dark" style="font-size: 13.5px; color: #000000;">
+                                        ( <u>{{ $isReftech ? 'Ariep Rachman' : 'Dedeh Sulastri' }}</u> )
+                                    </p>
+                                @else
+                                    <div style="height: 80px;"></div>
+                                    <p class="mb-0" style="font-size: 13.5px; color: #000000; font-weight: 600;">( ........................................ )</p>
+                                @endif
+                            </div>
+                            <div class="text-center" style="width: 42%;">
+                                <p class="fw-bold text-uppercase mb-0" style="font-size: 13.5px; color: #000000;">{{ $bast->customer_name }}</p>
+                                @if ($bast->customer_signature)
+                                    <div class="d-flex align-items-center justify-content-center position-relative" style="height: 80px; margin: 4px 0;">
+                                        <img src="{{ asset($bast->customer_signature) }}" alt="Customer Signature" style="max-height: 75px; max-width: 170px; object-fit: contain; z-index: 2;">
+                                        @if ($bast->customer_signed_stamp)
+                                            <img src="{{ asset($bast->customer_signed_stamp) }}" alt="Stamp" style="position: absolute; max-height: 65px; opacity: 0.75; z-index: 1; transform: rotate(-5deg);">
+                                        @endif
+                                    </div>
+                                    <p class="mb-0 fw-bold text-dark" style="font-size: 13.5px; color: #000000;">
+                                        ( <u>{{ $bast->customer_signer_name }}</u> )
+                                    </p>
+                                    @if ($bast->customer_signer_position)
+                                        <small class="text-muted d-block" style="font-size: 11px;">{{ $bast->customer_signer_position }}</small>
+                                    @endif
+                                @else
+                                    <div style="height: 80px;"></div>
+                                    <p class="mb-0" style="font-size: 13.5px; color: #000000; font-weight: 600;">( ........................................ )</p>
+                                @endif
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
                 {{-- Sidebar BAST --}}
                 <div class="col-xl-3 col-md-4 col-12">
+                    {{-- Share Link TTD Online Customer --}}
+                    <div class="card mb-3 border-0 shadow-sm" style="border-radius: 8px;">
+                        <div class="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between" style="background-color: #f8fafc;">
+                            <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-1.5" style="font-size: 12.5px;">
+                                <i class="mdi mdi-draw text-primary fs-5"></i>
+                                <span>TTD Online Customer</span>
+                            </h6>
+                            @if ($bast->isSignedByCustomer())
+                                <span class="badge bg-success" style="font-size: 10px;">Sudah TTD</span>
+                            @else
+                                <span class="badge bg-warning text-dark" style="font-size: 10px;">Menunggu TTD</span>
+                            @endif
+                        </div>
+                        <div class="card-body p-3">
+                            @if ($bast->isSignedByCustomer())
+                                <div class="p-2.5 rounded mb-2.5" style="background-color: #f0fdf4; border: 1px solid #bbf7d0; font-size: 11.5px;">
+                                    <div class="d-flex align-items-center gap-1 text-success fw-bold mb-1">
+                                        <i class="mdi mdi-check-circle"></i> Ditandatangani Customer
+                                    </div>
+                                    <div class="text-dark"><strong>{{ $bast->customer_signer_name }}</strong></div>
+                                    @if ($bast->customer_signer_position)
+                                        <div class="text-muted small">{{ $bast->customer_signer_position }}</div>
+                                    @endif
+                                    <div class="text-muted mt-1" style="font-size: 10.5px;">
+                                        <i class="mdi mdi-clock-outline me-1"></i>{{ $bast->customer_signed_at ? $bast->customer_signed_at->format('d/m/Y H:i') : '-' }} WIB
+                                    </div>
+                                    @if ($bast->customer_ip)
+                                        <div class="text-muted" style="font-size: 10.5px;">
+                                            <i class="mdi mdi-ip-network-outline me-1"></i>IP: {{ $bast->customer_ip }}
+                                        </div>
+                                    @endif
+                                    @if ($bast->customer_signature)
+                                        <div class="mt-2 text-center p-1.5 bg-white rounded border">
+                                            <img src="{{ asset($bast->customer_signature) }}" alt="Customer Signature" style="max-height: 45px; max-width: 100%; object-fit: contain;">
+                                        </div>
+                                    @endif
+                                </div>
+
+                                <div class="d-flex flex-column gap-2">
+                                    <a href="{{ $bast->sign_url }}" target="_blank" class="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1">
+                                        <i class="mdi mdi-eye-outline"></i>
+                                        <span>Lihat Halaman TTD</span>
+                                    </a>
+                                    @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
+                                        <form action="{{ route('bast.reset-signature', $bast->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus / mereset tanda tangan customer pada BAST ini? Customer akan dapat menandatangani ulang.');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-outline-danger btn-sm w-100 d-flex align-items-center justify-content-center gap-1">
+                                                <i class="mdi mdi-delete-outline"></i>
+                                                <span>Hapus / Reset TTD Customer</span>
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
+                            @else
+                                <p class="text-muted mb-2" style="font-size: 11.5px; line-height: 1.4;">
+                                    Kirim tautan berikut ke customer agar dapat memeriksa BAST &amp; membubuhkan tanda tangan digital:
+                                </p>
+
+                                <div class="input-group input-group-sm mb-2.5">
+                                    <input type="text" class="form-control" id="bast-sign-url" value="{{ $bast->sign_url }}" readonly style="font-size: 11px;">
+                                    <button class="btn btn-primary" type="button" id="btn-copy-bast-sign-url" title="Salin Link">
+                                        <i class="mdi mdi-content-copy"></i>
+                                    </button>
+                                </div>
+
+                                @php
+                                    $picPhone = preg_replace('/[^0-9]/', '', ($quote->pic?->phone ?? ''));
+                                    if (str_starts_with($picPhone, '0')) {
+                                        $picPhone = '62' . substr($picPhone, 1);
+                                    }
+                                    $clientComp = $bast->customer_name ?: ($quote->client?->company ?? '');
+                                    $picName = $quote->pic?->name ?? '';
+                                    $docTypeLabel = $bast->type === 'Rental' ? 'Berita Acara Serah Terima Unit Rental' : 'Berita Acara Serah Terima (BAST)';
+                                    $waMessage = rawurlencode("Halo Bapak/Ibu " . ($picName ?: '') . " (" . $clientComp . "),\n\nBerikut kami lampirkan tautan dokumen " . $docTypeLabel . " (" . ($bast->no_bast ?: '') . ").\nSilakan periksa rincian serah terima dan bubuhi tanda tangan digital melalui tautan berikut:\n" . $bast->sign_url . "\n\nTerima kasih.\n" . $entityFullName);
+                                    $waLink = "https://wa.me/" . ($picPhone ?: '') . "?text=" . $waMessage;
+                                @endphp
+
+                                <div class="d-flex flex-column gap-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1" id="btn-copy-bast-link-action">
+                                        <i class="mdi mdi-link-variant"></i>
+                                        <span>Salin Link TTD</span>
+                                    </button>
+                                    <a href="{{ $waLink }}" target="_blank" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center gap-1 text-white">
+                                        <i class="mdi mdi-whatsapp fs-5"></i>
+                                        <span>Kirim via WhatsApp</span>
+                                    </a>
+                                    <a href="{{ $bast->sign_url }}" target="_blank" class="btn btn-outline-secondary btn-sm w-100 d-flex align-items-center justify-content-center gap-1">
+                                        <i class="mdi mdi-open-in-new"></i>
+                                        <span>Buka Portal TTD</span>
+                                    </a>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
                     <div class="card mb-3 border-0 shadow-sm">
                         <div class="card-header bg-transparent border-bottom py-2 px-3">
                             <small class="text-uppercase text-muted fw-bold">Aksi BAST</small>
                         </div>
                         <div class="card-body p-3 d-grid gap-2">
+                            {{-- Hand Sign Button --}}
+                            @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
+                                @if ($bast->sign)
+                                    <button type="button" class="btn btn-outline-danger d-grid w-100 delete-hand-sign-bast shadow-sm py-2" data-id="{{ $bast->id }}">
+                                        <span class="d-flex align-items-center justify-content-center gap-1 fw-bold fs-6">
+                                            <i class="mdi mdi-signature-freehand fs-5"></i> Delete Hand Sign
+                                        </span>
+                                    </button>
+                                @else
+                                    <button type="button" class="btn btn-outline-success d-grid w-100 input-hand-sign-bast shadow-sm py-2" data-id="{{ $bast->id }}">
+                                        <span class="d-flex align-items-center justify-content-center gap-1 fw-bold fs-6">
+                                            <i class="mdi mdi-draw fs-5"></i> Hand Sign
+                                        </span>
+                                    </button>
+                                @endif
+                            @endif
+
+                            @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
+                                <button type="button" class="btn btn-outline-primary d-grid w-100 btn-edit-bast shadow-sm py-2" data-id="{{ $bast->id }}">
+                                    <span class="d-flex align-items-center justify-content-center gap-1 fw-bold fs-6">
+                                        <i class="mdi mdi-pencil-outline fs-5"></i> Edit BAST
+                                    </span>
+                                </button>
+                            @endif
                             <a href="{{ route('bast.print', $bast->id) }}" target="_blank" class="btn btn-primary d-grid w-100 shadow-sm py-2">
                                 <span class="d-flex align-items-center justify-content-center gap-1 fw-bold fs-6">
                                     <i class="mdi mdi-printer-outline fs-5"></i> Cetak BAST
                                 </span>
                             </a>
+                            @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
+                                <button type="button" class="btn btn-outline-danger d-grid w-100 delete-bast shadow-sm py-2" data-id="{{ $bast->id }}">
+                                    <span class="d-flex align-items-center justify-content-center gap-1 fw-bold fs-6">
+                                        <i class="mdi mdi-delete-outline fs-5"></i> Hapus BAST
+                                    </span>
+                                </button>
+                            @endif
                             <a href="{{ route('invoice.index') }}" class="btn btn-outline-secondary w-100 py-2">
                                 <i class="mdi mdi-arrow-left me-1"></i> Kembali ke Daftar Invoice
                             </a>
+                        </div>
+                    </div>
+
+                    {{-- BAST Quick Information Card --}}
+                    <div class="card mb-3 border-0 shadow-sm">
+                        <div class="card-header bg-transparent border-bottom py-2 px-3">
+                            <small class="text-uppercase text-muted fw-bold" style="font-size:10px; letter-spacing:0.5px;">Informasi BAST</small>
+                        </div>
+                        <div class="card-body p-3 d-grid gap-2" style="font-size: 12px;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">No. BAST</span>
+                                <span class="fw-bold text-primary">{{ $bast->no_bast }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Tipe</span>
+                                <span class="badge {{ $bast->type === 'Rental' ? 'bg-label-info' : 'bg-label-secondary' }}">{{ $bast->type === 'Rental' ? 'BAST Rental' : 'Default BAST' }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Entitas</span>
+                                <span class="fw-semibold text-dark">{{ $bast->entity }}</span>
+                            </div>
+                            @if ($bast->type === 'Rental')
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted">Commissioning</span>
+                                    <span class="fw-semibold text-dark">{{ $bast->work_date ? \Carbon\Carbon::parse($bast->work_date)->format('d M Y') : 'Isi Manual' }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted">Masa Rental</span>
+                                    <span class="fw-semibold text-dark" style="font-size:11px;">
+                                        @if ($bast->rental_start_date && $bast->rental_end_date)
+                                            {{ \Carbon\Carbon::parse($bast->rental_start_date)->format('d/m/Y') }} s/d {{ \Carbon\Carbon::parse($bast->rental_end_date)->format('d/m/Y') }}
+                                        @else
+                                            Isi Manual
+                                        @endif
+                                    </span>
+                                </div>
+                            @else
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted">Tgl Pekerjaan</span>
+                                    <span class="fw-semibold text-dark">{{ $bast->work_date ? \Carbon\Carbon::parse($bast->work_date)->format('d M Y') : 'Isi Manual' }}</span>
+                                </div>
+                            @endif
+                            @if ($bast->po_number)
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted">No. PO</span>
+                                    <span class="badge bg-label-primary">{{ $bast->po_number }}</span>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -2003,6 +2383,170 @@
         @include('components.modal.invoice.due-date')
     @endif
 
+    {{-- Modal Buat BAST (Berita Acara Serah Terima) --}}
+    @if (!isset($bast) || !$bast)
+        <div class="modal fade" id="modalCreateBast" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <form id="formCreateBast" method="POST" action="{{ route('bast.store') }}">
+                    @csrf
+                    <input type="hidden" name="id_kanban_task" value="{{ $monitoringTask ? $monitoringTask->id : '' }}">
+                    <input type="hidden" name="id_quotation" value="{{ $quote->id }}">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header bg-light py-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="mdi mdi-certificate-outline text-success fs-4"></i>
+                                <h5 class="modal-title fw-bold mb-0">Buat Berita Acara Serah Terima (BAST)</h5>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            @php
+                                $invoiceEntity = (($quote->client?->info ?? $invoice->flag) === 'Kojisha') ? 'Kojisha' : 'Reftech';
+                                $invoiceEntityFullName = $invoiceEntity === 'Kojisha' ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima';
+                            @endphp
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Tipe BAST</label>
+                                    <select name="type" id="createBastType" class="form-select fw-bold text-primary" required>
+                                        <option value="Default" selected>Default BAST (Standard)</option>
+                                        <option value="Rental">BAST Rental (Khusus Rental)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Entitas Perusahaan <span class="badge bg-label-secondary ms-1" style="font-size: 10px;">Otomatis dari Invoice</span></label>
+                                    <input type="hidden" name="entity" value="{{ $invoiceEntity }}">
+                                    <input type="text" class="form-control bg-light fw-semibold text-dark" value="{{ $invoiceEntityFullName }}" readonly tabindex="-1">
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold" id="createBastWorkDateLabel">Tanggal Pekerjaan</label>
+                                    <input type="date" name="work_date" id="createBastWorkDate" class="form-control" value="{{ \Carbon\Carbon::today()->toDateString() }}">
+                                    <div class="form-text text-muted" style="font-size: 11px;">Opsional — kosongkan jika ingin ditulis manual di printout.</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Nomor PO / Ref</label>
+                                    <input type="text" name="po_number" class="form-control" value="{{ $quote->po_number ?: $quote->no_quote }}">
+                                </div>
+                            </div>
+
+                            {{-- Baris Khusus Tipe BAST Rental --}}
+                            <div class="row g-3 mb-3 d-none" id="createBastRentalDatesRow">
+                                <div class="col-12">
+                                    <div class="p-3 bg-light rounded border border-primary border-opacity-25">
+                                        <label class="form-label fw-bold text-primary mb-2 d-flex align-items-center gap-1">
+                                            <i class="mdi mdi-calendar-range"></i> Masa Rental :
+                                        </label>
+                                        <div class="row g-2">
+                                            <div class="col-md-6">
+                                                <label class="form-label small text-muted mb-1">Tanggal Mulai</label>
+                                                <input type="date" name="rental_start_date" id="createBastRentalStart" class="form-control">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small text-muted mb-1">Tanggal Berakhir</label>
+                                                <input type="date" name="rental_end_date" id="createBastRentalEnd" class="form-control">
+                                            </div>
+                                        </div>
+                                        <div class="form-text text-muted mt-2" style="font-size: 11px;">
+                                            <i class="mdi mdi-information-outline me-1"></i>Masa rental bisa dikosongkan jika ingin diisi/ditulis manual pada printout.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Nama Customer (Penerima)</label>
+                                    <input type="text" name="customer_name" class="form-control" value="{{ $quote->client->company ?? '' }}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Nama Pekerjaan (Title)</label>
+                                    <input type="text" name="work_title" class="form-control" value="{{ $quote->title ?: ($quote->no_quote ?? '') }}" required>
+                                </div>
+                            </div>
+
+                            <h6 class="fw-bold mb-2 text-dark mt-4"><i class="mdi mdi-format-list-bulleted me-1 text-success"></i> Rincian Unit / Barang</h6>
+                            <div class="table-responsive border rounded mb-3">
+                                <table class="table table-sm align-middle m-0" id="tableBastUnits">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Nama Unit / Barang</th>
+                                            <th style="width:30%;">No. Seri (Serial Number)</th>
+                                            <th style="width:15%;" class="text-center">Qty</th>
+                                            <th style="width:8%;" class="text-center">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if ($quote->details && $quote->details->isNotEmpty())
+                                            @foreach ($quote->details as $idx => $item)
+                                                @php
+                                                    $unitName = '';
+                                                    if ($item->fixedAsset) {
+                                                        $brandModel = trim(($item->fixedAsset->merk_model ?: ($item->fixedAsset->unit ? ($item->fixedAsset->unit->brand . ' ' . $item->fixedAsset->unit->model) : '')));
+                                                        $unitName = $brandModel ?: ($item->label ?: $item->description);
+                                                    } elseif ($item->unit) {
+                                                        $unitName = trim(($item->unit->brand ? $item->unit->brand . ' ' : '') . ($item->unit->model ?: $item->unit->name ?: ''));
+                                                    }
+                                                    if (!$unitName) {
+                                                        $unitName = $item->label ?: $item->description;
+                                                    }
+
+                                                    $serialNo = $item->fixedAsset?->serial_number
+                                                        ?: $item->unit?->sn
+                                                        ?: ($item->id_unit ? \App\Models\UnitInventory::where('id_unit', $item->id_unit)->value('serial_number') : null)
+                                                        ?: ($item->fixedAsset?->code ?: '');
+                                                @endphp
+                                                <tr>
+                                                    <td>
+                                                        <input type="text" name="units[{{ $idx }}][unit_name]" class="form-control form-control-sm" value="{{ $unitName }}" required>
+                                                    </td>
+                                                    <td>
+                                                        <input type="text" name="units[{{ $idx }}][serial_no]" class="form-control form-control-sm" value="{{ $serialNo }}" placeholder="S/N (Opsional)">
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" name="units[{{ $idx }}][qty]" class="form-control form-control-sm text-center" value="1" min="1">
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <button type="button" class="btn btn-xs btn-outline-danger remove-bast-unit-row"><i class="mdi mdi-delete-outline"></i></button>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        @else
+                                            <tr>
+                                                <td><input type="text" name="units[0][unit_name]" class="form-control form-control-sm" placeholder="Nama Unit" required></td>
+                                                <td><input type="text" name="units[0][serial_no]" class="form-control form-control-sm" placeholder="S/N"></td>
+                                                <td><input type="number" name="units[0][qty]" class="form-control form-control-sm text-center" value="1" min="1"></td>
+                                                <td class="text-center"><button type="button" class="btn btn-xs btn-outline-danger remove-bast-unit-row"><i class="mdi mdi-delete-outline"></i></button></td>
+                                            </tr>
+                                        @endif
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button type="button" class="btn btn-xs btn-outline-success mb-3" id="btnAddBastUnitRow">
+                                <i class="mdi mdi-plus me-1"></i> Tambah Baris Unit
+                            </button>
+
+                            <div class="mb-2">
+                                <label class="form-label fw-semibold">Hasil Test Running / Catatan Serah Terima</label>
+                                <textarea name="test_running_result" class="form-control" rows="3" placeholder="Contoh: Unit telah terpasang, dites running dengan hasil baik & berfungsi normal."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light py-2">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-success fw-bold" id="btnSubmitCreateBast">
+                                <i class="mdi mdi-check me-1"></i> Simpan BAST
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    {{-- Shared BAST Modal (Used for Edit & Create) --}}
+    @include('components.modal.bast.create')
+
 @endsection
 
 @push('after-style')
@@ -2389,15 +2933,36 @@
         }
     };
 
-    // BAST Form Submit
-    $('#formCreateBast').on('submit', function (e) {
+    // BAST Type change handler (delegated)
+    $(document).on('change', '#createBastType', function () {
+        var type = $(this).val();
+        if (type === 'Rental') {
+            $('#createBastWorkDateLabel').text('Tanggal Commissioning');
+            $('#createBastRentalDatesRow').removeClass('d-none');
+            $('#tableBastUnits tbody input[name$="[qty]"]').val(1);
+        } else {
+            $('#createBastWorkDateLabel').text('Tanggal Pekerjaan');
+            $('#createBastRentalDatesRow').addClass('d-none');
+        }
+    });
+
+    // BAST Form Submit (delegated)
+    $(document).on('submit', '#formCreateBast', function (e) {
         e.preventDefault();
-        var formData = $(this).serialize();
+        var $form = $(this);
+        var $btn = $('#btnSubmitCreateBast');
+        $btn.prop('disabled', true).html('<i class="mdi mdi-loading mdi-spin me-1"></i> Menyimpan...');
+
+        var formData = $form.serialize();
         $.ajax({
             url: '{{ route("bast.store") }}',
             type: 'POST',
             data: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             success: function (res) {
+                $('#modalCreateBast').modal('hide');
                 Swal.fire({
                     icon: 'success',
                     title: 'BAST Berhasil Dibuat!',
@@ -2407,11 +2972,18 @@
                 setTimeout(function () {
                     window.location.hash = 'tab-bast';
                     location.reload();
-                }, 1200);
+                }, 1000);
             },
             error: function (xhr) {
-                var msg = xhr.responseJSON ? xhr.responseJSON.message : 'Gagal membuat BAST.';
-                Swal.fire('Oops...', msg, 'error');
+                var msg = 'Gagal membuat BAST.';
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                    if (xhr.responseJSON.errors) {
+                        msg = Object.values(xhr.responseJSON.errors).map(function(e){ return e[0]; }).join('<br>');
+                    }
+                }
+                Swal.fire({ icon: 'error', title: 'Oops...', html: msg });
+                $btn.prop('disabled', false).html('<i class="mdi mdi-check me-1"></i> Simpan BAST');
             }
         });
     });
@@ -2434,6 +3006,180 @@
             $(this).closest('tr').remove();
         } else {
             Swal.fire('Info', 'Minimal harus ada 1 unit barang.', 'info');
+        }
+    });
+
+    // Edit BAST
+    $(document).on('click', '.btn-edit-bast', function (e) {
+        e.preventDefault();
+        var id = $(this).data('id');
+        var $btn = $(this);
+        $btn.prop('disabled', true);
+
+        $.ajax({
+            url: '{{ url("/bast") }}/' + id + '/edit-data',
+            type: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            success: function (response) {
+                if (response && response.bast) {
+                    var b = response.bast;
+                    if (typeof window.openBastModal === 'function') {
+                        window.openBastModal({
+                            bastId: b.id,
+                            type: b.type,
+                            entity: b.entity,
+                            customerName: b.customer_name,
+                            workTitle: b.work_title,
+                            poNumber: b.po_number,
+                            workDate: b.work_date,
+                            rentalStartDate: b.rental_start_date,
+                            rentalEndDate: b.rental_end_date,
+                            testRunningResult: b.test_running_result,
+                            units: b.units,
+                            idKanbanTask: '{{ $monitoringTask ? $monitoringTask->id : "" }}',
+                            idQuotation: '{{ $quote->id }}'
+                        });
+                    }
+                } else {
+                    Swal.fire('Error', 'Gagal memuat data BAST.', 'error');
+                }
+            },
+            error: function () {
+                Swal.fire('Error', 'Gagal mengambil data BAST dari server.', 'error');
+            },
+            complete: function () {
+                $btn.prop('disabled', false);
+            }
+        });
+    });
+
+    // Handle BAST Saved event from shared modal
+    $(document).on('bast:saved', function (e, response, isEdit) {
+        Swal.fire({
+            icon: 'success',
+            title: 'Berhasil!',
+            text: isEdit ? 'BAST berhasil diperbarui.' : 'BAST berhasil disimpan.',
+            customClass: { confirmButton: 'btn btn-success waves-effect' },
+        });
+        setTimeout(function () {
+            window.location.hash = 'tab-bast';
+            location.reload();
+        }, 1000);
+    });
+
+    // Input Hand Sign BAST
+    $(document).on('click', '.input-hand-sign-bast', function (e) {
+        e.preventDefault();
+        var id = $(this).data('id');
+        Swal.fire({
+            title: 'Input Hand Sign BAST?',
+            text: 'Tanda tangan resmi pelaksana akan otomatis ditambahkan ke BAST.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, input!',
+            cancelButtonText: 'Batal',
+            customClass: {
+                confirmButton: 'btn btn-primary me-3 waves-effect',
+                cancelButton: 'btn btn-label-secondary waves-effect',
+            },
+            buttonsStyling: false,
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '{{ url("/bast") }}/' + id + '/sign',
+                    type: 'POST',
+                    data: { '_token': '{{ csrf_token() }}' },
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    success: function (response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: 'Hand sign berhasil ditambahkan ke BAST.',
+                            customClass: { confirmButton: 'btn btn-success waves-effect' },
+                        });
+                        setTimeout(function () {
+                            window.location.hash = 'tab-bast';
+                            location.reload();
+                        }, 1000);
+                    },
+                    error: function () {
+                        Swal.fire('Error', 'Gagal menambahkan Hand Sign.', 'error');
+                    }
+                });
+            }
+        });
+    });
+
+    // Delete Hand Sign BAST
+    $(document).on('click', '.delete-hand-sign-bast', function (e) {
+        e.preventDefault();
+        var id = $(this).data('id');
+        Swal.fire({
+            title: 'Hapus Hand Sign BAST?',
+            text: 'Tanda tangan pada BAST ini akan dihapus.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, hapus!',
+            cancelButtonText: 'Batal',
+            customClass: {
+                confirmButton: 'btn btn-danger me-3 waves-effect',
+                cancelButton: 'btn btn-label-secondary waves-effect',
+            },
+            buttonsStyling: false,
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '{{ url("/bast") }}/' + id + '/del-sign',
+                    type: 'POST',
+                    data: {
+                        '_method': 'DELETE',
+                        '_token': '{{ csrf_token() }}'
+                    },
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    success: function (response) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Dihapus!',
+                            text: 'Hand sign BAST berhasil dihapus.',
+                            customClass: { confirmButton: 'btn btn-success waves-effect' },
+                        });
+                        setTimeout(function () {
+                            window.location.hash = 'tab-bast';
+                            location.reload();
+                        }, 1000);
+                    },
+                    error: function () {
+                        Swal.fire('Error', 'Gagal menghapus Hand Sign.', 'error');
+                    }
+                });
+            }
+        });
+    });
+
+    // Copy BAST Sign URL
+    $(document).on('click', '#btn-copy-bast-sign-url, #btn-copy-bast-link-action', function () {
+        var urlInput = document.getElementById('bast-sign-url');
+        if (urlInput) {
+            urlInput.select();
+            urlInput.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(urlInput.value).then(function () {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Link Berhasil Disalin!',
+                    text: 'Tautan tanda tangan BAST telah disalin ke clipboard.',
+                    timer: 1800,
+                    showConfirmButton: false
+                });
+            }).catch(function () {
+                document.execCommand('copy');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Link Berhasil Disalin!',
+                    text: 'Tautan tanda tangan BAST telah disalin ke clipboard.',
+                    timer: 1800,
+                    showConfirmButton: false
+                });
+            });
         }
     });
 
@@ -2529,118 +3275,4 @@
     })();
 </script>
 
-{{-- Modal Buat BAST (Berita Acara Serah Terima) --}}
-@if (!isset($bast) || !$bast)
-    <div class="modal fade" id="modalCreateBast" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <form id="formCreateBast">
-                @csrf
-                <input type="hidden" name="id_kanban_task" value="{{ $monitoringTask ? $monitoringTask->id : '' }}">
-                <input type="hidden" name="id_quotation" value="{{ $quote->id }}">
-                <div class="modal-content border-0 shadow">
-                    <div class="modal-header bg-light py-3">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="mdi mdi-certificate-outline text-success fs-4"></i>
-                            <h5 class="modal-title fw-bold mb-0">Buat Berita Acara Serah Terima (BAST)</h5>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body p-4">
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold">Entitas Perusahaan</label>
-                                <select name="entity" class="form-select" required>
-                                    <option value="Reftech" selected>Reftech</option>
-                                    <option value="Kojisha">Kojisha</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold">Tanggal Pekerjaan</label>
-                                <input type="date" name="work_date" class="form-control" value="{{ \Carbon\Carbon::today()->toDateString() }}" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold">Nomor PO / Ref</label>
-                                <input type="text" name="po_number" class="form-control" value="{{ $quote->po_number ?: $quote->no_quote }}">
-                            </div>
-                        </div>
-
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Nama Customer (Penerima)</label>
-                                <input type="text" name="customer_name" class="form-control" value="{{ $quote->client->company ?? '' }}" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold">Nama Pekerjaan (Title)</label>
-                                <input type="text" name="work_title" class="form-control" value="{{ $quote->title ?: ($quote->no_quote ?? '') }}" required>
-                            </div>
-                        </div>
-
-                        <h6 class="fw-bold mb-2 text-dark mt-4"><i class="mdi mdi-format-list-bulleted me-1 text-success"></i> Rincian Unit / Barang</h6>
-                        <div class="table-responsive border rounded mb-3">
-                            <table class="table table-sm align-middle m-0" id="tableBastUnits">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Nama Unit / Barang</th>
-                                        <th style="width:30%;">No. Seri (Serial Number)</th>
-                                        <th style="width:15%;" class="text-center">Qty</th>
-                                        <th style="width:8%;" class="text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @if ($quote->details && $quote->details->isNotEmpty())
-                                        @foreach ($quote->details as $idx => $item)
-                                            @php
-                                                $unitName = '';
-                                                if ($item->details_type === 'Unit' && $item->unit) {
-                                                    $unitName = trim(($item->unit->brand ? $item->unit->brand->name . ' ' : '') . $item->unit->name);
-                                                } else {
-                                                    $unitName = $item->label ?: $item->description;
-                                                }
-                                            @endphp
-                                            <tr>
-                                                <td>
-                                                    <input type="text" name="units[{{ $idx }}][unit_name]" class="form-control form-control-sm" value="{{ $unitName }}" required>
-                                                </td>
-                                                <td>
-                                                    <input type="text" name="units[{{ $idx }}][serial_no]" class="form-control form-control-sm" placeholder="S/N (Opsional)">
-                                                </td>
-                                                <td>
-                                                    <input type="number" name="units[{{ $idx }}][qty]" class="form-control form-control-sm text-center" value="{{ (int)($item->qty ?? 1) }}" min="1">
-                                                </td>
-                                                <td class="text-center">
-                                                    <button type="button" class="btn btn-xs btn-outline-danger remove-bast-unit-row"><i class="mdi mdi-delete-outline"></i></button>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    @else
-                                        <tr>
-                                            <td><input type="text" name="units[0][unit_name]" class="form-control form-control-sm" placeholder="Nama Unit" required></td>
-                                            <td><input type="text" name="units[0][serial_no]" class="form-control form-control-sm" placeholder="S/N"></td>
-                                            <td><input type="number" name="units[0][qty]" class="form-control form-control-sm text-center" value="1" min="1"></td>
-                                            <td class="text-center"><button type="button" class="btn btn-xs btn-outline-danger remove-bast-unit-row"><i class="mdi mdi-delete-outline"></i></button></td>
-                                        </tr>
-                                    @endif
-                                </tbody>
-                            </table>
-                        </div>
-                        <button type="button" class="btn btn-xs btn-outline-success mb-3" id="btnAddBastUnitRow">
-                            <i class="mdi mdi-plus me-1"></i> Tambah Baris Unit
-                        </button>
-
-                        <div class="mb-2">
-                            <label class="form-label fw-semibold">Hasil Test Running / Catatan Serah Terima</label>
-                            <textarea name="test_running_result" class="form-control" rows="3" placeholder="Contoh: Unit telah terpasang, dites running dengan hasil baik & berfungsi normal."></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer bg-light py-2">
-                        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-success fw-bold">
-                            <i class="mdi mdi-check me-1"></i> Simpan BAST
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-@endif
 @endpush

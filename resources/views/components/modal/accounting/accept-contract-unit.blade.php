@@ -9,7 +9,7 @@
                 </div>
                 <div class="modal-body p-0">
                     @php
-                        $isOrderUnit = $contract->type == 'Order';
+                        $isOrderUnit = $contract->type == 'Order' || (bool) ($contract->unitQuotation?->isKojisha());
                         $docNoun     = $isOrderUnit ? 'Confirm Order' : 'Selling Contract';
                         $suffixDoc   = $isOrderUnit ? 'CO/KII' : 'SELLCTX/RJO';
                         $isPpnUnit   = (bool) ($contract->unitQuotation?->tax);
@@ -18,28 +18,65 @@
                             : ($isPpnUnit ? ($unitNumbers['lastSP'] ?? null) : ($unitNumbers['lastSNP'] ?? null));
                     @endphp
                     <div class="onboarding-content mb-0">
-                        <h4 class="onboarding-title text-body">Accept {{ $docNoun }} of {{ $contract->no_contract }}</h4>
+                        <h4 class="onboarding-title text-body mb-1">Accept {{ $docNoun }}</h4>
+                        <div class="text-muted small mb-2">No. Quotation: <strong class="text-dark">{{ $contract->no_contract }}</strong></div>
                         <div class="onboarding-info mb-3">
-                            {{ $contract->unitQuotation?->client?->company ?? '-' }}
+                            <span class="fw-semibold text-dark">{{ $contract->unitQuotation?->client?->company ?? '-' }}</span>
                         </div>
+
+                        <!-- Card Keterangan Entitas & PPN -->
+                        <div class="p-3 mb-3 rounded-3 text-start bg-light border">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small fw-semibold">Tipe Entitas & Dokumen:</span>
+                                <div>
+                                    @if ($isOrderUnit)
+                                        <span class="badge bg-label-warning me-1">Kojisha</span>
+                                        <span class="badge bg-label-dark">Confirm Order</span>
+                                    @else
+                                        <span class="badge bg-label-info me-1">Reftech</span>
+                                        <span class="badge bg-label-primary">Selling Contract</span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small fw-semibold">Status Pajak:</span>
+                                @if ($isPpnUnit)
+                                    <span class="badge bg-label-primary"><i class="mdi mdi-check-circle-outline me-1"></i>PPN</span>
+                                @else
+                                    <span class="badge bg-label-danger"><i class="mdi mdi-close-circle-outline me-1"></i>Non-PPN</span>
+                                @endif
+                            </div>
+                            <div class="alert alert-secondary py-1 px-2 mb-0 mt-2" style="font-size: 11px;">
+                                <i class="mdi mdi-information-outline me-1 text-primary"></i>
+                                <span><strong>Reftech</strong> &rarr; Selling Contract (<code>SELLCTX/RJO</code>) &bull; <strong>Kojisha</strong> &rarr; Confirm Order (<code>CO/KII</code>)</span>
+                            </div>
+                        </div>
+
                         <div class="row">
-                            <div class="col-12 mb-3">
+                            <div class="col-12 mb-3 text-start">
                                 <div class="form-floating form-floating-outline">
                                     <input type="text" class="form-control" id="no_contract_{{ $contract->id }}"
                                         name="no_contract" placeholder="No Contract"
-                                        value="{{ $result }}/{{ $isPpnUnit ? 'P' : 'NP' }}/{{ $suffixDoc }}/{{ $thisYear }}">
-                                    <label for="no_contract_{{ $contract->id }}">No Contract</label>
+                                        value="{{ $result }}/{{ $isPpnUnit ? 'P' : 'NP' }}/{{ $suffixDoc }}/{{ $thisYear }}" required>
+                                    <label for="no_contract_{{ $contract->id }}">No {{ $docNoun }}</label>
                                 </div>
-                                <p class="text-danger text-start mt-2 mb-0">Last No : {{ $lastNoUnit ?? '-' }}</p>
+                                <p class="text-danger text-start mt-2 mb-0 small">
+                                    <i class="mdi mdi-history me-1"></i>Last No : <strong>{{ $lastNoUnit ?? '-' }}</strong>
+                                </p>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">
-                        Close
-                    </button>
-                    <button type="submit" class="btn btn-primary waves-effect waves-light">Submit</button>
+                <div class="modal-footer border-0 d-flex justify-content-between">
+                    <a href="{{ route('contract.show', $contract->id) }}" class="btn btn-outline-primary waves-effect">
+                        <i class="mdi mdi-eye-outline me-1"></i>Detail
+                    </a>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">
+                            Close
+                        </button>
+                        <button type="submit" class="btn btn-primary waves-effect waves-light">Submit</button>
+                    </div>
                 </div>
             </div>
         </div>

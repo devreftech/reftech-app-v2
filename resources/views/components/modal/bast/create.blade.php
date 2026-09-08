@@ -17,33 +17,65 @@
                     <div id="bastFormAlert" class="alert alert-danger d-none"></div>
 
                     <div class="row g-3">
-                        <div class="col-sm-4">
-                            <label class="form-label">Entitas</label>
-                            <select class="form-select" id="bastEntity" name="entity" required>
-                                <option value="Reftech">PT. Reftech Jaya Optima</option>
-                                <option value="Kojisha">PT. Kojisha Innotiv Indonesia</option>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold">Tipe BAST</label>
+                            <select class="form-select fw-bold text-primary" id="bastType" name="type" required>
+                                <option value="Default" selected>Default BAST (Standard)</option>
+                                <option value="Rental">BAST Rental (Khusus Rental)</option>
                             </select>
                         </div>
-                        <div class="col-sm-8">
-                            <label class="form-label">Customer / Perusahaan</label>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold">Entitas</label>
+                            <select class="form-select" id="bastEntity" name="entity" required>
+                                <option value="Reftech">PT Reftech Jaya Optima</option>
+                                <option value="Kojisha">PT Kojisha Innotiv Indonesia</option>
+                            </select>
+                        </div>
+
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold" id="bastWorkDateLabel">Tanggal Pekerjaan</label>
+                            <input type="date" class="form-control" id="bastWorkDate" name="work_date">
+                            <div class="form-text text-muted" style="font-size: 11px;">Opsional — kosongkan jika ingin ditulis manual di printout.</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold">Sesuai PO / Kontrak No.</label>
+                            <input type="text" class="form-control" id="bastPoNumber" name="po_number">
+                        </div>
+
+                        {{-- Baris Khusus Tipe BAST Rental --}}
+                        <div class="col-12 d-none" id="bastRentalDatesRow">
+                            <div class="p-3 bg-light rounded border border-primary border-opacity-25">
+                                <label class="form-label fw-bold text-primary mb-2 d-flex align-items-center gap-1">
+                                    <i class="mdi mdi-calendar-range"></i> Masa Rental :
+                                </label>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted mb-1">Tanggal Mulai Rental</label>
+                                        <input type="date" class="form-control" id="bastRentalStartDate" name="rental_start_date">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted mb-1">Tanggal Berakhir Rental</label>
+                                        <input type="date" class="form-control" id="bastRentalEndDate" name="rental_end_date">
+                                    </div>
+                                </div>
+                                <div class="form-text text-muted mt-2" style="font-size: 11px;">
+                                    <i class="mdi mdi-information-outline me-1"></i>Masa rental bisa dikosongkan jika ingin diisi/ditulis manual pada printout.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-sm-12">
+                            <label class="form-label fw-semibold">Customer / Perusahaan</label>
                             <input type="text" class="form-control" id="bastCustomerName" name="customer_name" required>
                         </div>
                         <div class="col-sm-12">
-                            <label class="form-label">Judul Pekerjaan</label>
+                            <label class="form-label fw-semibold">Judul Pekerjaan</label>
                             <input type="text" class="form-control" id="bastWorkTitle" name="work_title" required>
-                        </div>
-                        <div class="col-sm-6">
-                            <label class="form-label">Sesuai PO / Kontrak No.</label>
-                            <input type="text" class="form-control" id="bastPoNumber" name="po_number">
-                        </div>
-                        <div class="col-sm-6">
-                            <label class="form-label">Tanggal Pekerjaan</label>
-                            <input type="date" class="form-control" id="bastWorkDate" name="work_date" required>
                         </div>
 
                         <div class="col-sm-12">
                             <label class="form-label d-flex justify-content-between align-items-center">
-                                <span>Unit</span>
+                                <span class="fw-semibold">Unit</span>
                                 <button type="button" class="btn btn-xs btn-outline-primary" id="bastAddUnitRow">
                                     <i class="mdi mdi-plus"></i> Tambah Baris
                                 </button>
@@ -65,7 +97,7 @@
                         </div>
 
                         <div class="col-sm-12">
-                            <label class="form-label">Hasil pengecekan pada saat test running</label>
+                            <label class="form-label fw-semibold">Hasil pengecekan pada saat test running</label>
                             <textarea class="form-control" id="bastTestRunningResult" name="test_running_result" rows="3"></textarea>
                         </div>
                     </div>
@@ -129,6 +161,18 @@
             renumberRows();
         });
 
+        $('#bastType').on('change', function() {
+            const type = $(this).val();
+            if (type === 'Rental') {
+                $('#bastWorkDateLabel').text('Tanggal Commissioning');
+                $('#bastRentalDatesRow').removeClass('d-none');
+                $('#bastUnitTableBody input[name$="[qty]"]').val(1);
+            } else {
+                $('#bastWorkDateLabel').text('Tanggal Pekerjaan');
+                $('#bastRentalDatesRow').addClass('d-none');
+            }
+        });
+
         window.openBastModal = function(options) {
             options = options || {};
             $('#bastForm')[0].reset();
@@ -142,11 +186,14 @@
             $('#bastFormMethod').val(isEdit ? 'PATCH' : '');
             $('#bastIdKanbanTask').val(options.idKanbanTask || '');
             $('#bastIdQuotation').val(options.idQuotation || '');
+            $('#bastType').val(options.type || 'Default').trigger('change');
             $('#bastEntity').val(options.entity || 'Reftech');
             $('#bastCustomerName').val(options.customerName || '');
             $('#bastWorkTitle').val(options.workTitle || '');
             $('#bastPoNumber').val(options.poNumber || '');
             $('#bastWorkDate').val(options.workDate || '');
+            $('#bastRentalStartDate').val(options.rentalStartDate || '');
+            $('#bastRentalEndDate').val(options.rentalEndDate || '');
             $('#bastTestRunningResult').val(options.testRunningResult || '');
 
             if (options.units && options.units.length > 0) {

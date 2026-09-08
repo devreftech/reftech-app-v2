@@ -375,7 +375,7 @@
                     <p class="mb-1 text-muted fw-semibold small">Payment Method</p>
                     <p class="mb-3 fw-bold">{{ $typeLabel }} {{ floatval($invoice->percent ?? 100) }}%</p>
                     @if ($quote->po_file)
-                        <a href="{{ Storage::url($quote->po_file) }}" target="_blank"
+                        <a href="{{ $quote->po_file_url }}" target="_blank"
                            class="btn btn-outline-primary d-grid w-100 waves-effect">
                             <i class="mdi mdi-file-pdf-box me-1"></i> Lihat File PO
                         </a>

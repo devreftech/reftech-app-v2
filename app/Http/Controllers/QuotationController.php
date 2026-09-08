@@ -152,7 +152,7 @@ class QuotationController extends Controller
             ->where('o.level', '1')
             ->take(5)
             ->get();
-        $salesList = User::where('role', 'Sales')->where('id', '!=', 23)->orderBy('name')->get(['id', 'name']);
+        $salesList = User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->orderBy('name')->get(['id', 'name']);
         return view('pages.sales.quotation.index', compact('machine', 'noSaleProspect', 'comment', 'unreadComment', 'commentAdmin', 'unreadCommentAdmin', 'leveledProspect', 'quotation', 'forecast', 'prospect', 'po', 'loss', 'quotationAdmin', 'forecastAdmin', 'prospectAdmin', 'poAdmin', 'lossAdmin', 'salesList', 'forecastCount', 'prospectCount', 'poCount', 'lossCount', 'forecastAdminCount', 'prospectAdminCount', 'poAdminCount', 'lossAdminCount'));
     }
 
@@ -900,7 +900,7 @@ class QuotationController extends Controller
         $pic = client::where('client.id_sales', Auth::user()->id)->get();
         // dd($pic);
         $product = collect([]);
-        $sales = User::where('role', 'sales')->get();
+        $sales = User::where('role', 'sales')->where('active', '1')->where('id', '!=', 23)->get();
         // dd($dquotation);
         return view('pages.sales.quotation.form', compact('quotation', 'dquotation', 'sales', 'pic', 'formattedNumberQ', 'formattedMonthNow', 'product'));
     }
@@ -918,7 +918,7 @@ class QuotationController extends Controller
         $pic = client::where('client.id_sales', Auth::user()->id)->get();
         // dd($pic);
         $product = collect([]);
-        $sales = User::where('role', 'sales')->get();
+        $sales = User::where('role', 'sales')->where('active', '1')->where('id', '!=', 23)->get();
         // dd($dquotation);
         return view('pages.sales.quotation.edit', compact('quotation', 'dquotation', 'sales', 'pic', 'formattedNumberQ', 'formattedMonthNow', 'product'));
     }
@@ -2334,7 +2334,7 @@ class QuotationController extends Controller
         $monthNow = $dateNow->month;
         $formattedMonthNow = $this->convertToRoman($monthNow);
         $pic = client::where('client.id_sales', Auth::user()->id)->get();
-        $sales = User::where('role', 'sales')->get();
+        $sales = User::where('role', 'sales')->where('active', '1')->where('id', '!=', 23)->get();
         $product = Unit::join('serial_product as s', 's.id_product', '=', 'unit.id')->get(['unit.id as comId', 'unit.sku', 's.id', 's.pn', 's.brand']);
         // dd($product);
 
@@ -2415,7 +2415,7 @@ class QuotationController extends Controller
         $formattedMonthNow = $this->convertToRoman($monthNow);
         $pic = client::where('client.id_sales', Auth::user()->id)->get();
         // $pic = Pic::join('client', 'client.id', '=', 'id_client')->where('client.id_sales', Auth::user()->id)->get('pic.*');
-        $sales = User::where('role', 'sales')->get();
+        $sales = User::where('role', 'sales')->where('active', '1')->where('id', '!=', 23)->get();
         $product = Product::join('serial_product as s', 's.id_product', '=', 'product.id')->get(['product.id as comId', 's.id', 'product.go', 's.pn', 's.brand', 'product.detail_desc']);
         // dd($product);
 
@@ -3022,7 +3022,7 @@ class QuotationController extends Controller
         $formattedMonthNow = $this->convertToRoman($monthNow);
         $pic = client::where('client.id_sales', Auth::user()->id)->get();
         // $pic = Pic::join('client', 'client.id', '=', 'id_client')->where('client.id_sales', Auth::user()->id)->get('pic.*');
-        $sales = User::where('role', 'sales')->get();
+        $sales = User::where('role', 'sales')->where('active', '1')->where('id', '!=', 23)->get();
         // dd($product);
         $totalPrice = 0;
         $totalDisc = 0;

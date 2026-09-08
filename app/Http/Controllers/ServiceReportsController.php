@@ -56,7 +56,7 @@ class ServiceReportsController extends Controller
         // dipakai sama sekali di form.blade.php — Client/PIC/Machine-nya emang udah
         // AJAX cascade (select2 kosong di awal), jadi query ini cuma beban loading
         // doang tanpa manfaat. Dihapus.
-        $sales = User::where('role', 'Sales')->whereNotIn('id', [23, 41])->select('id', 'name')->get();
+        $sales = User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->select('id', 'name')->orderBy('name')->get();
         $dateNow = Carbon::now();
         $numberS = Reports::whereYear('date', $dateNow)->where('id_technician', Auth::user()->id)->count();
         $formattedNumberS = str_pad($numberS + 1, 3, '0', STR_PAD_LEFT);
@@ -75,7 +75,7 @@ class ServiceReportsController extends Controller
 
     public function createByUnit($id_unit)
     {
-        $sales = User::where('role', 'Sales')->whereNotIn('id', [23, 41])->select('id', 'name')->get();
+        $sales = User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->select('id', 'name')->orderBy('name')->get();
         $dateNow = Carbon::now();
         $numberS = Reports::whereYear('date', $dateNow)->where('id_technician', Auth::user()->id)->count();
         $formattedNumberS = str_pad($numberS + 1, 3, '0', STR_PAD_LEFT);
@@ -105,7 +105,7 @@ class ServiceReportsController extends Controller
 
     public function createByUnitMachine($id_unit, $id_machine)
     {
-        $sales = User::where('role', 'Sales')->whereNotIn('id', [23, 41])->select('id', 'name')->get();
+        $sales = User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->select('id', 'name')->orderBy('name')->get();
         $dateNow = Carbon::now();
         $numberS = Reports::whereYear('date', $dateNow)->where('id_technician', Auth::user()->id)->count();
         $formattedNumberS = str_pad($numberS + 1, 3, '0', STR_PAD_LEFT);
@@ -153,7 +153,7 @@ class ServiceReportsController extends Controller
 
     public function createByMachine($id_machine)
     {
-        $sales = User::where('role', 'Sales')->whereNotIn('id', [23, 41])->select('id', 'name')->get();
+        $sales = User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->select('id', 'name')->orderBy('name')->get();
         $dateNow = Carbon::now();
         $numberS = Reports::whereYear('date', $dateNow)->where('id_technician', Auth::user()->id)->count();
         $formattedNumberS = str_pad($numberS + 1, 3, '0', STR_PAD_LEFT);
@@ -337,7 +337,7 @@ class ServiceReportsController extends Controller
      */
     public function edit($id)
     {
-        $sales = User::where('role', 'Sales')->whereNotIn('id', [23, 41])->select('id', 'name')->get();
+        $sales = User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->select('id', 'name')->orderBy('name')->get();
         $report = Reports::find($id);
         $image = ReportsPict::where('id_reports', $id)->get();
         $dateNow = Carbon::now();

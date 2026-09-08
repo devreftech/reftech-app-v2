@@ -399,7 +399,7 @@
                                             <h6 class="fw-bold mb-0 text-heading d-flex align-items-center" style="font-size: 14.5px;">
                                                 <i class="mdi mdi-cash-multiple me-2 text-warning" style="font-size: 18px;"></i> Pengeluaran Project
                                             </h6>
-                                            <span class="badge bg-label-warning fw-bold" id="taskExpenseTotal" style="font-size: 12px;">Rp 0</span>
+                                            <span class="badge bg-label-warning fw-bold" id="taskExpenseTotal" style="font-size: 12px;"><i class="mdi mdi-eye-off-outline me-1"></i>Rp ••••••••</span>
                                         </div>
 
                                         <div id="taskExpensesList" class="d-flex flex-column gap-1 mb-3" style="font-size: 12.5px;"></div>
@@ -1563,10 +1563,9 @@
                                     `;
 
                                     let nettHtml = '';
-                                    if (task.nett && task.nett > 0 && boardType === 'monitoring' && userRole !== 'ServiceM') {
-                                        const formattedVal = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(task.nett);
+                                    if (task.nett && task.nett > 0 && userRole !== 'ServiceM') {
                                         const nettBadgeClass = (task.entity_type === 'KII') ? 'bg-label-danger' : 'bg-label-primary';
-                                        nettHtml = `<div class="mt-1"><span class="badge ${nettBadgeClass}" style="font-size: 10px; font-weight: 600; padding: 3px 6px;">${formattedVal}</span></div>`;
+                                        nettHtml = `<div class="mt-1"><span class="badge ${nettBadgeClass}" style="font-size: 10px; font-weight: 600; padding: 3px 6px;" title="Nominal disensor"><i class="mdi mdi-eye-off-outline me-1"></i>Rp ••••••••</span></div>`;
                                     }
 
                                     return {
@@ -1811,7 +1810,7 @@
 
                 if (boardType !== 'monitoring') {
                     $('#taskExpensesList').html('');
-                    $('#taskExpenseTotal').text('Rp 0');
+                    $('#taskExpenseTotal').html('<i class="mdi mdi-eye-off-outline me-1"></i>Rp ••••••••');
                     if (document.getElementById('taskExpenseForm')) $('#taskExpenseForm')[0].reset();
                     $('#taskExpenseForm').hide();
                     $('#btnShowExpenseForm').show();
@@ -1884,7 +1883,7 @@
                                 
                                 if (userRole !== 'ServiceM' && response.so_details.quote_nett) {
                                     const quoteNettClass = (response.so_details.entity_type === 'KII') ? 'text-danger' : 'text-primary';
-                                    $('#soQuoteNett').removeClass('text-primary text-danger').addClass(quoteNettClass).text('Rp ' + response.so_details.quote_nett);
+                                    $('#soQuoteNett').removeClass('text-primary text-danger').addClass(quoteNettClass).html('<span class="text-muted fw-bold" style="letter-spacing: 1px;"><i class="mdi mdi-eye-off-outline me-1"></i>Rp ••••••••</span>');
                                 }
                                 $('#soSalesPerson').text(response.so_details.sales_name);
 
@@ -1968,19 +1967,16 @@
                                 // Ringkasan Kesehatan Keuangan: Sembunyikan di monitoring document, tapi tampilkan di kanban lain (seperti board 2) jika datanya ada
                                 if (boardType !== 'monitoring' && response.so_details.financial_health) {
                                     var fh = response.so_details.financial_health;
-                                    var fmtRp = function (n) { return 'Rp ' + Number(n).toLocaleString('id-ID'); };
-                                    $('#fhRevenue').text(fmtRp(fh.revenue));
-                                    $('#fhTotalCost').text(fmtRp(fh.total_cost));
+                                    var sensorText = '<span class="text-muted fw-bold" style="letter-spacing: 1px;"><i class="mdi mdi-eye-off-outline me-1"></i>Rp ••••••••</span>';
+                                    $('#fhRevenue').html(sensorText);
+                                    $('#fhTotalCost').html(sensorText);
                                     $('#fhProfit')
-                                        .text(fmtRp(fh.profit))
-                                        .removeClass('text-primary text-danger')
-                                        .addClass(fh.profit >= 0 ? 'text-primary' : 'text-danger');
+                                        .html(sensorText)
+                                        .removeClass('text-primary text-danger');
 
-                                    var costRatio = fh.revenue > 0 ? (fh.total_cost / fh.revenue) * 100 : 0;
-                                    var profitRatio = fh.revenue > 0 ? (fh.profit / fh.revenue) * 100 : 0;
-                                    $('#fhCostBar').css('width', costRatio + '%');
-                                    $('#fhProfitBar').css('width', profitRatio + '%');
-                                    $('#fhMarginBadge').text(fh.margin + '% Margin');
+                                    $('#fhCostBar').css('width', '50%').addClass('bg-secondary').removeClass('bg-danger');
+                                    $('#fhProfitBar').css('width', '50%').addClass('bg-secondary').removeClass('bg-success');
+                                    $('#fhMarginBadge').html('<i class="mdi mdi-eye-off-outline me-1"></i>••% Margin').removeClass('text-success bg-success').addClass('bg-label-secondary text-secondary');
                                     $('#fhDetailLink').attr('href', response.so_details.project_monitoring_link || response.so_details.quote_link);
 
                                     $('#financialHealthContainer').show();
@@ -2067,7 +2063,7 @@
                 });
             }
 
-            const rpFmt = function (n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); };
+            const rpFmt = function (n) { return 'Rp ••••••••'; };
 
             function renderProjectReports(response) {
                 const colTitle = (response.task && response.task.column_title ? response.task.column_title : '').toLowerCase();
@@ -2120,7 +2116,7 @@
             function renderTaskExpenses(response) {
                 const expenses = response.expenses || [];
                 const canManage = !!response.can_manage_expense;
-                $('#taskExpenseTotal').text(rpFmt(response.expense_total));
+                $('#taskExpenseTotal').html('<i class="mdi mdi-eye-off-outline me-1"></i>' + rpFmt(response.expense_total));
 
                 const colTitle = (response.task && response.task.column_title ? response.task.column_title : '').toLowerCase();
                 const isProgressOrDone = colTitle.includes('progress') || colTitle.includes('proses') || colTitle.includes('done') || colTitle.includes('selesai');
@@ -2146,7 +2142,7 @@
                                     </div>
                                 </div>
                                 <div class="d-flex align-items-center gap-1 flex-shrink-0">
-                                    <span class="fw-bold text-heading">${rpFmt(e.amount)}</span>
+                                    <span class="fw-bold text-muted" style="letter-spacing: 1px;"><i class="mdi mdi-eye-off-outline me-1" style="font-size:11px;"></i>${rpFmt(e.amount)}</span>
                                     ${del}
                                 </div>
                             </div>`;

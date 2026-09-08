@@ -168,58 +168,108 @@
                         'inlet_cap'=>' m³/min','outlet_cap'=>' m³/min',
                         'weight'=>' Kg','capacity'=>' Liter',
                     ];
+                    $hasDisc = $unitQuote->details->where('disc', '>', 0)->count() > 0;
+                    $itemNo = 1;
+                    $headerCount = 0;
+
+                    // Subtotal per Head Title
+                    $sectionSubtotals = [];
+                    $currentHeaderId = null;
+                    foreach ($unitQuote->details as $d) {
+                        if ($d->type === 'header' || $d->type === 'heading') {
+                            $currentHeaderId = $d->id;
+                            $sectionSubtotals[$currentHeaderId] = 0;
+                        } elseif ($currentHeaderId !== null) {
+                            $sectionSubtotals[$currentHeaderId] += (float) ($d->amount ?? 0);
+                        }
+                    }
                 @endphp
 
                 <table class="items-table">
                     <thead>
                         <tr>
                             <th style="width: 4%; text-align: center;">No</th>
-                            <th style="width: 52%;">Item Description</th>
+                            <th style="width: {{ $hasDisc ? '46%' : '52%' }};">Item Description</th>
                             <th style="width: 10%; text-align: center;">Qty</th>
                             <th style="width: 17%; text-align: right;">Price (IDR)</th>
+                            @if ($hasDisc)
+                                <th style="width: 6%; text-align: center;">Disc</th>
+                            @endif
                             <th style="width: 17%; text-align: right;">Amount (IDR)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($unitQuote->details as $i => $item)
-                            <tr>
-                                <td style="text-align: center; color: #64748b;">{{ $i + 1 }}</td>
-                                <td>
-                                    @if ($item->type === 'unit' && $item->unit)
-                                        <div class="item-title">{{ $item->label ?: ($item->unit->brand . ' ' . $item->unit->model) }}</div>
-                                        @php $specs = $item->getSpecVisibleArray(); @endphp
-                                        @if (!empty($specs))
-                                            <div class="spec-grid">
-                                                @foreach ($specs as $field)
-                                                    @if ($field === 'unit') @continue @endif
-                                                    @php $val = $item->unit->$field ?? null; @endphp
-                                                    @if ($val && isset($specLabels[$field]))
-                                                        <div>
-                                                            <span style="color:#64748b;">{{ $specLabels[$field] }}:</span>
-                                                            <strong>{{ $val }}{{ $specUnits[$field] ?? '' }}</strong>
-                                                        </div>
-                                                    @endif
-                                                @endforeach
-                                            </div>
+                        @forelse ($unitQuote->details as $item)
+                            @if ($item->type === 'header' || $item->type === 'heading')
+                                @php
+                                    $lbl = trim($item->label ?? '');
+                                    if (!preg_match('/^[A-Z0-9][\.\)]/i', $lbl)) {
+                                        $lbl = chr(65 + ($headerCount % 26)) . '. ' . $lbl;
+                                    }
+                                    $headerCount++;
+                                    $sectionSubtotal = $sectionSubtotals[$item->id] ?? 0;
+                                @endphp
+                                <tr class="table-section-header">
+                                    <td colspan="{{ $hasDisc ? 6 : 5 }}">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span><i class="mdi mdi-bookmark-outline me-1"></i>{{ $lbl }}</span>
+                                            @if ($sectionSubtotal > 0)
+                                                <span style="font-size: 10.5px; font-weight: 600; color: #475569; text-transform: none; letter-spacing: normal;">
+                                                    Subtotal: Rp {{ number_format($sectionSubtotal, 0, '', '.') }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                            @else
+                                <tr>
+                                    <td style="text-align: center; color: #64748b; font-weight: 500;">{{ $itemNo++ }}</td>
+                                    <td>
+                                        @if ($item->type === 'unit' && $item->unit)
+                                            <div class="item-title">{{ $item->label ?: ($item->unit->brand . ' ' . $item->unit->model) }}</div>
+                                            @php $specs = $item->getSpecVisibleArray(); @endphp
+                                            @if (!empty($specs))
+                                                <div class="spec-grid">
+                                                    @foreach ($specs as $field)
+                                                        @if ($field === 'unit') @continue @endif
+                                                        @php $val = $item->unit->$field ?? null; @endphp
+                                                        @if ($val && isset($specLabels[$field]))
+                                                            <div>
+                                                                <span style="color:#64748b;">{{ $specLabels[$field] }}:</span>
+                                                                <strong>{{ $val }}{{ $specUnits[$field] ?? '' }}</strong>
+                                                            </div>
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        @else
+                                            <div class="item-title">{{ $item->label }}</div>
+                                            @if ($item->description && $item->description !== $item->label)
+                                                <div class="item-desc">{{ $item->description }}</div>
+                                            @endif
                                         @endif
-                                    @else
-                                        <div class="item-title">{{ $item->label }}</div>
-                                        @if ($item->description && $item->description !== $item->label)
-                                            <div class="item-desc">{{ $item->description }}</div>
-                                        @endif
+                                    </td>
+                                    <td style="text-align: center; font-weight: 600;">
+                                        {{ (float)$item->qty == (int)$item->qty ? (int)$item->qty : $item->qty }} {{ $item->info_qty ?? 'Unit' }}
+                                    </td>
+                                    <td style="text-align: right;">
+                                        {{ number_format($item->price, 0, '', '.') }}
+                                    </td>
+                                    @if ($hasDisc)
+                                        <td style="text-align: center; font-weight: 600; color: #dc2626;">
+                                            {{ (float)$item->disc > 0 ? (float)$item->disc . '%' : '-' }}
+                                        </td>
                                     @endif
-                                </td>
-                                <td style="text-align: center; font-weight: 600;">
-                                    {{ (float)$item->qty == (int)$item->qty ? (int)$item->qty : $item->qty }} {{ $item->info_qty ?? 'Unit' }}
-                                </td>
-                                <td style="text-align: right;">
-                                    {{ number_format($item->price, 0, '', '.') }}
-                                </td>
-                                <td style="text-align: right; font-weight: 700;">
-                                    {{ number_format($item->amount, 0, '', '.') }}
-                                </td>
+                                    <td style="text-align: right; font-weight: 700;">
+                                        {{ number_format($item->amount, 0, '', '.') }}
+                                    </td>
+                                </tr>
+                            @endif
+                        @empty
+                            <tr>
+                                <td colspan="{{ $hasDisc ? 6 : 5 }}" class="text-center py-4 text-muted">No items found.</td>
                             </tr>
-                        @endforeach
+                        @endforelse
                     </tbody>
                 </table>
 
@@ -328,10 +378,23 @@
                     <div class="signature-box">
                         <div class="signature-label">Accepted By Customer,</div>
                         <div class="signature-img-wrap">
-                            {{-- Blank area for physical stamp & sign --}}
+                            @if ($contract->isSignedByCustomer() && $contract->customer_signature)
+                                <img src="{{ asset($contract->customer_signature) }}" alt="Customer Signature" style="max-height: 60px; max-width: 140px; object-fit: contain;">
+                            @else
+                                {{-- Blank area for physical stamp & sign --}}
+                            @endif
                         </div>
-                        <div class="signature-name">{{ $unitQuote->pic?->name_pic ?: ($unitQuote->attn ?: '..............................') }}</div>
-                        <div class="signature-role">{{ $unitQuote->client?->company ?? '-' }}</div>
+                        <div class="signature-name">
+                            {{ $contract->isSignedByCustomer() ? $contract->customer_signer_name : ($unitQuote->pic?->name_pic ?: ($unitQuote->attn ?: '..............................')) }}
+                        </div>
+                        <div class="signature-role">
+                            {{ $contract->isSignedByCustomer() ? ($contract->customer_signer_position ?: ($unitQuote->client?->company ?? '-')) : ($unitQuote->client?->company ?? '-') }}
+                        </div>
+                        @if ($contract->isSignedByCustomer() && $contract->signed_at)
+                            <div style="font-size: 9.5px; color: #16a34a; font-weight: 600; margin-top: 3px;">
+                                <i class="mdi mdi-check-decagram me-0.5"></i> Signed on {{ date('d-m-Y H:i', strtotime($contract->signed_at)) }} WIB
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -387,10 +450,12 @@
                             <i class="mdi mdi-trash-can-outline fs-5"></i>
                             <span>{{ $isApproved ? 'Delete Contract' : 'Reject Contract' }}</span>
                         </button>
+                    </div>
+                </div>
             </div>
 
-            {{-- Online Customer Signature Card (Hanya muncul jika sudah di-approve, atau jika bukan role Sales) --}}
-            @if ($isApproved || Auth::user()->role !== 'Sales')
+            {{-- Online Customer Signature Card (Hanya muncul jika sudah di-approve) --}}
+            @if ($isApproved)
             <div class="card shadow-sm border mb-3" style="border-radius: 8px; border-color: #e2e8f0 !important;">
                 <div class="card-header py-3 px-3.5 border-bottom d-flex align-items-center justify-content-between" style="background-color: #f8fafc;">
                     <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-1.5" style="font-size: 13px;">
@@ -552,9 +617,38 @@
                     </div>
                     <div class="modal-body py-4">
                         <div class="p-3 rounded bg-lighter border mb-3" style="font-size: 13px;">
-                            <div class="text-muted mb-1">Customer / Client:</div>
-                            <div class="fw-bold text-dark">{{ $unitQuote->client?->company ?? '-' }}</div>
-                            <div class="text-muted mt-1 small">Ref Quote: {{ $unitQuote->no_quote }}</div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small fw-semibold">Customer / Client:</span>
+                                <span class="fw-bold text-dark">{{ $unitQuote->client?->company ?? '-' }}</span>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small fw-semibold">No. Quotation:</span>
+                                <span class="fw-semibold text-dark">{{ $unitQuote->no_quote }}</span>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small fw-semibold">Tipe Entitas & Dokumen:</span>
+                                <div>
+                                    @if ($isOrderU)
+                                        <span class="badge bg-label-warning me-1">Kojisha</span>
+                                        <span class="badge bg-label-dark">Confirm Order</span>
+                                    @else
+                                        <span class="badge bg-label-info me-1">Reftech</span>
+                                        <span class="badge bg-label-primary">Selling Contract</span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-muted small fw-semibold">Status Pajak:</span>
+                                @if ($unitQuote->tax)
+                                    <span class="badge bg-label-primary"><i class="mdi mdi-check-circle-outline me-1"></i>PPN</span>
+                                @else
+                                    <span class="badge bg-label-danger"><i class="mdi mdi-close-circle-outline me-1"></i>Non-PPN</span>
+                                @endif
+                            </div>
+                            <div class="alert alert-secondary py-1 px-2 mb-0 mt-2" style="font-size: 11px;">
+                                <i class="mdi mdi-information-outline me-1 text-primary"></i>
+                                <span><strong>Reftech</strong> &rarr; Selling Contract (<code>SELLCTX/RJO</code>) &bull; <strong>Kojisha</strong> &rarr; Confirm Order (<code>CO/KII</code>)</span>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Nomor {{ $docNoun }}</label>
@@ -727,6 +821,18 @@
             padding: 8px 10px;
             border-bottom: 1px solid #e2e8f0;
             vertical-align: top;
+        }
+
+        .contract-paper-card .items-table .table-section-header td {
+            background-color: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #cbd5e1;
+            padding: 6px 10px;
+            font-weight: 700;
+            font-size: 11px;
+            color: #0284c7;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
         }
 
         .contract-paper-card .items-table .item-title {

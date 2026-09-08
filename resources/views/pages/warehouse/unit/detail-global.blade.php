@@ -1042,8 +1042,41 @@
                                 $tr = $(
                                     '<tr class="table-light">' +
                                         dragHandle +
-                                        '<td colspan="3"><span class="fw-bold text-dark text-uppercase" style="letter-spacing:.03em;">' + pmEscapeHtml(it.label) + '</span></td>' +
-                                        '<td class="text-end"><button type="button" class="btn btn-icon btn-sm btn-label-danger pm-item-remove"><i class="mdi mdi-delete-outline"></i></button></td>' +
+                                        '<td colspan="3">' +
+                                            '<div class="d-flex align-items-center gap-2">' +
+                                                '<span class="badge bg-label-info px-1.5 py-0.5" style="font-size:10px; font-weight:700;">HEAD TITLE</span>' +
+                                                '<input type="text" class="form-control form-control-sm pm-item-label fw-bold text-uppercase" style="letter-spacing:.03em;" value="' + pmEscapeHtml(it.label) + '" placeholder="Judul Bagian / Header">' +
+                                            '</div>' +
+                                        '</td>' +
+                                        '<td class="text-end"><button type="button" class="btn btn-icon btn-sm btn-label-danger pm-item-remove" title="Hapus"><i class="mdi mdi-delete-outline"></i></button></td>' +
+                                    '</tr>'
+                                );
+                            }
+                        } else if (it.type === 'custom') {
+                            if (isSales) {
+                                $tr = $(
+                                    '<tr>' +
+                                        '<td><span class="fw-semibold text-dark">' + pmEscapeHtml(it.label) + '</span>' +
+                                            (it.description ? '<span class="text-muted small d-block" style="white-space:pre-line;">' + pmEscapeHtml(it.description) + '</span>' : '') +
+                                        '</td>' +
+                                        '<td class="text-end fw-semibold text-dark">' + pmEscapeHtml(it.qty) + (it.info_qty ? ' <small class="text-muted">' + pmEscapeHtml(it.info_qty) + '</small>' : '') + '</td>' +
+                                        '<td class="text-end fw-semibold text-primary">' + pmFormatRupiah(it.price) + '</td>' +
+                                    '</tr>'
+                                );
+                            } else {
+                                $tr = $(
+                                    '<tr>' +
+                                        dragHandle +
+                                        '<td>' +
+                                            '<div class="d-flex align-items-center gap-1.5 mb-1">' +
+                                                '<span class="badge bg-label-secondary px-1.5 py-0.5" style="font-size:10px; font-weight:600;">Custom</span>' +
+                                                '<input type="text" class="form-control form-control-sm pm-item-label fw-semibold" value="' + pmEscapeHtml(it.label) + '" placeholder="Nama Item">' +
+                                            '</div>' +
+                                            '<input type="text" class="form-control form-control-sm text-muted pm-item-desc" style="font-size:11px;" value="' + pmEscapeHtml(it.description || '') + '" placeholder="Keterangan / Scope of Work (opsional)">' +
+                                        '</td>' +
+                                        '<td class="text-end"><input type="number" min="0" step="1" class="form-control form-control-sm text-end pm-item-qty" value="' + it.qty + '"></td>' +
+                                        '<td class="text-end"><input type="text" class="form-control form-control-sm text-end pm-item-price" value="' + pmFormatThousand(it.price) + '"></td>' +
+                                        '<td class="text-end"><button type="button" class="btn btn-icon btn-sm btn-label-danger pm-item-remove" title="Hapus"><i class="mdi mdi-delete-outline"></i></button></td>' +
                                     '</tr>'
                                 );
                             }
@@ -1062,12 +1095,16 @@
                                 $tr = $(
                                     '<tr>' +
                                         dragHandle +
-                                        '<td><span class="fw-semibold text-dark">' + pmEscapeHtml(it.label) + '</span>' +
-                                            (it.description ? '<span class="text-muted small d-block" style="white-space:pre-line;">' + pmEscapeHtml(it.description) + '</span>' : '') +
+                                        '<td>' +
+                                            '<div class="d-flex align-items-center gap-1.5 mb-0.5">' +
+                                                '<span class="badge bg-label-primary px-1.5 py-0.5" style="font-size:10px; font-weight:600;">Part</span>' +
+                                                '<span class="fw-semibold text-dark">' + pmEscapeHtml(it.label) + '</span>' +
+                                            '</div>' +
+                                            (it.description ? '<span class="text-muted small d-block ms-1" style="white-space:pre-line; font-size:11px;">' + pmEscapeHtml(it.description) + '</span>' : '') +
                                         '</td>' +
                                         '<td class="text-end"><input type="number" min="0" step="1" class="form-control form-control-sm text-end pm-item-qty" value="' + it.qty + '"></td>' +
                                         '<td class="text-end"><input type="text" class="form-control form-control-sm text-end pm-item-price" value="' + pmFormatThousand(it.price) + '"></td>' +
-                                        '<td class="text-end"><button type="button" class="btn btn-icon btn-sm btn-label-danger pm-item-remove"><i class="mdi mdi-delete-outline"></i></button></td>' +
+                                        '<td class="text-end"><button type="button" class="btn btn-icon btn-sm btn-label-danger pm-item-remove" title="Hapus"><i class="mdi mdi-delete-outline"></i></button></td>' +
                                     '</tr>'
                                 );
                             }
@@ -1190,6 +1227,20 @@
                     $('.pm-level-btn').removeClass('active');
                     $(this).addClass('active');
                     loadPmLevel(level);
+                });
+
+                // ── Edit text label & description inline ──
+                $(document).on('input', '.pm-item-label', function() {
+                    var i = $(this).closest('tr').data('index');
+                    if (pmItems[i]) {
+                        pmItems[i].label = $(this).val();
+                    }
+                });
+                $(document).on('input', '.pm-item-desc', function() {
+                    var i = $(this).closest('tr').data('index');
+                    if (pmItems[i]) {
+                        pmItems[i].description = $(this).val();
+                    }
                 });
 
                 // ── Edit qty/price inline ──

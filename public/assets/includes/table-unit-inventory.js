@@ -70,6 +70,11 @@ $(function () {
         return /m.?\/min/i.test(data) ? data : data + " m³/min";
     }
 
+    function barCol(data) {
+        if (!data && data !== 0) return "-";
+        return /bar/i.test(data) ? data : data + " Bar";
+    }
+
     $tables.each(function () {
         var $table = $(this);
         var group = $table.data("group");
@@ -95,6 +100,7 @@ $(function () {
                 { data: "lubricant" },
                 { data: "power" },
                 { data: "air_cap" },
+                { data: "bar" },
                 { data: "stock" },
                 { data: null },
                 { data: null },
@@ -105,12 +111,14 @@ $(function () {
                 { targets: 2, render: function (data) { return data || "-"; } },
                 { targets: 3, render: function (data) { return data || "-"; } },
                 { targets: 4, render: function (data) { return airCapCol(data); } },
-                { targets: 5, className: "text-center", render: stockBadgeCol },
-                { targets: 6, render: hargaJualCol },
-                { targets: 7, orderable: false, searchable: false, render: detailBtnCol },
+                { targets: 5, render: function (data) { return barCol(data); } },
+                { targets: 6, className: "text-center", render: stockBadgeCol },
+                { targets: 7, render: hargaJualCol },
+                { targets: 8, orderable: false, searchable: false, render: detailBtnCol },
             ];
             order = [[0, "asc"]];
         } else if (group === "dryer") {
+
             columns = [
                 { data: null },
                 { data: "unit_category" },

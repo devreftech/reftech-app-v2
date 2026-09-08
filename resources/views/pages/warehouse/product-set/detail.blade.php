@@ -226,13 +226,22 @@
                         </div>
                         <h6 class="fw-bold mb-0 text-dark">Komponen Penyusun Bundle (Replacement)</h6>
                     </div>
-                    <span class="badge bg-label-primary rounded-pill px-3">{{ $componentCount }} Komponen Terdaftar</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-primary d-none align-items-center gap-1 shadow-sm btn-create-po-action" id="btn-create-po-header">
+                            <i class="mdi mdi-cart-plus fs-6"></i>
+                            <span>Create PO (<span class="selected-component-count">0</span>)</span>
+                        </button>
+                        <span class="badge bg-label-primary rounded-pill px-3">{{ $componentCount }} Komponen Terdaftar</span>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
                             <thead class="table-light border-bottom">
                                 <tr>
+                                    <th class="text-center py-3" style="width: 38px;">
+                                        <input class="form-check-input" type="checkbox" id="check-all-components" title="Pilih Semua Komponen">
+                                    </th>
                                     <th class="text-center text-muted fw-bold text-uppercase py-3" style="width: 35px; font-size: 11px;">#</th>
                                     <th class="text-muted fw-bold text-uppercase py-3" style="font-size: 11px; min-width: 240px;">Komponen & Merk Kompatibel</th>
                                     <th class="text-center text-muted fw-bold text-uppercase py-3" style="font-size: 11px; width: 120px;">Stok</th>
@@ -326,6 +335,14 @@
                                         $lowestPriceVal = $lowestPriceObj ? $lowestPriceObj['price'] : 0;
                                     @endphp
                                     <tr>
+                                        <td class="text-center align-top py-3">
+                                            <input class="form-check-input component-item-check" type="checkbox"
+                                                value="{{ $rep->product->id ?? $rep->id_product }}"
+                                                data-product-id="{{ $rep->product->id ?? $rep->id_product }}"
+                                                data-name="{{ $rep->replacement ?? ($rep->product->commodity ?? '') }}"
+                                                data-id="{{ $detail->id }}"
+                                                title="Pilih komponen ini">
+                                        </td>
                                         <td class="text-center fw-semibold text-muted align-top py-3">{{ $index + 1 }}</td>
                                         <td class="align-top py-3">
                                             <div class="fw-bold text-dark mb-0.5 d-flex align-items-center gap-2">
@@ -485,7 +502,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="{{ Auth::user()->role == 'Admin' ? '6' : '4' }}" class="text-center py-5 text-muted">
+                                        <td colspan="{{ Auth::user()->role == 'Admin' ? '7' : '5' }}" class="text-center py-5 text-muted">
                                             <div class="avatar avatar-md bg-label-secondary rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center">
                                                 <i class="mdi mdi-layers-off-outline fs-4"></i>
                                             </div>
@@ -635,6 +652,22 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    {{-- Floating Bottom Bar for Bulk Action --}}
+    <div id="bulk-action-bar" class="position-fixed bottom-0 start-50 translate-middle-x mb-4 p-2 px-3 bg-white rounded-pill shadow-lg border d-none align-items-center gap-3" style="z-index: 1050; box-shadow: 0 10px 30px rgba(0,0,0,0.18) !important;">
+        <div class="d-flex align-items-center gap-2 ps-2">
+            <span class="badge bg-primary rounded-pill px-2.5 py-1 fs-6" id="floating-selected-count">0</span>
+            <span class="fw-semibold text-dark small">Komponen dipilih</span>
+        </div>
+        <div class="vr my-1"></div>
+        <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm btn-create-po-action" id="floating-btn-create-po">
+            <i class="mdi mdi-cart-plus fs-6"></i>
+            <span>Create Purchase Order</span>
+        </button>
+        <button type="button" class="btn btn-label-secondary btn-sm rounded-pill px-2.5 py-1" id="btn-clear-selection" title="Batalkan Pilihan">
+            <i class="mdi mdi-close"></i>
+        </button>
     </div>
 </div>
 
@@ -979,6 +1012,87 @@
             });
         });
 
+        // Component Checklist & Create PO handler
+        (function() {
+            var $checkAll = $('#check-all-components');
+            var $btnHeader = $('#btn-create-po-header');
+            var $barFloating = $('#bulk-action-bar');
+            var $countDisplays = $('.selected-component-count, #floating-selected-count');
+
+            function updateSelectionUI() {
+                var $itemChecks = $('.component-item-check');
+                var checkedBoxes = $('.component-item-check:checked');
+                var count = checkedBoxes.length;
+                var total = $itemChecks.length;
+
+                $countDisplays.text(count);
+
+                if (count > 0) {
+                    $btnHeader.removeClass('d-none').addClass('d-inline-flex');
+                    $barFloating.removeClass('d-none').addClass('d-flex');
+                } else {
+                    $btnHeader.addClass('d-none').removeClass('d-inline-flex');
+                    $barFloating.addClass('d-none').removeClass('d-flex');
+                }
+
+                if (total > 0 && count === total) {
+                    $checkAll.prop('checked', true);
+                    $checkAll.prop('indeterminate', false);
+                } else if (count > 0 && count < total) {
+                    $checkAll.prop('checked', false);
+                    $checkAll.prop('indeterminate', true);
+                } else {
+                    $checkAll.prop('checked', false);
+                    $checkAll.prop('indeterminate', false);
+                }
+            }
+
+            $checkAll.on('change', function() {
+                var isChecked = $(this).is(':checked');
+                $('.component-item-check').prop('checked', isChecked);
+                updateSelectionUI();
+            });
+
+            $(document).on('change', '.component-item-check', function() {
+                updateSelectionUI();
+            });
+
+            $('#btn-clear-selection').on('click', function() {
+                $('.component-item-check').prop('checked', false);
+                $checkAll.prop('checked', false);
+                $checkAll.prop('indeterminate', false);
+                updateSelectionUI();
+            });
+
+            $(document).on('click', '.btn-create-po-action', function(e) {
+                e.preventDefault();
+                var selectedProductIds = [];
+                $('.component-item-check:checked').each(function() {
+                    var pid = $(this).data('product-id');
+                    if (pid) {
+                        selectedProductIds.push(pid);
+                    }
+                });
+
+                if (selectedProductIds.length === 0) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Pilih Komponen',
+                        text: 'Silakan checklist minimal satu komponen untuk membuat Purchase Order.'
+                    });
+                    return;
+                }
+
+                var params = [];
+                selectedProductIds.forEach(function(pid) {
+                    params.push('product_ids[]=' + encodeURIComponent(pid));
+                });
+
+                var targetUrl = '{{ route('purchase.create') }}?from_product_set={{ $productSet->id }}&' + params.join('&');
+                window.location.href = targetUrl;
+            });
+        })();
+
         // Delete entire Product Set
         $(document).on('click', '.delete-product-set', function(e) {
             e.preventDefault();
@@ -1025,6 +1139,10 @@
                             });
                         }
                     });
+                }
+            });
+        });
+
         // Delete Vendor Price
         $(document).on('click', '.delete-vendor-price', function(e) {
             e.preventDefault();

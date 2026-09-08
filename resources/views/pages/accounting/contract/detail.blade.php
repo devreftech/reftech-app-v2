@@ -350,10 +350,23 @@
                     <div class="signature-box">
                         <div class="signature-label">Accepted By Customer,</div>
                         <div class="signature-img-wrap">
-                            {{-- Blank area for physical stamp & sign --}}
+                            @if ($contract->isSignedByCustomer() && $contract->customer_signature)
+                                <img src="{{ asset($contract->customer_signature) }}" alt="Customer Signature" style="max-height: 60px; max-width: 140px; object-fit: contain;">
+                            @else
+                                {{-- Blank area for physical stamp & sign --}}
+                            @endif
                         </div>
-                        <div class="signature-name">{{ $quote->pic?->name_pic ?: '..............................' }}</div>
-                        <div class="signature-role">{{ $quote->pic?->client?->company ?? '-' }}</div>
+                        <div class="signature-name">
+                            {{ $contract->isSignedByCustomer() ? $contract->customer_signer_name : ($quote->pic?->name_pic ?: '..............................') }}
+                        </div>
+                        <div class="signature-role">
+                            {{ $contract->isSignedByCustomer() ? ($contract->customer_signer_position ?: ($quote->pic?->client?->company ?? '-')) : ($quote->pic?->client?->company ?? '-') }}
+                        </div>
+                        @if ($contract->isSignedByCustomer() && $contract->signed_at)
+                            <div style="font-size: 9.5px; color: #16a34a; font-weight: 600; margin-top: 3px;">
+                                <i class="mdi mdi-check-decagram me-0.5"></i> Signed on {{ date('d-m-Y H:i', strtotime($contract->signed_at)) }} WIB
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -409,10 +422,12 @@
                             <i class="mdi mdi-trash-can-outline fs-5"></i>
                             <span>{{ $isApproved ? 'Delete Contract' : 'Reject Contract' }}</span>
                         </button>
+                    </div>
+                </div>
             </div>
 
-            {{-- Online Customer Signature Card (Hanya muncul jika sudah di-approve, atau jika bukan role Sales) --}}
-            @if ($isApproved || Auth::user()->role !== 'Sales')
+            {{-- Online Customer Signature Card (Hanya muncul jika sudah di-approve) --}}
+            @if ($isApproved)
             <div class="card shadow-sm border mb-3" style="border-radius: 8px; border-color: #e2e8f0 !important;">
                 <div class="card-header py-3 px-3.5 border-bottom d-flex align-items-center justify-content-between" style="background-color: #f8fafc;">
                     <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-1.5" style="font-size: 13px;">

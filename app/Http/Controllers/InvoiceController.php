@@ -223,9 +223,23 @@ class InvoiceController extends Controller
                 $invoice->no_po = trim($request->no_po);
             }
             $invoice->invoiceTo = '1';
+
+            $quote = UnitQuotation::find($invoice->id_unit_quotation);
+            if ($quote) {
+                $amount = $quote->total;
+                if ($invoice->flag === 'Reftech') {
+                    $invoice->sign = $amount >= 5000000
+                        ? 'asset/sign/reftech-m.jpeg'
+                        : 'asset/sign/reftech-nm.jpeg';
+                } else {
+                    $invoice->sign = $amount >= 5000000
+                        ? 'asset/sign/kojisha-m.jpeg'
+                        : 'asset/sign/kojisha-nm.jpeg';
+                }
+            }
+
             $invoiceSave = $invoice->save();
             if ($invoiceSave) {
-                $quote = UnitQuotation::find($invoice->id_unit_quotation);
                 if ($quote) {
                     // No PO itu satu per quote — rambatkan ke Smart Quote & invoice
                     // lain pada quote yang sama biar konsisten.
@@ -242,10 +256,24 @@ class InvoiceController extends Controller
             }
         } else {
             $quote = Quotation::find($invoice->id_quotation);
-            $invoice->invoiceTo = $quote->destination;
+            $invoice->invoiceTo = $quote ? $quote->destination : '1';
+
+            if ($quote) {
+                $harga = Payment::where('id_quotation', $quote->id)->orderBy('created_at', 'DESC')->first();
+                $jumlah = isset($harga) ? $harga->amount : $quote->harga_total;
+
+                if ($invoice->flag === "Reftech") {
+                    $invoice->sign = $jumlah >= 5000000 ? 'asset/sign/reftech-m.jpeg' : 'asset/sign/reftech-nm.jpeg';
+                } elseif ($invoice->flag === "Kojisha") {
+                    $invoice->sign = $jumlah >= 5000000 ? 'asset/sign/kojisha-m.jpeg' : 'asset/sign/kojisha-nm.jpeg';
+                }
+            }
+
             $invoiceSave = $invoice->save();
             if ($invoiceSave) {
-                $this->syncMonitoringDocumentCard($quote);
+                if ($quote) {
+                    $this->syncMonitoringDocumentCard($quote);
+                }
                 return redirect('/invoice/' . $id)->with('message', 'Invoice has been accepted');
             }
         }
@@ -1327,7 +1355,7 @@ class InvoiceController extends Controller
     public function show_unit($id)
     {
         $invoice = Invoice::findOrFail($id);
-        $quote   = UnitQuotation::with(['client', 'pic', 'sales', 'details.unit', 'details.equivalent.product', 'deliveries.detail'])->findOrFail($invoice->id_unit_quotation);
+        $quote   = UnitQuotation::with(['client', 'pic', 'sales', 'details.unit', 'details.fixedAsset.unit', 'details.equivalent.product', 'deliveries.detail'])->findOrFail($invoice->id_unit_quotation);
 
         $allInvoices = Invoice::where('id_unit_quotation', $quote->id)
             ->orderByRaw("FIELD(type,'DP','BP','CT')")
@@ -1505,6 +1533,18 @@ class InvoiceController extends Controller
             } else {
                 $inv->flag = 'Reftech';
             }
+
+            $amount = $quote->total;
+            if ($inv->flag === 'Reftech') {
+                $inv->sign = $amount >= 5000000
+                    ? 'asset/sign/reftech-m.jpeg'
+                    : 'asset/sign/reftech-nm.jpeg';
+            } else {
+                $inv->sign = $amount >= 5000000
+                    ? 'asset/sign/kojisha-m.jpeg'
+                    : 'asset/sign/kojisha-nm.jpeg';
+            }
+
             $inv->save();
         }
 

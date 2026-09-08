@@ -8,6 +8,8 @@
     @include('pages.logistic.dashboard._content')
 @elseif (($adminView ?? 'sales') === 'workshop')
     @include('pages.workshop.dashboard._content')
+@elseif (($adminView ?? 'sales') === 'projectmanager')
+    @include('pages.projectmanager.dashboard._content')
 @else
     @include('pages.sales.dashboard_admin_sales')
 @endif

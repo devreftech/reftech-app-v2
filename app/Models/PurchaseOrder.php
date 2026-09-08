@@ -10,8 +10,9 @@ class PurchaseOrder extends Model
 {
     use HasFactory, LogsActivity;
     protected $table = "purchase_order";
-    protected $date = [
+    protected $dates = [
         'date',
+        'vendor_signed_at',
         'created_at',
         'updated_at'
     ];
@@ -37,7 +38,46 @@ class PurchaseOrder extends Model
         'vat',
         'delivery_cost',
         'total',
+        'sign_token',
+        'vendor_signature',
+        'vendor_signer_name',
+        'vendor_signer_position',
+        'vendor_signed_stamp',
+        'vendor_signed_at',
+        'vendor_ip',
     ];
+
+    /**
+     * Get or auto-generate a secure token for vendor online signature.
+     */
+    public function getSignTokenAttribute($value)
+    {
+        if (empty($value)) {
+            $newToken = bin2hex(random_bytes(20));
+            \Illuminate\Support\Facades\DB::table('purchase_order')
+                ->where('id', $this->id)
+                ->update(['sign_token' => $newToken]);
+            $this->attributes['sign_token'] = $newToken;
+            return $newToken;
+        }
+        return $value;
+    }
+
+    /**
+     * URL publik untuk vendor menandatangani PO online.
+     */
+    public function getSignUrlAttribute(): string
+    {
+        return url('/purchase/sign/' . $this->sign_token);
+    }
+
+    /**
+     * Cek apakah PO sudah ditandatangani oleh vendor secara online.
+     */
+    public function isSignedByVendor(): bool
+    {
+        return !empty($this->vendor_signature) && !empty($this->vendor_signed_at);
+    }
     public function detail()
     {
         return $this->hasMany('App\Models\DetailPurchaseOrder', 'id_purchase_order');

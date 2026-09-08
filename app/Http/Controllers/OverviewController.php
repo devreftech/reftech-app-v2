@@ -1435,17 +1435,18 @@ class OverviewController extends Controller
         $lastDay  = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
 
         $sales = User::activeSalesAndProjectAdmins();
+        $activeSalesIds = $sales->pluck('id_sales_list')->flatten()->filter()->unique();
 
-        $poCount      = Quotation::whereBetween('po_date', [$firstDay, $lastDay])->where('status', '100')->where('level', '1')->where('is_primary', '1')->count()
-            + UnitQuotation::where('status', 'po_received')->where('is_latest', 1)->whereBetween('po_received', [$firstDay, $lastDay])->count();
-        $poTotal      = Quotation::whereBetween('po_date', [$firstDay, $lastDay])->where('status', '100')->where('level', '1')->where('is_primary', '1')->sum('nett')
-            + UnitQuotation::where('status', 'po_received')->where('is_latest', 1)->whereBetween('po_received', [$firstDay, $lastDay])->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
-        $quoteCount   = Quotation::whereBetween('estimated_date', [$firstDay, $lastDay])->whereIn('status', ['20', '40', '60', '80'])->where('level', '1')->where('is_primary', '1')->count();
-        $quoteTotal   = Quotation::whereBetween('estimated_date', [$firstDay, $lastDay])->whereIn('status', ['20', '40', '60', '80'])->where('level', '1')->where('is_primary', '1')->sum('nett');
-        $lossCount    = Quotation::whereBetween('estimated_date', [$firstDay, $lastDay])->where('status', '0')->where('level', '1')->where('is_primary', '1')->count();
-        $lossTotal    = Quotation::whereBetween('estimated_date', [$firstDay, $lastDay])->where('status', '0')->where('level', '1')->where('is_primary', '1')->sum('nett');
-        $quoteOnCount = Quotation::whereBetween('estimated_date', [$firstDay, $lastDay])->where('level', '1')->where('is_primary', '1')->count();
-        $totalTarget  = Target::whereIn('id_sales', $sales->pluck('id_sales_list')->flatten()->filter()->unique())->sum('total');
+        $poCount      = Quotation::whereBetween('po_date', [$firstDay, $lastDay])->whereIn('id_sales', $activeSalesIds)->where('status', '100')->where('level', '1')->where('is_primary', '1')->count()
+            + UnitQuotation::where('status', 'po_received')->where('is_latest', 1)->whereIn('id_sales', $activeSalesIds)->whereBetween('po_received', [$firstDay, $lastDay])->count();
+        $poTotal      = Quotation::whereBetween('po_date', [$firstDay, $lastDay])->whereIn('id_sales', $activeSalesIds)->where('status', '100')->where('level', '1')->where('is_primary', '1')->sum('nett')
+            + UnitQuotation::where('status', 'po_received')->where('is_latest', 1)->whereIn('id_sales', $activeSalesIds)->whereBetween('po_received', [$firstDay, $lastDay])->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
+        $quoteCount   = Quotation::whereBetween('estimated_date', [$firstDay, $lastDay])->whereIn('id_sales', $activeSalesIds)->whereIn('status', ['20', '40', '60', '80'])->where('level', '1')->where('is_primary', '1')->count();
+        $quoteTotal   = Quotation::whereBetween('estimated_date', [$firstDay, $lastDay])->whereIn('id_sales', $activeSalesIds)->whereIn('status', ['20', '40', '60', '80'])->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $lossCount    = Quotation::whereBetween('estimated_date', [$firstDay, $lastDay])->whereIn('id_sales', $activeSalesIds)->where('status', '0')->where('level', '1')->where('is_primary', '1')->count();
+        $lossTotal    = Quotation::whereBetween('estimated_date', [$firstDay, $lastDay])->whereIn('id_sales', $activeSalesIds)->where('status', '0')->where('level', '1')->where('is_primary', '1')->sum('nett');
+        $quoteOnCount = Quotation::whereBetween('estimated_date', [$firstDay, $lastDay])->whereIn('id_sales', $activeSalesIds)->where('level', '1')->where('is_primary', '1')->count();
+        $totalTarget  = Target::whereIn('id_sales', $activeSalesIds)->sum('total');
 
         $data = [];
         foreach ($sales as $user) {

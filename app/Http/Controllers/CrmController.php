@@ -297,7 +297,7 @@ class CrmController extends Controller
 
         $activityTimeline = $activityTimeline->sortByDesc('date')->values();
 
-        $sales = User::where('role', 'sales')->get();
+        $sales = User::where('role', 'sales')->where('active', '1')->where('id', '!=', 23)->get();
         $issue = Issues::all();
         $unit = SerialProduct::whereNotNull('detail')->get();
         // dd($unit);

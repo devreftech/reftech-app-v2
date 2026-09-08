@@ -230,6 +230,18 @@
             vertical-align: top;
         }
 
+        .items-table .table-section-header td {
+            background-color: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #cbd5e1;
+            padding: 6px 10px;
+            font-weight: 700;
+            font-size: 11px;
+            color: #0284c7;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
         .items-table .item-title {
             font-weight: 700;
             color: #0f172a;
@@ -569,58 +581,108 @@
                 'inlet_cap'=>' m³/min','outlet_cap'=>' m³/min',
                 'weight'=>' Kg','capacity'=>' Liter',
             ];
+            $hasDisc = $unitQuote->details->where('disc', '>', 0)->count() > 0;
+            $itemNo = 1;
+            $headerCount = 0;
+
+            // Subtotal per Head Title
+            $sectionSubtotals = [];
+            $currentHeaderId = null;
+            foreach ($unitQuote->details as $d) {
+                if ($d->type === 'header' || $d->type === 'heading') {
+                    $currentHeaderId = $d->id;
+                    $sectionSubtotals[$currentHeaderId] = 0;
+                } elseif ($currentHeaderId !== null) {
+                    $sectionSubtotals[$currentHeaderId] += (float) ($d->amount ?? 0);
+                }
+            }
         @endphp
 
         <table class="items-table">
             <thead>
                 <tr>
                     <th style="width: 4%; text-align: center;">No</th>
-                    <th style="width: 52%;">Item Description</th>
+                    <th style="width: {{ $hasDisc ? '46%' : '52%' }};">Item Description</th>
                     <th style="width: 10%; text-align: center;">Qty</th>
                     <th style="width: 17%; text-align: right;">Price (IDR)</th>
+                    @if ($hasDisc)
+                        <th style="width: 6%; text-align: center;">Disc</th>
+                    @endif
                     <th style="width: 17%; text-align: right;">Amount (IDR)</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach ($unitQuote->details as $i => $item)
-                    <tr>
-                        <td style="text-align: center; color: #64748b;">{{ $i + 1 }}</td>
-                        <td>
-                            @if ($item->type === 'unit' && $item->unit)
-                                <div class="item-title">{{ $item->label ?: ($item->unit->brand . ' ' . $item->unit->model) }}</div>
-                                @php $specs = $item->getSpecVisibleArray(); @endphp
-                                @if (!empty($specs))
-                                    <div class="spec-grid">
-                                        @foreach ($specs as $field)
-                                            @if ($field === 'unit') @continue @endif
-                                            @php $val = $item->unit->$field ?? null; @endphp
-                                            @if ($val && isset($specLabels[$field]))
-                                                <div>
-                                                    <span style="color:#64748b;">{{ $specLabels[$field] }}:</span>
-                                                    <strong>{{ $val }}{{ $specUnits[$field] ?? '' }}</strong>
-                                                </div>
-                                            @endif
-                                        @endforeach
-                                    </div>
+                @forelse ($unitQuote->details as $item)
+                    @if ($item->type === 'header' || $item->type === 'heading')
+                        @php
+                            $lbl = trim($item->label ?? '');
+                            if (!preg_match('/^[A-Z0-9][\.\)]/i', $lbl)) {
+                                $lbl = chr(65 + ($headerCount % 26)) . '. ' . $lbl;
+                            }
+                            $headerCount++;
+                            $sectionSubtotal = $sectionSubtotals[$item->id] ?? 0;
+                        @endphp
+                        <tr class="table-section-header">
+                            <td colspan="{{ $hasDisc ? 6 : 5 }}">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>{{ $lbl }}</span>
+                                    @if ($sectionSubtotal > 0)
+                                        <span style="font-size: 10px; font-weight: 600; color: #475569; text-transform: none; letter-spacing: normal;">
+                                            Subtotal: Rp {{ number_format($sectionSubtotal, 0, '', '.') }}
+                                        </span>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                    @else
+                        <tr>
+                            <td style="text-align: center; color: #64748b; font-weight: 500;">{{ $itemNo++ }}</td>
+                            <td>
+                                @if ($item->type === 'unit' && $item->unit)
+                                    <div class="item-title">{{ $item->label ?: ($item->unit->brand . ' ' . $item->unit->model) }}</div>
+                                    @php $specs = $item->getSpecVisibleArray(); @endphp
+                                    @if (!empty($specs))
+                                        <div class="spec-grid">
+                                            @foreach ($specs as $field)
+                                                @if ($field === 'unit') @continue @endif
+                                                @php $val = $item->unit->$field ?? null; @endphp
+                                                @if ($val && isset($specLabels[$field]))
+                                                    <div>
+                                                        <span style="color:#64748b;">{{ $specLabels[$field] }}:</span>
+                                                        <strong>{{ $val }}{{ $specUnits[$field] ?? '' }}</strong>
+                                                    </div>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                @else
+                                    <div class="item-title">{{ $item->label }}</div>
+                                    @if ($item->description && $item->description !== $item->label)
+                                        <div class="item-desc">{{ $item->description }}</div>
+                                    @endif
                                 @endif
-                            @else
-                                <div class="item-title">{{ $item->label }}</div>
-                                @if ($item->description && $item->description !== $item->label)
-                                    <div class="item-desc">{{ $item->description }}</div>
-                                @endif
+                            </td>
+                            <td style="text-align: center; font-weight: 600;">
+                                {{ (float)$item->qty == (int)$item->qty ? (int)$item->qty : $item->qty }} {{ $item->info_qty ?? 'Unit' }}
+                            </td>
+                            <td style="text-align: right;">
+                                {{ number_format($item->price, 0, '', '.') }}
+                            </td>
+                            @if ($hasDisc)
+                                <td style="text-align: center; font-weight: 600; color: #dc2626;">
+                                    {{ (float)$item->disc > 0 ? (float)$item->disc . '%' : '-' }}
+                                </td>
                             @endif
-                        </td>
-                        <td style="text-align: center; font-weight: 600;">
-                            {{ (float)$item->qty == (int)$item->qty ? (int)$item->qty : $item->qty }} {{ $item->info_qty ?? 'Unit' }}
-                        </td>
-                        <td style="text-align: right;">
-                            {{ number_format($item->price, 0, '', '.') }}
-                        </td>
-                        <td style="text-align: right; font-weight: 700;">
-                            {{ number_format($item->amount, 0, '', '.') }}
-                        </td>
+                            <td style="text-align: right; font-weight: 700;">
+                                {{ number_format($item->amount, 0, '', '.') }}
+                            </td>
+                        </tr>
+                    @endif
+                @empty
+                    <tr>
+                        <td colspan="{{ $hasDisc ? 6 : 5 }}" style="text-align: center; padding: 20px; color: #94a3b8;">No items found.</td>
                     </tr>
-                @endforeach
+                @endforelse
             </tbody>
         </table>
 

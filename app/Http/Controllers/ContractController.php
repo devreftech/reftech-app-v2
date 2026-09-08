@@ -37,21 +37,21 @@ class ContractController extends Controller
         // dd($contracts->quotation);
         $today = Carbon::now();
         $thisYear = $today->year;
-        $numberLastSP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where('contract.type', 'Selling')->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
-        $numberLastSNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where('contract.type', 'Selling')->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
-        $numberLastCP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where('contract.type', 'Order')->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
-        $numberLastCNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where('contract.type', 'Order')->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
+        $numberLastSP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where('contract.type', 'Selling')->where('contract.no_contract', 'not like', '%/CO/%')->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
+        $numberLastSNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where('contract.type', 'Selling')->where('contract.no_contract', 'not like', '%/CO/%')->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
+        $numberLastCP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where(function($q) { $q->where('contract.type', 'Order')->orWhere('contract.no_contract', 'like', '%/CO/%'); })->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
+        $numberLastCNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where(function($q) { $q->where('contract.type', 'Order')->orWhere('contract.no_contract', 'like', '%/CO/%'); })->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
         // dd($numberLastSNP);
-        $numberSP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where('contract.type', 'Selling')->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
-        $numberSNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where('contract.type', 'Selling')->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
-        $numberCP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where('contract.type', 'Order')->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
-        $numberCNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where('contract.type', 'Order')->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
+        $numberSP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where('contract.type', 'Selling')->where('contract.no_contract', 'not like', '%/CO/%')->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
+        $numberSNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where('contract.type', 'Selling')->where('contract.no_contract', 'not like', '%/CO/%')->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
+        $numberCP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where(function($q) { $q->where('contract.type', 'Order')->orWhere('contract.no_contract', 'like', '%/CO/%'); })->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
+        $numberCNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where(function($q) { $q->where('contract.type', 'Order')->orWhere('contract.no_contract', 'like', '%/CO/%'); })->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
         $formattedNumberSP  = $this->generateNextContractNumber($numberLastSP, '001');
         $formattedNumberSNP = $this->generateNextContractNumber($numberLastSNP, '001');
         $formattedNumberCP  = $this->generateNextContractNumber($numberLastCP, '001');
         $formattedNumberCNP = $this->generateNextContractNumber($numberLastCNP, '001');
         // Unit selling contract — sequential across ALL selling contracts this year
-        $numberLastSC      = Contract::where('type', 'Selling')->where('level', '1')
+        $numberLastSC      = Contract::where('type', 'Selling')->where('no_contract', 'not like', '%/CO/%')->where('level', '1')
             ->whereYear('date', $today)->orderByDesc('id')->first('no_contract');
         $formattedNumberSC = $this->generateNextContractNumber($numberLastSC, '001');
         $unitNumbers = Contract::unitContractNumbers($today->year);
@@ -100,27 +100,38 @@ class ContractController extends Controller
             + Invoice::pendingUnitRequest()->count();
         $today = Carbon::now();
         $thisYear = $today->year;
-        $numberLastSP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where('contract.type', 'Selling')->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
-        $numberLastSNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where('contract.type', 'Selling')->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
-        $numberLastCP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where('contract.type', 'Order')->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
-        $numberLastCNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where('contract.type', 'Order')->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
+        $numberLastSP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where('contract.type', 'Selling')->where('contract.no_contract', 'not like', '%/CO/%')->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
+        $numberLastSNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where('contract.type', 'Selling')->where('contract.no_contract', 'not like', '%/CO/%')->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
+        $numberLastCP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where(function($q) { $q->where('contract.type', 'Order')->orWhere('contract.no_contract', 'like', '%/CO/%'); })->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
+        $numberLastCNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where(function($q) { $q->where('contract.type', 'Order')->orWhere('contract.no_contract', 'like', '%/CO/%'); })->where('contract.level', '1')->groupBy('contract.id')->orderByDesc('contract.id')->first('contract.no_contract');
         // dd($numberLastSNP);
-        $numberSP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where('contract.type', 'Selling')->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
-        $numberSNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where('contract.type', 'Selling')->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
-        $numberCP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where('contract.type', 'Order')->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
-        $numberCNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where('contract.type', 'Order')->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
+        $numberSP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where('contract.type', 'Selling')->where('contract.no_contract', 'not like', '%/CO/%')->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
+        $numberSNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where('contract.type', 'Selling')->where('contract.no_contract', 'not like', '%/CO/%')->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
+        $numberCP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '11')->where(function($q) { $q->where('contract.type', 'Order')->orWhere('contract.no_contract', 'like', '%/CO/%'); })->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
+        $numberCNP = Contract::join('quotation as q', 'contract.id_quotation', '=', 'q.id')->whereYear('contract.date', $today)->where('q.tax', '0')->where(function($q) { $q->where('contract.type', 'Order')->orWhere('contract.no_contract', 'like', '%/CO/%'); })->where('contract.level', '1')->groupBy('contract.id')->get('contract.id');
 
         $formattedNumberSP = $this->generateNextContractNumber($numberLastSP, '001');
         $formattedNumberSNP = $this->generateNextContractNumber($numberLastSNP, '001');
         $formattedNumberCP = $this->generateNextContractNumber($numberLastCP, '001');
         $formattedNumberCNP = $this->generateNextContractNumber($numberLastCNP, '001');
-        // $formattedNumberSP = str_pad($numberSP->count() + 1, 3, '0', STR_PAD_LEFT);
-        // $formattedNumberSNP = str_pad($numberSNP->count() + 1, 3, '0', STR_PAD_LEFT);
-        // $formattedNumberCP = str_pad($numberCP->count() + 1, 3, '0', STR_PAD_LEFT);
-        // $formattedNumberCNP = str_pad($numberCNP->count() + 1, 3, '0', STR_PAD_LEFT);
         $contract       = Contract::find($id);
+        if (!$contract) {
+            abort(404);
+        }
+
+        if (\Illuminate\Support\Facades\Auth::check()) {
+            $userId = \Illuminate\Support\Facades\Auth::id();
+            if ($contract->id_unit_quotation) {
+                \App\Models\UnitQuotationPaymentNotification::where('id_unit_quotation', $contract->id_unit_quotation)
+                    ->where('id_user', $userId)
+                    ->whereIn('type', ['contract_approved', 'contract_requested', 'contract_signed'])
+                    ->where('is_read', false)
+                    ->update(['is_read' => true]);
+            }
+        }
+
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
-        $numberLastSC   = Contract::where('type', 'Selling')->where('level', '1')
+        $numberLastSC   = Contract::where('type', 'Selling')->where('no_contract', 'not like', '%/CO/%')->where('level', '1')
             ->whereYear('date', $today)->orderByDesc('id')->first('no_contract');
         $formattedNumberSC = $this->generateNextContractNumber($numberLastSC, '001');
         $unitNumbers = Contract::unitContractNumbers($today->year);
@@ -191,14 +202,24 @@ class ContractController extends Controller
     }
     public function create_selling_contract(Request $request, $id)
     {
+        $quote = Quotation::find($id);
+        $type = (($quote && $quote->isKojisha()) || str_contains($request->no_contract, '/CO/')) ? 'Order' : 'Selling';
         $sellcon = new Contract;
         $sellcon->id_quotation = $id;
+        $sellcon->id_user = \Illuminate\Support\Facades\Auth::id();
         $sellcon->no_contract = $request->no_contract;
         $sellcon->level = "1";
-        $sellcon->type = "Selling";
+        $sellcon->type = $type;
         $sellcon->date = Carbon::today();
         $sellconSave = $sellcon->save();
         if ($sellconSave) {
+            if ($quote && $quote->id_sales) {
+                \App\Models\UnitQuotationPaymentNotification::create([
+                    'id_user' => $quote->id_sales,
+                    'type' => 'contract_approved',
+                    'is_read' => false,
+                ]);
+            }
             return redirect('contract/' . $sellcon->id);
         } else {
 
@@ -209,12 +230,21 @@ class ContractController extends Controller
     {
         $sellcon = new Contract;
         $sellcon->id_quotation = $id;
+        $sellcon->id_user = \Illuminate\Support\Facades\Auth::id();
         $sellcon->no_contract = $request->no_contract;
         $sellcon->level = "1";
         $sellcon->type = "Order";
         $sellcon->date = Carbon::today();
         $sellconSave = $sellcon->save();
         if ($sellconSave) {
+            $quote = Quotation::find($id);
+            if ($quote && $quote->id_sales) {
+                \App\Models\UnitQuotationPaymentNotification::create([
+                    'id_user' => $quote->id_sales,
+                    'type' => 'contract_approved',
+                    'is_read' => false,
+                ]);
+            }
             return redirect('contract/' . $sellcon->id);
         } else {
 
@@ -253,11 +283,12 @@ class ContractController extends Controller
     public function request_selling_contract($id)
     {
         $quote = Quotation::find($id);
+        $type = ($quote && $quote->isKojisha()) ? 'Order' : 'Selling';
         $sellcon = new Contract;
         $sellcon->id_quotation = $id;
         $sellcon->no_contract = $quote->no_quote;
         $sellcon->level = "0";
-        $sellcon->type = "Selling";
+        $sellcon->type = $type;
         $sellcon->date = Carbon::today();
         $sellconSave = $sellcon->save();
         if ($sellconSave) {
@@ -300,12 +331,23 @@ class ContractController extends Controller
         $quote   = UnitQuotation::findOrFail($id);
         $type    = $quote->isKojisha() ? 'Order' : 'Selling';
         $sellcon = Contract::create([
+            'id_user'           => \Illuminate\Support\Facades\Auth::id(),
             'id_unit_quotation' => $id,
             'no_contract'       => $request->no_contract,
             'level'             => '1',
             'type'              => $type,
             'date'              => Carbon::today(),
         ]);
+
+        if ($sellcon && $quote->id_sales) {
+            \App\Models\UnitQuotationPaymentNotification::create([
+                'id_unit_quotation' => $quote->id,
+                'id_user'           => $quote->id_sales,
+                'type'              => 'contract_approved',
+                'is_read'           => false,
+            ]);
+        }
+
         return redirect()->route('contract.show', $sellcon->id)
             ->with('success', ($type === 'Order' ? 'Confirm Order' : 'Selling Contract') . ' berhasil dibuat.');
     }
@@ -340,10 +382,34 @@ class ContractController extends Controller
         // Memperbarui kontrak
         $contract->no_contract = $request->no_contract;
         $contract->level = '1';
+
+        $isOrder = str_contains($request->no_contract, '/CO/')
+            || ($contract->unitQuotation && $contract->unitQuotation->isKojisha())
+            || ($contract->quotation && $contract->quotation->isKojisha());
+        $contract->type = $isOrder ? 'Order' : 'Selling';
+
         $contractSave = $contract->save();
 
         // Memeriksa apakah penyimpanan berhasil
         if ($contractSave) {
+            $salesId = null;
+            if ($contract->id_unit_quotation) {
+                $unitQuote = UnitQuotation::find($contract->id_unit_quotation);
+                $salesId = $unitQuote?->id_sales;
+            } elseif ($contract->id_quotation) {
+                $quote = Quotation::find($contract->id_quotation);
+                $salesId = $quote?->id_sales;
+            }
+
+            if ($salesId) {
+                \App\Models\UnitQuotationPaymentNotification::create([
+                    'id_unit_quotation' => $contract->id_unit_quotation ?: null,
+                    'id_user'           => $salesId,
+                    'type'              => 'contract_approved',
+                    'is_read'           => false,
+                ]);
+            }
+
             return redirect('/contract/' . $id)->with('message', 'Contract Was Accepted');
         } else {
             return redirect()->back()->with('error', 'Failed to accept contract');

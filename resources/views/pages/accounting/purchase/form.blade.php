@@ -41,6 +41,11 @@
                 <i class="mdi mdi-file-document-outline fs-5"></i>
                 <div>Item Sparepart di bawah otomatis dari <strong>{{ $sourcePr->no_pr }}</strong>. Silakan pilih supplier & lengkapi harga.</div>
             </div>
+        @elseif ($sourceProductSet ?? null)
+            <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
+                <i class="mdi mdi-package-variant-closed fs-5"></i>
+                <div>Item Sparepart di bawah otomatis dari Bundle <strong>{{ $sourceProductSet->product->commodity ?? 'Product Set' }}</strong>. Silakan pilih supplier & lengkapi harga.</div>
+            </div>
         @endif
         @if ($errors->any())
             <div class="alert alert-danger">
@@ -148,9 +153,9 @@
                     </div>
                     <div class="col-md-6">
                         <div class="form-floating form-floating-outline">
-                            <input class="form-control" type="text" placeholder="Put Mobile Here ...."
+                            <input class="form-control" type="text" placeholder="Nomor HP / Telepon PIC..."
                                 id="mobile" name="mobile" value="{{ old('mobile', @$purchase->mobile ?? '') }}">
-                            <label for="mobile">Mobile</label>
+                            <label for="mobile">No. HP / Telepon PIC</label>
                         </div>
                     </div>
                     <div class="col-12">
@@ -167,16 +172,24 @@
                             <i class="mdi mdi-file-document-outline me-1"></i> PO Parameters
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <div class="form-floating form-floating-outline">
                             <input class="form-control" type="date" id="date" name="date" required
-                                value="{{ old('date', @$purchase->date ?? \Carbon\Carbon::today()->format('Y-m-d')) }}">
+                                value="{{ old('date', !empty($purchase->date) ? \Carbon\Carbon::parse($purchase->date)->format('Y-m-d') : \Carbon\Carbon::today()->format('Y-m-d')) }}">
                             <label for="date">Date</label>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="form-floating form-floating-outline">
-                            <input class="form-control" type="text" placeholder="Put Delivery Time Here ...."
+                            <input class="form-control" type="text" placeholder="No. Reference (optional)..."
+                                id="no_reference" name="no_reference"
+                                value="{{ old('no_reference', @$purchase->no_reference ?? '') }}">
+                            <label for="no_reference">No. Reference <span class="text-muted small">(optional)</span></label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-floating form-floating-outline">
+                            <input class="form-control" type="text" placeholder="Delivery Time..."
                                 id="delivery" name="delivery"
                                 value="{{ old('delivery', @$purchase->delivery ?? 'ASAP') }}">
                             <label for="delivery">Delivery Time</label>
@@ -203,7 +216,7 @@
                                 placeholder="Ketik custom payment term...">
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <div class="d-flex align-items-center gap-2">
                             <div class="form-floating form-floating-outline flex-grow-1">
                                 @php
@@ -250,156 +263,219 @@
                                 $no = 1;
                             @endphp
                             @foreach ($dPurchase as $item)
-                                <div class="repeater-wrapper" data-repeater-item="">
-                                    <div class="position-relative border-bottom p-3">
-                                        <div class="row w-100">
-                                            <input type="hidden" class="invoice-item-detail-id" name="detail_id[]"
-                                                value="{{ $item->id }}">
+                                @if (($item->category ?? '') === 'Header')
+                                    <div class="repeater-wrapper header-row-wrapper" data-repeater-item="" data-category="Header">
+                                        <div class="position-relative border-bottom p-3" style="background:#f8f9ff !important; border-left: 4px solid #696cff !important;">
+                                            <input type="hidden" class="invoice-item-detail-id" name="detail_id[]" value="{{ $item->id }}">
                                             <input type="hidden" name="pr_detail_id[]" value="">
-                                            <div class="col-md col-12 mb-md-0 item-fields">
-                                                <div class="item-category-toggle mb-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input item-category-radio" type="radio"
-                                                            value="Sparepart" {{ ($item->category ?? 'Sparepart') != 'Unit' && ($item->category ?? '') != 'Custom' ? 'checked' : '' }}>
-                                                        <label class="form-check-label small">Sparepart</label>
-                                                    </div>
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input item-category-radio" type="radio"
-                                                            value="Unit" {{ ($item->category ?? '') == 'Unit' ? 'checked' : '' }}>
-                                                        <label class="form-check-label small">Unit Global</label>
-                                                    </div>
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input item-category-radio" type="radio"
-                                                            value="Custom" {{ ($item->category ?? '') == 'Custom' ? 'checked' : '' }}>
-                                                        <label class="form-check-label small">Custom Item</label>
-                                                    </div>
+                                            <input type="hidden" class="item-category-value" name="item_category[]" value="Header">
+                                            <input type="hidden" name="id_product[]" value="">
+                                            <input type="hidden" name="id_unit[]" value="">
+                                            <input type="hidden" name="id_rental_accessory[]" value="">
+                                            <input type="hidden" name="kondisi[]" value="">
+                                            <input type="hidden" class="invoice-item-price" name="price[]" value="0">
+                                            <input type="hidden" class="invoice-item-qty" name="qty[]" value="0">
+                                            <input type="hidden" class="invoice-item-info" name="info_qty[]" value="">
+                                            <input type="hidden" class="invoice-item-disc" name="disc[]" value="0">
+                                            <input type="hidden" class="invoice-item-amount" name="amount[]" value="0">
+
+                                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                <div class="btn btn-sm btn-icon btn-label-secondary btn-drag-handle cursor-move flex-shrink-0" title="Geser (drag & drop) untuk memindahkan posisi" style="cursor: grab;">
+                                                    <i class="mdi mdi-drag-vertical fs-5"></i>
                                                 </div>
-                                                {{-- Radio di atas gak punya name (per-baris, exclusivity dihandle JS) supaya
-                                                     gak nabrak grup radio baris lain — nilainya disinkronkan ke sini lewat
-                                                     applyRowCategory() tiap kali berubah, ini yang beneran ke-submit. --}}
-                                                <input type="hidden" class="item-category-value" name="item_category[]"
-                                                    value="{{ ($item->category ?? '') == 'Unit' ? 'Unit' : (($item->category ?? '') == 'Custom' ? 'Custom' : 'Sparepart') }}">
-                                                <div class="field-product-sparepart">
-                                                    <select class="form-select form-select-sm select2-product-po" name="id_product[]">
-                                                        <option value="">Cari SKU / Product...</option>
-                                                        @foreach ($products ?? [] as $p)
-                                                            <option value="{{ $p->id }}"
-                                                                data-label="{{ $p->commodity }} — {{ $p->description }}"
-                                                                data-unit="{{ $p->unit }}"
-                                                                {{ $item->id_product == $p->id ? 'selected' : '' }}>
-                                                                {{ $p->commodity }} — {{ $p->description }}
-                                                            </option>
-                                                        @endforeach
-                                                    </select>
+                                                <span class="badge bg-primary text-uppercase" style="font-size:10.5px; letter-spacing:0.5px;">
+                                                    <i class="mdi mdi-bookmark-outline me-1"></i>Head Title
+                                                </span>
+                                                <div class="flex-grow-1" style="min-width: 250px;">
+                                                    <input type="text" class="form-control form-control-sm fw-bold text-primary header-title-input invoice-item-detail-product"
+                                                        name="product[]" placeholder="Head Title (e.g. A. SCOPE OF WORK, B. SPAREPART) *"
+                                                        value="{{ $item->product }}" required>
                                                 </div>
-                                                <div class="field-product-unit" style="display:none;">
-                                                    <select class="form-select form-select-sm select2-unit-po" name="id_unit[]">
-                                                        <option value="">Cari Unit...</option>
-                                                        @foreach ($units ?? [] as $u)
-                                                            <option value="{{ $u->id }}"
-                                                                data-sku="{{ $u->sku }}"
-                                                                data-name="{{ $u->brand }} {{ $u->model }}"
-                                                                data-label="{{ $u->sku }} - {{ $u->brand }} {{ $u->model }}"
-                                                                {{ $item->id_unit == $u->id ? 'selected' : '' }}>
-                                                                {{ $u->sku }} {{ $u->brand }} {{ $u->model }}
-                                                            </option>
-                                                        @endforeach
-                                                    </select>
-                                                    <select class="form-select form-select-sm mt-1 select-kondisi-unit" name="kondisi[]">
-                                                        <option value="Baru" {{ ($item->kondisi ?? 'Baru') == 'Baru' ? 'selected' : '' }}>Unit Baru (masuk stok jual)</option>
-                                                        <option value="Second" {{ ($item->kondisi ?? '') == 'Second' ? 'selected' : '' }}>Unit Second (jadi Fixed Asset, QC dulu)</option>
-                                                    </select>
-                                                </div>
-                                                <div class="field-product-custom" style="display:none;">
-                                                    <textarea class="form-control form-control-sm invoice-item-detail-product"
-                                                        name="product[]" rows="2"
-                                                        placeholder="Nama/Deskripsi Item Custom...">{{ $item->product }}</textarea>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-3 col-12 mb-md-0 mb-3">
-                                                <p class="mb-2 repeater-title small text-muted">Price</p>
-                                                <div class="input-group input-group-sm" data-price="{{ $no }}">
-                                                    <span class="input-group-text">Rp. </span>
-                                                    <input type="text" class="form-control invoice-item-price-label"
-                                                        id="priceLabel-{{ $no }}"
-                                                        data-id="{{ $no }}" name="harga"
-                                                        placeholder="Put Price Here" data-type="currency"
-                                                        min="0" pattern="^[0-9]\d{0,2}(\.\d{3})*$"
-                                                        value="{{ number_format($item->price, '0', ',', '.') }}">
-                                                    <input class="form-control invoice-item-price" type="number"
-                                                        name="price[]" id="price-{{ $no }}"
-                                                        value="{{ old('price[]', $item->price) }}" hidden>
-                                                </div>
-                                                <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
-                                                    <div class="hint-calc-wrapper">
-                                                        <div class="text-secondary mb-1">
-                                                            <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
-                                                            Harga Exc. PPN: <strong class="text-primary exc-ppn-val">Rp 0</strong> <span class="ppn-val text-muted" style="font-size: 10px;">(PPN: Rp 0)</span><br>
-                                                            DPP (11/12): <strong class="text-dark dpp-val" style="font-size: 10.5px;">Rp 0</strong>
-                                                        </div>
-                                                        <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
-                                                            <i class="mdi mdi-check me-1"></i> Gunakan Harga Exc. PPN
-                                                        </button>
-                                                    </div>
-                                                    <div class="hint-applied-wrapper d-none">
-                                                        <div class="d-flex align-items-center justify-content-between text-success">
-                                                            <span style="font-size: 10px;">
-                                                                <i class="mdi mdi-check-circle-outline me-1"></i>Exc. PPN: <strong class="applied-dpp-text">Rp 0</strong> <span class="text-muted applied-dpp-calc" style="font-size: 9.5px;">(DPP: Rp 0)</span>
-                                                            </span>
-                                                            <button type="button" class="btn btn-xs btn-link text-danger p-0 ms-1 btn-reset-dpp" style="font-size: 10px; text-decoration: underline; line-height: 1;">
-                                                                Batal
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-1 col-12 mb-md-0 mb-3">
-                                                <p class="mb-2 repeater-title small text-muted">Qty</p>
-                                                <input type="number" class="form-control form-control-sm invoice-item-qty"
-                                                    placeholder="Min 1" name="qty[]" id="qty-{{ $no }}"
-                                                    data-id="{{ $no }}" min="1"
-                                                    value="{{ $item->qty }}">
-                                            </div>
-                                            <div class="col-md-1 col-12 mb-md-0 mb-3">
-                                                <p class="mb-2 repeater-title small text-muted">Info Qty</p>
-                                                <select class="form-select form-select-sm invoice-item-info select2-info-qty"
-                                                    id="info-qty-{{ $no }}"
-                                                    data-id="{{ $no }}"
-                                                    aria-label="Default select example" name="info_qty[]">
-                                                    <option disabled value="">---Info---</option>
-                                                    @foreach ($unitList as $uOpt)
-                                                        <option value="{{ $uOpt }}" {{ strcasecmp($item->info_qty, $uOpt) === 0 ? 'selected' : '' }}>{{ $uOpt }}</option>
-                                                    @endforeach
-                                                    @if (!empty($item->info_qty) && !collect($unitList)->contains(fn($u) => strcasecmp($u, $item->info_qty) === 0))
-                                                        <option value="{{ $item->info_qty }}" selected>{{ $item->info_qty }}</option>
-                                                    @endif
-                                                </select>
-                                            </div>
-                                            <div class="col-md-1 col-12 mb-md-0 mb-3">
-                                                <p class="mb-2 repeater-title small text-muted">Disc (%)</p>
-                                                <div class="input-group input-group-sm" data-disc="{{$no}}">
-                                                    <input type="text" class="form-control invoice-item-disc"
-                                                        id="disc-{{ $no }}" data-id="{{ $no }}"
-                                                        name="disc[]" placeholder="%"
-                                                        value="{{ old('disc[]', $item->disc) }}">
-                                                </div>
-                                            </div>
-                                            <div class="col-md-2 col-12 pe-4 text-md-end">
-                                                <p class="mb-2 repeater-title small text-muted">Amount</p>
-                                                <p class="mb-0 amount-label fw-semibold text-primary" id="amount-label-{{$no}}" data-id="{{$no}}">
-                                                    {{ number_format($item->amount, 0, ',', '.') }}</p>
-                                                <input type="number" class="form-control invoice-item-amount"
-                                                    name="amount[]" id="amount-{{ $no }}"
-                                                    data-id="{{ $no }}"
-                                                    value="{{ old('amount[]', $item->amount) }}" hidden>
+                                                <span class="badge bg-label-primary section-subtotal-badge text-nowrap" style="font-size:11px;">Subtotal: Rp 0</span>
+                                                <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del ms-auto" data-repeater-delete="" title="Hapus Head Title">
+                                                    <i class="mdi mdi-delete-outline"></i>
+                                                </button>
                                             </div>
                                         </div>
-                                        <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del position-absolute top-0 end-0 m-2"
-                                            data-repeater-delete="">
-                                            <i class="mdi mdi-delete-outline"></i>
-                                        </button>
                                     </div>
-                                </div>
+                                @else
+                                    <div class="repeater-wrapper" data-repeater-item="">
+                                        <div class="position-relative border-bottom p-3">
+                                            <div class="d-flex align-items-start gap-2">
+                                                <div class="btn btn-sm btn-icon btn-label-secondary btn-drag-handle cursor-move mt-1 flex-shrink-0" title="Geser (drag & drop) untuk memindahkan posisi" style="cursor: grab;">
+                                                    <i class="mdi mdi-drag-vertical fs-5"></i>
+                                                </div>
+                                                <div class="row w-100">
+                                                    <input type="hidden" class="invoice-item-detail-id" name="detail_id[]"
+                                                        value="{{ $item->id }}">
+                                                <input type="hidden" name="pr_detail_id[]" value="">
+                                                <div class="col-md col-12 mb-md-0 item-fields">
+                                                    <div class="item-category-toggle mb-2">
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="form-check-input item-category-radio" type="radio"
+                                                                value="Sparepart" {{ ($item->category ?? 'Sparepart') != 'Unit' && ($item->category ?? '') != 'Accessories' && ($item->category ?? '') != 'Custom' ? 'checked' : '' }}>
+                                                            <label class="form-check-label small">Sparepart</label>
+                                                        </div>
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="form-check-input item-category-radio" type="radio"
+                                                                value="Unit" {{ ($item->category ?? '') == 'Unit' ? 'checked' : '' }}>
+                                                            <label class="form-check-label small">Unit Global</label>
+                                                        </div>
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="form-check-input item-category-radio" type="radio"
+                                                                value="Accessories" {{ ($item->category ?? '') == 'Accessories' ? 'checked' : '' }}>
+                                                            <label class="form-check-label small">Aksesoris Rental</label>
+                                                        </div>
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="form-check-input item-category-radio" type="radio"
+                                                                value="Custom" {{ ($item->category ?? '') == 'Custom' ? 'checked' : '' }}>
+                                                            <label class="form-check-label small">Custom Item</label>
+                                                        </div>
+                                                    </div>
+                                                    {{-- Radio di atas gak punya name (per-baris, exclusivity dihandle JS) supaya
+                                                         gak nabrak grup radio baris lain — nilainya disinkronkan ke sini lewat
+                                                         applyRowCategory() tiap kali berubah, ini yang beneran ke-submit. --}}
+                                                    <input type="hidden" class="item-category-value" name="item_category[]"
+                                                        value="{{ ($item->category ?? '') == 'Unit' ? 'Unit' : (($item->category ?? '') == 'Accessories' ? 'Accessories' : (($item->category ?? '') == 'Custom' ? 'Custom' : 'Sparepart')) }}">
+                                                    <div class="field-product-sparepart">
+                                                        <select class="form-select form-select-sm select2-product-po" name="id_product[]">
+                                                            <option value="">Cari SKU / Product...</option>
+                                                            @foreach ($products ?? [] as $p)
+                                                                <option value="{{ $p->id }}"
+                                                                    data-label="{{ $p->commodity }} — {{ $p->description }}"
+                                                                    data-unit="{{ $p->unit }}"
+                                                                    {{ $item->id_product == $p->id ? 'selected' : '' }}>
+                                                                    {{ $p->commodity }} — {{ $p->description }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                    <div class="field-product-unit" style="display:none;">
+                                                        <select class="form-select form-select-sm select2-unit-po" name="id_unit[]">
+                                                            <option value="">Cari Unit...</option>
+                                                            @foreach ($units ?? [] as $u)
+                                                                <option value="{{ $u->id }}"
+                                                                    data-sku="{{ $u->sku }}"
+                                                                    data-name="{{ $u->brand }} {{ $u->model }}"
+                                                                    data-label="{{ $u->sku }} - {{ $u->brand }} {{ $u->model }}"
+                                                                    {{ $item->id_unit == $u->id ? 'selected' : '' }}>
+                                                                    {{ $u->sku }} {{ $u->brand }} {{ $u->model }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                        <select class="form-select form-select-sm mt-1 select-kondisi-unit" name="kondisi[]">
+                                                            <option value="Baru" {{ ($item->kondisi ?? 'Baru') == 'Baru' ? 'selected' : '' }}>Unit Baru (masuk stok jual)</option>
+                                                            <option value="Second" {{ ($item->kondisi ?? '') == 'Second' ? 'selected' : '' }}>Unit Second (jadi Fixed Asset, QC dulu)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="field-product-accessory" style="display:none;">
+                                                        <select class="form-select form-select-sm select2-accessory-po" name="id_rental_accessory[]">
+                                                            <option value="">Pilih Aksesoris Rental...</option>
+                                                            @foreach ($accessories ?? [] as $acc)
+                                                                <option value="{{ $acc->id }}"
+                                                                    data-code="{{ $acc->code }}"
+                                                                    data-name="{{ $acc->name }}"
+                                                                    data-category="{{ $acc->category }}"
+                                                                    data-label="{{ $acc->name }} ({{ $acc->code ?? '-' }})"
+                                                                    {{ ($item->id_rental_accessory ?? '') == $acc->id ? 'selected' : '' }}>
+                                                                    {{ $acc->name }} [{{ strtoupper($acc->category) }}] {{ $acc->code ? "({$acc->code})" : '' }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                    <div class="field-product-custom" style="display:none;">
+                                                        <textarea class="form-control form-control-sm invoice-item-detail-product"
+                                                            name="product[]" rows="2"
+                                                            placeholder="Nama/Deskripsi Item Custom...">{{ $item->product }}</textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3 col-12 mb-md-0 mb-3">
+                                                    <p class="mb-2 repeater-title small text-muted">Price</p>
+                                                    <div class="input-group input-group-sm" data-price="{{ $no }}">
+                                                        <span class="input-group-text">Rp. </span>
+                                                        <input type="text" class="form-control invoice-item-price-label"
+                                                            id="priceLabel-{{ $no }}"
+                                                            data-id="{{ $no }}" name="harga"
+                                                            placeholder="Put Price Here" data-type="currency"
+                                                            min="0" pattern="^[0-9]\d{0,2}(\.\d{3})*$"
+                                                            value="{{ number_format($item->price, '0', ',', '.') }}">
+                                                        <input class="form-control invoice-item-price" type="number"
+                                                            name="price[]" id="price-{{ $no }}"
+                                                            value="{{ old('price[]', $item->price) }}" hidden>
+                                                    </div>
+                                                    <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
+                                                        <div class="hint-calc-wrapper">
+                                                            <div class="text-secondary mb-1">
+                                                                <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
+                                                                Harga Exc. PPN: <strong class="text-primary exc-ppn-val">Rp 0</strong> <span class="ppn-val text-muted" style="font-size: 10px;">(PPN: Rp 0)</span><br>
+                                                                DPP (11/12): <strong class="text-dark dpp-val" style="font-size: 10.5px;">Rp 0</strong>
+                                                            </div>
+                                                            <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
+                                                                <i class="mdi mdi-check me-1"></i> Gunakan Harga Exc. PPN
+                                                            </button>
+                                                        </div>
+                                                        <div class="hint-applied-wrapper d-none">
+                                                            <div class="d-flex align-items-center justify-content-between text-success">
+                                                                <span style="font-size: 10px;">
+                                                                    <i class="mdi mdi-check-circle-outline me-1"></i>Exc. PPN: <strong class="applied-dpp-text">Rp 0</strong> <span class="text-muted applied-dpp-calc" style="font-size: 9.5px;">(DPP: Rp 0)</span>
+                                                                </span>
+                                                                <button type="button" class="btn btn-xs btn-link text-danger p-0 ms-1 btn-reset-dpp" style="font-size: 10px; text-decoration: underline; line-height: 1;">
+                                                                    Batal
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-1 col-12 mb-md-0 mb-3">
+                                                    <p class="mb-2 repeater-title small text-muted">Qty</p>
+                                                    <input type="number" class="form-control form-control-sm invoice-item-qty"
+                                                        placeholder="Min 1" name="qty[]" id="qty-{{ $no }}"
+                                                        data-id="{{ $no }}" min="1"
+                                                        value="{{ $item->qty }}">
+                                                </div>
+                                                <div class="col-md-1 col-12 mb-md-0 mb-3">
+                                                    <p class="mb-2 repeater-title small text-muted">Info Qty</p>
+                                                    <select class="form-select form-select-sm invoice-item-info select2-info-qty"
+                                                        id="info-qty-{{ $no }}"
+                                                        data-id="{{ $no }}"
+                                                        aria-label="Default select example" name="info_qty[]">
+                                                        <option disabled value="">---Info---</option>
+                                                        @foreach ($unitList as $uOpt)
+                                                            <option value="{{ $uOpt }}" {{ strcasecmp($item->info_qty, $uOpt) === 0 ? 'selected' : '' }}>{{ $uOpt }}</option>
+                                                        @endforeach
+                                                        @if (!empty($item->info_qty) && !collect($unitList)->contains(fn($u) => strcasecmp($u, $item->info_qty) === 0))
+                                                            <option value="{{ $item->info_qty }}" selected>{{ $item->info_qty }}</option>
+                                                        @endif
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-1 col-12 mb-md-0 mb-3">
+                                                    <p class="mb-2 repeater-title small text-muted">Disc (%)</p>
+                                                    <div class="input-group input-group-sm" data-disc="{{$no}}">
+                                                        <input type="text" class="form-control invoice-item-disc"
+                                                            id="disc-{{ $no }}" data-id="{{ $no }}"
+                                                            name="disc[]" placeholder="%"
+                                                            value="{{ old('disc[]', $item->disc) }}">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2 col-12 pe-4 text-md-end">
+                                                    <p class="mb-2 repeater-title small text-muted">Amount</p>
+                                                    <p class="mb-0 amount-label fw-semibold text-primary" id="amount-label-{{$no}}" data-id="{{$no}}">
+                                                        {{ number_format($item->amount, 0, ',', '.') }}</p>
+                                                    <input type="number" class="form-control invoice-item-amount"
+                                                        name="amount[]" id="amount-{{ $no }}"
+                                                        data-id="{{ $no }}"
+                                                        value="{{ old('amount[]', $item->amount) }}" hidden>
+                                                </div>
+                                            </div>
+                                            <div class="position-absolute top-0 end-0 m-2">
+                                                <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del"
+                                                    data-repeater-delete="" title="Hapus Baris">
+                                                    <i class="mdi mdi-delete-outline"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
                                 @php
                                     $no++;
                                 @endphp
@@ -411,8 +487,12 @@
                                 @php $rno = $i + 1; @endphp
                                 <div class="repeater-wrapper" data-repeater-item="">
                                     <div class="position-relative border-bottom p-3">
-                                        <div class="row w-100">
-                                            <input type="hidden" class="invoice-item-detail-id" name="detail_id[]" value="">
+                                        <div class="d-flex align-items-start gap-2">
+                                            <div class="btn btn-sm btn-icon btn-label-secondary btn-drag-handle cursor-move mt-1 flex-shrink-0" title="Geser (drag & drop) untuk memindahkan posisi" style="cursor: grab;">
+                                                <i class="mdi mdi-drag-vertical fs-5"></i>
+                                            </div>
+                                            <div class="row w-100">
+                                                <input type="hidden" class="invoice-item-detail-id" name="detail_id[]" value="">
                                             <input type="hidden" name="pr_detail_id[]" value="{{ $pi['pr_detail_id'] ?? '' }}">
                                             <div class="col-md col-12 mb-md-0 item-fields">
                                                 <div class="item-category-toggle mb-2">
@@ -425,6 +505,11 @@
                                                         <input class="form-check-input item-category-radio" type="radio"
                                                             value="Unit">
                                                         <label class="form-check-label small">Unit Global</label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input item-category-radio" type="radio"
+                                                            value="Accessories">
+                                                        <label class="form-check-label small">Aksesoris Rental</label>
                                                     </div>
                                                     <div class="form-check form-check-inline">
                                                         <input class="form-check-input item-category-radio" type="radio"
@@ -463,6 +548,20 @@
                                                         <option value="Second">Unit Second (jadi Fixed Asset, QC dulu)</option>
                                                     </select>
                                                 </div>
+                                                <div class="field-product-accessory" style="display:none;">
+                                                    <select class="form-select form-select-sm select2-accessory-po" name="id_rental_accessory[]">
+                                                        <option value="">Pilih Aksesoris Rental...</option>
+                                                        @foreach ($accessories ?? [] as $acc)
+                                                            <option value="{{ $acc->id }}"
+                                                                data-code="{{ $acc->code }}"
+                                                                data-name="{{ $acc->name }}"
+                                                                data-category="{{ $acc->category }}"
+                                                                data-label="{{ $acc->name }} ({{ $acc->code ?? '-' }})">
+                                                                {{ $acc->name }} [{{ strtoupper($acc->category) }}] {{ $acc->code ? "({$acc->code})" : '' }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
                                                 <div class="field-product-custom" style="display:none;">
                                                     <textarea class="form-control form-control-sm invoice-item-detail-product"
                                                         name="product[]" rows="2"
@@ -484,8 +583,8 @@
                                                     <div class="hint-calc-wrapper">
                                                         <div class="text-secondary mb-1">
                                                             <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
-                                                            Harga Exc. PPN: <strong class="text-primary exc-ppn-val">Rp 0</strong> <span class="ppn-val text-muted" style="font-size: 10px;">(PPN: Rp 0)</span><br>
-                                                            DPP (11/12): <strong class="text-dark dpp-val" style="font-size: 10.5px;">Rp 0</strong>
+                                                                Harga Exc. PPN: <strong class="text-primary exc-ppn-val">Rp 0</strong> <span class="ppn-val text-muted" style="font-size: 10px;">(PPN: Rp 0)</span><br>
+                                                                DPP (11/12): <strong class="text-dark dpp-val" style="font-size: 10.5px;">Rp 0</strong>
                                                         </div>
                                                         <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
                                                             <i class="mdi mdi-check me-1"></i> Gunakan Harga Exc. PPN
@@ -520,8 +619,11 @@
                                                 <select class="form-select form-select-sm invoice-item-info select2-info-qty" id="info-qty-{{ $rno }}"
                                                     data-id="{{ $rno }}" aria-label="Default select example" name="info_qty[]">
                                                     <option disabled value="">---Info---</option>
+                                                    @php
+                                                        $defUnit = !empty($pi['unit']) ? $pi['unit'] : 'Pcs';
+                                                    @endphp
                                                     @foreach ($unitList as $uOpt)
-                                                        <option value="{{ $uOpt }}" {{ $uOpt === 'Pcs' ? 'selected' : '' }}>{{ $uOpt }}</option>
+                                                        <option value="{{ $uOpt }}" {{ strcasecmp($defUnit, $uOpt) === 0 ? 'selected' : '' }}>{{ $uOpt }}</option>
                                                     @endforeach
                                                 </select>
                                             </div>
@@ -541,10 +643,12 @@
                                                     value="" hidden>
                                             </div>
                                         </div>
-                                        <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del position-absolute top-0 end-0 m-2"
-                                            data-repeater-delete="">
-                                            <i class="mdi mdi-delete-outline"></i>
-                                        </button>
+                                        <div class="position-absolute top-0 end-0 m-2">
+                                            <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del"
+                                                data-repeater-delete="" title="Hapus Baris">
+                                                <i class="mdi mdi-delete-outline"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             @endforeach
@@ -553,8 +657,12 @@
                         <div class="mb-0" data-repeater-list="group-a">
                             <div class="repeater-wrapper" data-repeater-item="">
                                 <div class="position-relative border-bottom p-3">
-                                    <div class="row w-100">
-                                        <input type="hidden" class="invoice-item-detail-id" name="detail_id[]" value="">
+                                    <div class="d-flex align-items-start gap-2">
+                                        <div class="btn btn-sm btn-icon btn-label-secondary btn-drag-handle cursor-move mt-1 flex-shrink-0" title="Geser (drag & drop) untuk memindahkan posisi" style="cursor: grab;">
+                                            <i class="mdi mdi-drag-vertical fs-5"></i>
+                                        </div>
+                                        <div class="row w-100">
+                                            <input type="hidden" class="invoice-item-detail-id" name="detail_id[]" value="">
                                         <input type="hidden" name="pr_detail_id[]" value="">
                                         <div class="col-md col-12 mb-md-0 item-fields">
                                             <div class="item-category-toggle mb-2">
@@ -567,6 +675,11 @@
                                                     <input class="form-check-input item-category-radio" type="radio"
                                                         value="Unit">
                                                     <label class="form-check-label small">Unit Global</label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input item-category-radio" type="radio"
+                                                        value="Accessories">
+                                                    <label class="form-check-label small">Aksesoris Rental</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input item-category-radio" type="radio"
@@ -602,6 +715,20 @@
                                                 <select class="form-select form-select-sm mt-1 select-kondisi-unit" name="kondisi[]">
                                                     <option value="Baru" selected>Unit Baru (masuk stok jual)</option>
                                                     <option value="Second">Unit Second (jadi Fixed Asset, QC dulu)</option>
+                                                </select>
+                                            </div>
+                                            <div class="field-product-accessory" style="display:none;">
+                                                <select class="form-select form-select-sm select2-accessory-po" name="id_rental_accessory[]">
+                                                    <option value="">Pilih Aksesoris Rental...</option>
+                                                    @foreach ($accessories ?? [] as $acc)
+                                                        <option value="{{ $acc->id }}"
+                                                            data-code="{{ $acc->code }}"
+                                                            data-name="{{ $acc->name }}"
+                                                            data-category="{{ $acc->category }}"
+                                                            data-label="{{ $acc->name }} ({{ $acc->code ?? '-' }})">
+                                                            {{ $acc->name }} [{{ strtoupper($acc->category) }}] {{ $acc->code ? "({$acc->code})" : '' }}
+                                                        </option>
+                                                    @endforeach
                                                 </select>
                                             </div>
                                             <div class="field-product-custom" style="display:none;">
@@ -678,10 +805,12 @@
                                                 value="{{ old('amount[]') }}" hidden>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del position-absolute top-0 end-0 m-2"
-                                        data-repeater-delete="">
-                                        <i class="mdi mdi-delete-outline"></i>
-                                    </button>
+                                    <div class="position-absolute top-0 end-0 m-2">
+                                        <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del"
+                                            data-repeater-delete="" title="Hapus Baris">
+                                            <i class="mdi mdi-delete-outline"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -693,110 +822,192 @@
                         <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-add-custom-item">
                             <i class="mdi mdi-format-list-bulleted me-1"></i> Add Custom Item
                         </button>
+                        <button type="button" class="btn btn-sm btn-outline-info" id="btn-add-header-title">
+                            <i class="mdi mdi-format-header-1 me-1"></i> Add Head Title
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+            {{-- 1. TOTAL SUMMARY (FINANCE SUMMARY) --}}
+        <div class="row justify-content-end mb-4">
+            <div class="col-lg-6 col-12">
+                <div class="card border-0 shadow-sm overflow-hidden" style="background: #ffffff; border: 1px solid #e0e0ff !important; border-radius: 12px;">
+                    <div class="card-header py-3 px-4 bg-light border-bottom d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar avatar-xs bg-label-primary rounded me-2 d-flex align-items-center justify-content-center" style="width:28px; height:28px;">
+                                <i class="mdi mdi-calculator text-primary fs-6"></i>
+                            </div>
+                            <h6 class="fw-bold mb-0 text-dark">Total Summary</h6>
+                        </div>
+                        <span class="badge bg-label-primary px-2 py-1" style="font-size:10px;">IDR SUMMARY</span>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="text-muted small">Subtotal</span>
+                            <div class="text-end">
+                                <span class="fw-bold text-dark fs-6 subtotal-label" id="subtotal-label" data-id="1">
+                                    {{ old('subtotal', @$purchase->subtotal ? 'RP ' . number_format(@$purchase->subtotal, 0, '', '.') : 'RP 0') }}
+                                </span>
+                                <input type="number" id="subtotal" name="subtotal"
+                                    value="{{ old('subtotal', @$purchase->subtotal ?? '') }}" hidden>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="text-muted small">Discount</span>
+                            <div style="width: 160px;">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">Rp</span>
+                                    <input type="text" id="diskon-label" class="form-control text-end fw-semibold"
+                                        placeholder="0" data-type="currency"
+                                        pattern="^[0-9]\d{0,2}(\.\d{3})*$"
+                                        value="{{ old('diskon', @$purchase->diskon ? number_format(@$purchase->diskon, 0, '', '.') : '0') }}">
+                                    <input type="number" name="diskon" id="diskon"
+                                        value="{{ old('diskon', @$purchase->diskon ?? '0') }}" hidden>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-muted small">Tax (PPN 11%)</span>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                        id="taxSwitch" {{ (@$purchase->vat == '12' || @$purchase->vat == '11') ? 'checked' : '' }}>
+                                </div>
+                            </div>
+                            <span class="fw-semibold tax-amount-label text-muted small" id="taxAmountLabel">
+                                @if (@$purchase && ($purchase->vat == '12' || $purchase->vat == '11'))
+                                    {{ 'RP ' . number_format(($purchase->subtotal - $purchase->diskon) * $purchase->vat / 100, 0, '', '.') }}
+                                @endif
+                            </span>
+                            <input type="hidden" id="tax" name="tax" value="{{ old('tax', @$purchase->vat ?? '0') }}">
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                            <span class="text-muted small">Delivery Cost</span>
+                            <div style="width: 160px;">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">Rp</span>
+                                    <input type="text" id="delivery-cost-label" class="form-control text-end fw-semibold"
+                                        placeholder="0" data-type="currency"
+                                        pattern="^[0-9]\d{0,2}(\.\d{3})*$"
+                                        value="{{ old('delivery_cost', @$purchase->delivery_cost ? number_format(@$purchase->delivery_cost, 0, '', '.') : '0') }}">
+                                    <input type="number" name="delivery_cost" id="delivery-cost"
+                                        value="{{ old('delivery_cost', @$purchase->delivery_cost ?? '0') }}" hidden>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Total Hero Box --}}
+                        <div class="p-3 rounded-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #f0f2ff 0%, #e8ebff 100%); border: 1px dashed #696cff;">
+                            <div>
+                                <div class="text-uppercase fw-bold text-primary" style="font-size: 10px; letter-spacing: 0.8px;">Total Amount</div>
+                                <div class="text-muted" style="font-size: 10px;">( Inclusive of Tax &amp; Discount )</div>
+                            </div>
+                            <div class="fw-bolder text-primary fs-3 harga-total-label" id="hargaTotalLabel" data-id="1" style="letter-spacing: -0.5px;">
+                                {{ old('harga_total', @$purchase->total ? 'RP ' . number_format(@$purchase->total, 0, '', '.') : 'RP 0') }}
+                            </div>
+                            <input type="number" id="hargaTotal" name="harga_total"
+                                value="{{ old('harga_total', @$purchase->total ?? '') }}" hidden>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- SUMMARY + NOTE --}}
+        {{-- 2. SHIP TO CARD --}}
+        @php
+            $addrBdg = 'Taman Kopo Indah V, Ruko Soho Sommerville No. 31 Bandung - Jawabarat 40218';
+            $addrBks = 'Jl. Nancep No.45A, Cibening, Kec. Setu, Kabupaten Bekasi, Jawa Barat 17320';
+            $currentShipTo = old('ship_to', @$purchase->ship_to ?? $addrBdg);
+            $isBdg = $currentShipTo == $addrBdg;
+            $isBks = $currentShipTo == $addrBks;
+            $isCustom = !$isBdg && !$isBks && !empty($currentShipTo);
+            if (!$isBdg && !$isBks && !$isCustom) {
+                $isBdg = true;
+                $currentShipTo = $addrBdg;
+            }
+        @endphp
         <div class="card mb-4 border-0 shadow-sm">
-            <div class="card-body">
-                <div class="row g-4">
-                    {{-- Note (Kiri) --}}
-                    <div class="col-lg-7">
-                        <h6 class="fw-bold mb-2 text-dark">
-                            <i class="mdi mdi-notebook-edit-outline me-1 text-primary"></i> Note / PO Remarks
-                        </h6>
-                        <textarea class="form-control h-px-100" rows="3" placeholder="Write your note here...."
-                            name="note">{{ @$purchase->note }}</textarea>
+            <div class="card-header py-3 px-4 bg-light border-bottom d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <div class="avatar avatar-xs bg-label-primary rounded me-2 d-flex align-items-center justify-content-center" style="width:28px; height:28px;">
+                        <i class="mdi mdi-map-marker-radius text-primary fs-6"></i>
+                    </div>
+                    <h6 class="fw-bold mb-0 text-dark">Ship to :</h6>
+                </div>
+                <span class="badge bg-label-info px-2 py-1" style="font-size:10.5px;">Alamat Pengiriman PO</span>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-3 mb-3">
+                    {{-- Option BDG --}}
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100 {{ $isBdg ? 'border-primary bg-label-primary bg-opacity-10' : 'bg-white' }}" style="cursor: pointer;" id="opt-wrapper-bdg">
+                            <div class="form-check d-flex align-items-start gap-2 mb-0">
+                                <input name="ship_to_preset" class="form-check-input mt-1 ship-to-radio" type="radio" value="BDG" id="shipToBdg" {{ $isBdg ? 'checked' : '' }}>
+                                <label class="form-check-label w-100 cursor-pointer" for="shipToBdg">
+                                    <div class="fw-bold text-dark mb-1">
+                                        <i class="mdi mdi-office-building-marker me-1 text-primary"></i>BDG (Bandung)
+                                    </div>
+                                    <div class="text-muted small" style="line-height:1.4;">
+                                        {{ $addrBdg }}
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
                     </div>
 
-                    {{-- Summary Card (Kanan) --}}
-                    <div class="col-lg-5">
-                        <div class="card border-0 shadow-sm overflow-hidden" style="background: #ffffff; border: 1px solid #e0e0ff !important; border-radius: 12px;">
-                            <div class="card-header py-3 px-4 bg-light border-bottom d-flex align-items-center justify-content-between">
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar avatar-xs bg-label-primary rounded me-2 d-flex align-items-center justify-content-center" style="width:28px; height:28px;">
-                                        <i class="mdi mdi-calculator text-primary fs-6"></i>
+                    {{-- Option BKS --}}
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded h-100 {{ $isBks ? 'border-primary bg-label-primary bg-opacity-10' : 'bg-white' }}" style="cursor: pointer;" id="opt-wrapper-bks">
+                            <div class="form-check d-flex align-items-start gap-2 mb-0">
+                                <input name="ship_to_preset" class="form-check-input mt-1 ship-to-radio" type="radio" value="BKS" id="shipToBks" {{ $isBks ? 'checked' : '' }}>
+                                <label class="form-check-label w-100 cursor-pointer" for="shipToBks">
+                                    <div class="fw-bold text-dark mb-1">
+                                        <i class="mdi mdi-warehouse me-1 text-primary"></i>BKS (Bekasi)
                                     </div>
-                                    <h6 class="fw-bold mb-0 text-dark">Total Summary</h6>
-                                </div>
-                                <span class="badge bg-label-primary px-2 py-1" style="font-size:10px;">IDR SUMMARY</span>
-                            </div>
-                            <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <span class="text-muted small">Subtotal</span>
-                                    <div class="text-end">
-                                        <span class="fw-bold text-dark fs-6 subtotal-label" id="subtotal-label" data-id="1">
-                                            {{ old('subtotal', @$purchase->subtotal ? 'RP ' . number_format(@$purchase->subtotal, 0, '', '.') : 'RP 0') }}
-                                        </span>
-                                        <input type="number" id="subtotal" name="subtotal"
-                                            value="{{ old('subtotal', @$purchase->subtotal ?? '') }}" hidden>
+                                    <div class="text-muted small" style="line-height:1.4;">
+                                        {{ $addrBks }}
                                     </div>
-                                </div>
-
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <span class="text-muted small">Discount</span>
-                                    <div style="width: 160px;">
-                                        <div class="input-group input-group-sm">
-                                            <span class="input-group-text">Rp</span>
-                                            <input type="text" id="diskon-label" class="form-control text-end fw-semibold"
-                                                placeholder="0" data-type="currency"
-                                                pattern="^[0-9]\d{0,2}(\.\d{3})*$"
-                                                value="{{ old('diskon', @$purchase->diskon ? number_format(@$purchase->diskon, 0, '', '.') : '0') }}">
-                                            <input type="number" name="diskon" id="diskon"
-                                                value="{{ old('diskon', @$purchase->diskon ?? '0') }}" hidden>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="text-muted small">Tax (PPN 11%)</span>
-                                        <div class="form-check form-switch mb-0">
-                                            <input class="form-check-input" type="checkbox" role="switch"
-                                                id="taxSwitch" {{ (@$purchase->vat == '12' || @$purchase->vat == '11') ? 'checked' : '' }}>
-                                        </div>
-                                    </div>
-                                    <span class="fw-semibold tax-amount-label text-muted small" id="taxAmountLabel">
-                                        @if (@$purchase && ($purchase->vat == '12' || $purchase->vat == '11'))
-                                            {{ 'RP ' . number_format(($purchase->subtotal - $purchase->diskon) * $purchase->vat / 100, 0, '', '.') }}
-                                        @endif
-                                    </span>
-                                    <input type="hidden" id="tax" name="tax" value="{{ old('tax', @$purchase->vat ?? '0') }}">
-                                </div>
-
-                                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
-                                    <span class="text-muted small">Delivery Cost</span>
-                                    <div style="width: 160px;">
-                                        <div class="input-group input-group-sm">
-                                            <span class="input-group-text">Rp</span>
-                                            <input type="text" id="delivery-cost-label" class="form-control text-end fw-semibold"
-                                                placeholder="0" data-type="currency"
-                                                pattern="^[0-9]\d{0,2}(\.\d{3})*$"
-                                                value="{{ old('delivery_cost', @$purchase->delivery_cost ? number_format(@$purchase->delivery_cost, 0, '', '.') : '0') }}">
-                                            <input type="number" name="delivery_cost" id="delivery-cost"
-                                                value="{{ old('delivery_cost', @$purchase->delivery_cost ?? '0') }}" hidden>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- Total Hero Box --}}
-                                <div class="p-3 rounded-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #f0f2ff 0%, #e8ebff 100%); border: 1px dashed #696cff;">
-                                    <div>
-                                        <div class="text-uppercase fw-bold text-primary" style="font-size: 10px; letter-spacing: 0.8px;">Total Amount</div>
-                                        <div class="text-muted" style="font-size: 10px;">( Inclusive of Tax &amp; Discount )</div>
-                                    </div>
-                                    <div class="fw-bolder text-primary fs-3 harga-total-label" id="hargaTotalLabel" data-id="1" style="letter-spacing: -0.5px;">
-                                        {{ old('harga_total', @$purchase->total ? 'RP ' . number_format(@$purchase->total, 0, '', '.') : 'RP 0') }}
-                                    </div>
-                                    <input type="number" id="hargaTotal" name="harga_total"
-                                        value="{{ old('harga_total', @$purchase->total ?? '') }}" hidden>
-                                </div>
+                                </label>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                {{-- Option Custom / Alamat Lain --}}
+                <div class="p-3 border rounded {{ $isCustom ? 'border-primary bg-label-primary bg-opacity-10' : 'bg-white' }}" id="opt-wrapper-custom">
+                    <div class="form-check d-flex align-items-center gap-2 mb-2">
+                        <input name="ship_to_preset" class="form-check-input ship-to-radio" type="radio" value="CUSTOM" id="shipToCustom" {{ $isCustom ? 'checked' : '' }}>
+                        <label class="form-check-label fw-bold text-dark cursor-pointer mb-0" for="shipToCustom">
+                            <i class="mdi mdi-map-marker-plus-outline me-1 text-primary"></i>Alamat Pengiriman Lain (Input Manual)
+                        </label>
+                    </div>
+                    <div id="custom-ship-to-wrapper" class="{{ $isCustom ? '' : 'd-none' }} mt-2 ps-4">
+                        <textarea class="form-control" id="ship_to_custom_input" rows="2" placeholder="Tuliskan alamat lengkap pengiriman di sini...">{{ $isCustom ? $currentShipTo : '' }}</textarea>
+                    </div>
+                </div>
+
+                {{-- Hidden input actual value sent to backend --}}
+                <input type="hidden" name="ship_to" id="ship_to_hidden" value="{{ $currentShipTo }}">
+            </div>
+        </div>
+
+        {{-- 3. NOTE / PO REMARKS CARD --}}
+        <div class="card mb-4 border-0 shadow-sm">
+            <div class="card-header py-3 px-4 bg-light border-bottom d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <div class="avatar avatar-xs bg-label-primary rounded me-2 d-flex align-items-center justify-content-center" style="width:28px; height:28px;">
+                        <i class="mdi mdi-notebook-edit-outline text-primary fs-6"></i>
+                    </div>
+                    <h6 class="fw-bold mb-0 text-dark">Note / PO Remarks</h6>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <textarea class="form-control" rows="3" placeholder="Tuliskan catatan atau instruksi khusus PO di sini..."
+                    name="note">{{ @$purchase->note }}</textarea>
             </div>
         </div>
 
@@ -975,6 +1186,7 @@
     <script src="{{ asset('assets') }}/vendor/libs/formvalidation/dist/js/plugins/Bootstrap5.min.js"></script>
     <script src="{{ asset('assets') }}/vendor/libs/formvalidation/dist/js/plugins/AutoFocus.min.js"></script>
     <script src="{{ asset('assets') }}/vendor/libs/select2/select2.js"></script>
+    <script src="{{ asset('assets') }}/vendor/libs/sortablejs/sortable.js"></script>
     <script src="{{ asset('assets') }}/includes/repeater/jquery-repeater-invoice.js"></script>
     <script src="{{ asset('assets') }}/js/app-invoice-add.js"></script>
 @endpush
@@ -1523,6 +1735,15 @@
                 var nomorInt = parseFloat(input_val.replace(/[.,]/g, '')) || 0;
                 $row.find('.invoice-item-price').val(nomorInt);
 
+                // Otomatis isi Qty jadi 1 jika Price diisi dan Qty masih kosong / 0
+                if (nomorInt > 0) {
+                    var $qtyInput = $row.find('.invoice-item-qty');
+                    var currentQty = parseFloat($qtyInput.val()) || 0;
+                    if (currentQty <= 0 || !$qtyInput.val().trim()) {
+                        $qtyInput.val(1);
+                    }
+                }
+
                 var updated_len = input_val.length;
                 caret_pos = updated_len - original_len + caret_pos;
                 if (input[0] && input[0].setSelectionRange) {
@@ -1555,6 +1776,13 @@
 
                     $priceLabel.val(formatNumber(String(excPpn)));
                     $priceHidden.val(excPpn);
+
+                    // Otomatis isi Qty jadi 1 jika Qty masih kosong / 0
+                    var $qtyInput = $row.find('.invoice-item-qty');
+                    var currentQty = parseFloat($qtyInput.val()) || 0;
+                    if (currentQty <= 0 || !$qtyInput.val().trim()) {
+                        $qtyInput.val(1);
+                    }
 
                     // Switch ke status diterapkan
                     $hint.find('.applied-dpp-text').text('Rp ' + formatNumber(String(excPpn)));
@@ -1616,11 +1844,60 @@
                 recalculateTotals();
             });
 
+            // Helper untuk prefix huruf Head Title (A., B., C., dst)
+            function getNextHeaderPrefix() {
+                var headerCount = $('[data-repeater-list="group-a"] .repeater-wrapper').filter(function() {
+                    return $(this).hasClass('header-row-wrapper') || $(this).find('.item-category-value').val() === 'Header';
+                }).length;
+                var letter = String.fromCharCode(65 + (headerCount % 26));
+                return letter + '. ';
+            }
+
+            function recalcHeaderPrefixes() {
+                var headerCount = 0;
+                $('[data-repeater-list="group-a"] .repeater-wrapper').each(function () {
+                    var isHeader = $(this).hasClass('header-row-wrapper') || $(this).find('.item-category-value').val() === 'Header';
+                    if (isHeader) {
+                        var $input = $(this).find('.header-title-input');
+                        var val = $input.val() || '';
+                        var prefix = String.fromCharCode(65 + (headerCount % 26)) + '. ';
+                        var cleanVal = val.replace(/^[A-Z]\.\s*/i, '');
+                        $input.val(prefix + cleanVal);
+                        headerCount++;
+                    }
+                });
+            }
+
+            // Hitung subtotal tiap section di bawah Head Title sampai Head Title berikutnya
+            function recalcSectionSubtotals() {
+                $('[data-repeater-list="group-a"] .repeater-wrapper').each(function () {
+                    var $row = $(this);
+                    var isHeader = $row.hasClass('header-row-wrapper') || $row.find('.item-category-value').val() === 'Header';
+                    if (!isHeader) return;
+
+                    var subtotal = 0;
+                    var $next = $row.next('.repeater-wrapper');
+                    while ($next.length && !$next.hasClass('header-row-wrapper') && $next.find('.item-category-value').val() !== 'Header') {
+                        var harga = parseFloat($next.find('.invoice-item-price').val()) || 0;
+                        var qty = parseFloat($next.find('.invoice-item-qty').val()) || 0;
+                        var disc = parseFloat($next.find('.invoice-item-disc').val()) || 0;
+                        var hasil = harga * qty;
+                        var amount = Math.round(hasil - (hasil * disc / 100));
+                        subtotal += amount;
+                        $next = $next.next('.repeater-wrapper');
+                    }
+                    $row.find('.section-subtotal-badge').text('Subtotal: ' + formatter.format(subtotal));
+                });
+            }
+
             // Unified calculation function for row amounts, subtotal, discount, tax, delivery, and grand total
             function recalculateTotals() {
                 var sTotal = 0;
                 $('.repeater-wrapper').each(function() {
                     var $row = $(this);
+                    var isHeader = $row.hasClass('header-row-wrapper') || $row.find('.item-category-value').val() === 'Header';
+                    if (isHeader) return;
+
                     var harga = parseFloat($row.find('.invoice-item-price').val()) || 0;
                     var qty = parseFloat($row.find('.invoice-item-qty').val()) || 0;
                     var disc = parseFloat($row.find('.invoice-item-disc').val()) || 0;
@@ -1646,6 +1923,8 @@
                 $('#hargaTotal').val(hTotal);
                 $('#hargaTotalLabel').html(formatter.format(hTotal));
                 $('#totalNoTax').val(dTotal);
+
+                recalcSectionSubtotals();
             }
 
             // Jalankan recalculate saat pertama load
@@ -1696,6 +1975,16 @@
                         });
                     }
                 });
+                $scope.find('.select2-accessory-po').each(function() {
+                    var $el = $(this);
+                    if (!$el.data('select2')) {
+                        $el.select2({
+                            placeholder: 'Pilih Aksesoris Rental...',
+                            width: '100%',
+                            dropdownParent: $el.closest('.field-product-accessory')
+                        });
+                    }
+                });
                 $scope.find('.select2-info-qty').each(function() {
                     var $el = $(this);
                     if (!$el.data('select2')) {
@@ -1742,21 +2031,29 @@
                 $fields.find('.item-category-value').val(category);
                 var $sparepart = $fields.find('.field-product-sparepart');
                 var $unit = $fields.find('.field-product-unit');
+                var $accessory = $fields.find('.field-product-accessory');
                 var $custom = $fields.find('.field-product-custom');
                 var $product = $fields.find('.select2-product-po');
                 var $unitSelect = $fields.find('.select2-unit-po');
+                var $accessorySelect = $fields.find('.select2-accessory-po');
                 var $customText = $fields.find('.invoice-item-detail-product');
 
                 $sparepart.hide();
                 $unit.hide();
+                $accessory.hide();
                 $custom.hide();
                 $product.removeAttr('required');
                 $unitSelect.removeAttr('required');
+                $accessorySelect.removeAttr('required');
                 $customText.removeAttr('required');
 
                 if (category === 'Unit') {
                     $unit.show();
                     $unitSelect.attr('required', true);
+                    lockInfoQty($fields, 'Unit');
+                } else if (category === 'Accessories') {
+                    $accessory.show();
+                    $accessorySelect.attr('required', true);
                     lockInfoQty($fields, 'Unit');
                 } else if (category === 'Custom') {
                     $custom.show();
@@ -1803,12 +2100,16 @@
 
             $(document).on('repeater:deleted', function() {
                 updateItemsCountBadge();
+                recalcHeaderPrefixes();
                 recalculateTotals();
             });
 
             $(document).on('click', '[data-repeater-delete]', function() {
+                var $row = $(this).closest('.repeater-wrapper');
+                $row.remove();
                 setTimeout(function() {
                     updateItemsCountBadge();
+                    recalcHeaderPrefixes();
                     recalculateTotals();
                 }, 50);
             });
@@ -1819,12 +2120,131 @@
                 $('.btn-add[data-repeater-create]').trigger('click');
             });
 
+            // Add Head Title: tambah baris grup header custom
+            function addHeaderTitleRow(titleText) {
+                var prefix = getNextHeaderPrefix();
+                var val = titleText !== undefined ? titleText : prefix;
+                var html = `
+                    <div class="repeater-wrapper header-row-wrapper" data-repeater-item="" data-category="Header">
+                        <div class="position-relative border-bottom p-3" style="background:#f8f9ff !important; border-left: 4px solid #696cff !important;">
+                            <input type="hidden" class="invoice-item-detail-id" name="detail_id[]" value="">
+                            <input type="hidden" name="pr_detail_id[]" value="">
+                            <input type="hidden" class="item-category-value" name="item_category[]" value="Header">
+                            <input type="hidden" name="id_product[]" value="">
+                            <input type="hidden" name="id_unit[]" value="">
+                            <input type="hidden" name="id_rental_accessory[]" value="">
+                            <input type="hidden" name="kondisi[]" value="">
+                            <input type="hidden" class="invoice-item-price" name="price[]" value="0">
+                            <input type="hidden" class="invoice-item-qty" name="qty[]" value="0">
+                            <input type="hidden" class="invoice-item-info" name="info_qty[]" value="">
+                            <input type="hidden" class="invoice-item-disc" name="disc[]" value="0">
+                            <input type="hidden" class="invoice-item-amount" name="amount[]" value="0">
+
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <div class="btn btn-sm btn-icon btn-label-secondary btn-drag-handle cursor-move flex-shrink-0" title="Geser (drag & drop) untuk memindahkan posisi" style="cursor: grab;">
+                                    <i class="mdi mdi-drag-vertical fs-5"></i>
+                                </div>
+                                <span class="badge bg-primary text-uppercase" style="font-size:10.5px; letter-spacing:0.5px;">
+                                    <i class="mdi mdi-bookmark-outline me-1"></i>Head Title
+                                </span>
+                                <div class="flex-grow-1" style="min-width: 250px;">
+                                    <input type="text" class="form-control form-control-sm fw-bold text-primary header-title-input invoice-item-detail-product"
+                                        name="product[]" placeholder="Head Title (e.g. A. SCOPE OF WORK, B. SPAREPART) *"
+                                        value="${val}" required>
+                                </div>
+                                <span class="badge bg-label-primary section-subtotal-badge text-nowrap" style="font-size:11px;">Subtotal: Rp 0</span>
+                                <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del ms-auto" data-repeater-delete="" title="Hapus Head Title">
+                                    <i class="mdi mdi-delete-outline"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+                $('[data-repeater-list="group-a"]').append(html);
+                updateItemsCountBadge();
+                recalcHeaderPrefixes();
+                recalculateTotals();
+            }
+
+            $('#btn-add-header-title').on('click', function() {
+                addHeaderTitleRow();
+            });
+
+            // Inisialisasi Sortable Drag & Drop untuk baris item & Head Title
+            function initSortableItems() {
+                var container = document.querySelector('[data-repeater-list="group-a"]');
+                if (container && typeof Sortable !== 'undefined') {
+                    Sortable.create(container, {
+                        handle: '.btn-drag-handle',
+                        animation: 150,
+                        ghostClass: 'bg-light-primary',
+                        onEnd: function () {
+                            recalcHeaderPrefixes();
+                            recalculateTotals();
+                        }
+                    });
+                }
+            }
+            initSortableItems();
+
             // Sinkronkan label Product/Unit terpilih ke field product[] tersembunyi (dipakai halaman detail/print)
-            $(document).on('change', '.select2-product-po, .select2-unit-po', function() {
+            $(document).on('change', '.select2-product-po, .select2-unit-po, .select2-accessory-po', function() {
                 var $fields = $(this).closest('.item-fields');
-                var label = $(this).find(':selected').data('label') || '';
+                var label = $(this).find(':selected').data('label') || $(this).find(':selected').text().trim() || '';
                 $fields.find('.invoice-item-detail-product').val(label);
                 applyRowCategory($fields);
+            });
+
+            // Handler Pilihan Ship To (BDG / BKS / Custom)
+            const addrBdg = 'Taman Kopo Indah V, Ruko Soho Sommerville No. 31 Bandung - Jawabarat 40218';
+            const addrBks = 'Jl. Nancep No.45A, Cibening, Kec. Setu, Kabupaten Bekasi, Jawa Barat 17320';
+
+            function syncShipTo() {
+                var selectedPreset = $('input[name="ship_to_preset"]:checked').val();
+                var $wrapperBdg = $('#opt-wrapper-bdg');
+                var $wrapperBks = $('#opt-wrapper-bks');
+                var $wrapperCustom = $('#opt-wrapper-custom');
+                var $customWrapper = $('#custom-ship-to-wrapper');
+                var $hiddenInput = $('#ship_to_hidden');
+
+                $wrapperBdg.removeClass('border-primary bg-label-primary bg-opacity-10').addClass('bg-white');
+                $wrapperBks.removeClass('border-primary bg-label-primary bg-opacity-10').addClass('bg-white');
+                $wrapperCustom.removeClass('border-primary bg-label-primary bg-opacity-10').addClass('bg-white');
+
+                if (selectedPreset === 'BDG') {
+                    $wrapperBdg.addClass('border-primary bg-label-primary bg-opacity-10').removeClass('bg-white');
+                    $customWrapper.addClass('d-none');
+                    $hiddenInput.val(addrBdg);
+                } else if (selectedPreset === 'BKS') {
+                    $wrapperBks.addClass('border-primary bg-label-primary bg-opacity-10').removeClass('bg-white');
+                    $customWrapper.addClass('d-none');
+                    $hiddenInput.val(addrBks);
+                } else if (selectedPreset === 'CUSTOM') {
+                    $wrapperCustom.addClass('border-primary bg-label-primary bg-opacity-10').removeClass('bg-white');
+                    $customWrapper.removeClass('d-none');
+                    $hiddenInput.val($('#ship_to_custom_input').val().trim());
+                }
+            }
+
+            $(document).on('change', 'input[name="ship_to_preset"]', function() {
+                syncShipTo();
+            });
+
+            $('#opt-wrapper-bdg').on('click', function() {
+                $('#shipToBdg').prop('checked', true).trigger('change');
+            });
+            $('#opt-wrapper-bks').on('click', function() {
+                $('#shipToBks').prop('checked', true).trigger('change');
+            });
+            $('#opt-wrapper-custom').on('click', function(e) {
+                if (!$(e.target).is('textarea')) {
+                    $('#shipToCustom').prop('checked', true).trigger('change');
+                }
+            });
+
+            $(document).on('input', '#ship_to_custom_input', function() {
+                if ($('input[name="ship_to_preset"]:checked').val() === 'CUSTOM') {
+                    $('#ship_to_hidden').val($(this).val().trim());
+                }
             });
         })
     </script>

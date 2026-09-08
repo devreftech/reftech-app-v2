@@ -16,6 +16,7 @@ class DetailPurchaseOrder extends Model
     protected $fillable = [
         'product',
         'id_unit',
+        'id_rental_accessory',
         'kondisi',
         'category',
         'id_product',
@@ -37,5 +38,9 @@ class DetailPurchaseOrder extends Model
     public function product()
     {
         return $this->belongsTo('App\Models\Product', 'id_product', 'id');
+    }
+    public function rentalAccessory()
+    {
+        return $this->belongsTo('App\Models\RentalAccessory', 'id_rental_accessory', 'id');
     }
 }

@@ -409,11 +409,14 @@
     </div>
 </div>
 
-@endsection()
-@include('components.modal.payment.date')
-@include('components.modal.payment.pph')
-@include('components.modal.payment.cost')
-@include('components.modal.payment.confirm')
+@endsection
+
+@push('modals')
+    @include('components.modal.payment.date')
+    @include('components.modal.payment.pph')
+    @include('components.modal.payment.cost')
+    @include('components.modal.payment.confirm')
+@endpush
 
 @push('after-style')
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />

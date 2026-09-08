@@ -57,6 +57,8 @@ use App\Http\Controllers\ProjectMonitoringController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WatermarkController;
 use App\Http\Controllers\SalesPaymentTemplateController;
+use App\Http\Controllers\RentalAccessoryController;
+use App\Http\Controllers\RentalAccessoryReceiptController;
 use App\Models\Account;
 use App\Models\Activities;
 use App\Models\ChangeWarehouse;
@@ -166,6 +168,27 @@ Route::post('/contract/sign/{token}', [ContractSignController::class, 'sign'])->
 Route::post('/contract/sign/{token}/reset', [ContractSignController::class, 'customerReset'])->name('contract.customer.sign.reset');
 Route::get('/contract/sign/{token}/pdf', [ContractSignController::class, 'downloadPdf'])->name('contract.customer.pdf');
 
+// Public Customer Service Report Sign Portal (No Login Required)
+Route::get('/service-report/sign/{token}', [\App\Http\Controllers\ServiceReportSignController::class, 'show'])->name('service-report.customer.sign');
+Route::post('/service-report/sign/{token}', [\App\Http\Controllers\ServiceReportSignController::class, 'sign'])->name('service-report.customer.sign.submit');
+Route::post('/service-report/sign/{token}/reset', [\App\Http\Controllers\ServiceReportSignController::class, 'customerReset'])->name('service-report.customer.sign.reset');
+Route::get('/service-report/sign/{token}/pdf', [\App\Http\Controllers\ServiceReportSignController::class, 'downloadPdf'])->name('service-report.customer.pdf');
+
+// Public Customer BAST Sign Portal (No Login Required)
+Route::get('/bast/sign/{token}', [\App\Http\Controllers\BastSignController::class, 'show'])->name('bast.customer.sign');
+Route::post('/bast/sign/{token}', [\App\Http\Controllers\BastSignController::class, 'sign'])->name('bast.customer.sign.submit');
+Route::post('/bast/sign/{token}/reset', [\App\Http\Controllers\BastSignController::class, 'customerReset'])->name('bast.customer.sign.reset');
+
+// Public Vendor Purchase Order Sign Portal (No Login Required)
+Route::get('/purchase/sign/{token}', [\App\Http\Controllers\PurchaseOrderSignController::class, 'show'])->name('purchase.vendor.sign');
+Route::post('/purchase/sign/{token}', [\App\Http\Controllers\PurchaseOrderSignController::class, 'sign'])->name('purchase.vendor.sign.submit');
+Route::post('/purchase/sign/{token}/reset', [\App\Http\Controllers\PurchaseOrderSignController::class, 'vendorReset'])->name('purchase.vendor.sign.reset');
+
+// Public Customer Daily Project Report Sign Portal (No Login Required)
+Route::get('/project-report/sign/{token}', [\App\Http\Controllers\ProjectReportSignController::class, 'show'])->name('project-reports.customer.sign');
+Route::post('/project-report/sign/{token}', [\App\Http\Controllers\ProjectReportSignController::class, 'sign'])->name('project-reports.customer.sign.submit');
+Route::post('/project-report/sign/{token}/reset', [\App\Http\Controllers\ProjectReportSignController::class, 'customerReset'])->name('project-reports.customer.sign.reset');
+
 require base_path('routes/modules/crm.php');
 
 Route::group(["middleware" => "auth"], function () {
@@ -229,6 +252,7 @@ Route::group(["middleware" => "auth"], function () {
     require base_path('routes/modules/quotations.php');
     require base_path('routes/modules/piping.php');
     require base_path('routes/modules/schematics.php');
+    require base_path('routes/modules/hvac.php');
 
     // Route untuk Visit
     Route::get('/visits/leads', function () {
@@ -252,6 +276,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/service-reports/image/{id}', [ServiceReportsController::class, 'inputImage'])->name('service-reports.image');
     Route::post('/service-reports/image-v2/{id}', [ServiceReportsController::class, 'inputImageV2'])->name('service-reports.image-v2');
     Route::delete('/service-reports/del-sign/{id}', [ServiceReportsController::class, 'delete_hand_sign'])->name('service-reports.del-sign');
+    Route::delete('/service-reports/{id}/reset-signature', [\App\Http\Controllers\ServiceReportSignController::class, 'resetSign'])->name('service-reports.reset-signature');
     Route::delete('/service-reports/del-image/{id}', [ServiceReportsController::class, 'deleteImage'])->name('service-reports.del-image');
     Route::delete('/service-reports/image-item/{picture_id}', [ServiceReportsController::class, 'deleteImageItem'])->name('service-reports.image-item.delete');
     Route::patch('/service-reports/image-item/{picture_id}', [ServiceReportsController::class, 'updateImageItem'])->name('service-reports.image-item.update');
@@ -270,6 +295,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/project-reports/photo/{id}', [ProjectReportsController::class, 'uploadPhoto'])->name('project-reports.photo.upload');
     Route::delete('/project-reports/photo/{photo_id}', [ProjectReportsController::class, 'deletePhoto'])->name('project-reports.photo.delete');
     Route::patch('/project-reports/photo/{photo_id}', [ProjectReportsController::class, 'updatePhotoCaption'])->name('project-reports.photo.caption');
+    Route::delete('/project-reports/{id}/reset-signature', [\App\Http\Controllers\ProjectReportSignController::class, 'adminReset'])->name('project-reports.reset-signature');
 
     // Route untuk audit
     Route::resource('/audit-tools', AuditController::class);
@@ -1758,6 +1784,16 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/unit-acquisition/{id}/status', [FixedController::class, 'updateStatusUnit'])->name('unit-acquisition.status');
     Route::post('/unit-acquisition/{id}/harga-jual', [FixedController::class, 'updateHargaJual'])->name('unit-acquisition.harga-jual');
 
+    // Rental Accessories CRUD
+    Route::post('/rental-accessories', [RentalAccessoryController::class, 'store'])->name('rental-accessories.store');
+    Route::get('/rental-accessories/{id}', [RentalAccessoryController::class, 'show'])->name('rental-accessories.show');
+    Route::put('/rental-accessories/{id}', [RentalAccessoryController::class, 'update'])->name('rental-accessories.update');
+    Route::delete('/rental-accessories/{id}', [RentalAccessoryController::class, 'destroy'])->name('rental-accessories.destroy');
+
+    // Rental Accessories Goods Receipt (PO -> GR)
+    Route::get('/rental-accessories/goods-receipt/{po}', [RentalAccessoryReceiptController::class, 'goodsReceiptForm'])->name('rental-accessories.goods-receipt-form');
+    Route::post('/rental-accessories/goods-receipt/{po}', [RentalAccessoryReceiptController::class, 'storeGoodsReceipt'])->name('rental-accessories.store-goods-receipt');
+
     // Aksi scan barcode/QR unit Fixed Asset — ubah status jadi Rental (scan out)
     // atau terima kembali jadi OK (scan in). QR-nya (barcodeImage()) encode URL ke
     // unit-acquisition.show langsung — formnya nempel di halaman detail unit itu,
@@ -1826,6 +1862,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::patch('/purchase/{id}/delivery', [POController::class, 'delivery'])->name('purchase.delivery');
     Route::patch('/purchase/{id}/delivery-unit', [POController::class, 'deliveryUnit'])->name('purchase.delivery-unit');
     Route::post('/purchase/{id}/invoice', [POController::class, 'uploadInvoice'])->name('purchase.upload-invoice');
+    Route::delete('/purchase/{id}/reset-signature', [\App\Http\Controllers\PurchaseOrderSignController::class, 'adminReset'])->name('purchase.reset-signature');
     Route::get('/purchase/{id}/goods-receipt', [PurchaseController::class, 'goodsReceiptForm'])->name('purchase.goods-receipt');
     Route::post('/purchase/{id}/goods-receipt', [PurchaseController::class, 'storeGoodsReceipt'])->name('purchase.store-goods-receipt');
     // GR buat PO Parts yang dibeli langsung tanpa Purchase Request — sumber itemnya
@@ -1908,6 +1945,9 @@ Route::group(["middleware" => "auth"], function () {
     Route::patch('/bast/{id}', [BastController::class, 'update'])->name('bast.update');
     Route::delete('/bast/{id}', [BastController::class, 'destroy'])->name('bast.destroy');
     Route::get('/bast/{id}/print', [BastController::class, 'print'])->name('bast.print');
+    Route::post('/bast/{id}/sign', [BastController::class, 'handSign'])->name('bast.sign');
+    Route::delete('/bast/{id}/del-sign', [BastController::class, 'deleteHandSign'])->name('bast.del-sign');
+    Route::delete('/bast/{id}/reset-signature', [\App\Http\Controllers\BastSignController::class, 'resetSign'])->name('bast.reset-signature');
 
     // Database Connection
     Route::get('/db/next-follow/callendar', function () {
@@ -2082,6 +2122,7 @@ Route::group(["middleware" => "auth"], function () {
     });
     Route::get('/db/request-contract', function (Request $request) {
         $year = $request->query('year');
+        $tax  = $request->query('tax', 'all');
 
         $serviceQuery = Contract::join('quotation as q', 'q.id', '=', 'contract.id_quotation')
             ->join('pic as p', 'p.id', '=', 'q.id_pic')
@@ -2090,9 +2131,12 @@ Route::group(["middleware" => "auth"], function () {
             ->where('contract.level', '0')
             ->whereNotNull('contract.id_quotation');
         if ($year && $year !== 'all') $serviceQuery->whereYear('contract.date', $year);
+        if ($tax === 'ppn')     $serviceQuery->where('q.tax', '11');
+        elseif ($tax === 'non-ppn') $serviceQuery->where('q.tax', '0');
         $serviceContracts = $serviceQuery->get([
             'contract.id', 'contract.no_contract', 'contract.type', 'contract.date',
-            'q.harga_total', 'u.name', 'c.company',
+            'q.harga_total', 'u.name', 'u.image', 'c.company',
+            DB::raw("CASE WHEN q.tax = '11' THEN 1 ELSE 0 END AS ppn"),
             DB::raw("'service' AS source"),
         ]);
 
@@ -2102,9 +2146,12 @@ Route::group(["middleware" => "auth"], function () {
             ->where('contract.level', '0')
             ->whereNotNull('contract.id_unit_quotation');
         if ($year && $year !== 'all') $unitQuery->whereYear('contract.date', $year);
+        if ($tax === 'ppn')     $unitQuery->where('uq.tax', 1);
+        elseif ($tax === 'non-ppn') $unitQuery->where('uq.tax', 0);
         $unitContracts = $unitQuery->get([
             'contract.id', 'contract.no_contract', 'contract.type', 'contract.date',
-            DB::raw('uq.total AS harga_total'), 'u.name', 'c.company',
+            DB::raw('uq.total AS harga_total'), 'u.name', 'u.image', 'c.company',
+            DB::raw("CASE WHEN uq.tax = 1 THEN 1 ELSE 0 END AS ppn"),
             DB::raw("'unit' AS source"),
         ]);
 
@@ -2120,22 +2167,38 @@ Route::group(["middleware" => "auth"], function () {
             ->join('pic as p', 'p.id', '=', 'q.id_pic')
             ->join('client as c', 'c.id', '=', 'p.id_client')
             ->join('users as u', 'u.id', '=', 'q.id_sales')
+            ->leftJoin('users as approver', 'approver.id', '=', 'contract.id_user')
             ->where('contract.type', 'Selling')
+            ->where('contract.no_contract', 'not like', '%/CO/%')
             ->where('contract.level', '1');
         if ($year && $year !== 'all') $serviceQuery->whereYear('contract.date', $year);
         if ($tax === 'ppn')     $serviceQuery->where('q.tax', '11');
         elseif ($tax === 'non-ppn') $serviceQuery->where('q.tax', '0');
-        $service = $serviceQuery->get(['contract.id','contract.no_contract','contract.type','contract.date','q.harga_total','u.name','c.company',DB::raw("CASE WHEN q.tax = '11' THEN 1 ELSE 0 END AS ppn")]);
+        $service = $serviceQuery->get([
+            'contract.id', 'contract.no_contract', 'contract.type', 'contract.date',
+            'q.no_quote', 'q.id as id_quote', 'q.type as quote_type', 'q.harga_total',
+            'u.name', 'u.image', 'approver.name as approver_name', 'approver.image as approver_image', 'c.company',
+            DB::raw("CASE WHEN q.tax = '11' THEN 1 ELSE 0 END AS ppn"),
+            DB::raw("'service' as source")
+        ]);
 
         $unitQuery = Contract::join('unit_quotation as uq', 'uq.id', '=', 'contract.id_unit_quotation')
             ->join('client as c', 'c.id', '=', 'uq.id_client')
             ->join('users as u', 'u.id', '=', 'uq.id_sales')
+            ->leftJoin('users as approver', 'approver.id', '=', 'contract.id_user')
             ->where('contract.type', 'Selling')
+            ->where('contract.no_contract', 'not like', '%/CO/%')
             ->where('contract.level', '1');
         if ($year && $year !== 'all') $unitQuery->whereYear('contract.date', $year);
         if ($tax === 'ppn')     $unitQuery->where('uq.tax', 1);
         elseif ($tax === 'non-ppn') $unitQuery->where('uq.tax', 0);
-        $unit = $unitQuery->get(['contract.id','contract.no_contract','contract.type','contract.date',DB::raw('uq.total AS harga_total'),'u.name','c.company',DB::raw("CASE WHEN uq.tax = 1 THEN 1 ELSE 0 END AS ppn")]);
+        $unit = $unitQuery->get([
+            'contract.id', 'contract.no_contract', 'contract.type', 'contract.date',
+            'uq.no_quote', 'uq.id as id_quote', DB::raw("'unit' as quote_type"),
+            DB::raw('uq.total AS harga_total'), 'u.name', 'u.image', 'approver.name as approver_name', 'approver.image as approver_image', 'c.company',
+            DB::raw("CASE WHEN uq.tax = 1 THEN 1 ELSE 0 END AS ppn"),
+            DB::raw("'unit' as source")
+        ]);
 
         $combined = $service->merge($unit)->sortByDesc('id')->values();
         return response()->json(['data' => $combined]);
@@ -2149,24 +2212,46 @@ Route::group(["middleware" => "auth"], function () {
             ->join('pic as p', 'p.id', '=', 'q.id_pic')
             ->join('client as c', 'c.id', '=', 'p.id_client')
             ->join('users as u', 'u.id', '=', 'q.id_sales')
-            ->where('contract.type', 'Order')
+            ->leftJoin('users as approver', 'approver.id', '=', 'contract.id_user')
+            ->where(function ($q) {
+                $q->where('contract.type', 'Order')
+                  ->orWhere('contract.no_contract', 'like', '%/CO/%');
+            })
+            ->where('contract.no_contract', 'not like', '%SELLCTX%')
             ->where('contract.level', '1');
         if ($year && $year !== 'all') $serviceQuery->whereYear('contract.date', $year);
         if ($tax === 'ppn')     $serviceQuery->where('q.tax', '11');
         elseif ($tax === 'non-ppn') $serviceQuery->where('q.tax', '0');
-        $service = $serviceQuery->get(['contract.id','contract.no_contract','contract.type','contract.date','q.harga_total','u.name','c.company',DB::raw("CASE WHEN q.tax = '11' THEN 1 ELSE 0 END AS ppn")]);
+        $service = $serviceQuery->get([
+            'contract.id', 'contract.no_contract', 'contract.type', 'contract.date',
+            'q.no_quote', 'q.id as id_quote', 'q.type as quote_type', 'q.harga_total',
+            'u.name', 'u.image', 'approver.name as approver_name', 'approver.image as approver_image', 'c.company',
+            DB::raw("CASE WHEN q.tax = '11' THEN 1 ELSE 0 END AS ppn"),
+            DB::raw("'service' as source")
+        ]);
 
         // Kontrak dari Smart Quotation (unit) yang ber-flag Kojisha disimpan sebagai type=Order,
         // jadi tampil di tab Confirm Order (mirror cabang unit di /db/selling-contract).
         $unitQuery = Contract::join('unit_quotation as uq', 'uq.id', '=', 'contract.id_unit_quotation')
             ->join('client as c', 'c.id', '=', 'uq.id_client')
             ->join('users as u', 'u.id', '=', 'uq.id_sales')
-            ->where('contract.type', 'Order')
+            ->leftJoin('users as approver', 'approver.id', '=', 'contract.id_user')
+            ->where(function ($q) {
+                $q->where('contract.type', 'Order')
+                  ->orWhere('contract.no_contract', 'like', '%/CO/%');
+            })
+            ->where('contract.no_contract', 'not like', '%SELLCTX%')
             ->where('contract.level', '1');
         if ($year && $year !== 'all') $unitQuery->whereYear('contract.date', $year);
         if ($tax === 'ppn')     $unitQuery->where('uq.tax', 1);
         elseif ($tax === 'non-ppn') $unitQuery->where('uq.tax', 0);
-        $unit = $unitQuery->get(['contract.id','contract.no_contract','contract.type','contract.date',DB::raw('uq.total AS harga_total'),'u.name','c.company',DB::raw("CASE WHEN uq.tax = 1 THEN 1 ELSE 0 END AS ppn")]);
+        $unit = $unitQuery->get([
+            'contract.id', 'contract.no_contract', 'contract.type', 'contract.date',
+            'uq.no_quote', 'uq.id as id_quote', DB::raw("'unit' as quote_type"),
+            DB::raw('uq.total AS harga_total'), 'u.name', 'u.image', 'approver.name as approver_name', 'approver.image as approver_image', 'c.company',
+            DB::raw("CASE WHEN uq.tax = 1 THEN 1 ELSE 0 END AS ppn"),
+            DB::raw("'unit' as source")
+        ]);
 
         $contract = $service->merge($unit)->sortByDesc('id')->values();
         return response()->json(['data' => $contract]);
@@ -7290,7 +7375,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         }
 
         $data = $query
-            ->groupBy('ui.id_unit', 'u.brand', 'u.model', 'u.sku', 'u.harga_jual', 'u.unit', 'u.type_unit', 'u.power', 'u.air_cap', 'u.pdp', 'u.grade', 'u.connect', 'u.capacity')
+            ->groupBy('ui.id_unit', 'u.brand', 'u.model', 'u.sku', 'u.harga_jual', 'u.unit', 'u.type_unit', 'u.power', 'u.bar', 'u.air_cap', 'u.pdp', 'u.grade', 'u.connect', 'u.capacity')
             ->orderBy('u.brand')
             ->orderBy('u.model')
             ->select(
@@ -7303,6 +7388,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                 'u.type_unit as lubricant',
                 'u.pdp',
                 'u.power',
+                'u.bar',
                 'u.air_cap',
                 'u.grade',
                 'u.connect',
@@ -7311,8 +7397,10 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                 DB::raw("GROUP_CONCAT(CONCAT(ui.serial_number, '::', ui.id) SEPARATOR '||') as items_detail")
             )
             ->get();
+
         return response()->json(['data' => $data]);
     });
+    Route::get('/db/accessories', [RentalAccessoryController::class, 'data'])->name('rental-accessories.data');
     Route::get('/db/unit-inventory/{unitId}/in', function ($unitId) {
         // "Riwayat Barang Masuk" di halaman detail unit-inventory — SEMUA serial
         // number dengan Unit (brand+model) yang sama, bukan cuma unit fisik yang
