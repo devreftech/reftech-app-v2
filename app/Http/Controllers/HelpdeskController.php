@@ -11,14 +11,12 @@ class HelpdeskController extends Controller
     public function index()
     {
         $userTickets = HelpdeskTicket::with('user')
-            ->where(function ($q) {
-                $q->where('category', 'user_report')->orWhereNull('category');
-            })
+            ->where('no_ticket', 'not like', 'ERR/%')
             ->latest()
             ->paginate(15, ['*'], 'user_page');
 
         $systemErrorTickets = HelpdeskTicket::with('user')
-            ->where('category', 'system_error')
+            ->where('no_ticket', 'like', 'ERR/%')
             ->latest()
             ->paginate(15, ['*'], 'error_page');
 
@@ -30,6 +28,7 @@ class HelpdeskController extends Controller
         $ticket = new HelpdeskTicket;
         $ticket->no_ticket = $this->generateNoTicket();
         $ticket->id_user = Auth::id();
+        $ticket->category = 'user_report';
         $ticket->title = $request->title;
         $ticket->description = $request->description;
         $ticket->status = 'Open';
@@ -60,13 +59,13 @@ class HelpdeskController extends Controller
         $month = now()->format('m');
         $prefix = "TKT/{$year}/{$month}/";
 
-        $last = HelpdeskTicket::where('no_ticket', 'like', $prefix . '%')
+        $last = HelpdeskTicket::where('no_ticket', 'like', $prefix.'%')
             ->orderByDesc('no_ticket')
             ->value('no_ticket');
 
         $lastSeq = $last ? (int) substr($last, -3) : 0;
         $nextSeq = str_pad($lastSeq + 1, 3, '0', STR_PAD_LEFT);
 
-        return $prefix . $nextSeq;
+        return $prefix.$nextSeq;
     }
 }
