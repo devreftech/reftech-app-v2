@@ -2338,7 +2338,21 @@ Route::group(["middleware" => "auth"], function () {
             )
             ->join('users as u', 'c.id_sales', '=', 'u.id')
             ->leftJoin('pic as p', 'c.id', '=', 'p.id_client')
-            ->leftJoin('crm_status as cs', 'c.id', '=', 'cs.id_client')
+            ->leftJoinSub(
+                DB::table('crm_status as cs1')
+                    ->select('cs1.id_client', 'cs1.status')
+                    ->join(
+                        DB::raw('(SELECT id_client, MAX(id) as max_id FROM crm_status GROUP BY id_client) as cs2'),
+                        function ($join) {
+                            $join->on('cs1.id_client', '=', 'cs2.id_client')
+                                 ->on('cs1.id', '=', 'cs2.max_id');
+                        }
+                    ),
+                'cs',
+                'c.id',
+                '=',
+                'cs.id_client'
+            )
             ->leftJoin('activities as a', 'a.id_client', '=', 'c.id')
             ->leftJoin('issues as i', 'c.id_issues', '=', 'i.id')
             ->where('c.role', 'Customers')
