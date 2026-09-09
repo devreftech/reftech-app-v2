@@ -1090,6 +1090,29 @@
                     <div data-i18n="Quotation">Quotation</div>
                 </a>
             </li>
+            <li class="menu-item {{ request()->is('hvac*') ? 'active open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <i class="menu-icon tf-icons mdi mdi-air-conditioner"></i>
+                    <div data-i18n="HVAC Cooling Load">HVAC Cooling Load</div>
+                </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('hvac/quick-calculator*') ? 'active' : '' }}">
+                        <a href="{{ route('hvac.quick-calculator') }}" class="menu-link">
+                            <div data-i18n="Quick Estimator (Sales)">Quick Estimator (Sales)</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hvac/projects*') || request()->is('hvac/rooms*') ? 'active' : '' }}">
+                        <a href="{{ route('hvac.project.index') }}" class="menu-link">
+                            <div data-i18n="Daftar Proyek HVAC">Daftar Proyek HVAC</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hvac/master-catalog*') ? 'active' : '' }}">
+                        <a href="{{ route('hvac.master.index') }}" class="menu-link">
+                            <div data-i18n="Master Data & Katalog">Master Data &amp; Katalog</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
 
             @php
                 $isMailboxConfiguredSales = auth::user()?->isDeveloper() || (!empty(auth::user()?->mailSetting?->smtp_username));
@@ -1437,29 +1460,6 @@
                     <i class="menu-icon tf-icons mdi mdi-vector-polyline"></i>
                     <div data-i18n="Schematic Diagram">Schematic Diagram</div>
                 </a>
-            </li>
-            <li class="menu-item {{ request()->is('hvac*') ? 'active open' : '' }}">
-                <a href="javascript:void(0);" class="menu-link menu-toggle">
-                    <i class="menu-icon tf-icons mdi mdi-air-conditioner"></i>
-                    <div data-i18n="HVAC Cooling Load">HVAC Cooling Load</div>
-                </a>
-                <ul class="menu-sub">
-                    <li class="menu-item {{ request()->is('hvac/quick-calculator*') ? 'active' : '' }}">
-                        <a href="{{ route('hvac.quick-calculator') }}" class="menu-link">
-                            <div data-i18n="Quick Estimator (Sales)">Quick Estimator (Sales)</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ request()->is('hvac/projects*') || request()->is('hvac/rooms*') ? 'active' : '' }}">
-                        <a href="{{ route('hvac.project.index') }}" class="menu-link">
-                            <div data-i18n="Daftar Proyek HVAC">Daftar Proyek HVAC</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ request()->is('hvac/master-catalog*') ? 'active' : '' }}">
-                        <a href="{{ route('hvac.master.index') }}" class="menu-link">
-                            <div data-i18n="Master Data & Katalog">Master Data &amp; Katalog</div>
-                        </a>
-                    </li>
-                </ul>
             </li>
             <li
                 class="menu-item {{ request()->is('unit-global') || request()->is('unit-global/*') ? 'active' : '' }}">

@@ -197,65 +197,6 @@
         </div>
     @endif
     @include('pages.sales.clients.leads.form')
-
-    <!-- Modal Ubah Status Customer -->
-    <div class="modal fade" id="modalChangeCustomerStatus" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header border-bottom py-3">
-                    <h6 class="modal-title fw-bold mb-0 d-flex align-items-center gap-2">
-                        <i class="mdi mdi-account-cog-outline text-primary fs-5"></i>
-                        <span>Ubah Status Customer</span>
-                    </h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="formChangeCustomerStatus">
-                    <div class="modal-body p-3">
-                        <input type="hidden" id="statusClientId" name="client_id" />
-                        
-                        <div class="mb-3 p-2 bg-light rounded border border-light">
-                            <small class="text-muted d-block" style="font-size: 0.75rem;">CUSTOMER</small>
-                            <span class="fw-bold text-dark d-block text-truncate" id="statusCompanyName">-</span>
-                        </div>
-
-                        <label class="form-label fw-semibold small text-muted mb-2">PILIH STATUS BARU</label>
-                        <div class="d-flex flex-column gap-2">
-                            <label class="status-option-card d-flex align-items-center justify-content-between m-0">
-                                <div class="d-flex align-items-center gap-2 status-card-content">
-                                    <input type="radio" name="customer_status" value="2" class="form-check-input m-0" />
-                                    <span class="badge bg-label-success px-2 py-1"><i class="mdi mdi-check-circle-outline me-1"></i>Aktif</span>
-                                </div>
-                                <small class="text-muted" style="font-size: 0.75rem;">Pelanggan Aktif</small>
-                            </label>
-
-                            <label class="status-option-card d-flex align-items-center justify-content-between m-0">
-                                <div class="d-flex align-items-center gap-2 status-card-content">
-                                    <input type="radio" name="customer_status" value="3" class="form-check-input m-0" />
-                                    <span class="badge bg-label-warning px-2 py-1"><i class="mdi mdi-close-circle-outline me-1"></i>Non Aktif</span>
-                                </div>
-                                <small class="text-muted" style="font-size: 0.75rem;">Tidak Ada Transaksi</small>
-                            </label>
-
-                            <label class="status-option-card d-flex align-items-center justify-content-between m-0">
-                                <div class="d-flex align-items-center gap-2 status-card-content">
-                                    <input type="radio" name="customer_status" value="1" class="form-check-input m-0" />
-                                    <span class="badge bg-label-danger px-2 py-1"><i class="mdi mdi-alert-circle-outline me-1"></i>Bangkrupt</span>
-                                </div>
-                                <small class="text-muted" style="font-size: 0.75rem;">Tutup / Bangkrut</small>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="modal-footer border-top py-2 px-3">
-                        <button type="button" class="btn btn-sm btn-label-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-sm btn-primary" id="btnSubmitCustomerStatus">
-                            <span class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
-                            Simpan Perubahan
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 @endsection
 
 @push('after-style')
@@ -291,22 +232,6 @@
             background-color: #ffffff;
             font-weight: 600;
         }
-        .status-option-card {
-            border: 1px solid #e0e2e8;
-            border-radius: 8px;
-            padding: 10px 14px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
-        .status-option-card:hover {
-            border-color: #7367f0;
-            background-color: #f8f7ff;
-        }
-        .status-option-card:has(input[type="radio"]:checked) {
-            border-color: #7367f0;
-            background-color: #f8f7ff;
-            box-shadow: 0 2px 6px rgba(115, 103, 240, 0.15);
-        }
     </style>
 @endpush
 
@@ -336,6 +261,32 @@
         // Initialize Bootstrap tooltips using jQuery
         $(document).ready(function() {
             $('[data-toggle="tooltip"]').tooltip();
+
+            $('#dataTableCrm').on('change', '.status-dropdown', function() {
+                var selectedValue = $(this).val();
+                var rowId = $(this).data('id');
+                var csrfToken = $('meta[name="csrf-token"]').attr('content');
+
+                console.log('id = ' + rowId);
+
+
+                $.ajax({
+                    type: 'POST',
+                    url: '/existing/update-status/' + rowId,
+                    data: {
+                        status: selectedValue,
+                        _token: csrfToken
+                    },
+                    success: function(response) {
+                        console.log('Perubahan status berhasil dikirim ke server');
+                        // Handle response jika perlu
+                    },
+                    error: function(error) {
+                        console.error('Gagal mengirim permintaan ke server:', error);
+                        // Handle error jika perlu
+                    }
+                });
+            });
         });
 
         $(document).on('click', '.delete-data-leads', function() {

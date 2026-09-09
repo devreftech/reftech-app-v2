@@ -562,34 +562,20 @@ class CrmController extends Controller
 
     public function updateStatusAtDropdown(Request $request, $id)
     {
-        $request->validate([
-            'status' => 'required',
-        ]);
+        $crmStat = CrmStatus::where('id_client', $id)->first();
 
-        $statusValue = (string) $request->status;
-        $existing = CrmStatus::where('id_client', $id)->get();
-
-        if ($existing->isEmpty()) {
-            CrmStatus::create([
-                'id_client' => $id,
-                'status' => $statusValue,
-            ]);
-        } else {
-            // Keep the first record and remove any lingering duplicates if any exist
-            $primary = $existing->first();
-            $primary->status = $statusValue;
-            $primary->save();
-
-            if ($existing->count() > 1) {
-                CrmStatus::where('id_client', $id)->where('id', '!=', $primary->id)->delete();
-            }
+        if (!$crmStat) {
+            $crmStat = new CrmStatus();
+            $crmStat->id_client = $id;
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Status customer berhasil diperbarui',
-            'status' => $statusValue,
-        ]);
+        $crmStat->status = $request->status;
+
+        if ($crmStat->save()) {
+            return response()->json(['success' => 'Status berhasil diperbarui']);
+        }
+
+        return response()->json(['error' => 'Gagal menyimpan perubahan status'], 500);
     }
 
     public function ruIndex()

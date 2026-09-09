@@ -107,53 +107,25 @@ $(function () {
                 {
                     targets: 2,
                     render: function (data, type, full, meta) {
-                        if (type !== "display") return full.status || data || "2";
                         var currentStatus = String(full.status || data || "2");
-                        var companyName = (full.company || "").replace(/"/g, "&quot;");
-
-                        var statusConfig = {
-                            "2": {
-                                label: "Aktif",
-                                badgeClass: "btn-label-success text-success",
-                                icon: "mdi-check-circle-outline",
-                            },
-                            "3": {
-                                label: "Non Aktif",
-                                badgeClass: "btn-label-warning text-warning",
-                                icon: "mdi-close-circle-outline",
-                            },
-                            "1": {
-                                label: "Bangkrupt",
-                                badgeClass: "btn-label-danger text-danger",
-                                icon: "mdi-alert-circle-outline",
-                            },
-                        };
-
-                        var config = statusConfig[currentStatus] || statusConfig["2"];
-
-                        return (
-                            '<button type="button" class="btn btn-xs ' +
-                            config.badgeClass +
-                            ' rounded-pill px-2 py-1 btn-change-status d-inline-flex align-items-center gap-1" ' +
-                            'data-id="' +
+                        var dropdown =
+                            '<select class="form-select form-select-sm status-dropdown" data-id="' +
                             full.id +
-                            '" ' +
-                            'data-company="' +
-                            companyName +
-                            '" ' +
-                            'data-status="' +
-                            currentStatus +
-                            '" ' +
-                            'title="Klik untuk ubah status">' +
-                            '<i class="mdi ' +
-                            config.icon +
-                            '" style="font-size: 0.9rem;"></i> ' +
-                            '<span class="fw-semibold">' +
-                            config.label +
-                            "</span>" +
-                            '<i class="mdi mdi-pencil-outline ms-1" style="font-size: 0.75rem; opacity: 0.65;"></i>' +
-                            "</button>"
-                        );
+                            '" style="min-width: 105px; font-size: 0.8rem;">';
+                        dropdown +=
+                            '<option value="2" ' +
+                            (currentStatus === "2" ? "selected" : "") +
+                            ">Aktif</option>";
+                        dropdown +=
+                            '<option value="3" ' +
+                            (currentStatus === "3" ? "selected" : "") +
+                            ">Non Aktif</option>";
+                        dropdown +=
+                            '<option value="1" ' +
+                            (currentStatus === "1" ? "selected" : "") +
+                            ">Bangkrupt</option>";
+                        dropdown += "</select>";
+                        return dropdown;
                     },
                 },
                 {
@@ -266,99 +238,7 @@ $(function () {
             $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
         });
 
-        // Open Modal Ubah Status Customer
-        $(document).on('click', '.btn-change-status', function(e) {
-            e.preventDefault();
-            var $btn = $(this);
-            var clientId = $btn.data('id');
-            var companyName = $btn.data('company') || '-';
-            var currentStatus = String($btn.data('status') || '2');
-
-            $('#statusClientId').val(clientId);
-            $('#statusCompanyName').text(companyName);
-
-            // Set radio checked
-            $('input[name="customer_status"][value="' + currentStatus + '"]').prop('checked', true);
-
-            var modalEl = document.getElementById('modalChangeCustomerStatus');
-            if (modalEl) {
-                var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-                modal.show();
-            }
-        });
-
-        // Submit update status via modal
-        $('#formChangeCustomerStatus').on('submit', function(e) {
-            e.preventDefault();
-            var clientId = $('#statusClientId').val();
-            var newStatus = $('input[name="customer_status"]:checked').val();
-            var csrfToken = $('meta[name="csrf-token"]').attr('content');
-            var $btnSubmit = $('#btnSubmitCustomerStatus');
-            var $spinner = $btnSubmit.find('.spinner-border');
-
-            if (!clientId || !newStatus) return;
-
-            $btnSubmit.prop('disabled', true);
-            $spinner.removeClass('d-none');
-
-            $.ajax({
-                type: 'POST',
-                url: '/existing/update-status/' + clientId,
-                data: {
-                    status: newStatus,
-                    _token: csrfToken
-                },
-                success: function(response) {
-                    $btnSubmit.prop('disabled', false);
-                    $spinner.addClass('d-none');
-
-                    var modalEl = document.getElementById('modalChangeCustomerStatus');
-                    if (modalEl) {
-                        var modal = bootstrap.Modal.getInstance(modalEl);
-                        if (modal) modal.hide();
-                    }
-
-                    // Reload all customer DataTables
-                    custTables.forEach(function(t) {
-                        if (t.dt) t.dt.ajax.reload(null, false);
-                    });
-
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil!',
-                            text: response.message || 'Status customer berhasil diperbarui.',
-                            timer: 2000,
-                            showConfirmButton: false,
-                            customClass: {
-                                confirmButton: 'btn btn-success waves-effect'
-                            }
-                        });
-                    }
-                },
-                error: function(xhr, status, error) {
-                    $btnSubmit.prop('disabled', false);
-                    $spinner.addClass('d-none');
-
-                    var errorMsg = 'Gagal memperbarui status customer.';
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        errorMsg = xhr.responseJSON.message;
-                    }
-
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Oops...',
-                            text: errorMsg
-                        });
-                    } else {
-                        alert(errorMsg);
-                    }
-                }
-            });
-        });
-
-        // Fallback for dropdown status update if any exists
+        // Handle dropdown status update for customer tables
         $(document).on('change', '.status-dropdown', function() {
             var selectedValue = $(this).val();
             var rowId = $(this).data('id');
