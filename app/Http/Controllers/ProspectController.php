@@ -199,9 +199,11 @@ class ProspectController extends Controller
             ->get();
 
         // Hitung jumlah prospek yang dibuat oleh setiap sales dalam minggu ini dan bulan berjalan
+        // Exclude sales yang tidak aktif menerima prospect: 23 (Nada), 16 (Mohamad Didik)
         $salesLeads = User::where('role', 'Sales')
             ->where('active', '1')
-            ->where('id', '!=', 23)
+            ->whereNotIn('id', [23, 16])
+            ->orderBy('name')
             ->withCount(['prospects as weekly_leads' => function ($query) use ($startOfWeek, $endOfWeek) {
                 $query->whereBetween('created_at', [$startOfWeek, $endOfWeek]);
             }])
