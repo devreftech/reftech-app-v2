@@ -70,6 +70,11 @@ class Quotation extends Model
         });
     }
 
+    public function isKojisha(): bool
+    {
+        return optional(optional($this->pic)->client)->info === 'Kojisha' || (is_string($this->no_quote) && str_contains($this->no_quote, 'KII'));
+    }
+
     public function pic()
     {
         return $this->belongsTo('App\Models\Pic', 'id_pic', 'id');

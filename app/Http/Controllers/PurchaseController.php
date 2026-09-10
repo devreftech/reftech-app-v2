@@ -613,7 +613,12 @@ class PurchaseController extends Controller
         $productIn->id_purchase_order = $po->id;
         $productIn->info = $supplier->info;
         $productIn->date = $request->gr_date;
-        $productIn->date_invoice = null;
+        // Kalau invoice supplier sudah ada di PO, sekalian stamp tanggal invoice &
+        // jatuh tempo AP di sini (basis: invoice_date PO, atau tanggal terima).
+        $productIn->date_invoice = $po->no_invoice_supplier ? ($po->invoice_date ?: $request->gr_date) : null;
+        $productIn->date_payment = $po->no_invoice_supplier
+            ? $po->resolveDueDate($productIn->date_invoice)
+            : null;
         $productIn->subtotal = null;
         $productIn->total_no_tax = null;
         $productIn->tax = null;
@@ -822,7 +827,10 @@ class PurchaseController extends Controller
         $productIn->id_purchase_order = $po->id;
         $productIn->info = $supplier->info;
         $productIn->date = $request->gr_date;
-        $productIn->date_invoice = null;
+        $productIn->date_invoice = $po->no_invoice_supplier ? ($po->invoice_date ?: $request->gr_date) : null;
+        $productIn->date_payment = $po->no_invoice_supplier
+            ? $po->resolveDueDate($productIn->date_invoice)
+            : null;
         $productIn->subtotal = null;
         $productIn->total_no_tax = null;
         $productIn->tax = null;

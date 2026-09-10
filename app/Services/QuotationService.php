@@ -27,18 +27,21 @@ class QuotationService
         // 1. Forecast (Quotation)
         $qForecast = DB::table('quotation as q')
             ->join('users as u', 'u.id', '=', 'q.id_sales')
+            ->where('u.active', '1')
             ->whereIn('q.status', ['20', '30', '40', '60', '80'])
             ->where('q.level', '1')
             ->where('q.is_primary', '1');
 
         $uqForecast = DB::table('unit_quotation as uq')
             ->join('users as u2', 'u2.id', '=', 'uq.id_sales')
+            ->where('u2.active', '1')
             ->whereIn('uq.status', ['draft', 'sent', 'negotiation', 'revision', 'hot_prospect'])
             ->where('uq.is_latest', 1);
 
         // 2. Hot Prospect
         $qProspect = DB::table('quotation as q')
             ->join('users as u', 'u.id', '=', 'q.id_sales')
+            ->where('u.active', '1')
             ->where('q.status', 80)
             ->where('q.level', '1')
             ->where('q.is_primary', '1')
@@ -46,12 +49,14 @@ class QuotationService
 
         $uqProspect = DB::table('unit_quotation as uq')
             ->join('users as u2', 'u2.id', '=', 'uq.id_sales')
+            ->where('u2.active', '1')
             ->where('uq.status', 'hot_prospect')
             ->where('uq.is_latest', 1);
 
         // 3. Purchase Order
         $qPo = DB::table('quotation as q')
             ->join('users as u', 'u.id', '=', 'q.id_sales')
+            ->where('u.active', '1')
             ->where('q.status', '100')
             ->where('q.level', '1')
             ->where('q.is_primary', '1')
@@ -64,6 +69,7 @@ class QuotationService
 
         $uqPo = DB::table('unit_quotation as uq')
             ->join('users as u2', 'u2.id', '=', 'uq.id_sales')
+            ->where('u2.active', '1')
             ->where('uq.status', 'po_received')
             ->where('uq.is_latest', 1)
             ->whereNotExists(function ($sub) {
@@ -76,6 +82,7 @@ class QuotationService
         // 4. Loss Order
         $qLoss = DB::table('quotation as q')
             ->join('users as u', 'u.id', '=', 'q.id_sales')
+            ->where('u.active', '1')
             ->where('q.status', '0')
             ->where('q.level', '1')
             ->where('q.is_primary', '1')
@@ -88,6 +95,7 @@ class QuotationService
 
         $uqLoss = DB::table('unit_quotation as uq')
             ->join('users as u2', 'u2.id', '=', 'uq.id_sales')
+            ->where('u2.active', '1')
             ->whereIn('uq.status', ['loss', 'cancel'])
             ->where('uq.is_latest', 1)
             ->whereNotExists(function ($sub) {
@@ -173,7 +181,7 @@ class QuotationService
 
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
         $leveledProspect = Prospect::whereNULL('level')->where('id_sales', Auth::id())->count();
-        $salesList = User::where('role', 'Sales')->where('id', '!=', 23)->orderBy('name')->get(['id', 'name']);
+        $salesList = User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->orderBy('name')->get(['id', 'name']);
 
         return [
             'currentYear' => $currentYear,

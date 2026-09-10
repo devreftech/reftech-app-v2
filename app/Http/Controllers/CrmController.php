@@ -297,7 +297,7 @@ class CrmController extends Controller
 
         $activityTimeline = $activityTimeline->sortByDesc('date')->values();
 
-        $sales = User::where('role', 'sales')->get();
+        $sales = User::where('role', 'sales')->where('active', '1')->where('id', '!=', 23)->get();
         $issue = Issues::all();
         $unit = SerialProduct::whereNotNull('detail')->get();
         // dd($unit);
@@ -562,20 +562,34 @@ class CrmController extends Controller
 
     public function updateStatusAtDropdown(Request $request, $id)
     {
-        $crmStat = CrmStatus::where('id_client', $id)->first();
+        $request->validate([
+            'status' => 'required',
+        ]);
 
-        if (!$crmStat) {
-            $crmStat = new CrmStatus();
-            $crmStat->id_client = $id;
+        $statusValue = (string) $request->status;
+        $existing = CrmStatus::where('id_client', $id)->get();
+
+        if ($existing->isEmpty()) {
+            CrmStatus::create([
+                'id_client' => $id,
+                'status' => $statusValue,
+            ]);
+        } else {
+            // Keep the first record and remove any lingering duplicates if any exist
+            $primary = $existing->first();
+            $primary->status = $statusValue;
+            $primary->save();
+
+            if ($existing->count() > 1) {
+                CrmStatus::where('id_client', $id)->where('id', '!=', $primary->id)->delete();
+            }
         }
 
-        $crmStat->status = $request->status;
-
-        if ($crmStat->save()) {
-            return response()->json(['success' => 'Status berhasil diperbarui']);
-        }
-
-        return response()->json(['error' => 'Gagal menyimpan perubahan status'], 500);
+        return response()->json([
+            'success' => true,
+            'message' => 'Status customer berhasil diperbarui',
+            'status' => $statusValue,
+        ]);
     }
 
     public function ruIndex()

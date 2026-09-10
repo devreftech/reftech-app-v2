@@ -152,15 +152,7 @@ class ContractSignController extends Controller
             $quote = UnitQuotation::with(['client', 'pic', 'details'])->find($contract->id_unit_quotation);
             if ($quote) {
                 $accUserIds = \App\Models\User::getAccountingRecipientsForSales($quote->id_sales, true);
-                $allTargetUserIds = array_unique(array_merge($accUserIds, $quote->id_sales ? [$quote->id_sales] : []));
-                foreach ($allTargetUserIds as $userId) {
-                    \App\Models\UnitQuotationPaymentNotification::create([
-                        'id_unit_quotation' => $quote->id,
-                        'id_user' => $userId,
-                        'type' => 'contract_signed',
-                        'is_read' => false,
-                    ]);
-                }
+                $invoice = null;
 
                 // Otomatisasi Upload PO jika quotation belum dalam status po_received
                 if ($quote->status !== 'po_received') {
@@ -207,16 +199,34 @@ class ContractSignController extends Controller
                         'type'              => $parsed['invoice_type'],
                         'percent'           => $parsed['invoice_type'] === 'DP' ? floatval($parsed['dp_percent'] ?? 50) : 100,
                     ]);
+                } else {
+                    $invoice = \App\Models\Invoice::where('id_unit_quotation', $quote->id)
+                        ->whereNull('no_invoice')
+                        ->whereNull('rejected_at')
+                        ->latest('id')
+                        ->first();
+                }
 
-                    foreach ($accUserIds as $userId) {
-                        \App\Models\UnitQuotationPaymentNotification::create([
-                            'id_invoice' => $invoice->id,
-                            'id_unit_quotation' => $quote->id,
-                            'id_user' => $userId,
-                            'type' => 'invoice_requested',
-                            'is_read' => false,
-                        ]);
-                    }
+                // 1 Notifikasi untuk Sales (Selling Contract ditandatangani)
+                if ($quote->id_sales) {
+                    \App\Models\UnitQuotationPaymentNotification::create([
+                        'id_unit_quotation' => $quote->id,
+                        'id_invoice'        => $invoice ? $invoice->id : null,
+                        'id_user'           => $quote->id_sales,
+                        'type'              => 'contract_signed',
+                        'is_read'           => false,
+                    ]);
+                }
+
+                // 1 Notifikasi Gabungan untuk Accounting (Kontrak Ditandatangani & Pengajuan Invoice)
+                foreach ($accUserIds as $userId) {
+                    \App\Models\UnitQuotationPaymentNotification::create([
+                        'id_unit_quotation' => $quote->id,
+                        'id_invoice'        => $invoice ? $invoice->id : null,
+                        'id_user'           => $userId,
+                        'type'              => 'contract_signed',
+                        'is_read'           => false,
+                    ]);
                 }
             }
         }

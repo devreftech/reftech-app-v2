@@ -17,20 +17,20 @@
                         <div class="d-flex flex-row align-items-start gap-4 mt-2" style="font-size: 11px;">
                             <div class="info" style="max-width: 260px;">
                                 <p class="mb-1 fw-bold text-dark" style="font-size: 11.5px;">
-                                    <i class="mdi mdi-office-building-outline me-1 text-primary"></i><span class="i18n" data-en="OFFICE ADDRESS :">ALAMAT KANTOR</span>
+                                    <i class="mdi mdi-office-building-outline me-1 icon-accent-blue"></i><span class="i18n" data-en="OFFICE ADDRESS :">ALAMAT KANTOR</span>
                                 </p>
-                                <p class="mb-1 text-muted" style="line-height: 1.4;">Jl. Nancep No. 45A, Setu, Cibitung - Kab. Bekasi 17320</p>
-                                <p class="mb-0 text-muted">
-                                    <i class="mdi mdi-phone-outline me-1 text-primary"></i>+62 812-1000-0997 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1 text-primary"></i>admin@kojisha.com
+                                <p class="mb-1" style="line-height: 1.4; color: #111;">Jl. Nancep No. 45A, Setu, Cibitung - Kab. Bekasi 17320</p>
+                                <p class="mb-0" style="color: #111;">
+                                    <i class="mdi mdi-phone-outline me-1 icon-accent-blue"></i>+62 812-1000-0997 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1 icon-accent-blue"></i>admin@kojisha.com
                                 </p>
                             </div>
                             <div class="npwp_add" style="max-width: 280px;">
                                 <p class="mb-1 fw-bold text-dark" style="font-size: 11.5px;">
-                                    <i class="mdi mdi-file-document-outline me-1 text-primary"></i><span class="i18n" data-en="NPWP ADDRESS :">ALAMAT NPWP</span>
+                                    <i class="mdi mdi-file-document-outline me-1 icon-accent-blue"></i><span class="i18n" data-en="NPWP ADDRESS :">ALAMAT NPWP</span>
                                 </p>
-                                <p class="mb-1 text-muted" style="line-height: 1.4;">Jl. Nancep No. 45, Setu Cisaat RT. 001 RW. 003 Cibening, Setu</p>
-                                <div class="px-2 py-0.5 rounded-0" style="background:#fff0e0; border:1px solid #ffd8b0; font-size:10.5px; font-weight:600; color:#7a4a10; display:inline-block; border-radius:0 !important;">
-                                    <i class="mdi mdi-card-account-details-outline me-1"></i>NPWP: 96.484.859.2-413.000
+                                <p class="mb-1" style="line-height: 1.4; color: #111;">Jl. Nancep No. 45, Setu Cisaat RT. 001 RW. 003 Cibening, Setu</p>
+                                <div class="px-2 py-0.5 rounded-0" style="background:#fff0e0; border:1px solid #ffd8b0; font-size:10.5px; font-weight:700; color:#7a4a10; display:inline-block; border-radius:0 !important;">
+                                    <i class="mdi mdi-card-account-details-outline me-1 icon-accent-blue"></i>NPWP: 96.484.859.2-413.000
                                 </div>
                             </div>
                         </div>
@@ -43,20 +43,20 @@
                         <div class="d-flex flex-row align-items-start gap-4 mt-2" style="font-size: 11px;">
                             <div class="info" style="max-width: 260px;">
                                 <p class="mb-1 fw-bold text-dark" style="font-size: 11.5px;">
-                                    <i class="mdi mdi-office-building-outline me-1 text-primary"></i><span class="i18n" data-en="OFFICE ADDRESS :">ALAMAT KANTOR</span>
+                                    <i class="mdi mdi-office-building-outline me-1 icon-accent-blue"></i><span class="i18n" data-en="OFFICE ADDRESS :">ALAMAT KANTOR</span>
                                 </p>
-                                <p class="mb-1 text-muted" style="line-height: 1.4;">Taman Kopo Indah V, Soho Sommerville No. 31, Bandung – Jawa Barat 40218</p>
-                                <p class="mb-0 text-muted">
-                                    <i class="mdi mdi-phone-outline me-1 text-primary"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1 text-primary"></i>accounting@reftech.id
+                                <p class="mb-1" style="line-height: 1.4; color: #111;">Taman Kopo Indah V, Soho Sommerville No. 31, Bandung – Jawa Barat 40218</p>
+                                <p class="mb-0" style="color: #111;">
+                                    <i class="mdi mdi-phone-outline me-1 icon-accent-blue"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1 icon-accent-blue"></i>accounting@reftech.id
                                 </p>
                             </div>
                             <div class="npwp_add" style="max-width: 280px;">
                                 <p class="mb-1 fw-bold text-dark" style="font-size: 11.5px;">
-                                    <i class="mdi mdi-file-document-outline me-1 text-primary"></i><span class="i18n" data-en="NPWP ADDRESS :">ALAMAT NPWP</span>
+                                    <i class="mdi mdi-file-document-outline me-1 icon-accent-blue"></i><span class="i18n" data-en="NPWP ADDRESS :">ALAMAT NPWP</span>
                                 </p>
-                                <p class="mb-1 text-muted" style="line-height: 1.4;">Komp. Negia Kencana Residence Blok B, No.2 Pasanggrahan, Ujung Berung Kota Bandung - Jawa Barat 40199</p>
-                                <div class="px-2 py-0.5 rounded-0" style="background:#eef0ff; border:1px solid #d0d0ff; font-size:10.5px; font-weight:600; color:#3d3d8f; display:inline-block; border-radius:0 !important;">
-                                    <i class="mdi mdi-card-account-details-outline me-1"></i>NPWP: 0737285718429000
+                                <p class="mb-1" style="line-height: 1.4; color: #111;">Komp. Negla Kencana Residence Blok B, No.2 Pasanggrahan, Ujung Berung Kota Bandung - Jawa Barat 40199</p>
+                                <div class="px-2 py-0.5 rounded-0" style="background:#eef0ff; border:1px solid #c0c5ff; font-size:10.5px; font-weight:700; color:#2529fa; display:inline-block; border-radius:0 !important;">
+                                    <i class="mdi mdi-card-account-details-outline me-1 icon-accent-blue"></i>NPWP: 0737285718429000
                                 </div>
                             </div>
                         </div>
@@ -71,7 +71,7 @@
                             </span>
                         </div>
                         <p class="mb-1 fw-bold text-dark" style="font-size:14px;">PT Kojisha Innotiv Indonesia</p>
-                        <p class="mb-0 text-muted" style="font-size:11px;">Jl. Nancep No. 45A, Setu, Cibitung - Kab. Bekasi 17320</p>
+                        <p class="mb-0" style="font-size:11px; color:#111;">Jl. Nancep No. 45A, Setu, Cibitung - Kab. Bekasi 17320</p>
                     @else
                         <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
                             <span class="app-brand-logo demo">
@@ -79,7 +79,7 @@
                             </span>
                         </div>
                         <p class="mb-1 fw-bold text-dark" style="font-size:14px;">PT Reftech Jaya Optima</p>
-                        <p class="mb-0 text-muted" style="font-size:11px;">Taman Kopo Indah V, Soho Sommerville No. 31, Bandung – Jawa Barat 40218</p>
+                        <p class="mb-0" style="font-size:11px; color:#111;">Taman Kopo Indah V, Soho Sommerville No. 31, Bandung – Jawa Barat 40218</p>
                     @endif
                 </div>
             @endif
@@ -87,7 +87,7 @@
             <div class="text-end">
                 <h1 class="fw-bold invoice-title-heading" style="color: #2529fa; letter-spacing: 2px;">INVOICE</h1>
                 <p class="mb-1 fw-bold text-dark" style="font-size:14px;">#{{ $invoice->no_invoice }}</p>
-                <p class="mb-1 text-muted small">{{ $invoice->date ? \Carbon\Carbon::parse($invoice->date)->format('d-m-Y') : '-' }}</p>
+                <p class="mb-1 fw-semibold small" style="color: #0f172a;">{{ $invoice->date ? \Carbon\Carbon::parse($invoice->date)->format('d-m-Y') : '-' }}</p>
             </div>
         </div>
 
@@ -96,14 +96,14 @@
         {{-- Invoice To + Document Info Box --}}
         <div style="display:flex !important; align-items:stretch !important; gap:14px; margin-bottom:18px; font-size:12px;">
             {{-- Card 1: Invoice To --}}
-            <div style="flex:1.4; display:flex; flex-direction:column; align-self:stretch; border:1px solid #e0e0e0; border-left:4px solid #696cff; border-radius:4px; padding:12px 16px; background:#fcfcfc;">
-                <div class="d-flex justify-content-between align-items-center mb-2 pb-1" style="border-bottom: 1px dashed #e4e4e4;">
+            <div style="flex:1.4; display:flex; flex-direction:column; align-self:stretch; border:1px solid #d0d5dd; border-left:4px solid #696cff; border-radius:4px; padding:12px 16px; background:#ffffff;">
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-1" style="border-bottom: 1px dashed #d0d5dd;">
                     <span class="fw-bold text-uppercase" style="font-size:10.5px; letter-spacing:0.6px; color:#696cff;">
-                        <i class="mdi mdi-domain me-1"></i>Invoice To
+                        <i class="mdi mdi-domain me-1 icon-accent-blue"></i>Invoice To
                     </span>
                     @if ($quote->client?->npwp)
-                        <span class="px-2 py-0.5 rounded-0" style="font-size:10px; font-weight:600; background:#f0f2ff; color:#43497a; border:1px solid #d5d9ff;">
-                            <i class="mdi mdi-card-account-details-outline me-1"></i>NPWP: {{ $quote->client->npwp }}
+                        <span class="px-2 py-0.5 rounded-0" style="font-size:10.5px; font-weight:700; background:#f0f2ff; color:#3d3d8f; border:1px solid #d5d9ff;">
+                            <i class="mdi mdi-card-account-details-outline me-1 icon-accent-blue"></i>NPWP: {{ $quote->client->npwp }}
                         </span>
                     @endif
                 </div>
@@ -117,25 +117,25 @@
                     $targetAddress = $invoice->invoiceTo == '1' ? ($quote->client?->address ?? '-') : ($quote->client?->subAddress ?? '-');
                 @endphp
 
-                <div style="display:grid; grid-template-columns: auto 1fr; gap:4px 12px; font-size:11.5px; color:#333;">
+                <div style="display:grid; grid-template-columns: auto 1fr; gap:4px 12px; font-size:11.5px; color:#000000;">
                     @if ($picName)
-                        <span class="text-muted" style="white-space:nowrap;"><i class="mdi mdi-account-outline me-1 text-primary"></i>Attn / PIC</span>
-                        <span class="fw-medium text-dark">
+                        <span style="white-space:nowrap; color:#111; font-weight:600;"><i class="mdi mdi-account-outline me-1 icon-accent-blue"></i>Attn / PIC</span>
+                        <span class="fw-semibold text-dark">
                             : {{ $picName }}
                             @if ($quote->pic?->phone_pic)
-                                <span class="text-muted ms-1">({{ $quote->pic->phone_pic }})</span>
+                                <span class="ms-1" style="color:#111; font-weight:500;">({{ $quote->pic->phone_pic }})</span>
                             @endif
                         </span>
                     @endif
 
                     @if ($quote->client?->phone)
-                        <span class="text-muted" style="white-space:nowrap;"><i class="mdi mdi-phone-in-talk-outline me-1 text-primary"></i>Office Phone</span>
-                        <span class="fw-medium text-dark">: {{ $quote->client->phone }}</span>
+                        <span style="white-space:nowrap; color:#111; font-weight:600;"><i class="mdi mdi-phone-in-talk-outline me-1 icon-accent-blue"></i>Office Phone</span>
+                        <span class="fw-semibold text-dark">: {{ $quote->client->phone }}</span>
                     @endif
 
                     @if ($targetAddress && $targetAddress !== '-')
-                        <span class="text-muted" style="white-space:nowrap;"><i class="mdi mdi-map-marker-outline me-1 text-primary"></i>Address</span>
-                        <div class="fw-medium text-dark" style="line-height:1.4; display:flex; align-items:flex-start;">
+                        <span style="white-space:nowrap; color:#111; font-weight:600;"><i class="mdi mdi-map-marker-outline me-1 icon-accent-blue"></i>Address</span>
+                        <div class="fw-semibold text-dark" style="line-height:1.4; display:flex; align-items:flex-start;">
                             <span style="flex-shrink:0; margin-right:4px;">:</span>
                             <span style="flex:1;">{{ $targetAddress }}</span>
                         </div>
@@ -144,24 +144,24 @@
             </div>
 
             {{-- Card 2: Payment Information --}}
-            <div style="min-width:240px; flex:1; display:flex; flex-direction:column; align-self:stretch; border:1px solid #e0e0e0; border-left:4px solid #8592a3; border-radius:4px; padding:12px 16px; background:#fcfcfc;">
-                <div class="mb-2 pb-1" style="border-bottom: 1px dashed #e4e4e4;">
+            <div style="min-width:240px; flex:1; display:flex; flex-direction:column; align-self:stretch; border:1px solid #d0d5dd; border-left:4px solid #8592a3; border-radius:4px; padding:12px 16px; background:#ffffff;">
+                <div class="mb-2 pb-1" style="border-bottom: 1px dashed #d0d5dd;">
                     <span class="fw-bold text-uppercase" style="font-size:10.5px; letter-spacing:0.6px; color:#566a7f;">
-                        <i class="mdi mdi-file-document-outline me-1"></i>Payment Information
+                        <i class="mdi mdi-file-document-outline me-1 icon-accent-blue"></i>Payment Information
                     </span>
                 </div>
 
-                <div style="font-size:11.5px; color:#333;" class="my-auto">
-                    <div class="d-flex align-items-center mb-2 pb-1" style="border-bottom:1px dashed #f0f0f0;">
-                        <span class="text-muted" style="min-width:60px;"><i class="mdi mdi-clipboard-text-outline me-1 text-primary"></i>PO No</span>
+                <div style="font-size:11.5px; color:#000000;" class="my-auto">
+                    <div class="d-flex align-items-center mb-2 pb-1" style="border-bottom:1px dashed #e4e4e4;">
+                        <span style="min-width:60px; color:#111; font-weight:600;"><i class="mdi mdi-clipboard-text-outline me-1 icon-accent-blue"></i>PO No</span>
                         <span class="fw-bold text-dark">: {{ $quote->po_number ?? '-' }}</span>
                     </div>
                     <div class="mt-2">
-                        <div class="fw-medium text-dark mb-1">
-                            <i class="mdi mdi-clock-outline me-1 text-primary"></i>Term of Payment :
+                        <div class="fw-bold text-dark mb-1">
+                            <i class="mdi mdi-clock-outline me-1 icon-accent-blue"></i>Term of Payment :
                         </div>
                         <div class="ps-2 ms-1" style="border-left:3px solid #696cff; margin-top:4px;">
-                            <div class="fw-bold text-dark ps-2" style="font-size:11.5px; line-height:1.45; white-space:pre-line;"><i class="mdi mdi-chevron-right text-primary me-1" style="font-size:14px;"></i>{{ $invoice->term ?? $quote->payment_method ?? '-' }}</div>
+                            <div class="fw-bold text-dark ps-2" style="font-size:11.5px; line-height:1.45; white-space:pre-line;"><i class="mdi mdi-chevron-right me-1 icon-accent-blue" style="font-size:14px;"></i>{{ $invoice->term ?? $quote->payment_method ?? '-' }}</div>
                         </div>
                     </div>
                 </div>
@@ -197,18 +197,18 @@
         <div>
             <table class="table table-bordered items-top-align-table m-0" style="border: 1px solid rgb(60,60,60); width: 100%;">
                 <thead class="table-light">
-                    <tr>
-                        <th class="text-center align-middle" style="width:1%">No.</th>
-                        <th class="text-center align-middle" style="width:{{ $quote->tax ? '38%' : '45%' }}"><span class="i18n" data-en="DESCRIPTION">DESKRIPSI</span></th>
-                        <th class="text-center align-middle"><span class="i18n" data-en="PRICE">HARGA</span></th>
-                        <th class="text-center align-middle" style="width:1%; white-space:nowrap">Qty</th>
+                    <tr style="border-bottom: 2px solid #333;">
+                        <th class="text-center align-middle" style="width:1%; font-weight:700; color:#000;">No.</th>
+                        <th class="text-center align-middle" style="width:{{ $quote->tax ? '38%' : '45%' }}; font-weight:700; color:#000;"><span class="i18n" data-en="DESCRIPTION">DESKRIPSI</span></th>
+                        <th class="text-center align-middle" style="font-weight:700; color:#000;"><span class="i18n" data-en="PRICE">HARGA</span></th>
+                        <th class="text-center align-middle" style="width:1%; white-space:nowrap; font-weight:700; color:#000;">Qty</th>
                         @if ($hasDisc)
-                            <th class="text-center align-middle">Disc</th>
+                            <th class="text-center align-middle" style="font-weight:700; color:#000;">Disc</th>
                         @endif
                         @if ($quote->tax)
-                            <th class="text-center align-middle">DPP</th>
+                            <th class="text-center align-middle" style="font-weight:700; color:#000;">DPP</th>
                         @endif
-                        <th class="text-center align-middle"><span class="i18n" data-en="TOTAL PRICE">TOTAL HARGA</span></th>
+                        <th class="text-center align-middle" style="font-weight:700; color:#000;"><span class="i18n" data-en="TOTAL PRICE">TOTAL HARGA</span></th>
                     </tr>
                 </thead>
                 @php
@@ -258,24 +258,24 @@
                         @else
                             @php $dpp = $quote->tax ? ($detail->amount * 11 / 12) : 0; @endphp
                             <tr style="font-size: 13px">
-                                <td class="align-top text-center">{{ $itemNo++ }}</td>
-                                <td class="align-top">
+                                <td class="align-top text-center" style="color:#000000 !important; font-weight:600;">{{ $itemNo++ }}</td>
+                                <td class="align-top" style="color:#000000 !important;">
                                     @if ($detail->type === 'unit' && $detail->unit)
-                                        <p class="mb-1 fw-medium" style="font-size: 12px">{{ $detail->label ?: ($detail->unit->brand . ' ' . $detail->unit->model) }}</p>
+                                        <p class="mb-1 fw-bold text-dark" style="font-size: 12.5px; color:#000000 !important;">{{ $detail->label ?: ($detail->unit->brand . ' ' . $detail->unit->model) }}</p>
                                         @php
                                             $specs       = $detail->getSpecVisibleArray();
                                             $category    = $detail->unit->unit ?? '';
                                             $catOverride = $specLabelsOverride[$category] ?? [];
                                         @endphp
                                         @if (!empty($specs) && $invoice->show_spec)
-                                            <div style="font-size:10px; color:#555; margin-top:3px;">
+                                            <div style="font-size:10.5px; color:#000000; font-weight:500; margin-top:3px;">
                                                 @foreach ($specs as $field)
                                                     @if ($field === 'unit') @continue @endif
                                                     @php $val = $detail->unit->$field ?? null; @endphp
                                                     @if ($val && isset($specLabels[$field]))
                                                         <div style="display:flex; padding:1px 0;">
-                                                            <span style="color:#888; min-width:110px; flex-shrink:0;">{{ $catOverride[$field] ?? $specLabels[$field] }}</span>
-                                                            <span>: {{ $val }}{{ $specUnits[$field] ?? '' }}</span>
+                                                            <span style="color:#000000; min-width:110px; flex-shrink:0; font-weight:600;">{{ $catOverride[$field] ?? $specLabels[$field] }}</span>
+                                                            <span style="color:#000000; font-weight:500;">: {{ $val }}{{ $specUnits[$field] ?? '' }}</span>
                                                         </div>
                                                     @endif
                                                 @endforeach
@@ -290,104 +290,104 @@
                                                      $subDesc = optional($detail->equivalent->product)->description ?? optional($detail->equivalent->product)->name;
                                                  }
                                              @endphp
-                                             <p class="mb-0 fw-bold text-dark" style="font-size: 12px">
+                                             <p class="mb-0 fw-bold" style="font-size: 12px; color:#000000 !important;">
                                                  {{ $brandPn ?: $detail->label }}
                                              </p>
                                              @if ($subDesc && $subDesc !== $brandPn)
-                                                 <div style="font-size: 12px; color: #333333; font-weight: 500; margin-top: 2px; line-height: 1.4;">{{ $subDesc }}</div>
+                                                 <div style="font-size: 12px; color: #000000; font-weight: 600; margin-top: 2px; line-height: 1.4;">{{ $subDesc }}</div>
                                              @endif
                                          @else
-                                             <p class="mb-0 fw-bold text-dark" style="font-size: 12px">{{ $detail->label }}</p>
+                                             <p class="mb-0 fw-bold" style="font-size: 12px; color:#000000 !important;">{{ $detail->label }}</p>
                                          @endif
                                     @else
-                                        <p class="mb-0 fw-bold text-dark" style="font-size: 12px">{{ $detail->label ?: '-' }}</p>
+                                        <p class="mb-0 fw-bold" style="font-size: 12px; color:#000000 !important;">{{ $detail->label ?: '-' }}</p>
                                     @endif
 
                                      @if ($detail->description)
-                                         <div style="font-size: 11px; color: #444; white-space: pre-line; margin-top: 3px; line-height: 1.4;">{{ $detail->description }}</div>
+                                         <div style="font-size: 11.5px; color: #000000; font-weight: 500; white-space: pre-line; margin-top: 3px; line-height: 1.4;">{{ $detail->description }}</div>
                                      @endif
                                 </td>
-                                <td class="align-top text-end">{{ number_format($detail->price, 0, '', '.') }}</td>
-                                <td class="align-top text-center" style="white-space:nowrap">{{ (float) $detail->qty }} {{ $detail->info_qty }}</td>
+                                <td class="align-top text-end" style="color:#000000 !important; font-weight:600;">{{ number_format($detail->price, 0, '', '.') }}</td>
+                                <td class="align-top text-center" style="color:#000000 !important; font-weight:600; white-space:nowrap;">{{ (float) $detail->qty }} {{ $detail->info_qty }}</td>
                                 @if ($hasDisc)
-                                    <td class="align-top text-center">{{ $detail->disc > 0 ? (float)$detail->disc . '%' : '-' }}</td>
+                                    <td class="align-top text-center" style="color:#000000 !important; font-weight:600;">{{ $detail->disc > 0 ? (float)$detail->disc . '%' : '-' }}</td>
                                 @endif
                                 @if ($quote->tax)
-                                    <td class="align-top text-end">{{ number_format($dpp, 0, '', '.') }}</td>
+                                    <td class="align-top text-end" style="color:#000000 !important; font-weight:600;">{{ number_format($dpp, 0, '', '.') }}</td>
                                 @endif
-                                <td class="align-top text-end fw-semibold">{{ number_format($detail->amount, 0, ',', '.') }}</td>
+                                <td class="align-top text-end" style="color:#000000 !important; font-weight:600;">{{ number_format($detail->amount, 0, ',', '.') }}</td>
                             </tr>
                         @endif
                     @endforeach
 
                     {{-- Finance Summary --}}
                     @if ($isDpInvoice)
-                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                        <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
                             <td colspan="{{ $quote->tax ? 2 : 1 }}" rowspan="{{ $dpRowspan }}" style="border: none !important;"></td>
-                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0"><span class="i18n" data-en="Sub Total">Sub Total</span></p>
                             </td>
-                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">Rp {{ number_format($quote->subtotal, 0, '', '.') }}</p>
                             </td>
                         </tr>
                         @if ($quote->diskon > 0)
-                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                            <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Discount{{ $quote->discount_label ? ' (' . $quote->discount_label . ')' : '' }}</p>
                                 </td>
-                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important; color:#dc3545;">
                                     <p class="m-0">- Rp {{ number_format($quote->discount_amount, 0, '', '.') }}</p>
                                 </td>
                             </tr>
-                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                            <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Total After Discount</p>
                                 </td>
-                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Rp {{ number_format($afterDisc, 0, '', '.') }}</p>
                                 </td>
                             </tr>
                         @endif
-                        <tr class="fw-medium finance-summary-row" style="font-size: 13px; background:#f2f2f2;">
-                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                        <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px; background:#f2f2f2;">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0"><span class="i18n" data-en="DP {{ $dpPct }}%">DP {{ $dpPct }}%</span></p>
                             </td>
-                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">Rp {{ number_format($dpBase, 0, '', '.') }}</p>
                             </td>
                         </tr>
                         @if ($quote->tax)
-                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                            <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0"><span class="i18n" data-en="DPP on PPN">DPP Atas PPN</span></p>
                                 </td>
-                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Rp {{ number_format($dpDpp, 0, '', '.') }}</p>
                                 </td>
                             </tr>
-                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                            <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">PPN 12%</p>
                                 </td>
-                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Rp {{ number_format($dpPpn, 0, '', '.') }}</p>
                                 </td>
                             </tr>
                         @endif
                         @if ($dpShip > 0)
-                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                            <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Shipping Cost ({{ $dpPct }}%)</p>
                                 </td>
-                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Rp {{ number_format($dpShip, 0, '', '.') }}</p>
                                 </td>
                             </tr>
                         @endif
                         @if ($totalPph > 0)
-                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                            <tr class="fw-bold finance-summary-row" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important; color:#dc3545;">
                                     <p class="m-0">PPH 23</p>
                                 </td>
                                 <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important; color:#dc3545;">
@@ -404,80 +404,80 @@
                             </td>
                         </tr>
                     @elseif ($isBpInvoice)
-                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                        <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
                             <td colspan="{{ $quote->tax ? 2 : 1 }}" rowspan="{{ $bpRowspan }}" style="border: none !important;"></td>
-                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0"><span class="i18n" data-en="Sub Total">Sub Total</span></p>
                             </td>
-                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">Rp {{ number_format($quote->subtotal, 0, '', '.') }}</p>
                             </td>
                         </tr>
                         @if ($quote->diskon > 0)
-                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                            <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Discount{{ $quote->discount_label ? ' (' . $quote->discount_label . ')' : '' }}</p>
                                 </td>
-                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important; color:#dc3545;">
                                     <p class="m-0">- Rp {{ number_format($quote->discount_amount, 0, '', '.') }}</p>
                                 </td>
                             </tr>
-                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                            <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Total After Discount</p>
                                 </td>
-                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Rp {{ number_format($afterDisc, 0, '', '.') }}</p>
                                 </td>
                             </tr>
                         @endif
-                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                        <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0"><span class="i18n" data-en="DP {{ $bpDpPct }}%">DP {{ $bpDpPct }}%</span></p>
                             </td>
-                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">Rp {{ number_format($bpDpBase, 0, '', '.') }}</p>
                             </td>
                         </tr>
-                        <tr class="fw-medium finance-summary-row" style="font-size: 13px; background:#f2f2f2;">
-                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                        <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px; background:#f2f2f2;">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0"><span class="i18n" data-en="BP {{ $bpPct }}%">BP {{ $bpPct }}%</span></p>
                             </td>
-                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">Rp {{ number_format($bpBase, 0, '', '.') }}</p>
                             </td>
                         </tr>
                         @if ($quote->tax)
-                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                            <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0"><span class="i18n" data-en="DPP on PPN">DPP Atas PPN</span></p>
                                 </td>
-                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Rp {{ number_format($bpDpp, 0, '', '.') }}</p>
                                 </td>
                             </tr>
-                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                            <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">PPN 12%</p>
                                 </td>
-                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Rp {{ number_format($bpPpn, 0, '', '.') }}</p>
                                 </td>
                             </tr>
                         @endif
                         @if ($bpShip > 0)
-                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                            <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Shipping Cost ({{ $bpPct }}%)</p>
                                 </td>
-                                <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                                <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Rp {{ number_format($bpShip, 0, '', '.') }}</p>
                                 </td>
                             </tr>
                         @endif
                         @if ($totalPph > 0)
-                            <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                            <tr class="fw-bold finance-summary-row" style="font-size: 13px">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important; color:#dc3545;">
                                     <p class="m-0">PPH 23</p>
                                 </td>
                                 <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important; color:#dc3545;">
@@ -494,68 +494,68 @@
                             </td>
                         </tr>
                     @else
-                    <tr class="fw-medium finance-summary-row" style="font-size: 13px">
+                    <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
                         <td colspan="{{ $quote->tax ? 2 : 1 }}" rowspan="9" style="border: none !important;"></td>
-                        <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                        <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                             <p class="m-0">{{ ($quote->tax || $totalPph > 0) ? 'Subtotal' : 'Total' }}</p>
                         </td>
-                        <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                        <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                             <p class="m-0">Rp {{ number_format($quote->subtotal, 0, '', '.') }}</p>
                         </td>
                     </tr>
                     @if ($quote->diskon > 0)
-                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                        <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">Discount{{ $quote->discount_label ? ' (' . $quote->discount_label . ')' : '' }}</p>
                             </td>
-                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important; color:#dc3545;">
                                 <p class="m-0">- Rp {{ number_format($quote->discount_amount, 0, '', '.') }}</p>
                             </td>
                         </tr>
-                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                        <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">Total After Discount</p>
                             </td>
-                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">Rp {{ number_format($afterDisc, 0, '', '.') }}</p>
                             </td>
                         </tr>
                     @endif
                     @if ($quote->tax)
-                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                        <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0"><span class="i18n" data-en="DPP on PPN">DPP Atas PPN</span></p>
                             </td>
-                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">Rp {{ number_format($afterDisc * 11 / 12, 0, '', '.') }}</p>
                             </td>
                         </tr>
-                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                        <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">PPN 12%</p>
                             </td>
-                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">Rp {{ number_format($quote->tax_amount, 0, '', '.') }}</p>
                             </td>
                         </tr>
                     @endif
                     @if ($quote->shipping > 0)
-                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                        <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">Shipping Cost</p>
                             </td>
-                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">Rp {{ number_format($quote->shipping, 0, '', '.') }}</p>
                             </td>
                         </tr>
                     @endif
                     @if ($totalPph > 0)
-                        <tr class="fw-medium finance-summary-row" style="font-size: 13px">
-                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important;">
+                        <tr class="fw-bold finance-summary-row" style="font-size: 13px">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0" style="padding-right: 10px !important; color:#dc3545;">
                                 <p class="m-0">PPH</p>
                             </td>
-                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important;">
-                                <p class="m-0">Rp {{ number_format($totalPph, 0, '', '.') }}</p>
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important; color:#dc3545;">
+                                <p class="m-0">- Rp {{ number_format($totalPph, 0, '', '.') }}</p>
                             </td>
                         </tr>
                     @endif
@@ -563,11 +563,11 @@
                         $showTagihanBreakdown = floatval($invoice->percent) < 100 || in_array($invoice->type, ['DP', 'BP', 'Balance Payment', 'Down Payment']);
                     @endphp
                     @if ($quote->tax || $totalPph > 0 || $showTagihanBreakdown)
-                        <tr class="fw-medium finance-summary-row finance-summary-row-total" style="font-size: 13px">
-                            <td colspan="{{ $labelSpan }}" class="text-end py-2" style="background-color:{{ $bgColor }}; padding-right: 10px !important;">
+                        <tr class="fw-bold finance-summary-row finance-summary-row-total text-dark" style="font-size: 13px">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-2 text-dark" style="background-color:{{ $bgColor }}; padding-right: 10px !important;">
                                 <p class="m-0 fw-bold">TOTAL</p>
                             </td>
-                            <td colspan="{{ $amountSpan }}" class="py-2 text-end" style="background-color:{{ $bgColor }}; padding-right: 10px !important;">
+                            <td colspan="{{ $amountSpan }}" class="py-2 text-end text-dark" style="background-color:{{ $bgColor }}; padding-right: 10px !important;">
                                 <p class="m-0 fw-bold">Rp {{ number_format($showTagihanBreakdown ? $quote->total : $totalAfterPph, 0, '', '.') }}</p>
                             </td>
                         </tr>
@@ -579,7 +579,7 @@
                                 $dpAmount  = round($quote->total * $dpPercent / 100);
                             @endphp
                             @if ($dpAmount > 0)
-                                <tr class="fw-medium finance-summary-row" style="font-size: 13px; background:#d4edda;">
+                                <tr class="fw-bold finance-summary-row" style="font-size: 13px; background:#d4edda;">
                                     <td colspan="{{ $labelSpan }}" class="text-end py-1" style="padding-right: 10px !important; color:#155724;">
                                         <p class="m-0"><span class="i18n" data-en="DP Already Paid ({{ $dpPercent }}%)">DP Telah Dibayar ({{ $dpPercent }}%)</span></p>
                                     </td>
@@ -600,33 +600,33 @@
                             $billGross = $billDpp + $billPpn;
                         @endphp
                         @if ($quote->tax)
-                            <tr class="fw-medium finance-summary-row" style="font-size: 12px; background:#fffdf2;">
-                                <td colspan="{{ $labelSpan }}" class="text-end py-1" style="padding-right: 10px !important; color:#555;">
+                            <tr class="fw-bold finance-summary-row text-dark" style="font-size: 12px; background:#fffdf2;">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-1 text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0"><span class="i18n" data-en="DPP {{ $billingType }} ({{ $billingPct }}%)">DPP {{ $billingType }} ({{ $billingPct }}%)</span></p>
                                 </td>
-                                <td colspan="{{ $amountSpan }}" class="py-1 text-end" style="padding-right: 10px !important; color:#333;">
+                                <td colspan="{{ $amountSpan }}" class="py-1 text-end text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Rp {{ number_format($billDpp, 0, '', '.') }}</p>
                                 </td>
                             </tr>
-                            <tr class="fw-medium finance-summary-row" style="font-size: 12px; background:#fffdf2;">
-                                <td colspan="{{ $labelSpan }}" class="text-end py-1" style="padding-right: 10px !important; color:#555;">
+                            <tr class="fw-bold finance-summary-row text-dark" style="font-size: 12px; background:#fffdf2;">
+                                <td colspan="{{ $labelSpan }}" class="text-end py-1 text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0"><span class="i18n" data-en="VAT 12% {{ $billingType }} ({{ $billingPct }}%)">PPN 12% {{ $billingType }} ({{ $billingPct }}%)</span></p>
                                 </td>
-                                <td colspan="{{ $amountSpan }}" class="py-1 text-end" style="padding-right: 10px !important; color:#333;">
+                                <td colspan="{{ $amountSpan }}" class="py-1 text-end text-dark" style="padding-right: 10px !important;">
                                     <p class="m-0">Rp {{ number_format($billPpn, 0, '', '.') }}</p>
                                 </td>
                             </tr>
                             @if ($totalPph > 0)
-                                <tr class="fw-medium finance-summary-row" style="font-size: 12px; background:#fffdf2;">
-                                    <td colspan="{{ $labelSpan }}" class="text-end py-1" style="padding-right: 10px !important; color:#555;">
+                                <tr class="fw-bold finance-summary-row text-dark" style="font-size: 12px; background:#fffdf2;">
+                                    <td colspan="{{ $labelSpan }}" class="text-end py-1 text-dark" style="padding-right: 10px !important;">
                                         <p class="m-0"><span class="i18n" data-en="{{ $billingType }} (DPP + VAT)">{{ $billingType }} (DPP + PPN)</span></p>
                                     </td>
-                                    <td colspan="{{ $amountSpan }}" class="py-1 text-end" style="padding-right: 10px !important; color:#333;">
+                                    <td colspan="{{ $amountSpan }}" class="py-1 text-end text-dark" style="padding-right: 10px !important;">
                                         <p class="m-0">Rp {{ number_format($billGross, 0, '', '.') }}</p>
                                     </td>
                                 </tr>
-                                <tr class="fw-medium finance-summary-row" style="font-size: 12px; background:#fffdf2;">
-                                    <td colspan="{{ $labelSpan }}" class="text-end py-1" style="padding-right: 10px !important; color:#555;">
+                                <tr class="fw-bold finance-summary-row" style="font-size: 12px; background:#fffdf2;">
+                                    <td colspan="{{ $labelSpan }}" class="text-end py-1" style="padding-right: 10px !important; color:#dc3545;">
                                         <p class="m-0">PPH 23</p>
                                     </td>
                                     <td colspan="{{ $amountSpan }}" class="py-1 text-end" style="padding-right: 10px !important; color:#dc3545;">
@@ -650,79 +650,79 @@
         </div>
 
         {{-- Terbilang Box --}}
-        <div class="mt-3 mb-3 px-1 py-2 rounded-0" style="background:#f0f2ff; border: 1px dashed #696cff; display:inline-block; width:70%; border-radius:0 !important;">
+        <div class="mt-3 mb-3 px-2 py-2 rounded-0" style="background:#f0f2ff; border: 1.5px dashed #2529fa; display:inline-block; width:70%; border-radius:0 !important;">
             <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-weight:700; color:#696cff; font-size:12px;"><span class="i18n" data-en="Say Amount :">Terbilang :</span></span>
-                <span style="font-weight:700; color:#111; font-size:12.5px;" class="i18n" data-en="# {{ $terbilangEn }} Rupiah"># {{ $terbilang }} Rupiah</span>
+                <span style="font-weight:800; color:#2529fa; font-size:12px;"><span class="i18n" data-en="Say Amount :">Terbilang :</span></span>
+                <span style="font-weight:800; color:#000000; font-size:12.5px;" class="i18n" data-en="# {{ $terbilangEn }} Rupiah"># {{ $terbilang }} Rupiah</span>
             </div>
         </div>
 
         {{-- Bank & TTD --}}
         <div style="display:flex; gap:0; margin-top:16px;">
             <div style="flex:0 0 55%;">
-                <div style="padding:12px 14px; border:1px solid #e0e0f0; border-radius:0 !important; background:#fafafa; font-size:11.5px;">
-                    <p style="font-weight:700; margin-bottom:8px; color:#222; font-size:12px;">
-                        <span style="color:#696cff; margin-right:4px;">&#9650;</span> <span class="i18n" data-en="Payment : Bank Transfer / Giro">Pembayaran : Transfer / Giro</span>
+                <div style="padding:12px 14px; border:1px solid #d0d5dd; border-radius:0 !important; background:#ffffff; font-size:11.5px;">
+                    <p style="font-weight:700; margin-bottom:8px; color:#000; font-size:12px;">
+                        <span style="color:#2529fa; margin-right:4px;">&#9650;</span> <span class="i18n" data-en="Payment : Bank Transfer / Giro">Pembayaran : Transfer / Giro</span>
                     </p>
                     <table style="width:100%; border-collapse:collapse;">
                         @if ($quote->tax)
                             @if ($isKojisha)
                                 <tr>
-                                    <td style="padding:2px 0; color:#555; width:90px;">Nama Bank</td>
-                                    <td style="padding:2px 0; font-weight:600; color:#111;">: Bank BCA (IDR)</td>
+                                    <td style="padding:2px 0; color:#000; font-weight:600; width:90px;">Nama Bank</td>
+                                    <td style="padding:2px 0; font-weight:700; color:#000;">: Bank BCA (IDR)</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:2px 0; color:#555;">Nama Akun</td>
-                                    <td style="padding:2px 0; font-weight:700; color:#696cff;">: KOJISHA INNOTIV INDONESIA PT</td>
+                                    <td style="padding:2px 0; color:#000; font-weight:600;">Nama Akun</td>
+                                    <td style="padding:2px 0; font-weight:700; color:#2529fa;">: KOJISHA INNOTIV INDONESIA PT</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:2px 0; color:#555;">No. Rekening</td>
-                                    <td style="padding:2px 0; font-weight:700; color:#111;">: 5223876543</td>
+                                    <td style="padding:2px 0; color:#000; font-weight:600;">No. Rekening</td>
+                                    <td style="padding:2px 0; font-weight:800; color:#000;">: 5223876543</td>
                                 </tr>
                             @else
                                 <tr>
-                                    <td style="padding:2px 0; color:#555; width:90px;">Nama Bank</td>
-                                    <td style="padding:2px 0; font-weight:600; color:#111;">: Bank BCA (IDR)</td>
+                                    <td style="padding:2px 0; color:#000; font-weight:600; width:90px;">Nama Bank</td>
+                                    <td style="padding:2px 0; font-weight:700; color:#000;">: Bank BCA (IDR)</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:2px 0; color:#555;">Nama Akun</td>
-                                    <td style="padding:2px 0; font-weight:700; color:#696cff;">: PT REFTECH JAYA OPTIMA</td>
+                                    <td style="padding:2px 0; color:#000; font-weight:600;">Nama Akun</td>
+                                    <td style="padding:2px 0; font-weight:700; color:#2529fa;">: PT REFTECH JAYA OPTIMA</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:2px 0; color:#555;">No. Rekening</td>
-                                    <td style="padding:2px 0; font-weight:700; color:#111;">: 008 - 6289 - 789</td>
+                                    <td style="padding:2px 0; color:#000; font-weight:600;">No. Rekening</td>
+                                    <td style="padding:2px 0; font-weight:800; color:#000;">: 008 - 6289 - 789</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:2px 0; color:#555;">Swift Code</td>
-                                    <td style="padding:2px 0; font-weight:500; color:#333;">: CENAIDJA</td>
+                                    <td style="padding:2px 0; color:#000; font-weight:600;">Swift Code</td>
+                                    <td style="padding:2px 0; font-weight:700; color:#000;">: CENAIDJA</td>
                                 </tr>
                             @endif
                         @else
                             @if ($isKojisha)
                                 <tr>
-                                    <td style="padding:2px 0; color:#555; width:90px;">Bank Name</td>
-                                    <td style="padding:2px 0; font-weight:600; color:#111;">: Bank BCA (IDR)</td>
+                                    <td style="padding:2px 0; color:#000; font-weight:600; width:90px;">Bank Name</td>
+                                    <td style="padding:2px 0; font-weight:700; color:#000;">: Bank BCA (IDR)</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:2px 0; color:#555;">Acc Name</td>
-                                    <td style="padding:2px 0; font-weight:700; color:#696cff;">: REGITA DWI MELINDA</td>
+                                    <td style="padding:2px 0; color:#000; font-weight:600;">Acc Name</td>
+                                    <td style="padding:2px 0; font-weight:700; color:#2529fa;">: REGITA DWI MELINDA</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:2px 0; color:#555;">Acc No.</td>
-                                    <td style="padding:2px 0; font-weight:700; color:#111;">: 1560239137</td>
+                                    <td style="padding:2px 0; color:#000; font-weight:600;">Acc No.</td>
+                                    <td style="padding:2px 0; font-weight:800; color:#000;">: 1560239137</td>
                                 </tr>
                             @else
                                 <tr>
-                                    <td style="padding:2px 0; color:#555; width:90px;">Bank Name</td>
-                                    <td style="padding:2px 0; font-weight:600; color:#111;">: Bank BCA (IDR)</td>
+                                    <td style="padding:2px 0; color:#000; font-weight:600; width:90px;">Bank Name</td>
+                                    <td style="padding:2px 0; font-weight:700; color:#000;">: Bank BCA (IDR)</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:2px 0; color:#555;">Acc Name</td>
-                                    <td style="padding:2px 0; font-weight:700; color:#696cff;">: ARIEP RACHMAN</td>
+                                    <td style="padding:2px 0; color:#000; font-weight:600;">Acc Name</td>
+                                    <td style="padding:2px 0; font-weight:700; color:#2529fa;">: ARIEP RACHMAN</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding:2px 0; color:#555;">Acc No.</td>
-                                    <td style="padding:2px 0; font-weight:700; color:#111;">: 166 - 2242 - 271</td>
+                                    <td style="padding:2px 0; color:#000; font-weight:600;">Acc No.</td>
+                                    <td style="padding:2px 0; font-weight:800; color:#000;">: 166 - 2242 - 271</td>
                                 </tr>
                             @endif
                         @endif
@@ -736,9 +736,9 @@
                     $signDateId   = $signDateBase->copy()->locale('id')->translatedFormat('d F Y');
                     $signDateEn   = $signDateBase->copy()->locale('en')->translatedFormat('d F Y');
                 @endphp
-                <p style="margin-bottom:4px; color:#777; font-size:14px;">{{ $isKojisha ? 'Bekasi' : 'Bandung' }}, <span class="i18n" data-en="{{ $signDateEn }}">{{ $signDateId }}</span></p>
+                <p style="margin-bottom:4px; color:#000000; font-weight:600; font-size:13.5px;">{{ $isKojisha ? 'Bekasi' : 'Bandung' }}, <span class="i18n" data-en="{{ $signDateEn }}">{{ $signDateId }}</span></p>
                 @if ($quote->tax)
-                    <p style="font-weight:700; font-size:14px; margin-bottom:4px; color:#222;">{{ $isKojisha ? 'PT. Kojisha Innotiv Indonesia' : 'PT. Reftech Jaya Optima' }}</p>
+                    <p style="font-weight:700; font-size:14px; margin-bottom:4px; color:#000;">{{ $isKojisha ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima' }}</p>
                 @endif
                 @if (isset($invoice->sign))
                     <div style="margin:8px 0;">
@@ -747,8 +747,8 @@
                 @else
                     <div style="padding:55px 0;"></div>
                 @endif
-                <p style="font-weight:700; font-size:14px; color:#111; border-bottom:1px solid #ddd; display:inline-block; padding-bottom:2px; margin-bottom:2px;">{{ $isKojisha ? 'Dedeh Sulastri' : 'Ariep Rachman' }}</p>
-                <p style="color:#777; font-size:12px; margin:0;" class="i18n" data-en="Director">Direktur</p>
+                <p style="font-weight:800; font-size:14px; color:#000000; border-bottom:1.5px solid #000; display:inline-block; padding-bottom:2px; margin-bottom:2px;">{{ $isKojisha ? 'Dedeh Sulastri' : 'Ariep Rachman' }}</p>
+                <p style="color:#000000; font-weight:600; font-size:12px; margin:0;" class="i18n" data-en="Director">Direktur</p>
             </div>
         </div>
 
@@ -757,34 +757,72 @@
 @push('after-style')
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/css/pages/app-invoice-print-header.css" />
     <style>
+        .invoice-print {
+            color: #000000 !important;
+        }
         .invoice-print .text-end h1.invoice-title-heading { color: #2529fa !important; }
-        /* Theme's .table tbody td rule forces vertical-align:middle !important with higher
-           specificity than the .align-top utility class — override it here for the item table. */
+        
+        /* Unified sharp vivid blue for all decorative icons and text */
+        .invoice-print .icon-accent-blue,
+        .invoice-print .text-primary,
+        .invoice-print i.text-primary {
+            color: #2529fa !important;
+        }
+
+        /* Table items styling */
         table.items-top-align-table tbody td {
             vertical-align: top !important;
+            color: #000000 !important;
         }
-        /* Same specificity issue as above — demo.css forces 12px vertical padding on every
-           table cell, making the Subtotal/DPP/PPN summary rows way taller than intended. */
+        table.items-top-align-table thead th {
+            color: #000000 !important;
+            font-weight: 700 !important;
+        }
         table.items-top-align-table tbody tr.finance-summary-row td {
             padding-top: 3px !important;
             padding-bottom: 3px !important;
+            color: #000000 !important;
         }
-        /* TOTAL row stays a bit taller than the rest so it visually stands out. */
         table.items-top-align-table tbody tr.finance-summary-row-total td {
             padding-top: 7px !important;
             padding-bottom: 7px !important;
+            color: #000000 !important;
         }
+
+        .invoice-print p,
+        .invoice-print span,
+        .invoice-print div,
+        .invoice-print td,
+        .invoice-print th,
+        .invoice-print i {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
         @media print {
             @page { size: A4 portrait; margin: 10mm 12mm 10mm 12mm; }
+            .invoice-print { color: #000000 !important; }
             .invoice-print .text-end h1.invoice-title-heading { color: #2529fa !important; }
+            .invoice-print .icon-accent-blue,
+            .invoice-print .text-primary,
+            .invoice-print i.text-primary {
+                color: #2529fa !important;
+            }
             .invoice-print div { overflow: visible !important; }
             .invoice-print table { width: 100% !important; }
             .invoice-print td, .invoice-print th { overflow-wrap: break-word !important; }
-            .invoice-print table td { color: #333 !important; }
+            .invoice-print table td { color: #000000 !important; }
+            .invoice-print table th { color: #000000 !important; }
             .invoice-print pre { white-space: pre-wrap !important; word-break: break-word !important; overflow: visible !important; max-width: 100% !important; }
         }
         @media screen {
-            .invoice-print table td { color: #333 !important; }
+            .invoice-print table td { color: #000000 !important; }
+            .invoice-print table th { color: #000000 !important; }
+            .invoice-print .icon-accent-blue,
+            .invoice-print .text-primary,
+            .invoice-print i.text-primary {
+                color: #2529fa !important;
+            }
             .invoice-print pre { white-space: pre-wrap; word-break: break-word; overflow: visible; max-width: 100%; }
         }
     </style>

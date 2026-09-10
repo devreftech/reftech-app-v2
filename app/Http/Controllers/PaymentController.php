@@ -29,7 +29,7 @@ class PaymentController extends Controller
 
     public function index_invoice()
     {
-        $salesUsers = \App\Models\User::where('role', 'Sales')->orderBy('name', 'asc')->get();
+        $salesUsers = \App\Models\User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->orderBy('name', 'asc')->get();
         return view('pages.accounting.payment.index-invoice', compact('salesUsers'));
     }
     public function index_invoice_ahmad()
@@ -80,7 +80,7 @@ class PaymentController extends Controller
     }
     public function index_payment()
     {
-        $salesUsers = \App\Models\User::where('role', 'Sales')->orderBy('name', 'asc')->get();
+        $salesUsers = \App\Models\User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->orderBy('name', 'asc')->get();
         $receipt = Payment::sum('amount');
         $confirm = Payment::where('level', 1)->sum('amount');
         $unconfirm = Payment::where('level', 0)->sum('amount');
@@ -211,7 +211,7 @@ class PaymentController extends Controller
 
         $nodueCount = Payment::where('type', 'Tempo')->whereNull('due_date')->count();
 
-        $salesUsers = \App\Models\User::where('role', 'Sales')->orderBy('name', 'asc')->get();
+        $salesUsers = \App\Models\User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->orderBy('name', 'asc')->get();
 
         return view('pages.accounting.payment.index-aging', compact('invoice', 'confirm', 'nodueCount', 'unconfirm', 'overdue', 'ondue', 'salesUsers'));
     }

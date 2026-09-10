@@ -109,15 +109,33 @@
             </div>
             <div class="row">
                 <div class="col-4 mt-4 text-center">
-                    <div style="height:56px;"></div>
+                    <div style="height:56px;" class="d-flex align-items-center justify-content-center">
+                        @if ($delivery->sign)
+                            <img src="{{ asset($delivery->sign) }}" alt="Shipper" style="max-height:54px; max-width:140px; object-fit:contain;">
+                        @endif
+                    </div>
                     <p class="fw-bold mx-3 mb-0" style="border-top:1px solid #000; padding-top:4px;">{{ $isKojisha ? 'PT. Kojisha Innotiv Indonesia' : 'PT. Reftech Jaya Optima' }}</p>
                     <p class="text-muted small mb-0">Shipper</p>
                 </div>
                 <div class="col-4"></div>
                 <div class="col-4 mt-4 text-center">
-                    <div style="height:56px;"></div>
-                    <p class="fw-bold mx-3 mb-0" style="border-top:1px solid #000; padding-top:4px;">{{ $client->company ?? '-' }}</p>
-                    <p class="text-muted small mb-0">Received</p>
+                    @if ($delivery->customer_signature)
+                        <div class="d-flex align-items-center justify-content-center position-relative" style="height:56px;">
+                            <img src="{{ asset($delivery->customer_signature) }}" alt="Customer Signature" style="max-height:54px; max-width:140px; object-fit:contain; z-index:2;">
+                            @if ($delivery->customer_signed_stamp)
+                                <img src="{{ asset($delivery->customer_signed_stamp) }}" alt="Stamp" style="position:absolute; max-height:46px; opacity:0.75; transform:rotate(-5deg); z-index:1;">
+                            @endif
+                        </div>
+                        <p class="fw-bold mx-3 mb-0" style="border-top:1px solid #000; padding-top:4px;">( <u>{{ $delivery->customer_signer_name }}</u> )</p>
+                        @if ($delivery->customer_signer_position)
+                            <p class="text-muted small mb-0" style="font-size:10px;">{{ $delivery->customer_signer_position }}</p>
+                        @endif
+                        <p class="text-muted small mb-0" style="font-size:9.5px;">Received &bull; {{ $delivery->customer_signed_at ? $delivery->customer_signed_at->format('d/m/Y') : '' }}</p>
+                    @else
+                        <div style="height:56px;"></div>
+                        <p class="fw-bold mx-3 mb-0" style="border-top:1px solid #000; padding-top:4px;">{{ $client->company ?? '-' }}</p>
+                        <p class="text-muted small mb-0">Received</p>
+                    @endif
                 </div>
             </div>
         </div>
@@ -228,14 +246,36 @@
                         <tr>
                             <td colspan="3">
                                 <div class="row mb-3">
-                                    <div class="col-4 mt-5 text-center">
-                                        <div class="pb-5"></div>
-                                        <p class="fw-bold mx-3 mb-0" style="border-top: 1px solid black ">Shipper</p>
+                                    <div class="col-4 mt-4 text-center">
+                                        <div style="height:56px;" class="d-flex align-items-center justify-content-center">
+                                            @if ($delivery->sign)
+                                                <img src="{{ asset($delivery->sign) }}" alt="Shipper" style="max-height:54px; max-width:140px; object-fit:contain;">
+                                            @endif
+                                        </div>
+                                        <p class="fw-bold mx-3 mb-0" style="border-top: 1px solid black; padding-top: 3px;">Shipper</p>
+                                        <small class="text-muted d-block" style="font-size:10px;">{{ $isKojisha ? 'PT. Kojisha Innotiv Indonesia' : 'PT. Reftech Jaya Optima' }}</small>
                                     </div>
                                     <div class="col-4"></div>
-                                    <div class="col-4 mt-5 text-center">
-                                        <div class="pb-5"></div>
-                                        <p class="fw-bold mx-3 mb-0" style="border-top: 1px solid black ">Recieved</p>
+                                    <div class="col-4 mt-4 text-center">
+                                        @if ($delivery->customer_signature)
+                                            <div class="d-flex align-items-center justify-content-center position-relative" style="height:56px;">
+                                                <img src="{{ asset($delivery->customer_signature) }}" alt="Customer Signature" style="max-height:54px; max-width:140px; object-fit:contain; z-index:2;">
+                                                @if ($delivery->customer_signed_stamp)
+                                                    <img src="{{ asset($delivery->customer_signed_stamp) }}" alt="Stamp" style="position:absolute; max-height:46px; opacity:0.75; transform:rotate(-5deg); z-index:1;">
+                                                @endif
+                                            </div>
+                                            <p class="fw-bold mx-3 mb-0 text-dark" style="border-top: 1px solid black; padding-top: 3px;">
+                                                ( <u>{{ $delivery->customer_signer_name }}</u> )
+                                            </p>
+                                            @if ($delivery->customer_signer_position)
+                                                <small class="text-muted d-block" style="font-size:10px;">{{ $delivery->customer_signer_position }}</small>
+                                            @endif
+                                            <small class="text-muted d-block" style="font-size:9.5px;">Received &bull; {{ $delivery->customer_signed_at ? $delivery->customer_signed_at->format('d/m/Y') : '' }}</small>
+                                        @else
+                                            <div style="height:56px;"></div>
+                                            <p class="fw-bold mx-3 mb-0" style="border-top: 1px solid black; padding-top: 3px;">Received</p>
+                                            <small class="text-muted d-block" style="font-size:10px;">{{ $client->company ?? '-' }}</small>
+                                        @endif
                                     </div>
                                 </div>
                                 <p class="mb-0">Distribusi : Putih dan Pink → Pelanggan, <span class="fw-bold">Kuning → Accounting {{ $isKojisha ? 'PT. Kojisha' : 'PT. Reftech' }}</span></p>

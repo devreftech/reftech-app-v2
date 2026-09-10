@@ -70,6 +70,11 @@ class User extends Authenticatable
         return $this->getRawOriginal('role') === 'Developer';
     }
 
+    public function isProjectManager(): bool
+    {
+        return $this->role === 'Project Manager' || $this->getRawOriginal('role') === 'Project Manager';
+    }
+
     public function detail()
     {
         return $this->hasMany('App\Models\DetailUser', 'id_users');
@@ -170,7 +175,7 @@ class User extends Authenticatable
         }
 
         if ($includeAdmin) {
-            $adminIds = self::where('role', 'Admin')->where('active', '1')->pluck('id')->toArray();
+            $adminIds = self::whereIn('role', ['Admin', 'Developer'])->where('active', '1')->pluck('id')->toArray();
             $accountingIds = array_merge($accountingIds, $adminIds);
         }
 

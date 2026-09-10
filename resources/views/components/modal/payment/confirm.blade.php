@@ -1,11 +1,11 @@
-<form action="{{ route('confirm-payment.quotation', $payment->id) }}" method="post" enctype="multipart/form-data">
-    @csrf
-    <div class="modal fade animate__animated fadeIn" id="confirmPayment" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white py-3 px-4">
-                    <h5 class="modal-title text-white d-flex align-items-center gap-2">
-                        <i class="mdi mdi-check-decagram-outline"></i> Konfirmasi Penerimaan Pembayaran
+<div class="modal fade" id="confirmPayment" tabindex="-1" aria-labelledby="confirmPaymentLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <form action="{{ route('confirm-payment.quotation', $payment->id) }}" method="post" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-header bg-primary text-white py-3 px-4 d-flex align-items-center justify-content-between">
+                    <h5 class="modal-title text-white fw-bold d-flex align-items-center gap-2 mb-0" id="confirmPaymentLabel">
+                        <i class="mdi mdi-check-decagram-outline fs-4"></i> Konfirmasi Penerimaan Pembayaran
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -49,15 +49,15 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-top py-2 px-4">
-                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">
+                <div class="modal-footer border-top py-2.5 px-4 bg-light d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-label-secondary rounded-pill px-3" data-bs-dismiss="modal">
                         Batal
                     </button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary rounded-pill px-3 shadow-sm">
                         <i class="mdi mdi-check me-1"></i> Verifikasi &amp; Tambah Saldo
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
-</form>
+</div>

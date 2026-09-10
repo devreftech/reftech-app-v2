@@ -294,13 +294,21 @@
                         <div class="col-4 text-center">
                             <p class="mb-4">{{ $service->pic->client->company }}</p>
                             <div class="d-flex align-items-end justify-content-center mb-1" style="height: 70px;">
-                                @if (isset($service->sign_client))
-                                    <img src="{{ $service->sign_client_url }}" alt="" srcset=""
-                                        height="70">
+                                @if ($service->isSignedByCustomer() && $service->sign_client_url)
+                                    <img src="{{ $service->sign_client_url }}" alt="Customer Signature"
+                                        style="max-height: 70px; max-width: 140px; object-fit: contain;">
                                 @endif
                             </div>
                             <div style="border-top: 1px solid #333; width: 70%; margin: 0 auto;"></div>
-                            <p class="mt-2 mb-0">( {{ $service->pic->name_pic }} )</p>
+                            <p class="mt-2 mb-0 fw-bold">( {{ $service->customer_signer_name ?: $service->pic->name_pic }} )</p>
+                            @if ($service->customer_signer_position)
+                                <small class="text-muted d-block" style="font-size: 10px;">{{ $service->customer_signer_position }}</small>
+                            @endif
+                            @if ($service->signed_at)
+                                <small class="text-success d-block" style="font-size: 9.5px; font-weight: 600;">
+                                    <i class="mdi mdi-check-decagram me-0.5"></i> Signed {{ date('d-m-Y H:i', strtotime($service->signed_at)) }} WIB
+                                </small>
+                            @endif
                         </div>
                     </div>
                         </div>{{-- /.sr-lock-blur --}}
@@ -309,7 +317,7 @@
             </div>
         </div>
         {{-- End: Invoice --}}
-        {{-- Button Invocie --}}
+        {{-- Button Invoice --}}
         <div class="col-xl-3 col-md-4 col-12 invoice-actions">
             <div class="card mb-3">
                 <div class="card-body">
@@ -369,33 +377,126 @@
                 </div>
             </div>
 
+            {{-- Online Customer Signature Card --}}
+            <div class="card shadow-sm border mb-3" style="border-radius: 8px; border-color: #e2e8f0 !important;">
+                <div class="card-header py-3 px-3.5 border-bottom d-flex align-items-center justify-content-between" style="background-color: #f8fafc;">
+                    <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-1.5" style="font-size: 13px;">
+                        <i class="mdi mdi-draw text-primary fs-5"></i>
+                        <span>Customer Signature</span>
+                    </h6>
+                    @if ($service->isSignedByCustomer())
+                        <span class="badge bg-label-success rounded-pill px-2 py-0.5" style="font-size: 11px;">
+                            <i class="mdi mdi-check-decagram"></i> Signed
+                        </span>
+                    @else
+                        <span class="badge bg-label-warning rounded-pill px-2 py-0.5" style="font-size: 11px;">
+                            <i class="mdi mdi-clock-outline"></i> Waiting
+                        </span>
+                    @endif
+                </div>
+                <div class="card-body p-3">
+                    @if ($service->isSignedByCustomer())
+                        <div class="p-2.5 rounded bg-lighter border mb-3">
+                            <div class="d-flex align-items-center gap-2 mb-1.5">
+                                <i class="mdi mdi-account-check text-success fs-5"></i>
+                                <div>
+                                    <div class="fw-bold text-dark" style="font-size: 12.5px;">{{ $service->customer_signer_name ?: ($service->pic?->name_pic ?? 'Customer') }}</div>
+                                    <div class="text-muted small" style="font-size: 11px;">{{ $service->customer_signer_position ?: ($service->pic?->client?->company ?? '-') }}</div>
+                                </div>
+                            </div>
+                            @if ($service->signed_at)
+                                <div class="text-muted" style="font-size: 11px;">
+                                    <i class="mdi mdi-calendar-clock text-muted me-1"></i>{{ date('d-m-Y H:i', strtotime($service->signed_at)) }} WIB
+                                </div>
+                            @endif
+                            @if ($service->customer_ip)
+                                <div class="text-muted" style="font-size: 10.5px;">
+                                    <i class="mdi mdi-map-marker-radius-outline text-muted me-1"></i>IP: {{ $service->customer_ip }}
+                                </div>
+                            @endif
+                            @if ($service->sign_client_url)
+                                <div class="mt-2 text-center p-2 bg-white rounded border">
+                                    <img src="{{ $service->sign_client_url }}" alt="Customer Signature" style="max-height: 50px; max-width: 100%; object-fit: contain;">
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="d-flex flex-column gap-2">
+                            <a href="{{ $service->sign_url }}" target="_blank" class="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1.5 py-1.5 waves-effect">
+                                <i class="mdi mdi-eye-outline"></i>
+                                <span>Lihat Halaman TTD</span>
+                            </a>
+                            <form action="{{ route('service-reports.reset-signature', $service->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus / mereset tanda tangan customer ini? Customer akan dapat menandatangani ulang.');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-outline-danger btn-sm w-100 d-flex align-items-center justify-content-center gap-1.5 py-1.5 waves-effect">
+                                    <i class="mdi mdi-delete-outline"></i>
+                                    <span>Hapus / Reset TTD Customer</span>
+                                </button>
+                            </form>
+                        </div>
+                    @else
+                        <p class="text-muted mb-2" style="font-size: 11.5px; line-height: 1.4;">
+                            Kirim tautan berikut ke customer / PIC agar dapat memeriksa laporan servis &amp; tanda tangan secara digital:
+                        </p>
+
+                        <div class="input-group input-group-sm mb-2.5">
+                            <input type="text" class="form-control" id="report-sign-url" value="{{ $service->sign_url }}" readonly style="font-size: 11px;">
+                            <button class="btn btn-primary" type="button" id="btn-copy-sign-url" title="Salin Link">
+                                <i class="mdi mdi-content-copy"></i>
+                            </button>
+                        </div>
+
+                        @php
+                            $picPhone = preg_replace('/[^0-9]/', '', ($service->pic?->phone_pic ?? $service->pic?->client?->phone ?? ''));
+                            if (str_starts_with($picPhone, '0')) {
+                                $picPhone = '62' . substr($picPhone, 1);
+                            }
+                            $isKojisha = optional($service->pic?->client)->info === 'Kojisha';
+                            $clientComp = $service->pic?->client?->company ?? '';
+                            $picName = $service->pic?->name_pic ?? '';
+                            $noService = $service->no_service ?: 'SR-' . $service->id;
+                            $waMessage = rawurlencode("Halo Bapak/Ibu " . ($picName ?: '') . " (" . $clientComp . "),\n\nBerikut kami lampirkan tautan Service Report (" . $noService . ").\nSilakan periksa rincian laporan pekerjaan dan bubuhi tanda tangan digital melalui tautan berikut:\n" . $service->sign_url . "\n\nTerima kasih.\n" . ($isKojisha ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima'));
+                            $waLink = "https://wa.me/" . ($picPhone ?: '') . "?text=" . $waMessage;
+                        @endphp
+
+                        <div class="d-flex flex-column gap-2 mb-3">
+                            <button type="button" class="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-1.5 py-1.5 waves-effect" id="btn-copy-link-action">
+                                <i class="mdi mdi-link-variant"></i>
+                                <span>Salin Link TTD</span>
+                            </button>
+                            <a href="{{ $waLink }}" target="_blank" class="btn btn-success btn-sm w-100 d-flex align-items-center justify-content-center gap-1.5 py-1.5 waves-effect text-white">
+                                <i class="mdi mdi-whatsapp fs-5"></i>
+                                <span>Kirim via WhatsApp</span>
+                            </a>
+                        </div>
+
+                        <div class="border-top pt-2">
+                            <small class="text-muted d-block mb-1.5 fw-semibold" style="font-size: 10.5px;">Atau TTD Langsung di Tempat:</small>
+                            <div class="d-flex gap-2">
+                                <a type="button" data-bs-toggle="modal" data-bs-target="#inputSignPad-{{ $service->id }}"
+                                    class="btn btn-sm btn-label-secondary flex-grow-1 waves-effect py-1 px-2" style="font-size: 11px;">
+                                    <i class="mdi mdi-draw me-0.5"></i> Pad TTD
+                                </a>
+                                <a type="button" data-bs-toggle="modal" data-bs-target="#inputSign-{{ $service->id }}"
+                                    class="btn btn-sm btn-label-secondary flex-grow-1 waves-effect py-1 px-2" style="font-size: 11px;">
+                                    <i class="mdi mdi-upload me-0.5"></i> Upload
+                                </a>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             @unless ($lockForSales)
-            <div class="card">
+            <div class="card mb-3">
                 <div class="card-body">
-                    {{-- Fitur upload lama (#inputImage) disembunyikan, kode tetap ada untuk rollback --}}
                     <a type="button" data-bs-toggle="modal" data-bs-target="#inputImageV2"
-                        class="d-grid w-100 waves-effect mb-3">
+                        class="d-grid w-100 waves-effect">
                         <button type="button" class="btn btn-primary">
                             {{ $pict->isNotEmpty() ? 'Add More Photos' : 'Input Image Reports' }}
                         </button>
                     </a>
-                    @if (isset($service->sign_client))
-                        <a href="#" class="btn btn-danger d-grid w-100 waves-effect delete-hand-sign mb-3"
-                            data-id="{{ $service->id }}">Delete Hand Sign</a>
-                    @else
-                        <a type="button" data-bs-toggle="modal" data-bs-target="#inputSignPad-{{ $service->id }}"
-                            class="d-grid w-100 waves-effect mb-3">
-                            <button type="button" class="btn btn-secondary">
-                                Online Sign
-                            </button>
-                        </a>
-                        <a type="button" data-bs-toggle="modal" data-bs-target="#inputSign-{{ $service->id }}"
-                            class="d-grid w-100 waves-effect mb-3">
-                            <button type="button" class="btn btn-outline-secondary">
-                                Upload Sign
-                            </button>
-                        </a>
-                    @endif
                 </div>
             </div>
             @endunless
@@ -1115,6 +1216,53 @@
                         $('#rejectReportForm').trigger('submit');
                     }
                 });
+            });
+
+            function copySignUrl() {
+                var input = document.getElementById('report-sign-url');
+                if (!input) return;
+                var textToCopy = input.value;
+
+                function showSuccessAlert() {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Link Berhasil Disalin!',
+                        text: 'Tautan tanda tangan customer siap dikirimkan.',
+                        timer: 2000,
+                        showConfirmButton: false,
+                    });
+                }
+
+                function fallbackCopy() {
+                    input.focus();
+                    input.select();
+                    input.setSelectionRange(0, 99999);
+                    try {
+                        var successful = document.execCommand('copy');
+                        if (successful) {
+                            showSuccessAlert();
+                        } else {
+                            throw new Error('execCommand failed');
+                        }
+                    } catch (err) {
+                        window.prompt('Salin link berikut secara manual:', textToCopy);
+                    }
+                }
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(textToCopy).then(function () {
+                        showSuccessAlert();
+                    }).catch(function () {
+                        fallbackCopy();
+                    });
+                } else {
+                    fallbackCopy();
+                }
+            }
+
+            $(document).on('click', '#btn-copy-sign-url, #btn-copy-link-action', function (e) {
+                e.preventDefault();
+                copySignUrl();
             });
         });
     </script>

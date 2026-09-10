@@ -30,9 +30,10 @@
                 <thead class="table-light">
                     <tr>
                         <th class="fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">No. BAST</th>
+                        <th class="fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Tipe</th>
                         <th class="fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Customer</th>
                         <th class="fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Pekerjaan</th>
-                        <th class="fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Tgl Pekerjaan</th>
+                        <th class="fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Tgl / Commissioning</th>
                         <th class="fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">No. PO / Kontrak</th>
                         <th class="fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Dibuat Oleh</th>
                     </tr>
@@ -45,6 +46,11 @@
                                     <i class="mdi mdi-file-document-outline me-1"></i>{{ $bast->no_bast }}
                                 </a>
                             </td>
+                            <td>
+                                <span class="badge {{ $bast->type === 'Rental' ? 'bg-label-info' : 'bg-label-secondary' }}">
+                                    {{ $bast->type === 'Rental' ? 'Rental' : 'Default' }}
+                                </span>
+                            </td>
                             <td class="fw-semibold text-dark">{{ $bast->customer_name }}</td>
                             <td>
                                 <span class="d-inline-block text-truncate" style="max-width: 280px;" title="{{ $bast->work_title }}">
@@ -53,7 +59,7 @@
                             </td>
                             <td>
                                 <span class="text-muted">
-                                    <i class="mdi mdi-calendar-blank-outline me-1"></i>{{ $bast->work_date->format('d/m/Y') }}
+                                    <i class="mdi mdi-calendar-blank-outline me-1"></i>{{ $bast->work_date ? $bast->work_date->format('d/m/Y') : '-' }}
                                 </span>
                             </td>
                             <td>

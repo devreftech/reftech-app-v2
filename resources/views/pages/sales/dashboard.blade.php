@@ -39,6 +39,10 @@
                        class="btn btn-sm btn-admin-view-switch {{ ($adminView ?? 'sales') === 'workshop' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
                         <i class="mdi mdi-wrench-outline me-1"></i> Workshop
                     </button>
+                    <button type="button" data-view="projectmanager"
+                       class="btn btn-sm btn-admin-view-switch {{ ($adminView ?? 'sales') === 'projectmanager' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
+                        <i class="mdi mdi-clipboard-text-clock-outline me-1"></i> Project Manager
+                    </button>
                 </div>
             </div>
         </div>
@@ -1436,7 +1440,11 @@
     @endif
 @elseif (Auth::user()->role == 'Sales Manager')
     @include('pages.salesmanager.dashboard._content')
-    @endif
+@elseif (Auth::user()->role == 'Logistic')
+    @include('pages.logistic.dashboard._content')
+@elseif (Auth::user()->role == 'Project Manager')
+    @include('pages.projectmanager.dashboard._content')
+@endif
     @foreach ($notulens as $notulen)
         @include('components.modal.notulen.detail')
     @endforeach
@@ -2771,6 +2779,94 @@
                         popup: 'animate__animated animate__fadeOutUp animate__faster',
                     },
                     confirmButtonText: 'Siap, Cek Sekarang! 🚀',
+                    customClass: {
+                        popup: 'swal-welcome-popup',
+                        confirmButton: 'btn btn-primary waves-effect waves-light',
+                    },
+                    buttonsStyling: false,
+                });
+            });
+        </script>
+    @endif
+
+    @if($showPmWelcomeAlert ?? false)
+        <script>
+            $(document).ready(function() {
+                Swal.fire({
+                    html: `
+                        <div class="welcome-alert-header" style="background: linear-gradient(135deg, #ff9f43 0%, #ff5252 100%);">
+                            <span class="welcome-alert-wave">🏗️</span>
+                            <div class="welcome-alert-title">Hai {{ Auth::user()->name }}!</div>
+                            <div class="welcome-alert-subtitle">Berikut ringkasan proyek & operasional penting hari ini</div>
+                        </div>
+                        <div class="welcome-alert-body">
+                            <!-- 1. Daily Project Report & Service Report -->
+                            <a href="{{ route('service-reports.index', ['tab' => 'project']) }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-crm"><i class="mdi mdi-clipboard-text-clock-outline"></i></div>
+                                <div>
+                                    @if((($pmRecentDailyReportsCount ?? 0) + ($pmPendingServiceReportsCount ?? 0)) > 0)
+                                        <p class="welcome-alert-card-title">{{ ($pmRecentDailyReportsCount ?? 0) + ($pmPendingServiceReportsCount ?? 0) }} Laporan Lapangan Perlu Dicek</p>
+                                        <p class="welcome-alert-card-text">{{ $pmRecentDailyReportsCount ?? 0 }} Daily Project Report & {{ $pmPendingServiceReportsCount ?? 0 }} Service Report baru</p>
+                                    @else
+                                        <p class="welcome-alert-card-title">Semua Laporan Up-to-date</p>
+                                        <p class="welcome-alert-card-text">Tidak ada antrean laporan pending hari ini</p>
+                                    @endif
+                                </div>
+                            </a>
+
+                            <!-- 2. Proyek Sedang Berjalan -->
+                            <a href="{{ route('kanban.index') }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-invoice"><i class="mdi mdi-progress-wrench"></i></div>
+                                <div>
+                                    @if(($pmActiveProjectsCount ?? 0) > 0)
+                                        <p class="welcome-alert-card-title">{{ $pmActiveProjectsCount }} Proyek Sedang Berjalan</p>
+                                        <p class="welcome-alert-card-text">Pantau progres pekerjaan aktif di Kanban board</p>
+                                    @else
+                                        <p class="welcome-alert-card-title">Belum Ada Proyek Berjalan</p>
+                                        <p class="welcome-alert-card-text">Semua pengerjaan proyek saat ini sudah selesai</p>
+                                    @endif
+                                </div>
+                            </a>
+
+                            <!-- 3. Deadline & Overdue Tasks -->
+                            <a href="{{ route('kanban.index') }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-fire"><i class="mdi mdi-alarm-alert"></i></div>
+                                <div>
+                                    @if(($pmOverdueTasksCount ?? 0) > 0)
+                                        <p class="welcome-alert-card-title">{{ $pmOverdueTasksCount }} Tugas Lewat / Jatuh Tempo</p>
+                                        <p class="welcome-alert-card-text">Perhatikan target milestone proyek yang tertunda</p>
+                                    @else
+                                        <p class="welcome-alert-card-title">Semua Tugas Sesuai Jadwal</p>
+                                        <p class="welcome-alert-card-text">Tidak ada tugas proyek yang mengalami keterlambatan</p>
+                                    @endif
+                                </div>
+                            </a>
+
+                            <!-- 4. BAST Pending Sign -->
+                            <a href="{{ route('bast.index') }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-quote"><i class="mdi mdi-file-sign"></i></div>
+                                <div>
+                                    @if(($pmPendingBastCount ?? 0) > 0)
+                                        <p class="welcome-alert-card-title">{{ $pmPendingBastCount }} BAST Menunggu Tanda Tangan</p>
+                                        <p class="welcome-alert-card-text">Follow up pengesahan customer agar dapat ditagihkan</p>
+                                    @else
+                                        <p class="welcome-alert-card-title">Seluruh BAST Lengkap</p>
+                                        <p class="welcome-alert-card-text">Semua berita acara serah terima sudah ditandatangani</p>
+                                    @endif
+                                </div>
+                            </a>
+
+                            <div class="welcome-alert-footer">Semangat memimpin proyek! ⚡</div>
+                        </div>
+                    `,
+                    width: '44rem',
+                    showClass: {
+                        popup: 'animate__animated animate__zoomIn animate__faster',
+                    },
+                    hideClass: {
+                        popup: 'animate__animated animate__fadeOutUp animate__faster',
+                    },
+                    confirmButtonText: 'Siap, Pantau Proyek! 🚀',
                     customClass: {
                         popup: 'swal-welcome-popup',
                         confirmButton: 'btn btn-primary waves-effect waves-light',

@@ -192,7 +192,11 @@ class DashboardController extends Controller
             $logisticService = new \App\Services\Dashboard\LogisticDashboardService();
             $logisticData = $logisticService->getDashboardData($notulens);
 
-            return view("pages.sales.dashboard", $logisticData);
+        } elseif (Auth::user()->role == 'Project Manager') {
+            $pmService = new \App\Services\Dashboard\ProjectManagerDashboardService();
+            $pmData = $pmService->getDashboardData($notulens);
+
+            return view("pages.sales.dashboard", array_merge(['adminView' => 'projectmanager'], $pmData));
         } else {
             $defaultService = new \App\Services\Dashboard\DefaultDashboardService();
             $defaultData = $defaultService->getDashboardData($notulens);
@@ -273,10 +277,15 @@ class DashboardController extends Controller
 
         $sorted = collect($result)->sortByDesc('percentage')->values();
 
+        $requestedView = $request->query('view');
+        if ($requestedView) {
+            request()->merge(['view' => $requestedView]);
+        }
+
         $adminService = new \App\Services\Dashboard\AdminDashboardService();
         $adminData = $adminService->getDashboardData($sorted, $sales, $notulens, $yearNow, $monthNow, $dateNow);
 
-        $view = $adminData['adminView'] ?? 'sales';
+        $view = $adminData['adminView'] ?? ($requestedView ?: 'sales');
         $html = view('pages.sales.dashboard_view_content', $adminData)->render();
 
         return response()->json([

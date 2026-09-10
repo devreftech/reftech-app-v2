@@ -147,7 +147,10 @@ class AppServiceProvider extends ServiceProvider
                     ->has('details')
                     ->count();
 
+                $requestContract = \App\Models\Contract::where('level', '0')->count();
+
                 $view->with('prCount', $prCount);
+                $view->with('requestContract', $requestContract);
             }
         });
 

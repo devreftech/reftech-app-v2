@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\HelpdeskController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\HelpdeskController;
 use App\Http\Controllers\LibraryController;
 use App\Http\Controllers\NotulenController;
 use App\Models\HelpdeskTicket;
@@ -25,14 +25,17 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('/notulen', NotulenController::class);
     Route::get('/db/notulen/mention', function () {
         $notulen = Notulen::join('mention_notulen as m', 'm.id_notulen', '=', 'notulen.id')->join('users as u', 'm.id_mention', '=', 'u.id')->where('id_notuler', Auth::id())->get(['notulen.*', 'u.name', 'm.level']);
+
         return response()->json(['data' => $notulen]);
     });
     Route::get('/db/notulen/mention/admin', function () {
         $notulen = Notulen::join('mention_notulen as m', 'm.id_notulen', '=', 'notulen.id')->join('users as u', 'm.id_mention', '=', 'u.id')->get(['notulen.*', 'u.name', 'm.level', 'm.id as mId']);
+
         return response()->json(['data' => $notulen]);
     });
     Route::get('/db/notulen', function () {
         $notulen = Notulen::join('mention_notulen as m', 'm.id_notulen', '=', 'notulen.id')->join('users as u', 'm.id_mention', '=', 'u.id')->where('m.id_mention', Auth::id())->get(['notulen.*', 'u.name', 'm.level']);
+
         return response()->json(['data' => $notulen]);
     });
 
@@ -41,11 +44,15 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/helpdesk', [HelpdeskController::class, 'store'])->name('helpdesk.store');
     Route::patch('/helpdesk/status/{id}', [HelpdeskController::class, 'updateStatus'])->name('helpdesk.update-status');
     Route::get('/db/helpdesk', function () {
-        $tickets = HelpdeskTicket::where('id_user', Auth::id())->latest()->get();
+        $tickets = HelpdeskTicket::where('id_user', Auth::id())
+            ->where('no_ticket', 'not like', 'ERR/%')
+            ->latest()
+            ->get();
         $tickets->each(function ($ticket) {
             $ticket->created_at = $ticket->created_at?->clone()->timezone('Asia/Jakarta');
             $ticket->updated_at = $ticket->updated_at?->clone()->timezone('Asia/Jakarta');
         });
+
         return response()->json(['data' => $tickets]);
     });
     Route::get('/db/helpdesk/admin', function () {
@@ -53,12 +60,11 @@ Route::middleware(['auth'])->group(function () {
         $query = HelpdeskTicket::leftJoin('users as u', 'u.id', '=', 'helpdesk_tickets.id_user');
 
         if ($category === 'system_error') {
-            $query->where('helpdesk_tickets.category', 'system_error');
+            // Temuan error otomatis system: no_ticket berpola "ERR/..."
+            $query->where('helpdesk_tickets.no_ticket', 'like', 'ERR/%');
         } else {
-            $query->where(function ($q) {
-                $q->where('helpdesk_tickets.category', 'user_report')
-                  ->orWhereNull('helpdesk_tickets.category');
-            });
+            // Tiket yang dibuat user: selain pola "ERR/..."
+            $query->where('helpdesk_tickets.no_ticket', 'not like', 'ERR/%');
         }
 
         $tickets = $query->latest('helpdesk_tickets.created_at')

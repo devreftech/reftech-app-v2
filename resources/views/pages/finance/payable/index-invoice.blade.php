@@ -12,6 +12,12 @@
             </p>
         </div>
         <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('payable.gr_uninvoiced') }}" class="btn btn-label-danger btn-sm position-relative">
+                <i class="mdi mdi-package-variant-closed me-1"></i> GR Belum Ditagih
+                @if (($grniCount ?? 0) > 0)
+                    <span class="badge bg-danger rounded-pill ms-1">{{ number_format($grniCount) }}</span>
+                @endif
+            </a>
             <a href="{{ route('payable.statement') }}" class="btn btn-label-info btn-sm">
                 <i class="mdi mdi-book-open-outline me-1"></i> Kartu Hutang (SOA)
             </a>

@@ -34,7 +34,7 @@ try {
     LEFT JOIN pic p ON p.id = q.id_pic
     LEFT JOIN client c ON c.id = p.id_client
     INNER JOIN users u ON u.id = q.id_sales
-    WHERE q.status = 80 AND q.level = '1' AND q.is_primary = '1' AND q.type != 'Unit' $salesFilter $yearFilterQ
+    WHERE q.status = 80 AND q.level = '1' AND q.is_primary = '1' AND q.type != 'Unit' AND u.active = '1' $salesFilter $yearFilterQ
     GROUP BY q.primary_id
 
     UNION ALL
@@ -55,8 +55,8 @@ try {
            u2.name AS sales_name, u2.image AS sales_image
     FROM unit_quotation uq
     LEFT JOIN client c2 ON c2.id = NULLIF(uq.id_client,'')
-    LEFT JOIN users u2 ON u2.id = uq.id_sales
-    WHERE uq.status = 'hot_prospect' AND (uq.is_latest = 1 OR uq.is_latest IS NULL) $salesFilter2 $yearFilterU
+    INNER JOIN users u2 ON u2.id = uq.id_sales
+    WHERE uq.status = 'hot_prospect' AND (uq.is_latest = 1 OR uq.is_latest IS NULL) AND u2.active = '1' $salesFilter2 $yearFilterU
 
     ORDER BY estimated_date ASC";
 

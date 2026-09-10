@@ -271,7 +271,7 @@
             $remaining       = $quote->total - $issuedTotal;
             $isOwnerAdmin    = Auth::user()->role === 'Admin' && $quote->sales?->role === 'Admin';
         @endphp
-        @if (Auth::user()->role !== 'Accounting' && Auth::user()->role !== 'Admin')
+        @if (Auth::user()->role !== 'Accounting')
         <div class="card mb-3 border-0 shadow-sm overflow-hidden">
             <div class="card-header bg-primary bg-gradient py-3 px-4 d-flex align-items-center justify-content-between text-white">
                 <h6 class="card-title mb-0 fw-bold text-white d-flex align-items-center">
@@ -302,7 +302,7 @@
                         </a>
                     </div>
                     <div class="col-6">
-                        @if (Auth::user()->role === 'Sales' || $isOwnerAdmin)
+                        @if (Auth::user()->role === 'Sales' || Auth::user()->role === 'Admin')
                             <form action="{{ route('unit-quotation.revise', $quote->id) }}" method="POST">
                                 @csrf
                                 <button type="submit" class="btn btn-outline-info w-100 d-flex align-items-center justify-content-center gap-1"
@@ -341,7 +341,7 @@
                     </div>
 
                     {{-- Upload / View PO --}}
-                    @if (Auth::user()->role === 'Sales' || $isOwnerAdmin)
+                    @if (Auth::user()->role === 'Sales' || Auth::user()->role === 'Admin')
                         <button type="button" id="btn-upload-po-wrap" class="btn btn-sm btn-label-success d-flex align-items-center justify-content-center w-100 mb-2 btn-upload-po-unit fw-semibold {{ $quote->status === 'po_received' ? 'd-none' : '' }}"
                             data-tax="{{ $quote->tax ?? '0' }}"
                             data-npwp="{{ $quote->client->npwp ?? '' }}"
@@ -353,6 +353,7 @@
                     @endif
                     @php
                         $poFileUrl = '';
+                        $isImagePo = false;
                         if ($quote->po_file) {
                             if (str_starts_with($quote->po_file, 'http://') || str_starts_with($quote->po_file, 'https://') || str_starts_with($quote->po_file, '/')) {
                                 $poFileUrl = $quote->po_file;
@@ -361,20 +362,22 @@
                             } else {
                                 $poFileUrl = Storage::url($quote->po_file);
                             }
+                            $poExt = strtolower(pathinfo($quote->po_file, PATHINFO_EXTENSION));
+                            $isImagePo = in_array($poExt, ['jpg', 'jpeg', 'png', 'webp', 'gif']);
                         }
                     @endphp
                     <a href="#" id="btn-view-po-wrap"
                        data-url="{{ $poFileUrl }}"
                        onclick="openPdfViewer(this.dataset.url, 'File PO {{ $quote->no_quote ?? '' }}'); return false;"
                        class="btn btn-sm btn-label-secondary d-flex align-items-center justify-content-center w-100 mb-2 fw-semibold {{ $quote->po_file ? '' : 'd-none' }}">
-                        <i class="mdi mdi-file-pdf-box text-danger me-1"></i> Lihat File PO
+                        <i class="mdi {{ $isImagePo ? 'mdi-file-image text-primary' : 'mdi-file-pdf-box text-danger' }} me-1"></i> Lihat File PO
                     </a>
 
                     {{-- Edit No PO — hanya selama belum ada invoice yang diterbitkan.
                          Setelah invoice terbit, edit No PO pindah ke halaman Invoice (Accounting). --}}
                     @if ($quote->status === 'po_received' && $quote->po_number && !$quote->cancel_request
                         && $issuedInvoices->isEmpty()
-                        && (Auth::user()->role === 'Sales' || $isOwnerAdmin))
+                        && (Auth::user()->role === 'Sales' || Auth::user()->role === 'Admin'))
                         <div class="d-flex align-items-center justify-content-between rounded-2 px-2 py-1 mb-2" style="background:#f6f7ff; border:1px solid #e5e5ff;">
                             <span class="text-truncate" style="font-size:10.5px; color:#555;">
                                 <i class="mdi mdi-pound me-1 text-primary"></i>{{ $quote->po_number }}
@@ -391,26 +394,22 @@
                         {{-- Selling Contract Column --}}
                         <div class="col-6">
                             @if ($sellingContract)
-                                <div class="btn-group w-100">
-                                    <a class="btn btn-sm btn-label-primary fw-semibold text-truncate" href="{{ route('contract.show', $sellingContract->id) }}" title="Lihat Kontrak">
-                                        <i class="mdi mdi-file-document-outline me-1"></i> Kontrak
-                                    </a>
-                                    <a class="btn btn-sm btn-outline-primary fw-semibold px-2" target="_blank" href="{{ route('contract.print', $sellingContract->id) }}" title="Unduh Kontrak">
-                                        <i class="mdi mdi-download"></i>
-                                    </a>
-                                </div>
+                                <a class="btn btn-sm btn-label-success d-flex align-items-center justify-content-center w-100 fw-semibold px-1 text-truncate"
+                                    href="{{ route('contract.show', $sellingContract->id) }}" title="Lihat {{ $contractNoun }} (Sudah di-ACC)">
+                                    <i class="mdi mdi-file-check-outline me-1"></i> Lihat Kontrak
+                                </a>
                             @elseif ($requestedSellingContract)
-                                <div class="p-2 rounded-2 bg-warning-subtle text-warning-emphasis text-center" style="font-size: 10.5px;" title="Menunggu Accounting buat kontrak">
-                                    <i class="mdi mdi-clock-outline me-1"></i> Wait Kontrak
+                                <div class="p-2 rounded-2 bg-warning-subtle text-warning-emphasis text-center fw-semibold" style="font-size: 10.5px;" title="Menunggu Accounting menerbitkan nomor kontrak">
+                                    <i class="mdi mdi-clock-outline me-1"></i> Wait ACC Kontrak
                                 </div>
                             @elseif (Auth::user()->role === 'Sales' && $quote->status !== 'po_received')
-                                <a href="#" data-id="{{ $quote->id }}" class="btn btn-sm btn-label-primary d-flex align-items-center justify-content-center w-100 fw-semibold px-1 text-truncate request-selling-unit" title="Request {{ $contractNoun }}">
-                                    <i class="mdi mdi-file-sign me-1"></i> {{ $contractNoun }}
+                                <a href="#" data-id="{{ $quote->id }}" class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center w-100 fw-semibold px-1 text-truncate request-selling-unit" title="Ajukan {{ $contractNoun }} ke Accounting">
+                                    <i class="mdi mdi-file-send-outline me-1"></i> Ajukan Kontrak
                                 </a>
                             @elseif (Auth::user()->role === 'Admin' || Auth::user()->role === 'Accounting')
                                 <button type="button" class="btn btn-sm btn-label-primary d-flex align-items-center justify-content-center w-100 fw-semibold px-1 text-truncate"
-                                    data-bs-toggle="modal" data-bs-target="#modalSellingContractUnit" title="Create {{ $contractNoun }}">
-                                    <i class="mdi mdi-file-plus-outline me-1"></i> {{ $contractNoun }}
+                                    data-bs-toggle="modal" data-bs-target="#modalSellingContractUnit" title="Buat {{ $contractNoun }}">
+                                    <i class="mdi mdi-file-plus-outline me-1"></i> Buat Kontrak
                                 </button>
                             @endif
                         </div>
@@ -534,7 +533,7 @@
                 @endif
 
                 {{-- 5. Change Status Option --}}
-                @if ((Auth::user()->role === 'Sales' || $isOwnerAdmin) && $quote->status !== 'po_received')
+                @if ((Auth::user()->role === 'Sales' || Auth::user()->role === 'Admin') && $quote->status !== 'po_received')
                     <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center w-100 py-1.5"
                         data-bs-toggle="modal" data-bs-target="#modalChangeStatus">
                         <i class="mdi mdi-swap-horizontal me-1"></i> Change Status
@@ -644,8 +643,8 @@
         </div>
         @endif
 
-        {{-- Kanban Action Card (Hanya muncul jika status sudah PO Received & bukan role Admin) --}}
-        @if (($quote->status === 'po_received' || $kanbanTask) && Auth::user()->role !== 'Admin')
+        {{-- Kanban Action Card --}}
+        @if ($quote->status === 'po_received' || $kanbanTask)
         <div class="card mb-3">
             <div class="card-header py-3">
                 <h5 class="mb-0">Action</h5>
@@ -738,7 +737,7 @@
                 @endforeach
             </div>
             @endif
-            @if ($quote->status === 'po_received' && Auth::user()->role === 'Sales')
+            @if ($quote->status === 'po_received' && (Auth::user()->role === 'Sales' || Auth::user()->role === 'Admin'))
             <div class="card-footer p-3">
                 <button type="button" class="btn btn-outline-success d-flex align-items-center justify-content-center w-100 waves-effect"
                     data-bs-toggle="modal" data-bs-target="#modalAddPayment">
@@ -833,6 +832,8 @@
                 $quotePreTax = floatval($quote->total ?? 0) - floatval($quote->tax_amount ?? 0);
             }
             $quoteFee = floatval($quote->fee ?? 0);
+            $maxFeeAllowed = round($quotePreTax * 0.10, 2);
+            $feePercent = $quotePreTax > 0 ? round(($quoteFee / $quotePreTax) * 100, 2) : 0;
             $salesAchievement = max(0, $quotePreTax - $quoteFee);
             $feeTaxData = $quote->fee_tax_data;
             $itemsWithFee = $quote->details->whereNotIn('type', ['header', 'heading'])->where('fee', '>', 0);
@@ -845,6 +846,11 @@
                 </div>
                 <div class="d-flex align-items-center gap-1.5 flex-wrap">
                     @if ($quoteFee > 0)
+                        @if ($quoteFee > ($maxFeeAllowed + 1))
+                            <span class="badge bg-danger text-white px-2 py-0.5 fw-bold" style="font-size: 10px;" title="Fee khusus melebihi standar 10%">
+                                <i class="mdi mdi-alert-circle-outline me-0.5"></i> Fee Khusus {{ $feePercent }}% (&gt;10%)
+                            </span>
+                        @endif
                         @if ($quote->fee_payment_status === 'paid')
                             <span class="badge bg-success px-2 py-0.5 fw-bold" style="font-size: 10px;">
                                 <i class="mdi mdi-check-circle-outline me-0.5"></i> Fee Paid
@@ -1025,7 +1031,7 @@
                     </div>
                     <div>
                         <h5 class="modal-title fw-bold mb-0">Kelola Management Fee Penawaran</h5>
-                        <span class="text-muted small" style="font-size: 11px;">Alokasikan nominal fee per item dan perhitungan otomatis pajak fee (Maksimal 10% dari Pre-PPN)</span>
+                        <span class="text-muted small" style="font-size: 11px;">Alokasikan nominal fee per item dan perhitungan otomatis pajak fee (Standar 10% dari Pre-PPN)</span>
                     </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -1033,7 +1039,7 @@
             <form action="{{ route('unit-quotation.update-fee', $quote->id) }}" method="POST" id="form-management-fee">
                 @csrf
                 <div class="modal-body p-3 p-md-4">
-                    {{-- Alert Kebijakan Fee 2026 & Batas Maksimal 10% --}}
+                    {{-- Alert Kebijakan Fee 2026 & Batas Standar 10% --}}
                     <div class="alert alert-primary py-2.5 px-3 mb-3" role="alert">
                         <div class="d-flex align-items-start gap-2">
                             <i class="mdi mdi-information-outline fs-4 flex-shrink-0 mt-0.5"></i>
@@ -1043,7 +1049,7 @@
                                     <span class="badge bg-white text-dark border fw-medium px-2 py-1">&lt; Rp 1,5 Juta : <strong>Pajak 0%</strong> (Bebas Pajak)</span>
                                     <span class="badge bg-white text-dark border fw-medium px-2 py-1">Rp 1,5 Juta - Rp 5 Juta : <strong>Pajak 3.68%</strong></span>
                                     <span class="badge bg-white text-dark border fw-medium px-2 py-1">&gt; Rp 5 Juta : <strong>Pajak 10%</strong></span>
-                                    <span class="badge bg-warning text-dark border fw-semibold px-2 py-1"><i class="mdi mdi-lock-outline me-1"></i>Batas Maksimal Total Fee: <strong>10%</strong> (Maks. Rp {{ number_format($maxFeeAllowed, 0, ',', '.') }})</span>
+                                    <span class="badge bg-warning text-dark border fw-semibold px-2 py-1"><i class="mdi mdi-information-outline me-1"></i>Standar Maksimal Fee: <strong>10%</strong> (Rp {{ number_format($maxFeeAllowed, 0, ',', '.') }})</span>
                                 </div>
                                 <div class="text-muted" style="font-size: 10.5px;">
                                     * Nominal penawaran &amp; invoice customer tetap normal <strong>Rp {{ number_format($quotePreTax, 0, ',', '.') }}</strong> (sebelum PPN). Fee hanya memotong pencatatan omset sales.
@@ -1052,11 +1058,11 @@
                         </div>
                     </div>
 
-                    {{-- Warning jika Fee melebihi 10% --}}
-                    <div id="modal-fee-max-warning" class="alert alert-danger py-2 px-3 mb-3 {{ $quoteFee > ($maxFeeAllowed + 1) ? 'd-flex' : 'd-none' }} align-items-center gap-2" role="alert">
-                        <i class="mdi mdi-alert-octagon fs-4 flex-shrink-0"></i>
+                    {{-- Warning jika Fee melebihi 10% (Alert informatif tanpa memblokir) --}}
+                    <div id="modal-fee-max-warning" class="alert alert-warning py-2.5 px-3 mb-3 {{ $quoteFee > ($maxFeeAllowed + 1) ? 'd-flex' : 'd-none' }} align-items-center gap-2" role="alert">
+                        <i class="mdi mdi-alert-circle-outline fs-4 flex-shrink-0 text-warning"></i>
                         <div class="small">
-                            <strong>Perhatian:</strong> Total Management Fee melebihi batas maksimal <strong>10%</strong> dari nilai penawaran (Batas Maksimal: <strong>Rp {{ number_format($maxFeeAllowed, 0, ',', '.') }}</strong>). Harap kurangi nominal fee per item sebelum menyimpan.
+                            <strong class="text-dark">Peringatan / Alert Sales:</strong> Total Management Fee (<strong id="modal-warning-fee-val">Rp {{ number_format($quoteFee, 0, ',', '.') }}</strong>) melebihi standar <strong>10%</strong> dari nilai penawaran (<strong id="modal-warning-fee-pct">{{ $feePercent }}%</strong>). Pengajuan fee &gt; 10% diperbolehkan dan akan ditandai dengan keterangan khusus untuk verifikasi Admin &amp; Finance.
                         </div>
                     </div>
 
@@ -1214,7 +1220,7 @@
                 </div>
                 <div class="modal-footer border-top py-2 px-3">
                     <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary" id="btn-submit-management-fee" {{ $quoteFee > ($maxFeeAllowed + 1) ? 'disabled' : '' }}>
+                    <button type="submit" class="btn btn-primary" id="btn-submit-management-fee">
                         <i class="mdi mdi-content-save-outline me-1"></i> Simpan Pembagian Fee
                     </button>
                 </div>
@@ -1224,6 +1230,51 @@
 </div>
 
 {{-- Modal Upload PO --}}
+@php
+    $rawPayment = trim($quote->payment ?? '');
+    $autoPaymentMethod = '';
+    $autoInvoiceType = 'CT';
+    $autoDpPercent = 50;
+    $autoTempoDays = '';
+
+    if (!empty($rawPayment)) {
+        if (preg_match('/^CBD\b|Cash Before Delivery/i', $rawPayment)) {
+            $autoPaymentMethod = 'CBD';
+            $autoInvoiceType = 'CT';
+        } elseif (preg_match('/^COD\b|Cash On Delivery/i', $rawPayment)) {
+            $autoPaymentMethod = 'COD';
+            $autoInvoiceType = 'CT';
+        } elseif (preg_match('/DP\s*(\d+(?:\.\d+)?)\s*%/i', $rawPayment, $dpMatch)) {
+            $dpVal = (float)$dpMatch[1];
+            $bpVal = 100 - $dpVal;
+            $autoInvoiceType = 'DP';
+            $autoDpPercent = $dpVal;
+            if ($dpVal == 50) {
+                $autoPaymentMethod = 'DP 50% & Pelunasan NET 50';
+            } elseif ($dpVal == 30) {
+                $autoPaymentMethod = 'DP 30% & Pelunasan NET 70';
+            } else {
+                $autoPaymentMethod = 'DP ' . (int)$dpVal . '% & Pelunasan NET ' . (int)$bpVal;
+            }
+        } elseif (preg_match('/(\d+)\s*(?:days|hari)/i', $rawPayment, $dayMatch) || preg_match('/(?:Tempo|NET)\s*(\d+)/i', $rawPayment, $dayMatch)) {
+            $autoPaymentMethod = 'Tempo';
+            $autoTempoDays = (int)$dayMatch[1];
+            $autoInvoiceType = 'CT';
+        } elseif (stripos($rawPayment, 'Tempo') !== false) {
+            $autoPaymentMethod = 'Tempo';
+            $autoTempoDays = 30;
+            $autoInvoiceType = 'CT';
+        } else {
+            $autoPaymentMethod = $rawPayment;
+            $autoInvoiceType = 'CT';
+        }
+    }
+
+    $activePaymentMethod = old('payment_method', $autoPaymentMethod);
+    $activeInvoiceType   = old('invoice_type', $autoInvoiceType);
+    $activeDpPercent     = old('dp_percent', $autoDpPercent);
+    $activeTempoDays     = old('tempo_days', $autoTempoDays);
+@endphp
 <div class="modal fade" id="modalUploadPO" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -1248,21 +1299,31 @@
                         <div class="form-text text-muted">Default hari ini, bisa diubah sesuai tanggal PO sebenarnya.</div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Payment Method <span class="text-danger">*</span></label>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-semibold mb-0">Payment Method <span class="text-danger">*</span></label>
+                            @if(!empty($quote->payment))
+                                <span class="badge bg-label-primary fs-tiny" title="Sesuai Term di Penawaran">
+                                    <i class="mdi mdi-link-variant me-1"></i> Penawaran: <strong>{{ $quote->payment }}</strong>
+                                </span>
+                            @endif
+                        </div>
                         <select class="form-select" name="payment_method" id="select-payment-method" required>
-                            <option value="" disabled selected>-- Pilih Metode Pembayaran --</option>
-                            <option value="CBD">CBD (Cash Before Delivery)</option>
-                            <option value="COD">COD (Cash On Delivery)</option>
-                            <option value="DP 50% & Pelunasan NET 50">DP 50% &amp; Pelunasan NET 50</option>
-                            <option value="DP 30% & Pelunasan NET 70">DP 30% &amp; Pelunasan NET 70</option>
-                            <option value="Tempo">Tempo</option>
+                            <option value="" disabled {{ empty($activePaymentMethod) ? 'selected' : '' }}>-- Pilih Metode Pembayaran --</option>
+                            <option value="CBD" {{ $activePaymentMethod === 'CBD' ? 'selected' : '' }}>CBD (Cash Before Delivery)</option>
+                            <option value="COD" {{ $activePaymentMethod === 'COD' ? 'selected' : '' }}>COD (Cash On Delivery)</option>
+                            <option value="DP 50% & Pelunasan NET 50" {{ $activePaymentMethod === 'DP 50% & Pelunasan NET 50' ? 'selected' : '' }}>DP 50% &amp; Pelunasan NET 50</option>
+                            <option value="DP 30% & Pelunasan NET 70" {{ $activePaymentMethod === 'DP 30% & Pelunasan NET 70' ? 'selected' : '' }}>DP 30% &amp; Pelunasan NET 70</option>
+                            @if(!in_array($activePaymentMethod, ['', 'CBD', 'COD', 'DP 50% & Pelunasan NET 50', 'DP 30% & Pelunasan NET 70', 'Tempo']) && !empty($activePaymentMethod))
+                                <option value="{{ $activePaymentMethod }}" selected>{{ $activePaymentMethod }}</option>
+                            @endif
+                            <option value="Tempo" {{ $activePaymentMethod === 'Tempo' ? 'selected' : '' }}>Tempo</option>
                         </select>
                     </div>
-                    <div class="mb-3 d-none" id="tempo-days-group">
+                    <div class="mb-3 {{ $activePaymentMethod === 'Tempo' ? '' : 'd-none' }}" id="tempo-days-group">
                         <label class="form-label fw-semibold">Jangka Tempo (hari) <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="number" class="form-control" id="input-tempo-days"
-                                   min="1" placeholder="misal: 30">
+                                   min="1" placeholder="misal: 30" value="{{ $activeTempoDays }}" {{ $activePaymentMethod === 'Tempo' ? 'required' : '' }}>
                             <span class="input-group-text">Hari</span>
                         </div>
                         <div class="form-text text-muted">Masukkan jumlah hari jangka tempo pembayaran.</div>
@@ -1272,24 +1333,24 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Tipe Invoice Pertama <span class="text-danger">*</span></label>
                         <select class="form-select" name="invoice_type" id="select-invoice-type" required>
-                            <option value="" disabled selected>-- Pilih --</option>
-                            <option value="DP">Down Payment (DP)</option>
-                            <option value="CT">Full Payment</option>
+                            <option value="" disabled {{ empty($activeInvoiceType) ? 'selected' : '' }}>-- Pilih --</option>
+                            <option value="DP" {{ $activeInvoiceType === 'DP' ? 'selected' : '' }}>Down Payment (DP)</option>
+                            <option value="CT" {{ $activeInvoiceType === 'CT' ? 'selected' : '' }}>Full Payment</option>
                         </select>
                     </div>
-                    <div class="mb-3 d-none" id="dp-percent-group">
+                    <div class="mb-3 {{ $activeInvoiceType === 'DP' ? '' : 'd-none' }}" id="dp-percent-group">
                         <label class="form-label fw-semibold">Persentase DP <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="number" class="form-control" name="dp_percent" id="dp-percent-input"
-                                   min="1" max="99" value="50" placeholder="50">
+                                   min="1" max="99" value="{{ $activeDpPercent }}" placeholder="50" {{ $activeInvoiceType === 'DP' ? 'required' : '' }}>
                             <span class="input-group-text">%</span>
                         </div>
                         <div class="form-text" id="dp-amount-preview">DP: Rp ... | Sisa: Rp ...</div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">File PO (PDF) <span class="text-danger">*</span></label>
-                        <input type="file" class="form-control" name="po_file" accept=".pdf" required>
-                        <div class="form-text">Maksimal 5MB, format PDF.</div>
+                        <label class="form-label fw-semibold">File PO (PDF / Gambar) <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" name="po_file" accept=".pdf,.jpg,.jpeg,.png,.webp" required>
+                        <div class="form-text">Maksimal 5MB, format PDF atau Gambar (JPG, JPEG, PNG, WEBP).</div>
                     </div>
                     <div class="alert alert-info mb-0 py-2">
                         <i class="mdi mdi-information-outline me-1"></i>
@@ -1307,10 +1368,10 @@
     </div>
 </div>
 
-{{-- Modal Edit No PO (Sales — hanya sebelum invoice diterbitkan) --}}
+{{-- Modal Edit No PO (Sales / Admin — hanya sebelum invoice diterbitkan) --}}
 @if ($quote->status === 'po_received' && $quote->po_number && !$quote->cancel_request
     && $issuedInvoices->isEmpty()
-    && (Auth::user()->role === 'Sales' || $isOwnerAdmin))
+    && (Auth::user()->role === 'Sales' || Auth::user()->role === 'Admin'))
 <div class="modal fade" id="modalEditPoUnit" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -1376,12 +1437,41 @@
             <form action="{{ route('unit-quotation.selling-contract', $quote->id) }}" method="POST">
                 @csrf
                 <div class="modal-header border-0">
-                    <h5 class="modal-title">Create {{ $contractNoun }}</h5>
+                    <h5 class="modal-title fw-bold">Create {{ $contractNoun }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body text-center">
                     <h5 class="mb-1">{{ $quote->no_quote }}</h5>
                     <p class="text-muted mb-3">{{ $quote->client?->company }}</p>
+
+                    <!-- Card Keterangan Entitas & PPN -->
+                    <div class="p-3 mb-3 rounded-3 text-start bg-light border">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted small fw-semibold">Tipe Entitas & Dokumen:</span>
+                            <div>
+                                @if ($isKojisha)
+                                    <span class="badge bg-label-warning me-1">Kojisha</span>
+                                    <span class="badge bg-label-dark">Confirm Order</span>
+                                @else
+                                    <span class="badge bg-label-info me-1">Reftech</span>
+                                    <span class="badge bg-label-primary">Selling Contract</span>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted small fw-semibold">Status Pajak:</span>
+                            @if ($quote->tax)
+                                <span class="badge bg-label-primary"><i class="mdi mdi-check-circle-outline me-1"></i>PPN</span>
+                            @else
+                                <span class="badge bg-label-danger"><i class="mdi mdi-close-circle-outline me-1"></i>Non-PPN</span>
+                            @endif
+                        </div>
+                        <div class="alert alert-secondary py-1 px-2 mb-0 mt-2" style="font-size: 11px;">
+                            <i class="mdi mdi-information-outline me-1 text-primary"></i>
+                            <span><strong>Reftech</strong> &rarr; Selling Contract (<code>SELLCTX/RJO</code>) &bull; <strong>Kojisha</strong> &rarr; Confirm Order (<code>CO/KII</code>)</span>
+                        </div>
+                    </div>
+
                     <div class="mb-3 text-start">
                         <label class="form-label fw-semibold">No. {{ $contractNoun }}</label>
                         <input type="text" class="form-control" name="no_contract"
@@ -2053,6 +2143,12 @@
         }
     });
 
+    $('#modalUploadPO').on('shown.bs.modal', function () {
+        if ($('#select-invoice-type').val() === 'DP') {
+            updateDpPreview();
+        }
+    });
+
     // Submit Upload PO via AJAX — biar begitu sukses, langsung buka modal
     // "Post to Sales Order" tanpa reload/loading transition halaman.
     $('#formUploadPoUnit').on('submit', function (e) {
@@ -2544,15 +2640,17 @@
         $('#modal-net-fee-received-display').html('Nett Fee: <strong class="text-primary">Rp ' + taxInfo.net.toLocaleString('id-ID') + '</strong>');
         $('#modal-net-sales-display').text('Rp ' + netGrand.toLocaleString('id-ID'));
 
-        // Check 10% limit
+        // Check 10% limit - alert sales if > 10%, but KEEP submit enabled
         if (totalFee > (maxAllowed + 1)) {
             $('#modal-fee-max-warning').removeClass('d-none').addClass('d-flex');
-            $('#btn-submit-management-fee').prop('disabled', true);
-            $('#modal-total-fee-display').addClass('text-danger fw-bolder');
+            $('#modal-warning-fee-val').text('Rp ' + totalFee.toLocaleString('id-ID'));
+            $('#modal-warning-fee-pct').text(percent + '%');
+            $('#modal-fee-percent-display').html('<span class="text-danger fw-bold">' + percent + '% (Fee Khusus > 10%)</span>');
         } else {
             $('#modal-fee-max-warning').removeClass('d-flex').addClass('d-none');
-            $('#btn-submit-management-fee').prop('disabled', false);
+            $('#modal-fee-percent-display').text(percent + '% dari quote (Standar 10%)');
         }
+        $('#btn-submit-management-fee').prop('disabled', false);
     });
 
     $(document).on('click', '.btn-delete-fee-confirm', function (e) {

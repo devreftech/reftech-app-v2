@@ -195,12 +195,20 @@
             <div class="col-4 text-center">
                 <p class="mb-4">{{ $service->pic->client->company }}</p>
                 <div class="d-flex align-items-end justify-content-center mb-1" style="height: 70px;">
-                    @if (isset($service->sign_client))
-                        <img src="{{ $service->sign_client_url }}" alt="" srcset="" height="70">
+                    @if ($service->isSignedByCustomer() && $service->sign_client_url)
+                        <img src="{{ $service->sign_client_url }}" alt="Customer Signature" style="max-height: 70px; max-width: 140px; object-fit: contain;">
                     @endif
                 </div>
                 <div style="border-top: 1px solid #333; width: 70%; margin: 0 auto;"></div>
-                <p class="mt-2 mb-0">( {{ $service->pic->name_pic }} )</p>
+                <p class="mt-2 mb-0 fw-bold">( {{ $service->customer_signer_name ?: $service->pic->name_pic }} )</p>
+                @if ($service->customer_signer_position)
+                    <small class="text-muted d-block" style="font-size: 10px;">{{ $service->customer_signer_position }}</small>
+                @endif
+                @if ($service->signed_at)
+                    <small class="text-success d-block" style="font-size: 9.5px; font-weight: 600;">
+                        <i class="mdi mdi-check-decagram me-0.5"></i> Signed {{ date('d-m-Y H:i', strtotime($service->signed_at)) }} WIB
+                    </small>
+                @endif
             </div>
         </div>
     </div>

@@ -89,6 +89,7 @@ class SuoController extends Controller
         $client = Client::where('company', $suo->company)->first();
 
         $quotation       = null;
+        $unitQuotation   = null;
         $quotationDetail = collect();
         $invoice         = null;
         if ($suo->id_unit_quotation) {
@@ -127,7 +128,7 @@ class SuoController extends Controller
             $invoice = Invoice::where('id_quotation', $suo->id_quotation)->first();
         }
 
-        return view('pages.suo.detail', compact('suo', 'role', 'client', 'quotation', 'quotationDetail', 'invoice'));
+        return view('pages.suo.detail', compact('suo', 'role', 'client', 'quotation', 'unitQuotation', 'quotationDetail', 'invoice'));
     }
 
     // ─── Logistic ────────────────────────────────────────────────────────────
@@ -173,9 +174,76 @@ class SuoController extends Controller
 
         $noInvoice = $request->no_invoice_booking ?: $this->generateBookingInvoiceNumber();
         $suo->no_invoice_booking = $noInvoice;
-        $suo->status       = 'confirmed';
         $suo->approved_by  = Auth::id();
         $suo->approved_at  = Carbon::now();
+
+        // Jika SUO sudah terhubung ke Smart Quote
+        if ($suo->id_unit_quotation) {
+            $unitQuote = UnitQuotation::find($suo->id_unit_quotation);
+            if ($unitQuote) {
+                $pendingInvoice = Invoice::where('id_unit_quotation', $unitQuote->id)
+                    ->whereNull('no_invoice')
+                    ->first();
+
+                if ($pendingInvoice) {
+                    $pendingInvoice->no_invoice = $noInvoice;
+                    $pendingInvoice->term       = 'Cash Before Delivery';
+                    $pendingInvoice->invoiceTo  = '1';
+                    $pendingInvoice->date       = now()->toDateString();
+
+                    $amount = $unitQuote->total;
+                    if ($pendingInvoice->flag === 'Reftech') {
+                        $pendingInvoice->sign = $amount >= 5000000
+                            ? 'asset/sign/reftech-m.jpeg'
+                            : 'asset/sign/reftech-nm.jpeg';
+                    } else {
+                        $pendingInvoice->sign = $amount >= 5000000
+                            ? 'asset/sign/kojisha-m.jpeg'
+                            : 'asset/sign/kojisha-nm.jpeg';
+                    }
+                    $pendingInvoice->save();
+
+                    $suo->status = 'converted';
+
+                    if ($unitQuote->id_sales) {
+                        \App\Models\UnitQuotationPaymentNotification::create([
+                            'id_invoice' => $pendingInvoice->id,
+                            'id_unit_quotation' => $unitQuote->id,
+                            'id_user' => $unitQuote->id_sales,
+                            'type' => 'invoice_approved',
+                            'is_read' => false,
+                        ]);
+                    }
+                } else {
+                    $suo->status = 'confirmed';
+                }
+            } else {
+                $suo->status = 'confirmed';
+            }
+        } elseif ($suo->id_quotation) {
+            $quote = Quotation::find($suo->id_quotation);
+            if ($quote) {
+                $pendingInvoice = Invoice::where('id_quotation', $quote->id)
+                    ->whereNull('no_invoice')
+                    ->first();
+                if ($pendingInvoice) {
+                    $pendingInvoice->no_invoice = $noInvoice;
+                    $pendingInvoice->term       = 'Cash Before Delivery';
+                    $pendingInvoice->invoiceTo  = $quote->destination;
+                    $pendingInvoice->date       = now()->toDateString();
+                    $pendingInvoice->save();
+
+                    $suo->status = 'converted';
+                } else {
+                    $suo->status = 'confirmed';
+                }
+            } else {
+                $suo->status = 'confirmed';
+            }
+        } else {
+            $suo->status = 'confirmed';
+        }
+
         $suo->save();
 
         return response()->json(['success' => true, 'no_invoice' => $noInvoice]);
@@ -186,12 +254,13 @@ class SuoController extends Controller
         $suo = Suo::with('detail')->findOrFail($id);
 
         $delivery = new Delivery();
-        $delivery->id_suo       = $suo->id;
-        $delivery->id_invoice   = null;
-        $delivery->date         = $request->date ?? Carbon::today()->toDateString();
-        $delivery->destination  = $request->destination;
-        $delivery->type         = $request->type ?? 'Ekspedisi';
-        $delivery->code         = 'Sparepart';
+        $delivery->id_suo            = $suo->id;
+        $delivery->id_invoice        = null;
+        $delivery->id_unit_quotation = $suo->id_unit_quotation ?: null;
+        $delivery->date              = $request->date ?? Carbon::today()->toDateString();
+        $delivery->destination       = $request->destination;
+        $delivery->type              = $request->type ?? 'Ekspedisi';
+        $delivery->code              = 'Sparepart';
         $delivery->save();
 
         foreach ($suo->detail as $item) {
@@ -289,7 +358,7 @@ class SuoController extends Controller
         $suo = Suo::findOrFail($id);
 
         if ($request->source === 'unit_quotation') {
-            UnitQuotation::findOrFail($request->id_quotation);
+            $unitQuote = UnitQuotation::findOrFail($request->id_quotation);
 
             $alreadyLinked = Suo::whereNotNull('id_unit_quotation')
                 ->where('id_unit_quotation', $request->id_quotation)
@@ -301,10 +370,45 @@ class SuoController extends Controller
             }
 
             $suo->status            = 'converted';
-            $suo->id_unit_quotation  = $request->id_quotation;
-            $suo->id_quotation       = null;
+            $suo->id_unit_quotation = $request->id_quotation;
+            $suo->id_quotation      = null;
+
+            if ($suo->no_invoice_booking) {
+                $pendingInvoice = Invoice::where('id_unit_quotation', $unitQuote->id)
+                    ->whereNull('no_invoice')
+                    ->first();
+
+                if ($pendingInvoice) {
+                    $pendingInvoice->no_invoice = $suo->no_invoice_booking;
+                    $pendingInvoice->term       = 'Cash Before Delivery';
+                    $pendingInvoice->invoiceTo  = '1';
+                    $pendingInvoice->date       = now()->toDateString();
+
+                    $amount = $unitQuote->total;
+                    if ($pendingInvoice->flag === 'Reftech') {
+                        $pendingInvoice->sign = $amount >= 5000000
+                            ? 'asset/sign/reftech-m.jpeg'
+                            : 'asset/sign/reftech-nm.jpeg';
+                    } else {
+                        $pendingInvoice->sign = $amount >= 5000000
+                            ? 'asset/sign/kojisha-m.jpeg'
+                            : 'asset/sign/kojisha-nm.jpeg';
+                    }
+                    $pendingInvoice->save();
+
+                    if ($unitQuote->id_sales) {
+                        \App\Models\UnitQuotationPaymentNotification::create([
+                            'id_invoice' => $pendingInvoice->id,
+                            'id_unit_quotation' => $unitQuote->id,
+                            'id_user' => $unitQuote->id_sales,
+                            'type' => 'invoice_approved',
+                            'is_read' => false,
+                        ]);
+                    }
+                }
+            }
         } else {
-            Quotation::findOrFail($request->id_quotation);
+            $quote = Quotation::findOrFail($request->id_quotation);
 
             $alreadyLinked = Suo::whereNotNull('id_quotation')
                 ->where('id_quotation', $request->id_quotation)
@@ -316,8 +420,22 @@ class SuoController extends Controller
             }
 
             $suo->status            = 'converted';
-            $suo->id_quotation       = $request->id_quotation;
-            $suo->id_unit_quotation  = null;
+            $suo->id_quotation      = $request->id_quotation;
+            $suo->id_unit_quotation = null;
+
+            if ($suo->no_invoice_booking) {
+                $pendingInvoice = Invoice::where('id_quotation', $quote->id)
+                    ->whereNull('no_invoice')
+                    ->first();
+
+                if ($pendingInvoice) {
+                    $pendingInvoice->no_invoice = $suo->no_invoice_booking;
+                    $pendingInvoice->term       = 'Cash Before Delivery';
+                    $pendingInvoice->invoiceTo  = $quote->destination;
+                    $pendingInvoice->date       = now()->toDateString();
+                    $pendingInvoice->save();
+                }
+            }
         }
 
         $suo->save();

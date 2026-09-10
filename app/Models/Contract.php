@@ -17,6 +17,7 @@ class Contract extends Model
         'updated_at'
     ];
     protected $fillable = [
+        'id_user',
         'id_quotation',
         'id_unit_quotation',
         'id_client',
@@ -81,6 +82,11 @@ class Contract extends Model
         return $this->belongsTo('App\Models\UnitQuotation', 'id_unit_quotation', 'id');
     }
 
+    public function approver()
+    {
+        return $this->belongsTo('App\Models\User', 'id_user', 'id');
+    }
+
     public function visitSchedules()
     {
         return $this->hasMany(\App\Models\ContractVisitSchedule::class, 'id_contract', 'id');
@@ -103,7 +109,15 @@ class Contract extends Model
             return static::join('unit_quotation as uq', 'uq.id', '=', 'contract.id_unit_quotation')
                 ->whereYear('contract.date', $year)
                 ->where('uq.tax', $tax)
-                ->where('contract.type', $type)
+                ->where(function ($q) use ($type) {
+                    if ($type === 'Order') {
+                        $q->where('contract.type', 'Order')
+                          ->orWhere('contract.no_contract', 'like', '%/CO/%');
+                    } else {
+                        $q->where('contract.type', 'Selling')
+                          ->where('contract.no_contract', 'not like', '%/CO/%');
+                    }
+                })
                 ->where('contract.level', '1')
                 ->orderByDesc('contract.id')
                 ->value('contract.no_contract');

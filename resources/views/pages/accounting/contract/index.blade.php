@@ -33,23 +33,15 @@
 
             {{-- ── Tab Request ─────────────────────────────────────────── --}}
             <div class="tab-pane fade show active" id="tab-request" role="tabpanel">
-                <div class="d-flex align-items-center gap-3 p-3 border-bottom">
-                    <label class="form-label mb-0 fw-medium">Tahun:</label>
-                    <select id="filter-year-request" class="form-select form-select-sm" style="width:auto">
-                        <option value="all">Semua</option>
-                        @for ($y = now()->year; $y >= 2022; $y--)
-                            <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
-                        @endfor
-                    </select>
-                </div>
                 <div class="card-datatable table-responsive pt-0">
                     <table class="datatable-request-contract table">
                         <thead>
                             <tr>
                                 <th></th>
                                 <th>ID</th>
-                                <th>No. Contract</th>
+                                <th>No. Quotation</th>
                                 <th>Company</th>
+                                <th>PPN</th>
                                 <th>Total Price</th>
                                 <th>Date</th>
                                 <th>Sales</th>
@@ -61,71 +53,147 @@
 
             {{-- ── Tab Selling Contract ─────────────────────────────────── --}}
             <div class="tab-pane fade" id="tab-selling" role="tabpanel">
-                <div class="d-flex align-items-center gap-3 p-3 border-bottom">
-                    <label class="form-label mb-0 fw-medium">Tahun:</label>
-                    <select id="filter-year-selling" class="form-select form-select-sm" style="width:auto">
-                        <option value="all">Semua</option>
-                        @for ($y = now()->year; $y >= 2022; $y--)
-                            <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
-                        @endfor
-                    </select>
-                    <label class="form-label mb-0 fw-medium ms-2">PPN:</label>
-                    <select id="filter-tax-selling" class="form-select form-select-sm" style="width:auto">
-                        <option value="all">Semua</option>
-                        <option value="ppn">PPN</option>
-                        <option value="non-ppn">Non PPN</option>
-                    </select>
+                <div class="d-flex align-items-center justify-content-end flex-wrap gap-3 p-3 border-bottom">
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 fw-medium">Tahun:</label>
+                        <select id="filter-year-selling" class="form-select form-select-sm" style="width:auto">
+                            <option value="all">Semua</option>
+                            @for ($y = now()->year; $y >= 2022; $y--)
+                                <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
+                            @endfor
+                        </select>
+                    </div>
+                    <ul class="nav nav-pills gap-1" id="selling-subtab-nav" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button type="button" class="nav-link btn-sm py-1 px-3 active" role="tab" data-bs-toggle="tab" data-bs-target="#subtab-selling-ppn" aria-controls="subtab-selling-ppn" aria-selected="true">
+                                <i class="tf-icons ti ti-file-percent me-1"></i> PPN
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button type="button" class="nav-link btn-sm py-1 px-3" role="tab" data-bs-toggle="tab" data-bs-target="#subtab-selling-non-ppn" aria-controls="subtab-selling-non-ppn" aria-selected="false">
+                                <i class="tf-icons ti ti-file-x me-1"></i> Non-PPN
+                            </button>
+                        </li>
+                    </ul>
                 </div>
-                <div class="card-datatable table-responsive pt-0">
-                    <table class="datatable-selling-contract-tab table">
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th>ID</th>
-                                <th>Selling No.</th>
-                                <th>Company</th>
-                                <th>PPN</th>
-                                <th>Total Price</th>
-                                <th>Date</th>
-                                <th>Sales</th>
-                            </tr>
-                        </thead>
-                    </table>
+
+                <div class="tab-content p-0">
+                    {{-- Subtab Selling PPN --}}
+                    <div class="tab-pane fade show active" id="subtab-selling-ppn" role="tabpanel">
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatable-selling-contract-ppn table">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>ID</th>
+                                        <th>Selling No.</th>
+                                        <th>No. Quotation</th>
+                                        <th>Company</th>
+                                        <th>PPN</th>
+                                        <th>Total Price</th>
+                                        <th>Date</th>
+                                        <th>Sales</th>
+                                        <th>Approved By</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- Subtab Selling Non-PPN --}}
+                    <div class="tab-pane fade" id="subtab-selling-non-ppn" role="tabpanel">
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatable-selling-contract-non-ppn table">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>ID</th>
+                                        <th>Selling No.</th>
+                                        <th>No. Quotation</th>
+                                        <th>Company</th>
+                                        <th>PPN</th>
+                                        <th>Total Price</th>
+                                        <th>Date</th>
+                                        <th>Sales</th>
+                                        <th>Approved By</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             {{-- ── Tab Confirm Order ───────────────────────────────────── --}}
             <div class="tab-pane fade" id="tab-order" role="tabpanel">
-                <div class="d-flex align-items-center gap-3 p-3 border-bottom">
-                    <label class="form-label mb-0 fw-medium">Tahun:</label>
-                    <select id="filter-year-order" class="form-select form-select-sm" style="width:auto">
-                        <option value="all">Semua</option>
-                        @for ($y = now()->year; $y >= 2022; $y--)
-                            <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
-                        @endfor
-                    </select>
-                    <label class="form-label mb-0 fw-medium ms-2">PPN:</label>
-                    <select id="filter-tax-order" class="form-select form-select-sm" style="width:auto">
-                        <option value="all">Semua</option>
-                        <option value="ppn">PPN</option>
-                        <option value="non-ppn">Non PPN</option>
-                    </select>
+                <div class="d-flex align-items-center justify-content-end flex-wrap gap-3 p-3 border-bottom">
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 fw-medium">Tahun:</label>
+                        <select id="filter-year-order" class="form-select form-select-sm" style="width:auto">
+                            <option value="all">Semua</option>
+                            @for ($y = now()->year; $y >= 2022; $y--)
+                                <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
+                            @endfor
+                        </select>
+                    </div>
+                    <ul class="nav nav-pills gap-1" id="order-subtab-nav" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button type="button" class="nav-link btn-sm py-1 px-3 active" role="tab" data-bs-toggle="tab" data-bs-target="#subtab-order-ppn" aria-controls="subtab-order-ppn" aria-selected="true">
+                                <i class="tf-icons ti ti-file-percent me-1"></i> PPN
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button type="button" class="nav-link btn-sm py-1 px-3" role="tab" data-bs-toggle="tab" data-bs-target="#subtab-order-non-ppn" aria-controls="subtab-order-non-ppn" aria-selected="false">
+                                <i class="tf-icons ti ti-file-x me-1"></i> Non-PPN
+                            </button>
+                        </li>
+                    </ul>
                 </div>
-                <div class="card-datatable table-responsive pt-0">
-                    <table class="datatable-confirm-order-tab table">
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th>ID</th>
-                                <th>Order No.</th>
-                                <th>Company</th>
-                                <th>PPN</th>
-                                <th>Total Price</th>
-                                <th>Date</th>
-                                <th>Sales</th>
-                            </tr>
-                        </thead>
-                    </table>
+
+                <div class="tab-content p-0">
+                    {{-- Subtab Confirm Order PPN --}}
+                    <div class="tab-pane fade show active" id="subtab-order-ppn" role="tabpanel">
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatable-confirm-order-ppn table">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>ID</th>
+                                        <th>Order No.</th>
+                                        <th>No. Quotation</th>
+                                        <th>Company</th>
+                                        <th>PPN</th>
+                                        <th>Total Price</th>
+                                        <th>Date</th>
+                                        <th>Sales</th>
+                                        <th>Approved By</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- Subtab Confirm Order Non-PPN --}}
+                    <div class="tab-pane fade" id="subtab-order-non-ppn" role="tabpanel">
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatable-confirm-order-non-ppn table">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>ID</th>
+                                        <th>Order No.</th>
+                                        <th>No. Quotation</th>
+                                        <th>Company</th>
+                                        <th>PPN</th>
+                                        <th>Total Price</th>
+                                        <th>Date</th>
+                                        <th>Sales</th>
+                                        <th>Approved By</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -136,7 +204,7 @@
     @foreach ($contracts as $contract)
         @if ($contract->id_unit_quotation)
             @php
-                $isOrderU = $contract->type == 'Order';
+                $isOrderU = $contract->type == 'Order' || (bool) ($contract->unitQuotation?->isKojisha());
                 $isPpnU   = (bool) ($contract->unitQuotation?->tax);
                 $result = $isOrderU
                     ? ($isPpnU ? ($unitNumbers['nextCP'] ?? '001') : ($unitNumbers['nextCNP'] ?? '001'))
@@ -145,20 +213,13 @@
             @include('components.modal.accounting.accept-contract-unit')
         @else
             @php
-                $result = '';
-                if ($contract->type == 'Selling' && $contract->quotation?->tax == '0') {
-                    $sellingNonTax = $contract;
-                } elseif ($contract->type == 'Selling' && $contract->quotation?->tax == '11') {
-                    $sellingTax = $contract;
-                } elseif ($contract->type == 'Order' && $contract->quotation?->tax == '0') {
-                    $orderNonTax = $contract;
-                } elseif ($contract->type == 'Order' && $contract->quotation?->tax == '11') {
-                    $orderTax = $contract;
+                $isOrderS = $contract->type == 'Order' || (bool) ($contract->quotation?->isKojisha());
+                $isPpnS   = ($contract->quotation?->tax == '11' || $contract->quotation?->tax == '1');
+                if ($isOrderS) {
+                    $result = $isPpnS ? $formattedNumberCP : $formattedNumberCNP;
+                } else {
+                    $result = $isPpnS ? $formattedNumberSP : $formattedNumberSNP;
                 }
-                if (isset($sellingTax))      $result = $formattedNumberSP;
-                elseif (isset($sellingNonTax)) $result = $formattedNumberSNP;
-                elseif (isset($orderTax))      $result = $formattedNumberCP;
-                elseif (isset($orderNonTax))   $result = $formattedNumberCNP;
             @endphp
             @include('components.modal.accounting.accept-contract')
         @endif

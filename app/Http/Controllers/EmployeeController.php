@@ -46,26 +46,27 @@ class EmployeeController extends Controller
         $rule = [
             'nip'      => 'required',
             'name'     => 'required',
-            'email'    => 'required',
+            'email'    => 'required|email|unique:users,email',
             'password' => 'required',
             'area'     => 'required',
             'address'  => 'required',
             'position' => 'required',
             'code'     => 'required',
-            'image'    => 'required',
+            'image'    => 'nullable',
             'phone'    => 'required',
         ];
         $customMessages = [
-            'nip.required' => 'Field NIP Wajib Diisi!',
-            'name.required' => 'Field Nama Wajib Diisi!',
-            'email.required' => 'Field EMail Wajib Diisi',
-            'password.required' => 'Field passwprd Wajib Diisi',
-            'image.required' => 'Field Foto Wajib Diisi',
-            'area.required' => 'Field Area Wajib Diisi',
-            'address.required' => 'Field address Wajib Diisi',
-            'position.required' => 'Field position Wajib Diisi',
-            'code.required' => 'Field code Wajib Diisi',
-            'phone.required' => 'Field phone Wajib Diisi!',
+            'nip.required'      => 'Field NIP Wajib Diisi!',
+            'name.required'     => 'Field Nama Wajib Diisi!',
+            'email.required'    => 'Field Email Wajib Diisi!',
+            'email.email'       => 'Format Email tidak valid!',
+            'email.unique'      => 'Email sudah terdaftar!',
+            'password.required' => 'Field Password Wajib Diisi!',
+            'area.required'     => 'Field Area Wajib Diisi!',
+            'address.required'  => 'Field Alamat Wajib Diisi!',
+            'position.required' => 'Field Jabatan/Position Wajib Diisi!',
+            'code.required'     => 'Field Kode Karyawan Wajib Diisi!',
+            'phone.required'    => 'Field No. Telepon Wajib Diisi!',
         ];
         // dd($request->all());
 
@@ -165,22 +166,23 @@ class EmployeeController extends Controller
     public function update(Request $request, $id)
     {
         $rule = [
-            'nip => required',
-            'name => required',
-            'email => required',
-            'address => required',
-            'code => required',
-            'image => required',
-            'phone => required',
+            'nip'     => 'required',
+            'name'    => 'required',
+            'email'   => 'required|email|unique:users,email,' . $id,
+            'address' => 'required',
+            'code'    => 'required',
+            'image'   => 'nullable',
+            'phone'   => 'required',
         ];
         $customMessages = [
-            'nip.required' => 'Field NIP Wajib Diisi!',
-            'name.required' => 'Field Nama Wajib Diisi!',
-            'email.required' => 'Field EMail Wajib Diisi',
-            'image.required' => 'Field Foto Wajib Diisi',
-            'address.required' => 'Field address Wajib Diisi',
-            'code.required' => 'Field code Wajib Diisi',
-            'phone.required' => 'Field phone Wajib Diisi!',
+            'nip.required'      => 'Field NIP Wajib Diisi!',
+            'name.required'     => 'Field Nama Wajib Diisi!',
+            'email.required'    => 'Field Email Wajib Diisi!',
+            'email.email'       => 'Format Email tidak valid!',
+            'email.unique'      => 'Email sudah terdaftar!',
+            'address.required'  => 'Field Alamat Wajib Diisi!',
+            'code.required'     => 'Field Kode Karyawan Wajib Diisi!',
+            'phone.required'    => 'Field No. Telepon Wajib Diisi!',
         ];
         // dd($request->all());
 

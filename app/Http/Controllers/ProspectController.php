@@ -10,6 +10,7 @@ use App\Models\MentionComment;
 use App\Models\Pic;
 use App\Models\Product;
 use App\Models\Prospect;
+use App\Models\ProspectNotification;
 use App\Models\Quotation;
 use App\Models\Termncon;
 use App\Models\UnitQuotation;
@@ -18,9 +19,20 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ProspectController extends Controller
 {
+    /**
+     * User id penerima pop-up notifikasi "Prospect Baru".
+     * Sengaja dibatasi ke orang tertentu (bukan per-role) atas permintaan:
+     *   5  => Angel Irene
+     *   7  => Atmin Development
+     *   38 => Regita Dwi
+     */
+    public const PROSPECT_NOTIF_RECIPIENT_IDS = [5, 7, 38];
+
     /**
      * Display a listing of the resource.
      *
@@ -189,7 +201,7 @@ class ProspectController extends Controller
         // Hitung jumlah prospek yang dibuat oleh setiap sales dalam minggu ini dan bulan berjalan
         $salesLeads = User::where('role', 'Sales')
             ->where('active', '1')
-            ->wherein('id', ['1', '4', '2', '32', '41'])
+            ->where('id', '!=', 23)
             ->withCount(['prospects as weekly_leads' => function ($query) use ($startOfWeek, $endOfWeek) {
                 $query->whereBetween('created_at', [$startOfWeek, $endOfWeek]);
             }])
@@ -205,7 +217,7 @@ class ProspectController extends Controller
             ->orderBy('source_detail')
             ->pluck('source_detail');
 
-        $salesList = User::where('role', 'Sales')->orderBy('name')->get(['id', 'name']);
+        $salesList = User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->orderBy('name')->get(['id', 'name']);
 
         $availableYears = Prospect::selectRaw('YEAR(date) as year')
             ->whereNotNull('date')
@@ -420,8 +432,88 @@ class ProspectController extends Controller
         $prospectSave = $prospect->save();
 
         if ($prospectSave) {
+            $this->notifyProspectCreated($prospect);
+
             return redirect('prospect')->with('message', 'data telah ditambahkan');
         }
+    }
+
+    /**
+     * Kirim notifikasi pop-up "Prospect Baru" ke penerima yang ditentukan
+     * (lihat self::PROSPECT_NOTIF_RECIPIENT_IDS) begitu prospect baru dari tim Support
+     * tersimpan, supaya bisa langsung dibantu follow up tanpa diingatkan manual lewat WhatsApp.
+     *
+     * Satu baris per penerima (pola sama dengan UnitQuotationController::notifyInvoiceRequested()).
+     * Dibungkus try/catch agar kegagalan notifikasi tidak menggagalkan pembuatan prospect.
+     */
+    private function notifyProspectCreated(Prospect $prospect): void
+    {
+        try {
+            foreach (self::PROSPECT_NOTIF_RECIPIENT_IDS as $uid) {
+                ProspectNotification::firstOrCreate(
+                    ['id_prospect' => $prospect->id, 'id_user' => $uid, 'type' => 'prospect_created'],
+                    ['is_read' => false]
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::error('Gagal membuat notifikasi prospect baru: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Endpoint polling navbar untuk penerima notifikasi prospect — mengambil notifikasi
+     * prospect baru yang belum dibaca supaya bisa dimunculkan sebagai floating toast tanpa reload.
+     * Meniru UnitQuotationController::unreadPaymentNotifications().
+     */
+    public function unreadProspectNotifications()
+    {
+        if (!in_array(Auth::id(), self::PROSPECT_NOTIF_RECIPIENT_IDS)) {
+            return response()->json(['count' => 0, 'items' => []]);
+        }
+
+        $notifs = ProspectNotification::where('id_user', Auth::id())
+            ->with(['prospect.pic.client', 'prospect.support'])
+            ->orderByDesc('created_at')
+            ->take(15)
+            ->get();
+
+        $items = $notifs->map(function ($n) {
+            $p = $n->prospect;
+            $pic = $p ? $p->pic : null;
+            $client = $pic ? $pic->client : null;
+
+            return [
+                'id' => $n->id,
+                'type' => $n->type,
+                'is_read' => (bool) $n->is_read,
+                'company' => $client->company ?? '-',
+                'pic_name' => $pic->name_pic ?? null,
+                'support_name' => $p && $p->support ? $p->support->name : null,
+                'category' => $p->category ?? null,
+                'kebutuhan' => Str::limit((string) ($p->kebutuhan ?? ''), 90),
+                'url' => $p ? route('prospect.show', $p->id) : url('prospect'),
+                'created_at' => optional($n->created_at)->diffForHumans(),
+            ];
+        });
+
+        return response()->json([
+            'count' => $notifs->where('is_read', false)->count(),
+            'items' => $items,
+        ]);
+    }
+
+    /**
+     * Tandai satu notifikasi prospect sebagai sudah dibaca. Scope `id_user = Auth::id()`
+     * memastikan user hanya bisa menandai notifikasi miliknya sendiri.
+     * Meniru UnitQuotationController::markPaymentNotificationRead().
+     */
+    public function markProspectNotificationRead($id)
+    {
+        ProspectNotification::where('id', $id)
+            ->where('id_user', Auth::id())
+            ->update(['is_read' => true]);
+
+        return response()->json(['ok' => true]);
     }
 
     /**

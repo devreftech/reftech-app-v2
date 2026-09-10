@@ -15,6 +15,7 @@ use App\Models\SerialProduct;
 use App\Models\DetailPendingPO;
 use App\Models\UnitQuotation;
 use App\Models\UnitQuotationDetail;
+use App\Models\ProjectReport;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -328,21 +329,73 @@ class ProjectMonitoringController extends Controller
 
         // Check financial access based on Role OR Kanban Board Membership / Assignees
         $user = Auth::user();
-        $hasFinancialAccess = in_array($user->role, ['Admin', 'Finance', 'Finance Manager', 'Accounting'], true);
-        if (!$hasFinancialAccess) {
-            $relatedTasks = \App\Models\KanbanTask::where(function ($q) use ($project) {
-                $q->where('pending_po_id', $project->id);
-                if (!empty($project->id_unit_quotation)) {
-                    $q->orWhere('id_unit_quotation', $project->id_unit_quotation);
-                }
-            })->with('board.members', 'assignees')->get();
 
-            $hasFinancialAccess = $relatedTasks->contains(function ($task) use ($user) {
-                return ($task->board && $task->board->members->contains($user->id)) || $task->assignees->contains($user->id);
-            });
+        // Primary Kanban Task related to this project (via pending_po_id or id_unit_quotation)
+        $kanbanTask = \App\Models\KanbanTask::where(function ($q) use ($project) {
+            $q->where('pending_po_id', $project->id);
+            if (!empty($project->id_unit_quotation)) {
+                $q->orWhere('id_unit_quotation', $project->id_unit_quotation);
+            }
+        })
+        ->with([
+            'board.columns',
+            'board.members',
+            'column',
+            'assignees',
+            'checklists',
+            'projectReports',
+            'bast',
+            'attachments',
+        ])
+        ->latest('id')
+        ->first();
+
+        // Privilege roles: Admin, Developer, Project Manager, Finance/Accounting
+        $isPrivileged = in_array($user->role, [
+            'Admin', 'Developer', 'Project Manager', 'Super Admin',
+            'Finance', 'Finance Manager', 'Accounting'
+        ], true);
+
+        $isKanbanMember = false;
+        if ($kanbanTask) {
+            $isCardMember = ($kanbanTask->assigned_to == $user->id) || $kanbanTask->assignees->contains($user->id);
+            $isBoardMember = $kanbanTask->board && (
+                ($kanbanTask->board->created_by == $user->id) ||
+                $kanbanTask->board->members->contains($user->id)
+            );
+            $isKanbanMember = $isCardMember || $isBoardMember;
         }
 
-        return view('pages.project-monitoring.show', compact(
+        $canAccessV2 = $isPrivileged || $isKanbanMember;
+        $hasFinancialAccess = $isPrivileged || $isKanbanMember;
+
+        // Activity Logs for Project Expenses & PendingPO
+        $expenseIds = $expenses->pluck('id');
+        $activityLogs = \App\Models\ActivityLog::with('user')
+            ->where(function ($q) use ($expenseIds, $project) {
+                $q->where('subject_type', \App\Models\ProjectExpense::class)
+                  ->where(function ($sq) use ($expenseIds, $project) {
+                      if ($expenseIds->isNotEmpty()) {
+                          $sq->whereIn('subject_id', $expenseIds);
+                      }
+                      $sq->orWhere('properties->id_pending', $project->id);
+                  });
+            })
+            ->orWhere(function ($q) use ($project) {
+                $q->where('subject_type', \App\Models\PendingPO::class)
+                  ->where('subject_id', $project->id);
+            })
+            ->latest()
+            ->take(50)
+            ->get();
+
+        // Daily Reports linked to this project's Kanban Tasks
+        $dailyReports = \App\Models\ProjectReport::with(['creator'])
+            ->whereIn('kanban_task_id', $relatedTaskIds)
+            ->orderBy('report_date', 'desc')
+            ->get();
+
+        $viewData = compact(
             'project',
             'quoteItems',
             'purchases',
@@ -358,8 +411,18 @@ class ProjectMonitoringController extends Controller
             'margin',
             'subQuote',
             'serial',
-            'hasFinancialAccess'
-        ));
+            'hasFinancialAccess',
+            'kanbanTask',
+            'activityLogs',
+            'canAccessV2',
+            'dailyReports'
+        );
+
+        if ($canAccessV2) {
+            return view('pages.project-monitoring.detail-v2', $viewData);
+        }
+
+        return view('pages.project-monitoring.show', $viewData);
     }
 
     /**

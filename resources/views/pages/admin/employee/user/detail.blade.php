@@ -12,6 +12,7 @@
             'Logistic' => 'info',
             'Technician' => 'dark',
             'ServiceM' => 'dark',
+            'Project Manager' => 'primary',
             'Support' => 'secondary',
             'Client' => 'secondary',
         ];
@@ -285,49 +286,61 @@
 @push('script')
     <script>
         $(document).ready(function() {
-            $(".cursor-pointer").click(function() {
-                $(this).children().toggleClass("mdi-eye-off-outline mdi-eye-outline");
-                toggleInputType($('#password'));
+            // Toggle Password Visibility
+            $(document).on('click', '.toggle-password-visibility', function() {
+                var targetSelector = $(this).data('target');
+                var $target = targetSelector ? $(targetSelector) : $(this).closest('.input-group').find('input[type="password"], input[type="text"]');
+                var $icon = $(this).find('i');
+
+                if ($target.attr('type') === 'password') {
+                    $target.attr('type', 'text');
+                    $icon.removeClass('mdi-eye-off-outline').addClass('mdi-eye-outline');
+                } else {
+                    $target.attr('type', 'password');
+                    $icon.removeClass('mdi-eye-outline').addClass('mdi-eye-off-outline');
+                }
             });
 
-            function toggleInputType(inputElement) {
-                var currentType = inputElement.attr("type");
-                var newType = (currentType === "password") ? "text" : "password";
-                inputElement.attr("type", newType);
-            }
             $("#phone").on("input", function() {
                 $(this).val($(this).val().replace(/[^0-9]/g, ''));
             });
 
             function formatNumber(n) {
-                return n.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+                return n.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
             }
-            $(".total-label").on('keyup click change', function() {
-                var input = $(this)
+
+            $(document).on('keyup click change input', '.total-label', function() {
+                var input = $(this);
                 var input_val = input.val();
-
-                // original length
-                var original_len = input_val.length;
-
-                // add commas to number
-                // remove all non-digits
                 input_val = formatNumber(input_val);
-                input_val = input_val;
-
-                // send updated string to input
                 input.val(input_val);
-                var nomorInt = parseFloat(input_val.replace(/[.,]/g, ''));
+
+                var nomorInt = parseFloat(input_val.replace(/[.,]/g, '')) || 0;
                 $(`#semuanya`).val(nomorInt);
-                console.log('ini value semuanya :' + $('#semuanya').val());
+                input.closest('.input-group').find('.total').val(nomorInt);
             });
-            $('#ddSales').on('change', function() {
+
+            $(document).on('change', '.user-role-select', function() {
                 var role = $(this).val();
-                console.log(role);
-                if (role == 'Sales') {
-                    $('#inputTarget').removeAttr('hidden');
+                var $modal = $(this).closest('.modal');
+                var $targetCard = $modal.find('[id^="inputTarget"]');
+                var $noticeNonSales = $modal.find('[id^="roleNoticeNonSales"]');
+
+                if (role === 'Sales') {
+                    $targetCard.stop(true, true).slideDown(280);
+                    $targetCard.find('input').prop('disabled', false);
+                    $noticeNonSales.stop(true, true).slideUp(180);
                 } else {
-                    $('#inputTarget').attr('hidden', true);
+                    $targetCard.stop(true, true).slideUp(220);
+                    $targetCard.find('input').prop('disabled', true);
+                    $noticeNonSales.find('.notice-role-name').text(role);
+                    $noticeNonSales.stop(true, true).slideDown(220);
                 }
+            });
+
+            // Initial sync on ready
+            $('.user-role-select').each(function() {
+                $(this).trigger('change');
             });
         });
         $(document).on('click', '.delete-user', function() {

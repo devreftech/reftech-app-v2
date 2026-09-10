@@ -43,7 +43,7 @@ try {
     LEFT JOIN pic p ON p.id = q.id_pic
     LEFT JOIN client c ON c.id = p.id_client
     INNER JOIN users u ON u.id = q.id_sales
-    WHERE q.status = '0' AND q.level = '1' AND q.is_primary = '1' $salesFilter $yearFilter
+    WHERE q.status = '0' AND q.level = '1' AND q.is_primary = '1' AND u.active = '1' $salesFilter $yearFilter
     AND NOT EXISTS (SELECT 1 FROM payment pay WHERE pay.id_quotation = q.id AND pay.method = 'Escrow')
     GROUP BY q.id
 
@@ -58,7 +58,7 @@ try {
     FROM unit_quotation uq
     LEFT JOIN client c2 ON c2.id = NULLIF(uq.id_client,'')
     INNER JOIN users u2 ON u2.id = uq.id_sales
-    WHERE uq.status IN ('loss','cancel') AND uq.is_latest = 1 $salesFilterU $yearFilterU
+    WHERE uq.status IN ('loss','cancel') AND uq.is_latest = 1 AND u2.active = '1' $salesFilterU $yearFilterU
     AND NOT EXISTS (SELECT 1 FROM payment pay2 WHERE pay2.id_unit_quotation = uq.id AND pay2.method = 'Escrow')
 
     ORDER BY estimated_date DESC";

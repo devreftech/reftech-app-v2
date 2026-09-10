@@ -114,6 +114,136 @@
 }
 
 /* -------------------------------------------------------------------------- */
+/* Sembunyikan / Tampilkan Kembali Bubble                                     */
+/* -------------------------------------------------------------------------- */
+
+/* Tombol kecil "x" untuk menyingkirkan bubble sementara (muncul saat hover) */
+.rf-chat-hide-btn {
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #5d596c;
+    border: 1px solid rgba(76, 78, 100, 0.16);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(76, 78, 100, 0.32);
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 0.18s ease, transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+    pointer-events: none;
+    z-index: 1000002 !important;
+}
+
+.rf-chat-widget-wrapper:hover .rf-chat-hide-btn,
+.rf-chat-hide-btn:focus-visible {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+.rf-chat-hide-btn:hover {
+    background: #ff4d49;
+    color: #ffffff;
+    border-color: #ff4d49;
+}
+
+.dark-style .rf-chat-hide-btn {
+    background: #2b2c40;
+    color: #cfcfe6;
+    border-color: #3e405b;
+}
+
+.dark-style .rf-chat-hide-btn:hover {
+    background: #ff4d49;
+    color: #ffffff;
+    border-color: #ff4d49;
+}
+
+/* Gagang di tepi layar untuk memunculkan kembali bubble yang disembunyikan */
+.rf-chat-restore-tab {
+    position: fixed !important;
+    right: 0 !important;
+    bottom: 96px !important;
+    z-index: 999998 !important;
+    width: 36px !important;
+    height: 52px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    outline: none !important;
+    border-radius: 14px 0 0 14px !important;
+    background: linear-gradient(135deg, #666cff 0%, #4f55d9 100%) !important;
+    color: #ffffff !important;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer !important;
+    box-shadow: -4px 4px 16px rgba(102, 108, 255, 0.42) !important;
+    transform: translateX(16px);
+    opacity: 0.9;
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease, width 0.22s ease;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.rf-chat-restore-tab > i {
+    font-size: 20px;
+    line-height: 1;
+    pointer-events: none;
+}
+
+.rf-chat-restore-tab:hover,
+.rf-chat-restore-tab:focus-visible,
+.rf-chat-restore-tab.has-unread {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.rf-chat-restore-tab.has-unread {
+    width: 42px !important;
+}
+
+/* Badge jumlah pesan pada gagang (memakai basis .rf-chat-badge) */
+.rf-chat-restore-badge {
+    top: -7px !important;
+    left: -9px !important;
+    right: auto !important;
+}
+
+/* Getaran ringan saat ada pesan masuk selagi bubble disembunyikan */
+.rf-chat-restore-tab.rf-tab-alert {
+    animation: rf-tab-shake 0.9s cubic-bezier(0.36, 0.07, 0.19, 0.97) 2;
+}
+
+@keyframes rf-tab-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(2px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(1px); }
+}
+
+/* Status "disembunyikan": bubble & jendela hilang, hanya gagang tepi tampil */
+#rfChatWidget.rf-chat-collapsed .rf-chat-bubble-btn,
+#rfChatWidget.rf-chat-collapsed .rf-chat-box,
+#rfChatWidget.rf-chat-collapsed .rf-chat-hide-btn {
+    display: none !important;
+}
+
+#rfChatWidget.rf-chat-collapsed .rf-chat-restore-tab {
+    display: flex !important;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Chat Window Box                                                            */
 /* -------------------------------------------------------------------------- */
 .rf-chat-box {
@@ -674,6 +804,8 @@
     .rf-chat-widget-wrapper,
     #rfChatWidget,
     .rf-chat-bubble-btn,
+    .rf-chat-hide-btn,
+    .rf-chat-restore-tab,
     #rfChatBox {
         display: none !important;
         visibility: hidden !important;
@@ -1071,6 +1203,14 @@
 
 <div class="rf-chat-widget-wrapper" id="rfChatWidget">
 
+    <!-- TOMBOL SEMBUNYIKAN BUBBLE (muncul saat kursor di atas bubble / long-press pada perangkat sentuh) -->
+    <button type="button" class="rf-chat-hide-btn" id="rfChatHideBtn"
+            title="Sembunyikan bubble chat sementara"
+            aria-label="Sembunyikan bubble chat sementara"
+            onclick="hideChatBubble(event)">
+        <i class="mdi mdi-close"></i>
+    </button>
+
     <!-- FLOATING BUBBLE BUTTON -->
     <button type="button" class="rf-chat-bubble-btn" id="rfChatToggleBtn" title="Buka Chat Internal Reftech" onclick="toggleChatBox(event)">
         <span class="rf-btn-icon-inner" id="rfChatBtnInner">
@@ -1103,7 +1243,10 @@
                     <button type="button" class="rf-chat-header-btn" id="rfMuteToggleBtn" title="Suara Notifikasi: Aktif" onclick="toggleSoundEffect()">
                         <i class="mdi mdi-volume-high" id="rfMuteIcon"></i>
                     </button>
-                    <button type="button" class="rf-chat-header-btn" id="rfCloseChatBtn" title="Tutup">
+                    <button type="button" class="rf-chat-header-btn" id="rfHideBubbleBtn" title="Sembunyikan bubble chat sementara" onclick="hideChatBubble(event)">
+                        <i class="mdi mdi-eye-off-outline"></i>
+                    </button>
+                    <button type="button" class="rf-chat-header-btn" id="rfCloseChatBtn" title="Tutup" onclick="toggleChatBox(event)">
                         <i class="mdi mdi-close"></i>
                     </button>
                 </div>
@@ -1253,6 +1396,15 @@
         </div>
 
     </div>
+
+    <!-- GAGANG TEPI: klik untuk memunculkan kembali bubble yang disembunyikan -->
+    <button type="button" class="rf-chat-restore-tab" id="rfChatRestoreTab"
+            title="Tampilkan kembali bubble chat"
+            aria-label="Tampilkan kembali bubble chat"
+            onclick="showChatBubble(event)">
+        <i class="mdi mdi-forum-outline"></i>
+        <span class="rf-chat-badge rf-chat-restore-badge" id="rfRestoreTabBadge">0</span>
+    </button>
 </div>
 
 <script>
@@ -1279,6 +1431,21 @@ var activeContextMenuMsgId = null;
 var typingDebounceTimer = null;
 var isViewerDeveloper = false;
 var lastToggleTime = 0;
+
+/* -------------------------------------------------------------------------- */
+/* Status "sembunyikan bubble" — dipertahankan antar halaman via localStorage */
+/* -------------------------------------------------------------------------- */
+var RF_CHAT_HIDDEN_KEY = 'rfChatBubbleHidden';
+var isBubbleHidden = false;
+var currentUnreadTotal = 0;
+try {
+    isBubbleHidden = (localStorage.getItem(RF_CHAT_HIDDEN_KEY) === '1');
+} catch (e) {}
+
+if (isBubbleHidden) {
+    var _rfChatWidgetEl = document.getElementById('rfChatWidget');
+    if (_rfChatWidgetEl) _rfChatWidgetEl.classList.add('rf-chat-collapsed');
+}
 
 /* Emoji List */
 var emojiList = [
@@ -1461,6 +1628,35 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Long-press pada bubble (perangkat sentuh) untuk menyembunyikannya sementara
+    var bubbleBtnEl = document.getElementById('rfChatToggleBtn');
+    if (bubbleBtnEl) {
+        var lpTimer = null;
+        var lpFired = false;
+        bubbleBtnEl.addEventListener('touchstart', function() {
+            lpFired = false;
+            if (lpTimer) clearTimeout(lpTimer);
+            lpTimer = setTimeout(function() {
+                lpFired = true;
+                if (navigator.vibrate) { try { navigator.vibrate(25); } catch (e) {} }
+                hideChatBubble();
+            }, 600);
+        }, { passive: true });
+        ['touchend', 'touchmove', 'touchcancel'].forEach(function(ev) {
+            bubbleBtnEl.addEventListener(ev, function() {
+                if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; }
+            }, { passive: true });
+        });
+        // Cegah toggle terbuka bila long-press sudah memicu "sembunyikan"
+        bubbleBtnEl.addEventListener('click', function(e) {
+            if (lpFired) {
+                e.preventDefault();
+                e.stopPropagation();
+                lpFired = false;
+            }
+        }, true);
+    }
+
     // Initial Unread Count check
     checkInitialUnreadCount();
 
@@ -1518,6 +1714,52 @@ function toggleChatBox(e) {
         togglePickerPopover(false);
         closeMsgContextMenu();
     }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Sembunyikan / Tampilkan Kembali Bubble (notifikasi tetap berjalan)         */
+/* -------------------------------------------------------------------------- */
+function hideChatBubble(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+
+    // Tutup dulu jendela chat bila sedang terbuka
+    if (isChatOpen) {
+        var box = document.getElementById('rfChatBox');
+        var iconInner = document.getElementById('rfChatBtnInner');
+        isChatOpen = false;
+        if (box) {
+            box.classList.remove('active');
+            box.classList.remove('rf-open');
+            box.style.setProperty('display', 'none', 'important');
+        }
+        if (iconInner) iconInner.innerHTML = svgChatIcon;
+        togglePickerPopover(false);
+        closeMsgContextMenu();
+    }
+
+    isBubbleHidden = true;
+    try { localStorage.setItem(RF_CHAT_HIDDEN_KEY, '1'); } catch (err) {}
+
+    var widget = document.getElementById('rfChatWidget');
+    if (widget) widget.classList.add('rf-chat-collapsed');
+
+    // Segarkan indikator jumlah pesan pada gagang tepi
+    updateTotalUnreadBadge(currentUnreadTotal);
+}
+
+function showChatBubble(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+
+    isBubbleHidden = false;
+    try { localStorage.setItem(RF_CHAT_HIDDEN_KEY, '0'); } catch (err) {}
+
+    var widget = document.getElementById('rfChatWidget');
+    if (widget) widget.classList.remove('rf-chat-collapsed');
+
+    var tab = document.getElementById('rfChatRestoreTab');
+    if (tab) tab.classList.remove('rf-tab-alert');
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2490,14 +2732,39 @@ function checkInitialUnreadCount() {
 }
 
 function updateTotalUnreadBadge(count) {
-    var badge = document.getElementById('rfUnreadBadge');
-    if (!badge) return;
+    var prev = currentUnreadTotal;
+    currentUnreadTotal = count || 0;
+    var display = currentUnreadTotal > 99 ? '99+' : currentUnreadTotal;
 
-    if (count > 0) {
-        badge.innerText = count > 99 ? '99+' : count;
-        badge.style.display = 'flex';
-    } else {
-        badge.style.display = 'none';
+    var badge = document.getElementById('rfUnreadBadge');
+    if (badge) {
+        if (currentUnreadTotal > 0) {
+            badge.innerText = display;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    // Cermin indikator ke gagang tepi saat bubble sedang disembunyikan
+    var tab = document.getElementById('rfChatRestoreTab');
+    var tabBadge = document.getElementById('rfRestoreTabBadge');
+    if (tab && tabBadge) {
+        if (currentUnreadTotal > 0) {
+            tabBadge.innerText = display;
+            tabBadge.style.display = 'flex';
+            tab.classList.add('has-unread');
+            // Getarkan gagang bila ada pesan masuk baru & bubble sedang disembunyikan
+            if (isBubbleHidden && currentUnreadTotal > prev) {
+                tab.classList.remove('rf-tab-alert');
+                void tab.offsetWidth; // paksa reflow agar animasi bisa diputar ulang
+                tab.classList.add('rf-tab-alert');
+            }
+        } else {
+            tabBadge.style.display = 'none';
+            tab.classList.remove('has-unread');
+            tab.classList.remove('rf-tab-alert');
+        }
     }
 }
 
@@ -2532,6 +2799,8 @@ window.clearSelectedAttachment = clearSelectedAttachment;
 window.handleFileSelected = handleFileSelected;
 window.toggleSoundEffect = toggleSoundEffect;
 window.filterChatPresence = filterChatPresence;
+window.hideChatBubble = hideChatBubble;
+window.showChatBubble = showChatBubble;
 
 function escapeHtml(string) {
     if (!string) return '';

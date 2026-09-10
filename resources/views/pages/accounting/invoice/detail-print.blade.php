@@ -1485,7 +1485,7 @@
                         @elseif ($quote->pic->client->info == 'Reftech' && $invoice->quote->tax > 0)
                             <div class="col">
                                 <p class="mb-1">: Bank BCA (IDR)</p>
-                                <p class="mb-1">: PT. REFTECH JAYA OPTIMA</p>
+                                <p class="mb-1">: PT REFTECH JAYA OPTIMA</p>
                                 <p class="mb-1">: 008 - 6289 - 789</p>
                                 <p class="mb-1">: CENAIDJA</p>
                             </div>

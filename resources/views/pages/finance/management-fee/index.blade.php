@@ -355,8 +355,20 @@
                                     </td>
 
                                     {{-- Gross Fee --}}
-                                    <td class="text-end text-danger fw-bold">
-                                        Rp {{ number_format($item->fee, 0, ',', '.') }}
+                                    <td class="text-end">
+                                        <div class="text-danger fw-bold">
+                                            Rp {{ number_format($item->fee, 0, ',', '.') }}
+                                        </div>
+                                        @php
+                                            $itemFeePct = $preTax > 0 ? round(($item->fee / $preTax) * 100, 1) : 0;
+                                        @endphp
+                                        @if ($itemFeePct > 10)
+                                            <span class="badge bg-label-warning text-warning border border-warning px-1.5 py-0.5 fw-bold d-inline-block mt-0.5" style="font-size: 9px;" title="Fee khusus melebihi standar 10% dari nilai penawaran">
+                                                <i class="mdi mdi-alert-circle-outline me-0.5"></i>Fee {{ $itemFeePct }}% (&gt;10%)
+                                            </span>
+                                        @else
+                                            <div class="text-muted small" style="font-size: 9.5px;">{{ $itemFeePct }}% dari quote</div>
+                                        @endif
                                     </td>
 
                                     {{-- Pajak Fee 2026 --}}
@@ -441,6 +453,7 @@
                                                     data-sales="{{ $item->sales?->name ?? '-' }}"
                                                     data-pretax="Rp {{ number_format($preTax, 0, ',', '.') }}"
                                                     data-gross="Rp {{ number_format($item->fee, 0, ',', '.') }}"
+                                                    data-fee-pct="{{ $itemFeePct }}"
                                                     data-tax-label="{{ $taxData->tax_rate_label }}"
                                                     data-tax-amount-num="{{ $taxData->tax_amount }}"
                                                     data-tax-amount-formatted="Rp {{ number_format($taxData->tax_amount, 0, ',', '.') }}"
@@ -848,6 +861,7 @@
                             <div class="col-sm-3 col-6">
                                 <span class="text-muted small d-block" style="font-size: 10px;">Gross Fee (Diputuskan)</span>
                                 <span class="fw-bold text-danger" id="modal-d-gross" style="font-size: 12.5px;">-</span>
+                                <div id="modal-d-fee-warning" class="mt-0.5"></div>
                             </div>
                             <div class="col-sm-3 col-6">
                                 <span class="text-muted small d-block" style="font-size: 10px;" id="modal-d-tax-label">Pajak Fee (2026)</span>
@@ -1750,6 +1764,14 @@
             $('#modal-disburse-quote-title').text('#' + btn.data('no-quote') + ' — ' + btn.data('client') + ' (Sales: ' + btn.data('sales') + ')');
             $('#modal-d-pretax').text(btn.data('pretax'));
             $('#modal-d-gross').text(btn.data('gross'));
+            
+            var feePct = parseFloat(btn.data('fee-pct') || 0);
+            if (feePct > 10) {
+                $('#modal-d-fee-warning').html('<span class="badge bg-label-warning text-warning border border-warning px-1.5 py-0.5 fw-bold" style="font-size: 9.5px;"><i class="mdi mdi-alert-circle-outline me-0.5"></i>Fee Khusus ' + feePct + '% (&gt;10%)</span>');
+            } else {
+                $('#modal-d-fee-warning').html('<span class="text-muted small" style="font-size: 9.5px;">' + feePct + '% dari quote</span>');
+            }
+            
             $('#modal-d-tax-label').text('Pajak Fee (' + (btn.data('tax-label') || '0%') + ')');
             
             var taxAmountNum = parseFloat(btn.data('tax-amount-num') || 0);

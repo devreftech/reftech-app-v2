@@ -1,17 +1,12 @@
 $(function () {
     var dt_table_request_contract = $(".datatable-request-contract");
 
-    function buildRequestUrl() {
-        var year = $('#filter-year-request').val() || 'all';
-        return '/db/request-contract?year=' + year;
-    }
-
     if (dt_table_request_contract.length) {
         $('[data-toggle="tooltip"]').tooltip();
         dt_table_request_contract.DataTable({
             ajax: {
                 type: "GET",
-                url: buildRequestUrl(),
+                url: "/db/request-contract",
                 headers: { "Content-Type": "application/json" },
             },
             columns: [
@@ -19,6 +14,7 @@ $(function () {
                 { data: "id" },
                 { data: "no_contract" },
                 { data: "company" },
+                { data: "ppn" },
                 { data: "harga_total" },
                 { data: "date" },
                 { data: "name" },
@@ -42,18 +38,65 @@ $(function () {
                     responsivePriority: 1,
                     render: function (data, type, full) {
                         if (type === "display") {
-                            var url = route("contract.show", full["id"]);
-                            return '<a class="text-primary fw-semibold" href="' + url + '">' + data + '</a>';
+                            return '<a href="javascript:void(0)" class="text-primary fw-semibold cursor-pointer" data-bs-toggle="modal" data-bs-target="#acceptContract' + full["id"] + '" title="Klik untuk Approve">' + data + '</a>';
                         }
                         return data;
                     },
                 },
                 {
                     targets: 4,
-                    render: $.fn.dataTable.render.number(".", "", 0, "Rp."),
+                    className: "text-center",
+                    render: function (data, type) {
+                        if (type !== "display") return data;
+                        return Number(data) === 1
+                            ? '<span class="badge bg-label-primary">PPN</span>'
+                            : '<span class="badge bg-label-danger">Non-PPN</span>';
+                    },
+                },
+                {
+                    targets: 5,
+                    render: function (data, type) {
+                        if (type !== "display") return data;
+                        var formatted = (parseInt(data) || 0).toLocaleString("id-ID");
+                        return '<div class="d-flex justify-content-between px-2"><span>Rp.</span><span>' + formatted + "</span></div>";
+                    },
+                },
+                {
+                    targets: 6,
+                    className: "text-center",
+                    render: function (data, type) {
+                        if (!data) return "-";
+                        if (type === "display" || type === "filter") {
+                            return (typeof moment !== "undefined" && moment(data).isValid())
+                                ? moment(data).format("DD-MM-YYYY")
+                                : data;
+                        }
+                        return data;
+                    },
+                },
+                {
+                    targets: 7,
+                    className: "text-center",
+                    orderable: false,
+                    searchable: true,
+                    render: function (data, type, full) {
+                        if (type !== "display") return data || "";
+                        var name = data || "-";
+                        var img = full.image;
+                        var initials = name.split(" ").map(function (w) { return w.charAt(0); }).slice(0, 2).join("").toUpperCase();
+                        var colors = ["bg-label-primary","bg-label-success","bg-label-warning","bg-label-danger","bg-label-info","bg-label-secondary"];
+                        var colorClass = colors[name.charCodeAt(0) % colors.length];
+                        var av = img
+                            ? '<img src="/' + img + '" class="rounded-circle shadow-xs" style="width:32px;height:32px;object-fit:cover;" alt="' + name + '">'
+                            : '<div class="avatar-initial rounded-circle ' + colorClass + '" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;font-size:11px;font-weight:700;">' + initials + '</div>';
+                        return '<span data-toggle="tooltip" data-bs-toggle="tooltip" data-bs-placement="top" title="' + name + '">' + av + '</span>';
+                    },
                 },
             ],
-            drawCallback: function () { $('[data-toggle="tooltip"]').tooltip(); },
+            drawCallback: function () {
+                $('[data-toggle="tooltip"]').tooltip();
+                $('[data-bs-toggle="tooltip"]').tooltip();
+            },
             order: [[1, "desc"]],
             displayLength: 7,
             lengthMenu: [7, 10, 25, 50, 75, 100],
@@ -78,10 +121,4 @@ $(function () {
             },
         });
     }
-
-    $('#filter-year-request').on('change', function () {
-        if (dt_table_request_contract.length) {
-            dt_table_request_contract.DataTable().ajax.url(buildRequestUrl()).load();
-        }
-    });
 });

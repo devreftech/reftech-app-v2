@@ -6,9 +6,12 @@
         <h4 class="fw-bold mb-0">
             <span class="text-muted fw-light">Service Department / Project Reports /</span> Detail Report
         </h4>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
             <a href="{{ route('service-reports.index', ['tab' => 'project']) }}" class="btn btn-outline-secondary">
                 <i class="mdi mdi-arrow-left me-1"></i> Kembali
+            </a>
+            <a href="{{ $report->sign_url }}" target="_blank" class="btn btn-label-primary">
+                <i class="mdi mdi-draw-pen me-1"></i> Sign Portal
             </a>
             <a href="{{ route('project-reports.print', $report->id) }}" target="_blank" class="btn btn-label-secondary">
                 <i class="mdi mdi-printer me-1"></i> Cetak / Print PDF
@@ -323,6 +326,106 @@
         </div>
     </div>
 
+    {{-- DIGITAL SIGNATURE PORTAL CARD --}}
+    <div class="card mb-4 border-top border-3 {{ $report->isSignedByCustomer() ? 'border-success' : 'border-primary' }} shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2 py-3">
+            <div class="d-flex align-items-center gap-2">
+                <i class="mdi mdi-draw-pen fs-4 text-primary"></i>
+                <div>
+                    <h6 class="card-title mb-0 fw-bold text-dark">Portal Tanda Tangan Digital Client (Sign Online)</h6>
+                    <small class="text-muted">Kirimkan tautan pengesahan digital ke client tanpa perlu login</small>
+                </div>
+            </div>
+            <div>
+                @if ($report->isSignedByCustomer())
+                    <span class="badge bg-success px-3 py-2">
+                        <i class="mdi mdi-check-decagram me-1"></i> Sudah Ditandatangani
+                    </span>
+                @else
+                    <span class="badge bg-warning px-3 py-2 text-dark">
+                        <i class="mdi mdi-clock-outline me-1"></i> Menunggu TTD Client
+                    </span>
+                @endif
+            </div>
+        </div>
+        <div class="card-body pt-3">
+            @if ($report->isSignedByCustomer())
+                <div class="row align-items-center g-3">
+                    <div class="col-md-8">
+                        <div class="p-3 bg-light rounded border border-success border-opacity-25">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="mdi mdi-account-check text-success fs-4"></i>
+                                <div>
+                                    <h6 class="mb-0 fw-bold text-dark">{{ $report->customer_signer_name }}</h6>
+                                    <small class="text-muted">{{ $report->customer_signer_position ?: 'PIC / Penanggung Jawab Client' }}</small>
+                                </div>
+                            </div>
+                            <div class="small text-muted mb-1">
+                                <i class="mdi mdi-calendar-clock me-1 text-primary"></i>
+                                Ditandatangani pada: <strong>{{ \Carbon\Carbon::parse($report->customer_signed_at)->format('d F Y, H:i') }} WIB</strong>
+                                @if ($report->customer_ip)
+                                    &bull; <span>IP: {{ $report->customer_ip }}</span>
+                                @endif
+                            </div>
+                            <div class="small text-muted">
+                                <i class="mdi mdi-shield-check me-1 text-success"></i>
+                                Tanda tangan sah tersimpan di server.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex flex-column gap-2">
+                            <a href="{{ $report->sign_url }}" target="_blank" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="mdi mdi-open-in-new me-1"></i> Buka Halaman TTD
+                            </a>
+                            <form action="{{ route('project-reports.reset-signature', $report->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mereset tanda tangan client pada Daily Report ini? Client akan dapat menandatangani ulang.');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+                                    <i class="mdi mdi-refresh me-1"></i> Reset / Hapus TTD Client
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            @else
+                @php
+                    $clientPhone = preg_replace('/[^0-9]/', '', ($report->client?->mobile ?: $report->client?->phone ?: ''));
+                    if (str_starts_with($clientPhone, '0')) {
+                        $clientPhone = '62' . substr($clientPhone, 1);
+                    }
+                    $clientPicName = $report->client_pic_name ?: 'Bapak/Ibu';
+                    $clientComp = $report->client?->company ?: 'Client';
+                    $waMessage = rawurlencode("Halo Bapak/Ibu " . $clientPicName . " (" . $clientComp . "),\n\nBerikut kami lampirkan tautan Daily Project Report (" . $report->job_name . " - " . ($report->report_number ?: 'Draft') . ") dari PT Reftech Jaya Optima.\nSilakan periksa rincian laporan dan bubuhi tanda tangan digital melalui tautan berikut:\n" . $report->sign_url . "\n\nTerima kasih.");
+                    $waLink = "https://wa.me/" . ($clientPhone ?: '') . "?text=" . $waMessage;
+                @endphp
+
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-7">
+                        <label class="form-label fw-semibold text-dark small mb-1">Tautan Tanda Tangan Digital (Kirim ke Client):</label>
+                        <div class="input-group input-group-merge">
+                            <input type="text" class="form-control form-control-sm" id="report-sign-url" value="{{ $report->sign_url }}" readonly>
+                            <button class="btn btn-sm btn-primary" type="button" id="btn-copy-sign-url" title="Salin Tautan">
+                                <i class="mdi mdi-content-copy me-1"></i> Salin Link
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold text-dark small mb-1 d-none d-md-block">&nbsp;</label>
+                        <div class="d-flex gap-2">
+                            <a href="{{ $waLink }}" target="_blank" class="btn btn-sm btn-success text-white w-100 d-flex align-items-center justify-content-center gap-1">
+                                <i class="mdi mdi-whatsapp fs-5"></i> Kirim WhatsApp
+                            </a>
+                            <a href="{{ $report->sign_url }}" target="_blank" class="btn btn-sm btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-1">
+                                <i class="mdi mdi-open-in-new"></i> Buka Portal
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
+    </div>
+
     {{-- PENGESAHAN / TANDA TANGAN --}}
     <div class="card mb-4 shadow-sm border-top border-info border-3">
         <div class="card-header bg-light-info py-2">
@@ -337,17 +440,26 @@
                             <h6 class="fw-bold mb-1">PEMBERI TUGAS</h6>
                             <small class="text-muted">{{ $report->client ? $report->client->company : 'Client / Owner' }}</small>
                         </div>
-                        <div class="my-3 py-2">
-                            @if ($report->client_sign)
-                                <img src="{{ Storage::disk('public')->url($report->client_sign) }}" alt="Sign Client"
+                        <div class="my-3 py-2" style="position: relative; min-height: 90px; display: flex; align-items: center; justify-content: center;">
+                            @if ($report->customer_signature)
+                                <div style="position: relative; display: inline-block;">
+                                    <img src="{{ asset($report->customer_signature) }}" alt="Sign Client"
+                                        style="max-height: 90px;" class="border rounded p-1 bg-white" />
+                                    @if ($report->customer_signed_stamp)
+                                        <img src="{{ asset($report->customer_signed_stamp) }}" alt="Stamp Client"
+                                            style="position: absolute; top: -10px; right: -25px; max-height: 60px; opacity: 0.85; pointer-events: none;" />
+                                    @endif
+                                </div>
+                            @elseif ($report->client_sign)
+                                <img src="{{ Storage::disk('public')->exists($report->client_sign) ? Storage::disk('public')->url($report->client_sign) : asset($report->client_sign) }}" alt="Sign Client"
                                     style="max-height: 90px;" class="border rounded p-1 bg-white" />
                             @else
                                 <div class="text-muted fst-italic py-3">( Belum ditandatangani )</div>
                             @endif
                         </div>
                         <div>
-                            <strong class="d-block text-decoration-underline">{{ $report->client_pic_name ?: '________________________' }}</strong>
-                            <small class="text-muted">Penanggung Jawab / PIC</small>
+                            <strong class="d-block text-decoration-underline">{{ $report->customer_signer_name ?: ($report->client_pic_name ?: '________________________') }}</strong>
+                            <small class="text-muted">{{ $report->customer_signer_position ?: 'Penanggung Jawab / PIC' }}</small>
                         </div>
                     </div>
                 </div>
@@ -359,9 +471,9 @@
                             <h6 class="fw-bold mb-1">KONTRAKTOR PELAKSANA</h6>
                             <small class="text-primary fw-bold">{{ $report->contractor_name }}</small>
                         </div>
-                        <div class="my-3 py-2">
+                        <div class="my-3 py-2" style="min-height: 90px; display: flex; align-items: center; justify-content: center;">
                             @if ($report->contractor_sign)
-                                <img src="{{ Storage::disk('public')->url($report->contractor_sign) }}" alt="Sign Contractor"
+                                <img src="{{ Storage::disk('public')->exists($report->contractor_sign) ? Storage::disk('public')->url($report->contractor_sign) : asset($report->contractor_sign) }}" alt="Sign Contractor"
                                     style="max-height: 90px;" class="border rounded p-1 bg-white" />
                             @else
                                 <div class="text-muted fst-italic py-3">( Belum ditandatangani )</div>
@@ -442,3 +554,34 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var btnCopy = document.getElementById('btn-copy-sign-url');
+        if (btnCopy) {
+            btnCopy.addEventListener('click', function () {
+                var inputUrl = document.getElementById('report-sign-url');
+                if (inputUrl) {
+                    inputUrl.select();
+                    inputUrl.setSelectionRange(0, 99999);
+                    navigator.clipboard.writeText(inputUrl.value).then(function () {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Tautan Disalin!',
+                                text: 'Link tanda tangan online berhasil disalin ke clipboard.',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            alert('Link tanda tangan online berhasil disalin ke clipboard.');
+                        }
+                    });
+                }
+            });
+        }
+    });
+</script>
+@endpush
+

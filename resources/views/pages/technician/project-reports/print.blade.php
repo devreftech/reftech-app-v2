@@ -371,6 +371,9 @@
         </div>
         <div>
             <a href="{{ route('project-reports.show', $report->id) }}" class="btn-back">&larr; Kembali ke Detail</a>
+            <a href="{{ $report->sign_url }}" target="_blank" class="btn-print" style="margin-left: 8px; background: #4f46e5; text-decoration: none; display: inline-block;">
+                <i class="mdi mdi-draw-pen"></i> Tanda Tangan Online
+            </a>
             <button onclick="window.print()" class="btn-print" style="margin-left: 8px;">
                 <i class="mdi mdi-printer"></i> Cetak Dokumen / PDF
             </button>
@@ -637,11 +640,26 @@
             <tr>
                 <td style="padding-right: 4px;">
                     <div class="sign-box">
-                        <div class="sign-title">Pemberi Tugas</div>
-                        @if ($report->client_sign)
-                            <img src="{{ Storage::disk('public')->url($report->client_sign) }}" class="sign-img" alt="Sign Client" />
-                        @endif
-                        <div class="sign-name">{{ $report->client_pic_name ?: '                                        ' }}</div>
+                        <div>
+                            <div class="sign-title">Pemberi Tugas</div>
+                            <div style="font-size: 8pt; color: #555;">{{ $report->client ? $report->client->company : 'Client / Owner' }}</div>
+                        </div>
+                        <div style="position: relative; min-height: 55px; display: flex; align-items: center; justify-content: center;">
+                            @if ($report->customer_signature)
+                                <img src="{{ asset($report->customer_signature) }}" class="sign-img" alt="Sign Client" />
+                                @if ($report->customer_signed_stamp)
+                                    <img src="{{ asset($report->customer_signed_stamp) }}" alt="Stamp Client" style="position: absolute; right: 10px; top: 0; max-height: 50px; opacity: 0.85; pointer-events: none;" />
+                                @endif
+                            @elseif ($report->client_sign)
+                                <img src="{{ Storage::disk('public')->exists($report->client_sign) ? Storage::disk('public')->url($report->client_sign) : asset($report->client_sign) }}" class="sign-img" alt="Sign Client" />
+                            @endif
+                        </div>
+                        <div class="sign-name">
+                            {{ $report->customer_signer_name ?: ($report->client_pic_name ?: '                                        ') }}
+                            @if ($report->customer_signer_position)
+                                <span style="font-weight: normal; font-size: 7.5pt; text-decoration: none; display: block; color: #555;">({{ $report->customer_signer_position }})</span>
+                            @endif
+                        </div>
                     </div>
                 </td>
                 <td style="padding-left: 4px;">
@@ -650,9 +668,11 @@
                             <div class="sign-title">Kontraktor Pelaksana</div>
                             <div style="font-size: 8pt; font-weight: bold;">{{ $report->contractor_name }}</div>
                         </div>
-                        @if ($report->contractor_sign)
-                            <img src="{{ Storage::disk('public')->url($report->contractor_sign) }}" class="sign-img" alt="Sign Contractor" />
-                        @endif
+                        <div style="min-height: 55px; display: flex; align-items: center; justify-content: center;">
+                            @if ($report->contractor_sign)
+                                <img src="{{ Storage::disk('public')->exists($report->contractor_sign) ? Storage::disk('public')->url($report->contractor_sign) : asset($report->contractor_sign) }}" class="sign-img" alt="Sign Contractor" />
+                            @endif
+                        </div>
                         <div class="sign-name">{{ $report->contractor_pic_name ?: ($report->creator ? $report->creator->name : '                                        ') }}</div>
                     </div>
                 </td>

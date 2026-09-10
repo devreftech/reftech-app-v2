@@ -35,13 +35,16 @@ class BastController extends Controller
         $this->guard();
 
         $request->validate([
-            'id_kanban_task' => 'nullable|exists:kanban_tasks,id',
-            'id_quotation' => 'nullable|exists:quotation,id',
+            'id_kanban_task' => 'nullable|integer',
+            'id_quotation' => 'nullable|integer',
+            'type' => 'nullable|in:Default,Rental',
             'entity' => 'required|in:Reftech,Kojisha',
             'customer_name' => 'required|string|max:255',
             'work_title' => 'required|string|max:255',
             'po_number' => 'nullable|string|max:255',
-            'work_date' => 'required|date',
+            'work_date' => 'nullable|date',
+            'rental_start_date' => 'nullable|date',
+            'rental_end_date' => 'nullable|date',
             'test_running_result' => 'nullable|string',
             'units' => 'nullable|array',
             'units.*.unit_name' => 'required_with:units|string|max:255',
@@ -50,15 +53,19 @@ class BastController extends Controller
         ]);
 
         $bast = DB::transaction(function () use ($request) {
+            $entity = $request->input('entity', 'Reftech') ?: 'Reftech';
             $bast = Bast::create([
-                'no_bast' => $this->generateNoBast(),
-                'id_kanban_task' => $request->id_kanban_task,
-                'id_quotation' => $request->id_quotation,
-                'entity' => $request->entity,
+                'no_bast' => $this->generateNoBast($entity),
+                'type' => $request->input('type', 'Default') ?: 'Default',
+                'id_kanban_task' => $request->id_kanban_task ?: null,
+                'id_quotation' => $request->id_quotation ?: null,
+                'entity' => $entity,
                 'customer_name' => $request->customer_name,
                 'work_title' => $request->work_title,
                 'po_number' => $request->po_number,
-                'work_date' => $request->work_date,
+                'work_date' => $request->work_date ?: null,
+                'rental_start_date' => $request->input('type') === 'Rental' ? ($request->rental_start_date ?: null) : null,
+                'rental_end_date' => $request->input('type') === 'Rental' ? ($request->rental_end_date ?: null) : null,
                 'test_running_result' => $request->test_running_result,
                 'created_by' => Auth::id(),
             ]);
@@ -86,6 +93,7 @@ class BastController extends Controller
                 'bast' => [
                     'id' => $bast->id,
                     'no_bast' => $bast->no_bast,
+                    'type' => $bast->type,
                     'show_link' => route('bast.show', $bast->id),
                     'print_link' => route('bast.print', $bast->id),
                 ],
@@ -106,11 +114,14 @@ class BastController extends Controller
             'bast' => [
                 'id' => $bast->id,
                 'no_bast' => $bast->no_bast,
+                'type' => $bast->type ?? 'Default',
                 'entity' => $bast->entity,
                 'customer_name' => $bast->customer_name,
                 'work_title' => $bast->work_title,
                 'po_number' => $bast->po_number,
-                'work_date' => $bast->work_date->format('Y-m-d'),
+                'work_date' => $bast->work_date ? $bast->work_date->format('Y-m-d') : null,
+                'rental_start_date' => $bast->rental_start_date ? $bast->rental_start_date->format('Y-m-d') : null,
+                'rental_end_date' => $bast->rental_end_date ? $bast->rental_end_date->format('Y-m-d') : null,
                 'test_running_result' => $bast->test_running_result,
                 'units' => $bast->units->map(function ($u) {
                     return [
@@ -130,11 +141,14 @@ class BastController extends Controller
         $bast = Bast::findOrFail($id);
 
         $request->validate([
+            'type' => 'nullable|in:Default,Rental',
             'entity' => 'required|in:Reftech,Kojisha',
             'customer_name' => 'required|string|max:255',
             'work_title' => 'required|string|max:255',
             'po_number' => 'nullable|string|max:255',
-            'work_date' => 'required|date',
+            'work_date' => 'nullable|date',
+            'rental_start_date' => 'nullable|date',
+            'rental_end_date' => 'nullable|date',
             'test_running_result' => 'nullable|string',
             'units' => 'nullable|array',
             'units.*.unit_name' => 'required_with:units|string|max:255',
@@ -143,12 +157,16 @@ class BastController extends Controller
         ]);
 
         DB::transaction(function () use ($request, $bast) {
+            $bastType = $request->input('type', $bast->type ?: 'Default');
             $bast->update([
+                'type' => $bastType,
                 'entity' => $request->entity,
                 'customer_name' => $request->customer_name,
                 'work_title' => $request->work_title,
                 'po_number' => $request->po_number,
-                'work_date' => $request->work_date,
+                'work_date' => $request->work_date ?: null,
+                'rental_start_date' => $bastType === 'Rental' ? ($request->rental_start_date ?: null) : null,
+                'rental_end_date' => $bastType === 'Rental' ? ($request->rental_end_date ?: null) : null,
                 'test_running_result' => $request->test_running_result,
             ]);
 
@@ -209,10 +227,52 @@ class BastController extends Controller
         return view('pages.accounting.bast.print', compact('bast'));
     }
 
-    private function generateNoBast(): string
+    public function handSign(Request $request, $id)
+    {
+        $this->guard();
+
+        $bast = Bast::findOrFail($id);
+        if ($bast->entity === 'Kojisha') {
+            $bast->sign = 'asset/sign/kojisha-nm.jpeg';
+        } else {
+            $bast->sign = 'asset/sign/reftech-nm.jpeg';
+        }
+        $bast->save();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Hand sign berhasil ditambahkan pada BAST.',
+                'sign' => asset($bast->sign),
+            ]);
+        }
+
+        return back()->with('success', 'Hand sign berhasil ditambahkan.');
+    }
+
+    public function deleteHandSign(Request $request, $id)
+    {
+        $this->guard();
+
+        $bast = Bast::findOrFail($id);
+        $bast->sign = null;
+        $bast->save();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Hand sign berhasil dihapus dari BAST.',
+            ]);
+        }
+
+        return back()->with('success', 'Hand sign berhasil dihapus.');
+    }
+
+    private function generateNoBast(string $entity = 'Reftech'): string
     {
         $year = now()->year;
-        $last = Bast::where('no_bast', 'like', '%/BAST/RJO/' . $year)
+        $code = ($entity === 'Kojisha') ? 'KII' : 'RJO';
+        $last = Bast::where('no_bast', 'like', '%/BAST/' . $code . '/' . $year)
             ->orderByDesc('id')
             ->first();
 
@@ -221,6 +281,6 @@ class BastController extends Controller
             $seq = (int) $m[1] + 1;
         }
 
-        return str_pad($seq, 3, '0', STR_PAD_LEFT) . '/BAST/RJO/' . $year;
+        return str_pad($seq, 3, '0', STR_PAD_LEFT) . '/BAST/' . $code . '/' . $year;
     }
 }

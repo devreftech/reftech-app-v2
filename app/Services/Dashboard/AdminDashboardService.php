@@ -313,7 +313,7 @@ class AdminDashboardService
 
         // Admin bisa berpindah antar dashboard divisi lewat dropdown menu
         $adminView = request()->query('view', 'sales');
-        if (!in_array($adminView, ['sales', 'salesmanager', 'accounting', 'finance', 'logistic', 'workshop'], true)) {
+        if (!in_array($adminView, ['sales', 'salesmanager', 'accounting', 'finance', 'logistic', 'workshop', 'projectmanager'], true)) {
             $adminView = 'sales';
         }
 
@@ -323,6 +323,7 @@ class AdminDashboardService
             'finance' => (new FinanceDashboardService())->getFinanceDashboardData(),
             'logistic' => (new LogisticDashboardService())->getLogisticDashboardData(),
             'workshop' => (new WorkshopDashboardService())->getWorkshopDashboardData(),
+            'projectmanager' => (new ProjectManagerDashboardService())->getProjectManagerDashboardData(),
             default => [],
         };
 
