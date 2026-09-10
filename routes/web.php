@@ -189,6 +189,11 @@ Route::get('/project-report/sign/{token}', [\App\Http\Controllers\ProjectReportS
 Route::post('/project-report/sign/{token}', [\App\Http\Controllers\ProjectReportSignController::class, 'sign'])->name('project-reports.customer.sign.submit');
 Route::post('/project-report/sign/{token}/reset', [\App\Http\Controllers\ProjectReportSignController::class, 'customerReset'])->name('project-reports.customer.sign.reset');
 
+// Public Customer Delivery Order / Surat Jalan Sign Portal (No Login Required)
+Route::get('/delivery/sign/{token}', [\App\Http\Controllers\DeliverySignController::class, 'show'])->name('delivery.customer.sign');
+Route::post('/delivery/sign/{token}', [\App\Http\Controllers\DeliverySignController::class, 'sign'])->name('delivery.customer.sign.submit');
+Route::post('/delivery/sign/{token}/reset', [\App\Http\Controllers\DeliverySignController::class, 'customerReset'])->name('delivery.customer.sign.reset');
+
 require base_path('routes/modules/crm.php');
 
 Route::group(["middleware" => "auth"], function () {
@@ -1441,6 +1446,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/delivery/manual-print/{id}', [DeliveryController::class, 'print_delivery_manual'])->name('delivery.print_manual');
     Route::get('/delivery/create-teknisi-manual/{id}', [DeliveryController::class, 'create_manual_teknisi'])->name('delivery.create_manual_teknisi');
     Route::get('/delivery/create-ekspedisi-manual/{id}', [DeliveryController::class, 'create_manual_ekspedisi'])->name('delivery.create_manual_ekspedisi');
+    Route::delete('/delivery/{id}/reset-signature', [\App\Http\Controllers\DeliverySignController::class, 'resetSign'])->name('delivery.reset-signature');
 
     Route::resource('/template', TemplateController::class);
     Route::get('/template/machine_template/{id}', [TemplateController::class, 'create_template'])->name('template.create_template');

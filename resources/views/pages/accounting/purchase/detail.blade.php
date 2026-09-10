@@ -170,9 +170,9 @@
 
                     {{-- Calculations & Notes --}}
                     @php
-                        $tax = ($purchase->total * 11) / 100;
-                        $noTax = $purchase->total - ($purchase->total * 11) / 100;
-                        $dpp = ($noTax * 11) / 12;
+                        $hargaSebelumPpn = ($purchase->subtotal ?? 0) - ($purchase->diskon ?? 0);
+                        $dpp = isset($dpp) ? $dpp : (($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 12) : 0);
+                        $tax = isset($tax) ? $tax : (($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 100) : 0);
                     @endphp
 
                     {{-- Finance Summary Table --}}
@@ -200,6 +200,15 @@
                                                     </div>
                                                 </td>
                                             </tr>
+                                            <tr>
+                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">Subtotal After Disc.</td>
+                                                <td class="py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #111; vertical-align: middle;">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span>Rp</span>
+                                                        <span class="fw-semibold">{{ number_format($purchase->subtotal - $purchase->diskon, 0, '', '.') }}</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
                                         @endif
                                         @if ($purchase->vat > 0)
                                             <tr>
@@ -212,7 +221,7 @@
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">VAT 12%</td>
+                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">PPN 12%</td>
                                                 <td class="py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #111; vertical-align: middle;">
                                                     <div class="d-flex justify-content-between align-items-center">
                                                         <span>Rp</span>

@@ -88,21 +88,24 @@
                     </table>
                 </div>
 
+                @php
+                    $targetQuote = $quotation ?? $unitQuotation ?? null;
+                @endphp
                 {{-- Preview item penawaran jika sudah terhubung ke penawaran --}}
-                @if ($quotation && $quotationDetail->count())
+                @if ($targetQuote && $quotationDetail->count())
                     <div class="card-body border-top">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="fw-bold mb-0">
                                 <i class="mdi mdi-file-document-check-outline me-1 text-primary"></i>
-                                Item Penawaran
+                                Item Penawaran{{ $unitQuotation ? ' (Smart Quote)' : '' }}
                             </h6>
-                            <a href="{{ route('quotation.show', $quotation->id) }}" class="btn btn-sm btn-outline-primary">
+                            <a href="{{ $unitQuotation ? route('unit-quotation.show', $unitQuotation->id) : route('quotation.show', $quotation->id) }}" class="btn btn-sm btn-outline-primary">
                                 <i class="mdi mdi-eye-outline me-1"></i> Lihat Penawaran
                             </a>
                         </div>
                         <p class="text-muted mb-2" style="font-size:12px;">
-                            No. Penawaran: <strong>{{ $quotation->no_quote }}</strong>
-                            &nbsp;|&nbsp; {{ $quotation->title }}
+                            No. Penawaran: <strong>{{ $targetQuote->no_quote }}</strong>
+                            &nbsp;|&nbsp; {{ $targetQuote->title }}
                         </p>
                         <div class="table-responsive">
                             <table class="table table-sm table-bordered mb-0" style="font-size:12px;">
@@ -219,7 +222,7 @@
                             <i class="mdi mdi-eye-outline me-1"></i> Lihat Smart Quote
                         </a>
                         @if ($invoice)
-                            <a href="{{ url('invoice/' . $invoice->id) }}" class="btn btn-outline-success">
+                            <a href="{{ route('invoice.show_unit', $invoice->id) }}" class="btn btn-outline-success">
                                 <i class="mdi mdi-file-document-outline me-1"></i> Lihat Invoice
                             </a>
                         @endif

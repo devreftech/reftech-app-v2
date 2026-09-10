@@ -12,11 +12,12 @@ trait LogsActivity
     {
         static::created(function ($model) {
             $ref = static::resolveActivityReference($model);
+            $extra = method_exists($model, 'activityLogExtraProperties') ? $model->activityLogExtraProperties() : [];
             static::recordActivity(
                 $model,
                 'created',
-                'Membuat ' . class_basename($model) . ' baru' . ($ref ? " (No: {$ref})" : '') . '.',
-                $ref ? ['reference_no' => $ref] : []
+                'Membuat ' . class_basename($model) . ' baru' . ($ref ? " ({$ref})" : '') . '.',
+                array_merge($ref ? ['reference_no' => $ref] : [], $extra)
             );
         });
 
@@ -27,26 +28,28 @@ trait LogsActivity
             }
             $original = array_intersect_key($model->getOriginal(), $dirty);
             $ref = static::resolveActivityReference($model);
+            $extra = method_exists($model, 'activityLogExtraProperties') ? $model->activityLogExtraProperties() : [];
 
             static::recordActivity(
                 $model,
                 'updated',
-                'Mengubah ' . class_basename($model) . ' #' . $model->getKey() . ($ref ? " (No: {$ref})" : '') . '.',
-                [
+                'Mengubah ' . class_basename($model) . ' #' . $model->getKey() . ($ref ? " ({$ref})" : '') . '.',
+                array_merge([
                     'reference_no' => $ref,
                     'old_values' => $original,
                     'new_values' => $dirty,
-                ]
+                ], $extra)
             );
         });
 
         static::deleted(function ($model) {
             $ref = static::resolveActivityReference($model);
+            $extra = method_exists($model, 'activityLogExtraProperties') ? $model->activityLogExtraProperties() : [];
             static::recordActivity(
                 $model,
                 'deleted',
-                'Menghapus ' . class_basename($model) . ' #' . $model->getKey() . ($ref ? " (No: {$ref})" : '') . '.',
-                $ref ? ['reference_no' => $ref] : []
+                'Menghapus ' . class_basename($model) . ' #' . $model->getKey() . ($ref ? " ({$ref})" : '') . '.',
+                array_merge($ref ? ['reference_no' => $ref] : [], $extra)
             );
         });
     }

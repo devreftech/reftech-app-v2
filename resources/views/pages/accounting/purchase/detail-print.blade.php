@@ -184,9 +184,9 @@
                     @endforeach
                     {{-- Finance Summary Rows --}}
                     @php
-                        $tax = ($purchase->total * 11) / 100;
-                        $noTax = $purchase->total - ($purchase->total * 11) / 100;
-                        $dpp = ($noTax * 11) / 12;
+                        $hargaSebelumPpn = ($purchase->subtotal ?? 0) - ($purchase->diskon ?? 0);
+                        $dpp = isset($dpp) ? $dpp : (($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 12) : 0);
+                        $tax = isset($tax) ? $tax : (($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 100) : 0);
                         $summaryRows = 2 + ($purchase->diskon > 0 ? 1 : 0) + ($purchase->vat > 0 ? 2 : 0) + ($totalPph > 0 ? 1 : 0);
                     @endphp
                     <tr class="compact-item-row">
@@ -213,6 +213,17 @@
                                 </div>
                             </td>
                         </tr>
+                        <tr class="compact-item-row">
+                            <td colspan="{{ $hasDisc ? '3' : '2' }}" class="text-end fw-semibold text-uppercase px-2" style="border: 1px solid rgb(60,60,60); background: #ffffff; color: #333; vertical-align: middle;">
+                                Subtotal After Disc.
+                            </td>
+                            <td class="px-2" style="border: 1px solid rgb(60,60,60); background: #ffffff; color: #111; vertical-align: middle;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>Rp</span>
+                                    <span class="fw-semibold">{{ number_format($purchase->subtotal - $purchase->diskon, 0, '', '.') }}</span>
+                                </div>
+                            </td>
+                        </tr>
                     @endif
                     @if ($purchase->vat > 0)
                         <tr class="compact-item-row">
@@ -228,7 +239,7 @@
                         </tr>
                         <tr class="compact-item-row">
                             <td colspan="{{ $hasDisc ? '3' : '2' }}" class="text-end fw-semibold text-uppercase px-2" style="border: 1px solid rgb(60,60,60); background: #ffffff; color: #333; vertical-align: middle;">
-                                VAT 12%
+                                PPN 12%
                             </td>
                             <td class="px-2" style="border: 1px solid rgb(60,60,60); background: #ffffff; color: #111; vertical-align: middle;">
                                 <div class="d-flex justify-content-between align-items-center">

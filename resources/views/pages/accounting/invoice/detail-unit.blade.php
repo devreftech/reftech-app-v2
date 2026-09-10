@@ -1310,12 +1310,21 @@
                                     <div class="border rounded p-3 bg-white hover-shadow transition-all">
                                         <div class="d-flex justify-content-between align-items-start mb-2">
                                             <div>
-                                                <div class="d-flex align-items-center gap-2 mb-1">
+                                                <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                                                     <h6 class="fw-bold mb-0 text-primary">Surat Jalan #{{ $del->id }}</h6>
                                                     <span class="badge {{ strtolower($del->type) === 'ekspedisi' ? 'bg-label-info' : 'bg-label-primary' }}">
                                                         <i class="mdi {{ strtolower($del->type) === 'ekspedisi' ? 'mdi-package-variant-closed' : 'mdi-account-hard-hat' }} me-1"></i>
                                                         {{ ucfirst($del->type ?? 'Ekspedisi') }}
                                                     </span>
+                                                    @if ($del->isSignedByCustomer())
+                                                        <span class="badge bg-label-success rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 11px;">
+                                                            <i class="mdi mdi-check-decagram me-1"></i> Telah Ditandatangani
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-label-warning rounded-pill px-2.5 py-1 fw-semibold" style="font-size: 11px;">
+                                                            <i class="mdi mdi-draw me-1"></i> Menunggu TTD
+                                                        </span>
+                                                    @endif
                                                 </div>
                                                 <p class="mb-0 text-muted small">
                                                     <i class="mdi mdi-calendar-outline me-1"></i>Tanggal: {{ $del->date ? \Carbon\Carbon::parse($del->date)->format('d-m-Y') : '' }}
@@ -1351,6 +1360,99 @@
                                                 </button>
                                             </div>
                                         @endif
+
+                                        {{-- Digital Signature Subsection (BAST & Contract Pattern) --}}
+                                        <div class="mt-2.5 pt-2 border-top" style="border-color: #f1f5f9 !important;">
+                                            @if ($del->isSignedByCustomer())
+                                                <div class="p-2.5 rounded-3 border d-flex flex-wrap align-items-center justify-content-between gap-2" style="background: #f8fafc; font-size: 11.5px;">
+                                                    <div class="d-flex align-items-center gap-2.5">
+                                                        @if ($del->customer_signature)
+                                                            <div class="bg-white border rounded p-1 d-flex align-items-center justify-content-center shadow-xs position-relative" style="width: 58px; height: 42px;">
+                                                                <img src="{{ asset($del->customer_signature) }}" alt="TTD" style="max-width: 100%; max-height: 100%; object-fit: contain; z-index: 2;">
+                                                                @if ($del->customer_signed_stamp)
+                                                                    <img src="{{ asset($del->customer_signed_stamp) }}" alt="Stempel" style="position: absolute; max-height: 32px; opacity: 0.6; transform: rotate(-5deg); z-index: 1;">
+                                                                @endif
+                                                            </div>
+                                                        @endif
+                                                        <div>
+                                                            <div class="fw-bold text-dark d-flex align-items-center gap-1.5">
+                                                                <i class="mdi mdi-check-circle text-success fs-6"></i>
+                                                                <span>Diterima &amp; Ditandatangani: <strong class="text-primary">{{ $del->customer_signer_name }}</strong></span>
+                                                                @if ($del->customer_signer_position)
+                                                                    <span class="text-muted fw-normal">({{ $del->customer_signer_position }})</span>
+                                                                @endif
+                                                            </div>
+                                                            <div class="text-muted mt-0.5" style="font-size: 10.5px;">
+                                                                <i class="mdi mdi-clock-outline me-1"></i>{{ $del->customer_signed_at ? $del->customer_signed_at->format('d/m/Y H:i') : '-' }} WIB
+                                                                @if ($del->customer_ip)
+                                                                    &nbsp;&bull;&nbsp;<i class="mdi mdi-ip-network-outline me-0.5"></i>IP: {{ $del->customer_ip }}
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="d-flex align-items-center gap-1.5 ms-auto">
+                                                        <a href="{{ $del->sign_url }}" target="_blank" class="btn btn-xs btn-outline-primary py-1 px-2.5 rounded d-flex align-items-center gap-1">
+                                                            <i class="mdi mdi-eye-outline"></i>
+                                                            <span>Lihat Portal TTD</span>
+                                                        </a>
+                                                        @if (Auth::user()->role == 'Admin' || Auth::user()->role == 'Accounting')
+                                                            <form action="{{ route('delivery.reset-signature', $del->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus / mereset tanda tangan customer pada Surat Jalan ini? Customer dapat menandatangani ulang.');">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-2 rounded d-flex align-items-center gap-1" title="Hapus / Reset Tanda Tangan">
+                                                                    <i class="mdi mdi-refresh"></i>
+                                                                    <span>Reset TTD</span>
+                                                                </button>
+                                                            </form>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @else
+                                                <div class="p-2.5 rounded-3 border" style="background: #fafafa; font-size: 11.5px;">
+                                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-1 mb-2">
+                                                        <span class="fw-semibold text-dark d-flex align-items-center gap-1">
+                                                            <i class="mdi mdi-draw text-warning fs-6"></i>
+                                                            <span>Tanda Tangan Digital Penerima (Online Signature)</span>
+                                                        </span>
+                                                        <span class="text-muted" style="font-size: 10.5px;">Kirimkan tautan agar customer dapat memeriksa &amp; menandatangani di HP/Tablet:</span>
+                                                    </div>
+
+                                                    @php
+                                                        $picPhone = preg_replace('/[^0-9]/', '', ($quote->pic?->phone ?? ''));
+                                                        if (str_starts_with($picPhone, '0')) {
+                                                            $picPhone = '62' . substr($picPhone, 1);
+                                                        }
+                                                        $clientComp = $quote->client?->company ?? '';
+                                                        $picName = $quote->pic?->name ?? '';
+                                                        $entityFullName = ($quote->client?->info === 'Kojisha') ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima';
+                                                        $waMsg = rawurlencode("Halo Bapak/Ibu " . ($picName ?: '') . " (" . $clientComp . "),\n\nBerikut kami lampirkan tautan dokumen Surat Jalan (Delivery Order #" . $del->id . ") untuk PO " . ($quote->po_number ?: $quote->no_quote) . ".\nSilakan periksa rincian penerimaan barang dan bubuhi tanda tangan digital melalui tautan berikut:\n" . $del->sign_url . "\n\nTerima kasih.\n" . $entityFullName);
+                                                        $waUrl = "https://wa.me/" . ($picPhone ?: '') . "?text=" . $waMsg;
+                                                    @endphp
+
+                                                    <div class="row g-2 align-items-center">
+                                                        <div class="col-lg-7 col-md-6 col-12">
+                                                            <div class="input-group input-group-sm">
+                                                                <input type="text" class="form-control bg-white font-monospace" id="del-sign-url-{{ $del->id }}" value="{{ $del->sign_url }}" readonly style="font-size: 11px;">
+                                                                <button class="btn btn-outline-primary btn-copy-del-url" type="button" data-input-id="del-sign-url-{{ $del->id }}" title="Salin Tautan Tanda Tangan">
+                                                                    <i class="mdi mdi-content-copy me-1"></i>Salin Link
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-lg-5 col-md-6 col-12 d-flex gap-1.5 justify-content-md-end">
+                                                            <a href="{{ $waUrl }}" target="_blank" class="btn btn-sm btn-success py-1 px-2.5 text-white d-inline-flex align-items-center gap-1 shadow-xs" style="font-size: 11px;">
+                                                                <i class="mdi mdi-whatsapp fs-6"></i>
+                                                                <span>WhatsApp</span>
+                                                            </a>
+                                                            <a href="{{ $del->sign_url }}" target="_blank" class="btn btn-sm btn-primary py-1 px-2.5 d-inline-flex align-items-center gap-1 shadow-xs" style="font-size: 11px;">
+                                                                <i class="mdi mdi-open-in-new fs-6"></i>
+                                                                <span>Buka Portal TTD</span>
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        </div>
                                     </div>
                                 @endforeach
                             </div>
@@ -1953,8 +2055,66 @@
                                     </tbody>
                                 </table>
                             </div>
+
+                            {{-- Digital Signature Info in Modal --}}
+                            <div class="card border mb-2" style="border-radius: 8px; background: #f8fafc;">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <h6 class="fw-bold mb-0 text-dark" style="font-size: 13px;">
+                                            <i class="mdi mdi-draw text-primary me-1"></i> Tanda Tangan Penerima (Digital Signature)
+                                        </h6>
+                                        @if ($del->isSignedByCustomer())
+                                            <span class="badge bg-label-success rounded-pill px-2.5 py-0.5" style="font-size: 11px;">
+                                                <i class="mdi mdi-check-circle me-1"></i> Sudah Ditandatangani
+                                            </span>
+                                        @else
+                                            <span class="badge bg-label-warning rounded-pill px-2.5 py-0.5" style="font-size: 11px;">
+                                                <i class="mdi mdi-clock-outline me-1"></i> Menunggu Tanda Tangan
+                                            </span>
+                                        @endif
+                                    </div>
+
+                                    @if ($del->isSignedByCustomer())
+                                        <div class="d-flex align-items-center gap-3 p-2.5 bg-white border rounded">
+                                            @if ($del->customer_signature)
+                                                <div class="p-1 border rounded bg-lighter d-flex align-items-center justify-content-center position-relative" style="width: 80px; height: 55px;">
+                                                    <img src="{{ asset($del->customer_signature) }}" alt="TTD" style="max-height: 100%; max-width: 100%; object-fit: contain; z-index: 2;">
+                                                    @if ($del->customer_signed_stamp)
+                                                        <img src="{{ asset($del->customer_signed_stamp) }}" alt="Stempel" style="position: absolute; max-height: 40px; opacity: 0.6; transform: rotate(-5deg); z-index: 1;">
+                                                    @endif
+                                                </div>
+                                            @endif
+                                            <div style="font-size: 12px;">
+                                                <div class="fw-bold text-dark">{{ $del->customer_signer_name }}</div>
+                                                @if ($del->customer_signer_position)
+                                                    <div class="text-muted">{{ $del->customer_signer_position }}</div>
+                                                @endif
+                                                <div class="text-muted mt-1" style="font-size: 11px;">
+                                                    <i class="mdi mdi-calendar-clock me-1"></i>{{ $del->customer_signed_at ? $del->customer_signed_at->format('d F Y, H:i') : '-' }} WIB
+                                                    @if ($del->customer_ip)
+                                                        &bull; IP: {{ $del->customer_ip }}
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <p class="text-muted mb-2" style="font-size: 11.5px;">
+                                            Customer belum membubuhi tanda tangan. Salin tautan atau buka portal di bawah:
+                                        </p>
+                                        <div class="input-group input-group-sm mb-2">
+                                            <input type="text" class="form-control font-monospace" id="modal-del-sign-url-{{ $del->id }}" value="{{ $del->sign_url }}" readonly style="font-size: 11px;">
+                                            <button class="btn btn-outline-primary btn-copy-del-url" type="button" data-input-id="modal-del-sign-url-{{ $del->id }}">
+                                                <i class="mdi mdi-content-copy me-1"></i>Salin
+                                            </button>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
                         <div class="modal-footer bg-light">
+                            <a href="{{ $del->sign_url }}" target="_blank" class="btn btn-outline-primary">
+                                <i class="mdi mdi-draw me-1"></i> Buka Portal TTD
+                            </a>
                             <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Tutup</button>
                             <a href="{{ route('print.delivery', $del->id) }}" target="_blank" class="btn btn-primary">
                                 <i class="mdi mdi-printer-outline me-1"></i> Cetak Surat Jalan
@@ -3176,6 +3336,34 @@
                     icon: 'success',
                     title: 'Link Berhasil Disalin!',
                     text: 'Tautan tanda tangan BAST telah disalin ke clipboard.',
+                    timer: 1800,
+                    showConfirmButton: false
+                });
+            });
+        }
+    });
+
+    // Copy Delivery Order Sign URL
+    $(document).on('click', '.btn-copy-del-url', function () {
+        var inputId = $(this).data('input-id');
+        var urlInput = document.getElementById(inputId);
+        if (urlInput) {
+            urlInput.select();
+            urlInput.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(urlInput.value).then(function () {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Link Berhasil Disalin!',
+                    text: 'Tautan tanda tangan Surat Jalan telah disalin ke clipboard.',
+                    timer: 1800,
+                    showConfirmButton: false
+                });
+            }).catch(function () {
+                document.execCommand('copy');
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Link Berhasil Disalin!',
+                    text: 'Tautan tanda tangan Surat Jalan telah disalin ke clipboard.',
                     timer: 1800,
                     showConfirmButton: false
                 });

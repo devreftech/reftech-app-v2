@@ -271,7 +271,7 @@
             $remaining       = $quote->total - $issuedTotal;
             $isOwnerAdmin    = Auth::user()->role === 'Admin' && $quote->sales?->role === 'Admin';
         @endphp
-        @if (Auth::user()->role !== 'Accounting' && Auth::user()->role !== 'Admin')
+        @if (Auth::user()->role !== 'Accounting')
         <div class="card mb-3 border-0 shadow-sm overflow-hidden">
             <div class="card-header bg-primary bg-gradient py-3 px-4 d-flex align-items-center justify-content-between text-white">
                 <h6 class="card-title mb-0 fw-bold text-white d-flex align-items-center">
@@ -302,7 +302,7 @@
                         </a>
                     </div>
                     <div class="col-6">
-                        @if (Auth::user()->role === 'Sales' || $isOwnerAdmin)
+                        @if (Auth::user()->role === 'Sales' || Auth::user()->role === 'Admin')
                             <form action="{{ route('unit-quotation.revise', $quote->id) }}" method="POST">
                                 @csrf
                                 <button type="submit" class="btn btn-outline-info w-100 d-flex align-items-center justify-content-center gap-1"
@@ -341,7 +341,7 @@
                     </div>
 
                     {{-- Upload / View PO --}}
-                    @if (Auth::user()->role === 'Sales' || $isOwnerAdmin)
+                    @if (Auth::user()->role === 'Sales' || Auth::user()->role === 'Admin')
                         <button type="button" id="btn-upload-po-wrap" class="btn btn-sm btn-label-success d-flex align-items-center justify-content-center w-100 mb-2 btn-upload-po-unit fw-semibold {{ $quote->status === 'po_received' ? 'd-none' : '' }}"
                             data-tax="{{ $quote->tax ?? '0' }}"
                             data-npwp="{{ $quote->client->npwp ?? '' }}"
@@ -377,7 +377,7 @@
                          Setelah invoice terbit, edit No PO pindah ke halaman Invoice (Accounting). --}}
                     @if ($quote->status === 'po_received' && $quote->po_number && !$quote->cancel_request
                         && $issuedInvoices->isEmpty()
-                        && (Auth::user()->role === 'Sales' || $isOwnerAdmin))
+                        && (Auth::user()->role === 'Sales' || Auth::user()->role === 'Admin'))
                         <div class="d-flex align-items-center justify-content-between rounded-2 px-2 py-1 mb-2" style="background:#f6f7ff; border:1px solid #e5e5ff;">
                             <span class="text-truncate" style="font-size:10.5px; color:#555;">
                                 <i class="mdi mdi-pound me-1 text-primary"></i>{{ $quote->po_number }}
@@ -533,7 +533,7 @@
                 @endif
 
                 {{-- 5. Change Status Option --}}
-                @if ((Auth::user()->role === 'Sales' || $isOwnerAdmin) && $quote->status !== 'po_received')
+                @if ((Auth::user()->role === 'Sales' || Auth::user()->role === 'Admin') && $quote->status !== 'po_received')
                     <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center w-100 py-1.5"
                         data-bs-toggle="modal" data-bs-target="#modalChangeStatus">
                         <i class="mdi mdi-swap-horizontal me-1"></i> Change Status
@@ -643,8 +643,8 @@
         </div>
         @endif
 
-        {{-- Kanban Action Card (Hanya muncul jika status sudah PO Received & bukan role Admin) --}}
-        @if (($quote->status === 'po_received' || $kanbanTask) && Auth::user()->role !== 'Admin')
+        {{-- Kanban Action Card --}}
+        @if ($quote->status === 'po_received' || $kanbanTask)
         <div class="card mb-3">
             <div class="card-header py-3">
                 <h5 class="mb-0">Action</h5>
@@ -737,7 +737,7 @@
                 @endforeach
             </div>
             @endif
-            @if ($quote->status === 'po_received' && Auth::user()->role === 'Sales')
+            @if ($quote->status === 'po_received' && (Auth::user()->role === 'Sales' || Auth::user()->role === 'Admin'))
             <div class="card-footer p-3">
                 <button type="button" class="btn btn-outline-success d-flex align-items-center justify-content-center w-100 waves-effect"
                     data-bs-toggle="modal" data-bs-target="#modalAddPayment">
@@ -1368,10 +1368,10 @@
     </div>
 </div>
 
-{{-- Modal Edit No PO (Sales — hanya sebelum invoice diterbitkan) --}}
+{{-- Modal Edit No PO (Sales / Admin — hanya sebelum invoice diterbitkan) --}}
 @if ($quote->status === 'po_received' && $quote->po_number && !$quote->cancel_request
     && $issuedInvoices->isEmpty()
-    && (Auth::user()->role === 'Sales' || $isOwnerAdmin))
+    && (Auth::user()->role === 'Sales' || Auth::user()->role === 'Admin'))
 <div class="modal fade" id="modalEditPoUnit" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">

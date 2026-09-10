@@ -1484,10 +1484,16 @@ class InvoiceController extends Controller
         // Format: {seq}/SJ-P/RJO/{month}/{year} (PPN) atau SJ-NP (non-PPN)
         $sjCode = $quote->tax ? 'SJ-P' : 'SJ-NP';
 
+        $suoBooking = Suo::where('id_unit_quotation', $quote->id)->whereNotNull('no_invoice_booking')->first();
+
         // Untuk DP & BP: siapkan 2 nomor berurutan
         $nextNumbers = [];
         foreach ($allInvoices as $i => $inv) {
-            $nextNumbers[$inv->id] = str_pad($nextSeq + $i, 3, '0', STR_PAD_LEFT) . '/' . $sjCode . '/' . $entityCode . '/' . $monthCode . '/' . $year;
+            if ($suoBooking && $i === 0) {
+                $nextNumbers[$inv->id] = $suoBooking->no_invoice_booking;
+            } else {
+                $nextNumbers[$inv->id] = str_pad($nextSeq + $i, 3, '0', STR_PAD_LEFT) . '/' . $sjCode . '/' . $entityCode . '/' . $monthCode . '/' . $year;
+            }
         }
 
         $requestContract = Contract::join('quotation as q', 'q.id', '=', 'contract.id_quotation')
@@ -1546,6 +1552,12 @@ class InvoiceController extends Controller
             }
 
             $inv->save();
+        }
+
+        $suo = Suo::where('id_unit_quotation', $quote->id)->first();
+        if ($suo && $suo->status !== 'converted') {
+            $suo->status = 'converted';
+            $suo->save();
         }
 
         $justIssued = $pendingInvoices->first();
