@@ -97,13 +97,17 @@ class ProductIn extends Model
 
     public function getDueDateAttribute()
     {
+        // Hanya PO tempo (kredit) yang punya jatuh tempo. PO cash/transfer, GR manual,
+        // atau data tanpa PO => tidak ada due date (tidak pernah overdue).
+        $po = $this->purchaseOrder;
+        $isTempo = $po ? $po->isTempo() : false;
+        if (!$isTempo) {
+            return null;
+        }
         if (!empty($this->date_payment)) {
             return \Carbon\Carbon::parse($this->date_payment)->toDateString();
         }
-        $topDays = 30;
-        if ($this->purchaseOrder && !empty($this->purchaseOrder->top)) {
-            $topDays = (int) $this->purchaseOrder->top;
-        }
+        $topDays = (int) ($po->top_days ?: 30);
         $baseDate = $this->date_invoice ?: $this->date;
         if ($baseDate) {
             return \Carbon\Carbon::parse($baseDate)->addDays($topDays)->toDateString();

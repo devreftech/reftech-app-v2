@@ -309,12 +309,6 @@
                                     </div>
                                 @endif
                             </div>
-                            <p class="fw-bold mb-0" style="color:#111;">
-                                {{ $purchase->isSignedByVendor() ? $purchase->vendor_signer_name : ($purchase->attn ?: '-') }}
-                                @if ($purchase->isSignedByVendor() && $purchase->vendor_signer_position)
-                                    <span class="text-muted fw-normal">({{ $purchase->vendor_signer_position }})</span>
-                                @endif
-                            </p>
                             <p class="text-muted mb-0" style="font-size:11px;">{{ $purchase->company }}</p>
                         </div>
                     </div>
@@ -611,6 +605,33 @@
                             <input type="text" class="form-control" id="noInvoiceSupplier" name="no_invoice_supplier"
                                 value="{{ old('no_invoice_supplier', $purchase->no_invoice_supplier) }}" required>
                         </div>
+                        @php
+                            $invDate = old('date_invoice', !empty($purchase->invoice_date) ? \Carbon\Carbon::parse($purchase->invoice_date)->format('Y-m-d') : \Carbon\Carbon::today()->format('Y-m-d'));
+                            $poTopDays = (int) ($purchase->top_days ?: 30);
+                        @endphp
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label for="dateInvoice" class="form-label">Tgl Invoice <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="dateInvoice" name="date_invoice"
+                                    value="{{ $invDate }}" required>
+                            </div>
+                            @if ($purchase->payment_type === 'tempo')
+                                <div class="col-md-6">
+                                    <label for="dueDate" class="form-label">Jatuh Tempo
+                                        <span class="text-muted small">(termin {{ $poTopDays }} hari)</span>
+                                    </label>
+                                    <input type="date" class="form-control" id="dueDate" name="due_date"
+                                        value="{{ old('due_date') }}">
+                                    <div class="form-text">Kosongkan untuk pakai Tgl Invoice + {{ $poTopDays }} hari.</div>
+                                </div>
+                            @else
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <div class="form-text mb-1">
+                                        <i class="mdi mdi-information-outline me-1"></i>PO non-tempo &mdash; tanpa jatuh tempo AP.
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
                         <div class="mb-3">
                             <label for="invoiceFile" class="form-label">
                                 File Invoice
@@ -728,10 +749,27 @@
             window.history.back();
         });
 
-        @if ($errors->has('no_invoice_supplier') || $errors->has('invoice_file'))
+        @if ($errors->has('no_invoice_supplier') || $errors->has('invoice_file') || $errors->has('date_invoice') || $errors->has('due_date'))
             document.addEventListener('DOMContentLoaded', function () {
                 new bootstrap.Modal(document.getElementById('modalUploadInvoice')).show();
             });
+        @endif
+
+        @if ($purchase->payment_type === 'tempo')
+            (function () {
+                var di = document.getElementById('dateInvoice');
+                var dd = document.getElementById('dueDate');
+                var top = {{ (int) ($purchase->top_days ?: 30) }};
+                if (di && dd) {
+                    di.addEventListener('change', function () {
+                        if (!di.value) return;
+                        var p = di.value.split('-');
+                        var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+                        d.setUTCDate(d.getUTCDate() + top);
+                        dd.value = d.toISOString().slice(0, 10);
+                    });
+                }
+            })();
         @endif
 
         var unitDeliveryModalEl = document.getElementById('modalUnitDelivery');

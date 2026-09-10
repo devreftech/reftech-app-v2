@@ -324,12 +324,6 @@
                         <div style="height:70px;"></div>
                     @endif
                 </div>
-                <p class="fw-bold mb-0" style="color:#111; border-bottom:1px solid #ddd; display:inline-block; padding-bottom:2px;">
-                    {{ $purchase->isSignedByVendor() ? $purchase->vendor_signer_name : ($purchase->attn ?: '-') }}
-                    @if ($purchase->isSignedByVendor() && $purchase->vendor_signer_position)
-                        <span class="text-muted fw-normal" style="font-size:11px;">({{ $purchase->vendor_signer_position }})</span>
-                    @endif
-                </p>
                 <p class="text-muted mb-0" style="font-size:11px;">{{ $purchase->company }}</p>
             </div>
         </div>

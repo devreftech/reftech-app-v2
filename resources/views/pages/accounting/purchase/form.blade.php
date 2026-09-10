@@ -18,7 +18,15 @@
             </h4>
             <p class="text-muted mb-0 small"><i class="mdi mdi-cart-outline me-1"></i> Buat dokumen Purchase Order ke Supplier</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
+            @if (!@$purchase)
+                <span id="poDraftStatus" class="badge bg-label-secondary d-none align-self-center" title="Draft otomatis tersimpan di browser ini">
+                    <i class="mdi mdi-cloud-outline me-1"></i><span class="txt">Draft</span>
+                </span>
+                <button type="button" id="poDraftReset" class="btn btn-label-danger d-none" title="Hapus draft tersimpan & mulai ulang">
+                    <i class="mdi mdi-restore me-1"></i> Reset Draft
+                </button>
+            @endif
             <a href="{{ route('purchase.index') }}" class="btn btn-label-secondary">
                 <i class="mdi mdi-arrow-left me-1"></i> Back
             </a>
@@ -214,6 +222,35 @@
                         <div class="mt-2" id="manual-payment-wrapper" style="display:none;">
                             <input type="text" class="form-control" id="input-payment-manual"
                                 placeholder="Ketik custom payment term...">
+                        </div>
+                    </div>
+                    @php
+                        $pmtType = old('payment_type', @$purchase->payment_type ?? 'cash');
+                        $topDays = old('top_days', @$purchase->top_days);
+                        $dueEst = old('due_date_estimate', !empty($purchase->due_date_estimate) ? \Carbon\Carbon::parse($purchase->due_date_estimate)->format('Y-m-d') : '');
+                    @endphp
+                    <div class="col-md-2">
+                        <div class="form-floating form-floating-outline">
+                            <select class="form-select" id="payment-type-select" name="payment_type">
+                                <option value="cash" {{ $pmtType == 'cash' ? 'selected' : '' }}>Cash</option>
+                                <option value="transfer" {{ $pmtType == 'transfer' ? 'selected' : '' }}>Transfer</option>
+                                <option value="tempo" {{ $pmtType == 'tempo' ? 'selected' : '' }}>Tempo (Credit)</option>
+                            </select>
+                            <label for="payment-type-select">Tipe Pembayaran</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2 tempo-field" style="{{ $pmtType == 'tempo' ? '' : 'display:none;' }}">
+                        <div class="form-floating form-floating-outline">
+                            <input class="form-control" type="number" min="0" id="top-days-input" name="top_days"
+                                placeholder="30" value="{{ $topDays !== null && $topDays !== '' ? $topDays : 30 }}">
+                            <label for="top-days-input">Termin (hari)</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2 tempo-field" style="{{ $pmtType == 'tempo' ? '' : 'display:none;' }}">
+                        <div class="form-floating form-floating-outline">
+                            <input class="form-control" type="date" id="due-date-estimate-input" name="due_date_estimate"
+                                value="{{ $dueEst }}">
+                            <label for="due-date-estimate-input">Estimasi Jatuh Tempo</label>
                         </div>
                     </div>
                     <div class="col-md-2">
@@ -1259,6 +1296,33 @@
                 });
             }
 
+            // Tipe pembayaran: field termin & estimasi jatuh tempo hanya tampil untuk "tempo"
+            var $pmtType = $('#payment-type-select');
+            if ($pmtType.length) {
+                var addDaysISO = function(dateStr, days) {
+                    var p = dateStr.split('-');
+                    var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+                    d.setUTCDate(d.getUTCDate() + days);
+                    return d.toISOString().slice(0, 10);
+                };
+                var recalcDueEstimate = function() {
+                    var baseDate = $('#date').val();
+                    var days = parseInt($('#top-days-input').val(), 10);
+                    if ($pmtType.val() === 'tempo' && baseDate && !isNaN(days)) {
+                        $('#due-date-estimate-input').val(addDaysISO(baseDate, days));
+                    }
+                };
+                var toggleTempoFields = function() {
+                    var isTempo = $pmtType.val() === 'tempo';
+                    $('.tempo-field').toggle(isTempo);
+                    if (isTempo && !$('#top-days-input').val()) $('#top-days-input').val(30);
+                    if (isTempo) recalcDueEstimate();
+                };
+                $pmtType.on('change', toggleTempoFields);
+                $('#top-days-input, #date').on('change input', recalcDueEstimate);
+                toggleTempoFields();
+            }
+
             // Quick Add PO Type (AJAX, tanpa reload) — tipe baru langsung tersimpan di master
             // data jadi ke depan tinggal muncul di dropdown, tidak perlu diketik ulang.
             $('#saveQuickAddPoType').on('click', function() {
@@ -2249,3 +2313,237 @@
         })
     </script>
 @endpush
+
+@if (!@$purchase)
+@push('script')
+    {{--
+        ── Autosave Draft PO (client-side, sama pola dengan Smart Quote) ──
+        Draft disimpan di localStorage per-browser: semua field header + line item.
+        - Dibuka dari prefill (?from_pr= / ?from_product_set= / ?items= / ?product_ids=):
+          draft TIDAK di-restore (biar tidak menimpa prefill), tapi autosave tetap jalan.
+        - no_po TIDAK ikut di-restore (selalu pakai nomor baru yang di-generate server).
+        - Draft dihapus otomatis saat form berhasil disubmit.
+    --}}
+    <script>
+        (function () {
+            const DRAFT_KEY = 'po_create_draft_v1';
+            const qs = new URLSearchParams(window.location.search);
+            const HAS_PREFILL = qs.has('from_pr') || qs.has('from_product_set') || qs.has('items') || qs.has('product_ids');
+
+            let draft = null;
+            try {
+                const raw = localStorage.getItem(DRAFT_KEY);
+                if (raw) draft = JSON.parse(raw);
+            } catch (e) { console.warn('PO draft load error', e); }
+
+            const fmtId = (n) => (Number(n) || 0).toLocaleString('id-ID');
+            const $status = $('#poDraftStatus');
+
+            function markStatus(text, cls) {
+                $status.removeClass('d-none bg-label-secondary bg-label-success bg-label-info')
+                    .addClass(cls || 'bg-label-success');
+                $status.find('.txt').text(text);
+                $('#poDraftReset').removeClass('d-none');
+            }
+
+            // ── Kumpulkan snapshot form ──
+            function collectDraft() {
+                const d = {
+                    supplier: $('#supplier-dropdown').val() || '',
+                    supplier_label: $('#supplier-dropdown option:selected').text().trim() || '',
+                    attn: $('#attn').val() || '',
+                    mobile: $('#mobile').val() || '',
+                    address: $('#address').val() || '',
+                    date: $('#date').val() || '',
+                    no_reference: $('#no_reference').val() || '',
+                    delivery: $('#delivery').val() || '',
+                    payment_select: $('#payment-select').val() || '',
+                    payment_manual: $('#input-payment-manual').val() || '',
+                    payment_hidden: $('#input-payment-hidden').val() || '',
+                    payment_type: $('#payment-type-select').val() || 'cash',
+                    top_days: $('#top-days-input').val() || '',
+                    due_date_estimate: $('#due-date-estimate-input').val() || '',
+                    category: $('#po-type-select').val() || '',
+                    ship_to_preset: $('input[name="ship_to_preset"]:checked').val() || '',
+                    ship_to_custom: $('#ship_to_custom_input').val() || '',
+                    note: $('[name="note"]').val() || '',
+                    items: []
+                };
+                $('[data-repeater-list="group-a"] .repeater-wrapper').each(function () {
+                    const $r = $(this);
+                    if ($r.is('.header-row-wrapper')) {
+                        d.items.push({ category: 'Header', product: $r.find('input[name="product[]"]').val() || '' });
+                        return;
+                    }
+                    const cat = $r.find('.item-category-value').val() || 'Sparepart';
+                    d.items.push({
+                        category: cat,
+                        id_product: $r.find('.select2-product-po').val() || '',
+                        id_product_label: $r.find('.select2-product-po option:selected').text().trim() || '',
+                        id_unit: $r.find('.select2-unit-po').val() || '',
+                        id_unit_label: $r.find('.select2-unit-po option:selected').text().trim() || '',
+                        kondisi: $r.find('.select-kondisi-unit').val() || 'Baru',
+                        id_rental_accessory: $r.find('.select2-accessory-po').val() || '',
+                        id_rental_accessory_label: $r.find('.select2-accessory-po option:selected').text().trim() || '',
+                        product: $r.find('.field-product-custom textarea[name="product[]"]').val() || '',
+                        qty: $r.find('.invoice-item-qty').val() || '',
+                        info_qty: $r.find('.invoice-item-info').val() || '',
+                        disc: $r.find('.invoice-item-disc').val() || '',
+                        price: $r.find('.invoice-item-price').val() || ''
+                    });
+                });
+                return d;
+            }
+
+            let saveTimer = null;
+            function scheduleSave() {
+                clearTimeout(saveTimer);
+                saveTimer = setTimeout(function () {
+                    try {
+                        localStorage.setItem(DRAFT_KEY, JSON.stringify(collectDraft()));
+                        const t = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                        markStatus('Tersimpan ' + t, 'bg-label-success');
+                    } catch (e) { console.warn('PO draft save error', e); }
+                }, 600);
+            }
+
+            // ── Restore helper: pastikan option ada di select lalu pilih ──
+            function setSelect($sel, val, label) {
+                if (!$sel.length || !val) return;
+                if (!$sel.find('option[value="' + String(val).replace(/"/g, '\\"') + '"]').length) {
+                    $sel.append(new Option(label || val, val, true, true));
+                }
+                $sel.val(String(val)).trigger('change');
+            }
+
+            function restoreItems(items) {
+                if (!items || !items.length) return;
+                // Buang baris starter kosong bawaan
+                const $preexisting = $('[data-repeater-list="group-a"] .repeater-wrapper');
+
+                items.forEach(function (it) {
+                    if (it.category === 'Header') {
+                        $('#btn-add-header-title').trigger('click');
+                        $('[data-repeater-list="group-a"] .header-row-wrapper').last()
+                            .find('input[name="product[]"]').val(it.product || '');
+                        return;
+                    }
+                    if (it.category === 'Custom') {
+                        $('#btn-add-custom-item').trigger('click');
+                    } else {
+                        $('.btn-add[data-repeater-create]').first().trigger('click');
+                    }
+                    const $r = $('[data-repeater-list="group-a"] .repeater-wrapper').not('.header-row-wrapper').last();
+
+                    if (it.category && it.category !== 'Sparepart') {
+                        $r.find('.item-category-radio[value="' + it.category + '"]').prop('checked', true).trigger('change');
+                    }
+                    if (it.category === 'Sparepart') setSelect($r.find('.select2-product-po'), it.id_product, it.id_product_label);
+                    if (it.category === 'Unit') {
+                        setSelect($r.find('.select2-unit-po'), it.id_unit, it.id_unit_label);
+                        $r.find('.select-kondisi-unit').val(it.kondisi || 'Baru');
+                    }
+                    if (it.category === 'Accessories') setSelect($r.find('.select2-accessory-po'), it.id_rental_accessory, it.id_rental_accessory_label);
+                    if (it.category === 'Custom') $r.find('.field-product-custom textarea[name="product[]"]').val(it.product || '');
+
+                    if (it.info_qty) setSelect($r.find('.invoice-item-info'), it.info_qty, it.info_qty);
+                    $r.find('.invoice-item-qty').val(it.qty || '').trigger('input');
+                    $r.find('.invoice-item-disc').val(it.disc || '').trigger('input');
+                    if (it.price) {
+                        $r.find('.invoice-item-price').val(it.price);
+                        $r.find('.invoice-item-price-label').val(fmtId(it.price)).trigger('input');
+                    }
+                });
+
+                // Hapus baris starter yang masih kosong
+                $preexisting.each(function () {
+                    const $r = $(this);
+                    const hasVal = ($r.find('.select2-product-po').val() || $r.find('.select2-unit-po').val() ||
+                        $r.find('.select2-accessory-po').val() || ($r.find('textarea[name="product[]"]').val() || '').trim() ||
+                        parseFloat($r.find('.invoice-item-qty').val()) > 0);
+                    if (!hasVal) { $r.find('[data-repeater-delete]').trigger('click'); }
+                });
+            }
+
+            function restoreDraft() {
+                if (!draft) return;
+                // Header
+                if (draft.supplier) {
+                    setSelect($('#supplier-dropdown'), draft.supplier, draft.supplier_label);
+                }
+                $('#date').val(draft.date || $('#date').val());
+                $('#no_reference').val(draft.no_reference || '');
+                $('#delivery').val(draft.delivery || $('#delivery').val());
+                if (draft.category) $('#po-type-select').val(draft.category).trigger('change');
+                if (draft.note) $('[name="note"]').val(draft.note);
+
+                // Payment term
+                if (draft.payment_select) {
+                    $('#payment-select').val(draft.payment_select).trigger('change');
+                    if (draft.payment_select === 'manual') $('#input-payment-manual').val(draft.payment_manual || '').trigger('input');
+                }
+                if (draft.payment_type) {
+                    $('#payment-type-select').val(draft.payment_type).trigger('change');
+                    if (draft.payment_type === 'tempo') {
+                        if (draft.top_days) $('#top-days-input').val(draft.top_days).trigger('input');
+                        if (draft.due_date_estimate) $('#due-date-estimate-input').val(draft.due_date_estimate);
+                    }
+                }
+
+                // ship_to
+                if (draft.ship_to_preset) {
+                    $('input[name="ship_to_preset"][value="' + draft.ship_to_preset + '"]').prop('checked', true).trigger('change');
+                    if (draft.ship_to_preset === 'CUSTOM') $('#ship_to_custom_input').val(draft.ship_to_custom || '').trigger('input');
+                }
+
+                // Line items
+                restoreItems(draft.items);
+
+                // Mobile/Address/ATTN di-set setelah supplier change (yang menimpanya) selesai
+                setTimeout(function () {
+                    if (draft.mobile) $('#mobile').val(draft.mobile);
+                    if (draft.address) $('#address').val(draft.address);
+                    if (draft.attn) {
+                        const $a = $('#attn');
+                        if (!$a.find('option[value="' + String(draft.attn).replace(/"/g, '\\"') + '"]').length) {
+                            $a.append(new Option(draft.attn, draft.attn, true, true));
+                        }
+                        $a.val(draft.attn).trigger('change');
+                    }
+                }, 1200);
+
+                markStatus('Draft dipulihkan', 'bg-label-info');
+            }
+
+            $(function () {
+                const hasContent = draft && (draft.supplier || (draft.items && draft.items.some(i =>
+                    i.id_product || i.id_unit || i.id_rental_accessory || (i.product || '').trim())));
+
+                if (hasContent && !HAS_PREFILL) {
+                    // beri jeda supaya select2 / repeater / handler utama sudah siap
+                    setTimeout(restoreDraft, 400);
+                } else {
+                    $('#poDraftReset').removeClass('d-none');
+                    $status.removeClass('d-none').addClass('bg-label-secondary').find('.txt').text('Autosave aktif');
+                }
+
+                // Autosave saat ada perubahan di form
+                $('#formAuthentication').on('input change', 'input, select, textarea', scheduleSave);
+                $(document).on('repeater:added repeater:deleted', scheduleSave);
+
+                // Bersihkan draft saat submit
+                $('#formAuthentication').on('submit', function () {
+                    try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+                });
+
+                $('#poDraftReset').on('click', function () {
+                    if (confirm('Hapus draft PO tersimpan dan mulai dari awal?')) {
+                        try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+                        window.location = window.location.pathname;
+                    }
+                });
+            });
+        })();
+    </script>
+@endpush
+@endif

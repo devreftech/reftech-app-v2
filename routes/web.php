@@ -1745,6 +1745,7 @@ Route::group(["middleware" => "auth"], function () {
 
     // Payable
     Route::get('/payable/invoice', [PayableController::class, 'index_invoice'])->name('payable.index_invoice');
+    Route::get('/payable/gr-uninvoiced', [PayableController::class, 'index_gr_uninvoiced'])->name('payable.gr_uninvoiced');
     Route::get('/payable/invoice/{id}', [PayableController::class, 'show_invoice'])->name('payable.show_invoice');
     Route::get('/payable/aging', [PayableController::class, 'index_aging'])->name('payable.index_aging');
     Route::get('/payable/aging-export', [PayableController::class, 'exportAgingExcel'])->name('payable.aging_export');
@@ -7058,6 +7059,37 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             ->select($poColumns);
 
         $data = $poFromQuotation->unionAll($poFromUnitQuotation)->orderByDesc('date')->get();
+        return response()->json(['data' => $data]);
+    });
+    Route::get('/db/payable/gr-uninvoiced', function () {
+        // GRNI: barang diterima (product_in) tapi invoice supplier belum diisi.
+        $data = DB::table('product_in')
+            ->leftJoin('supplier as s', 'product_in.id_supplier', '=', 's.id')
+            ->leftJoin('purchase_order as po', 'product_in.id_purchase_order', '=', 'po.id')
+            ->leftJoin('detail_product_in as d', 'product_in.id', '=', 'd.id_product_in')
+            ->whereNull('product_in.invoice')
+            ->whereNotNull('product_in.id_purchase_order')
+            ->groupBy(
+                'product_in.id', 'product_in.no_product_in', 'product_in.no_do', 'product_in.total',
+                'product_in.date', 'product_in.supplier', 's.supplier', 'po.no_po', 'po.id', 'po.payment', 'po.payment_type'
+            )
+            ->orderByDesc('product_in.date')
+            ->get([
+                'product_in.id',
+                'product_in.no_product_in',
+                'product_in.no_do',
+                'product_in.total',
+                'product_in.supplier as d_supplier',
+                's.supplier',
+                'po.no_po',
+                'po.id as id_po',
+                'po.payment',
+                'po.payment_type',
+                DB::raw('COALESCE(SUM(d.qty), 0) as total_qty'),
+                DB::raw('DATEDIFF(CURDATE(), product_in.date) as age_days'),
+                DB::raw("DATE_FORMAT(product_in.date, '%d-%m-%Y') as tanggal"),
+            ]);
+
         return response()->json(['data' => $data]);
     });
     Route::get('/db/payable/invoice', function () {

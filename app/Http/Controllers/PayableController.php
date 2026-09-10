@@ -61,6 +61,11 @@ class PayableController extends Controller
             }
         }
 
+        // GRNI — barang diterima tapi belum ditagih supplier (belum jadi AP).
+        $grni = ProductIn::whereNull('invoice')->whereNotNull('id_purchase_order');
+        $grniCount = $grni->count();
+        $grniAmount = (float) $grni->clone()->sum('total');
+
         return view('pages.finance.payable.index-invoice', compact(
             'totalCount',
             'totalAmount',
@@ -73,8 +78,73 @@ class PayableController extends Controller
             'overdueCount',
             'overdueAmount',
             'dueSoonCount',
-            'dueSoonAmount'
+            'dueSoonAmount',
+            'grniCount',
+            'grniAmount'
         ));
+    }
+
+    /**
+     * GRNI — Goods Received, Not Invoiced.
+     * Barang sudah diterima (product_in) tapi invoice supplier belum diisi, jadi
+     * belum jadi baris Account Payable. Ini "akrual" antara GR dan Invoice.
+     */
+    public function index_gr_uninvoiced()
+    {
+        $rows = $this->grUninvoicedQuery();
+
+        $totalCount = $rows->count();
+        $totalAmount = (float) $rows->sum('total');
+        $overdue30 = $rows->where('age_days', '>', 30)->count();
+
+        return view('pages.finance.payable.index-gr-uninvoiced', compact(
+            'totalCount',
+            'totalAmount',
+            'overdue30'
+        ));
+    }
+
+    /**
+     * Query dasar GRNI dipakai bareng oleh halaman index & endpoint /db.
+     */
+    private function grUninvoicedQuery()
+    {
+        return ProductIn::query()
+            ->leftJoin('supplier as s', 'product_in.id_supplier', '=', 's.id')
+            ->leftJoin('purchase_order as po', 'product_in.id_purchase_order', '=', 'po.id')
+            ->leftJoin('detail_product_in as d', 'product_in.id', '=', 'd.id_product_in')
+            ->whereNull('product_in.invoice')
+            ->whereNotNull('product_in.id_purchase_order')
+            ->groupBy(
+                'product_in.id',
+                'product_in.no_product_in',
+                'product_in.no_do',
+                'product_in.total',
+                'product_in.date',
+                'product_in.supplier',
+                's.supplier',
+                'po.no_po',
+                'po.id',
+                'po.payment',
+                'po.payment_type'
+            )
+            ->orderByDesc('product_in.date')
+            ->get([
+                'product_in.id',
+                'product_in.no_product_in',
+                'product_in.no_do',
+                'product_in.total',
+                'product_in.date',
+                'product_in.supplier as d_supplier',
+                's.supplier',
+                'po.no_po',
+                'po.id as id_po',
+                'po.payment',
+                'po.payment_type',
+                DB::raw('COALESCE(SUM(d.qty), 0) as total_qty'),
+                DB::raw('DATEDIFF(CURDATE(), product_in.date) as age_days'),
+                DB::raw("DATE_FORMAT(product_in.date, '%d-%m-%Y') as tanggal"),
+            ]);
     }
 
     public function show_invoice($id)

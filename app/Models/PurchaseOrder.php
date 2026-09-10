@@ -12,6 +12,8 @@ class PurchaseOrder extends Model
     protected $table = "purchase_order";
     protected $dates = [
         'date',
+        'due_date_estimate',
+        'invoice_date',
         'vendor_signed_at',
         'created_at',
         'updated_at'
@@ -19,6 +21,10 @@ class PurchaseOrder extends Model
     protected $fillable = [
         'no_po',
         'no_gr',
+        'payment_type',
+        'top_days',
+        'due_date_estimate',
+        'invoice_date',
         'no_invoice_supplier',
         'invoice_file',
         'category',
@@ -93,5 +99,33 @@ class PurchaseOrder extends Model
     public function prAllocations()
     {
         return $this->hasMany('App\Models\PurchaseRequestDetailAllocation', 'id_purchase_order');
+    }
+
+    /**
+     * PO dengan termin (kredit/tempo) — satu-satunya tipe yang punya jatuh tempo AP.
+     */
+    public function isTempo(): bool
+    {
+        return $this->payment_type === 'tempo';
+    }
+
+    /**
+     * Hitung tanggal jatuh tempo AP untuk PO ini.
+     * - Non-tempo (cash/transfer) => null (AP tanpa due date, tidak pernah overdue).
+     * - Tempo => $override kalau ada, kalau tidak tanggal invoice + top_days (default 30).
+     */
+    public function resolveDueDate(?string $dateInvoice, ?string $override = null): ?string
+    {
+        if (!$this->isTempo()) {
+            return null;
+        }
+        if (!empty($override)) {
+            return \Carbon\Carbon::parse($override)->toDateString();
+        }
+        if (empty($dateInvoice)) {
+            return null;
+        }
+        $days = (int) ($this->top_days ?: 30);
+        return \Carbon\Carbon::parse($dateInvoice)->addDays($days)->toDateString();
     }
 }

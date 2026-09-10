@@ -195,6 +195,7 @@ class POController extends Controller
         $purchase->phone = $supplier->phone ?? '-';
         $purchase->address = $request->address ?? $supplier->address ?? '-';
         $purchase->payment = $request->payment ?? '';
+        $this->applyPaymentTerms($purchase, $request);
         $purchase->note = $request->note ?? '';
         $purchase->subtotal = $request->subtotal;
         $purchase->vat = $request->tax;
@@ -374,6 +375,9 @@ class POController extends Controller
         $rule = [
             'no_invoice_supplier' => 'required|string|max:255',
             'invoice_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'date_invoice' => 'required|date',
+            // Hanya relevan untuk PO tempo — override estimasi jatuh tempo.
+            'due_date' => 'nullable|date',
         ];
         $this->validate($request, $rule);
 
@@ -388,15 +392,48 @@ class POController extends Controller
         }
 
         $purchase->no_invoice_supplier = $request->no_invoice_supplier;
+        $purchase->invoice_date = $request->date_invoice;
         $purchase->save();
 
-        // Sinkron ke ProductIn yang sudah ada (kalau GR-nya sudah pernah diverifikasi
-        // sebelum invoice-nya diupload) — biar langsung kebaca di tabel Invoice.
+        // ── Titik lahirnya Account Payable ──────────────────────────────────────
+        // Baris AP (Purchase Invoice) baru muncul di modul Finance ketika invoice
+        // supplier diisi di sini. Jatuh tempo dihitung dari tanggal invoice + termin
+        // PO; PO non-tempo (cash/transfer) tidak punya jatuh tempo.
+        $dueDate = $purchase->resolveDueDate($request->date_invoice, $request->due_date);
+
         \App\Models\ProductIn::where('id_purchase_order', $purchase->id)
-            ->update(['invoice' => $purchase->no_invoice_supplier]);
+            ->get()
+            ->each(function ($pi) use ($purchase, $request, $dueDate) {
+                $pi->invoice = $purchase->no_invoice_supplier;
+                $pi->date_invoice = $request->date_invoice;
+                $pi->date_payment = $dueDate; // null utk PO non-tempo → AP tanpa due date
+                $pi->save();
+            });
 
         return redirect()->route('purchase.show', $purchase->id)
             ->with('success', 'Invoice supplier berhasil disimpan.');
+    }
+
+    /**
+     * Set kolom termin pembayaran PO dari request form.
+     * top_days & due_date_estimate hanya disimpan untuk tipe 'tempo'.
+     */
+    private function applyPaymentTerms(PurchaseOrder $purchase, Request $request): void
+    {
+        $type = in_array($request->payment_type, ['cash', 'transfer', 'tempo'], true)
+            ? $request->payment_type
+            : 'cash';
+
+        $purchase->payment_type = $type;
+
+        if ($type === 'tempo') {
+            $purchase->top_days = $request->filled('top_days') ? max(0, (int) $request->top_days) : 30;
+            $purchase->due_date_estimate = $request->due_date_estimate
+                ?: ($request->date ? \Carbon\Carbon::parse($request->date)->addDays($purchase->top_days)->toDateString() : null);
+        } else {
+            $purchase->top_days = null;
+            $purchase->due_date_estimate = null;
+        }
     }
 
     /**
@@ -446,6 +483,7 @@ class POController extends Controller
         $purchase->phone = $supplier->phone ?? '-';
         $purchase->address = $request->address ?? $supplier->address ?? '-';
         $purchase->payment = $request->payment ?? '';
+        $this->applyPaymentTerms($purchase, $request);
         $purchase->note = $request->note ?? '';
         $purchase->subtotal = $request->subtotal;
         $purchase->vat = $request->tax;

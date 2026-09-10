@@ -574,6 +574,12 @@
                             </a>
                         </li>
                         <li
+                            class="menu-item {{ request()->is('payable/gr-uninvoiced*') ? 'active' : '' }}">
+                            <a href="{{ route('payable.gr_uninvoiced') }}" class="menu-link">
+                                <div data-i18n="GR Belum Ditagih">GR Belum Ditagih</div>
+                            </a>
+                        </li>
+                        <li
                             class="menu-item {{ request()->is('payable/receipt*') ? 'active' : '' }}">
                             <a href="{{ route('payable.index_receipt') }}" class="menu-link">
                                 <div data-i18n="Purchase Payment">Purchase Payment</div>
@@ -2393,6 +2399,12 @@
                         class="menu-item {{ request()->is('payable/invoice*') ? 'active' : '' }}">
                         <a href="{{ route('payable.index_invoice') }}" class="menu-link">
                             <div data-i18n="Purchase Invoice">Purchase Invoice</div>
+                        </a>
+                    </li>
+                    <li
+                        class="menu-item {{ request()->is('payable/gr-uninvoiced*') ? 'active' : '' }}">
+                        <a href="{{ route('payable.gr_uninvoiced') }}" class="menu-link">
+                            <div data-i18n="GR Belum Ditagih">GR Belum Ditagih</div>
                         </a>
                     </li>
                     <li
