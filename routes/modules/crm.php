@@ -48,4 +48,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/prospect/add_comment/{id}', [ProspectController::class, 'add_comment'])->name('add_comment.prospect');
     Route::post('/prospect/{id}/view_comment', [ProspectController::class, 'view_comment'])->name('view_comment.prospect');
     Route::get('/prospect/monthly-leads/{sales}', [ProspectController::class, 'monthlyLeads'])->name('monthly_leads.prospect');
+
+    // Notifikasi pop-up "Prospect Baru" (polling navbar Sales Manager / Admin) — meniru notifications.payment.*
+    Route::get('/notifications/prospect/unread', [ProspectController::class, 'unreadProspectNotifications'])->name('notifications.prospect.unread');
+    Route::post('/notifications/prospect/{id}/read', [ProspectController::class, 'markProspectNotificationRead'])->name('notifications.prospect.read');
 });

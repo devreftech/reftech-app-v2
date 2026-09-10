@@ -194,6 +194,16 @@
         <script src="{{ asset('assets') }}/includes/navbar-payment-notif.js?v={{ file_exists(public_path('assets/includes/navbar-payment-notif.js')) ? filemtime(public_path('assets/includes/navbar-payment-notif.js')) : time() }}"></script>
     @endif
 
+    @if (Auth::check() && in_array(Auth::id(), \App\Http\Controllers\ProspectController::PROSPECT_NOTIF_RECIPIENT_IDS))
+        {{-- Polling notifikasi Prospect baru dari tim Support — pop-up toast + suara tanpa reload --}}
+        <script>
+            window.prospectNotifUnreadUrl = '{{ route('notifications.prospect.unread') }}';
+            window.prospectNotifReadUrlTemplate = '{{ url('notifications/prospect/__ID__/read') }}';
+            window.csrfToken = window.csrfToken || '{{ csrf_token() }}';
+        </script>
+        <script src="{{ asset('assets') }}/includes/navbar-prospect-notif.js?v={{ file_exists(public_path('assets/includes/navbar-prospect-notif.js')) ? filemtime(public_path('assets/includes/navbar-prospect-notif.js')) : time() }}"></script>
+    @endif
+
     {{-- Patch setStyle so icon updates on click without page reload --}}
     <script>
     (function () {
