@@ -434,9 +434,9 @@
                                                             id="priceLabel-{{ $no }}"
                                                             data-id="{{ $no }}" name="harga"
                                                             placeholder="Put Price Here" data-type="currency"
-                                                            min="0" pattern="^[0-9]\d{0,2}(\.\d{3})*$"
-                                                            value="{{ number_format($item->price, '0', ',', '.') }}">
-                                                        <input class="form-control invoice-item-price" type="number"
+                                                            min="0"
+                                                            value="{{ fmod($item->price, 1) != 0 ? number_format($item->price, 2, ',', '.') : number_format($item->price, 0, ',', '.') }}">
+                                                        <input class="form-control invoice-item-price" type="number" step="any"
                                                             name="price[]" id="price-{{ $no }}"
                                                             value="{{ old('price[]', $item->price) }}" hidden>
                                                     </div>
@@ -444,17 +444,17 @@
                                                         <div class="hint-calc-wrapper">
                                                             <div class="text-secondary mb-1">
                                                                 <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
-                                                                Harga Exc. PPN: <strong class="text-primary exc-ppn-val">Rp 0</strong> <span class="ppn-val text-muted" style="font-size: 10px;">(PPN: Rp 0)</span><br>
-                                                                DPP (11/12): <strong class="text-dark dpp-val" style="font-size: 10.5px;">Rp 0</strong>
+                                                                DPP (Exc. PPN): <strong class="text-primary exc-ppn-val">Rp 0</strong><br>
+                                                                <span class="ppn-val text-muted" style="font-size: 10px;">PPN (11%): Rp 0</span>
                                                             </div>
                                                             <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
-                                                                <i class="mdi mdi-check me-1"></i> Gunakan Harga Exc. PPN
+                                                                <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP (Exc. PPN)
                                                             </button>
                                                         </div>
                                                         <div class="hint-applied-wrapper d-none">
                                                             <div class="d-flex align-items-center justify-content-between text-success">
                                                                 <span style="font-size: 10px;">
-                                                                    <i class="mdi mdi-check-circle-outline me-1"></i>Exc. PPN: <strong class="applied-dpp-text">Rp 0</strong> <span class="text-muted applied-dpp-calc" style="font-size: 9.5px;">(DPP: Rp 0)</span>
+                                                                    <i class="mdi mdi-check-circle-outline me-1"></i>DPP Exc. PPN: <strong class="applied-dpp-text">Rp 0</strong>
                                                                 </span>
                                                                 <button type="button" class="btn btn-xs btn-link text-danger p-0 ms-1 btn-reset-dpp" style="font-size: 10px; text-decoration: underline; line-height: 1;">
                                                                     Batal
@@ -611,26 +611,25 @@
                                                     <span class="input-group-text">Rp. </span>
                                                     <input type="text" class="form-control invoice-item-price-label"
                                                         id="priceLabel-{{ $rno }}" data-id="{{ $rno }}" name="harga"
-                                                        placeholder="Put Price Here" data-type="currency" min="0"
-                                                        pattern="^[0-9]\d{0,2}(\.\d{3})*$" value="">
-                                                    <input class="form-control invoice-item-price" type="number"
+                                                        placeholder="Put Price Here" data-type="currency" min="0" value="">
+                                                    <input class="form-control invoice-item-price" type="number" step="any"
                                                         name="price[]" id="price-{{ $rno }}" value="" hidden>
                                                 </div>
                                                 <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
                                                     <div class="hint-calc-wrapper">
                                                         <div class="text-secondary mb-1">
                                                             <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
-                                                                Harga Exc. PPN: <strong class="text-primary exc-ppn-val">Rp 0</strong> <span class="ppn-val text-muted" style="font-size: 10px;">(PPN: Rp 0)</span><br>
-                                                                DPP (11/12): <strong class="text-dark dpp-val" style="font-size: 10.5px;">Rp 0</strong>
+                                                            DPP (Exc. PPN): <strong class="text-primary exc-ppn-val">Rp 0</strong><br>
+                                                            <span class="ppn-val text-muted" style="font-size: 10px;">PPN (11%): Rp 0</span>
                                                         </div>
                                                         <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
-                                                            <i class="mdi mdi-check me-1"></i> Gunakan Harga Exc. PPN
+                                                            <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP (Exc. PPN)
                                                         </button>
                                                     </div>
                                                     <div class="hint-applied-wrapper d-none">
                                                         <div class="d-flex align-items-center justify-content-between text-success">
                                                             <span style="font-size: 10px;">
-                                                                <i class="mdi mdi-check-circle-outline me-1"></i>Exc. PPN: <strong class="applied-dpp-text">Rp 0</strong> <span class="text-muted applied-dpp-calc" style="font-size: 9.5px;">(DPP: Rp 0)</span>
+                                                                <i class="mdi mdi-check-circle-outline me-1"></i>DPP Exc. PPN: <strong class="applied-dpp-text">Rp 0</strong>
                                                             </span>
                                                             <button type="button" class="btn btn-xs btn-link text-danger p-0 ms-1 btn-reset-dpp" style="font-size: 10px; text-decoration: underline; line-height: 1;">
                                                                 Batal
@@ -781,26 +780,25 @@
                                                 <input type="text" class="form-control invoice-item-price-label"
                                                     id="priceLabel-1" data-id="1" name="harga"
                                                     placeholder="Put Price Here" data-type="currency" min="0"
-                                                    pattern="^[0-9]\d{0,2}(\.\d{3})*$"
                                                     value="{{ old('price[]') }}">
-                                                <input class="form-control invoice-item-price" type="number"
+                                                <input class="form-control invoice-item-price" type="number" step="any"
                                                     name="price[]" id="price-1" value="{{ old('price[]') }}" hidden>
                                             </div>
                                             <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
                                                 <div class="hint-calc-wrapper">
                                                     <div class="text-secondary mb-1">
                                                         <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
-                                                        Harga Exc. PPN: <strong class="text-primary exc-ppn-val">Rp 0</strong> <span class="ppn-val text-muted" style="font-size: 10px;">(PPN: Rp 0)</span><br>
-                                                        DPP (11/12): <strong class="text-dark dpp-val" style="font-size: 10.5px;">Rp 0</strong>
+                                                        DPP (Exc. PPN): <strong class="text-primary exc-ppn-val">Rp 0</strong><br>
+                                                        <span class="ppn-val text-muted" style="font-size: 10px;">PPN (11%): Rp 0</span>
                                                     </div>
                                                     <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
-                                                        <i class="mdi mdi-check me-1"></i> Gunakan Harga Exc. PPN
+                                                        <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP (Exc. PPN)
                                                     </button>
                                                 </div>
                                                 <div class="hint-applied-wrapper d-none">
                                                     <div class="d-flex align-items-center justify-content-between text-success">
                                                         <span style="font-size: 10px;">
-                                                            <i class="mdi mdi-check-circle-outline me-1"></i>Exc. PPN: <strong class="applied-dpp-text">Rp 0</strong> <span class="text-muted applied-dpp-calc" style="font-size: 9.5px;">(DPP: Rp 0)</span>
+                                                            <i class="mdi mdi-check-circle-outline me-1"></i>DPP Exc. PPN: <strong class="applied-dpp-text">Rp 0</strong>
                                                         </span>
                                                         <button type="button" class="btn btn-xs btn-link text-danger p-0 ms-1 btn-reset-dpp" style="font-size: 10px; text-decoration: underline; line-height: 1;">
                                                             Batal
@@ -1695,7 +1693,44 @@
             });
 
             function formatNumber(n) {
-                return n.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+                return String(n || '').replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            }
+
+            function formatDecimalDisplay(num) {
+                if (num === null || num === undefined || isNaN(num)) return '0';
+                var n = Number(num);
+                var isFractional = Math.abs(n - Math.round(n)) > 0.0001;
+                var fixed = isFractional ? n.toFixed(2) : Math.round(n).toString();
+                var parts = fixed.split('.');
+                var intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                if (parts.length > 1 && parts[1] !== '00') {
+                    return intPart + ',' + parts[1];
+                }
+                return intPart;
+            }
+
+            function formatCurrencyInput(val) {
+                if (val === null || val === undefined || val === '') return '';
+                var str = String(val);
+                var hasComma = str.indexOf(',') !== -1;
+                if (hasComma) {
+                    var parts = str.split(',');
+                    var intPart = parts[0].replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                    var decPart = parts.slice(1).join('').replace(/\D/g, "").slice(0, 2);
+                    return intPart + ',' + decPart;
+                }
+                return str.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            }
+
+            function parseCurrency(val) {
+                if (!val) return 0;
+                var str = String(val).trim();
+                if (str.indexOf(',') !== -1) {
+                    var clean = str.replace(/\./g, '').replace(',', '.');
+                    return parseFloat(clean) || 0;
+                }
+                var clean = str.replace(/\./g, '');
+                return parseFloat(clean) || 0;
             }
 
             function formatCurrencyDiscount(input) {
@@ -1706,14 +1741,10 @@
                     return;
                 }
 
-                // add commas to number
-                // remove all non-digits
-                input_val = formatNumber(input_val);
-
-                // send updated string to input
+                input_val = formatCurrencyInput(input_val);
                 input.val(input_val);
-                var nomorInt = parseFloat(input_val.replace(/[.,]/g, ''));
-                $('#diskon').val(nomorInt);
+                var nomorFloat = parseCurrency(input_val);
+                $('#diskon').val(nomorFloat);
             }
 
             // Formatting Discount Quotation (delegated: works for existing + future rows)
@@ -1750,7 +1781,7 @@
                 recalculateTotals();
             });
 
-            // Live calculation helper: Hitung Harga Exc. PPN & DPP Nilai Lain jika harga yang diinput adalah include PPN (11%)
+            // Live calculation helper: Hitung Harga DPP (Exc. PPN) dan PPN jika harga yang diinput adalah include PPN (11%)
             function updatePriceTaxHint($input) {
                 var $col = $input.closest('.col-md-3');
                 var $hint = $col.find('.price-tax-hint');
@@ -1762,17 +1793,21 @@
                 }
 
                 var inputVal = $input.val();
-                var nomorInt = parseFloat((inputVal || '').replace(/[.,]/g, '')) || 0;
+                var nomorFloat = parseCurrency(inputVal);
 
-                if (nomorInt > 0) {
-                    var hargaExcPpn = Math.round((nomorInt * 100) / 111);
-                    var ppn = nomorInt - hargaExcPpn;
-                    var dpp = Math.round((hargaExcPpn * 11) / 12);
+                if (nomorFloat > 0) {
+                    var dppPrecise = nomorFloat / 1.11;
+                    var ppnPrecise = nomorFloat - dppPrecise;
 
-                    $hint.find('.exc-ppn-val').text('Rp ' + formatNumber(String(hargaExcPpn)));
-                    $hint.find('.ppn-val').text('(PPN: Rp ' + formatNumber(String(ppn)) + ')');
-                    $hint.find('.dpp-val').text('Rp ' + formatNumber(String(dpp)));
-                    $hint.find('.btn-apply-dpp').data('exc-ppn', hargaExcPpn).data('dpp', dpp).data('orig-price', nomorInt);
+                    var dppFormatted = formatDecimalDisplay(dppPrecise);
+                    var ppnFormatted = formatDecimalDisplay(ppnPrecise);
+
+                    $hint.find('.exc-ppn-val').text('Rp ' + dppFormatted);
+                    $hint.find('.ppn-val').text('(PPN: Rp ' + ppnFormatted + ')');
+                    $hint.find('.btn-apply-dpp')
+                        .data('exc-ppn', dppPrecise)
+                        .data('dpp-formatted', dppFormatted)
+                        .data('orig-price', nomorFloat);
                     $hint.find('.hint-calc-wrapper').removeClass('d-none');
                     $hint.find('.hint-applied-wrapper').addClass('d-none');
                     $hint.removeClass('d-none');
@@ -1781,10 +1816,14 @@
                 }
             }
 
-            $(document).on('keyup input', '.invoice-item-price-label', function() {
+            $(document).on('keyup input', '.invoice-item-price-label', function(e) {
                 var input = $(this);
                 var $col = input.closest('.col-md-3');
                 var $row = input.closest('.repeater-wrapper');
+
+                if (e.type === 'keyup' && [37, 38, 39, 40, 9, 16, 17, 18, 27].includes(e.which)) {
+                    return;
+                }
 
                 // User mengetik manual -> reset state DPP applied pada baris ini
                 $col.data('dpp-applied', false);
@@ -1793,14 +1832,14 @@
                 var original_len = input_val.length;
                 var caret_pos = input.prop("selectionStart") || 0;
 
-                input_val = formatNumber(input_val);
+                input_val = formatCurrencyInput(input_val);
                 input.val(input_val);
 
-                var nomorInt = parseFloat(input_val.replace(/[.,]/g, '')) || 0;
-                $row.find('.invoice-item-price').val(nomorInt);
+                var nomorFloat = parseCurrency(input_val);
+                $row.find('.invoice-item-price').val(nomorFloat);
 
                 // Otomatis isi Qty jadi 1 jika Price diisi dan Qty masih kosong / 0
-                if (nomorInt > 0) {
+                if (nomorFloat > 0) {
                     var $qtyInput = $row.find('.invoice-item-qty');
                     var currentQty = parseFloat($qtyInput.val()) || 0;
                     if (currentQty <= 0 || !$qtyInput.val().trim()) {
@@ -1818,15 +1857,15 @@
                 recalculateTotals();
             });
 
-            // Handler tombol "Gunakan Harga Exc. PPN"
+            // Handler tombol "Gunakan Harga DPP (Exc. PPN)"
             $(document).on('click', '.btn-apply-dpp', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
 
                 var $col = $(this).closest('.col-md-3');
                 var $row = $(this).closest('.repeater-wrapper');
-                var excPpn = $(this).data('exc-ppn');
-                var dpp = $(this).data('dpp');
+                var excPpn = parseFloat($(this).data('exc-ppn')) || 0;
+                var dppFormatted = $(this).data('dpp-formatted') || formatDecimalDisplay(excPpn);
                 var origPrice = $(this).data('orig-price');
                 var $priceLabel = $col.find('.invoice-item-price-label');
                 var $priceHidden = $row.find('.invoice-item-price');
@@ -1836,10 +1875,9 @@
                     $col.data('dpp-applied', true);
                     $col.data('orig-price', origPrice);
                     $col.data('exc-ppn-val', excPpn);
-                    $col.data('dpp-val', dpp);
 
-                    $priceLabel.val(formatNumber(String(excPpn)));
-                    $priceHidden.val(excPpn);
+                    $priceLabel.val(dppFormatted);
+                    $priceHidden.val(parseFloat(excPpn.toFixed(4)));
 
                     // Otomatis isi Qty jadi 1 jika Qty masih kosong / 0
                     var $qtyInput = $row.find('.invoice-item-qty');
@@ -1849,8 +1887,7 @@
                     }
 
                     // Switch ke status diterapkan
-                    $hint.find('.applied-dpp-text').text('Rp ' + formatNumber(String(excPpn)));
-                    $hint.find('.applied-dpp-calc').text('(DPP: Rp ' + formatNumber(String(dpp)) + ')');
+                    $hint.find('.applied-dpp-text').text('Rp ' + dppFormatted);
                     $hint.find('.hint-calc-wrapper').addClass('d-none');
                     $hint.find('.hint-applied-wrapper').removeClass('d-none');
                     $hint.removeClass('d-none');
@@ -1878,7 +1915,7 @@
 
                 if (origPrice && origPrice > 0) {
                     $col.data('dpp-applied', false);
-                    $priceLabel.val(formatNumber(String(origPrice)));
+                    $priceLabel.val(formatDecimalDisplay(origPrice));
                     $priceHidden.val(origPrice);
 
                     updatePriceTaxHint($priceLabel);

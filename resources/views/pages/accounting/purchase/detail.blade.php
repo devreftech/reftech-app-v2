@@ -151,7 +151,7 @@
                                                 <span class="fw-bold" style="color:#222;">{{ $product->qty }}</span> {{ $product->info_qty }}
                                             </td>
                                             <td class="text-end align-top py-2 text-nowrap" style="white-space:nowrap;">
-                                                {{ number_format($product->price, 0, '', '.') }}
+                                                {{ fmod($product->price, 1) != 0 ? number_format($product->price, 2, ',', '.') : number_format($product->price, 0, '', '.') }}
                                             </td>
                                             @if ($hasDisc)
                                                 <td class="text-center align-top py-2">
@@ -212,7 +212,7 @@
                                         @endif
                                         @if ($purchase->vat > 0)
                                             <tr>
-                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">DPP NILAI LAIN</td>
+                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">DPP</td>
                                                 <td class="py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #111; vertical-align: middle;">
                                                     <div class="d-flex justify-content-between align-items-center">
                                                         <span>Rp</span>
@@ -221,7 +221,7 @@
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">PPN 12%</td>
+                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">PPN {{ $purchase->vat }}%</td>
                                                 <td class="py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #111; vertical-align: middle;">
                                                     <div class="d-flex justify-content-between align-items-center">
                                                         <span>Rp</span>

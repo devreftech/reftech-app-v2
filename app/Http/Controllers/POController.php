@@ -253,8 +253,8 @@ class POController extends Controller
         $purchase = PurchaseOrder::with('supplier')->find($id);
         $dPurchase = DetailPurchaseOrder::where('id_purchase_order', $id)->get();
         $hargaSebelumPpn = ($purchase->subtotal ?? 0) - ($purchase->diskon ?? 0);
-        $dpp = ($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 12) : 0;
-        $tax = ($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 100) : 0;
+        $dpp = ($purchase->vat ?? 0) > 0 ? $hargaSebelumPpn : 0;
+        $tax = ($purchase->vat ?? 0) > 0 ? round(($dpp * $purchase->vat) / 100) : 0;
         $totalPph = 0;
         foreach ($dPurchase as $product) {
             $pph = ($product->amount * $product->pph) / 100;
@@ -551,8 +551,8 @@ class POController extends Controller
         $purchase = PurchaseOrder::find($id);
         $dPurchase = DetailPurchaseOrder::where('id_purchase_order', $id)->get();
         $hargaSebelumPpn = ($purchase->subtotal ?? 0) - ($purchase->diskon ?? 0);
-        $dpp = ($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 12) : 0;
-        $tax = ($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 100) : 0;
+        $dpp = ($purchase->vat ?? 0) > 0 ? $hargaSebelumPpn : 0;
+        $tax = ($purchase->vat ?? 0) > 0 ? round(($dpp * $purchase->vat) / 100) : 0;
         $totalPph = 0;
         foreach ($dPurchase as $item) {
             $pph = ($item->amount * $item->pph) / 100;

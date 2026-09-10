@@ -174,7 +174,7 @@
                                     <p class="mb-0 fw-semibold text-dark">{{ $product->product }}</p>
                                 </td>
                                 <td class="text-center align-top px-2 text-dark"><span class="fw-bold">{{ $product->qty }}</span> {{ $product->info_qty }}</td>
-                                <td class="text-end align-top px-2 text-nowrap text-dark" style="white-space:nowrap;">{{ number_format($product->price, 0, '', '.') }}</td>
+                                <td class="text-end align-top px-2 text-nowrap text-dark" style="white-space:nowrap;">{{ fmod($product->price, 1) != 0 ? number_format($product->price, 2, ',', '.') : number_format($product->price, 0, '', '.') }}</td>
                                 @if ($hasDisc)
                                     <td class="text-center align-top px-2 text-dark">{{ $product->disc ? $product->disc . '%' : '-' }}</td>
                                 @endif
@@ -228,7 +228,7 @@
                     @if ($purchase->vat > 0)
                         <tr class="compact-item-row">
                             <td colspan="{{ $hasDisc ? '3' : '2' }}" class="text-end fw-semibold text-uppercase px-2" style="border: 1px solid rgb(60,60,60); background: #ffffff; color: #333; vertical-align: middle;">
-                                DPP NILAI LAIN
+                                DPP
                             </td>
                             <td class="px-2" style="border: 1px solid rgb(60,60,60); background: #ffffff; color: #111; vertical-align: middle;">
                                 <div class="d-flex justify-content-between align-items-center">
@@ -239,7 +239,7 @@
                         </tr>
                         <tr class="compact-item-row">
                             <td colspan="{{ $hasDisc ? '3' : '2' }}" class="text-end fw-semibold text-uppercase px-2" style="border: 1px solid rgb(60,60,60); background: #ffffff; color: #333; vertical-align: middle;">
-                                PPN 12%
+                                PPN {{ $purchase->vat }}%
                             </td>
                             <td class="px-2" style="border: 1px solid rgb(60,60,60); background: #ffffff; color: #111; vertical-align: middle;">
                                 <div class="d-flex justify-content-between align-items-center">

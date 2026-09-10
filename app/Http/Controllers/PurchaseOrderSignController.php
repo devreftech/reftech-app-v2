@@ -36,8 +36,8 @@ class PurchaseOrderSignController extends Controller
         $dPurchase = DetailPurchaseOrder::where('id_purchase_order', $purchase->id)->get();
         $totalPph = $dPurchase->sum('pph');
         $hargaSebelumPpn = ($purchase->subtotal ?? 0) - ($purchase->diskon ?? 0);
-        $dpp = ($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 12) : 0;
-        $tax = ($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 100) : 0;
+        $dpp = ($purchase->vat ?? 0) > 0 ? $hargaSebelumPpn : 0;
+        $tax = ($purchase->vat ?? 0) > 0 ? round(($dpp * $purchase->vat) / 100) : 0;
 
         return view('pages.vendor.purchase-sign', [
             'purchase'  => $purchase,
