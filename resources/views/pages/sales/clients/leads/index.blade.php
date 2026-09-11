@@ -114,7 +114,7 @@
                                                 <th>Area</th>
                                                 <th>Note</th>
                                                 <th>Last Contact</th>
-                                                <th>Next FU</th>
+                                                <th class="text-nowrap">Next FU</th>
                                                 <th>Flag</th>
                                             </tr>
                                         </thead>
@@ -134,7 +134,7 @@
                                                 <th>Area</th>
                                                 <th>Note</th>
                                                 <th>Last Contact</th>
-                                                <th>Next FU</th>
+                                                <th class="text-nowrap">Next FU</th>
                                                 <th>Flag</th>
                                             </tr>
                                         </thead>
@@ -154,7 +154,7 @@
                                                 <th>Area</th>
                                                 <th>Note</th>
                                                 <th>Last Contact</th>
-                                                <th>Next FU</th>
+                                                <th class="text-nowrap">Next FU</th>
                                                 <th>Flag</th>
                                             </tr>
                                         </thead>
@@ -326,7 +326,7 @@
     <script src="{{ asset('assets') }}/js/tables-datatables-advanced.js"></script>
     <script src="{{ asset('assets') }}/includes/table-leads.js"></script>
     <script src="{{ asset('assets') }}/includes/table-leads-search.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-customer-search.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-customer-search.js?v={{ filemtime(public_path('assets/includes/table-customer-search.js')) }}"></script>
     <script src="{{ asset('assets') }}/includes/table-leads-info.js"></script>
     <script src="{{ asset('assets') }}/includes/table-leads-admin.js"></script>
 @endpush

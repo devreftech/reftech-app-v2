@@ -391,7 +391,59 @@
 
                                     {{-- Info Rekening --}}
                                     <td>
-                                        @if ($item->fee_bank_account)
+                                        @php
+                                            $destList = $item->fee_bank_destinations ?: [];
+                                        @endphp
+                                        @if (count($destList) > 1)
+                                            <div class="d-flex flex-column gap-1">
+                                                <span class="badge bg-label-primary align-self-start px-1.5 py-0.5" style="font-size: 9.5px;">
+                                                    <i class="mdi mdi-bank-transfer me-0.5"></i>{{ count($destList) }} Rekening Tujuan
+                                                </span>
+                                                @foreach ($destList as $d)
+                                                    @php
+                                                        $dStatus = $d['status'] ?? 'unpaid';
+                                                        $dBank = !empty($d['id_source_bank']) ? $banks->firstWhere('id', $d['id_source_bank']) : null;
+                                                    @endphp
+                                                    <div class="p-1 rounded bg-light border small" style="font-size: 10.5px;">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <span class="fw-semibold text-dark">
+                                                                <span class="badge bg-label-info px-1 py-0 me-0.5" style="font-size: 9px;">{{ $d['bank_name'] ?: 'Bank' }}</span>
+                                                                {{ $d['bank_account'] }}
+                                                            </span>
+                                                            @if (!empty($d['nominal']))
+                                                                <span class="fw-bold text-success">Rp {{ number_format((float)$d['nominal'], 0, ',', '.') }}</span>
+                                                            @endif
+                                                        </div>
+                                                        <div class="d-flex justify-content-between align-items-center text-muted small mt-0.5" style="font-size: 10px;">
+                                                            <span class="text-truncate" style="max-width: 120px;" title="{{ $d['bank_holder'] }}">
+                                                                a.n {{ $d['bank_holder'] ?: '-' }} @if(!empty($d['note']))({{ $d['note'] }})@endif
+                                                            </span>
+                                                            <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                                                @if ($dStatus === 'paid')
+                                                                    <span class="badge bg-label-success px-1 py-0" style="font-size: 8.5px;"><i class="mdi mdi-check"></i> Paid</span>
+                                                                @elseif ($dStatus === 'pending_transfer')
+                                                                    <span class="badge bg-label-warning text-dark px-1 py-0" style="font-size: 8.5px;"><i class="mdi mdi-clock-outline"></i> Siap Trf</span>
+                                                                @else
+                                                                    <span class="badge bg-label-secondary px-1 py-0" style="font-size: 8.5px;">Unpaid</span>
+                                                                @endif
+
+                                                                @if (!empty($d['transfer_proof']))
+                                                                    <a href="{{ \Illuminate\Support\Facades\Storage::url($d['transfer_proof']) }}" target="_blank"
+                                                                        class="badge bg-label-primary px-1 py-0 text-decoration-none" title="Lihat Bukti Transfer">
+                                                                        <i class="mdi mdi-file-document-check-outline"></i>
+                                                                    </a>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                        @if ($dBank && $dStatus === 'paid')
+                                                            <div class="text-muted" style="font-size: 9px;">
+                                                                <i class="mdi mdi-bank me-0.5"></i>Trf dari: {{ $dBank->bank }} ({{ $dBank->no_rek }})
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @elseif ($item->fee_bank_account)
                                             <div class="fw-semibold text-dark" style="font-size: 11.5px;">
                                                 <span class="badge bg-label-info px-1.5 py-0.5 me-1" style="font-size: 9.5px;">{{ $item->fee_bank_name ?: 'Bank' }}</span>
                                                 {{ $item->fee_bank_account }}
@@ -473,6 +525,7 @@
                                                     data-cust-pay-icon="{{ $custPay->icon }}"
                                                     data-cust-pay-detail="{{ $custPay->detail_text }}"
                                                     data-cust-pay-lunas="{{ $custPay->is_lunas ? '1' : '0' }}"
+                                                    data-destinations="{{ json_encode($item->fee_bank_destinations ?: []) }}"
                                                     data-action-url="{{ route('finance.management-fee.update-disbursement', $item->id) }}">
                                                     <i class="mdi mdi-cash-fast"></i>
                                                 </button>
@@ -816,12 +869,51 @@
     </div>
 </div>
 
+<style>
+    #modalDisbursement .modal-dialog-scrollable .modal-content,
+    #modalManualDisbursement .modal-dialog-scrollable .modal-content,
+    #modalManualFee .modal-dialog-scrollable .modal-content {
+        max-height: 88vh;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+    #modalDisbursement .modal-body,
+    #modalManualDisbursement .modal-body,
+    #modalManualFee .modal-body {
+        overflow-y: auto;
+        max-height: calc(88vh - 130px);
+    }
+    #modalDisbursement .modal-body::-webkit-scrollbar,
+    #modalManualDisbursement .modal-body::-webkit-scrollbar,
+    #modalManualFee .modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+    #modalDisbursement .modal-body::-webkit-scrollbar-track,
+    #modalManualDisbursement .modal-body::-webkit-scrollbar-track,
+    #modalManualFee .modal-body::-webkit-scrollbar-track {
+        background: #f8fafc;
+        border-radius: 4px;
+    }
+    #modalDisbursement .modal-body::-webkit-scrollbar-thumb,
+    #modalManualDisbursement .modal-body::-webkit-scrollbar-thumb,
+    #modalManualFee .modal-body::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+    #modalDisbursement .modal-body::-webkit-scrollbar-thumb:hover,
+    #modalManualDisbursement .modal-body::-webkit-scrollbar-thumb:hover,
+    #modalManualFee .modal-body::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+</style>
+
 {{-- ========================================================================= --}}
 {{-- MODAL 1: PROSES PENCAIRAN FEE DARI QUOTATION                              --}}
 {{-- ========================================================================= --}}
 <div class="modal fade" id="modalDisbursement" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable" style="max-width: 1100px;">
+        <form action="" method="POST" id="form-disbursement" class="modal-content border-0 shadow-lg" enctype="multipart/form-data">
+            @csrf
             <div class="modal-header border-bottom py-3">
                 <div class="d-flex align-items-center gap-2">
                     <div class="avatar avatar-sm bg-label-primary rounded-circle d-flex align-items-center justify-content-center">
@@ -834,9 +926,7 @@
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="" method="POST" id="form-disbursement" enctype="multipart/form-data">
-                @csrf
-                <div class="modal-body p-3 p-md-4">
+            <div class="modal-body p-3 p-md-4">
                     {{-- Status Pembayaran Customer Alert Banner --}}
                     <div id="modal-cust-pay-banner" class="alert py-2.5 px-3 mb-3 rounded-3 border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
                         <div class="d-flex align-items-center gap-2">
@@ -874,148 +964,210 @@
                         </div>
                     </div>
 
-                    {{-- Form Data Rekening --}}
-                    <h6 class="fw-bold text-dark mb-2" style="font-size: 12.5px;">
-                        <i class="mdi mdi-bank-outline me-1 text-primary"></i> Data Rekening Tujuan Penerima Fee
-                    </h6>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-3 col-6">
-                            <label class="form-label small fw-semibold" for="input_fee_bank_name">Nama Bank</label>
-                            <input type="text" class="form-control form-control-sm" id="input_fee_bank_name" name="fee_bank_name"
-                                placeholder="Contoh: BCA, Mandiri">
+                    {{-- SINGLE DESTINATION WRAPPER (Ditampilkan jika rekening tujuan <= 1) --}}
+                    <div id="modal-d-single-dest-wrapper">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-dark mb-0" style="font-size: 12.5px;">
+                                <i class="mdi mdi-bank-outline me-1 text-primary"></i> Data Rekening Tujuan Penerima Fee
+                            </h6>
                         </div>
-                        <div class="col-md-3 col-6">
-                            <label class="form-label small fw-semibold" for="input_fee_bank_branch">Cabang Bank <span class="text-muted fw-normal">(Opsional)</span></label>
-                            <input type="text" class="form-control form-control-sm" id="input_fee_bank_branch" name="fee_bank_branch"
-                                placeholder="Contoh: KCP Dago / BDG">
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <label class="form-label small fw-semibold" for="input_fee_bank_account">Nomor Rekening</label>
-                            <input type="text" class="form-control form-control-sm" id="input_fee_bank_account" name="fee_bank_account"
-                                placeholder="Contoh: 1234567890">
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <label class="form-label small fw-semibold" for="input_fee_bank_holder">Nama Pemilik (A/N)</label>
-                            <input type="text" class="form-control form-control-sm" id="input_fee_bank_holder" name="fee_bank_holder"
-                                placeholder="Contoh: John Doe">
-                        </div>
-                    </div>
 
-                    <div class="divider my-3">
-                        <div class="divider-text text-muted small" style="font-size: 11px;">Status &amp; Eksekusi Transfer</div>
-                    </div>
-
-                    {{-- Form Status Transfer & Upload Bukti --}}
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold" for="input_fee_payment_status">Status Pencairan Fee <span class="text-danger">*</span></label>
-                            <select class="form-select form-select-sm" id="input_fee_payment_status" name="fee_payment_status" required>
-                                <option value="unpaid">🔴 Belum Ditransfer (Unpaid)</option>
-                                <option value="pending_transfer">🟡 Siap Ditransfer (Pending Action)</option>
-                                <option value="paid">🟢 Sudah Ditransfer (Paid)</option>
-                            </select>
+                        <div class="row g-3 mb-3" id="modal-d-single-bank-fields">
+                            <div class="col-md-3 col-6">
+                                <label class="form-label small fw-semibold" for="input_fee_bank_name">Nama Bank</label>
+                                <input type="text" class="form-control form-control-sm" id="input_fee_bank_name" name="fee_bank_name"
+                                    placeholder="Contoh: BCA, Mandiri">
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <label class="form-label small fw-semibold" for="input_fee_bank_branch">Cabang Bank <span class="text-muted fw-normal">(Opsional)</span></label>
+                                <input type="text" class="form-control form-control-sm" id="input_fee_bank_branch" name="fee_bank_branch"
+                                    placeholder="Contoh: KCP Dago / BDG">
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <label class="form-label small fw-semibold" for="input_fee_bank_account">Nomor Rekening</label>
+                                <input type="text" class="form-control form-control-sm" id="input_fee_bank_account" name="fee_bank_account"
+                                    placeholder="Contoh: 1234567890">
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <label class="form-label small fw-semibold" for="input_fee_bank_holder">Nama Pemilik (A/N)</label>
+                                <input type="text" class="form-control form-control-sm" id="input_fee_bank_holder" name="fee_bank_holder"
+                                    placeholder="Contoh: John Doe">
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold" for="input_fee_transfer_date">Tanggal Transfer</label>
-                            <input type="date" class="form-control form-control-sm" id="input_fee_transfer_date" name="fee_transfer_date"
-                                value="{{ date('Y-m-d') }}">
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label small fw-semibold" for="input_fee_source_bank">
-                                <i class="mdi mdi-bank text-primary me-1"></i> Rekening Bank Kantor (Sumber Dana Transfer) <span class="text-danger">*</span>
-                            </label>
-                            <select class="form-select form-select-sm" id="input_fee_source_bank" name="id_source_bank">
-                                <option value="">-- Pilih Rekening Kantor Asal Transfer --</option>
-                                @foreach ($banks as $b)
-                                    <option value="{{ $b->id }}">{{ $b->bank }} - {{ $b->no_rek }} (a.n {{ $b->nama_rek }}) [Saldo: Rp {{ number_format($b->saldo, 0, ',', '.') }}]</option>
-                                @endforeach
-                            </select>
-                            <small class="text-muted" style="font-size: 10.5px;">Wajib dipilih jika status "Sudah Ditransfer (Paid)". Saldo bank akan otomatis berkurang &amp; tercatat sebagai Debet di Rekening Koran.</small>
-                        </div>
-                    </div>
 
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-12">
-                            <label class="form-label small fw-semibold d-flex justify-content-between align-items-center mb-1.5">
-                                <span>Upload Bukti Transfer <span class="text-muted">(JPG, PNG, PDF maks 5MB)</span></span>
-                                <span class="badge bg-label-info fw-normal" style="font-size: 10.5px;">
-                                    <i class="mdi mdi-content-paste me-1"></i>Support Paste (Ctrl + V)
-                                </span>
-                            </label>
+                        <div class="divider my-3">
+                            <div class="divider-text text-muted small" style="font-size: 11px;">Status &amp; Eksekusi Transfer</div>
+                        </div>
 
-                            {{-- Drop & Paste Area --}}
-                            <label for="input_fee_transfer_proof" id="paste-drop-zone" class="border border-2 border-dashed rounded-3 p-3 text-center bg-light position-relative d-block mb-0" style="cursor: pointer; transition: all 0.2s ease;">
-                                <input type="file" class="d-none" id="input_fee_transfer_proof" name="fee_transfer_proof" accept="image/*,.pdf">
-                                
-                                <div id="paste-prompt" class="py-1">
-                                    <div class="avatar avatar-md bg-label-primary rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center">
-                                        <i class="mdi mdi-cloud-upload-outline fs-3"></i>
+                        {{-- Form Status Transfer & Upload Bukti Single --}}
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold" for="input_fee_payment_status">Status Pencairan Fee <span class="text-danger">*</span></label>
+                                <select class="form-select form-select-sm" id="input_fee_payment_status" name="fee_payment_status">
+                                    <option value="unpaid">🔴 Belum Ditransfer (Unpaid)</option>
+                                    <option value="pending_transfer">🟡 Siap Ditransfer (Pending Action)</option>
+                                    <option value="paid">🟢 Sudah Ditransfer (Paid)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold" for="input_fee_transfer_date">Tanggal Transfer</label>
+                                <input type="date" class="form-control form-control-sm" id="input_fee_transfer_date" name="fee_transfer_date"
+                                    value="{{ date('Y-m-d') }}">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label small fw-semibold" for="input_fee_source_bank">
+                                    <i class="mdi mdi-bank text-primary me-1"></i> Rekening Bank Kantor (Sumber Dana Transfer) <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select form-select-sm" id="input_fee_source_bank" name="id_source_bank">
+                                    <option value="">-- Pilih Rekening Kantor Asal Transfer --</option>
+                                    @foreach ($banks as $b)
+                                        <option value="{{ $b->id }}">{{ $b->bank }} - {{ $b->no_rek }} (a.n {{ $b->nama_rek }}) [Saldo: Rp {{ number_format($b->saldo, 0, ',', '.') }}]</option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted" style="font-size: 10.5px;">Wajib dipilih jika status "Sudah Ditransfer (Paid)". Saldo bank akan otomatis berkurang &amp; tercatat sebagai Debet di Rekening Koran.</small>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label small fw-semibold d-flex justify-content-between align-items-center mb-1.5">
+                                    <span>Upload Bukti Transfer <span class="text-muted">(JPG, PNG, PDF maks 5MB)</span></span>
+                                    <span class="badge bg-label-info fw-normal" style="font-size: 10.5px;">
+                                        <i class="mdi mdi-content-paste me-1"></i>Support Paste (Ctrl + V)
+                                    </span>
+                                </label>
+
+                                {{-- Drop & Paste Area --}}
+                                <label for="input_fee_transfer_proof" id="paste-drop-zone" class="border border-2 border-dashed rounded-3 p-3 text-center bg-light position-relative d-block mb-0" style="cursor: pointer; transition: all 0.2s ease;">
+                                    <input type="file" class="d-none" id="input_fee_transfer_proof" name="fee_transfer_proof" accept="image/*,.pdf">
+                                    
+                                    <div id="paste-prompt" class="py-1">
+                                        <div class="avatar avatar-md bg-label-primary rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center">
+                                            <i class="mdi mdi-cloud-upload-outline fs-3"></i>
+                                        </div>
+                                        <p class="mb-1 fw-semibold text-dark small">
+                                            Klik untuk pilih file, drag &amp; drop, atau tekan <kbd class="bg-dark text-white px-1.5 py-0.5 rounded" style="font-size: 11px;">Ctrl + V</kbd> untuk Paste Screenshot
+                                        </p>
+                                        <span class="text-muted small" style="font-size: 11px;">Mendukung format JPG, PNG, PDF (Maks. 5 MB)</span>
                                     </div>
-                                    <p class="mb-1 fw-semibold text-dark small">
-                                        Klik untuk pilih file, drag &amp; drop, atau tekan <kbd class="bg-dark text-white px-1.5 py-0.5 rounded" style="font-size: 11px;">Ctrl + V</kbd> untuk Paste Screenshot
-                                    </p>
-                                    <span class="text-muted small" style="font-size: 11px;">Mendukung format JPG, PNG, PDF (Maks. 5 MB)</span>
-                                </div>
 
-                                {{-- Live Preview File Baru --}}
-                                <div id="new-file-preview" class="d-none">
-                                    <div class="d-flex align-items-center justify-content-between p-2 rounded bg-white border shadow-sm">
-                                        <div class="d-flex align-items-center gap-2 text-start overflow-hidden">
-                                            <img id="pasted-image-thumb" src="" alt="Preview" class="rounded object-fit-cover border d-none" style="width: 50px; height: 50px;">
-                                            <div id="pasted-pdf-icon" class="avatar avatar-sm bg-label-danger rounded d-flex align-items-center justify-content-center flex-shrink-0 d-none" style="width: 50px; height: 50px;">
-                                                <i class="mdi mdi-file-pdf-box fs-3"></i>
-                                            </div>
-                                            <div class="text-truncate">
-                                                <div class="fw-bold text-dark small text-truncate" id="new-file-name">bukti.png</div>
-                                                <div class="d-flex gap-1 mt-0.5">
-                                                    <span class="badge bg-label-secondary px-1.5 py-0.5" id="new-file-size" style="font-size: 10px;">-</span>
-                                                    <span class="badge bg-label-success px-1.5 py-0.5" id="new-file-source" style="font-size: 10px;">Siap Diupload</span>
+                                    {{-- Live Preview File Baru --}}
+                                    <div id="new-file-preview" class="d-none">
+                                        <div class="d-flex align-items-center justify-content-between p-2 rounded bg-white border shadow-sm">
+                                            <div class="d-flex align-items-center gap-2 text-start overflow-hidden">
+                                                <img id="pasted-image-thumb" src="" alt="Preview" class="rounded object-fit-cover border d-none" style="width: 50px; height: 50px;">
+                                                <div id="pasted-pdf-icon" class="avatar avatar-sm bg-label-danger rounded d-flex align-items-center justify-content-center flex-shrink-0 d-none" style="width: 50px; height: 50px;">
+                                                    <i class="mdi mdi-file-pdf-box fs-3"></i>
+                                                </div>
+                                                <div class="text-truncate">
+                                                    <div class="fw-bold text-dark small text-truncate" id="new-file-name">bukti.png</div>
+                                                    <div class="d-flex gap-1 mt-0.5">
+                                                        <span class="badge bg-label-secondary px-1.5 py-0.5" id="new-file-size" style="font-size: 10px;">-</span>
+                                                        <span class="badge bg-label-success px-1.5 py-0.5" id="new-file-source" style="font-size: 10px;">Siap Diupload</span>
+                                                    </div>
                                                 </div>
                                             </div>
+                                            <button type="button" class="btn btn-sm btn-icon btn-label-danger flex-shrink-0 ms-2" id="btn-remove-new-file" title="Hapus / Pilih Ulang">
+                                                <i class="mdi mdi-close"></i>
+                                            </button>
                                         </div>
-                                        <button type="button" class="btn btn-sm btn-icon btn-label-danger flex-shrink-0 ms-2" id="btn-remove-new-file" title="Hapus / Pilih Ulang">
-                                            <i class="mdi mdi-close"></i>
-                                        </button>
+                                    </div>
+                                </label>
+
+                                {{-- Bukti Transfer Tersimpan Sebelumnya --}}
+                                <input type="hidden" name="delete_fee_transfer_proof" id="delete_fee_transfer_proof" value="0">
+
+                                <div id="proof-preview-wrap" class="mt-2 d-none">
+                                    <div class="alert alert-secondary py-1.5 px-2.5 mb-0 rounded d-flex align-items-center justify-content-between flex-wrap gap-2" style="font-size: 11.5px;">
+                                        <span class="text-muted">
+                                            <i class="mdi mdi-file-check-outline text-success me-1"></i> Bukti transfer sebelumnya tersimpan
+                                        </span>
+                                        <div class="d-flex align-items-center gap-1.5">
+                                            <a href="#" target="_blank" id="proof-preview-link" class="btn btn-xs btn-label-primary px-2 py-0.5 fw-semibold">
+                                                <i class="mdi mdi-open-in-new me-0.5"></i> Lihat File
+                                            </a>
+                                            <button type="button" class="btn btn-xs btn-icon btn-label-danger" id="btn-delete-existing-proof" title="Hapus Bukti Transfer">
+                                                <i class="mdi mdi-trash-can-outline"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </label>
 
-                            {{-- Bukti Transfer Tersimpan Sebelumnya --}}
-                            <input type="hidden" name="delete_fee_transfer_proof" id="delete_fee_transfer_proof" value="0">
-
-                            <div id="proof-preview-wrap" class="mt-2 d-none">
-                                <div class="alert alert-secondary py-1.5 px-2.5 mb-0 rounded d-flex align-items-center justify-content-between flex-wrap gap-2" style="font-size: 11.5px;">
-                                    <span class="text-muted">
-                                        <i class="mdi mdi-file-check-outline text-success me-1"></i> Bukti transfer sebelumnya tersimpan
-                                    </span>
-                                    <div class="d-flex align-items-center gap-1.5">
-                                        <a href="#" target="_blank" id="proof-preview-link" class="btn btn-xs btn-label-primary px-2 py-0.5 fw-semibold">
-                                            <i class="mdi mdi-open-in-new me-0.5"></i> Lihat File
-                                        </a>
-                                        <button type="button" class="btn btn-xs btn-icon btn-label-danger" id="btn-delete-existing-proof" title="Hapus Bukti Transfer">
-                                            <i class="mdi mdi-trash-can-outline"></i>
+                                <div id="proof-deleted-notice" class="mt-2 d-none">
+                                    <div class="alert alert-warning py-1.5 px-2.5 mb-0 rounded d-flex align-items-center justify-content-between flex-wrap gap-2" style="font-size: 11.5px;">
+                                        <span class="text-dark">
+                                            <i class="mdi mdi-alert-circle-outline text-warning me-1"></i> Bukti transfer sebelumnya akan dihapus saat disimpan.
+                                        </span>
+                                        <button type="button" class="btn btn-xs btn-label-secondary px-2 py-0.5" id="btn-undo-delete-proof">
+                                            <i class="mdi mdi-undo me-0.5"></i> Batal Hapus
                                         </button>
                                     </div>
-                                </div>
-                            </div>
-
-                            <div id="proof-deleted-notice" class="mt-2 d-none">
-                                <div class="alert alert-warning py-1.5 px-2.5 mb-0 rounded d-flex align-items-center justify-content-between flex-wrap gap-2" style="font-size: 11.5px;">
-                                    <span class="text-dark">
-                                        <i class="mdi mdi-alert-circle-outline text-warning me-1"></i> Bukti transfer sebelumnya akan dihapus saat disimpan.
-                                    </span>
-                                    <button type="button" class="btn btn-xs btn-label-secondary px-2 py-0.5" id="btn-undo-delete-proof">
-                                        <i class="mdi mdi-undo me-0.5"></i> Batal Hapus
-                                    </button>
                                 </div>
                             </div>
                         </div>
+
+                        <div class="mb-0">
+                            <label class="form-label small fw-semibold" for="input_fee_transfer_note">Catatan / Nomor Referensi Transfer <span class="text-muted">(Opsional)</span></label>
+                            <textarea class="form-control form-control-sm" id="input_fee_transfer_note" name="fee_transfer_note" rows="2"
+                                placeholder="Contoh: No ref transfer bank #TRX123456789 atau catatan transfer..."></textarea>
+                        </div>
                     </div>
 
-                    <div class="mb-0">
-                        <label class="form-label small fw-semibold" for="input_fee_transfer_note">Catatan / Nomor Referensi Transfer <span class="text-muted">(Opsional)</span></label>
-                        <textarea class="form-control form-control-sm" id="input_fee_transfer_note" name="fee_transfer_note" rows="2"
-                            placeholder="Contoh: No ref transfer bank #TRX123456789 atau catatan transfer..."></textarea>
+                    {{-- MULTI-DESTINATION WRAPPER (Ditampilkan jika terdapat multiple rekening tujuan) --}}
+                    <div id="modal-d-multi-dest-wrapper" class="d-none">
+                        <div class="alert alert-primary d-flex align-items-center justify-content-between flex-wrap gap-2 py-2 px-3 mb-3 rounded-3" style="font-size: 11.5px;">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="mdi mdi-bank-transfer fs-4 text-primary"></i>
+                                <div>
+                                    <strong class="text-dark">Multi-Rekening Transfer Terdeteksi (<span id="modal-d-multi-dest-count-label">0</span> Rekening)</strong>
+                                    <div class="text-muted small">Atur status transfer, bank kantor asal transfer, dan upload bukti transfer untuk masing-masing rekening penerima.</div>
+                                </div>
+                            </div>
+                            <div id="modal-d-multi-overall-badge">
+                                <span class="badge bg-label-secondary">Status: Belum Ditransfer</span>
+                            </div>
+                        </div>
+
+                        {{-- Batch Action Toolbar --}}
+                        <div class="card border border-primary-subtle bg-primary-subtle bg-opacity-10 mb-3 shadow-none">
+                            <div class="card-body p-2.5">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-md-4 col-12">
+                                        <label class="form-label small fw-bold mb-1 text-primary" style="font-size: 10.5px;">
+                                            <i class="mdi mdi-flash me-0.5"></i> Set Cepat Bank Kantor ke Semua:
+                                        </label>
+                                        <select class="form-select form-select-sm" id="batch-source-bank">
+                                            <option value="">-- Pilih Bank Kantor --</option>
+                                            @foreach ($banks as $b)
+                                                <option value="{{ $b->id }}">{{ $b->bank }} - {{ $b->no_rek }} ({{ $b->nama_rek }})</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label small fw-bold mb-1 text-primary" style="font-size: 10.5px;">
+                                            Tgl Transfer Cepat:
+                                        </label>
+                                        <input type="date" class="form-control form-control-sm" id="batch-transfer-date" value="{{ date('Y-m-d') }}">
+                                    </div>
+                                    <div class="col-md-5 col-12 d-flex align-items-end gap-1.5 mt-auto pt-1">
+                                        <button type="button" class="btn btn-sm btn-primary flex-grow-1" id="btn-apply-batch-dest">
+                                            <i class="mdi mdi-check-all me-1"></i> Terapkan ke Semua
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-label-success" id="btn-set-all-paid" title="Set semua baris menjadi Paid">
+                                            Semua Paid
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-label-secondary" id="btn-set-all-unpaid" title="Set semua baris menjadi Unpaid">
+                                            Unpaid
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Dynamic Multi Cards Container --}}
+                        <div id="modal-d-multi-dest-cards" class="d-flex flex-column gap-3 mb-2">
+                            <!-- Populated via JavaScript -->
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer border-top py-2 px-3">
@@ -1028,6 +1180,13 @@
         </div>
     </div>
 </div>
+
+<template id="template-office-bank-options">
+    <option value="">-- Pilih Rekening Kantor --</option>
+    @foreach ($banks as $b)
+        <option value="{{ $b->id }}">{{ $b->bank }} - {{ $b->no_rek }} ({{ $b->nama_rek }}) [Saldo: Rp {{ number_format($b->saldo, 0, ',', '.') }}]</option>
+    @endforeach
+</template>
 
 {{-- ========================================================================= --}}
 {{-- MODAL 2: TAMBAH / EDIT MANUAL MANAGEMENT FEE                              --}}
@@ -1266,8 +1425,9 @@
 {{-- MODAL 3: PENCAIRAN FEE MANUAL CEPAT                                       --}}
 {{-- ========================================================================= --}}
 <div class="modal fade" id="modalManualDisbursement" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable" style="max-width: 1100px;">
+        <form action="" method="POST" id="form-manual-disbursement" class="modal-content border-0 shadow-lg" enctype="multipart/form-data">
+            @csrf
             <div class="modal-header border-bottom py-3">
                 <div class="d-flex align-items-center gap-2">
                     <div class="avatar avatar-sm bg-label-success rounded-circle d-flex align-items-center justify-content-center">
@@ -1280,9 +1440,7 @@
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="" method="POST" id="form-manual-disbursement" enctype="multipart/form-data">
-                @csrf
-                <div class="modal-body p-3 p-md-4">
+            <div class="modal-body p-3 p-md-4">
                     {{-- Detail Nominal & Pajak Summary --}}
                     <div class="p-3 rounded-3 bg-light border mb-4">
                         <div class="row g-2 text-center align-items-center">
@@ -1449,7 +1607,6 @@
             </form>
         </div>
     </div>
-</div>
 
 @push('script')
 <script>
@@ -1787,22 +1944,232 @@
             $('#input_fee_bank_branch').val(btn.data('bank-branch') || '');
             $('#input_fee_bank_account').val(btn.data('bank-account'));
             $('#input_fee_bank_holder').val(btn.data('bank-holder'));
-            $('#input_fee_payment_status').val(btn.data('payment-status') || 'unpaid');
-            $('#input_fee_source_bank').val(btn.data('source-bank-id') || '');
-            $('#input_fee_transfer_date').val(btn.data('transfer-date') || '{{ date("Y-m-d") }}');
-            $('#input_fee_transfer_note').val(btn.data('transfer-note'));
 
-            var proofUrl = btn.data('proof-url');
-            if (proofUrl) {
-                $('#proof-preview-wrap').removeClass('d-none');
-                $('#proof-preview-link').attr('href', proofUrl);
+            var destinations = btn.data('destinations') || [];
+            if (typeof destinations === 'string') {
+                try { destinations = JSON.parse(destinations); } catch (e) { destinations = []; }
+            }
+
+            if (destinations && destinations.length > 1) {
+                // Multi-Destination Mode
+                $('#modal-d-single-dest-wrapper').addClass('d-none');
+                $('#modal-d-single-dest-wrapper :input').prop('disabled', true);
+
+                $('#modal-d-multi-dest-wrapper').removeClass('d-none');
+                $('#modal-d-multi-dest-wrapper :input').prop('disabled', false);
+
+                $('#modal-d-multi-dest-count-label').text(destinations.length);
+                renderMultiDestCards(destinations);
             } else {
-                $('#proof-preview-wrap').addClass('d-none');
+                // Single Destination Mode
+                $('#modal-d-multi-dest-wrapper').addClass('d-none');
+                $('#modal-d-multi-dest-wrapper :input').prop('disabled', true);
+
+                $('#modal-d-single-dest-wrapper').removeClass('d-none');
+                $('#modal-d-single-dest-wrapper :input').prop('disabled', false);
+
+                $('#input_fee_bank_name').val(btn.data('bank-name') || '');
+                $('#input_fee_bank_branch').val(btn.data('bank-branch') || '');
+                $('#input_fee_bank_account').val(btn.data('bank-account') || '');
+                $('#input_fee_bank_holder').val(btn.data('bank-holder') || '');
+                $('#input_fee_payment_status').val(btn.data('payment-status') || 'unpaid');
+                $('#input_fee_source_bank').val(btn.data('source-bank-id') || '');
+                $('#input_fee_transfer_date').val(btn.data('transfer-date') || '{{ date("Y-m-d") }}');
+                $('#input_fee_transfer_note').val(btn.data('transfer-note') || '');
+
+                var proofUrl = btn.data('proof-url');
+                if (proofUrl) {
+                    $('#proof-preview-wrap').removeClass('d-none');
+                    $('#proof-preview-link').attr('href', proofUrl);
+                } else {
+                    $('#proof-preview-wrap').addClass('d-none');
+                }
             }
 
             var modalEl = document.getElementById('modalDisbursement');
             if (modalEl) {
                 bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            }
+        });
+
+        // --------------------------------------------------------------------
+        // Render Multi-Destination Cards in Modal
+        // --------------------------------------------------------------------
+        function renderMultiDestCards(destinations) {
+            var $container = $('#modal-d-multi-dest-cards');
+            $container.empty();
+
+            var bankOptionsHtml = $('#template-office-bank-options').html();
+            var today = '{{ date("Y-m-d") }}';
+
+            destinations.forEach(function (d, idx) {
+                var nominalFormatted = d.nominal ? 'Rp ' + Number(d.nominal).toLocaleString('id-ID') : 'Rp 0';
+                var status = d.status || 'unpaid';
+                var transferDate = d.transfer_date ? d.transfer_date : today;
+                var sourceBankId = d.id_source_bank || '';
+                var transferNote = d.transfer_note || '';
+                var proofUrl = d.transfer_proof ? ('/storage/' + d.transfer_proof.replace(/^\/?storage\//, '')) : '';
+
+                var cardHtml = `
+                    <div class="card border rounded-3 shadow-none dest-card mb-0" data-idx="${idx}" style="background-color: #fafbfc;">
+                        <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary px-2 py-1" style="font-size: 11px;">Rekening #${idx + 1}</span>
+                                <strong class="text-dark" style="font-size: 13px;">
+                                    <span class="badge bg-label-info px-1.5 py-0.5 me-1">${d.bank_name || 'Bank'}</span>
+                                    ${d.bank_account || '-'}
+                                </strong>
+                                <span class="text-muted small">(a.n ${d.bank_holder || '-'})</span>
+                                ${d.bank_branch ? `<span class="badge bg-label-secondary" style="font-size: 10px;">${d.bank_branch}</span>` : ''}
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-muted small">Nominal Transfer:</span>
+                                <span class="badge bg-label-success text-success fw-bold px-2.5 py-1" style="font-size: 12.5px;">${nominalFormatted}</span>
+                            </div>
+                        </div>
+                        <div class="card-body p-3">
+                            ${d.note ? `<div class="alert alert-light py-1 px-2.5 border mb-2.5 small text-muted"><i class="mdi mdi-information-outline me-1"></i>Catatan Rekening: ${d.note}</div>` : ''}
+
+                            <input type="hidden" name="destinations[${idx}][bank_name]" value="${d.bank_name || ''}">
+                            <input type="hidden" name="destinations[${idx}][bank_branch]" value="${d.bank_branch || ''}">
+                            <input type="hidden" name="destinations[${idx}][bank_account]" value="${d.bank_account || ''}">
+                            <input type="hidden" name="destinations[${idx}][bank_holder]" value="${d.bank_holder || ''}">
+                            <input type="hidden" name="destinations[${idx}][nominal]" value="${d.nominal || 0}">
+                            <input type="hidden" name="destinations[${idx}][note]" value="${d.note || ''}">
+
+                            <div class="row g-2.5 mb-2">
+                                <div class="col-md-3 col-12">
+                                    <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Status Pencairan <span class="text-danger">*</span></label>
+                                    <select class="form-select form-select-sm dest-status-select" name="destinations[${idx}][status]" data-idx="${idx}" required>
+                                        <option value="unpaid" ${status === 'unpaid' ? 'selected' : ''}>🔴 Belum Ditransfer (Unpaid)</option>
+                                        <option value="pending_transfer" ${status === 'pending_transfer' ? 'selected' : ''}>🟡 Siap Ditransfer (Pending)</option>
+                                        <option value="paid" ${status === 'paid' ? 'selected' : ''}>🟢 Sudah Ditransfer (Paid)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-5 col-12">
+                                    <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">
+                                        <i class="mdi mdi-bank text-primary me-0.5"></i> Rekening Bank Kantor (Sumber Dana) <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select form-select-sm dest-source-bank-select" name="destinations[${idx}][id_source_bank]" data-idx="${idx}">
+                                        ${bankOptionsHtml}
+                                    </select>
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Tanggal Transfer</label>
+                                    <input type="date" class="form-control form-control-sm dest-date-input" name="destinations[${idx}][transfer_date]" value="${transferDate}">
+                                </div>
+                            </div>
+
+                            <div class="row g-2.5">
+                                <div class="col-md-6 col-12">
+                                    <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">
+                                        Upload Bukti Transfer <span class="text-muted">(JPG, PNG, PDF maks 5MB)</span>
+                                    </label>
+                                    <input type="file" class="form-control form-control-sm" name="destinations[${idx}][transfer_proof]" accept="image/*,.pdf">
+                                    ${proofUrl ? `
+                                        <div class="mt-1.5 d-flex align-items-center justify-content-between p-1 px-2 rounded bg-white border" id="proof-box-${idx}" style="font-size: 11px;">
+                                            <a href="${proofUrl}" target="_blank" class="btn btn-xs btn-label-success fw-semibold py-0.5 px-2">
+                                                <i class="mdi mdi-file-check-outline me-0.5"></i>Lihat Bukti Tersimpan
+                                            </a>
+                                            <label class="text-danger mb-0 ms-2" style="cursor: pointer; font-size: 10.5px;">
+                                                <input type="checkbox" name="destinations[${idx}][delete_transfer_proof]" value="1" class="form-check-input me-1" style="transform: scale(0.85);">
+                                                Hapus bukti
+                                            </label>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                <div class="col-md-6 col-12">
+                                    <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Catatan / No Referensi Transfer</label>
+                                    <input type="text" class="form-control form-control-sm dest-note-input" name="destinations[${idx}][transfer_note]" value="${transferNote}" placeholder="Contoh: No ref / catatan transfer...">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                $container.append(cardHtml);
+
+                // Set bank value if exists
+                if (sourceBankId) {
+                    $container.find(`select[name="destinations[${idx}][id_source_bank]"]`).val(sourceBankId);
+                }
+            });
+
+            updateOverallMultiStatusBadge();
+        }
+
+        // Batch helpers
+        $('#btn-apply-batch-dest').on('click', function () {
+            var selectedBank = $('#batch-source-bank').val();
+            var selectedDate = $('#batch-transfer-date').val();
+
+            if (selectedBank) {
+                $('.dest-source-bank-select').val(selectedBank);
+            }
+            if (selectedDate) {
+                $('.dest-date-input').val(selectedDate);
+            }
+        });
+
+        $('#btn-set-all-paid').on('click', function () {
+            $('.dest-status-select').val('paid').trigger('change');
+            if ($('#batch-source-bank').val()) {
+                $('.dest-source-bank-select').val($('#batch-source-bank').val());
+            }
+            updateOverallMultiStatusBadge();
+        });
+
+        $('#btn-set-all-unpaid').on('click', function () {
+            $('.dest-status-select').val('unpaid').trigger('change');
+            updateOverallMultiStatusBadge();
+        });
+
+        $(document).on('change', '.dest-status-select', function () {
+            updateOverallMultiStatusBadge();
+        });
+
+        function updateOverallMultiStatusBadge() {
+            var total = $('.dest-status-select').length;
+            if (!total) return;
+
+            var paid = 0;
+            var pending = 0;
+            $('.dest-status-select').each(function () {
+                var v = $(this).val();
+                if (v === 'paid') paid++;
+                else if (v === 'pending_transfer') pending++;
+            });
+
+            var $badge = $('#modal-d-multi-overall-badge');
+            if (paid === total) {
+                $badge.html('<span class="badge bg-success"><i class="mdi mdi-check-all me-0.5"></i>Status: Semua Ditransfer (Paid)</span>');
+            } else if (paid > 0) {
+                $badge.html('<span class="badge bg-warning text-dark"><i class="mdi mdi-clock me-0.5"></i>Status: Sebagian Ditransfer (' + paid + '/' + total + ')</span>');
+            } else if (pending > 0) {
+                $badge.html('<span class="badge bg-label-warning"><i class="mdi mdi-clock-outline me-0.5"></i>Status: Siap Ditransfer (' + pending + '/' + total + ')</span>');
+            } else {
+                $badge.html('<span class="badge bg-label-secondary">Status: Belum Ditransfer (0/' + total + ')</span>');
+            }
+        }
+
+        // Form validation on submit
+        $('#form-disbursement').on('submit', function (e) {
+            if (!$('#modal-d-multi-dest-wrapper').hasClass('d-none')) {
+                var hasError = false;
+                $('.dest-card').each(function () {
+                    var st = $(this).find('.dest-status-select').val();
+                    var bk = $(this).find('.dest-source-bank-select').val();
+                    if (st === 'paid' && !bk) {
+                        alert('Silakan pilih Bank Kantor (Sumber Dana) untuk semua rekening yang bertanda "Sudah Ditransfer (Paid)".');
+                        $(this).find('.dest-source-bank-select').focus();
+                        hasError = true;
+                        return false;
+                    }
+                });
+                if (hasError) {
+                    e.preventDefault();
+                    return false;
+                }
             }
         });
 

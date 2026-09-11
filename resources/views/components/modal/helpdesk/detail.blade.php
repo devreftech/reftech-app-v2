@@ -16,6 +16,10 @@
                     <div class="col-4">Title</div>
                     <div class="col-8">: <span id="detailHelpdeskTitle"></span></div>
                 </div>
+                <div class="row mb-1 d-none" id="detailHelpdeskUrlWrapper">
+                    <div class="col-4">Link Halaman</div>
+                    <div class="col-8">: <a href="" id="detailHelpdeskUrl" target="_blank" class="fw-semibold text-primary text-break"><i class="mdi mdi-open-in-new me-1"></i><span id="detailHelpdeskUrlText"></span></a></div>
+                </div>
                 <div class="row mb-1">
                     <div class="col-4">Status</div>
                     <div class="col-8">: <span id="detailHelpdeskStatus"></span></div>

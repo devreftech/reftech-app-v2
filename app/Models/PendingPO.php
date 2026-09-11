@@ -78,11 +78,19 @@ class PendingPO extends Model
 
     public function getRevenueAttribute()
     {
+        if (array_key_exists('revenue', $this->attributes)) {
+            return (float) $this->attributes['revenue'];
+        }
         if ($this->id_unit_quotation && $this->unitQuotation) {
-            return (float) ($this->unitQuotation->total ?? 0);
+            $uq = $this->unitQuotation;
+            $preTaxRev = floatval($uq->subtotal ?? 0) - floatval($uq->diskon ?? 0);
+            if ($preTaxRev <= 0) {
+                $preTaxRev = floatval($uq->total ?? 0) - floatval($uq->tax_amount ?? 0);
+            }
+            return (float) $preTaxRev;
         }
         if ($this->id_quotation && $this->quote) {
-            return (float) ($this->quote->harga_total ?? 0);
+            return (float) ($this->quote->nett ?? $this->quote->total_no_tax ?? $this->quote->harga_total ?? 0);
         }
         return 0;
     }

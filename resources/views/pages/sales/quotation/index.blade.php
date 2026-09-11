@@ -102,7 +102,13 @@
         <div class="card-header py-2">
             <ul class="nav nav-tabs card-header-tabs border-0 m-0" id="quotation-tab-nav" role="tablist">
                 <li class="nav-item">
-                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-quotation" type="button">
+                    <button class="nav-link {{ request('tab') === 'draft' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-draft" type="button">
+                        <i class="mdi mdi-file-document-edit-outline me-1"></i>Draft
+                        <span class="badge rounded-pill bg-secondary ms-1" id="badge-draft">-</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link {{ request('tab') !== 'draft' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-quotation" type="button">
                         <i class="mdi mdi-file-document-outline me-1"></i>Quotation
                         <span class="badge rounded-pill bg-primary ms-1" id="badge-quotation">-</span>
                     </button>
@@ -137,8 +143,28 @@
         <div class="card-body p-0">
             <div class="tab-content">
 
+                {{-- Tab 0: Draft --}}
+                <div class="tab-pane fade {{ request('tab') === 'draft' ? 'show active' : '' }}" id="tab-draft">
+                    <div class="table-responsive">
+                        <table class="datatable-draft table table-bordered" data-badge="badge-draft">
+                            <thead>
+                                <tr>
+                                    <th>Quote No.</th>
+                                    <th>Company</th>
+                                    <th>Total Price</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th class="text-center" style="width: 100px;">Action</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+
                 {{-- Tab 1: Quotation --}}
-                <div class="tab-pane fade show active" id="tab-quotation">
+                <div class="tab-pane fade {{ request('tab') !== 'draft' ? 'show active' : '' }}" id="tab-quotation">
                     <div class="table-responsive">
                         <table class="datatable-quotation table table-bordered" data-badge="badge-quotation">
                             <thead>
@@ -473,6 +499,7 @@
 
 @push('page-script')
     <script src="{{ asset('assets') }}/js/tables-datatables-basic.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-draft.js"></script>
     <script src="{{ asset('assets') }}/includes/table-quotation.js"></script>
     <script src="{{ asset('assets') }}/includes/table-hot-prospect.js"></script>
     <script src="{{ asset('assets') }}/includes/table-po.js"></script>
@@ -541,7 +568,7 @@
         window.quotationYearFilter = $('#quotation-year-filter').val() || 'all';
         $('#quotation-year-filter').on('change', function () {
             window.quotationYearFilter = $(this).val();
-            ['dtQuotation', 'dtUnitQuotation', 'dtHot', 'dtPo', 'dtLoss', 'dtArchive'].forEach(function (key) {
+            ['dtDraft', 'dtQuotation', 'dtUnitQuotation', 'dtHot', 'dtPo', 'dtLoss', 'dtArchive'].forEach(function (key) {
                 if (window[key]) window[key].ajax.reload();
             });
             updateCardStats();
@@ -567,6 +594,13 @@
 
         $(document).ready(function() {
             $('[data-bs-toggle="tooltip"]').tooltip();
+            var urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('tab') === 'draft' || window.location.hash === '#tab-draft') {
+                var draftTabBtn = $('#quotation-tab-nav button[data-bs-target="#tab-draft"]');
+                if (draftTabBtn.length) {
+                    draftTabBtn.tab('show');
+                }
+            }
         });
     </script>
 @endpush

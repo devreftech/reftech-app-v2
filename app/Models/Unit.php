@@ -70,4 +70,9 @@ class Unit extends Model
     {
         return $this->hasMany('App\Models\Machine', 'id_product');
     }
+
+    public function catalogUnit()
+    {
+        return $this->hasOne(CatalogUnit::class, 'id_unit');
+    }
 }

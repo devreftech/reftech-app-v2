@@ -42,7 +42,7 @@
                         <button type="button"
                             class="nav-link fw-semibold waves-effect waves-light select-sales {{ $loop->first ? 'active' : '' }}"
                             aria-selected="true" data-id="{{ $sale->id }}">
-                            {{ $sale->name }}
+                            {{ $sale->id == 38 ? 'Regita ( Sales Project )' : $sale->name }}
                             <span class="badge rounded-pill bg-label-primary ms-1">{{ $leadsCountBySales[$sale->id] ?? 0 }}</span>
                         </button>
                     </li>

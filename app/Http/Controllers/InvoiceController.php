@@ -240,6 +240,11 @@ class InvoiceController extends Controller
 
             $invoiceSave = $invoice->save();
             if ($invoiceSave) {
+                if (!empty($invoice->no_invoice)) {
+                    Suo::where('id_unit_quotation', $invoice->id_unit_quotation)
+                        ->where('status', '!=', 'converted')
+                        ->update(['status' => 'converted']);
+                }
                 if ($quote) {
                     // No PO itu satu per quote — rambatkan ke Smart Quote & invoice
                     // lain pada quote yang sama biar konsisten.
@@ -263,14 +268,19 @@ class InvoiceController extends Controller
                 $jumlah = isset($harga) ? $harga->amount : $quote->harga_total;
 
                 if ($invoice->flag === "Reftech") {
-                    $invoice->sign = $jumlah >= 5000000 ? 'asset/sign/reftech-m.jpeg' : 'asset/sign/reftech-nm.jpeg';
+                    $invoice->sign = $jumlah >= 5000000 ? "asset/sign/reftech-m.jpeg" : "asset/sign/reftech-nm.jpeg";
                 } elseif ($invoice->flag === "Kojisha") {
-                    $invoice->sign = $jumlah >= 5000000 ? 'asset/sign/kojisha-m.jpeg' : 'asset/sign/kojisha-nm.jpeg';
+                    $invoice->sign = $jumlah >= 5000000 ? "asset/sign/kojisha-m.jpeg" : "asset/sign/kojisha-nm.jpeg";
                 }
             }
 
             $invoiceSave = $invoice->save();
             if ($invoiceSave) {
+                if (!empty($invoice->no_invoice)) {
+                    Suo::where('id_quotation', $invoice->id_quotation)
+                        ->where('status', '!=', 'converted')
+                        ->update(['status' => 'converted']);
+                }
                 if ($quote) {
                     $this->syncMonitoringDocumentCard($quote);
                 }

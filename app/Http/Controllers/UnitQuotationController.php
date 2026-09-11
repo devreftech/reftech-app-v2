@@ -137,14 +137,23 @@ class UnitQuotationController extends Controller
         $isManager = in_array(Auth::user()->role, ['Admin', 'Sales Manager']);
         $idSales = Auth::id();
         if ($isManager) {
-            if ($request->input('client_source_type') === 'self_leads') {
+            $ownerType = $request->input('quote_owner_type', 'project');
+            if ($ownerType === 'project' || $request->input('client_source_type') === 'self_leads') {
+                // Selalu dicatat atas nama Sales Project (Admin / Sales Manager yang login)
                 $idSales = Auth::id();
-            } elseif ($request->filled('id_sales')) {
-                $idSales = $request->id_sales;
-            } elseif ($client && $client->id_sales) {
-                $idSales = $client->id_sales;
+            } else {
+                // Delegasikan ke Sales yang dipilih atau pemilik client
+                if ($request->filled('filter_sales_id')) {
+                    $idSales = $request->filter_sales_id;
+                } elseif ($request->filled('id_sales')) {
+                    $idSales = $request->id_sales;
+                } elseif ($client && $client->id_sales) {
+                    $idSales = $client->id_sales;
+                }
             }
         }
+
+        $isDraft = (!in_array(Auth::user()->role, ['Admin', 'Sales Manager']) && $request->input('is_draft') == '1') ? 1 : 0;
 
         $quote = UnitQuotation::create([
             'id_client'        => $request->id_client ?: null,
@@ -176,6 +185,7 @@ class UnitQuotationController extends Controller
             'delivery_process' => $request->delivery_process,
             'payment'          => $request->payment,
             'status'           => 'draft',
+            'is_draft'         => $isDraft,
             'revision_number'  => 0,
             'is_latest'        => 1,
         ]);
@@ -188,7 +198,15 @@ class UnitQuotationController extends Controller
             $prospect->save();
         }
 
-        $quote->statusHistory()->create(['status' => 'draft', 'note' => null]);
+        $quote->statusHistory()->create([
+            'status' => 'draft',
+            'note'   => $isDraft ? 'Draft disimpan' : null,
+        ]);
+
+        if ($isDraft) {
+            return redirect('/quotation?tab=draft')
+                ->with('success', 'Draft Smart Quotation berhasil disimpan.');
+        }
 
         return redirect()->route('unit-quotation.show', $quote->id)
             ->with('success', 'Quotation created successfully.');
@@ -444,7 +462,12 @@ class UnitQuotationController extends Controller
 
         $transportationPrices = \App\Models\TransportationPrice::orderBy('city')->get(['id', 'city', 'price']);
 
-        return view('pages.unit-quotation.edit', compact('quote', 'clients', 'editOptions', 'paymentTemplates', 'transportationPrices'));
+        $isManager = in_array(Auth::user()->role, ['Admin', 'Sales Manager']);
+        $salesUsers = $isManager
+            ? User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->orderBy('name')->get(['id', 'name'])
+            : collect();
+
+        return view('pages.unit-quotation.edit', compact('quote', 'clients', 'editOptions', 'paymentTemplates', 'transportationPrices', 'isManager', 'salesUsers'));
     }
 
     public function update(Request $request, $id)
@@ -454,7 +477,8 @@ class UnitQuotationController extends Controller
         $processedOptions = $this->processOptionsInput($request->input('options', []));
         $first = $processedOptions[0] ?? $this->emptyOptionTotals();
 
-        $quote->update([
+        $isManager = in_array(Auth::user()->role, ['Admin', 'Sales Manager']);
+        $updateData = [
             'id_client'        => $request->id_client ?: null,
             'id_pic'           => $request->id_pic ?: null,
             'id_plant'         => $request->id_plant ?: null,
@@ -481,13 +505,28 @@ class UnitQuotationController extends Controller
             'warranty'         => $request->warranty,
             'delivery_process' => $request->delivery_process,
             'payment'          => $request->payment,
-        ]);
+        ];
+
+        if ($isManager && $request->filled('id_sales')) {
+            $updateData['id_sales'] = $request->id_sales;
+        }
+
+        if (!in_array(Auth::user()->role, ['Admin', 'Sales Manager']) && $request->has('is_draft')) {
+            $updateData['is_draft'] = $request->input('is_draft') == '1' ? 1 : 0;
+        }
+
+        $quote->update($updateData);
 
         // Hapus semua detail & opsi lama, baru dibuat ulang dari input —
         // sama seperti cara detail biasa disimpan ulang sebelum fitur opsi ada.
         UnitQuotationDetail::where('id_unit_quotation', $quote->id)->delete();
         UnitQuotationOption::where('id_unit_quotation', $quote->id)->delete();
         $this->saveOptions($quote->id, $processedOptions);
+
+        if (!empty($updateData['is_draft'])) {
+            return redirect('/quotation?tab=draft')
+                ->with('success', 'Draft Smart Quotation berhasil diperbarui.');
+        }
 
         return redirect()->route('unit-quotation.show', $quote->id)
             ->with('success', 'Quotation updated successfully.');
@@ -713,6 +752,10 @@ class UnitQuotationController extends Controller
             $updateData['expired_date'] = \Carbon\Carbon::now()->addMonth()->format('Y-m-d');
         }
 
+        if ($newStatus !== 'draft') {
+            $updateData['is_draft'] = 0;
+        }
+
         $quote->update($updateData);
 
         $quote->statusHistory()->create([
@@ -737,7 +780,7 @@ class UnitQuotationController extends Controller
         }
 
         return redirect()->route('unit-quotation.show', $id)
-            ->with('success', 'Status updated.');
+            ->with('success', 'Quotation status updated.');
     }
 
     public function uploadPO(Request $request, $id)
@@ -787,6 +830,7 @@ class UnitQuotationController extends Controller
             'status'         => 'po_received',
             'po_received'    => $request->po_date ?: now()->toDateString(),
             'type'           => 'Project',
+            'is_draft'       => 0,
         ]);
 
         $quote->statusHistory()->create([
@@ -1026,18 +1070,75 @@ class UnitQuotationController extends Controller
 
         $quote->fee = $rawFee;
         $quote->fee_note = $request->fee_note;
-        if ($request->has('fee_bank_name')) {
-            $quote->fee_bank_name = $request->fee_bank_name;
+
+        // Multi-rekening tujuan transfer fee
+        $destinations = [];
+        if ($request->has('fee_destinations') && is_array($request->fee_destinations)) {
+            foreach ($request->fee_destinations as $dest) {
+                $bankName = trim($dest['bank_name'] ?? '');
+                $bankAccount = trim($dest['bank_account'] ?? '');
+                $bankHolder = trim($dest['bank_holder'] ?? '');
+                $bankBranch = trim($dest['bank_branch'] ?? '');
+                $note = trim($dest['note'] ?? '');
+
+                if ($bankName === '' && $bankAccount === '' && $bankHolder === '') {
+                    continue;
+                }
+
+                $rawNominal = $dest['nominal'] ?? 0;
+                if (is_string($rawNominal)) {
+                    $rawNominal = (float) preg_replace('/[^\d]/', '', $rawNominal);
+                } else {
+                    $rawNominal = (float) $rawNominal;
+                }
+
+                $destinations[] = [
+                    'bank_name'    => $bankName,
+                    'bank_branch'  => $bankBranch,
+                    'bank_account' => $bankAccount,
+                    'bank_holder'  => $bankHolder,
+                    'nominal'      => $rawNominal,
+                    'note'         => $note,
+                ];
+            }
         }
-        if ($request->has('fee_bank_account')) {
-            $quote->fee_bank_account = $request->fee_bank_account;
+
+        if (!empty($destinations)) {
+            $quote->fee_bank_destinations = $destinations;
+            $quote->fee_bank_name         = $destinations[0]['bank_name'];
+            $quote->fee_bank_branch       = $destinations[0]['bank_branch'];
+            $quote->fee_bank_account      = $destinations[0]['bank_account'];
+            $quote->fee_bank_holder       = $destinations[0]['bank_holder'];
+        } else {
+            if ($request->has('fee_bank_name')) {
+                $quote->fee_bank_name = $request->fee_bank_name;
+            }
+            if ($request->has('fee_bank_account')) {
+                $quote->fee_bank_account = $request->fee_bank_account;
+            }
+            if ($request->has('fee_bank_holder')) {
+                $quote->fee_bank_holder = $request->fee_bank_holder;
+            }
+            if ($request->has('fee_bank_branch')) {
+                $quote->fee_bank_branch = $request->fee_bank_branch;
+            }
+
+            if (!empty($quote->fee_bank_account)) {
+                $quote->fee_bank_destinations = [
+                    [
+                        'bank_name'    => $quote->fee_bank_name,
+                        'bank_branch'  => $quote->fee_bank_branch,
+                        'bank_account' => $quote->fee_bank_account,
+                        'bank_holder'  => $quote->fee_bank_holder,
+                        'nominal'      => (float) ($quote->fee_tax_data->net_fee ?? $rawFee),
+                        'note'         => '',
+                    ]
+                ];
+            } else {
+                $quote->fee_bank_destinations = null;
+            }
         }
-        if ($request->has('fee_bank_holder')) {
-            $quote->fee_bank_holder = $request->fee_bank_holder;
-        }
-        if ($request->has('fee_bank_branch')) {
-            $quote->fee_bank_branch = $request->fee_bank_branch;
-        }
+
         $quote->save();
 
         foreach ($quote->options as $opt) {
@@ -1051,6 +1152,7 @@ class UnitQuotationController extends Controller
                 'message' => 'Management Fee berhasil disimpan.',
                 'fee'     => $quote->fee,
                 'fee_note'=> $quote->fee_note,
+                'destinations' => $quote->fee_bank_destinations,
             ]);
         }
 
@@ -1068,6 +1170,7 @@ class UnitQuotationController extends Controller
         UnitQuotationDetail::where('id_unit_quotation', $quote->id)->update(['fee' => 0]);
         $quote->fee = 0;
         $quote->fee_note = null;
+        $quote->fee_bank_destinations = null;
         $quote->save();
 
         if ($request->expectsJson() || $request->ajax()) {

@@ -256,43 +256,58 @@ $(function () {
             var isContractSigned = item.type === 'contract_signed';
 
             var icon = isInvoiceRequested ? 'mdi-file-document-outline' : (isInvoiceApproved ? 'mdi-check-decagram-outline' : (isContractRequested ? 'mdi-file-sign' : (isContractApproved ? 'mdi-file-check-outline' : (isContractSigned ? 'mdi-draw-pen' : 'mdi-cash-multiple'))));
-            var badgeClass = isInvoiceRequested ? 'bg-label-primary' : (isInvoiceApproved ? 'bg-label-info' : (isContractRequested ? 'bg-label-warning' : (isContractApproved ? 'bg-label-success' : (isContractSigned ? 'bg-label-success' : 'bg-label-success'))));
+            var avatarBg = isInvoiceRequested ? 'bg-label-primary text-primary' : (isInvoiceApproved ? 'bg-label-info text-info' : (isContractRequested ? 'bg-label-warning text-warning' : 'bg-label-success text-success'));
+            var badgeLabel = isInvoiceRequested ? 'Invoice Baru' : (isInvoiceApproved ? 'Invoice ACC' : (isContractRequested ? 'Kontrak Baru' : (isContractApproved ? 'Kontrak ACC' : (isContractSigned ? 'Kontrak TTD' : 'Payment'))));
+            var badgeClass = isInvoiceRequested ? 'bg-label-primary' : (isInvoiceApproved ? 'bg-label-info' : (isContractRequested ? 'bg-label-warning' : 'bg-label-success'));
+            var cardTypeClass = isInvoiceRequested ? 'notif-card-prospect-new' : (isInvoiceApproved ? 'notif-card-comment' : (isContractRequested ? 'notif-card-pr-mention' : 'notif-card-prospect-assigned'));
+
             var message = isInvoiceRequested
-                ? 'Invoice senilai ' + amount + ' menunggu diterbitkan (' + escapeHtml(item.company) + ')'
+                ? 'Invoice senilai <strong class="text-primary">' + amount + '</strong> menunggu diterbitkan (' + escapeHtml(item.company) + ')'
                 : isInvoiceApproved
-                    ? 'Invoice senilai ' + amount + ' sudah di-acc Accounting (' + escapeHtml(item.company) + ')'
+                    ? 'Invoice senilai <strong class="text-info">' + amount + '</strong> sudah di-acc Accounting (' + escapeHtml(item.company) + ')'
                     : isContractRequested
                         ? 'Pengajuan Selling Contract baru (' + escapeHtml(item.company) + ')'
                         : isContractApproved
                             ? 'Selling Contract sudah di-acc Accounting (' + escapeHtml(item.company) + ')'
                             : isContractSigned
                                 ? (item.invoice_id
-                                    ? 'Kontrak ditandatangani & Invoice senilai ' + amount + ' menunggu diterbitkan (' + escapeHtml(item.company) + ')'
+                                    ? 'Kontrak ditandatangani & Invoice <strong class="text-success">' + amount + '</strong> menunggu diterbitkan (' + escapeHtml(item.company) + ')'
                                     : 'Selling Contract telah ditandatangani Customer (' + escapeHtml(item.company) + ')')
-                                : 'Payment ' + amount + ' ditambahkan (' + escapeHtml(item.company) + ')';
+                                : 'Payment <strong class="text-success">' + amount + '</strong> ditambahkan (' + escapeHtml(item.company) + ')';
             var unread = !item.is_read;
             return (
-                '<a href="' + item.url + '" class="payment-notif-item' + (unread ? ' payment-notif-unread' : '') + '"' +
+                '<a href="' + item.url + '" class="notif-card ' + cardTypeClass + ' payment-notif-item' + (unread ? ' payment-notif-unread' : ' notif-card-read') + '"' +
                     ' data-notif-id="' + item.id + '" data-read="' + (unread ? '0' : '1') + '">' +
-                    '<li class="list-group-item list-group-item-action dropdown-notifications-item' + (unread ? ' bg-label-secondary' : '') + '">' +
-                        '<div class="d-flex gap-2">' +
-                            '<div class="flex-shrink-0"><div class="avatar me-1">' +
-                                '<span class="avatar-initial rounded-circle ' + badgeClass + '"><i class="mdi ' + icon + '"></i></span>' +
-                            '</div></div>' +
-                            '<div class="d-flex flex-column flex-grow-1 overflow-hidden w-px-200">' +
-                                '<h6 class="mb-1 text-truncate">' + escapeHtml(item.no_quote) + '</h6>' +
-                                '<small class="text-truncate text-body">' + message + '</small>' +
-                            '</div>' +
-                            '<div class="flex-shrink-0 dropdown-notifications-actions d-flex flex-column align-items-end gap-1">' +
-                                '<small class="text-muted">' + escapeHtml(item.created_at) + '</small>' +
-                                (unread ? '<span class="badge badge-dot bg-danger"></span>' : '') +
-                            '</div>' +
+                    '<div class="notif-card-inner">' +
+                        '<div class="notif-card-avatar ' + avatarBg + '">' +
+                            '<i class="mdi ' + icon + '"></i>' +
                         '</div>' +
-                    '</li>' +
+                        '<div class="notif-card-content">' +
+                            '<div class="notif-card-meta">' +
+                                '<span class="badge ' + badgeClass + ' notif-badge-pill">' + badgeLabel + '</span>' +
+                                '<span class="notif-time-ago">' +
+                                    '<i class="mdi mdi-clock-outline fs-7"></i> ' + escapeHtml(item.created_at) +
+                                '</span>' +
+                            '</div>' +
+                            '<h6 class="notif-card-title">' + escapeHtml(item.no_quote) + '</h6>' +
+                            '<p class="notif-card-desc">' + message + '</p>' +
+                        '</div>' +
+                        (unread ? '<span class="notif-unread-dot dot-success"></span>' : '') +
+                    '</div>' +
                 '</a>'
             );
         }).join('');
         $list.html(html);
+
+        var $emptyAlert = $('#emptyNotifAlert');
+        if ($emptyAlert.length) {
+            var hasStatic = $('#staticNotifList').children().length > 0;
+            if (items.length === 0 && !hasStatic) {
+                $emptyAlert.removeClass('d-none');
+            } else {
+                $emptyAlert.addClass('d-none');
+            }
+        }
     }
 
     function markRead(id) {
@@ -321,14 +336,13 @@ $(function () {
             // Update badge dan penanda unread di dropdown navbar secara real-time
             var $item = $list.find('.payment-notif-item[data-notif-id="' + notifId + '"]');
             if ($item.length && $item.attr('data-read') !== '1') {
-                $item.attr('data-read', '1').removeClass('payment-notif-unread');
-                $item.find('li').removeClass('bg-label-secondary');
-                $item.find('.badge-dot').remove();
+                $item.attr('data-read', '1').removeClass('payment-notif-unread').addClass('notif-card-read');
+                $item.find('.notif-unread-dot').remove();
 
                 if (lastCount > 0) lastCount -= 1;
                 var remaining = $list.find('.payment-notif-unread').length;
                 if (remaining > 0) {
-                    $countBadge.text(remaining + ' Notifikasi');
+                    $countBadge.text(remaining + ' Transaksi');
                 } else {
                     $dot.addClass('d-none');
                     $countBadge.addClass('d-none');
@@ -516,14 +530,13 @@ $(function () {
         if ($item.attr('data-read') === '1') return; // sudah dibaca, tidak perlu request lagi
         markRead($item.data('notif-id'));
 
-        $item.attr('data-read', '1').removeClass('payment-notif-unread');
-        $item.find('li').removeClass('bg-label-secondary');
-        $item.find('.badge-dot').remove();
+        $item.attr('data-read', '1').removeClass('payment-notif-unread').addClass('notif-card-read');
+        $item.find('.notif-unread-dot').remove();
 
         if (lastCount > 0) lastCount -= 1;
         var remaining = $list.find('.payment-notif-unread').length;
         if (remaining > 0) {
-            $countBadge.text(remaining + ' Notifikasi');
+            $countBadge.text(remaining + ' Transaksi');
         } else {
             $dot.addClass('d-none');
             $countBadge.addClass('d-none');

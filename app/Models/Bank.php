@@ -44,6 +44,11 @@ class Bank extends Model
         return $this->no_rek;
     }
 
+    public function getNamaRekAttribute()
+    {
+        return $this->atas_nama;
+    }
+
     public function pic()
     {
         return $this->belongsTo('App\Models\User', 'pic_id');

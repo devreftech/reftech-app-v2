@@ -4,6 +4,63 @@ $(function () {
         return "Rp " + Number(data).toLocaleString("id-ID");
     }
 
+    function formatDateTime(dtStr) {
+        if (!dtStr) return "-";
+        try {
+            var parts = dtStr.split(/[- :]/);
+            if (parts.length >= 5) {
+                var d = parts[2];
+                var m = parts[1];
+                var y = parts[0];
+                var h = parts[3];
+                var min = parts[4];
+                return d + "/" + m + "/" + y + " " + h + ":" + min;
+            }
+            var dObj = new Date(dtStr);
+            if (!isNaN(dObj.getTime())) {
+                var day = String(dObj.getDate()).padStart(2, '0');
+                var month = String(dObj.getMonth() + 1).padStart(2, '0');
+                var year = dObj.getFullYear();
+                var hours = String(dObj.getHours()).padStart(2, '0');
+                var minutes = String(dObj.getMinutes()).padStart(2, '0');
+                return day + "/" + month + "/" + year + " " + hours + ":" + minutes;
+            }
+        } catch (e) {}
+        return dtStr;
+    }
+
+    function renderIdrPriceCol(data, type, full) {
+        if (type !== "display") return full.price_idr || 0;
+
+        var formattedPrice = (full.price_idr !== null && full.price_idr !== undefined && full.price_idr !== "")
+            ? "Rp " + Number(full.price_idr).toLocaleString("id-ID")
+            : "-";
+
+        var dateFormatted = formatDateTime(full.price_updated_at);
+        var dateHtml = '<div class="small text-muted mt-1" style="font-size:0.75rem;" title="Tanggal update harga terakhir">' +
+            '<i class="mdi mdi-calendar-clock-outline me-1"></i>' + dateFormatted +
+            '</div>';
+
+        if (window.isCatalogAdmin) {
+            var brandModel = [full.brand, full.model].filter(Boolean).join(" ");
+            return '<div class="idr-price-cell-admin text-center" ' +
+                'data-id="' + full.id + '" ' +
+                'data-idr="' + (full.price_idr || 0) + '" ' +
+                'data-usd="' + (full.price_usd || 0) + '" ' +
+                'data-sku="' + (full.sku || "") + '" ' +
+                'data-name="' + brandModel + '" ' +
+                'data-updated="' + dateFormatted + '" ' +
+                'data-by="' + (full.price_updated_by || "") + '" ' +
+                'title="Klik untuk update harga IDR">' +
+                '<span class="fw-semibold text-primary">' + formattedPrice + '</span>' +
+                '<i class="mdi mdi-pencil-outline btn-edit-icon ms-1 small"></i>' +
+                dateHtml +
+                '</div>';
+        }
+
+        return '<div class="text-center"><span class="fw-semibold">' + formattedPrice + '</span>' + dateHtml + '</div>';
+    }
+
     function skuCol(data, type, full) {
         if (type !== "display") return data;
         if (!data) return "-";
@@ -62,7 +119,7 @@ $(function () {
         [
             { targets: 0, render: skuCol },
             { targets: 3, className: "text-center", render: function (data) { return data === "old" ? "Old Model" : data === "new" ? "New Model" : "-"; } },
-            { targets: 4, className: "text-center", render: function (data) { return currency(data); } },
+            { targets: 4, className: "text-center", render: renderIdrPriceCol },
             { targets: [5, 6, 7], className: "text-center", render: dash },
         ]
     );
@@ -91,7 +148,7 @@ $(function () {
         ],
         [
             { targets: 0, render: skuCol },
-            { targets: 3, className: "text-center", render: function (data) { return currency(data); } },
+            { targets: 3, className: "text-center", render: renderIdrPriceCol },
             { targets: [4, 5, 6], className: "text-center", render: dash },
         ]
     );
@@ -111,7 +168,7 @@ $(function () {
         ],
         [
             { targets: 0, render: skuCol },
-            { targets: 3, className: "text-center", render: function (data) { return currency(data); } },
+            { targets: 3, className: "text-center", render: renderIdrPriceCol },
             { targets: [4, 5, 6], className: "text-center", render: dash },
         ]
     );
@@ -130,7 +187,7 @@ $(function () {
         ],
         [
             { targets: 0, render: skuCol },
-            { targets: 3, className: "text-center", render: function (data) { return currency(data); } },
+            { targets: 3, className: "text-center", render: renderIdrPriceCol },
             { targets: [4, 5], className: "text-center", render: dash },
         ]
     );
@@ -151,7 +208,7 @@ $(function () {
         ],
         [
             { targets: 0, render: skuCol },
-            { targets: 3, className: "text-center", render: function (data) { return currency(data); } },
+            { targets: 3, className: "text-center", render: renderIdrPriceCol },
             { targets: [4, 5, 6, 7], className: "text-center", render: dash },
         ]
     );
@@ -171,7 +228,7 @@ $(function () {
         ],
         [
             { targets: 0, render: skuCol },
-            { targets: 3, className: "text-center", render: function (data) { return currency(data); } },
+            { targets: 3, className: "text-center", render: renderIdrPriceCol },
             { targets: [4, 5, 6], className: "text-center", render: dash },
         ]
     );
@@ -183,6 +240,102 @@ $(function () {
             if ($table.is(":visible")) {
                 $table.DataTable().columns.adjust().draw(false);
             }
+        });
+    });
+
+    // ── Event Handler Klik IDR Price Cell (Khusus Admin) ──
+    $(document).on("click", ".idr-price-cell-admin", function (e) {
+        e.preventDefault();
+        var $el = $(this);
+        var id = $el.data("id");
+        var idr = $el.data("idr") || 0;
+        var sku = $el.data("sku") || "";
+        var name = $el.data("name") || "";
+        var updated = $el.data("updated") || "-";
+        var by = $el.data("by") || "";
+
+        $("#edit-catalog-id").val(id);
+        $("#edit-catalog-unit-name").text((name ? name + " · " : "") + sku);
+        $("#edit-catalog-current-price").text("Rp " + Number(idr).toLocaleString("id-ID"));
+        $("#edit-catalog-last-updated").html('<i class="mdi mdi-calendar-clock-outline me-1"></i>' + updated);
+
+        if (by) {
+            $("#edit-catalog-last-by").text("oleh " + by).removeClass("d-none");
+        } else {
+            $("#edit-catalog-last-by").text("").addClass("d-none");
+        }
+
+        var idrDisplay = idr ? String(parseInt(idr)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
+        $("#edit-catalog-price-display").val(idrDisplay);
+        $("#edit-catalog-price-raw").val(idr);
+        $("#edit-catalog-note").val("");
+
+        $("#modalUpdateCatalogPrice").modal("show");
+        setTimeout(function () {
+            $("#edit-catalog-price-display").focus().select();
+        }, 400);
+    });
+
+    // ── Event Handler Submit Form Update IDR Price via AJAX ──
+    $("#formUpdateCatalogPrice").on("submit", function (e) {
+        e.preventDefault();
+        var id = $("#edit-catalog-id").val();
+        var priceIdr = $("#edit-catalog-price-raw").val();
+        var note = $("#edit-catalog-note").val();
+        if (!id) return;
+
+        var $btn = $("#btnSubmitUpdatePrice");
+        var $spinner = $("#spinnerSubmitUpdatePrice");
+
+        $btn.prop("disabled", true);
+        $spinner.removeClass("d-none");
+
+        $.ajax({
+            url: "/catalog-unit/" + id,
+            type: "POST",
+            data: {
+                _token: $('meta[name="csrf-token"]').attr("content") || $('input[name="_token"]').val(),
+                _method: "PATCH",
+                price_idr: priceIdr,
+                note: note,
+            },
+            dataType: "json",
+            success: function (res) {
+                $("#modalUpdateCatalogPrice").modal("hide");
+                if (typeof Swal !== "undefined") {
+                    Swal.fire({
+                        icon: "success",
+                        title: "Berhasil!",
+                        text: res.message || "Harga IDR katalog berhasil diperbarui.",
+                        timer: 1800,
+                        showConfirmButton: false,
+                    });
+                } else {
+                    alert(res.message || "Harga berhasil diperbarui.");
+                }
+
+                allTables.forEach(function ($t) {
+                    if ($.fn.DataTable.isDataTable($t)) {
+                        $t.DataTable().ajax.reload(null, false);
+                    }
+                });
+            },
+            error: function (xhr) {
+                var err = (xhr.responseJSON && xhr.responseJSON.message) || "Terjadi kesalahan saat mengupdate harga.";
+                if (typeof Swal !== "undefined") {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Gagal!",
+                        text: err,
+                    });
+                } else {
+                    alert(err);
+                }
+            },
+            complete: function () {
+                $btn.prop("disabled", false);
+                $spinner.addClass("d-none");
+            },
         });
     });
 });

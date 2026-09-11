@@ -29,7 +29,11 @@ class KanbanController extends Controller
         if ($user->role === 'Admin') {
             $boards = KanbanBoard::with('creator')->orderBy('title')->get();
         } else {
-            $boards = $user->kanbanBoards()->with('creator')->orderBy('title')->get();
+            $boardsQuery = $user->kanbanBoards()->with('creator')->orderBy('title');
+            if ($user->role === 'Sales') {
+                $boardsQuery->where('type', '!=', 'monitoring')->where('kanban_boards.id', '!=', 1);
+            }
+            $boards = $boardsQuery->get();
         }
 
         // Fetch all active users for board creation members select
@@ -84,6 +88,9 @@ class KanbanController extends Controller
         $board = KanbanBoard::with(['columns', 'members'])->findOrFail($id);
 
         if ($board->type === 'monitoring') {
+            if ($user->role === 'Sales') {
+                abort(403, 'Akses ke papan Monitoring Document ditolak untuk role Sales.');
+            }
             return redirect()->route('kanban.monitoring-document');
         }
 
@@ -105,7 +112,11 @@ class KanbanController extends Controller
         if ($user->role === 'Admin') {
             $myBoards = KanbanBoard::orderBy('title')->get();
         } else {
-            $myBoards = $user->kanbanBoards()->orderBy('title')->get();
+            $myBoardsQuery = $user->kanbanBoards()->orderBy('title');
+            if ($user->role === 'Sales') {
+                $myBoardsQuery->where('type', '!=', 'monitoring')->where('kanban_boards.id', '!=', 1);
+            }
+            $myBoards = $myBoardsQuery->get();
         }
 
         return view('pages.kanban.board', compact('board', 'users', 'myBoards', 'salesUsers', 'accountingUsers'));
@@ -200,6 +211,10 @@ class KanbanController extends Controller
         $board = KanbanBoard::with([
             'columns.tasks.assignees',
             'columns.tasks.checklists.items',
+            'columns.tasks.attachments',
+            'columns.tasks.comments',
+            'columns.tasks.taskExpenses',
+            'columns.tasks.projectReports',
             'columns.tasks.pendingPo.quote.sales',
             'columns.tasks.pendingPo.quote.invoice',
             'columns.tasks.pendingPo.quote.pic.client',
@@ -264,7 +279,15 @@ class KanbanController extends Controller
                     $isUnit = $po ? (bool) $po->id_unit_quotation : true;
                     $quoteRef = $po ? ($isUnit ? $po->unitQuotation : $po->quote) : $task->unitQuotation;
                     if ($quoteRef) {
-                        $nettValue = $user->role === 'ServiceM' ? 0 : (float) ($isUnit ? ($quoteRef->total ?? 0) : ($quoteRef->nett ?? 0));
+                        if ($isUnit) {
+                            $preTax = floatval($quoteRef->subtotal ?? 0) - floatval($quoteRef->diskon ?? 0);
+                            if ($preTax <= 0) {
+                                $preTax = floatval($quoteRef->total ?? 0) - floatval($quoteRef->tax_amount ?? 0);
+                            }
+                            $nettValue = $user->role === 'ServiceM' ? 0 : (float) $preTax;
+                        } else {
+                            $nettValue = $user->role === 'ServiceM' ? 0 : (float) ($quoteRef->nett ?? 0);
+                        }
                         $idSales = $quoteRef->id_sales;
                         $salesName = $quoteRef->sales ? $quoteRef->sales->name : null;
                         $company = $isUnit ? ($quoteRef->client->company ?? null) : ($quoteRef->pic->client->company ?? null);
@@ -335,6 +358,10 @@ class KanbanController extends Controller
                     'labels' => $task->labels ?? [],
                     'total_checklists' => $totalChecklistItems,
                     'completed_checklists' => $completedChecklistItems,
+                    'total_attachments' => $task->attachments->count(),
+                    'total_comments' => $task->comments->count(),
+                    'total_expenses' => $task->taskExpenses ? $task->taskExpenses->count() : 0,
+                    'total_reports' => $task->projectReports ? $task->projectReports->count() : 0,
                     'priority' => $task->priority ?? 'medium',
                     'nett' => $nettValue,
                     'id_sales' => $idSales,
@@ -1654,8 +1681,8 @@ class KanbanController extends Controller
         $board = KanbanBoard::with('members')->where('type', 'monitoring')->first();
 
         $isMember = $board && $board->members->contains($user->id);
-        if ($user->role !== 'Admin' && $user->role !== 'Accounting' && $user->role !== 'Finance Manager' && !$isMember) {
-            abort(403, 'Akses ditolak.');
+        if ($user->role === 'Sales' || ($user->role !== 'Admin' && $user->role !== 'Accounting' && $user->role !== 'Finance Manager' && !$isMember)) {
+            abort(403, 'Akses ke Monitoring Document ditolak untuk role Sales.');
         }
 
         if (!$board) {

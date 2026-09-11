@@ -53,8 +53,12 @@ $(function () {
             ],
             columnDefs: [
                 {
-                    targets: [1, 2, 5, 6, 7],
+                    targets: [1, 2, 7],
                     className: "text-center",
+                },
+                {
+                    targets: [5, 6],
+                    className: "text-center text-nowrap",
                 },
                 {
                     targets: [0, 3],

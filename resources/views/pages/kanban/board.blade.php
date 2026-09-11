@@ -156,17 +156,18 @@
 
     <!-- Task Details Modal (Center) -->
     <div class="modal fade" id="taskDetailsModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header border-bottom flex-column align-items-start pb-2">
-                    <div class="d-flex align-items-center w-100 justify-content-between">
+                <div class="modal-header flex-column align-items-start pb-3">
+                    <div class="d-flex align-items-center w-100 justify-content-between mb-2">
                         <!-- Top Left: Status selector + Title -->
-                        <div class="d-flex align-items-center">
-                            <div class="dropdown me-3">
-                                <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" id="dropdownTaskStatus" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="d-flex align-items-center flex-wrap gap-2.5 min-width-0 flex-grow-1 pe-2">
+                            <div class="dropdown">
+                                <button class="btn task-status-dropdown-btn dropdown-toggle d-inline-flex align-items-center gap-1.5" type="button" id="dropdownTaskStatus" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="mdi mdi-view-column-outline" style="font-size: 15px;"></i>
                                     <span id="currentStatusText">Status</span>
                                 </button>
-                                <ul class="dropdown-menu" aria-labelledby="dropdownTaskStatus" id="dropdownTaskStatusMenu">
+                                <ul class="dropdown-menu shadow-sm" aria-labelledby="dropdownTaskStatus" id="dropdownTaskStatusMenu">
                                     @foreach ($board->columns as $column)
                                         @if ($board->type === 'monitoring' && auth()->user()->role === 'ServiceM' && (in_array(strtoupper(trim($column->title)), ['INVOICE', 'CANCEL PO']) || str_contains(strtoupper($column->title), 'PO MENYUSUL')))
                                             @continue
@@ -175,238 +176,277 @@
                                     @endforeach
                                 </ul>
                             </div>
-                            <h4 class="modal-title fw-bold" id="taskDetailsModalLabel">Judul Tugas</h4>
+                            <h4 class="modal-title fw-bold mb-0 text-truncate" id="taskDetailsModalLabel" title="Klik untuk mengubah judul tugas">Judul Tugas</h4>
                         </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="btn-close flex-shrink-0" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
 
-                    <!-- Quick Actions Row right under title -->
-                    <div class="d-flex flex-wrap gap-2 mt-3 mb-1">
+                    <!-- Quick Actions Toolbar right under title -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 pt-2 border-top w-100 mt-1">
                         @if ($board->type !== 'monitoring')
-                            <button type="button" class="btn btn-xs btn-outline-secondary btn-quick-member" id="btnQuickMember">
-                                <i class="mdi mdi-account-outline me-1"></i>+ Members
+                            <button type="button" class="btn btn-xs task-quick-btn btn-quick-member d-inline-flex align-items-center gap-1" id="btnQuickMember">
+                                <i class="mdi mdi-account-multiple-plus-outline" style="font-size: 14px;"></i>+ Members
                             </button>
                         @endif
-                        <button type="button" class="btn btn-xs btn-outline-secondary btn-quick-date" id="btnQuickDate">
-                            <i class="mdi mdi-calendar-blank-outline me-1"></i>+ Dates
+                        <button type="button" class="btn btn-xs task-quick-btn btn-quick-date d-inline-flex align-items-center gap-1" id="btnQuickDate">
+                            <i class="mdi mdi-calendar-blank-outline" style="font-size: 14px;"></i>+ Dates
                         </button>
-                        <button type="button" class="btn btn-xs btn-outline-secondary btn-quick-checklist" id="btnQuickChecklist">
-                            <i class="mdi mdi-checkbox-marked-outline me-1"></i>+ Checklist
+                        <button type="button" class="btn btn-xs task-quick-btn btn-quick-checklist d-inline-flex align-items-center gap-1" id="btnQuickChecklist">
+                            <i class="mdi mdi-checkbox-marked-outline" style="font-size: 14px;"></i>+ Checklist
                         </button>
-                        <button type="button" class="btn btn-xs btn-outline-secondary btn-quick-attachment" id="btnQuickAttachment">
-                            <i class="mdi mdi-paperclip me-1"></i>+ Attachment
+                        <button type="button" class="btn btn-xs task-quick-btn btn-quick-attachment d-inline-flex align-items-center gap-1" id="btnQuickAttachment">
+                            <i class="mdi mdi-paperclip" style="font-size: 14px;"></i>+ Attachment
                         </button>
                     </div>
                 </div>
 
-                <div class="modal-body">
-                    <div class="row">
+                <div class="modal-body p-4">
+                    <div class="row g-4">
                         <!-- Left Section (Width 7/12): Main task info, labels, checklists -->
-                        <div class="col-lg-7 border-end pe-lg-4">
+                        <div class="col-lg-7 border-end-lg pe-lg-4">
                             
                             <!-- Sales Order / PO details if exists -->
-                             <div id="soDetailsContainer" class="mb-4" style="display: none;">
-                                 <div class="card border border-light-subtle shadow-sm task-detail-card">
-                                     <div class="card-body p-3.5">
-                                         <h6 class="fw-bold mb-3 text-heading d-flex align-items-center pb-2" style="font-size: 14.5px; border-bottom: 2px solid #5a8dee;">
-                                             <i class="mdi mdi-file-document-outline me-2 text-primary" style="font-size: 18px;"></i> Detail Purchase Order
-                                         </h6>
-                                         <div class="row g-3" style="font-size: 13px;">
-                                             <div class="col-sm-6">
-                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Nomor PO</span>
-                                                 <strong id="soPoNumber" class="text-heading" style="font-size: 13.5px;"></strong>
-                                             </div>
-                                             <div class="col-sm-6">
-                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Nomor SO</span>
-                                                 <span id="soSoNumber" class="text-heading fw-semibold" style="font-size: 13.5px;">-</span>
-                                             </div>
-                                             <div class="col-sm-6">
-                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Entity / Tipe Invoice</span>
-                                                 <span id="soEntityType" class="badge" style="font-size: 11px; font-weight: 700; padding: 3px 8px;">-</span>
-                                             </div>
-                                             <div class="col-sm-6">
-                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Client / Perusahaan</span>
-                                                 <strong id="soClientName" class="text-heading" style="font-size: 13.5px;"></strong>
-                                             </div>
-                                             <div class="col-sm-6">
-                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Nomor Penawaran (Quote)</span>
-                                                 <span id="soQuoteNumber" class="text-heading" style="font-size: 13px;"></span>
-                                             </div>
-                                             @if (auth()->user()->role !== 'ServiceM')
-                                             <div class="col-sm-6">
-                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Total Nett</span>
-                                                 <span id="soQuoteNett" class="fw-bold text-primary" style="font-size: 13.5px;"></span>
-                                             </div>
-                                             @endif
-                                             <div class="col-sm-6">
-                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Sales Person</span>
-                                                 <span id="soSalesPerson" class="text-heading" style="font-size: 13px;"></span>
-                                             </div>
+                            <div id="soDetailsContainer" class="mb-4" style="display: none;">
+                                <div class="card task-card-elevated">
+                                    <div class="card-body p-3.5">
+                                        <div class="d-flex align-items-center justify-content-between pb-3 mb-3" style="border-bottom: 1px solid #edf0f2;">
+                                            <div class="d-flex align-items-center gap-2.5">
+                                                <div class="avatar avatar-sm bg-label-primary rounded-3 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                                    <i class="mdi mdi-file-document-outline" style="font-size: 18px;"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="fw-bold mb-0 text-heading" style="font-size: 14.5px;">Detail Purchase Order</h6>
+                                                    <small class="text-muted" style="font-size: 11px;">Informasi PO, klien, dan penagihan</small>
+                                                </div>
+                                            </div>
+                                            <span id="soEntityType" class="badge" style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px;">-</span>
+                                        </div>
 
-                                             <!-- Invoices & Payments status -->
-                                             @if (auth()->user()->role !== 'ServiceM')
-                                             <div class="col-sm-12 mt-2">
-                                                 <span class="text-muted d-block mb-1.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Invoice & Status Pembayaran</span>
-                                                 <div id="soInvoicesContainer" class="d-flex flex-column gap-1.5 mt-1">
-                                                     <!-- Dynamically populated via JS -->
-                                                 </div>
-                                             </div>
-                                             @endif
- 
-                                             @if ($board->type === 'monitoring')
-                                             <!-- Delivery / Surat Jalan -->
-                                             <div class="col-sm-12 mt-2">
-                                                 <span class="text-muted d-block mb-1.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Surat Jalan (Delivery Order)</span>
-                                                 <div id="soDeliveriesContainer" class="d-flex flex-wrap gap-1.5 mt-1">
-                                                     <!-- Dynamically populated via JS -->
-                                                 </div>
-                                             </div>
- 
-                                             <!-- Service Report Selection -->
-                                             <div class="col-sm-12 mt-3 pt-2 border-top">
-                                                 <span class="text-muted d-block mb-1.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Service Report</span>
-                                                 
-                                                 <!-- Connected Service Report Card Display -->
-                                                 <div id="connectedReportContainer" style="display: none;" class="mb-2">
-                                                     <div class="d-flex align-items-center justify-content-between p-2.5 rounded border border-success dynamic-subcard" style="font-size: 12.5px; border-color: #71dd37 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                                                         <div class="d-flex align-items-center gap-2">
-                                                             <i class="mdi mdi-file-check-outline text-success" style="font-size: 20px;"></i>
-                                                             <div>
-                                                                 <a id="connectedReportLink" href="#" target="_blank" class="fw-bold text-success d-block text-decoration-none"></a>
-                                                                 <small id="connectedReportDate" class="text-muted" style="font-size: 10.5px;"></small>
-                                                             </div>
-                                                         </div>
-                                                         <button type="button" class="btn btn-xs btn-outline-danger px-2 btn-unlink-report" style="padding: 2px 6px;">
-                                                             <i class="mdi mdi-link-off me-1"></i>Putuskan
-                                                         </button>
-                                                     </div>
-                                                 </div>
+                                        <div class="row g-2.5" style="font-size: 13px;">
+                                            <div class="col-sm-6">
+                                                <div class="task-info-block h-100">
+                                                    <span class="text-muted d-block mb-1" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Nomor PO</span>
+                                                    <strong id="soPoNumber" class="text-heading d-block" style="font-size: 13.5px; word-break: break-word;"></strong>
+                                                    <div class="d-flex align-items-center gap-1 mt-1 text-muted" style="font-size: 11px;">
+                                                        <span>Nomor SO:</span>
+                                                        <span id="soSoNumber" class="fw-semibold text-heading">-</span>
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                                                 <!-- Select & Connect Form Container -->
-                                                 <div id="reportSelectorContainer" style="display: block;" class="mt-1">
-                                                     <div class="d-flex align-items-center gap-2">
-                                                         <div class="flex-grow-1">
-                                                             <select class="form-select select2-edit" id="editTaskServiceReport" name="service_report_id" style="width: 100%;">
-                                                                 <!-- Dynamically populated via JS -->
-                                                             </select>
-                                                         </div>
-                                                         <button class="btn btn-sm btn-primary d-flex align-items-center gap-1" type="button" id="btnConnectReport" style="height: 38px;">
-                                                             <i class="mdi mdi-link-variant"></i> Hubungkan
-                                                         </button>
-                                                     </div>
-                                                 </div>
-                                             </div>
-                                             @endif
+                                            <div class="col-sm-6">
+                                                <div class="task-info-block h-100">
+                                                    <span class="text-muted d-block mb-1" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Client / Perusahaan</span>
+                                                    <strong id="soClientName" class="text-heading d-block text-truncate" style="font-size: 13.5px;"></strong>
+                                                    <div class="d-flex align-items-center gap-1 mt-1 text-muted" style="font-size: 11px;">
+                                                        <span>Sales:</span>
+                                                        <span id="soSalesPerson" class="fw-semibold text-heading text-truncate"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                                             <!-- BAST -->
-                                             <div class="col-sm-12 mt-3 pt-2 border-top">
-                                                 <span class="text-muted d-block mb-1.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">BAST (Berita Acara Serah Terima)</span>
-                                                 <div id="bastExistingContainer" style="display: none;">
-                                                     <a id="bastExistingLink" href="#" target="_blank" class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1">
-                                                         <i class="mdi mdi-file-check-outline"></i> <span id="bastExistingLabel"></span>
-                                                     </a>
-                                                 </div>
-                                                 <div id="bastCreateContainer" style="display: none;">
-                                                     <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" id="btnCreateBastFromCard">
-                                                         <i class="mdi mdi-file-sign"></i> Buat BAST
-                                                     </button>
-                                                 </div>
-                                             </div>
+                                            <div class="col-sm-6">
+                                                <div class="task-info-block h-100">
+                                                    <span class="text-muted d-block mb-1" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Nomor Penawaran (Quote)</span>
+                                                    <span id="soQuoteNumber" class="text-heading d-block" style="font-size: 13px;"></span>
+                                                </div>
+                                            </div>
 
-                                             <!-- Detail Project (Project Monitoring / Sales Order) — cuma
-                                                  muncul kalau card Ringkasan Kesehatan Keuangan gak ada
-                                                  (belum ada PendingPO), soalnya link-nya sama, biar gak dobel. -->
-                                             <div class="col-sm-12 mt-3 pt-2 border-top" id="soDetailProjectContainer">
-                                                 <a id="soDetailProjectLink" href="#" target="_blank" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1">
-                                                     <i class="mdi mdi-open-in-new"></i> Detail Project
-                                                 </a>
-                                             </div>
-                                         </div>
-                                     </div>
-                                 </div>
-                             </div>
+                                            @if (auth()->user()->role !== 'ServiceM')
+                                            <div class="col-sm-6">
+                                                <div class="task-info-block h-100">
+                                                    <span class="text-muted d-block mb-1" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Total Nett (Revenue)</span>
+                                                    <span id="soQuoteNett" class="fw-bold text-primary d-block" style="font-size: 14.5px;"></span>
+                                                </div>
+                                            </div>
+                                            @endif
 
-                             <!-- Ringkasan Kesehatan Keuangan (data sama kayak halaman Project Monitoring) -->
-                             <div id="financialHealthContainer" class="mb-4" style="display: none;">
-                                 <div class="card border border-light-subtle shadow-sm task-detail-card">
-                                     <div class="card-body p-3.5">
-                                         <h6 class="fw-bold mb-3 text-heading d-flex align-items-center pb-2" style="font-size: 14.5px; border-bottom: 2px solid #71dd37;">
-                                             <i class="mdi mdi-chart-line me-2 text-success" style="font-size: 18px;"></i> Ringkasan Kesehatan Keuangan
-                                         </h6>
-                                         <div class="row g-3" style="font-size: 13px;">
-                                             <div class="col-4">
-                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Revenue</span>
-                                                 <strong id="fhRevenue" class="text-success" style="font-size: 13.5px;"></strong>
-                                             </div>
-                                             <div class="col-4">
-                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Total Biaya</span>
-                                                 <strong id="fhTotalCost" class="text-danger" style="font-size: 13.5px;"></strong>
-                                             </div>
-                                             <div class="col-4">
-                                                 <span class="text-muted d-block mb-0.5" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Net Profit</span>
-                                                 <strong id="fhProfit" style="font-size: 13.5px;"></strong>
-                                             </div>
-                                             <div class="col-sm-12 mt-1">
-                                                 <div class="d-flex justify-content-between mb-1">
-                                                     <span class="text-muted small">Rasio Pengeluaran vs Margin</span>
-                                                     <span class="badge" id="fhMarginBadge" style="font-size: 10.5px; font-weight: 700; padding: 3px 8px; background-color: rgba(113, 221, 55, 0.15); color: #71dd37;"></span>
-                                                 </div>
-                                                 <div class="progress rounded-pill" style="height: 10px; overflow: hidden; background-color: rgba(0,0,0,0.05);">
-                                                     <div class="progress-bar bg-danger" role="progressbar" id="fhCostBar" style="width: 0%"></div>
-                                                     <div class="progress-bar bg-success" role="progressbar" id="fhProfitBar" style="width: 0%"></div>
-                                                 </div>
-                                             </div>
-                                             <div class="col-sm-12">
-                                                 <a id="fhDetailLink" href="#" target="_blank" class="small">
-                                                     <i class="mdi mdi-open-in-new me-1"></i>Lihat rincian di Project Monitoring
-                                                 </a>
-                                             </div>
-                                         </div>
-                                     </div>
-                                 </div>
-                             </div>
+                                            <!-- Invoices & Payments status -->
+                                            @if (auth()->user()->role !== 'ServiceM')
+                                            <div class="col-sm-12 mt-2">
+                                                <span class="text-muted d-block mb-1.5" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Invoice & Status Pembayaran</span>
+                                                <div id="soInvoicesContainer" class="d-flex flex-column gap-1.5">
+                                                    <!-- Dynamically populated via JS -->
+                                                </div>
+                                            </div>
+                                            @endif
+
+                                            @if ($board->type === 'monitoring')
+                                            <!-- Delivery / Surat Jalan -->
+                                            <div class="col-sm-12 mt-2">
+                                                <span class="text-muted d-block mb-1.5" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Surat Jalan (Delivery Order)</span>
+                                                <div id="soDeliveriesContainer" class="d-flex flex-wrap gap-1.5 mt-1">
+                                                    <!-- Dynamically populated via JS -->
+                                                </div>
+                                            </div>
+
+                                            <!-- Service Report Selection -->
+                                            <div class="col-sm-12 mt-3 pt-2 border-top">
+                                                <span class="text-muted d-block mb-1.5" style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Service Report</span>
+                                                
+                                                <!-- Connected Service Report Card Display -->
+                                                <div id="connectedReportContainer" style="display: none;" class="mb-2">
+                                                    <div class="d-flex align-items-center justify-content-between p-2.5 rounded-3 border border-success dynamic-subcard" style="font-size: 12.5px; border-color: #71dd37 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <i class="mdi mdi-file-check-outline text-success" style="font-size: 20px;"></i>
+                                                            <div>
+                                                                <a id="connectedReportLink" href="#" target="_blank" class="fw-bold text-success d-block text-decoration-none"></a>
+                                                                <small id="connectedReportDate" class="text-muted" style="font-size: 10.5px;"></small>
+                                                            </div>
+                                                        </div>
+                                                        <button type="button" class="btn btn-xs btn-outline-danger px-2 rounded-pill btn-unlink-report" style="padding: 2px 8px;">
+                                                            <i class="mdi mdi-link-off me-1"></i>Putuskan
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Select & Connect Form Container -->
+                                                <div id="reportSelectorContainer" style="display: block;" class="mt-1">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div class="flex-grow-1">
+                                                            <select class="form-select select2-edit" id="editTaskServiceReport" name="service_report_id" style="width: 100%;">
+                                                                <!-- Dynamically populated via JS -->
+                                                            </select>
+                                                        </div>
+                                                        <button class="btn btn-sm btn-primary d-flex align-items-center gap-1 rounded-3" type="button" id="btnConnectReport" style="height: 38px;">
+                                                            <i class="mdi mdi-link-variant"></i> Hubungkan
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            @endif
+
+                                            <!-- BAST & Detail Project Bottom Actions -->
+                                            <div class="col-12 mt-3 pt-3 border-top d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div id="bastExistingContainer" style="display: none;">
+                                                        <a id="bastExistingLink" href="#" target="_blank" class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1.5 rounded-pill px-3">
+                                                            <i class="mdi mdi-file-check-outline"></i> <span id="bastExistingLabel"></span>
+                                                        </a>
+                                                    </div>
+                                                    <div id="bastCreateContainer" style="display: none;">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1.5 rounded-pill px-3" id="btnCreateBastFromCard">
+                                                            <i class="mdi mdi-file-sign"></i> Buat BAST
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div id="soDetailProjectContainer">
+                                                    <a id="soDetailProjectLink" href="#" target="_blank" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1.5 px-3 rounded-3 shadow-xs">
+                                                        <i class="mdi mdi-open-in-new"></i> Detail Project
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Ringkasan Kesehatan Keuangan -->
+                            <div id="financialHealthContainer" class="mb-4" style="display: none;">
+                                <div class="card task-card-elevated">
+                                    <div class="card-body p-3.5">
+                                        <div class="d-flex align-items-center justify-content-between pb-3 mb-3" style="border-bottom: 1px solid #edf0f2;">
+                                            <div class="d-flex align-items-center gap-2.5">
+                                                <div class="avatar avatar-sm bg-label-success rounded-3 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                                    <i class="mdi mdi-chart-line" style="font-size: 18px;"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="fw-bold mb-0 text-heading" style="font-size: 14.5px;">Ringkasan Kesehatan Keuangan</h6>
+                                                    <small class="text-muted" style="font-size: 11px;">Analisis laba dan efisiensi pengeluaran proyek</small>
+                                                </div>
+                                            </div>
+                                            <span class="badge rounded-pill" id="fhMarginBadge" style="font-size: 11px; font-weight: 700; padding: 4px 10px; background-color: rgba(113, 221, 55, 0.15); color: #71dd37;"></span>
+                                        </div>
+
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-4">
+                                                <div class="task-stat-box" style="background: rgba(40, 199, 111, 0.08); border: 1px solid rgba(40, 199, 111, 0.18);">
+                                                    <span class="text-muted d-block mb-1" style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Revenue</span>
+                                                    <strong id="fhRevenue" class="text-success d-block" style="font-size: 13.5px; word-break: break-word;"></strong>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="task-stat-box" style="background: rgba(234, 84, 85, 0.08); border: 1px solid rgba(234, 84, 85, 0.18);">
+                                                    <span class="text-muted d-block mb-1" style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Total Biaya</span>
+                                                    <strong id="fhTotalCost" class="text-danger d-block" style="font-size: 13.5px; word-break: break-word;"></strong>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="task-stat-box" style="background: rgba(102, 108, 255, 0.08); border: 1px solid rgba(102, 108, 255, 0.18);">
+                                                    <span class="text-muted d-block mb-1" style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;">Net Profit</span>
+                                                    <strong id="fhProfit" class="d-block" style="font-size: 13.5px; word-break: break-word;"></strong>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-2">
+                                            <div class="d-flex justify-content-between align-items-center mb-1 text-muted" style="font-size: 10.5px;">
+                                                <span>Rasio Pengeluaran Biaya (Merah) vs Margin Laba (Hijau)</span>
+                                            </div>
+                                            <div class="progress rounded-pill" style="height: 8px; overflow: hidden; background-color: rgba(0,0,0,0.06);">
+                                                <div class="progress-bar bg-danger" role="progressbar" id="fhCostBar" style="width: 0%"></div>
+                                                <div class="progress-bar bg-success" role="progressbar" id="fhProfitBar" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="text-end pt-1">
+                                            <a id="fhDetailLink" href="#" target="_blank" class="text-decoration-none fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 11.5px;">
+                                                <span>Lihat rincian di Project Monitoring</span> <i class="mdi mdi-arrow-right" style="font-size: 14px;"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             @if ($board->type !== 'monitoring')
                             <!-- Quotation terhubung -->
                             <div class="mb-4" id="quotationLinkContainer">
-                                <label class="form-label text-muted fw-semibold" style="font-size: 11px;">Quotation Terhubung</label>
-                                <div id="quotationLinkedView" class="align-items-center justify-content-between p-2 rounded border dynamic-subcard" style="display: none; font-size: 12.5px;">
-                                    <div class="d-flex align-items-center gap-2 min-width-0">
-                                        <i class="mdi mdi-file-document-outline text-primary" style="font-size: 18px;"></i>
+                                <label class="form-label text-muted fw-bold mb-1.5" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Quotation Terhubung</label>
+                                <div id="quotationLinkedView" class="align-items-center justify-content-between p-3 rounded-3 border dynamic-subcard shadow-xs" style="display: none; font-size: 12.5px;">
+                                    <div class="d-flex align-items-center gap-2.5 min-width-0">
+                                        <div class="avatar avatar-xs bg-label-primary rounded-circle d-flex align-items-center justify-content-center">
+                                            <i class="mdi mdi-file-document-outline" style="font-size: 16px;"></i>
+                                        </div>
                                         <div class="min-width-0">
-                                            <a id="quotationLinkedNo" href="#" target="_blank" class="fw-bold text-primary d-block text-truncate text-decoration-none"></a>
+                                            <a id="quotationLinkedNo" href="#" target="_blank" class="fw-bold text-primary d-block text-truncate text-decoration-none" style="font-size: 13px;"></a>
                                             <small id="quotationLinkedCompany" class="text-muted d-block text-truncate"></small>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn btn-xs btn-outline-danger flex-shrink-0" id="btnUnlinkQuotation">
+                                    <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-3 flex-shrink-0" id="btnUnlinkQuotation">
                                         <i class="mdi mdi-link-off me-1"></i>Putuskan
                                     </button>
                                 </div>
                                 <div id="quotationLinkForm" style="display: none;">
                                     <div class="d-flex align-items-center gap-2">
                                         <select class="form-select form-select-sm select2-link-quote" id="linkQuotationSelect" style="width: 100%;" data-placeholder="Cari no. quote / perusahaan..."></select>
-                                        <button type="button" class="btn btn-sm btn-primary flex-shrink-0" id="btnLinkQuotation"><i class="mdi mdi-link-variant me-1"></i>Hubungkan</button>
+                                        <button type="button" class="btn btn-sm btn-primary flex-shrink-0 rounded-3 px-3" id="btnLinkQuotation"><i class="mdi mdi-link-variant me-1"></i>Hubungkan</button>
                                     </div>
-                                    <small class="text-muted" style="font-size: 10.5px;">Sambungkan kartu ini ke Unit Quotation yang belum punya kartu.</small>
+                                    <small class="text-muted mt-1 d-block" style="font-size: 11px;">Sambungkan kartu ini ke Unit Quotation yang belum punya kartu.</small>
                                 </div>
                             </div>
 
                             <!-- Pengeluaran Project (manajemen biaya per kartu) -->
                             <div class="mb-4" id="taskExpenseContainer">
-                                <div class="card border border-light-subtle shadow-sm task-detail-card">
+                                <div class="card task-card-elevated">
                                     <div class="card-body p-3.5">
-                                        <div class="d-flex align-items-center justify-content-between pb-2 mb-3" style="border-bottom: 2px solid #ff9f43;">
-                                            <h6 class="fw-bold mb-0 text-heading d-flex align-items-center" style="font-size: 14.5px;">
-                                                <i class="mdi mdi-cash-multiple me-2 text-warning" style="font-size: 18px;"></i> Pengeluaran Project
-                                            </h6>
-                                            <span class="badge bg-label-warning fw-bold" id="taskExpenseTotal" style="font-size: 12px;"><i class="mdi mdi-eye-off-outline me-1"></i>Rp ••••••••</span>
+                                        <div class="d-flex align-items-center justify-content-between pb-3 mb-3" style="border-bottom: 1px solid #edf0f2;">
+                                            <div class="d-flex align-items-center gap-2.5">
+                                                <div class="avatar avatar-sm bg-label-warning rounded-3 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                                    <i class="mdi mdi-cash-multiple" style="font-size: 18px;"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="fw-bold mb-0 text-heading" style="font-size: 14.5px;">Pengeluaran Project</h6>
+                                                    <small class="text-muted" style="font-size: 11px;">Biaya operasional & material tugas ini</small>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-label-warning fw-bold rounded-pill px-3 py-1.5" id="taskExpenseTotal" style="font-size: 12px;">Rp 0</span>
                                         </div>
 
-                                        <div id="taskExpensesList" class="d-flex flex-column gap-1 mb-3" style="font-size: 12.5px;"></div>
+                                        <div id="taskExpensesList" class="d-flex flex-column gap-1.5 mb-3" style="font-size: 12.5px;"></div>
 
                                         <div id="taskExpenseFormWrap" style="display: none;">
-                                            <button type="button" class="btn btn-xs btn-outline-primary" id="btnShowExpenseForm"><i class="mdi mdi-plus me-1"></i>Tambah Biaya</button>
-                                            <form id="taskExpenseForm" class="mt-2 border rounded p-2 dynamic-subcard" style="display: none;" enctype="multipart/form-data">
+                                            <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-3" id="btnShowExpenseForm"><i class="mdi mdi-plus me-1"></i>Tambah Biaya</button>
+                                            <form id="taskExpenseForm" class="mt-2 border rounded-3 p-3 dynamic-subcard" style="display: none;" enctype="multipart/form-data">
                                                 <div class="row g-2">
                                                     <div class="col-12">
                                                         <input type="text" class="form-control form-control-sm" id="expenseName" placeholder="Nama biaya" required>
@@ -431,9 +471,9 @@
                                                         <input type="file" class="form-control form-control-sm" id="expenseReceipt" accept=".jpg,.jpeg,.png,.pdf">
                                                     </div>
                                                 </div>
-                                                <div class="text-end mt-2">
-                                                    <button type="button" class="btn btn-xs btn-outline-secondary" id="btnCancelExpenseForm">Batal</button>
-                                                    <button type="submit" class="btn btn-xs btn-primary">Simpan Biaya</button>
+                                                <div class="text-end mt-2.5">
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-3" id="btnCancelExpenseForm">Batal</button>
+                                                    <button type="submit" class="btn btn-xs btn-primary rounded-pill px-3 ms-1">Simpan Biaya</button>
                                                 </div>
                                             </form>
                                         </div>
@@ -444,13 +484,19 @@
 
                             <!-- Daily Project Reports Section (Laporan Harian Proyek) -->
                             <div class="mb-4" id="taskProjectReportsContainer">
-                                <div class="card border border-light-subtle shadow-sm task-report-card">
+                                <div class="card task-card-elevated">
                                     <div class="card-body p-3.5">
-                                        <div class="d-flex align-items-center justify-content-between pb-2 mb-3" style="border-bottom: 2px solid #007bff;">
-                                            <h6 class="fw-bold mb-0 text-heading d-flex align-items-center" style="font-size: 14.5px;">
-                                                <i class="mdi mdi-clipboard-text-clock-outline me-2 text-primary" style="font-size: 18px;"></i> Laporan Harian Proyek
-                                            </h6>
-                                            <span class="badge bg-label-primary fw-bold" id="taskProjectReportsCount" style="font-size: 12px;">0 Laporan</span>
+                                        <div class="d-flex align-items-center justify-content-between pb-3 mb-3" style="border-bottom: 1px solid #edf0f2;">
+                                            <div class="d-flex align-items-center gap-2.5">
+                                                <div class="avatar avatar-sm bg-label-primary rounded-3 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                                    <i class="mdi mdi-clipboard-text-clock-outline" style="font-size: 18px;"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="fw-bold mb-0 text-heading" style="font-size: 14.5px;">Laporan Harian Proyek</h6>
+                                                    <small class="text-muted" style="font-size: 11px;">Rekap progres teknis harian di lapangan</small>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-label-primary fw-bold rounded-pill px-3 py-1.5" id="taskProjectReportsCount" style="font-size: 12px;">0 Laporan</span>
                                         </div>
 
                                         <div id="taskProjectReportsList" class="d-flex flex-column gap-2 mb-3" style="font-size: 12.5px;">
@@ -458,7 +504,7 @@
                                         </div>
 
                                         <div class="text-end">
-                                            <a href="#" target="_blank" class="btn btn-xs btn-primary" id="btnCreateDailyReport">
+                                            <a href="#" target="_blank" class="btn btn-xs btn-primary rounded-pill px-3" id="btnCreateDailyReport">
                                                 <i class="mdi mdi-plus me-1"></i>Buat Daily Report Hari Ini
                                             </a>
                                         </div>
@@ -468,18 +514,18 @@
 
                             <!-- Labels section -->
                             <div class="mb-4">
-                                <label class="form-label text-muted fw-semibold" style="font-size: 11px;">Labels</label>
-                                <div class="d-flex flex-wrap gap-1 align-items-center">
-                                    <div id="labelsListContainer" class="d-flex flex-wrap gap-1 align-items-center">
+                                <label class="form-label text-muted fw-bold mb-1.5" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Labels</label>
+                                <div class="d-flex flex-wrap gap-1.5 align-items-center">
+                                    <div id="labelsListContainer" class="d-flex flex-wrap gap-1.5 align-items-center">
                                         <!-- Render dynamic label badges here -->
                                     </div>
                                     
                                     <!-- Add label dropdown plus button -->
                                     <div class="dropdown d-inline-block">
-                                        <button class="btn btn-xs btn-outline-secondary btn-icon rounded-circle dropdown-toggle hide-arrow" type="button" id="dropdownLabels" data-bs-toggle="dropdown" aria-expanded="false" style="width:24px;height:24px;min-width:24px;padding:0;">
-                                            <i class="mdi mdi-plus" style="font-size: 14px;"></i>
+                                        <button class="btn btn-xs btn-outline-secondary btn-icon rounded-circle dropdown-toggle hide-arrow" type="button" id="dropdownLabels" data-bs-toggle="dropdown" aria-expanded="false" style="width:26px;height:26px;min-width:26px;padding:0;">
+                                            <i class="mdi mdi-plus" style="font-size: 15px;"></i>
                                         </button>
-                                        <ul class="dropdown-menu p-2" aria-labelledby="dropdownLabels" style="min-width: 180px;">
+                                        <ul class="dropdown-menu p-2 shadow-sm" aria-labelledby="dropdownLabels" style="min-width: 180px;">
                                             <li><h6 class="dropdown-header px-1 py-1">Pilih Label</h6></li>
                                             <li><hr class="dropdown-divider my-1"></li>
                                             @foreach($activeLabels as $color => $name)
@@ -491,9 +537,9 @@
                             </div>
 
                             <!-- Metadata row (Assignee, Due Date) -->
-                            <div class="row mb-4">
+                            <div class="row g-3 mb-4">
                                 <div class="col-sm-6 {{ $board->type === 'monitoring' ? 'd-none' : '' }}">
-                                    <label for="editTaskAssignee" class="form-label text-muted fw-semibold" style="font-size: 11px;">Ditugaskan Kepada</label>
+                                    <label for="editTaskAssignee" class="form-label text-muted fw-bold mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Ditugaskan Kepada</label>
                                     <div class="w-100">
                                         <select class="form-select select2-edit" id="editTaskAssignee" name="assignees[]" multiple="multiple" data-placeholder="Pilih Penerima" style="width: 100%;">
                                             @foreach ($users as $user)
@@ -503,36 +549,39 @@
                                     </div>
                                 </div>
                                 <div class="{{ $board->type === 'monitoring' ? 'col-sm-12' : 'col-sm-6' }}">
-                                    <label for="editTaskDueDate" class="form-label text-muted fw-semibold" style="font-size: 11px;">Tanggal Batas Waktu</label>
-                                    <input type="text" class="form-control flatpickr" id="editTaskDueDate" placeholder="YYYY-MM-DD">
+                                    <label for="editTaskDueDate" class="form-label text-muted fw-bold mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Tanggal Batas Waktu</label>
+                                    <div class="input-group input-group-merge">
+                                        <span class="input-group-text"><i class="mdi mdi-calendar-blank-outline"></i></span>
+                                        <input type="text" class="form-control flatpickr" id="editTaskDueDate" placeholder="YYYY-MM-DD">
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Description area with inline editing -->
                             <div class="mb-4">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <label class="form-label fw-bold mb-0" style="font-size: 13.5px;"><i class="mdi mdi-text-align-left me-2"></i>Deskripsi</label>
-                                    <button type="button" class="btn btn-xs btn-outline-secondary" id="btnEditDescription">Edit</button>
+                                    <label class="form-label fw-bold mb-0 d-flex align-items-center gap-1.5" style="font-size: 13.5px;"><i class="mdi mdi-text-align-left text-primary" style="font-size: 16px;"></i>Deskripsi</label>
+                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-3" id="btnEditDescription">Edit</button>
                                 </div>
                                 
                                 <!-- Static description view -->
-                                <div id="descriptionStaticView" class="p-3 rounded bg-light" style="font-size: 13.5px; white-space: pre-wrap; min-height: 50px;">
+                                <div id="descriptionStaticView" class="p-3 rounded-3 bg-light" style="font-size: 13.5px; white-space: pre-wrap; min-height: 54px; line-height: 1.5;">
                                     Tambahkan deskripsi detail tugas...
                                 </div>
                                 
                                 <!-- Description edit form -->
                                 <div id="descriptionEditForm" style="display: none;">
-                                    <textarea class="form-control mb-2" id="editTaskDescription" rows="4" placeholder="Tambahkan deskripsi detail tugas..."></textarea>
+                                    <textarea class="form-control mb-2 rounded-3" id="editTaskDescription" rows="4" placeholder="Tambahkan deskripsi detail tugas..."></textarea>
                                     <div class="text-end">
-                                        <button type="button" class="btn btn-outline-secondary btn-xs me-1" id="btnCancelDescription">Batal</button>
-                                        <button type="button" class="btn btn-primary btn-xs" id="btnSaveDescription">Simpan</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-xs rounded-pill px-3 me-1" id="btnCancelDescription">Batal</button>
+                                        <button type="button" class="btn btn-primary btn-xs rounded-pill px-3" id="btnSaveDescription">Simpan</button>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Attachments area -->
                             <div class="mb-4">
-                                <label class="form-label fw-bold mb-2" style="font-size: 13.5px;"><i class="mdi mdi-paperclip me-2 text-primary"></i>Lampiran</label>
+                                <label class="form-label fw-bold mb-2 d-flex align-items-center gap-1.5" style="font-size: 13.5px;"><i class="mdi mdi-paperclip text-primary" style="font-size: 16px;"></i>Lampiran</label>
                                 <div id="attachmentsListContainer" class="d-flex flex-column gap-2">
                                     <!-- Render attachments dynamically -->
                                 </div>
@@ -546,35 +595,39 @@
 
                         <!-- Right Section (Width 5/12): Combined chronological timeline feed & composer -->
                         <div class="col-lg-5 ps-lg-4 mt-4 mt-lg-0">
-                            <h6 class="fw-bold text-muted text-uppercase mb-3" style="font-size: 11px; letter-spacing: 1px;">Aktivitas & Komentar</h6>
+                            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                                <h6 class="fw-bold text-heading text-uppercase mb-0 d-flex align-items-center gap-1.5" style="font-size: 11.5px; letter-spacing: 0.8px;">
+                                    <i class="mdi mdi-message-text-clock-outline text-primary" style="font-size: 16px;"></i> Aktivitas & Komentar
+                                </h6>
+                            </div>
                             
                             <!-- Comment input -->
                             <div class="mb-3 position-relative pb-3 border-bottom">
-                                <textarea class="form-control mb-2" id="commentTextInput" rows="2" placeholder="Tulis komentar... Ketik @ untuk me-mention anggota papan"></textarea>
+                                <textarea class="form-control mb-2 rounded-3" id="commentTextInput" rows="2" placeholder="Tulis komentar... Ketik @ untuk me-mention anggota papan"></textarea>
                                 <!-- Mention Dropdown -->
                                 <div id="mentionDropdown" class="dropdown-menu shadow-sm" style="display: none; position: absolute; left: 0; top: 75px; z-index: 1100; width: 100%; max-height: 150px; overflow-y: auto;"></div>
                                 <div class="text-end">
-                                    <button type="button" class="btn btn-primary btn-sm" id="submitCommentBtn">Kirim</button>
+                                    <button type="button" class="btn btn-primary btn-sm rounded-pill px-3.5" id="submitCommentBtn">Kirim</button>
                                 </div>
                             </div>
 
                             <!-- Unified chronological feed (comments & activities) -->
-                            <div id="timelineFeedContainer" class="pe-1" style="max-height: 420px; overflow-y: auto;">
+                            <div id="timelineFeedContainer" class="pe-1" style="max-height: 440px; overflow-y: auto;">
                                 <!-- Dynamic comments and activity timeline -->
                             </div>
 
                             <!-- Delete Task action button at the bottom -->
-                            <div class="pt-3 border-top mt-4 d-flex justify-content-between">
+                            <div class="pt-3 border-top mt-4 d-flex justify-content-between align-items-center">
                                 @if (auth()->user()->role === 'Admin' || auth()->id() == $board->created_by)
-                                    <button type="button" class="btn btn-outline-danger btn-sm" id="deleteTaskBtn">
+                                    <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" id="deleteTaskBtn">
                                         <i class="mdi mdi-trash-can-outline me-1"></i>Hapus Tugas
                                     </button>
                                 @else
-                                    <button type="button" class="btn btn-outline-warning btn-sm" id="requestDeleteTaskBtn">
+                                    <button type="button" class="btn btn-outline-warning btn-sm rounded-pill px-3" id="requestDeleteTaskBtn">
                                         <i class="mdi mdi-alert-circle-outline me-1"></i>Ajukan Hapus Tugas
                                     </button>
                                 @endif
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
+                                <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3.5" data-bs-dismiss="modal">
                                     Tutup
                                 </button>
                             </div>
@@ -1009,32 +1062,46 @@
         .app-kanban .kanban-wrapper .kanban-container .kanban-board .kanban-item,
         .kanban-item {
             background: #ffffff;
-            padding: 16px 18px !important;
-            margin-bottom: 14px !important;
+            padding: 14px 16px !important;
+            margin-bottom: 12px !important;
             border-radius: 10px !important;
-            box-shadow: 0 4px 18px 0 rgba(75, 70, 92, 0.1), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
-            cursor: grab;
+            border: 1px solid rgba(75, 70, 92, 0.08) !important;
             border-left: 4px solid #666cff !important;
-            border-top: none !important;
-            border-right: none !important;
-            border-bottom: none !important;
+            box-shadow: 0 2px 6px 0 rgba(75, 70, 92, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+            cursor: grab;
             transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
             width: 100% !important;
             max-width: 100% !important;
             box-sizing: border-box !important;
+            position: relative;
         }
-        .kanban-item.border-left-primary { border-left: 4px solid #666cff !important; }
-        .kanban-item.border-left-success { border-left: 4px solid #28c76f !important; }
-        .kanban-item.border-left-danger { border-left: 4px solid #ea5455 !important; }
-        .kanban-item.border-left-warning { border-left: 4px solid #ff9f43 !important; }
-        .kanban-item.border-left-info { border-left: 4px solid #03c3ec !important; }
-        .kanban-item.border-left-secondary { border-left: 4px solid #8592a3 !important; }
+        .kanban-item.border-left-primary { border-left-color: #666cff !important; }
+        .kanban-item.border-left-success { border-left-color: #28c76f !important; }
+        .kanban-item.border-left-danger { border-left-color: #ea5455 !important; }
+        .kanban-item.border-left-warning { border-left-color: #ff9f43 !important; }
+        .kanban-item.border-left-info { border-left-color: #03c3ec !important; }
+        .kanban-item.border-left-secondary { border-left-color: #8592a3 !important; }
         .kanban-item:active {
             cursor: grabbing;
         }
         .kanban-item:hover {
-            box-shadow: 0 6px 22px 0 rgba(75, 70, 92, 0.16), 0 3px 8px rgba(0, 0, 0, 0.06) !important;
-            transform: translateY(-2px);
+            box-shadow: 0 8px 22px 0 rgba(75, 70, 92, 0.13), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+            transform: translateY(-2.5px);
+            border-color: rgba(102, 108, 255, 0.22) !important;
+        }
+        .kanban-item .kanban-task-title {
+            color: #2e384d;
+            transition: color 0.15s ease;
+        }
+        .kanban-item:hover .kanban-task-title {
+            color: #666cff;
+        }
+        .kanban-item .avatar-group .avatar {
+            transition: transform 0.15s ease;
+        }
+        .kanban-item .avatar-group .avatar:hover {
+            transform: translateY(-2px) scale(1.1);
+            z-index: 5;
         }
         .app-kanban .kanban-wrapper .kanban-container .kanban-board .kanban-drag,
         .kanban-drag {
@@ -1101,16 +1168,113 @@
             transform: scale(1.1) translateY(-50%) !important;
         }
 
-        /* Task Details Modal Cards Base */
+        /* =========================================================
+           TASK DETAILS MODAL REDESIGN STYLES
+           ========================================================= */
+        #taskDetailsModal .modal-content {
+            border-radius: 16px !important;
+            border: 1px solid rgba(75, 70, 92, 0.08) !important;
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.16) !important;
+            overflow: hidden !important;
+        }
+        #taskDetailsModal .modal-header {
+            background: #f8fafc !important;
+            border-bottom: 1px solid #eef0f4 !important;
+            padding: 20px 24px 16px 24px !important;
+        }
+        .task-status-dropdown-btn {
+            background: #ffffff !important;
+            border: 1.5px solid #e2e8f0 !important;
+            border-radius: 30px !important;
+            padding: 5px 14px !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            color: #4f46e5 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+            transition: all 0.2s ease !important;
+        }
+        .task-status-dropdown-btn:hover {
+            border-color: #6366f1 !important;
+            background: #f5f3ff !important;
+            color: #4338ca !important;
+        }
+        #taskDetailsModalLabel {
+            font-size: 18px !important;
+            font-weight: 700 !important;
+            color: #1e293b;
+            letter-spacing: -0.2px;
+            cursor: pointer;
+            transition: color 0.15s ease;
+        }
+        #taskDetailsModalLabel:hover {
+            color: #4f46e5;
+        }
+        .task-quick-btn {
+            border-radius: 20px !important;
+            padding: 5px 13px !important;
+            font-size: 11.5px !important;
+            font-weight: 500 !important;
+            color: #475569 !important;
+            border: 1px solid #e2e8f0 !important;
+            background: #ffffff !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+        }
+        .task-quick-btn:hover {
+            background: #f1f5f9 !important;
+            border-color: #cbd5e1 !important;
+            color: #1e293b !important;
+            transform: translateY(-1px);
+        }
+        .task-card-elevated {
+            background-color: #ffffff !important;
+            border-radius: 12px !important;
+            border: 1px solid #eef0f4 !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03) !important;
+            transition: box-shadow 0.2s ease;
+        }
+        .task-card-elevated:hover {
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05) !important;
+        }
+        .task-info-block {
+            background-color: #f8fafc;
+            border: 1px solid #edf0f4;
+            border-radius: 10px;
+            padding: 10px 14px;
+            transition: all 0.15s ease;
+        }
+        .task-info-block:hover {
+            border-color: #cbd5e1;
+            background-color: #f1f5f9;
+        }
+        .task-stat-box {
+            border-radius: 10px;
+            padding: 12px 10px;
+            text-align: center;
+            transition: transform 0.15s ease;
+        }
+        .task-stat-box:hover {
+            transform: translateY(-2px);
+        }
         .task-detail-card {
-            background-color: #fbfbfc;
+            background-color: #ffffff !important;
             border-radius: 12px;
             border: 1px solid #eef0f4 !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03) !important;
         }
         .task-report-card {
-            background-color: #f6faff;
+            background-color: #ffffff !important;
             border-radius: 12px;
-            border: 1px solid #d9e9ff !important;
+            border: 1px solid #eef0f4 !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03) !important;
+        }
+        .comment-bubble-box {
+            background-color: #f8fafc !important;
+            border: 1px solid #e8ecf1 !important;
+            border-radius: 12px !important;
+            padding: 10px 14px !important;
+            font-size: 13px !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important;
         }
 
         /* =========================================================
@@ -1129,10 +1293,18 @@
         .dark-style .app-kanban .kanban-wrapper .kanban-container .kanban-board .kanban-item,
         .dark-style .kanban-item {
             background: #2b2c40 !important;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
         }
         .dark-style .kanban-item:hover {
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25) !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+            border-color: rgba(102, 108, 255, 0.4) !important;
+        }
+        .dark-style .kanban-item .kanban-task-title {
+            color: #dbdade !important;
+        }
+        .dark-style .kanban-item:hover .kanban-task-title {
+            color: #8589ff !important;
         }
         .dark-style .kanban-item .text-heading {
             color: #dbdade !important;
@@ -1212,6 +1384,48 @@
         .dark-style .checklist-block {
             border-color: #3b3e5b !important;
             background-color: #23253b !important;
+        }
+        .dark-style #taskDetailsModal .modal-content {
+            background-color: #2b2c40 !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+        }
+        .dark-style #taskDetailsModal .modal-header {
+            background: #23253b !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+        }
+        .dark-style .task-status-dropdown-btn {
+            background: #2b2c40 !important;
+            border-color: #3b3e5b !important;
+            color: #8589ff !important;
+        }
+        .dark-style #taskDetailsModalLabel {
+            color: #dbdade !important;
+        }
+        .dark-style #taskDetailsModalLabel:hover {
+            color: #8589ff !important;
+        }
+        .dark-style .task-quick-btn {
+            background: #2b2c40 !important;
+            border-color: #3b3e5b !important;
+            color: #a8aaae !important;
+        }
+        .dark-style .task-quick-btn:hover {
+            background: #383b56 !important;
+            color: #ffffff !important;
+        }
+        .dark-style .task-card-elevated,
+        .dark-style .task-detail-card,
+        .dark-style .task-report-card {
+            background-color: #2b2c40 !important;
+            border-color: #3b3e5b !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+        }
+        .dark-style .task-info-block {
+            background-color: #23253b !important;
+            border-color: #3b3e5b !important;
+        }
+        .dark-style .task-info-block:hover {
+            background-color: #2e3047 !important;
         }
         .dark-style .comment-bubble-box {
             background-color: #23253b !important;
@@ -1295,6 +1509,16 @@
             };
             function getLabelName(color) {
                 return (boardLabels && boardLabels[color]) ? boardLabels[color] : (defaultLabels[color] || color);
+            }
+
+            function escapeHtml(text) {
+                if (!text) return '';
+                return String(text)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
             }
 
             // Initialize select2
@@ -1452,130 +1676,220 @@
                                     </div>
                                 `,
                                 item: column.item.map(function(task) {
+                                    // 1. Header Row (Labels, Entity, Priority)
+                                    let labelsHtml = '';
+                                    if (task.labels && task.labels.length > 0) {
+                                        task.labels.forEach(function(color) {
+                                            labelsHtml += `<span class="badge bg-${color}" style="font-size: 8.5px; font-weight: 600; padding: 2px 6px; border-radius: 3px; line-height: 1.1;">${escapeHtml(getLabelName(color))}</span>`;
+                                        });
+                                    }
+
+                                    let entityBadgeHtml = '';
+                                    if (boardType === 'monitoring' && task.entity_type) {
+                                        if (task.entity_type === 'KII') {
+                                            entityBadgeHtml = `<span class="badge bg-danger text-white fw-bold" style="font-size: 9px; padding: 2px 6px; border-radius: 3px; line-height: 1.1; letter-spacing: 0.3px;" title="Invoice Kojisha (KII)">KII</span>`;
+                                        } else {
+                                            entityBadgeHtml = `<span class="badge bg-primary text-white fw-bold" style="font-size: 9px; padding: 2px 6px; border-radius: 3px; line-height: 1.1; letter-spacing: 0.3px;" title="Invoice Reftech (RJO)">RJO</span>`;
+                                        }
+                                    }
+
+                                    let topRowHtml = '';
+                                    if (labelsHtml || entityBadgeHtml) {
+                                        topRowHtml = `
+                                            <div class="d-flex align-items-center mb-2 flex-wrap gap-1">
+                                                ${entityBadgeHtml}
+                                                ${labelsHtml}
+                                            </div>
+                                        `;
+                                    }
+
+                                    // 2. Title & Company Section
+                                    let displayTitleHtml = '';
+                                    if (boardType === 'monitoring') {
+                                        let poNum = '';
+                                        let companyName = '';
+
+                                        if (task.no_po) {
+                                            poNum = task.no_po.startsWith('[') ? task.no_po : `[${task.no_po}]`;
+                                            companyName = task.company || '';
+                                            if (!companyName) {
+                                                const emDashMatch = task.title.match(/^(.*?)\s*—\s*(.*)$/);
+                                                const dashMatch = task.title.match(/^(.*?)\s+-\s+(.*)$/);
+                                                if (emDashMatch) companyName = emDashMatch[2];
+                                                else if (dashMatch) companyName = dashMatch[2];
+                                            }
+                                        } else {
+                                            const bracketMatch = task.title.match(/^\[(.*?)\]\s*-\s*(.*)$/);
+                                            const emDashMatch = task.title.match(/^(.*?)\s*—\s*(.*)$/);
+                                            const dashMatch = task.title.match(/^(.*?)\s+-\s+(.*)$/);
+
+                                            if (bracketMatch) {
+                                                poNum = `[${bracketMatch[1]}]`;
+                                                companyName = bracketMatch[2];
+                                            } else if (emDashMatch) {
+                                                poNum = '-';
+                                                companyName = emDashMatch[2];
+                                            } else if (dashMatch) {
+                                                poNum = dashMatch[1];
+                                                companyName = dashMatch[2];
+                                            } else {
+                                                poNum = task.title;
+                                                companyName = task.company || '';
+                                            }
+                                        }
+
+                                        const poTextColor = (task.entity_type === 'KII') ? 'text-danger' : 'text-primary';
+                                        displayTitleHtml = `
+                                            <div class="${poTextColor} fw-bold" style="font-size: 13px; line-height: 1.35; word-break: break-word;" title="${escapeHtml(poNum)}">${escapeHtml(poNum)}</div>
+                                            ${companyName ? `<div class="text-heading fw-semibold mt-1 d-flex align-items-center gap-1" style="font-size: 12.5px; line-height: 1.35; word-break: break-word;"><i class="mdi mdi-domain text-muted" style="font-size: 13px;"></i><span>${escapeHtml(companyName)}</span></div>` : ''}
+                                        `;
+                                    } else {
+                                        // Dynamic project board (e.g. Board 2: Project HVAC)
+                                        displayTitleHtml = `
+                                            <div class="kanban-task-title fw-bold text-heading" style="font-size: 13.5px; line-height: 1.4; word-break: break-word;" title="${escapeHtml(task.title)}">
+                                                ${escapeHtml(task.title)}
+                                            </div>
+                                            ${task.company && task.company !== task.title ? `
+                                                <div class="text-muted d-flex align-items-center gap-1 mt-1" style="font-size: 11.5px;">
+                                                    <i class="mdi mdi-domain text-muted" style="font-size: 13px;"></i>
+                                                    <span class="text-truncate">${escapeHtml(task.company)}</span>
+                                                </div>
+                                            ` : ''}
+                                            ${task.no_po && task.no_po !== 'Belum ada PO' ? `
+                                                <div class="text-muted d-flex align-items-center gap-1 mt-0.5" style="font-size: 11px;">
+                                                    <i class="mdi mdi-file-document-outline" style="font-size: 12px;"></i>
+                                                    <span class="text-truncate">PO: ${escapeHtml(task.no_po)}</span>
+                                                </div>
+                                            ` : (task.no_so ? `
+                                                <div class="text-muted d-flex align-items-center gap-1 mt-0.5" style="font-size: 11px;">
+                                                    <i class="mdi mdi-file-document-outline" style="font-size: 12px;"></i>
+                                                    <span class="text-truncate">SO: ${escapeHtml(task.no_so)}</span>
+                                                </div>
+                                            ` : '')}
+                                        `;
+                                    }
+
+                                    // 3. Description preview
+                                    let descHtml = '';
+                                    if (task.description && task.description.trim()) {
+                                        descHtml = `
+                                            <div class="text-muted mt-1" style="font-size: 11.5px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;">
+                                                ${escapeHtml(task.description)}
+                                            </div>
+                                        `;
+                                    }
+
+                                    // 4. Financial Value / Nominal
+                                    let nettHtml = '';
+                                    if (task.nett && task.nett > 0 && userRole !== 'ServiceM') {
+                                        const formattedVal = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(task.nett);
+                                        const nettBadgeClass = (task.entity_type === 'KII') ? 'bg-label-danger' : 'bg-label-primary';
+                                        nettHtml = `
+                                            <div class="mt-2">
+                                                <span class="badge ${nettBadgeClass} d-inline-flex align-items-center gap-1" style="font-size: 10.5px; font-weight: 600; padding: 3px 7px; border-radius: 4px;">
+                                                    <i class="mdi mdi-cash-multiple" style="font-size: 12px;"></i>${formattedVal}
+                                                </span>
+                                            </div>
+                                        `;
+                                    }
+
+                                    // 5. Checklist Progress
+                                    let progressBarHtml = '';
+                                    if (task.total_checklists > 0) {
+                                        const isDone = task.completed_checklists === task.total_checklists;
+                                        const percent = Math.round((task.completed_checklists / task.total_checklists) * 100);
+                                        const barColor = percent === 100 ? 'bg-success' : 'bg-primary';
+                                        progressBarHtml = `
+                                            <div class="mt-2 p-1.5 rounded" style="background: rgba(75, 70, 92, 0.04); border: 1px solid rgba(75, 70, 92, 0.06);">
+                                                <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 10px;">
+                                                    <span class="text-muted d-inline-flex align-items-center gap-1">
+                                                        <i class="mdi mdi-checkbox-marked-circle-outline ${isDone ? 'text-success' : 'text-primary'}" style="font-size: 12px;"></i>
+                                                        <span>Checklist</span>
+                                                    </span>
+                                                    <span class="fw-semibold ${isDone ? 'text-success' : 'text-primary'}">${task.completed_checklists}/${task.total_checklists} (${percent}%)</span>
+                                                </div>
+                                                <div class="progress" style="height: 4px; background-color: rgba(75, 70, 92, 0.1); border-radius: 2px;">
+                                                    <div class="progress-bar ${barColor}" role="progressbar" style="width: ${percent}%; border-radius: 2px;" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }
+
+                                    // 6. Footer (Due Date, Attachments, Comments, Reports, Expenses, Avatars)
+                                    let dueDateHtml = '';
+                                    if (task.due_date) {
+                                        dueDateHtml = `
+                                            <span class="badge ${getDateUrgencyClass(task.due_date)} d-inline-flex align-items-center gap-1" style="font-size: 10px; padding: 2.5px 6px; border-radius: 4px;" title="Tenggat Waktu: ${formatDateDisplay(task.due_date)}">
+                                                <i class="mdi mdi-calendar-clock-outline" style="font-size: 11px;"></i>${formatDateDisplay(task.due_date)}
+                                            </span>
+                                        `;
+                                    }
+
+                                    let metaCountersHtml = '';
+                                    if (task.total_attachments > 0) {
+                                        metaCountersHtml += `
+                                            <span class="badge bg-label-secondary d-inline-flex align-items-center gap-1" style="font-size: 10px; padding: 2.5px 5px; border-radius: 4px;" title="${task.total_attachments} Lampiran">
+                                                <i class="mdi mdi-paperclip" style="font-size: 11px;"></i>${task.total_attachments}
+                                            </span>
+                                        `;
+                                    }
+                                    if (task.total_comments > 0) {
+                                        metaCountersHtml += `
+                                            <span class="badge bg-label-secondary d-inline-flex align-items-center gap-1" style="font-size: 10px; padding: 2.5px 5px; border-radius: 4px;" title="${task.total_comments} Komentar">
+                                                <i class="mdi mdi-comment-outline" style="font-size: 11px;"></i>${task.total_comments}
+                                            </span>
+                                        `;
+                                    }
+                                    if (task.total_reports > 0) {
+                                        metaCountersHtml += `
+                                            <span class="badge bg-label-info d-inline-flex align-items-center gap-1" style="font-size: 10px; padding: 2.5px 5px; border-radius: 4px;" title="${task.total_reports} Laporan Harian">
+                                                <i class="mdi mdi-clipboard-text-clock-outline" style="font-size: 11px;"></i>${task.total_reports}
+                                            </span>
+                                        `;
+                                    }
+                                    if (task.total_expenses > 0) {
+                                        metaCountersHtml += `
+                                            <span class="badge bg-label-warning d-inline-flex align-items-center gap-1" style="font-size: 10px; padding: 2.5px 5px; border-radius: 4px;" title="${task.total_expenses} Pengeluaran Proyek">
+                                                <i class="mdi mdi-receipt-text-outline" style="font-size: 11px;"></i>${task.total_expenses}
+                                            </span>
+                                        `;
+                                    }
+
                                     let avatarsHtml = '';
                                     if (task.assignees && task.assignees.length > 0) {
-                                        avatarsHtml = '<div class="avatar-group d-flex align-items-center">';
+                                        avatarsHtml = '<div class="avatar-group d-flex align-items-center ms-auto">';
                                         task.assignees.forEach(function(member, index) {
-                                            let initial = member.name.charAt(0).toUpperCase();
-                                            let style = index > 0 ? 'margin-left: -6px;' : '';
+                                            let initial = (member.name || '?').charAt(0).toUpperCase();
+                                            let style = index > 0 ? 'margin-left: -7px;' : '';
                                             avatarsHtml += `
-                                                <div class="avatar avatar-xs pull-up" data-bs-toggle="tooltip" data-bs-placement="top" title="${member.name}" style="${style}">
+                                                <div class="avatar avatar-xs pull-up" data-bs-toggle="tooltip" data-bs-placement="top" title="${escapeHtml(member.name)}" style="${style}">
                                                     ${member.avatar ? 
-                                                        `<img src="${member.avatar}" class="rounded-circle" style="width:20px;height:20px;object-fit:cover;border: 1.5px solid #fff;">` : 
-                                                        `<span class="avatar-initial rounded-circle bg-label-primary d-flex align-items-center justify-content-center" style="width:20px;height:20px;font-size:9px;line-height:20px;border: 1.5px solid #fff;">${initial}</span>`
+                                                        `<img src="${member.avatar}" class="rounded-circle" style="width:22px;height:22px;object-fit:cover;border: 1.5px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12);">` : 
+                                                        `<span class="avatar-initial rounded-circle bg-label-primary d-flex align-items-center justify-content-center fw-bold" style="width:22px;height:22px;font-size:9px;border: 1.5px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12);">${initial}</span>`
                                                     }
                                                 </div>`;
                                         });
                                         avatarsHtml += '</div>';
                                     }
 
-                                    let checklistBadgeHtml = '';
-                                    let progressBarHtml = '';
-                                    if (task.total_checklists > 0) {
-                                        const isDone = task.completed_checklists === task.total_checklists;
-                                        const badgeClass = isDone ? 'bg-label-success' : 'bg-label-secondary';
-                                        checklistBadgeHtml = `
-                                            <span class="badge ${badgeClass}" style="font-size:10px; padding: 3px 6px;" title="Progres checklist">
-                                                <i class="mdi mdi-checkbox-marked-circle-outline me-1" style="font-size: 11px;"></i>${task.completed_checklists}/${task.total_checklists}
-                                            </span>
-                                        `;
-
-                                        const percent = Math.round((task.completed_checklists / task.total_checklists) * 100);
-                                        const barColor = percent === 100 ? 'bg-success' : 'bg-primary';
-                                        progressBarHtml = `
-                                            <div class="mt-2" style="font-size: 10px;">
-                                                <div class="d-flex justify-content-between text-muted mb-1">
-                                                    <span>Checklist</span>
-                                                    <span>${percent}%</span>
-                                                </div>
-                                                <div class="progress" style="height: 4px; background-color: #ebedf2; border-radius: 2px;">
-                                                    <div class="progress-bar ${barColor}" role="progressbar" style="width: ${percent}%;" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"></div>
-                                                </div>
-                                            </div>
-                                        `;
-                                    }
-
-                                    let entityBadgeHtml = '';
-                                    if (boardType === 'monitoring' && task.entity_type) {
-                                        if (task.entity_type === 'KII') {
-                                            entityBadgeHtml = `<span class="badge bg-danger text-white fw-bold" style="font-size: 10px; padding: 3px 7px; border-radius: 4px; line-height: 1; letter-spacing: 0.3px;" title="Invoice Kojisha (KII)">KII</span>`;
-                                        } else {
-                                            entityBadgeHtml = `<span class="badge bg-primary text-white fw-bold" style="font-size: 10px; padding: 3px 7px; border-radius: 4px; line-height: 1; letter-spacing: 0.3px;" title="Invoice Reftech (RJO)">RJO</span>`;
-                                        }
-                                    }
-
                                     let footerHtml = `
-                                        <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <div class="d-flex justify-content-between align-items-center pt-2 mt-2" style="border-top: 1px solid rgba(75, 70, 92, 0.08);">
                                             <div class="d-flex align-items-center flex-wrap gap-1">
-                                                ${entityBadgeHtml}
-                                                ${task.due_date ? `<span class="badge ${getDateUrgencyClass(task.due_date)}" style="font-size:10px;"><i class="mdi mdi-calendar-blank-outline me-1"></i>${formatDateDisplay(task.due_date)}</span>` : ''}
-                                                ${checklistBadgeHtml}
+                                                ${dueDateHtml}
+                                                ${metaCountersHtml}
                                             </div>
                                             ${avatarsHtml}
                                         </div>
                                     `;
 
-                                    let labelsHtml = '';
-                                    if (task.labels && task.labels.length > 0) {
-                                        labelsHtml = '<div class="d-flex flex-wrap gap-1 mb-2 align-items-center">';
-                                        task.labels.forEach(function(color) {
-                                            labelsHtml += `<span class="badge bg-${color}" style="font-size: 8px; padding: 2px 5px; border-radius: 3px; line-height: 1;">${getLabelName(color)}</span>`;
-                                        });
-                                        labelsHtml += '</div>';
-                                    }
-
-                                    let poNum = '';
-                                    let companyName = '';
-
-                                    if (task.no_po) {
-                                        poNum = task.no_po.startsWith('[') ? task.no_po : `[${task.no_po}]`;
-                                        companyName = task.company || '';
-                                        if (!companyName) {
-                                            const emDashMatch = task.title.match(/^(.*?)\s*—\s*(.*)$/);
-                                            const dashMatch = task.title.match(/^(.*?)\s+-\s+(.*)$/);
-                                            if (emDashMatch) companyName = emDashMatch[2];
-                                            else if (dashMatch) companyName = dashMatch[2];
-                                        }
-                                    } else {
-                                        const bracketMatch = task.title.match(/^\[(.*?)\]\s*-\s*(.*)$/);
-                                        const emDashMatch = task.title.match(/^(.*?)\s*—\s*(.*)$/);
-                                        const dashMatch = task.title.match(/^(.*?)\s+-\s+(.*)$/);
-
-                                        if (bracketMatch) {
-                                            poNum = `[${bracketMatch[1]}]`;
-                                            companyName = bracketMatch[2];
-                                        } else if (emDashMatch) {
-                                            poNum = '-';
-                                            companyName = emDashMatch[2];
-                                        } else if (dashMatch) {
-                                            poNum = dashMatch[1];
-                                            companyName = dashMatch[2];
-                                        } else {
-                                            poNum = task.title;
-                                            companyName = task.company || '';
-                                        }
-                                    }
-
-                                    const poTextColor = (task.entity_type === 'KII') ? 'text-danger' : 'text-primary';
-                                    let displayTitleHtml = `
-                                        <div class="${poTextColor} fw-bold" style="font-size: 13px; line-height: 1.35; word-break: break-word;" title="${poNum}">${poNum}</div>
-                                        ${companyName ? `<div class="text-heading fw-semibold mt-1" style="font-size: 12.5px; line-height: 1.35; word-break: break-word;">${companyName}</div>` : ''}
-                                    `;
-
-                                    let nettHtml = '';
-                                    if (task.nett && task.nett > 0 && userRole !== 'ServiceM') {
-                                        const nettBadgeClass = (task.entity_type === 'KII') ? 'bg-label-danger' : 'bg-label-primary';
-                                        nettHtml = `<div class="mt-1"><span class="badge ${nettBadgeClass}" style="font-size: 10px; font-weight: 600; padding: 3px 6px;" title="Nominal disensor"><i class="mdi mdi-eye-off-outline me-1"></i>Rp ••••••••</span></div>`;
-                                    }
-
                                     return {
                                         id: task.id,
                                         title: `
                                             <div class="kanban-item-content" data-task-id="${task.id}" data-task='${JSON.stringify(task).replace(/'/g, "&#39;")}'>
-                                                ${labelsHtml}
+                                                ${topRowHtml}
                                                 <div class="mb-1" style="line-height: 1.4;">
                                                     ${displayTitleHtml}
-                                                    ${task.description ? `<div class="text-muted mt-1" style="font-size: 11.5px; line-height: 1.35; word-break: break-word;">${task.description}</div>` : ''}
+                                                    ${descHtml}
                                                 </div>
                                                 ${nettHtml}
                                                 ${progressBarHtml}
@@ -1617,11 +1931,14 @@
                         // Apply custom border colors to cards based on active labels or KII entity
                         $('.kanban-item-content').each(function() {
                             const taskData = $(this).data('task');
+                            const $item = $(this).closest('.kanban-item');
                             if (boardType === 'monitoring' && taskData && taskData.entity_type === 'KII') {
-                                $(this).closest('.kanban-item').addClass('border-left-danger');
+                                $item.addClass('border-left-danger');
                             } else if (taskData && taskData.labels && taskData.labels.length > 0) {
                                 const firstColor = taskData.labels[0];
-                                $(this).closest('.kanban-item').addClass('border-left-' + firstColor);
+                                $item.addClass('border-left-' + firstColor);
+                            } else {
+                                $item.addClass('border-left-primary');
                             }
                         });
 
@@ -1810,7 +2127,7 @@
 
                 if (boardType !== 'monitoring') {
                     $('#taskExpensesList').html('');
-                    $('#taskExpenseTotal').html('<i class="mdi mdi-eye-off-outline me-1"></i>Rp ••••••••');
+                    $('#taskExpenseTotal').text('Rp 0');
                     if (document.getElementById('taskExpenseForm')) $('#taskExpenseForm')[0].reset();
                     $('#taskExpenseForm').hide();
                     $('#btnShowExpenseForm').show();
@@ -1883,7 +2200,7 @@
                                 
                                 if (userRole !== 'ServiceM' && response.so_details.quote_nett) {
                                     const quoteNettClass = (response.so_details.entity_type === 'KII') ? 'text-danger' : 'text-primary';
-                                    $('#soQuoteNett').removeClass('text-primary text-danger').addClass(quoteNettClass).html('<span class="text-muted fw-bold" style="letter-spacing: 1px;"><i class="mdi mdi-eye-off-outline me-1"></i>Rp ••••••••</span>');
+                                    $('#soQuoteNett').removeClass('text-primary text-danger').addClass(quoteNettClass).text('Rp ' + response.so_details.quote_nett);
                                 }
                                 $('#soSalesPerson').text(response.so_details.sales_name);
 
@@ -1967,16 +2284,19 @@
                                 // Ringkasan Kesehatan Keuangan: Sembunyikan di monitoring document, tapi tampilkan di kanban lain (seperti board 2) jika datanya ada
                                 if (boardType !== 'monitoring' && response.so_details.financial_health) {
                                     var fh = response.so_details.financial_health;
-                                    var sensorText = '<span class="text-muted fw-bold" style="letter-spacing: 1px;"><i class="mdi mdi-eye-off-outline me-1"></i>Rp ••••••••</span>';
-                                    $('#fhRevenue').html(sensorText);
-                                    $('#fhTotalCost').html(sensorText);
+                                    var fmtRp = function (n) { return 'Rp ' + Number(n).toLocaleString('id-ID'); };
+                                    $('#fhRevenue').text(fmtRp(fh.revenue));
+                                    $('#fhTotalCost').text(fmtRp(fh.total_cost));
                                     $('#fhProfit')
-                                        .html(sensorText)
-                                        .removeClass('text-primary text-danger');
+                                        .text(fmtRp(fh.profit))
+                                        .removeClass('text-primary text-danger')
+                                        .addClass(fh.profit >= 0 ? 'text-primary' : 'text-danger');
 
-                                    $('#fhCostBar').css('width', '50%').addClass('bg-secondary').removeClass('bg-danger');
-                                    $('#fhProfitBar').css('width', '50%').addClass('bg-secondary').removeClass('bg-success');
-                                    $('#fhMarginBadge').html('<i class="mdi mdi-eye-off-outline me-1"></i>••% Margin').removeClass('text-success bg-success').addClass('bg-label-secondary text-secondary');
+                                    var costRatio = fh.revenue > 0 ? (fh.total_cost / fh.revenue) * 100 : 0;
+                                    var profitRatio = fh.revenue > 0 ? (fh.profit / fh.revenue) * 100 : 0;
+                                    $('#fhCostBar').css('width', costRatio + '%');
+                                    $('#fhProfitBar').css('width', profitRatio + '%');
+                                    $('#fhMarginBadge').text(fh.margin + '% Margin');
                                     $('#fhDetailLink').attr('href', response.so_details.project_monitoring_link || response.so_details.quote_link);
 
                                     $('#financialHealthContainer').show();
@@ -2063,7 +2383,7 @@
                 });
             }
 
-            const rpFmt = function (n) { return 'Rp ••••••••'; };
+            const rpFmt = function (n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); };
 
             function renderProjectReports(response) {
                 const colTitle = (response.task && response.task.column_title ? response.task.column_title : '').toLowerCase();
@@ -2116,7 +2436,7 @@
             function renderTaskExpenses(response) {
                 const expenses = response.expenses || [];
                 const canManage = !!response.can_manage_expense;
-                $('#taskExpenseTotal').html('<i class="mdi mdi-eye-off-outline me-1"></i>' + rpFmt(response.expense_total));
+                $('#taskExpenseTotal').text(rpFmt(response.expense_total));
 
                 const colTitle = (response.task && response.task.column_title ? response.task.column_title : '').toLowerCase();
                 const isProgressOrDone = colTitle.includes('progress') || colTitle.includes('proses') || colTitle.includes('done') || colTitle.includes('selesai');
@@ -2142,7 +2462,7 @@
                                     </div>
                                 </div>
                                 <div class="d-flex align-items-center gap-1 flex-shrink-0">
-                                    <span class="fw-bold text-muted" style="letter-spacing: 1px;"><i class="mdi mdi-eye-off-outline me-1" style="font-size:11px;"></i>${rpFmt(e.amount)}</span>
+                                    <span class="fw-bold text-heading">${rpFmt(e.amount)}</span>
                                     ${del}
                                 </div>
                             </div>`;

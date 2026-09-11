@@ -679,11 +679,21 @@ $(function () {
                 if (!item.id) return item.text;
                 var u     = item.unit;
                 var price = u && u.price && parseFloat(u.price) > 0
-                    ? ' <span style="color:#696cff;font-size:10px;">Rp ' + formatRupiah(Math.round(u.price)) + '</span>'
+                    ? ' <span style="color:#696cff;font-size:10.5px;font-weight:600;">Rp ' + formatRupiah(Math.round(u.price)) + '</span>'
                     : '';
-                return $('<span>' + (item.label || item.text) + price + '</span>');
+                var stockBadge = '';
+                if (u && parseInt(u.stock_ready) > 0) {
+                    var snText = u.serial_numbers ? ' (SN: ' + u.serial_numbers + ')' : '';
+                    stockBadge = ' <span class="badge bg-label-success ms-1" style="font-size:9.5px;padding:2px 6px;"><i class="mdi mdi-check-circle-outline me-0.5"></i>Ready Unit Baru: ' + u.stock_ready + ' Unit' + snText + '</span>';
+                }
+                return $('<span>' + (item.label || item.text) + price + stockBadge + '</span>');
             },
             templateSelection: function (item) {
+                if (!item.id) return item.text;
+                var u = item.unit;
+                if (u && parseInt(u.stock_ready) > 0) {
+                    return item.text + ' — [Ready Unit Baru: ' + u.stock_ready + ' Unit]';
+                }
                 return item.text;
             },
             ajax: {
@@ -719,6 +729,24 @@ $(function () {
             // Auto-fill price from catalog (latest price_idr)
             if (unit.price && parseFloat(unit.price) > 0) {
                 $row.find('.field-price').val(formatRupiah(Math.round(unit.price)));
+            }
+
+            // Sinkronisasi status ketersediaan di tab Unit Baru (Unit Acquisition)
+            var $feedback = $row.find('.unit-inventory-stock-feedback');
+            if (unit.stock_ready && parseInt(unit.stock_ready) > 0) {
+                var snList = unit.serial_numbers ? unit.serial_numbers : '-';
+                $feedback.html(
+                    '<div class="alert alert-subtle-success py-1 px-2 mb-0 rounded-2 d-flex align-items-center justify-content-between gap-1 mt-1" style="font-size:11px;background-color:#e8fadf;border:1px solid #71dd37;color:#2e6815;">' +
+                        '<div><i class="mdi mdi-check-circle-outline me-1"></i><strong>Tersedia di Unit Baru:</strong> ' + unit.stock_ready + ' Unit Ready (SN: ' + snList + ')</div>' +
+                        '<a href="/unit-acquisition" target="_blank" class="text-success text-decoration-underline fw-semibold" style="font-size:10.5px;">Lihat Stok <i class="mdi mdi-open-in-new"></i></a>' +
+                    '</div>'
+                ).show();
+            } else {
+                $feedback.html(
+                    '<div class="text-muted small mt-1" style="font-size:11px;">' +
+                        '<i class="mdi mdi-information-outline text-secondary me-1"></i>Stok Unit Baru fisik di gudang belum tersedia (Unit Inden / Order Katalog)' +
+                    '</div>'
+                ).show();
             }
 
             buildSpecPreview($row, unit);
@@ -884,6 +912,7 @@ $(function () {
             $row.find('.unit-source-fixed-asset').hide();
             $row.find('.unit-source-equivalent').hide();
             $row.find('.equivalent-stock-preview').hide();
+            $row.find('.unit-inventory-stock-feedback').hide();
 
             if (source === 'fixed_asset' || source === 'rental') {
                 $row.find('.unit-source-fixed-asset').show();

@@ -210,7 +210,7 @@
                                     <div class="text-muted small">Sales In Charge</div>
                                     <div class="fw-semibold text-heading small mt-1">
                                         <i class="mdi mdi-account-check-outline text-success me-1"></i>
-                                        {{ $client->sales->name ?? ($prospect->sales->name ?? 'Belum Ditugaskan') }}
+                                        {{ (@$client->sales->id == 38 || @$prospect->sales->id == 38) ? 'Regita ( Sales Project )' : ($client->sales->name ?? ($prospect->sales->name ?? 'Belum Ditugaskan')) }}
                                     </div>
                                 </div>
                             </div>
@@ -462,7 +462,7 @@
                                     <option value="" disabled>-- Pilih Sales --</option>
                                     @foreach ($sales as $user)
                                         <option value="{{ $user->id }}" {{ @$prospect->id_sales == $user->id ? 'selected' : '' }}>
-                                            {{ $user->name }}
+                                            {{ $user->id == 38 ? 'Regita ( Sales Project )' : $user->name }}
                                         </option>
                                     @endforeach
                                 </select>

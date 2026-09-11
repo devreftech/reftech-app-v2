@@ -89,7 +89,40 @@ $(function () {
         };
         var hargaJualCol = function (data, type, full) {
             if (type !== "display") return full.harga_jual || 0;
-            return priceCell(full.harga_jual);
+
+            var currentPriceHtml = "";
+            if (full.harga_jual && Number(full.harga_jual) > 0) {
+                currentPriceHtml = '<div class="d-flex justify-content-between align-items-center">' +
+                    '<span class="text-muted small">Rp</span><span class="fw-semibold">' +
+                    Number(full.harga_jual).toLocaleString("id-ID") + "</span></div>";
+            } else {
+                currentPriceHtml = '<span class="badge bg-label-warning py-1 px-2">Belum di-set</span>';
+            }
+
+            var notePricelistHtml = "";
+            if (full.catalog_price && Number(full.catalog_price) > 0) {
+                notePricelistHtml = '<div class="small text-muted mt-1" title="Setting pricelist resmi dari Katalog Unit">' +
+                    '<i class="mdi mdi-tag-outline text-primary me-1"></i>Pricelist: ' +
+                    '<span class="fw-medium text-primary">Rp ' + Number(full.catalog_price).toLocaleString("id-ID") + '</span></div>';
+            } else {
+                notePricelistHtml = '<div class="small text-muted mt-1" title="Belum di-set di Katalog Unit">' +
+                    '<i class="mdi mdi-tag-off-outline me-1"></i>Pricelist: <span class="fst-italic">-</span></div>';
+            }
+
+            var editBtn = "";
+            if (window.isInventoryAdmin) {
+                editBtn = '<div class="mt-1 text-end">' +
+                    '<button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 btn-edit-harga-inventory" ' +
+                    'data-id="' + full.id_unit + '" ' +
+                    'data-brand="' + (full.unit_brand || "") + '" ' +
+                    'data-model="' + (full.unit_model || "") + '" ' +
+                    'data-harga="' + (full.harga_jual || "") + '" ' +
+                    'data-catalog-price="' + (full.catalog_price || "") + '">' +
+                    '<i class="mdi mdi-pencil-outline me-1"></i>Edit Harga</button>' +
+                    '</div>';
+            }
+
+            return '<div class="py-1">' + currentPriceHtml + notePricelistHtml + editBtn + '</div>';
         };
         var columns, columnDefs, order;
 
@@ -97,6 +130,7 @@ $(function () {
             columns = [
                 { data: null },
                 { data: "unit_category" },
+                { data: "speed_type" },
                 { data: "lubricant" },
                 { data: "power" },
                 { data: "air_cap" },
@@ -110,11 +144,12 @@ $(function () {
                 { targets: 1, render: function (data) { return categoryLabels[data] || data || "-"; } },
                 { targets: 2, render: function (data) { return data || "-"; } },
                 { targets: 3, render: function (data) { return data || "-"; } },
-                { targets: 4, render: function (data) { return airCapCol(data); } },
-                { targets: 5, render: function (data) { return barCol(data); } },
-                { targets: 6, className: "text-center", render: stockBadgeCol },
-                { targets: 7, render: hargaJualCol },
-                { targets: 8, orderable: false, searchable: false, render: detailBtnCol },
+                { targets: 4, render: function (data) { return data || "-"; } },
+                { targets: 5, render: function (data) { return airCapCol(data); } },
+                { targets: 6, render: function (data) { return barCol(data); } },
+                { targets: 7, className: "text-center", render: stockBadgeCol },
+                { targets: 8, render: hargaJualCol },
+                { targets: 9, orderable: false, searchable: false, render: detailBtnCol },
             ];
             order = [[0, "asc"]];
         } else if (group === "dryer") {
@@ -251,6 +286,102 @@ $(function () {
         // perbaiki begitu tab sub-kategori-nya beneran ditampilkan.
         $('button[data-bs-target="#subtab-' + group + '"]').on("shown.bs.tab", function () {
             dt.columns.adjust().draw(false);
+        });
+    });
+
+    // Event handler: Buka Modal Edit Harga Jual dari tombol di tabel
+    $(document).on("click", ".btn-edit-harga-inventory", function (e) {
+        e.preventDefault();
+        var $btn = $(this);
+        var idUnit = $btn.data("id");
+        var brand = $btn.data("brand") || "";
+        var model = $btn.data("model") || "";
+        var harga = $btn.data("harga") || "";
+        var catalogPrice = $btn.data("catalog-price");
+
+        $("#modal-edit-harga-unit-id").val(idUnit);
+        $("#modal-edit-harga-unit-name").text([brand, model].filter(Boolean).join(" ") || "Unit #" + idUnit);
+        $("#modal-input-harga-jual").val(harga ? Math.round(Number(harga)) : "");
+
+        if (catalogPrice && Number(catalogPrice) > 0) {
+            $("#modal-edit-harga-catalog-val").text("Rp " + Number(catalogPrice).toLocaleString("id-ID"));
+            $("#btnApplyCatalogPrice").data("price", Number(catalogPrice));
+            $("#modal-edit-harga-catalog-info").removeClass("d-none").addClass("d-flex");
+            $("#modal-edit-harga-no-catalog-info").addClass("d-none");
+        } else {
+            $("#modal-edit-harga-catalog-info").removeClass("d-flex").addClass("d-none");
+            $("#modal-edit-harga-no-catalog-info").removeClass("d-none");
+        }
+
+        $("#modalEditHargaJualInventory").modal("show");
+    });
+
+    // Event handler: Klik "Gunakan Pricelist" di dalam modal
+    $(document).on("click", "#btnApplyCatalogPrice", function () {
+        var price = $(this).data("price");
+        if (price) {
+            $("#modal-input-harga-jual").val(price).focus();
+        }
+    });
+
+    // Event handler: Submit Form Edit Harga Jual via AJAX
+    $("#formEditHargaJualInventory").on("submit", function (e) {
+        e.preventDefault();
+        var idUnit = $("#modal-edit-harga-unit-id").val();
+        var hargaJual = $("#modal-input-harga-jual").val();
+        if (!idUnit) return;
+
+        var $btn = $("#btnSubmitHargaJualInventory");
+        var $spinner = $("#spinnerSubmitHargaJual");
+
+        $btn.prop("disabled", true);
+        $spinner.removeClass("d-none");
+
+        $.ajax({
+            url: "/unit-inventory/" + idUnit + "/harga-jual",
+            type: "POST",
+            data: {
+                _token: $('meta[name="csrf-token"]').attr("content") || $('input[name="_token"]').val(),
+                harga_jual: hargaJual,
+            },
+            dataType: "json",
+            success: function (res) {
+                $("#modalEditHargaJualInventory").modal("hide");
+                if (typeof Swal !== "undefined") {
+                    Swal.fire({
+                        icon: "success",
+                        title: "Berhasil!",
+                        text: res.message || "Harga jual unit berhasil diperbarui.",
+                        timer: 1800,
+                        showConfirmButton: false,
+                    });
+                } else {
+                    alert(res.message || "Harga jual berhasil disimpan.");
+                }
+
+                // Reload all DataTables on Unit Baru tab
+                $tables.each(function () {
+                    if ($.fn.DataTable.isDataTable(this)) {
+                        $(this).DataTable().ajax.reload(null, false);
+                    }
+                });
+            },
+            error: function (xhr) {
+                var err = (xhr.responseJSON && xhr.responseJSON.message) || "Terjadi kesalahan saat menyimpan harga.";
+                if (typeof Swal !== "undefined") {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Gagal!",
+                        text: err,
+                    });
+                } else {
+                    alert(err);
+                }
+            },
+            complete: function () {
+                $btn.prop("disabled", false);
+                $spinner.addClass("d-none");
+            },
         });
     });
 });

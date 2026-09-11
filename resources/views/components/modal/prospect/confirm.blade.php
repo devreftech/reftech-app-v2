@@ -1,7 +1,7 @@
 <form action="" method="post" enctype="multipart/form-data">
     {{-- {{ csrf_token() }} --}}
     @csrf
-    <div class="modal modal-xl animate__animated animate__fadeIn" id="confirmProspect{{$prospect->id}}" tabindex="-1" style="display: none;"
+    <div class="modal fade smooth-prospect-modal modal-xl" id="confirmProspect{{$prospect->id}}" tabindex="-1"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">

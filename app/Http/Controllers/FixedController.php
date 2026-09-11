@@ -75,6 +75,10 @@ class FixedController extends Controller
      */
     public function create()
     {
+        if (Auth::user()->role == 'Sales') {
+            abort(403, 'Role Sales tidak memiliki izin untuk menambah Unit Acquisition baru.');
+        }
+
         $account = Account::all();
         $suppliers = Supplier::all();
         $units = Unit::where('type', 'global')->orderBy('brand')->get();
@@ -133,6 +137,10 @@ class FixedController extends Controller
 
     public function store(Request $request)
     {
+        if (Auth::user()->role == 'Sales') {
+            abort(403, 'Role Sales tidak memiliki izin untuk menambah Unit Acquisition baru.');
+        }
+
         if ($request->type == 'Mesin') {
             return redirect('/unit-product-in/create')->with('error', 'Unit (kategori Mesin) sekarang diinput lewat Barang Masuk Unit, bukan lewat form Fixed Asset.');
         }

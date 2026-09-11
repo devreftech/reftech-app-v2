@@ -18,6 +18,14 @@
                         </div>
                         <div class="col-12 mb-3">
                             <div class="form-floating form-floating-outline">
+                                <input type="text" id="helpdeskUrl" class="form-control font-monospace" name="url_accessed"
+                                    placeholder="Contoh: http://127.0.0.1:8000/suo/8 atau /suo/8">
+                                <label for="helpdeskUrl">Link Halaman</label>
+                            </div>
+                            <small class="text-muted ms-1">Opsional: sertakan link URL halaman yang berkaitan atau mengalami kendala.</small>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <div class="form-floating form-floating-outline">
                                 <textarea class="form-control" name="description" id="helpdeskDescription" style="height: 150px"
                                     placeholder="Jelaskan bug atau permintaan fitur secara detail" required></textarea>
                                 <label for="helpdeskDescription">Deskripsi</label>

@@ -188,19 +188,23 @@ class ProspectController extends Controller
             ->select(['p.id as idP', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'comment.type', 'c.company', 'u.name', 'u.image']);
 
         // Menggabungkan kedua query menggunakan union
-        $comment = $quotationComment->union($prospectComment)
+        $comment = (clone $quotationComment)->union(clone $prospectComment)
             ->orderBy('date', 'DESC')
             ->take(5)
             ->get();
-        $unreadComment = $quotationComment->union($prospectComment)
+        $unreadComment = (clone $quotationComment)->where('o.level', '1')->union(
+            (clone $prospectComment)->where('comment.level', '1')
+        )
             ->orderBy('date', 'DESC')
-            ->where('o.level', '1')
             ->take(5)
             ->get();
 
         // Hitung jumlah prospek yang dibuat oleh setiap sales dalam minggu ini dan bulan berjalan
         // Exclude sales yang tidak aktif menerima prospect: 23 (Nada), 16 (Mohamad Didik)
-        $salesLeads = User::where('role', 'Sales')
+        $salesLeads = User::where(function ($query) {
+                $query->where('role', 'Sales')
+                    ->orWhere('id', 38);
+            })
             ->where('active', '1')
             ->whereNotIn('id', [23, 16])
             ->orderBy('name')
@@ -219,7 +223,29 @@ class ProspectController extends Controller
             ->orderBy('source_detail')
             ->pluck('source_detail');
 
-        $salesList = User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->orderBy('name')->get(['id', 'name']);
+        $salesList = User::where(function ($query) {
+            $query->where('role', 'Sales')
+                ->orWhere('id', 38);
+        })->where('active', '1')->where('id', '!=', 23)->orderBy('name')->get(['id', 'name']);
+
+        $defaultCategories = [
+            'Service Compressor',
+            'Rental Compressor',
+            'Sparepart Compressor',
+            'Instalasi Piping',
+            'Air Audit',
+            'Fire System',
+            'HVAC System',
+            'Unit Baru/Second',
+        ];
+        $categoryList = Prospect::distinct()
+            ->whereNotNull('category')
+            ->whereNotIn('category', ['-', ''])
+            ->pluck('category')
+            ->merge($defaultCategories)
+            ->unique()
+            ->values()
+            ->toArray();
 
         $availableYears = Prospect::selectRaw('YEAR(date) as year')
             ->whereNotNull('date')
@@ -262,6 +288,7 @@ class ProspectController extends Controller
             'selectedWeekNum',
             'domainList',
             'salesList',
+            'categoryList',
             'availableYears',
             'salesNewProspectCount',
             'salesFuProspectCount',
@@ -348,11 +375,13 @@ class ProspectController extends Controller
 
             'address' => 'required',
 
-            'subAddress' => 'required',
-
             'unit' => 'required',
 
             'area' => 'required',
+
+            'category' => 'required',
+
+            'new_category' => 'required_if:category,__add_new__',
 
             'source_detail' => 'nullable|string|max:100',
 
@@ -377,9 +406,10 @@ class ProspectController extends Controller
             'source.required' => 'Field Source Wajib Diisi',
             'mobile.required' => 'Field Mobile Wajib Diisi',
             'address.required' => 'Field Address Wajib Diisi',
-            'subAddress.required' => 'Field Sub Address Wajib Diisi',
             'unit.required' => 'Field Unit Wajib Diisi',
             'area.required' => 'Field Area Wajib Diisi',
+            'category.required' => 'Field Category Wajib Dipilih',
+            'new_category.required_if' => 'Nama Kategori Baru Wajib Diisi jika memilih tambah kategori baru',
             'source_detail.max' => 'Domain maksimal 100 karakter',
             // 'namePic.required'=> 'Field Nama PIC Wajib Diisi',
             // 'emailPic.required'=> 'Field Email PIC Wajib Diisi',
@@ -408,7 +438,7 @@ class ProspectController extends Controller
         $client->npwp = '0';
         $client->mobile = $request->mobile;
         $client->address = $request->address;
-        $client->subAddress = $request->subAddress;
+        $client->subAddress = $request->filled('subAddress') ? $request->subAddress : $request->address;
         $client->area = $request->area;
         $clientSave = $client->save();
 
@@ -421,12 +451,16 @@ class ProspectController extends Controller
         $pic->phone_pic = $request->phonePic;
         $picsave = $pic->save();
 
+        $finalCategory = ($request->category === '__add_new__' && $request->filled('new_category'))
+            ? trim($request->new_category)
+            : $request->category;
+
         $prospect = new Prospect();
         $prospect->id_sales = null;
         $prospect->id_quotation = null;
         $prospect->id_pic = $pic->id;
         $prospect->id_support = Auth::id();
-        $prospect->category = $request->category;
+        $prospect->category = $finalCategory ?: '-';
         $prospect->kebutuhan = $request->prospect;
         $prospect->date = Carbon::now();
         $prospect->level = null;
@@ -451,7 +485,9 @@ class ProspectController extends Controller
     private function notifyProspectCreated(Prospect $prospect): void
     {
         try {
-            foreach (self::PROSPECT_NOTIF_RECIPIENT_IDS as $uid) {
+            $adminIds = User::where('role', 'Admin')->where('active', '1')->pluck('id')->toArray();
+            $recipientIds = array_unique(array_merge(self::PROSPECT_NOTIF_RECIPIENT_IDS, $adminIds));
+            foreach ($recipientIds as $uid) {
                 ProspectNotification::firstOrCreate(
                     ['id_prospect' => $prospect->id, 'id_user' => $uid, 'type' => 'prospect_created'],
                     ['is_read' => false]
@@ -463,17 +499,38 @@ class ProspectController extends Controller
     }
 
     /**
-     * Endpoint polling navbar untuk penerima notifikasi prospect — mengambil notifikasi
-     * prospect baru yang belum dibaca supaya bisa dimunculkan sebagai floating toast tanpa reload.
-     * Meniru UnitQuotationController::unreadPaymentNotifications().
+     * Kirim notifikasi pop-up & lonceng "Prospect Ditugaskan" ke akun sales yang ditunjuk
+     * agar sales bisa langsung memfollow up prospek tanpa perlu cek manual.
+     */
+    private function notifyProspectAssigned(Prospect $prospect, int $salesId): void
+    {
+        try {
+            ProspectNotification::create([
+                'id_prospect' => $prospect->id,
+                'id_user'     => $salesId,
+                'type'        => 'prospect_assigned',
+                'is_read'     => false,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Gagal membuat notifikasi penugasan prospect: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Endpoint polling navbar untuk penerima notifikasi prospect & komentar — mengambil notifikasi
+     * prospect baru serta komentar/mention yang belum dibaca supaya bisa dimunculkan sebagai floating toast
+     * dan membunyikan alert suara secara otomatis tanpa reload.
      */
     public function unreadProspectNotifications()
     {
-        if (!in_array(Auth::id(), self::PROSPECT_NOTIF_RECIPIENT_IDS)) {
+        if (!Auth::check()) {
             return response()->json(['count' => 0, 'items' => []]);
         }
 
-        $notifs = ProspectNotification::where('id_user', Auth::id())
+        $userId = Auth::id();
+
+        // 1. Notifikasi Prospect (Baru & Ditugaskan)
+        $notifs = ProspectNotification::where('id_user', $userId)
             ->with(['prospect.pic.client', 'prospect.support'])
             ->orderByDesc('created_at')
             ->take(15)
@@ -485,10 +542,10 @@ class ProspectController extends Controller
             $client = $pic ? $pic->client : null;
 
             return [
-                'id' => $n->id,
+                'id' => (string) $n->id,
                 'type' => $n->type,
                 'is_read' => (bool) $n->is_read,
-                'company' => $client->company ?? '-',
+                'company' => $client->company ?? ($p->company_name ?? '-'),
                 'pic_name' => $pic->name_pic ?? null,
                 'support_name' => $p && $p->support ? $p->support->name : null,
                 'category' => $p->category ?? null,
@@ -498,24 +555,200 @@ class ProspectController extends Controller
             ];
         });
 
+        // 2. Mention Comments pada Prospect untuk user ini
+        $handledCommentIds = [];
+        try {
+            $unreadMentions = MentionComment::where('id_mention', $userId)
+                ->where('level', '0')
+                ->whereHas('comment', function ($q) use ($userId) {
+                    $q->where('id_user', '!=', $userId);
+                })
+                ->with(['comment.user', 'comment.prospect.pic.client'])
+                ->latest('id')
+                ->take(10)
+                ->get();
+
+            foreach ($unreadMentions as $m) {
+                $c = $m->comment;
+                if (!$c) continue;
+                $p = $c->prospect;
+                $pic = $p ? $p->pic : null;
+                $client = $pic ? $pic->client : null;
+                $handledCommentIds[] = $c->id;
+
+                $timeAgo = 'Baru saja';
+                if ($c->created_at instanceof \Carbon\Carbon) {
+                    $timeAgo = $c->created_at->diffForHumans();
+                } elseif (!empty($c->date)) {
+                    try {
+                        $timeAgo = \Carbon\Carbon::parse($c->date)->diffForHumans();
+                    } catch (\Throwable $ex) {}
+                }
+
+                $items->push([
+                    'id' => 'mention_' . $m->id,
+                    'type' => 'comment_mention',
+                    'is_read' => false,
+                    'company' => $client->company ?? ($p->company_name ?? 'Prospek #' . ($p ? $p->id : '')),
+                    'author_name' => $c->user->name ?? 'User',
+                    'author_image' => $c->user && $c->user->image ? url($c->user->image) : null,
+                    'comment' => Str::limit($c->comment, 90),
+                    'url' => $p ? route('prospect.show', $p->id) . '#viewComment' : url('prospect'),
+                    'created_at' => $timeAgo,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Error fetching unread mentions for toast: ' . $e->getMessage());
+        }
+
+        // 3. Komentar Unread pada Prospect milik Sales
+        try {
+            $unreadComments = Comment::where('type', 'prospect')
+                ->where('level', '1')
+                ->where('id_user', '!=', $userId)
+                ->whereNotIn('id', $handledCommentIds)
+                ->whereHas('prospect', function ($q) use ($userId) {
+                    $q->where('id_sales', $userId);
+                })
+                ->with(['user', 'prospect.pic.client'])
+                ->latest('id')
+                ->take(10)
+                ->get();
+
+            foreach ($unreadComments as $c) {
+                $p = $c->prospect;
+                $pic = $p ? $p->pic : null;
+                $client = $pic ? $pic->client : null;
+
+                $timeAgo = 'Baru saja';
+                if ($c->created_at instanceof \Carbon\Carbon) {
+                    $timeAgo = $c->created_at->diffForHumans();
+                } elseif (!empty($c->date)) {
+                    try {
+                        $timeAgo = \Carbon\Carbon::parse($c->date)->diffForHumans();
+                    } catch (\Throwable $ex) {}
+                }
+
+                $items->push([
+                    'id' => 'comment_' . $c->id,
+                    'type' => 'prospect_comment',
+                    'is_read' => false,
+                    'company' => $client->company ?? ($p->company_name ?? 'Prospek #' . ($p ? $p->id : '')),
+                    'author_name' => $c->user->name ?? 'User',
+                    'author_image' => $c->user && $c->user->image ? url($c->user->image) : null,
+                    'comment' => Str::limit($c->comment, 90),
+                    'url' => $p ? route('prospect.show', $p->id) . '#viewComment' : url('prospect'),
+                    'created_at' => $timeAgo,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Error fetching unread comments for toast: ' . $e->getMessage());
+        }
+
+        $unreadCount = $items->where('is_read', false)->count();
+
         return response()->json([
-            'count' => $notifs->where('is_read', false)->count(),
-            'items' => $items,
+            'count' => $unreadCount,
+            'items' => $items->values(),
         ]);
     }
 
     /**
-     * Tandai satu notifikasi prospect sebagai sudah dibaca. Scope `id_user = Auth::id()`
+     * Tandai satu notifikasi prospect/komentar sebagai sudah dibaca. Scope user id
      * memastikan user hanya bisa menandai notifikasi miliknya sendiri.
-     * Meniru UnitQuotationController::markPaymentNotificationRead().
      */
     public function markProspectNotificationRead($id)
     {
-        ProspectNotification::where('id', $id)
-            ->where('id_user', Auth::id())
-            ->update(['is_read' => true]);
+        $userId = Auth::id();
+
+        if (str_starts_with($id, 'mention_')) {
+            $mentionId = substr($id, 8);
+            MentionComment::where('id', $mentionId)
+                ->where('id_mention', $userId)
+                ->update(['level' => '1']);
+        } elseif (str_starts_with($id, 'comment_')) {
+            $commentId = substr($id, 8);
+            Comment::where('id', $commentId)
+                ->update(['level' => '2']);
+            MentionComment::where('id_comment', $commentId)
+                ->where('id_mention', $userId)
+                ->update(['level' => '1']);
+        } else {
+            ProspectNotification::where('id', $id)
+                ->where('id_user', $userId)
+                ->update(['is_read' => true]);
+        }
 
         return response()->json(['ok' => true]);
+    }
+
+    /**
+     * Tandai SEMUA notifikasi milik user yang sedang login sebagai sudah dibaca
+     * (ProspectNotification, UnitQuotationPaymentNotification, PrDiscussionMention, MentionComment, Comment).
+     */
+    public function markAllNotificationsRead()
+    {
+        if (!Auth::check()) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+
+        $userId = Auth::id();
+
+        try {
+            // 1. Prospect Notifications (Prospect Baru & Ditugaskan)
+            ProspectNotification::where('id_user', $userId)
+                ->where('is_read', false)
+                ->update(['is_read' => true]);
+
+            // 2. Transaksi / Payment Notifications (Invoice, Kontrak, Payment)
+            if (class_exists(\App\Models\UnitQuotationPaymentNotification::class)) {
+                \App\Models\UnitQuotationPaymentNotification::where('id_user', $userId)
+                    ->where('is_read', false)
+                    ->update(['is_read' => true]);
+            }
+
+            // 3. PR Discussion Mentions
+            if (class_exists(\App\Models\PrDiscussionMention::class)) {
+                \App\Models\PrDiscussionMention::where('id_user_mention', $userId)
+                    ->where('level', '0')
+                    ->update(['level' => '1']);
+            }
+
+            // 4. Mention Comments
+            if (class_exists(\App\Models\MentionComment::class)) {
+                \App\Models\MentionComment::where('id_mention', $userId)
+                    ->where('level', '0')
+                    ->update(['level' => '1']);
+            }
+
+            // 5. Comments on user's prospects and quotations
+            if (class_exists(\App\Models\Comment::class)) {
+                Comment::whereHas('prospect', function ($q) use ($userId) {
+                        $q->where('id_sales', $userId);
+                    })
+                    ->where('level', '1')
+                    ->where('id_user', '!=', $userId)
+                    ->update(['level' => '2']);
+
+                Comment::whereHas('status.quotation', function ($q) use ($userId) {
+                        $q->where('id_sales', $userId);
+                    })
+                    ->where('level', '1')
+                    ->where('id_user', '!=', $userId)
+                    ->update(['level' => '2']);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Semua notifikasi berhasil ditandai sebagai sudah dibaca'
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error marking all notifications as read: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menandai notifikasi: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -531,7 +764,10 @@ class ProspectController extends Controller
         $allQuotation = Quotation::where('id_pic', $prospect->id_pic)->get();
         $pic = Pic::where('id', $prospect->id_pic)->first();
         $client = Client::where('id', $pic->id_client)->first();
-        $sales = User::where('role', 'Sales')->where('active', '1')->get();
+        $sales = User::where(function ($query) {
+            $query->where('role', 'Sales')
+                ->orWhere('id', 38);
+        })->where('active', '1')->where('id', '!=', 23)->orderBy('name')->get();
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
         $leveledProspect = Prospect::whereNULL('level')->where('id_sales', Auth::id())->count();
         $prospectComments = Comment::where('id_prospect', $id)->where('type', 'prospect')->with('mention')->get();
@@ -728,8 +964,14 @@ class ProspectController extends Controller
             $prospect->id_sales = null;
         }
         $prospectSave = $prospect->save();
-        $client->save();
+        if ($client) {
+            $client->save();
+        }
         if ($prospectSave) {
+            if ($request->provideCheck == 1 && !empty($request->sales)) {
+                $this->notifyProspectAssigned($prospect, (int) $request->sales);
+            }
+
             return redirect('prospect')->with('message', 'data telah ditambahkan');
         }
     }

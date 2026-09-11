@@ -13,15 +13,31 @@
             <a href="{{ route('unit-quotation.show', $quote->id) }}" class="btn btn-label-secondary">
                 <i class="mdi mdi-arrow-left me-1"></i> Back
             </a>
-            <button type="submit" form="form-unit-quotation" class="btn btn-primary shadow-sm">
-                <i class="mdi mdi-content-save me-1"></i> Update Quotation
-            </button>
+            @if (!in_array(Auth::user()->role, ['Admin', 'Sales Manager']))
+                @if ($quote->is_draft)
+                    <button type="button" class="btn btn-outline-primary shadow-sm btn-action-draft">
+                        <i class="mdi mdi-file-document-edit-outline me-1"></i> Simpan Draft
+                    </button>
+                    <button type="submit" form="form-unit-quotation" class="btn btn-primary shadow-sm btn-action-save">
+                        <i class="mdi mdi-check-circle-outline me-1"></i> Terbitkan Quotation
+                    </button>
+                @else
+                    <button type="submit" form="form-unit-quotation" class="btn btn-primary shadow-sm">
+                        <i class="mdi mdi-content-save me-1"></i> Update Quotation
+                    </button>
+                @endif
+            @else
+                <button type="submit" form="form-unit-quotation" class="btn btn-primary shadow-sm">
+                    <i class="mdi mdi-content-save me-1"></i> Update Quotation
+                </button>
+            @endif
         </div>
     </div>
 
     <form action="{{ route('unit-quotation.update', $quote->id) }}" method="POST" id="form-unit-quotation">
         @csrf
         @method('PUT')
+        <input type="hidden" name="is_draft" id="input_is_draft" value="{{ $quote->is_draft ? 1 : 0 }}">
 
         {{-- Hero Quotation Header Card --}}
         <div class="card mb-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%); border-left: 5px solid #696cff !important;">
@@ -58,6 +74,32 @@
                             <i class="mdi mdi-account-group-outline me-1"></i> Customer & Delivery Address
                         </div>
                     </div>
+                    @if ($isManager ?? false)
+                        <div class="col-12">
+                            <div class="p-2.5 rounded-3 border bg-light-subtle shadow-none d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <div>
+                                    <div class="fw-semibold text-dark small">
+                                        <i class="mdi mdi-briefcase-check-outline text-primary me-1"></i> Atribusi Penjualan (Pemilik Penawaran & Omset PO)
+                                    </div>
+                                    <span class="text-muted" style="font-size: 11px;">Tentukan apakah omset penawaran ini diakui sebagai Sales Project atau didelegasikan ke Sales individu.</span>
+                                </div>
+                                <div style="min-width: 260px;">
+                                    <select class="select2 form-select form-select-sm" name="id_sales" id="edit-sales-select">
+                                        <option value="{{ Auth::id() }}" {{ $quote->id_sales == Auth::id() ? 'selected' : '' }}>
+                                            Sales Project ({{ Auth::user()->name }})
+                                        </option>
+                                        <optgroup label="Delegasikan ke Sales:">
+                                            @foreach ($salesUsers as $s)
+                                                <option value="{{ $s->id }}" {{ $quote->id_sales == $s->id ? 'selected' : '' }}>
+                                                    {{ $s->name }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                     <div class="col-md-4">
                         <div class="form-floating form-floating-outline">
                             <select class="select2 form-select" name="id_client" id="client-select">
@@ -274,9 +316,24 @@
 
         <div class="d-flex justify-content-end gap-2 mb-4">
             <a href="{{ route('unit-quotation.show', $quote->id) }}" class="btn btn-label-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary shadow-sm px-4">
-                <i class="mdi mdi-content-save me-1"></i> Save Changes
-            </button>
+            @if (!in_array(Auth::user()->role, ['Admin', 'Sales Manager']))
+                @if ($quote->is_draft)
+                    <button type="button" class="btn btn-outline-primary shadow-sm px-4 btn-action-draft">
+                        <i class="mdi mdi-file-document-edit-outline me-1"></i> Simpan Draft
+                    </button>
+                    <button type="submit" class="btn btn-primary shadow-sm px-4 btn-action-save">
+                        <i class="mdi mdi-check-circle-outline me-1"></i> Terbitkan Quotation
+                    </button>
+                @else
+                    <button type="submit" class="btn btn-primary shadow-sm px-4">
+                        <i class="mdi mdi-content-save me-1"></i> Save Changes
+                    </button>
+                @endif
+            @else
+                <button type="submit" class="btn btn-primary shadow-sm px-4">
+                    <i class="mdi mdi-content-save me-1"></i> Save Changes
+                </button>
+            @endif
         </div>
     </form>
 
@@ -321,6 +378,7 @@
                         <select class="select2-unit-search form-select form-select-sm" style="width:100%">
                             <option value="">Search unit (SKU / Brand / Model)...</option>
                         </select>
+                        <div class="unit-inventory-stock-feedback mt-1" style="display:none;"></div>
                     </div>
                     <div class="unit-source-fixed-asset" style="display:none;">
                         <select class="select2-fixed-asset-search form-select form-select-sm" style="width:100%">
@@ -726,5 +784,15 @@
             });
             autoResize(); // run immediately to fit existing content
         })();
+
+        $(document).on('click', '.btn-action-draft', function(e) {
+            e.preventDefault();
+            $('#input_is_draft').val('1');
+            $('#form-unit-quotation').submit();
+        });
+
+        $(document).on('click', '.btn-action-save', function() {
+            $('#input_is_draft').val('0');
+        });
     </script>
 @endpush

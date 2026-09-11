@@ -16,14 +16,21 @@
             <h4 class="fw-bold mb-1">{{ $unit->brand }} {{ $unit->model }}</h4>
             <p class="text-muted mb-0 small">SKU: {{ $unit->sku ?: '-' }}</p>
         </div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="badge bg-label-success fs-6 px-3 py-2">{{ $availableCount }} Available</span>
             <span class="badge bg-label-info fs-6 px-3 py-2">
                 Harga Jual: {{ $unit->harga_jual ? 'Rp ' . number_format($unit->harga_jual, 0, ',', '.') : 'Belum di-set' }}
             </span>
-            <button type="button" class="btn btn-sm btn-label-primary" id="btnEditHargaJual">
-                <i class="mdi mdi-pencil-outline me-1"></i>Set Harga Jual
-            </button>
+            @if ($unit->catalogUnit && $unit->catalogUnit->price_idr)
+                <span class="badge bg-label-primary fs-6 px-3 py-2" title="Setting pricelist resmi dari Katalog Unit">
+                    <i class="mdi mdi-tag-outline me-1"></i>Pricelist Katalog: Rp {{ number_format($unit->catalogUnit->price_idr, 0, ',', '.') }}
+                </span>
+            @endif
+            @if (Auth::user()->role == 'Admin')
+                <button type="button" class="btn btn-sm btn-label-primary" id="btnEditHargaJual">
+                    <i class="mdi mdi-pencil-outline me-1"></i>Set Harga Jual
+                </button>
+            @endif
             <a href="{{ route('unit-acquisition.index') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="mdi mdi-arrow-left me-1"></i> Kembali
             </a>
@@ -198,31 +205,51 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modalHargaJualInventory" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <form action="{{ route('unit-inventory.harga-jual', $unit->id) }}" method="post">
-                @csrf
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title fw-bold">Set Harga Jual — {{ $unit->brand }} {{ $unit->model }}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p class="text-muted small">Berlaku buat semua serial number model ini.</p>
-                        <div class="mb-3">
-                            <label class="form-label">Harga Jual (Rp)</label>
-                            <input type="number" class="form-control" name="harga_jual" min="0" step="1"
-                                value="{{ $unit->harga_jual }}" required>
+    @if (Auth::user()->role == 'Admin')
+        <div class="modal fade" id="modalHargaJualInventory" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form action="{{ route('unit-inventory.harga-jual', $unit->id) }}" method="post">
+                    @csrf
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <div>
+                                <h5 class="modal-title fw-bold mb-0">Set Harga Jual — {{ $unit->brand }} {{ $unit->model }}</h5>
+                                <small class="text-muted">Berlaku untuk seluruh serial number model ini.</small>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            @if ($unit->catalogUnit && $unit->catalogUnit->price_idr)
+                                <div class="alert alert-info py-2 px-3 mb-3 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <small class="d-block text-muted"><i class="mdi mdi-tag-outline me-1"></i>Pricelist Resmi Katalog:</small>
+                                        <strong class="fs-6">Rp {{ number_format($unit->catalogUnit->price_idr, 0, ',', '.') }}</strong>
+                                    </div>
+                                    <button type="button" class="btn btn-xs btn-outline-primary" id="btnApplyCatalogPriceDetail" data-price="{{ (int) $unit->catalogUnit->price_idr }}">
+                                        <i class="mdi mdi-arrow-down-bold me-1"></i>Gunakan Pricelist
+                                    </button>
+                                </div>
+                            @else
+                                <div class="alert alert-light border py-2 px-3 mb-3">
+                                    <small class="text-muted"><i class="mdi mdi-information-outline me-1"></i>Unit ini belum terdaftar atau belum memiliki setting harga di Katalog Unit.</small>
+                                </div>
+                            @endif
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Harga Jual (Rp) <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" name="harga_jual" id="inputHargaJualDetail" min="0" step="1"
+                                    value="{{ $unit->harga_jual ? (int) $unit->harga_jual : '' }}" required placeholder="0">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary">Simpan Harga</button>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary">Simpan</button>
-                    </div>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
-    </div>
+    @endif
 
     {{-- Modal rincian biaya rebranding — satu per unit fisik (unit_inventory), diisi
          belakangan setelah GR, bisa lebih dari satu baris (cat, stiker, ongkos kerja, dst). --}}
@@ -363,6 +390,13 @@
                     modal.show();
                 });
             }
+
+            $('#btnApplyCatalogPriceDetail').on('click', function () {
+                var price = $(this).data('price');
+                if (price) {
+                    $('#inputHargaJualDetail').val(price).focus();
+                }
+            });
         });
     </script>
 @endpush
