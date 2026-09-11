@@ -28,7 +28,7 @@
             'tank'   => ['Capacity', 'Material', 'Type'],
         ];
         $baruSpecs = [
-            'screw'   => ['Type', 'Lubricant', 'Power', 'Air Capacity'],
+            'screw'   => ['Type', 'Speed Type', 'Lubricant', 'Power', 'Air Capacity', 'Pressure'],
             'dryer'   => ['Type', 'PDP', 'FAD'],
             'filter'  => ['FAD', 'Grade', 'Connection'],
             'chiller' => ['Cooling Capacity', 'kW / Power'],
@@ -167,5 +167,5 @@
 
 @push('after-script')
     <script src="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-unit-sales.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-unit-sales.js?v={{ file_exists(public_path('assets/includes/table-unit-sales.js')) ? filemtime(public_path('assets/includes/table-unit-sales.js')) : time() }}"></script>
 @endpush

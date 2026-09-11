@@ -89,6 +89,15 @@ $(function () {
             $("#detailHelpdeskStatus").html(statusBadge(data.status));
             $("#detailHelpdeskDate").text(dateCol(data.created_at));
             $("#detailHelpdeskDescription").text(data.description);
+            if (data.url_accessed) {
+                var u = data.url_accessed.trim();
+                var href = (u.indexOf('http://') === 0 || u.indexOf('https://') === 0) ? u : (u.indexOf('/') === 0 ? u : '/' + u);
+                $("#detailHelpdeskUrl").attr("href", href);
+                $("#detailHelpdeskUrlText").text(u);
+                $("#detailHelpdeskUrlWrapper").removeClass("d-none");
+            } else {
+                $("#detailHelpdeskUrlWrapper").addClass("d-none");
+            }
             if (data.resolution_note) {
                 $("#detailHelpdeskResolutionNote").text(data.resolution_note);
                 $("#detailHelpdeskResolutionWrapper").removeClass("d-none");

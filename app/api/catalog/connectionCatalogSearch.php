@@ -51,12 +51,23 @@ try {
         u.dimension,
         u.weight,
         u.desc,
-        cu.price_idr AS price
-    FROM catalog_unit cu
-    INNER JOIN unit u ON u.id = cu.id_unit
-    WHERE cu.is_active = 1
+        COALESCE(cu.price_idr, u.harga_jual, 0) AS price,
+        COALESCE(ui.stock_ready, 0) AS stock_ready,
+        ui.serial_numbers
+    FROM unit u
+    LEFT JOIN catalog_unit cu ON cu.id_unit = u.id AND cu.is_active = 1
+    LEFT JOIN (
+        SELECT 
+            id_unit,
+            COUNT(*) as stock_ready,
+            GROUP_CONCAT(serial_number ORDER BY id SEPARATOR ', ') as serial_numbers
+        FROM unit_inventory
+        WHERE status = 'available'
+        GROUP BY id_unit
+    ) ui ON ui.id_unit = u.id
+    WHERE (cu.id IS NOT NULL OR COALESCE(ui.stock_ready, 0) > 0)
       AND (u.sku LIKE :q1 OR u.brand LIKE :q2 OR u.model LIKE :q3 OR u.unit LIKE :q4)
-    ORDER BY u.brand, u.sku
+    ORDER BY (COALESCE(ui.stock_ready, 0) > 0) DESC, u.brand, u.sku
     LIMIT 30";
 
     $stmt = $pdo->prepare($sql);

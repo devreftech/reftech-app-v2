@@ -7420,6 +7420,10 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
 
         $query = DB::table('unit_inventory as ui')
             ->leftJoin('unit as u', 'u.id', '=', 'ui.id_unit')
+            ->leftJoin('catalog_unit as cu', function ($join) {
+                $join->on('cu.id_unit', '=', 'u.id')
+                    ->where('cu.is_active', '=', 1);
+            })
             ->where('ui.status', 'available');
 
         if ($request->filled('group') && isset($groups[$request->group])) {
@@ -7427,7 +7431,24 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         }
 
         $data = $query
-            ->groupBy('ui.id_unit', 'u.brand', 'u.model', 'u.sku', 'u.harga_jual', 'u.unit', 'u.type_unit', 'u.power', 'u.bar', 'u.air_cap', 'u.pdp', 'u.grade', 'u.connect', 'u.capacity')
+            ->groupBy(
+                'ui.id_unit',
+                'u.brand',
+                'u.model',
+                'u.sku',
+                'u.harga_jual',
+                'cu.price_idr',
+                'u.unit',
+                'u.type_unit',
+                'u.speed_type',
+                'u.power',
+                'u.bar',
+                'u.air_cap',
+                'u.pdp',
+                'u.grade',
+                'u.connect',
+                'u.capacity'
+            )
             ->orderBy('u.brand')
             ->orderBy('u.model')
             ->select(
@@ -7436,8 +7457,10 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                 'u.model as unit_model',
                 'u.sku as unit_sku',
                 'u.harga_jual',
+                'cu.price_idr as catalog_price',
                 'u.unit as unit_category',
                 'u.type_unit as lubricant',
+                'u.speed_type',
                 'u.pdp',
                 'u.power',
                 'u.bar',

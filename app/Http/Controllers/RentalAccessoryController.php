@@ -13,16 +13,24 @@ class RentalAccessoryController extends Controller
      */
     public function data(Request $request)
     {
-        $group = $request->get('group');
-        $query = RentalAccessory::query();
-
-        if ($group) {
-            $query->where('category', $group);
+        if (!\Illuminate\Support\Facades\Schema::hasTable('rental_accessories')) {
+            return response()->json(['data' => []]);
         }
 
-        $data = $query->orderBy('id', 'desc')->get();
+        try {
+            $group = $request->get('group');
+            $query = RentalAccessory::query();
 
-        return response()->json(['data' => $data]);
+            if ($group) {
+                $query->where('category', $group);
+            }
+
+            $data = $query->orderBy('id', 'desc')->get();
+
+            return response()->json(['data' => $data]);
+        } catch (\Throwable $e) {
+            return response()->json(['data' => [], 'error' => $e->getMessage()]);
+        }
     }
 
     /**

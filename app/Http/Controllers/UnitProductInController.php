@@ -252,7 +252,7 @@ class UnitProductInController extends Controller
      */
     public function showInventory($id)
     {
-        $unit = Unit::findOrFail($id);
+        $unit = Unit::with('catalogUnit')->findOrFail($id);
         $inventories = UnitInventory::where('id_unit', $id)->with('rebrandingCosts')->orderByDesc('id')->get();
 
         return view('pages.warehouse.unit-inventory.show', compact('unit', 'inventories'));
@@ -316,6 +316,13 @@ class UnitProductInController extends Controller
      */
     public function updateHargaJualUnit(Request $request, $id)
     {
+        if (Auth::user()->role !== 'Admin') {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => 'Hanya role Admin yang diizinkan mengubah harga jual unit.'], 403);
+            }
+            abort(403, 'Hanya role Admin yang diizinkan mengubah harga jual unit.');
+        }
+
         $this->validate($request, [
             'harga_jual' => 'required|numeric|min:0',
         ]);
@@ -323,6 +330,15 @@ class UnitProductInController extends Controller
         $unit = Unit::findOrFail($id);
         $unit->harga_jual = $request->harga_jual;
         $unit->save();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Harga jual unit berhasil disimpan.',
+                'harga_jual' => (float) $unit->harga_jual,
+                'id_unit' => $unit->id,
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Harga jual unit berhasil disimpan.');
     }

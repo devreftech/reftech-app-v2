@@ -208,7 +208,7 @@
     <!-- ============================================================ -->
     <!-- TAB NAVIGATION -->
     <!-- ============================================================ -->
-    <div class="card clean-card border-0 shadow-sm mb-0" style="border-radius: 12px 12px 0 0; border-bottom: none;">
+    <div class="card clean-card border-0 shadow-sm mb-4" style="border-radius: 12px;">
         <div class="card-body p-0">
             <ul class="nav nav-pills nav-pills-custom flex-wrap gap-2 border-0 px-4 py-3" id="projectCockpitTabs" role="tablist">
                 <li class="nav-item" role="presentation">
@@ -244,13 +244,13 @@
     <!-- ============================================================ -->
     <!-- TAB CONTENT -->
     <!-- ============================================================ -->
-    <div class="tab-content" id="projectCockpitTabContent">
+    <div class="tab-content p-0 border-0 shadow-none bg-transparent" id="projectCockpitTabContent">
 
         <!-- ======================================================== -->
         <!-- TAB 1: KEUANGAN & OPERASIONAL (Split Cockpit) -->
         <!-- ======================================================== -->
         <div class="tab-pane fade show active" id="tab-financial" role="tabpanel" aria-labelledby="tab-financial-tab">
-            <div class="row g-4 pt-4">
+            <div class="row g-4">
 
                 <!-- LEFT COLUMN: MAIN WORKSPACE (8 COLS) -->
                 <div class="col-lg-8 col-12">
@@ -297,27 +297,27 @@
                             </div>
                         </div>
 
-                        <div class="table-responsive text-nowrap">
+                        <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0" id="tableExpenseLedger" style="font-size: 13px;">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Tanggal</th>
+                                        <th style="width: 90px; white-space: nowrap;">Tanggal</th>
                                         <th>Deskripsi Pengeluaran</th>
-                                        <th>Kategori</th>
-                                        <th>Payment Info</th>
-                                        <th class="text-end">Nominal (Rp)</th>
-                                        <th class="text-center">Nota</th>
-                                        <th class="text-center">Aksi</th>
+                                        <th style="width: 105px; white-space: nowrap;">Kategori</th>
+                                        <th style="width: 135px; white-space: nowrap;">Payment Info</th>
+                                        <th class="text-end" style="width: 125px; white-space: nowrap;">Nominal (Rp)</th>
+                                        <th class="text-center" style="width: 85px; white-space: nowrap;">Nota</th>
+                                        <th class="text-center" style="width: 95px; white-space: nowrap;">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse ($expenses as $exp)
                                         <tr class="expense-row" data-category="{{ $exp->category }}">
-                                            <td class="text-muted fw-semibold">
+                                            <td class="text-muted fw-semibold text-nowrap" style="font-size: 12.5px;">
                                                 {{ $exp->date ? \Carbon\Carbon::parse($exp->date)->format('d/m/Y') : '-' }}
                                             </td>
-                                            <td>
-                                                <div class="fw-semibold text-dark">{{ $exp->name }}</div>
+                                            <td style="min-width: 170px; white-space: normal;">
+                                                <div class="fw-semibold text-dark" style="line-height: 1.35; word-break: break-word;">{{ $exp->name }}</div>
                                                 <div class="text-muted small" style="font-size: 11px;">
                                                     Oleh: {{ $exp->user->name ?? 'User #' . $exp->id_user }}
                                                     @if ($exp->id_kanban_task)
@@ -325,7 +325,7 @@
                                                     @endif
                                                 </div>
                                             </td>
-                                            <td>
+                                            <td class="text-nowrap">
                                                 @php
                                                     $catBadges = [
                                                         'Transport'   => 'bg-label-info',
@@ -342,38 +342,69 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                <span class="text-muted small text-truncate d-inline-block" style="max-width: 140px;" title="{{ $exp->payment_info ?? '-' }}">
+                                                <span class="text-muted small text-truncate d-inline-block" style="max-width: 125px;" title="{{ $exp->payment_info ?? '-' }}">
                                                     {{ $exp->payment_info ?: '-' }}
                                                 </span>
                                             </td>
-                                            <td class="text-end fw-bold text-danger">
+                                            <td class="text-end fw-bold text-danger text-nowrap">
                                                 Rp {{ number_format($exp->amount, 0, '', '.') }}
                                             </td>
-                                            <td class="text-center">
+                                            <td class="text-center text-nowrap">
                                                 @if ($exp->receipt)
                                                     @php
                                                         $rUrl = asset($exp->receipt);
                                                         $isPdf = Str::endsWith(strtolower($exp->receipt), '.pdf');
                                                     @endphp
-                                                    <a href="{{ $rUrl }}" target="_blank" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-0.5" title="Lihat Bukti">
-                                                        <i class="mdi {{ $isPdf ? 'mdi-file-pdf-box' : 'mdi-image-outline' }} me-0.5"></i> Nota
+                                                    <a href="{{ $rUrl }}" target="_blank" class="btn btn-xs btn-label-primary rounded-pill px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1 shadow-2xs" title="Lihat Bukti Nota">
+                                                        <i class="mdi {{ $isPdf ? 'mdi-file-pdf-box text-danger' : 'mdi-file-image-outline' }}"></i> Nota
                                                     </a>
                                                 @else
                                                     <span class="text-muted small" style="font-size: 11px;">-</span>
                                                 @endif
                                             </td>
-                                            <td class="text-center">
-                                                <div class="d-flex align-items-center justify-content-center gap-1">
-                                                    <button type="button" class="btn btn-icon btn-xs btn-outline-warning rounded-circle" data-bs-toggle="modal" data-bs-target="#editExpenseModal{{ $exp->id }}" title="Edit Biaya">
-                                                        <i class="mdi mdi-pencil-outline"></i>
-                                                    </button>
-                                                    <form action="{{ route('project-monitoring.destroy-expense', $exp->id) }}" method="post" onsubmit="return confirm('Apakah Anda yakin ingin menghapus pengeluaran ini?');" class="d-inline">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-icon btn-xs btn-outline-danger rounded-circle" title="Hapus Biaya">
-                                                            <i class="mdi mdi-delete-outline"></i>
+                                            <td class="text-center text-nowrap">
+                                                @php
+                                                    $isCreator = ($exp->id_user == Auth::id());
+                                                @endphp
+                                                <div class="d-inline-flex align-items-center justify-content-center gap-1.5">
+                                                    @if ($isCreator)
+                                                        <button type="button" 
+                                                                class="btn btn-icon btn-sm btn-label-warning rounded-2 waves-effect shadow-2xs" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#editExpenseModal{{ $exp->id }}" 
+                                                                title="Edit Biaya"
+                                                                style="width: 32px; height: 32px;">
+                                                            <i class="mdi mdi-pencil-outline fs-6"></i>
                                                         </button>
-                                                    </form>
+                                                        <form action="{{ route('project-monitoring.destroy-expense', $exp->id) }}" 
+                                                              method="post" 
+                                                              onsubmit="return confirm('Apakah Anda yakin ingin menghapus pengeluaran ini?');" 
+                                                              class="d-inline m-0">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" 
+                                                                    class="btn btn-icon btn-sm btn-label-danger rounded-2 waves-effect shadow-2xs" 
+                                                                    title="Hapus Biaya"
+                                                                    style="width: 32px; height: 32px;">
+                                                                <i class="mdi mdi-delete-outline fs-6"></i>
+                                                            </button>
+                                                        </form>
+                                                    @else
+                                                        <button type="button" 
+                                                                class="btn btn-icon btn-sm btn-label-secondary rounded-2 shadow-none" 
+                                                                disabled
+                                                                title="Hanya dapat diedit oleh akun yang menginput ({{ $exp->user->name ?? 'User #' . $exp->id_user }})"
+                                                                style="width: 32px; height: 32px; opacity: 0.45; cursor: not-allowed;">
+                                                            <i class="mdi mdi-pencil-outline fs-6"></i>
+                                                        </button>
+                                                        <button type="button" 
+                                                                class="btn btn-icon btn-sm btn-label-secondary rounded-2 shadow-none" 
+                                                                disabled
+                                                                title="Hanya dapat dihapus oleh akun yang menginput ({{ $exp->user->name ?? 'User #' . $exp->id_user }})"
+                                                                style="width: 32px; height: 32px; opacity: 0.45; cursor: not-allowed;">
+                                                            <i class="mdi mdi-delete-outline fs-6"></i>
+                                                        </button>
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>
@@ -609,77 +640,6 @@
                         </div>
                     </div>
 
-                    <!-- Card: Kanban Hub & Field Engineer Status -->
-                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
-                        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
-                            <h6 class="card-title m-0 fw-bold text-dark d-flex align-items-center gap-2">
-                                <i class="mdi mdi-view-week text-primary fs-5"></i>
-                                Status Kartu Kanban Lapangan
-                            </h6>
-                            @if ($kanbanTask && $kanbanTask->board_id)
-                                <a href="{{ route('kanban.boards.show', $kanbanTask->board_id) }}" target="_blank" class="btn btn-xs btn-outline-primary rounded-pill px-2">
-                                    Buka Board
-                                </a>
-                            @endif
-                        </div>
-                        <div class="card-body p-3.5" style="font-size: 13px;">
-                            @if ($kanbanTask)
-                                <div class="mb-2.5">
-                                    <strong class="text-dark d-block mb-1">{{ $kanbanTask->title }}</strong>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge bg-label-info">{{ $kanbanTask->column->title ?? 'Tahapan Proyek' }}</span>
-                                        <span class="text-muted small">Due: {{ $kanbanTask->due_date ? \Carbon\Carbon::parse($kanbanTask->due_date)->format('d M Y') : '-' }}</span>
-                                    </div>
-                                </div>
-
-                                <!-- Checklists -->
-                                @if ($kanbanTask->checklists->isNotEmpty())
-                                    @php
-                                        $cCount = $kanbanTask->checklists->where('is_completed', 1)->count();
-                                        $tCount = $kanbanTask->checklists->count();
-                                        $pVal = $tCount > 0 ? round(($cCount / $tCount) * 100) : 0;
-                                    @endphp
-                                    <div class="mb-3 pt-2 border-top">
-                                        <div class="d-flex justify-content-between small fw-semibold mb-1">
-                                            <span>Checklist Teknisi</span>
-                                            <span class="text-success">{{ $cCount }}/{{ $tCount }} ({{ $pVal }}%)</span>
-                                        </div>
-                                        <div class="progress rounded-pill" style="height: 6px;">
-                                            <div class="progress-bar bg-success" style="width: {{ $pVal }}%;"></div>
-                                        </div>
-                                    </div>
-                                @endif
-
-                                <!-- Assigned Engineers -->
-                                <div class="mb-2 pt-2 border-top">
-                                    <span class="text-muted small d-block mb-1">Tim Teknisi / PIC:</span>
-                                    <div class="d-flex flex-wrap gap-1.5">
-                                        @forelse ($kanbanTask->assignees as $ass)
-                                            <span class="badge bg-light text-dark border px-2 py-1 small">
-                                                <i class="mdi mdi-account text-primary"></i> {{ $ass->name }}
-                                            </span>
-                                        @empty
-                                            <span class="text-muted small">Belum ditugaskan</span>
-                                        @endforelse
-                                    </div>
-                                </div>
-
-                                <!-- BAST Link if present -->
-                                @if ($kanbanTask->bast)
-                                    <div class="mt-3 p-2.5 rounded bg-success-subtle border border-success-subtle d-flex justify-content-between align-items-center">
-                                        <span class="small fw-semibold text-success"><i class="mdi mdi-certificate"></i> BAST Ditandatangani</span>
-                                        <a href="{{ route('bast.show', $kanbanTask->bast->id) }}" target="_blank" class="btn btn-xs btn-success">
-                                            Lihat
-                                        </a>
-                                    </div>
-                                @endif
-                            @else
-                                <div class="text-center py-3 text-muted">
-                                    <p class="small mb-0">Project ini belum ditautkan ke kartu Kanban.</p>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
 
                 </div> <!-- closes col-lg-4 -->
 
@@ -690,7 +650,7 @@
         <!-- TAB 2: LAPORAN HARIAN (Daily Report) -->
         <!-- ======================================================== -->
         <div class="tab-pane fade" id="tab-daily" role="tabpanel" aria-labelledby="tab-daily-tab">
-            <div class="pt-4">
+            <div>
 
                 <!-- Card: Daily Project Reports (full width) -->
                 <div class="card border-0 shadow-sm" style="border-radius: 12px;">
@@ -1116,6 +1076,13 @@
     #projectCockpitTabs .nav-link.active .badge {
         background: rgba(255, 255, 255, 0.25) !important;
         color: #ffffff !important;
+    }
+
+    #projectCockpitTabContent {
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
     }
 </style>
 @endpush

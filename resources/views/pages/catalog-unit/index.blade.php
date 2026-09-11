@@ -16,7 +16,27 @@
         .select2-container--default .select2-search--dropdown .select2-search__field { border: 1px solid #d9dee3; border-radius: 0.25rem; padding: 6px 10px; }
         .select2-results__option { padding: 8px 12px; }
         .select2-container--default .select2-results__option--highlighted { background-color: #696cff; }
-        .select2-container--default .select2-results__option--highlighted .select2-unit-sub { color: rgba(255,255,255,.75); }
+        .idr-price-cell-admin {
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            padding: 4px 8px;
+            border-radius: 6px;
+            display: inline-block;
+            text-align: right;
+            min-width: 130px;
+        }
+        .idr-price-cell-admin:hover {
+            background-color: rgba(105, 108, 255, 0.1);
+            color: #696cff;
+        }
+        .idr-price-cell-admin .btn-edit-icon {
+            opacity: 0.5;
+            transition: opacity 0.15s;
+        }
+        .idr-price-cell-admin:hover .btn-edit-icon {
+            opacity: 1;
+            color: #696cff;
+        }
     </style>
 @endpush
 
@@ -327,13 +347,74 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal Update IDR Price -->
+        <div class="modal fade" id="modalUpdateCatalogPrice" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form id="formUpdateCatalogPrice">
+                        @csrf
+                        <input type="hidden" name="catalog_id" id="edit-catalog-id" value="">
+                        <div class="modal-header">
+                            <div>
+                                <h5 class="modal-title fw-bold mb-0">Update IDR Price</h5>
+                                <small class="text-muted" id="edit-catalog-unit-name">-</small>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <!-- Info Harga & Terakhir Diupdate -->
+                            <div class="card bg-light border-0 shadow-none mb-3">
+                                <div class="card-body p-3">
+                                    <div class="row g-2">
+                                        <div class="col-6 border-end">
+                                            <small class="text-muted d-block mb-1">Harga Saat Ini</small>
+                                            <span class="fw-bold text-primary fs-6" id="edit-catalog-current-price">Rp 0</span>
+                                        </div>
+                                        <div class="col-6 ps-3">
+                                            <small class="text-muted d-block mb-1">Terakhir Diupdate</small>
+                                            <div class="small fw-semibold text-dark" id="edit-catalog-last-updated">-</div>
+                                            <small class="text-muted" id="edit-catalog-last-by"></small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Harga IDR Baru <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">Rp</span>
+                                    <input type="text" class="form-control rupiah-input-edit" id="edit-catalog-price-display" placeholder="0" autocomplete="off" required>
+                                    <input type="hidden" name="price_idr" id="edit-catalog-price-raw" value="0">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Catatan Perubahan (Opsional)</label>
+                                <textarea class="form-control" name="note" id="edit-catalog-note" rows="2" placeholder="Alasan perubahan harga (mis: Penyesuaian pricelist)..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary" id="btnSubmitUpdatePrice">
+                                <span class="spinner-border spinner-border-sm me-1 d-none" id="spinnerSubmitUpdatePrice"></span>
+                                Simpan Perubahan
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     @endif
 @endsection
 
 @push('after-script')
+    <script>
+        window.isCatalogAdmin = {{ Auth::user()->role == 'Admin' ? 'true' : 'false' }};
+    </script>
     <script src="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
     <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
-    <script src="{{ asset('assets') }}/includes/table-catalog-unit.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-catalog-unit.js?v={{ file_exists(public_path('assets/includes/table-catalog-unit.js')) ? filemtime(public_path('assets/includes/table-catalog-unit.js')) : time() }}"></script>
     <script>
         var unitData = {
             @foreach ($availableUnits as $unit)
@@ -411,6 +492,12 @@
             var raw = this.value.replace(/\D/g, '');
             this.value = raw ? String(parseInt(raw)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
             document.getElementById('price-idr-raw').value = raw || 0;
+        });
+
+        $(document).on('input', '.rupiah-input-edit', function () {
+            var raw = this.value.replace(/\D/g, '');
+            this.value = raw ? String(parseInt(raw)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
+            $('#edit-catalog-price-raw').val(raw || 0);
         });
     </script>
 @endpush

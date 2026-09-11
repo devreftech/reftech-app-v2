@@ -14,7 +14,7 @@
             </span>
             {{ $u->sku }}
         </h4>
-        @if (in_array(Auth::user()->role, ['Admin', 'Sales']))
+        @if (Auth::user()->role == 'Admin')
             <div class="d-flex gap-2">
                 <button type="button" class="btn btn-primary btn-sm"
                     data-bs-toggle="modal" data-bs-target="#modalEditPrice">
@@ -155,71 +155,73 @@
         </div>
     </div>
 
-    {{-- Modal: Edit Pricing --}}
-    <div class="modal fade" id="modalEditPrice" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-semibold">Update Price & Status</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    @if (Auth::user()->role == 'Admin')
+        {{-- Modal: Edit Pricing --}}
+        <div class="modal fade" id="modalEditPrice" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-semibold">Update Price & Status</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="{{ route('catalog-unit.update', $catalog->id) }}" method="POST" id="form-catalog">
+                        @csrf
+                        @method('PATCH')
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">IDR Price</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">Rp</span>
+                                    <input type="text" class="form-control text-end"
+                                        id="price-idr-display"
+                                        autocomplete="off">
+                                    <input type="hidden" name="price_idr" id="price-idr-raw" value="{{ $catalog->price_idr }}">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">USD Price <span class="text-muted small">(reference)</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" name="price_usd"
+                                        step="0.01" min="0"
+                                        value="{{ $catalog->price_usd }}">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Spec Notes</label>
+                                <textarea class="form-control" name="spec_note" rows="3"
+                                    placeholder="Additional specification notes...">{{ $catalog->spec_note }}</textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Status</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="is_active"
+                                        id="switchActive" value="1"
+                                        {{ $catalog->is_active ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="switchActive">
+                                        {{ $catalog->is_active ? 'Active' : 'Inactive' }}
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="mb-1" id="note-wrapper" style="display:none;">
+                                <label class="form-label">Reason for Price Change</label>
+                                <input type="text" class="form-control" name="note"
+                                    placeholder="Optional — recorded in price history">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </form>
                 </div>
-                <form action="{{ route('catalog-unit.update', $catalog->id) }}" method="POST" id="form-catalog">
-                    @csrf
-                    @method('PATCH')
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">IDR Price</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Rp</span>
-                                <input type="text" class="form-control text-end"
-                                    id="price-idr-display"
-                                    autocomplete="off">
-                                <input type="hidden" name="price_idr" id="price-idr-raw" value="{{ $catalog->price_idr }}">
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">USD Price <span class="text-muted small">(reference)</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" class="form-control" name="price_usd"
-                                    step="0.01" min="0"
-                                    value="{{ $catalog->price_usd }}">
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Spec Notes</label>
-                            <textarea class="form-control" name="spec_note" rows="3"
-                                placeholder="Additional specification notes...">{{ $catalog->spec_note }}</textarea>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Status</label>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" name="is_active"
-                                    id="switchActive" value="1"
-                                    {{ $catalog->is_active ? 'checked' : '' }}>
-                                <label class="form-check-label" for="switchActive">
-                                    {{ $catalog->is_active ? 'Active' : 'Inactive' }}
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="mb-1" id="note-wrapper" style="display:none;">
-                            <label class="form-label">Reason for Price Change</label>
-                            <input type="text" class="form-control" name="note"
-                                placeholder="Optional — recorded in price history">
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save</button>
-                    </div>
-                </form>
             </div>
         </div>
-    </div>
+    @endif
 @endsection
 
 @push('after-script')

@@ -216,7 +216,7 @@
         </div>
 
         {{-- Sales Leads Modal --}}
-        <div class="modal animate__animated animate__fadeIn" id="salesLeadsModal" tabindex="-1" style="display: none;"
+        <div class="modal fade smooth-prospect-modal" id="salesLeadsModal" tabindex="-1"
             aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered modal-xl" role="document" style="max-width: 90%;">
                 <div class="modal-content border-0 shadow">
@@ -270,7 +270,7 @@
                                 <select class="form-select form-select-sm" id="prospect-sales-filter" style="min-width: 180px;">
                                     <option value="">Semua Sales</option>
                                     @foreach ($salesList as $s)
-                                        <option value="{{ $s->id }}">{{ $s->name }}</option>
+                                        <option value="{{ $s->id }}">{{ $s->id == 38 ? 'Regita ( Sales Project )' : $s->name }}</option>
                                     @endforeach
                                 </select>
                             </div>

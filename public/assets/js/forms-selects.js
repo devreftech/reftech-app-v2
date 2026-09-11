@@ -6,9 +6,9 @@
 
 $(function () {
   const selectPicker = $('.selectpicker'),
-    select2 = $('.select2'),
-    select2Icons = $('.select2-icons'),
-    select2Badge = $('.select2-badge');
+    select2 = $('select.select2').not('.select-area-existing'),
+    select2Icons = $('select.select2-icons'),
+    select2Badge = $('select.select2-badge');
 
   // Bootstrap Select
   // --------------------------------------------------------------------
@@ -23,6 +23,9 @@ $(function () {
   if (select2.length) {
     select2.each(function () {
       var $this = $(this);
+      if ($this.hasClass('select2-hidden-accessible') || $this.data('select2')) {
+        return;
+      }
       select2Focus($this);
       $this.wrap('<div class="position-relative"></div>').select2({
         placeholder: 'Select value',

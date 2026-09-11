@@ -30,24 +30,25 @@ $(function () {
     document.addEventListener('keydown', unlockAudioContext, { passive: true });
     document.addEventListener('touchstart', unlockAudioContext, { passive: true });
     document.addEventListener('pointerdown', unlockAudioContext, { passive: true });
+    document.addEventListener('mousemove', unlockAudioContext, { once: true, passive: true });
+    window.addEventListener('focus', unlockAudioContext, { passive: true });
 
     // Key untuk menyimpan ID toast yang sudah ditutup user agar tidak berulang-ulang popup
     var STORAGE_DISMISSED_KEY = 'dismissed_prospect_toast_ids';
     function getDismissedToastIds() {
         try {
             var raw = localStorage.getItem(STORAGE_DISMISSED_KEY) || sessionStorage.getItem(STORAGE_DISMISSED_KEY) || '[]';
-            return JSON.parse(raw).map(function (id) { return Number(id); });
+            return JSON.parse(raw).map(function (id) { return String(id); });
         } catch (e) {
             return [];
         }
     }
     function addDismissedToastId(id) {
         try {
-            var numId = Number(id);
-            if (isNaN(numId)) return;
+            var strId = String(id);
             var dismissed = getDismissedToastIds();
-            if (dismissed.indexOf(numId) === -1) {
-                dismissed.push(numId);
+            if (dismissed.indexOf(strId) === -1) {
+                dismissed.push(strId);
                 var str = JSON.stringify(dismissed);
                 try { localStorage.setItem(STORAGE_DISMISSED_KEY, str); } catch (e) {}
                 try { sessionStorage.setItem(STORAGE_DISMISSED_KEY, str); } catch (e) {}
@@ -67,7 +68,7 @@ $(function () {
                 display: flex;
                 flex-direction: column-reverse;
                 gap: 12px;
-                max-width: 410px;
+                max-width: 420px;
                 width: calc(100vw - 36px);
                 pointer-events: none;
             }
@@ -144,18 +145,66 @@ $(function () {
                 animation: prospectToastPulse 1.8s infinite;
             }
             @keyframes prospectToastPulse {
-                0% {
-                    transform: scale(0.95);
-                    box-shadow: 0 0 0 0 rgba(105, 108, 255, 0.7);
-                }
-                70% {
-                    transform: scale(1);
-                    box-shadow: 0 0 0 8px rgba(105, 108, 255, 0);
-                }
-                100% {
-                    transform: scale(0.95);
-                    box-shadow: 0 0 0 0 rgba(105, 108, 255, 0);
-                }
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(105, 108, 255, 0.7); }
+                70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(105, 108, 255, 0); }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(105, 108, 255, 0); }
+            }
+            .prospect-floating-toast.prospect-toast-assigned {
+                border-left: 5px solid #28c76f;
+                border-color: rgba(40, 199, 111, 0.35);
+            }
+            .prospect-toast-pulse-success {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background-color: #28c76f;
+                display: inline-block;
+                position: relative;
+                box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7);
+                animation: prospectToastPulseSuccess 1.8s infinite;
+            }
+            @keyframes prospectToastPulseSuccess {
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7); }
+                70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(40, 199, 111, 0); }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 199, 111, 0); }
+            }
+            .prospect-floating-toast.prospect-toast-mention {
+                border-left: 5px solid #ff9f43;
+                border-color: rgba(255, 159, 67, 0.35);
+            }
+            .prospect-toast-pulse-warning {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background-color: #ff9f43;
+                display: inline-block;
+                position: relative;
+                box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.7);
+                animation: prospectToastPulseWarning 1.8s infinite;
+            }
+            @keyframes prospectToastPulseWarning {
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.7); }
+                70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(255, 159, 67, 0); }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 159, 67, 0); }
+            }
+            .prospect-floating-toast.prospect-toast-comment {
+                border-left: 5px solid #00cfe8;
+                border-color: rgba(0, 207, 232, 0.35);
+            }
+            .prospect-toast-pulse-info {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background-color: #00cfe8;
+                display: inline-block;
+                position: relative;
+                box-shadow: 0 0 0 0 rgba(0, 207, 232, 0.7);
+                animation: prospectToastPulseInfo 1.8s infinite;
+            }
+            @keyframes prospectToastPulseInfo {
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 207, 232, 0.7); }
+                70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(0, 207, 232, 0); }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 207, 232, 0); }
             }
         `;
         $('<style id="prospectFloatingToastStyles">' + css + '</style>').appendTo('head');
@@ -175,31 +224,44 @@ $(function () {
             if (!audioCtx) return;
             var now = audioCtx.currentTime;
 
-            // Tone 1 (E5 - 659.25 Hz)
+            // Tone 1 (D5 - 587.33 Hz)
             var osc1 = audioCtx.createOscillator();
             var gain1 = audioCtx.createGain();
             osc1.type = 'sine';
-            osc1.frequency.setValueAtTime(659.25, now);
+            osc1.frequency.setValueAtTime(587.33, now);
             gain1.gain.setValueAtTime(0, now);
-            gain1.gain.linearRampToValueAtTime(0.3, now + 0.02);
-            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            gain1.gain.linearRampToValueAtTime(0.28, now + 0.02);
+            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
             osc1.connect(gain1);
             gain1.connect(audioCtx.destination);
             osc1.start(now);
-            osc1.stop(now + 0.36);
+            osc1.stop(now + 0.33);
 
             // Tone 2 (A5 - 880 Hz)
             var osc2 = audioCtx.createOscillator();
             var gain2 = audioCtx.createGain();
             osc2.type = 'sine';
-            osc2.frequency.setValueAtTime(880.0, now + 0.12);
-            gain2.gain.setValueAtTime(0, now + 0.12);
-            gain2.gain.linearRampToValueAtTime(0.35, now + 0.14);
-            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+            osc2.frequency.setValueAtTime(880.0, now + 0.11);
+            gain2.gain.setValueAtTime(0, now + 0.11);
+            gain2.gain.linearRampToValueAtTime(0.32, now + 0.13);
+            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
             osc2.connect(gain2);
             gain2.connect(audioCtx.destination);
-            osc2.start(now + 0.12);
-            osc2.stop(now + 0.66);
+            osc2.start(now + 0.11);
+            osc2.stop(now + 0.56);
+
+            // Tone 3 (D6 - 1174.66 Hz)
+            var osc3 = audioCtx.createOscillator();
+            var gain3 = audioCtx.createGain();
+            osc3.type = 'sine';
+            osc3.frequency.setValueAtTime(1174.66, now + 0.22);
+            gain3.gain.setValueAtTime(0, now + 0.22);
+            gain3.gain.linearRampToValueAtTime(0.35, now + 0.24);
+            gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+            osc3.connect(gain3);
+            gain3.connect(audioCtx.destination);
+            osc3.start(now + 0.22);
+            osc3.stop(now + 0.76);
         } catch (e) {
             console.warn('Audio chime error:', e);
         }
@@ -240,8 +302,7 @@ $(function () {
             setTimeout(function () {
                 $toast.remove();
                 if (notifId) {
-                    activeToastIds.delete(Number(notifId));
-                    activeToastIds.delete(notifId);
+                    activeToastIds.delete(String(notifId));
                 }
             }, 320);
         }
@@ -253,30 +314,99 @@ $(function () {
     }
 
     function renderToast($container, item) {
-        var toastDomId = 'prospectToast_' + item.id;
-        var kebutuhan = item.kebutuhan ? escapeHtml(item.kebutuhan) : '-';
-        var support = item.support_name ? escapeHtml(item.support_name) : 'Support';
+        var isAssigned = item.type === 'prospect_assigned';
+        var isMention = item.type === 'comment_mention';
+        var isComment = item.type === 'prospect_comment';
+        var toastDomId = 'prospectToast_' + String(item.id).replace(/[^a-zA-Z0-9_]/g, '_');
+
+        var titleText = 'Prospect Baru';
+        var titleIcon = '<i class="mdi mdi-account-star-outline fs-5 text-primary"></i>';
+        var pulseEl = '<span class="prospect-toast-pulse"></span>';
+        var extraClass = '';
+        var btnColor = 'btn-primary';
+        var btnIcon = 'mdi-eye-outline';
+        var btnLabel = 'Lihat Prospek';
+        var bodyContent = '';
+
+        if (isMention) {
+            titleText = 'Kamu Di-mention di Prospek!';
+            titleIcon = '<i class="mdi mdi-at fs-5 text-warning"></i>';
+            pulseEl = '<span class="prospect-toast-pulse-warning"></span>';
+            extraClass = ' prospect-toast-mention';
+            btnColor = 'btn-warning text-dark';
+            btnIcon = 'mdi-message-reply-text-outline';
+            btnLabel = 'Lihat Mention';
+            bodyContent =
+                '<div class="fw-bold text-truncate my-1 fs-6" title="' + escapeHtml(item.company) + '">' +
+                    '<i class="mdi mdi-office-building-outline text-muted me-1"></i>' + escapeHtml(item.company) +
+                '</div>' +
+                '<div class="p-2 rounded mt-1 border" style="background: rgba(255, 159, 67, 0.08); border-color: rgba(255, 159, 67, 0.25) !important;">' +
+                    '<div class="small fw-semibold text-dark mb-1 d-flex align-items-center gap-1">' +
+                        '<i class="mdi mdi-account-voice text-warning fs-6"></i> ' + escapeHtml(item.author_name) + ' me-mention Anda:' +
+                    '</div>' +
+                    '<div class="small text-secondary" style="font-style: italic; line-height: 1.4;">"' + escapeHtml(item.comment) + '"</div>' +
+                '</div>';
+        } else if (isComment) {
+            titleText = 'Komentar Baru pada Prospek';
+            titleIcon = '<i class="mdi mdi-comment-text-multiple-outline fs-5 text-info"></i>';
+            pulseEl = '<span class="prospect-toast-pulse-info"></span>';
+            extraClass = ' prospect-toast-comment';
+            btnColor = 'btn-info';
+            btnIcon = 'mdi-comment-eye-outline';
+            btnLabel = 'Lihat Komentar';
+            bodyContent =
+                '<div class="fw-bold text-truncate my-1 fs-6" title="' + escapeHtml(item.company) + '">' +
+                    '<i class="mdi mdi-office-building-outline text-muted me-1"></i>' + escapeHtml(item.company) +
+                '</div>' +
+                '<div class="p-2 rounded mt-1 border" style="background: rgba(0, 207, 232, 0.08); border-color: rgba(0, 207, 232, 0.25) !important;">' +
+                    '<div class="small fw-semibold text-dark mb-1 d-flex align-items-center gap-1">' +
+                        '<i class="mdi mdi-account-circle-outline text-info fs-6"></i> ' + escapeHtml(item.author_name) + ' berkomentar:' +
+                    '</div>' +
+                    '<div class="small text-secondary" style="font-style: italic; line-height: 1.4;">"' + escapeHtml(item.comment) + '"</div>' +
+                '</div>';
+        } else if (isAssigned) {
+            titleText = 'Prospek Baru Ditugaskan!';
+            titleIcon = '<i class="mdi mdi-account-arrow-right-outline fs-5 text-success"></i>';
+            pulseEl = '<span class="prospect-toast-pulse-success"></span>';
+            extraClass = ' prospect-toast-assigned';
+            btnColor = 'btn-success';
+            btnLabel = 'Lihat Prospek';
+            var kebutuhan = item.kebutuhan ? escapeHtml(item.kebutuhan) : '-';
+            var support = item.support_name ? escapeHtml(item.support_name) : 'Admin';
+            bodyContent =
+                '<div class="fw-bold text-truncate my-1 fs-6" title="' + escapeHtml(item.company) + '">' +
+                    '<i class="mdi mdi-office-building-outline text-muted me-1"></i>' + escapeHtml(item.company) +
+                '</div>' +
+                (item.category ? '<div class="small mb-1"><span class="badge bg-label-success">' + escapeHtml(item.category) + '</span></div>' : '') +
+                '<div class="small text-muted">' + kebutuhan + '</div>' +
+                '<div class="small text-muted mt-1"><i class="mdi mdi-account-tie-outline"></i> Ditugaskan oleh: ' + support + '</div>';
+        } else {
+            var kebutuhan = item.kebutuhan ? escapeHtml(item.kebutuhan) : '-';
+            var support = item.support_name ? escapeHtml(item.support_name) : 'Support';
+            bodyContent =
+                '<div class="fw-bold text-truncate my-1 fs-6" title="' + escapeHtml(item.company) + '">' +
+                    '<i class="mdi mdi-office-building-outline text-muted me-1"></i>' + escapeHtml(item.company) +
+                '</div>' +
+                (item.category ? '<div class="small mb-1"><span class="badge bg-label-info">' + escapeHtml(item.category) + '</span></div>' : '') +
+                '<div class="small text-muted">' + kebutuhan + '</div>' +
+                '<div class="small text-muted mt-1"><i class="mdi mdi-account-tie-outline"></i> Dibuat oleh: ' + support + '</div>';
+        }
 
         var toastHtml = $(
-            '<div id="' + toastDomId + '" class="prospect-floating-toast" role="alert" aria-live="assertive" aria-atomic="true">' +
+            '<div id="' + toastDomId + '" class="prospect-floating-toast' + extraClass + '" role="alert" aria-live="assertive" aria-atomic="true">' +
                 '<div class="toast-header-custom">' +
-                    '<span class="prospect-toast-pulse"></span>' +
-                    '<i class="mdi mdi-account-star-outline fs-5 text-primary"></i>' +
-                    '<strong class="me-auto fs-6 fw-bold">Prospect Baru</strong>' +
+                    pulseEl +
+                    titleIcon +
+                    '<strong class="me-auto fs-6 fw-bold' + (isAssigned ? ' text-success' : (isMention ? ' text-warning' : (isComment ? ' text-info' : ''))) + '">' + titleText + '</strong>' +
                     '<small class="text-muted">' + escapeHtml(item.created_at) + '</small>' +
                     '<button type="button" class="btn-close ms-2 fs-7 btn-toast-dismiss" data-toast-id="' + toastDomId + '" data-notif-id="' + item.id + '" aria-label="Close"></button>' +
                 '</div>' +
                 '<div class="toast-body-custom py-2">' +
-                    '<div class="fw-bold text-truncate my-1 fs-6" title="' + escapeHtml(item.company) + '">' +
-                        '<i class="mdi mdi-office-building-outline text-muted me-1"></i>' + escapeHtml(item.company) +
-                    '</div>' +
-                    (item.category ? '<div class="small mb-1"><span class="badge bg-label-info">' + escapeHtml(item.category) + '</span></div>' : '') +
-                    '<div class="small text-muted">' + kebutuhan + '</div>' +
-                    '<div class="small text-muted mt-1"><i class="mdi mdi-account-tie-outline"></i> Dibuat oleh: ' + support + '</div>' +
+                    bodyContent +
                 '</div>' +
                 '<div class="toast-footer-custom justify-content-between">' +
-                    '<a href="' + item.url + '" class="btn btn-xs btn-primary btn-toast-go d-inline-flex align-items-center gap-1 flex-grow-1" data-notif-id="' + item.id + '">' +
-                        '<i class="mdi mdi-eye-outline"></i> Lihat Prospek' +
+                    '<a href="' + item.url + '" class="btn btn-xs ' + btnColor + ' btn-toast-go d-inline-flex align-items-center gap-1 flex-grow-1" data-notif-id="' + item.id + '">' +
+                        '<i class="mdi ' + btnIcon + '"></i> ' + btnLabel +
                     '</a>' +
                     '<button type="button" class="btn btn-xs btn-text-secondary btn-toast-dismiss" data-toast-id="' + toastDomId + '" data-notif-id="' + item.id + '">Nanti</button>' +
                 '</div>' +
@@ -293,13 +423,14 @@ $(function () {
         var hasNewToast = false;
 
         items.forEach(function (item) {
-            var numId = Number(item.id);
+            var notifKey = String(item.id);
             if (item.is_read) return;
-            if (item.type !== 'prospect_created') return;
-            if (dismissed.indexOf(numId) !== -1) return;
-            if (activeToastIds.has(numId) || activeToastIds.has(item.id)) return;
+            var validTypes = ['prospect_created', 'prospect_assigned', 'prospect_comment', 'comment_mention'];
+            if (validTypes.indexOf(item.type) === -1) return;
+            if (dismissed.indexOf(notifKey) !== -1) return;
+            if (activeToastIds.has(notifKey)) return;
 
-            activeToastIds.add(numId);
+            activeToastIds.add(notifKey);
             hasNewToast = true;
             renderToast($container, item);
         });
@@ -324,14 +455,143 @@ $(function () {
         }
     });
 
+    // Klik item notifikasi di dropdown lonceng navbar — tandai dibaca
+    $(document).on('click', '.prospect-notif-item', function () {
+        var id = $(this).data('prospect-notif-id');
+        if (id) {
+            markRead(id);
+        }
+    });
+
+    function updateNavbarDropdown(items) {
+        var $list = $('#staticNotifList');
+        if (!$list.length) return;
+
+        var unreadItems = items.filter(function (i) { return !i.is_read; });
+        var createdCount = unreadItems.filter(function (i) { return i.type === 'prospect_created'; }).length;
+        var assignedCount = unreadItems.filter(function (i) { return i.type === 'prospect_assigned'; }).length;
+
+        // Update badge counters di header lonceng
+        var $createdBadge = $('#prospectCreatedCountBadge');
+        if (createdCount > 0) {
+            if (!$createdBadge.length) {
+                $('.dropdown-header').find('h6').after('<span id="prospectCreatedCountBadge" class="badge rounded-pill bg-primary me-1">' + createdCount + ' Prospect Baru</span>');
+            } else {
+                $createdBadge.text(createdCount + ' Prospect Baru').removeClass('d-none');
+            }
+        } else if ($createdBadge.length) {
+            $createdBadge.addClass('d-none');
+        }
+
+        var $assignedBadge = $('#prospectAssignedCountBadge');
+        if (assignedCount > 0) {
+            if (!$assignedBadge.length) {
+                $('.dropdown-header').find('h6').after('<span id="prospectAssignedCountBadge" class="badge rounded-pill bg-success me-1">' + assignedCount + ' Ditugaskan</span>');
+            } else {
+                $assignedBadge.text(assignedCount + ' Ditugaskan').removeClass('d-none');
+            }
+        } else if ($assignedBadge.length) {
+            $assignedBadge.addClass('d-none');
+        }
+
+        // Sisipkan item baru ke daftar lonceng jika belum ada di DOM
+        unreadItems.forEach(function (item) {
+            var existing = $list.find('.prospect-notif-item[data-prospect-notif-id="' + item.id + '"]');
+            if (!existing.length) {
+                var isCreated = (item.type === 'prospect_created');
+                var isAssigned = (item.type === 'prospect_assigned');
+                var isMention = (item.type === 'comment_mention');
+                var isComment = (item.type === 'prospect_comment');
+
+                var cardTypeClass = 'notif-card-prospect-new';
+                var iconColor = 'bg-primary text-white';
+                var iconClass = 'mdi-account-star-outline';
+                var badgeColor = 'bg-label-primary';
+                var badgeText = 'Prospect Baru';
+                var dotClass = '';
+                var descHtml = '';
+
+                if (isMention) {
+                    cardTypeClass = 'notif-card-mention';
+                    iconColor = 'bg-warning text-white';
+                    iconClass = 'mdi-at';
+                    badgeColor = 'bg-label-warning';
+                    badgeText = 'Mention Prospek';
+                    dotClass = 'dot-warning';
+                    descHtml = '<span class="fw-semibold text-dark">' + escapeHtml(item.author_name) + ' me-mention Anda:</span> "' + escapeHtml(item.comment) + '"';
+                } else if (isComment) {
+                    cardTypeClass = 'notif-card-comment';
+                    iconColor = 'bg-info text-white';
+                    iconClass = 'mdi-comment-text-multiple-outline';
+                    badgeColor = 'bg-label-info';
+                    badgeText = 'Komentar Prospek';
+                    dotClass = 'dot-info';
+                    descHtml = '<span class="fw-semibold text-dark">' + escapeHtml(item.author_name) + ' berkomentar:</span> "' + escapeHtml(item.comment) + '"';
+                } else if (isAssigned) {
+                    cardTypeClass = 'notif-card-prospect-assigned';
+                    iconColor = 'bg-success text-white';
+                    iconClass = 'mdi-account-arrow-right-outline';
+                    badgeColor = 'bg-label-success';
+                    badgeText = 'Ditugaskan';
+                    dotClass = 'dot-success';
+                    var catTextAssigned = item.category ? '<strong class="text-success">' + escapeHtml(item.category) + '</strong> • ' : '';
+                    descHtml = 'Kategori: ' + catTextAssigned + escapeHtml(item.kebutuhan);
+                } else {
+                    var byText = item.support_name ? '<span class="fw-semibold text-dark">Oleh: ' + escapeHtml(item.support_name) + '</span> • ' : '';
+                    var catTextCreated = item.category ? '<strong class="text-primary">' + escapeHtml(item.category) + '</strong> • ' : '';
+                    descHtml = byText + 'Kategori: ' + catTextCreated + escapeHtml(item.kebutuhan);
+                }
+
+                var avatarHtml = '<div class="notif-card-avatar ' + iconColor + '"><i class="mdi ' + iconClass + '"></i></div>';
+                if ((isMention || isComment) && item.author_image) {
+                    avatarHtml = '<img src="' + escapeHtml(item.author_image) + '" alt="' + escapeHtml(item.author_name) + '" class="notif-card-avatar" style="object-fit: cover;">';
+                }
+
+                var itemHtml = $(
+                    '<a href="' + item.url + '" class="notif-card ' + cardTypeClass + ' prospect-notif-item" ' +
+                    'data-prospect-notif-id="' + item.id + '">' +
+                        '<div class="notif-card-inner">' +
+                            avatarHtml +
+                            '<div class="notif-card-content">' +
+                                '<div class="notif-card-meta">' +
+                                    '<span class="badge ' + badgeColor + ' notif-badge-pill">' + badgeText + '</span>' +
+                                    '<span class="notif-time-ago">' +
+                                        '<i class="mdi mdi-clock-outline fs-7"></i> ' + escapeHtml(item.created_at) +
+                                    '</span>' +
+                                '</div>' +
+                                '<h6 class="notif-card-title">' + escapeHtml(item.company) + '</h6>' +
+                                '<p class="notif-card-desc">' + descHtml + '</p>' +
+                            '</div>' +
+                            '<span class="notif-unread-dot ' + dotClass + '"></span>' +
+                        '</div>' +
+                    '</a>'
+                );
+
+                itemHtml.on('click', function () {
+                    markRead(item.id);
+                });
+
+                $list.prepend(itemHtml);
+            }
+        });
+    }
+
     function poll() {
         $.getJSON(pollUrl).done(function (res) {
-            checkAndShowFloatingToasts(res.items || []);
+            var items = res.items || [];
+            var unreadCount = items.filter(function (i) { return !i.is_read; }).length;
+            if (unreadCount > 0) {
+                $('#navbarBellDot').removeClass('d-none');
+            }
+            checkAndShowFloatingToasts(items);
+            updateNavbarDropdown(items);
+        }).fail(function (xhr, status, err) {
+            console.warn('[ProspectNotif] Poll failed:', status, err);
         });
     }
 
     poll();
-    setInterval(poll, 7000);
+    setInterval(poll, 5000);
 
     document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') poll();

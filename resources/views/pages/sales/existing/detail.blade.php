@@ -1420,7 +1420,7 @@
     {{-- Request Visit dinonaktifkan sementara --}}
     {{-- <script src="{{ asset('assets') }}/includes/table-req-visit.js"></script> --}}
     <script src="{{ asset('assets') }}/js/extended-ui-sweetalert2.js"></script>
-    <script src="{{ asset('assets') }}/js/forms-selects.js"></script>
+    <script src="{{ asset('assets') }}/js/forms-selects.js?v={{ filemtime(public_path('assets/js/forms-selects.js')) }}"></script>
     <script>
         (function () {
             const isDark = document.documentElement.classList.contains('dark-style');

@@ -14,7 +14,12 @@
             <a href="{{ route('unit-quotation.index') }}" class="btn btn-label-secondary">
                 <i class="mdi mdi-arrow-left me-1"></i> Back
             </a>
-            <button type="submit" form="form-unit-quotation" class="btn btn-primary shadow-sm">
+            @if (!in_array(Auth::user()->role, ['Admin', 'Sales Manager']))
+            <button type="button" class="btn btn-outline-primary shadow-sm btn-action-draft">
+                <i class="mdi mdi-file-document-edit-outline me-1"></i> Draft
+            </button>
+            @endif
+            <button type="submit" form="form-unit-quotation" class="btn btn-primary shadow-sm btn-action-save">
                 <i class="mdi mdi-content-save me-1"></i> Save Quotation
             </button>
         </div>
@@ -22,6 +27,7 @@
 
     <form action="{{ route('unit-quotation.store') }}" method="POST" id="form-unit-quotation">
         @csrf
+        <input type="hidden" name="is_draft" id="input_is_draft" value="0">
         <input type="hidden" name="id_prospect" value="{{ $selectedProspect ?? '' }}">
 
         {{-- Hero Quotation Header Card --}}
@@ -61,40 +67,58 @@
                     </div>
                     @if ($isManager ?? false)
                         <div class="col-md-4">
+                            <!-- Mode Atribusi Penjualan (Sales Project vs Delegated) -->
                             <div class="p-2.5 mb-2 rounded-3 border bg-white shadow-none">
                                 <div class="d-flex align-items-center justify-content-between mb-1.5">
                                     <span class="text-muted small fw-bold text-uppercase" style="font-size: 10.5px; letter-spacing: 0.5px;">
-                                        <i class="mdi mdi-filter-variant text-primary me-1"></i> Mode Sumber Client
+                                        <i class="mdi mdi-briefcase-check-outline text-primary me-1"></i> Atribusi Penjualan (Omset PO)
                                     </span>
                                 </div>
-                                <div class="d-flex align-items-center gap-3">
+                                <div class="d-flex flex-wrap align-items-center gap-3">
                                     <div class="form-check form-check-inline mb-0">
-                                        <input class="form-check-input" type="radio" name="client_source_type" id="src_by_sales" value="sales" checked>
-                                        <label class="form-check-label fw-semibold text-dark" for="src_by_sales" style="font-size: 12px; cursor: pointer;">
-                                            <i class="mdi mdi-account-tie text-primary me-0.5"></i> By Sales
+                                        <input class="form-check-input" type="radio" name="quote_owner_type" id="owner_project" value="project" checked>
+                                        <label class="form-check-label fw-semibold text-dark" for="owner_project" style="font-size: 12px; cursor: pointer;">
+                                            <i class="mdi mdi-domain text-primary me-0.5"></i> Sales Project
                                         </label>
                                     </div>
                                     <div class="form-check form-check-inline mb-0">
-                                        <input class="form-check-input" type="radio" name="client_source_type" id="src_self_leads" value="self_leads">
-                                        <label class="form-check-label fw-semibold text-dark" for="src_self_leads" style="font-size: 12px; cursor: pointer;">
-                                            <i class="mdi mdi-account-arrow-right text-success me-0.5"></i> Leads Sendiri
+                                        <input class="form-check-input" type="radio" name="quote_owner_type" id="owner_sales" value="sales">
+                                        <label class="form-check-label fw-semibold text-dark" for="owner_sales" style="font-size: 12px; cursor: pointer;">
+                                            <i class="mdi mdi-account-arrow-right text-warning me-0.5"></i> Delegasikan ke Sales
                                         </label>
                                     </div>
+                                </div>
+                                <div class="form-text small text-muted mt-1" style="font-size: 11px;">
+                                    <span id="owner-hint-project"><i class="mdi mdi-information-outline text-info"></i> Masuk ke laporan <strong>Sales Project</strong> (akun Anda).</span>
+                                    <span id="owner-hint-sales" class="d-none"><i class="mdi mdi-information-outline text-warning"></i> Diberikan ke target <strong>Sales yang dipilih</strong>.</span>
                                 </div>
                             </div>
 
-                            <div id="sales-select-container">
-                                <div class="form-floating form-floating-outline">
-                                    <select class="select2 form-select" name="id_sales" id="sales-select">
-                                        <option value="">-- Semua Sales (Default) --</option>
+                            <!-- Mode Filter Sumber Client -->
+                            <div class="p-2 mb-2 rounded-3 border bg-light-subtle shadow-none">
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <span class="text-muted small fw-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">
+                                        <i class="mdi mdi-filter-variant text-secondary me-1"></i> Filter Pencarian Client
+                                    </span>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="form-check-input" type="radio" name="client_source_type" id="src_by_sales" value="sales" checked>
+                                            <label class="form-check-label small text-dark" for="src_by_sales" style="font-size: 11px; cursor: pointer;">By Sales</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="form-check-input" type="radio" name="client_source_type" id="src_self_leads" value="self_leads">
+                                            <label class="form-check-label small text-dark" for="src_self_leads" style="font-size: 11px; cursor: pointer;">Leads Sendiri</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="sales-select-container">
+                                    <select class="select2 form-select form-select-sm" name="filter_sales_id" id="sales-select">
+                                        <option value="">-- Semua Sales (Semua Client) --</option>
                                         @foreach ($salesUsers as $s)
                                             <option value="{{ $s->id }}">{{ $s->name }}</option>
                                         @endforeach
                                     </select>
-                                    <label>Filter by Sales</label>
-                                </div>
-                                <div class="form-text small text-muted" style="font-size: 11px;">
-                                    Pilih sales untuk memuat client miliknya, atau pilih opsi <strong>Leads Sendiri</strong> di atas.
                                 </div>
                             </div>
 
@@ -362,7 +386,12 @@
 
         <div class="d-flex justify-content-end gap-2 mb-4">
             <a href="{{ route('unit-quotation.index') }}" class="btn btn-label-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary shadow-sm px-4">
+            @if (!in_array(Auth::user()->role, ['Admin', 'Sales Manager']))
+            <button type="button" class="btn btn-outline-primary shadow-sm px-4 btn-action-draft">
+                <i class="mdi mdi-file-document-edit-outline me-1"></i> Draft
+            </button>
+            @endif
+            <button type="submit" class="btn btn-primary shadow-sm px-4 btn-action-save">
                 <i class="mdi mdi-content-save me-1"></i> Save Quotation
             </button>
         </div>
@@ -392,7 +421,12 @@
                 <button type="button" class="btn btn-sm btn-outline-light" onclick="resetSmartQuoteDraft()" title="Reset dan hapus draft tersimpan">
                     <i class="mdi mdi-refresh me-1"></i> Reset
                 </button>
-                <button type="submit" form="form-unit-quotation" class="btn btn-light text-primary btn-sm px-4 fw-bold shadow-sm">
+                @if (!in_array(Auth::user()->role, ['Admin', 'Sales Manager']))
+                <button type="button" class="btn btn-outline-light btn-sm px-3 fw-bold btn-action-draft">
+                    <i class="mdi mdi-file-document-edit-outline me-1"></i> Draft
+                </button>
+                @endif
+                <button type="submit" form="form-unit-quotation" class="btn btn-light text-primary btn-sm px-4 fw-bold shadow-sm btn-action-save">
                     <i class="mdi mdi-content-save me-1"></i> Save Quotation
                 </button>
             </div>
@@ -439,6 +473,7 @@
                         <select class="select2-unit-search form-select form-select-sm" style="width:100%">
                             <option value="">Search unit (SKU / Brand / Model)...</option>
                         </select>
+                        <div class="unit-inventory-stock-feedback mt-1" style="display:none;"></div>
                     </div>
                     <div class="unit-source-fixed-asset" style="display:none;">
                         <select class="select2-fixed-asset-search form-select form-select-sm" style="width:100%">
@@ -824,6 +859,16 @@
     
     <script>
         $(document).ready(function() {
+            $('input[name="quote_owner_type"]').on('change', function() {
+                if ($(this).val() === 'sales') {
+                    $('#owner-hint-project').addClass('d-none');
+                    $('#owner-hint-sales').removeClass('d-none');
+                } else {
+                    $('#owner-hint-sales').addClass('d-none');
+                    $('#owner-hint-project').removeClass('d-none');
+                }
+            });
+
             if (savedDraftData && savedDraftData.id_client) {
                 setTimeout(function() {
                     $('#client-select').val(savedDraftData.id_client).trigger('change');
@@ -961,6 +1006,17 @@
             // Bind input changes for auto-saving
             $('#form-unit-quotation').on('input change', 'input, select, textarea', function() {
                 triggerAutoSaveSmartQuote();
+            });
+
+            // Handle Draft vs Save Quotation buttons
+            $(document).on('click', '.btn-action-draft', function(e) {
+                e.preventDefault();
+                $('#input_is_draft').val('1');
+                $('#form-unit-quotation').submit();
+            });
+
+            $(document).on('click', '.btn-action-save', function() {
+                $('#input_is_draft').val('0');
             });
 
             // Clear draft upon successful form submission

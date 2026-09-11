@@ -34,7 +34,10 @@ class LeadsController extends Controller
     {
         $client = collect();
         $issue = Issues::get();
-        $sales = User::where('role', 'sales')->where('active', '1')->where('id', '!=', 23)->get();
+        $sales = User::where(function ($query) {
+            $query->where('role', 'sales')
+                ->orWhere('id', 38);
+        })->where('active', '1')->where('id', '!=', 23)->orderBy('name')->get();
         $leveledProspect = Prospect::whereNULL('level')->where('id_sales', Auth::id())->count();
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
 
@@ -243,7 +246,10 @@ class LeadsController extends Controller
         $callhis = Activities::where('id_client', $id)->whereIn('name', ['Daily Call', 'Follow Up', 'CRM'])->get();
         $visit = Activities::where('id_client', $id)->where('name', 'Visit')->get();
         $quote = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')->where('pic.id_client', $id)->where('level', '1')->get('quotation.*');
-        $sales = User::where('role', 'sales')->where('active', '1')->where('id', '!=', 23)->get();
+        $sales = User::where(function ($query) {
+            $query->where('role', 'sales')
+                ->orWhere('id', 38);
+        })->where('active', '1')->where('id', '!=', 23)->orderBy('name')->get();
         $issue = Issues::all();
         $service = Reports::join('pic', 'pic.id', '=', 'reports.id_pic')->where('pic.id_client', $id)->get('reports.*');
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
@@ -700,7 +706,10 @@ class LeadsController extends Controller
 
         $client = Client::where("role", "Leads")->get();
         $issue = Issues::get();
-        $sales = User::where('role', 'sales')->where('active', '1')->whereNotIn('id', [16, 23])->get();
+        $sales = User::where(function ($query) {
+            $query->where('role', 'sales')
+                ->orWhere('id', 38);
+        })->where('active', '1')->whereNotIn('id', [16, 23])->orderBy('name')->get();
         $leadsCountBySales = Client::where('role', 'Leads')
             ->select('id_sales', DB::raw('count(*) as total'))
             ->groupBy('id_sales')

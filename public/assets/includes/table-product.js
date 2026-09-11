@@ -61,11 +61,15 @@ $(function () {
                         if (type === "display") {
                             var $dataId = full["id_p"];
                             var detailRoute = route("product.show", $dataId);
-                            var $title = full["modal_replacements"];
+                            var $title = full["modal_replacements"] || "Tidak Ada Replacement";
+                            var lastModal = full["last_modal"];
+                            var formattedLastHpp = (lastModal !== null && lastModal !== undefined && lastModal !== "")
+                                ? "Last HPP Rp " + Number(Math.round(lastModal)).toLocaleString("id-ID")
+                                : "Last HPP -";
                             var truncated = data && data.length > 25 ? data.substr(0, 22) + '...' : data;
-                            var tooltipTitle = data + ' | ' + $title;
+                            var tooltipTitle = data + ' | ' + $title + ' | ' + formattedLastHpp;
                             return (
-                                '<span data-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="tooltip-primary" title="' +
+                                '<span data-toggle="tooltip" data-bs-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="tooltip-primary" title="' +
                                 tooltipTitle.replace(/"/g, '&quot;') +
                                 '">' +
                                 '<a class="text-dark" href="' +
@@ -101,7 +105,7 @@ $(function () {
 
                             // Rp rata kiri, nominal rata kanan; tooltip nunjukin Last HPP
                             return (
-                                '<div class="d-flex justify-content-between px-2" data-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="tooltip-primary" title="Last HPP ' +
+                                '<div class="d-flex justify-content-between px-2" data-toggle="tooltip" data-bs-toggle="tooltip" data-container="body" data-bs-placement="top" data-bs-custom-class="tooltip-primary" title="Last HPP ' +
                                 formattedModal +
                                 '"><span>Rp.</span><span>' +
                                 formattedData +
@@ -367,6 +371,7 @@ $(function () {
             ],
             drawCallback: function (settings) {
                 $('[data-toggle="tooltip"]').tooltip();
+                $('[data-bs-toggle="tooltip"]').tooltip();
             },
             responsive: {
                 details: {

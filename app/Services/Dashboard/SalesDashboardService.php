@@ -140,9 +140,10 @@ class SalesDashboardService
             ->orderBy('date', 'DESC')
             ->take(5)
             ->get();
-        $unreadComment = (clone $quotationComment)->union(clone $prospectComment)
+        $unreadComment = (clone $quotationComment)->where('o.level', '1')->union(
+            (clone $prospectComment)->where('comment.level', '1')
+        )
             ->orderBy('date', 'DESC')
-            ->where('o.level', '1')
             ->take(5)
             ->get();
 

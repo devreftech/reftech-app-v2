@@ -36,6 +36,9 @@ class QuotationService
             ->join('users as u2', 'u2.id', '=', 'uq.id_sales')
             ->where('u2.active', '1')
             ->whereIn('uq.status', ['draft', 'sent', 'negotiation', 'revision', 'hot_prospect'])
+            ->where(function ($q) {
+                $q->where('uq.is_draft', 0)->orWhereNull('uq.is_draft');
+            })
             ->where('uq.is_latest', 1);
 
         // 2. Hot Prospect

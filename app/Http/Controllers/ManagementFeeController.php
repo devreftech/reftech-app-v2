@@ -262,79 +262,230 @@ class ManagementFeeController extends Controller
 
         $quote = UnitQuotation::findOrFail($id);
 
-        $request->validate([
-            'id_source_bank'      => 'nullable|exists:bank,id',
-            'fee_bank_name'       => 'nullable|string|max:100',
-            'fee_bank_account'    => 'nullable|string|max:100',
-            'fee_bank_holder'     => 'nullable|string|max:150',
-            'fee_bank_branch'     => 'nullable|string|max:100',
-            'fee_payment_status'  => 'required|in:unpaid,pending_transfer,paid',
-            'fee_transfer_date'   => 'nullable|date',
-            'fee_transfer_note'   => 'nullable|string|max:1000',
-            'fee_transfer_proof'  => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-        ]);
+        $hasMultipleDestinations = $request->has('destinations') && is_array($request->destinations) && count($request->destinations) > 1;
 
-        if ($request->fee_payment_status === 'paid' && empty($request->id_source_bank)) {
-            if ($request->expectsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Pilih rekening Bank Kantor asal transfer untuk pencairan dana.',
-                ], 422);
+        if ($hasMultipleDestinations) {
+            $request->validate([
+                'destinations'                         => 'required|array',
+                'destinations.*.status'                => 'required|in:unpaid,pending_transfer,paid',
+                'destinations.*.id_source_bank'        => 'nullable|exists:bank,id',
+                'destinations.*.transfer_date'         => 'nullable|date',
+                'destinations.*.transfer_note'         => 'nullable|string|max:1000',
+                'destinations.*.transfer_proof'        => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+                'destinations.*.delete_transfer_proof' => 'nullable',
+            ]);
+
+            // Validate that each paid destination has an id_source_bank
+            foreach ($request->destinations as $idx => $dest) {
+                if (($dest['status'] ?? '') === 'paid' && empty($dest['id_source_bank'])) {
+                    $orig = ($quote->fee_bank_destinations ?? [])[$idx] ?? [];
+                    $holder = $orig['bank_holder'] ?? '#' . ($idx + 1);
+                    $msg = "Pilih rekening Bank Kantor untuk rekening {$holder}.";
+                    if ($request->expectsJson() || $request->ajax()) {
+                        return response()->json(['success' => false, 'message' => $msg], 422);
+                    }
+                    return back()->withErrors(["destinations.{$idx}.id_source_bank" => $msg])->withInput();
+                }
             }
-            return back()->withErrors(['id_source_bank' => 'Pilih rekening Bank Kantor asal transfer untuk pencairan dana.'])->withInput();
+
+            DB::transaction(function () use ($quote, $request) {
+                $currentDests = $quote->fee_bank_destinations ?: [];
+                $submittedDests = $request->destinations;
+
+                // 1. Revert previous bank balances if any destination was previously paid
+                foreach ($currentDests as $idx => $oldDest) {
+                    $oldStatus = $oldDest['status'] ?? ($quote->fee_payment_status ?: 'unpaid');
+                    $oldBankId = $oldDest['id_source_bank'] ?? $quote->id_source_bank;
+                    $oldNominal = (float) ($oldDest['nominal'] ?? 0);
+
+                    if ($oldStatus === 'paid' && $oldBankId && $oldNominal > 0) {
+                        Bank::where('id', $oldBankId)->increment('saldo', $oldNominal);
+                    }
+                }
+
+                // 2. Process each submitted destination
+                $newDests = [];
+                $paidCount = 0;
+                $pendingCount = 0;
+
+                foreach ($submittedDests as $idx => $sub) {
+                    $orig = $currentDests[$idx] ?? [];
+                    $status = $sub['status'] ?? 'unpaid';
+                    $sourceBankId = !empty($sub['id_source_bank']) ? (int) $sub['id_source_bank'] : null;
+                    $transferDate = !empty($sub['transfer_date']) ? $sub['transfer_date'] : null;
+                    $transferNote = $sub['transfer_note'] ?? null;
+                    $nominal = isset($orig['nominal']) ? (float) $orig['nominal'] : (float) ($sub['nominal'] ?? 0);
+
+                    // Deduct new bank balance if paid
+                    if ($status === 'paid' && $sourceBankId && $nominal > 0) {
+                        Bank::where('id', $sourceBankId)->decrement('saldo', $nominal);
+                    }
+
+                    // Handle proof file upload per destination
+                    $proofPath = $orig['transfer_proof'] ?? null;
+                    if ($request->hasFile("destinations.{$idx}.transfer_proof")) {
+                        if ($proofPath && (Storage::disk('public')->exists($proofPath) || Storage::exists($proofPath))) {
+                            Storage::disk('public')->delete($proofPath);
+                        }
+                        $proofPath = $request->file("destinations.{$idx}.transfer_proof")->store('fee-transfer-proofs', 'public');
+                    } elseif (!empty($sub['delete_transfer_proof']) && ($sub['delete_transfer_proof'] == '1' || $sub['delete_transfer_proof'] === true)) {
+                        if ($proofPath && (Storage::disk('public')->exists($proofPath) || Storage::exists($proofPath))) {
+                            Storage::disk('public')->delete($proofPath);
+                        }
+                        $proofPath = null;
+                    }
+
+                    if ($status === 'paid') {
+                        $paidCount++;
+                        $transferDate = $transferDate ?: date('Y-m-d');
+                    } elseif ($status === 'pending_transfer') {
+                        $pendingCount++;
+                    } else {
+                        $transferDate = null;
+                    }
+
+                    $newDests[] = array_merge($orig, [
+                        'status'         => $status,
+                        'id_source_bank' => $status === 'paid' ? $sourceBankId : ($sourceBankId ?: null),
+                        'transfer_date'  => $transferDate,
+                        'transfer_note'  => $transferNote,
+                        'transfer_proof' => $proofPath,
+                    ]);
+                }
+
+                $totalDests = count($newDests);
+                if ($paidCount === $totalDests && $totalDests > 0) {
+                    $quote->fee_payment_status = 'paid';
+                    $quote->fee_transfer_date  = now();
+                    $quote->fee_paid_by        = $quote->fee_paid_by ?: Auth::id();
+                } elseif ($paidCount > 0 || $pendingCount > 0) {
+                    $quote->fee_payment_status = 'pending_transfer';
+                    $quote->fee_transfer_date  = null;
+                } else {
+                    $quote->fee_payment_status = 'unpaid';
+                    $quote->fee_transfer_date  = null;
+                    $quote->fee_paid_by        = null;
+                }
+
+                $quote->fee_bank_destinations = $newDests;
+
+                // Sync primary quote bank fields from the first destination
+                if (!empty($newDests[0])) {
+                    $first = $newDests[0];
+                    $quote->fee_bank_name      = $first['bank_name'] ?? null;
+                    $quote->fee_bank_branch    = $first['bank_branch'] ?? null;
+                    $quote->fee_bank_account   = $first['bank_account'] ?? null;
+                    $quote->fee_bank_holder    = $first['bank_holder'] ?? null;
+                    $quote->id_source_bank     = $first['id_source_bank'] ?? null;
+                    $quote->fee_transfer_proof = $first['transfer_proof'] ?? null;
+                    $quote->fee_transfer_note  = $first['transfer_note'] ?? null;
+                }
+
+                $quote->save();
+            });
+
+        } else {
+            // Single destination flow
+            $request->validate([
+                'id_source_bank'      => 'nullable|exists:bank,id',
+                'fee_bank_name'       => 'nullable|string|max:100',
+                'fee_bank_account'    => 'nullable|string|max:100',
+                'fee_bank_holder'     => 'nullable|string|max:150',
+                'fee_bank_branch'     => 'nullable|string|max:100',
+                'fee_payment_status'  => 'required|in:unpaid,pending_transfer,paid',
+                'fee_transfer_date'   => 'nullable|date',
+                'fee_transfer_note'   => 'nullable|string|max:1000',
+                'fee_transfer_proof'  => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            ]);
+
+            if ($request->fee_payment_status === 'paid' && empty($request->id_source_bank)) {
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Pilih rekening Bank Kantor asal transfer untuk pencairan dana.',
+                    ], 422);
+                }
+                return back()->withErrors(['id_source_bank' => 'Pilih rekening Bank Kantor asal transfer untuk pencairan dana.'])->withInput();
+            }
+
+            $oldStatus = $quote->fee_payment_status;
+            $oldBankId = $quote->id_source_bank;
+            $netFee = (float) ($quote->fee_tax_data->net_fee ?: $quote->fee);
+
+            $newStatus = $request->fee_payment_status;
+            $newBankId = $request->id_source_bank ? (int) $request->id_source_bank : null;
+
+            DB::transaction(function () use ($quote, $request, $oldStatus, $oldBankId, $netFee, $newStatus, $newBankId) {
+                // Revert old bank balance if it was paid
+                if ($quote->fee_bank_destinations && count($quote->fee_bank_destinations) > 1) {
+                    foreach ($quote->fee_bank_destinations as $oldDest) {
+                        $oldDestStatus = $oldDest['status'] ?? ($quote->fee_payment_status ?: 'unpaid');
+                        $oldDestBankId = $oldDest['id_source_bank'] ?? $quote->id_source_bank;
+                        $oldNominal = (float) ($oldDest['nominal'] ?? 0);
+                        if ($oldDestStatus === 'paid' && $oldDestBankId && $oldNominal > 0) {
+                            Bank::where('id', $oldDestBankId)->increment('saldo', $oldNominal);
+                        }
+                    }
+                } elseif ($oldStatus === 'paid' && $oldBankId) {
+                    Bank::where('id', $oldBankId)->increment('saldo', $netFee);
+                }
+
+                // Deduct new bank balance if new status is paid
+                if ($newStatus === 'paid' && $newBankId) {
+                    Bank::where('id', $newBankId)->decrement('saldo', $netFee);
+                }
+
+                $quote->id_source_bank     = $newStatus === 'paid' ? $newBankId : ($request->id_source_bank ?: null);
+                $quote->fee_bank_name      = $request->fee_bank_name;
+                $quote->fee_bank_account   = $request->fee_bank_account;
+                $quote->fee_bank_holder    = $request->fee_bank_holder;
+                $quote->fee_bank_branch    = $request->fee_bank_branch;
+                $quote->fee_payment_status = $newStatus;
+                $quote->fee_transfer_note  = $request->fee_transfer_note;
+
+                if ($newStatus === 'paid') {
+                    $quote->fee_transfer_date = $request->fee_transfer_date ?: ($quote->fee_transfer_date ?: now());
+                    $quote->fee_paid_by       = $quote->fee_paid_by ?: Auth::id();
+                } elseif ($newStatus === 'unpaid') {
+                    $quote->fee_transfer_date = null;
+                    $quote->fee_paid_by       = null;
+                    $quote->id_source_bank    = null;
+                }
+
+                // Upload bukti transfer jika ada, atau hapus jika diminta
+                if ($request->hasFile('fee_transfer_proof')) {
+                    if ($quote->fee_transfer_proof && (Storage::disk('public')->exists($quote->fee_transfer_proof) || Storage::exists($quote->fee_transfer_proof))) {
+                        Storage::disk('public')->delete($quote->fee_transfer_proof);
+                    }
+                    $path = $request->file('fee_transfer_proof')->store('fee-transfer-proofs', 'public');
+                    $quote->fee_transfer_proof = $path;
+                } elseif ($request->boolean('delete_fee_transfer_proof') || $request->delete_fee_transfer_proof == '1') {
+                    if ($quote->fee_transfer_proof && (Storage::disk('public')->exists($quote->fee_transfer_proof) || Storage::exists($quote->fee_transfer_proof))) {
+                        Storage::disk('public')->delete($quote->fee_transfer_proof);
+                    }
+                    $quote->fee_transfer_proof = null;
+                }
+
+                // Sync single destination array
+                $quote->fee_bank_destinations = [
+                    [
+                        'bank_name'       => $quote->fee_bank_name,
+                        'bank_branch'     => $quote->fee_bank_branch,
+                        'bank_account'    => $quote->fee_bank_account,
+                        'bank_holder'     => $quote->fee_bank_holder,
+                        'nominal'         => $netFee,
+                        'note'            => '',
+                        'status'          => $quote->fee_payment_status,
+                        'id_source_bank'  => $quote->id_source_bank,
+                        'transfer_date'   => $quote->fee_transfer_date ? (is_string($quote->fee_transfer_date) ? $quote->fee_transfer_date : $quote->fee_transfer_date->format('Y-m-d')) : null,
+                        'transfer_note'   => $quote->fee_transfer_note,
+                        'transfer_proof'  => $quote->fee_transfer_proof,
+                    ]
+                ];
+
+                $quote->save();
+            });
         }
-
-        $oldStatus = $quote->fee_payment_status;
-        $oldBankId = $quote->id_source_bank;
-        $netFee = (float) ($quote->fee_tax_data->net_fee ?: $quote->fee);
-
-        $newStatus = $request->fee_payment_status;
-        $newBankId = $request->id_source_bank ? (int) $request->id_source_bank : null;
-
-        DB::transaction(function () use ($quote, $request, $oldStatus, $oldBankId, $netFee, $newStatus, $newBankId) {
-            // Revert old bank balance if it was paid
-            if ($oldStatus === 'paid' && $oldBankId) {
-                Bank::where('id', $oldBankId)->increment('saldo', $netFee);
-            }
-
-            // Deduct new bank balance if new status is paid
-            if ($newStatus === 'paid' && $newBankId) {
-                Bank::where('id', $newBankId)->decrement('saldo', $netFee);
-            }
-
-            $quote->id_source_bank     = $newStatus === 'paid' ? $newBankId : ($request->id_source_bank ?: null);
-            $quote->fee_bank_name      = $request->fee_bank_name;
-            $quote->fee_bank_account   = $request->fee_bank_account;
-            $quote->fee_bank_holder    = $request->fee_bank_holder;
-            $quote->fee_bank_branch    = $request->fee_bank_branch;
-            $quote->fee_payment_status = $newStatus;
-            $quote->fee_transfer_note  = $request->fee_transfer_note;
-
-            if ($newStatus === 'paid') {
-                $quote->fee_transfer_date = $request->fee_transfer_date ?: ($quote->fee_transfer_date ?: now());
-                $quote->fee_paid_by       = $quote->fee_paid_by ?: Auth::id();
-            } elseif ($newStatus === 'unpaid') {
-                $quote->fee_transfer_date = null;
-                $quote->fee_paid_by       = null;
-                $quote->id_source_bank    = null;
-            }
-
-            // Upload bukti transfer jika ada, atau hapus jika diminta
-            if ($request->hasFile('fee_transfer_proof')) {
-                if ($quote->fee_transfer_proof && (Storage::disk('public')->exists($quote->fee_transfer_proof) || Storage::exists($quote->fee_transfer_proof))) {
-                    Storage::disk('public')->delete($quote->fee_transfer_proof);
-                }
-                $path = $request->file('fee_transfer_proof')->store('fee-transfer-proofs', 'public');
-                $quote->fee_transfer_proof = $path;
-            } elseif ($request->boolean('delete_fee_transfer_proof') || $request->delete_fee_transfer_proof == '1') {
-                if ($quote->fee_transfer_proof && (Storage::disk('public')->exists($quote->fee_transfer_proof) || Storage::exists($quote->fee_transfer_proof))) {
-                    Storage::disk('public')->delete($quote->fee_transfer_proof);
-                }
-                $quote->fee_transfer_proof = null;
-            }
-
-            $quote->save();
-        });
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([

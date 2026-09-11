@@ -500,7 +500,12 @@ class ProjectMonitoringController extends Controller
         $expense = ProjectExpense::findOrFail($id);
         $projectId = $expense->id_pending;
 
-        $hasFinancialAccess = in_array($user->role, ['Admin', 'Finance', 'Finance Manager', 'Accounting'], true) || ($expense->id_user == $user->id);
+        $isCreator = ($expense->id_user == $user->id);
+        if (!$isCreator && $user->role !== 'Admin') {
+            return redirect()->back()->with('error', 'Akses ditolak. Hanya akun yang menginput pengeluaran ini yang dapat mengubahnya.');
+        }
+
+        $hasFinancialAccess = in_array($user->role, ['Admin', 'Finance', 'Finance Manager', 'Accounting'], true) || $isCreator;
         if (!$hasFinancialAccess && $projectId) {
             $relatedTasks = \App\Models\KanbanTask::where('pending_po_id', $projectId)->with('board.members', 'assignees')->get();
             $hasFinancialAccess = $relatedTasks->contains(function ($task) use ($user) {
@@ -551,7 +556,12 @@ class ProjectMonitoringController extends Controller
         $expense = ProjectExpense::findOrFail($id);
         $projectId = $expense->id_pending;
 
-        $hasFinancialAccess = in_array($user->role, ['Admin', 'Finance', 'Finance Manager', 'Accounting'], true) || ($expense->id_user == $user->id);
+        $isCreator = ($expense->id_user == $user->id);
+        if (!$isCreator && $user->role !== 'Admin') {
+            return redirect()->back()->with('error', 'Akses ditolak. Hanya akun yang menginput pengeluaran ini yang dapat menghapusnya.');
+        }
+
+        $hasFinancialAccess = in_array($user->role, ['Admin', 'Finance', 'Finance Manager', 'Accounting'], true) || $isCreator;
         if (!$hasFinancialAccess) {
             $relatedTasks = \App\Models\KanbanTask::where('pending_po_id', $projectId)->with('board.members', 'assignees')->get();
             $hasFinancialAccess = $relatedTasks->contains(function ($task) use ($user) {

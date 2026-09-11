@@ -32,6 +32,16 @@
 </div>
 @endif
 
+@if ($quote->is_draft)
+    <div class="alert alert-secondary d-flex align-items-center mb-3 shadow-sm border" role="alert">
+        <i class="mdi mdi-file-document-edit-outline me-2 fs-4 text-secondary"></i>
+        <div>
+            <strong>Status Dokumen: DRAFT</strong>
+            <div class="small text-muted">Quotation ini masih dalam status draft dan hanya tersimpan untuk Anda. Klik <strong>Edit</strong> untuk melengkapi atau menerbitkan quotation ini.</div>
+        </div>
+    </div>
+@endif
+
 <div class="row invoice-preview">
 
     {{-- ── LEFT: Invoice Card ── --}}
@@ -144,13 +154,17 @@
                         <p class="mb-1 fw-medium" style="font-size:11.5px; color:#444;">
                             <i class="mdi mdi-briefcase-outline me-1" style="font-size:11px; color:#444;"></i>{{ $quote->sales?->title ?? 'Sales Engineer' }}
                         </p>
-                        @if ($quote->sales?->email || $quote->sales?->phone)
+                        @php
+                            $isKojishaQuote = ($quote->client?->info === 'Kojisha');
+                            $showSalesEmail = !$isKojishaQuote && !empty($quote->sales?->email);
+                        @endphp
+                        @if ($showSalesEmail || $quote->sales?->phone)
                             <p class="mb-0" style="font-size:11.5px; color:#222;">
                                 @if ($quote->sales?->phone)
                                     <i class="mdi mdi-phone-outline me-1" style="font-size:11px; color:#444;"></i><span style="font-weight:500;">{{ $quote->sales->phone }}</span>
                                 @endif
-                                @if ($quote->sales?->phone && $quote->sales?->email) &nbsp;|&nbsp; @endif
-                                @if ($quote->sales?->email)
+                                @if ($quote->sales?->phone && $showSalesEmail) &nbsp;|&nbsp; @endif
+                                @if ($showSalesEmail)
                                     <i class="mdi mdi-email-outline me-1" style="font-size:11px; color:#444;"></i><span style="font-weight:500;">{{ $quote->sales->email }}</span>
                                 @endif
                             </p>
@@ -941,11 +955,59 @@
                                         <span class="fw-semibold">{{ $quote->feePaidBy->name }} (Finance)</span>
                                     </div>
                                 @endif
-                                @if ($quote->fee_bank_account)
+                                @php
+                                    $destList = $quote->fee_bank_destinations ?: [];
+                                @endphp
+                                @if (count($destList) > 1)
+                                    <div class="mt-1.5 pt-1.5 border-top">
+                                        <span class="text-muted d-block mb-1" style="font-size: 10px;"><i class="mdi mdi-bank-transfer me-1 text-primary"></i>Rekening Tujuan ({{ count($destList) }} Akun):</span>
+                                        <div class="d-flex flex-column gap-1">
+                                            @foreach ($destList as $d)
+                                                @php
+                                                    $dStatus = $d['status'] ?? 'unpaid';
+                                                @endphp
+                                                <div class="p-1.5 rounded bg-white border small" style="font-size: 10.5px;">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span class="fw-bold text-dark">
+                                                            <span class="badge bg-label-info px-1 py-0 me-1" style="font-size: 9px;">{{ $d['bank_name'] ?: 'Bank' }}</span>
+                                                            {{ $d['bank_account'] }}
+                                                        </span>
+                                                        @if (!empty($d['nominal']))
+                                                            <span class="fw-bold text-success">Rp {{ number_format((float)$d['nominal'], 0, ',', '.') }}</span>
+                                                        @endif
+                                                    </div>
+                                                    <div class="d-flex justify-content-between align-items-center text-muted mt-0.5" style="font-size: 10px;">
+                                                        <span>a.n {{ $d['bank_holder'] ?: '-' }} {{ !empty($d['bank_branch']) ? '(' . $d['bank_branch'] . ')' : '' }}</span>
+                                                        <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                                            @if ($dStatus === 'paid')
+                                                                <span class="badge bg-label-success px-1 py-0" style="font-size: 8.5px;"><i class="mdi mdi-check"></i> Paid</span>
+                                                            @elseif ($dStatus === 'pending_transfer')
+                                                                <span class="badge bg-label-warning text-dark px-1 py-0" style="font-size: 8.5px;"><i class="mdi mdi-clock-outline"></i> Siap Trf</span>
+                                                            @else
+                                                                <span class="badge bg-label-secondary px-1 py-0" style="font-size: 8.5px;">Unpaid</span>
+                                                            @endif
+
+                                                            @if (!empty($d['transfer_proof']))
+                                                                <a href="{{ \Illuminate\Support\Facades\Storage::url($d['transfer_proof']) }}" target="_blank"
+                                                                    class="badge bg-label-primary px-1 py-0 text-decoration-none" title="Lihat Bukti Transfer">
+                                                                    <i class="mdi mdi-file-document-check-outline"></i>
+                                                                </a>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @elseif (count($destList) === 1 || $quote->fee_bank_account)
+                                    @php $singleDest = !empty($destList) ? $destList[0] : null; @endphp
                                     <div class="d-flex justify-content-between mb-0.5">
                                         <span class="text-muted">Tujuan Transfer:</span>
                                         <span class="fw-semibold text-truncate ms-2" style="max-width: 180px;" title="{{ $quote->fee_bank_name }} {{ $quote->fee_bank_account }} (a.n {{ $quote->fee_bank_holder }})">
                                             {{ $quote->fee_bank_name ?: 'Bank' }} {{ $quote->fee_bank_account }} (a.n {{ $quote->fee_bank_holder ?: '-' }})
+                                            @if ($singleDest && !empty($singleDest['nominal']))
+                                                <strong class="text-success ms-1">Rp {{ number_format((float)$singleDest['nominal'], 0, ',', '.') }}</strong>
+                                            @endif
                                         </span>
                                     </div>
                                 @endif
@@ -963,10 +1025,60 @@
                                     </div>
                                 @endif
                             </div>
-                        @elseif ($quote->fee_bank_account)
-                            <div class="small text-muted pt-1 border-top" style="font-size: 10.5px;">
-                                <span>Rekening: {{ $quote->fee_bank_name ?: 'Bank' }} {{ $quote->fee_bank_account }} a.n {{ $quote->fee_bank_holder ?: '-' }}</span>
-                            </div>
+                        @else
+                            @php
+                                $destList = $quote->fee_bank_destinations ?: [];
+                            @endphp
+                            @if (count($destList) > 1)
+                                <div class="small text-muted pt-1 border-top" style="font-size: 10.5px;">
+                                    <span class="fw-semibold d-block mb-1 text-dark"><i class="mdi mdi-bank-transfer me-1 text-primary"></i>Rekening Tujuan ({{ count($destList) }} Akun):</span>
+                                    <div class="d-flex flex-column gap-1">
+                                        @foreach ($destList as $d)
+                                            @php
+                                                $dStatus = $d['status'] ?? 'unpaid';
+                                            @endphp
+                                            <div class="p-1.5 rounded bg-light border" style="font-size: 10.5px;">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span class="fw-semibold text-dark">
+                                                        <span class="badge bg-label-info px-1 py-0 me-1" style="font-size: 9px;">{{ $d['bank_name'] ?: 'Bank' }}</span>
+                                                        {{ $d['bank_account'] }}
+                                                    </span>
+                                                    @if (!empty($d['nominal']))
+                                                        <span class="fw-bold text-success">Rp {{ number_format((float)$d['nominal'], 0, ',', '.') }}</span>
+                                                    @endif
+                                                </div>
+                                                <div class="d-flex justify-content-between align-items-center text-muted mt-0.5" style="font-size: 10px;">
+                                                    <span>a.n {{ $d['bank_holder'] ?: '-' }} {{ !empty($d['bank_branch']) ? '(' . $d['bank_branch'] . ')' : '' }}</span>
+                                                    <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                                        @if ($dStatus === 'paid')
+                                                            <span class="badge bg-label-success px-1 py-0" style="font-size: 8.5px;"><i class="mdi mdi-check"></i> Paid</span>
+                                                        @elseif ($dStatus === 'pending_transfer')
+                                                            <span class="badge bg-label-warning text-dark px-1 py-0" style="font-size: 8.5px;"><i class="mdi mdi-clock-outline"></i> Siap Trf</span>
+                                                        @else
+                                                            <span class="badge bg-label-secondary px-1 py-0" style="font-size: 8.5px;">Unpaid</span>
+                                                        @endif
+
+                                                        @if (!empty($d['transfer_proof']))
+                                                            <a href="{{ \Illuminate\Support\Facades\Storage::url($d['transfer_proof']) }}" target="_blank"
+                                                                class="badge bg-label-primary px-1 py-0 text-decoration-none" title="Lihat Bukti Transfer">
+                                                                <i class="mdi mdi-file-document-check-outline"></i>
+                                                            </a>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @elseif (count($destList) === 1 || $quote->fee_bank_account)
+                                @php $singleDest = !empty($destList) ? $destList[0] : null; @endphp
+                                <div class="small text-muted pt-1 border-top" style="font-size: 10.5px;">
+                                    <span>Rekening: {{ $quote->fee_bank_name ?: 'Bank' }} {{ $quote->fee_bank_account }} a.n {{ $quote->fee_bank_holder ?: '-' }}</span>
+                                    @if ($singleDest && !empty($singleDest['nominal']))
+                                        <div class="text-success fw-semibold mt-0.5">Nominal: Rp {{ number_format((float)$singleDest['nominal'], 0, ',', '.') }}</div>
+                                    @endif
+                                </div>
+                            @endif
                         @endif
                     </div>
                 @endif
@@ -1021,9 +1133,35 @@
     $maxFeeAllowed = round($quotePreTax * 0.10, 2);
     $feePercent = $quotePreTax > 0 ? round(($quoteFee / $quotePreTax) * 100, 2) : 0;
 @endphp
+<style>
+    #modalManagementFee .modal-dialog-scrollable .modal-content {
+        max-height: 88vh;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+    #modalManagementFee .modal-body {
+        overflow-y: auto;
+        max-height: calc(88vh - 130px);
+    }
+    #modalManagementFee .modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+    #modalManagementFee .modal-body::-webkit-scrollbar-track {
+        background: #f8fafc;
+        border-radius: 4px;
+    }
+    #modalManagementFee .modal-body::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+    #modalManagementFee .modal-body::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+</style>
 <div class="modal fade" id="modalManagementFee" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-xl" style="max-width: 1100px;">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable" style="max-width: 1100px;">
+        <form action="{{ route('unit-quotation.update-fee', $quote->id) }}" method="POST" id="form-management-fee" class="modal-content border-0 shadow-lg">
+            @csrf
             <div class="modal-header border-bottom py-3">
                 <div class="d-flex align-items-center gap-2">
                     <div class="avatar avatar-sm bg-label-warning rounded-circle d-flex align-items-center justify-content-center">
@@ -1036,9 +1174,7 @@
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('unit-quotation.update-fee', $quote->id) }}" method="POST" id="form-management-fee">
-                @csrf
-                <div class="modal-body p-3 p-md-4">
+            <div class="modal-body p-3 p-md-4">
                     {{-- Alert Kebijakan Fee 2026 & Batas Standar 10% --}}
                     <div class="alert alert-primary py-2.5 px-3 mb-3" role="alert">
                         <div class="d-flex align-items-start gap-2">
@@ -1189,26 +1325,109 @@
 
                     <input type="hidden" name="fee" id="hidden-total-fee" value="{{ $quoteFee }}">
 
-                    <div class="row g-2 mb-3">
-                        <div class="col-md-3 col-6">
-                            <label class="form-label small fw-semibold" for="input-fee-bank-name">Nama Bank Tujuan</label>
-                            <input type="text" class="form-control form-control-sm" id="input-fee-bank-name" name="fee_bank_name"
-                                value="{{ $quote->fee_bank_name }}" placeholder="Contoh: BCA, Mandiri, BRI">
+                    {{-- Multi-Rekening Bank Tujuan Transfer Fee & Nominal --}}
+                    <div class="card border mb-3 overflow-hidden shadow-none">
+                        <div class="card-header bg-light py-2 px-3 d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-bold text-dark" style="font-size: 12px;">
+                                    <i class="mdi mdi-bank-transfer me-1 text-primary"></i> Akun Rekening Bank Tujuan Transfer Fee
+                                </span>
+                                <span class="text-muted d-block" style="font-size: 10.5px;">Tambahkan satu atau beberapa rekening tujuan serta atur pembagian nominalnya.</span>
+                            </div>
+                            <button type="button" class="btn btn-xs btn-outline-primary d-inline-flex align-items-center gap-1" id="btn-add-fee-bank-row">
+                                <i class="mdi mdi-plus-circle-outline"></i> Tambah Rekening
+                            </button>
                         </div>
-                        <div class="col-md-3 col-6">
-                            <label class="form-label small fw-semibold" for="input-fee-bank-branch">Cabang Bank <span class="text-muted fw-normal">(Opsional)</span></label>
-                            <input type="text" class="form-control form-control-sm" id="input-fee-bank-branch" name="fee_bank_branch"
-                                value="{{ $quote->fee_bank_branch }}" placeholder="Contoh: KCP Dago / BDG">
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <label class="form-label small fw-semibold" for="input-fee-bank-account">Nomor Rekening</label>
-                            <input type="text" class="form-control form-control-sm" id="input-fee-bank-account" name="fee_bank_account"
-                                value="{{ $quote->fee_bank_account }}" placeholder="Contoh: 1234567890">
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <label class="form-label small fw-semibold" for="input-fee-bank-holder">Nama Pemilik (A/N)</label>
-                            <input type="text" class="form-control form-control-sm" id="input-fee-bank-holder" name="fee_bank_holder"
-                                value="{{ $quote->fee_bank_holder }}" placeholder="Contoh: John Doe">
+                        <div class="card-body p-2 p-md-3">
+                            <div id="fee-bank-rows-container" class="d-flex flex-column gap-2">
+                                @php
+                                    $destinations = $quote->fee_bank_destinations ?: [];
+                                    if (empty($destinations)) {
+                                        $destinations = [
+                                            [
+                                                'bank_name'    => $quote->fee_bank_name ?: '',
+                                                'bank_branch'  => $quote->fee_bank_branch ?: '',
+                                                'bank_account' => $quote->fee_bank_account ?: '',
+                                                'bank_holder'  => $quote->fee_bank_holder ?: '',
+                                                'nominal'      => $feeTaxData->net_fee > 0 ? $feeTaxData->net_fee : '',
+                                                'note'         => '',
+                                            ]
+                                        ];
+                                    }
+                                @endphp
+                                @foreach ($destinations as $dIdx => $dest)
+                                    <div class="fee-bank-row p-2.5 rounded border bg-light-subtle position-relative" data-row-index="{{ $dIdx }}">
+                                        <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                            <span class="fw-bold text-primary small d-flex align-items-center gap-1 fee-bank-row-title" style="font-size: 11px;">
+                                                <i class="mdi mdi-credit-card-outline"></i> Rekening Tujuan #<span class="row-num">{{ $loop->iteration }}</span>
+                                            </span>
+                                            <button type="button" class="btn btn-xs text-danger p-0 btn-remove-fee-bank-row {{ count($destinations) <= 1 ? 'd-none' : '' }}" title="Hapus Rekening">
+                                                <i class="mdi mdi-trash-can-outline me-0.5"></i> Hapus
+                                            </button>
+                                        </div>
+                                        <div class="row g-2">
+                                            <div class="col-md-3 col-6">
+                                                <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Nama Bank</label>
+                                                <input type="text" class="form-control form-control-sm fee-input-bank-name"
+                                                    name="fee_destinations[{{ $dIdx }}][bank_name]"
+                                                    value="{{ $dest['bank_name'] ?? '' }}" placeholder="Contoh: BCA, Mandiri">
+                                            </div>
+                                            <div class="col-md-3 col-6">
+                                                <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Nomor Rekening</label>
+                                                <input type="text" class="form-control form-control-sm fee-input-bank-account"
+                                                    name="fee_destinations[{{ $dIdx }}][bank_account]"
+                                                    value="{{ $dest['bank_account'] ?? '' }}" placeholder="Contoh: 1234567890">
+                                            </div>
+                                            <div class="col-md-3 col-6">
+                                                <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Nama Pemilik (A/N)</label>
+                                                <input type="text" class="form-control form-control-sm fee-input-bank-holder"
+                                                    name="fee_destinations[{{ $dIdx }}][bank_holder]"
+                                                    value="{{ $dest['bank_holder'] ?? '' }}" placeholder="Contoh: John Doe">
+                                            </div>
+                                            <div class="col-md-3 col-6">
+                                                <label class="form-label small fw-semibold mb-1 text-primary d-flex justify-content-between align-items-center" style="font-size: 11px;">
+                                                    <span>Nominal Transfer (Rp)</span>
+                                                    <span class="text-muted fw-normal fee-row-max-hint" style="font-size: 9.5px;"></span>
+                                                </label>
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text px-1.5 fw-bold" style="font-size: 10.5px;">Rp</span>
+                                                    <input type="text" class="form-control form-control-sm text-end fw-bold text-success fee-input-nominal"
+                                                        name="fee_destinations[{{ $dIdx }}][nominal]"
+                                                        value="{{ !empty($dest['nominal']) ? number_format((float)$dest['nominal'], 0, ',', '.') : '' }}"
+                                                        placeholder="0" autocomplete="off">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 col-12">
+                                                <label class="form-label small text-muted mb-1" style="font-size: 10.5px;">Cabang Bank <span class="fw-normal">(Opsional)</span></label>
+                                                <input type="text" class="form-control form-control-sm fee-input-bank-branch"
+                                                    name="fee_destinations[{{ $dIdx }}][bank_branch]"
+                                                    value="{{ $dest['bank_branch'] ?? '' }}" placeholder="Contoh: KCP Dago / BDG">
+                                            </div>
+                                            <div class="col-md-8 col-12">
+                                                <label class="form-label small text-muted mb-1" style="font-size: 10.5px;">Peruntukan / Catatan Rekening <span class="fw-normal">(Opsional)</span></label>
+                                                <input type="text" class="form-control form-control-sm fee-input-note"
+                                                    name="fee_destinations[{{ $dIdx }}][note]"
+                                                    value="{{ $dest['note'] ?? '' }}" placeholder="Contoh: Fee mediator Pak Budi / Partner luar">
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            {{-- Realtime Rekening Allocation Bar --}}
+                            <div class="mt-2 p-2 rounded bg-light border d-flex flex-wrap align-items-center justify-content-between gap-2" style="font-size: 11px;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="text-muted">Total Alokasi Rekening:</span>
+                                    <strong class="text-dark fs-6" id="display-total-bank-nominal">Rp 0</strong>
+                                    <span class="text-muted">dari Nett Fee (<strong class="text-primary" id="display-ref-net-fee">Rp {{ number_format($feeTaxData->net_fee, 0, ',', '.') }}</strong>)</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span id="bank-allocation-badge" class="badge bg-label-success">Alokasi Pas</span>
+                                    <button type="button" class="btn btn-xs btn-label-primary d-none" id="btn-fill-remaining-fee">
+                                        Alokasikan Sisa ke Baris Terakhir
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1227,7 +1446,6 @@
             </form>
         </div>
     </div>
-</div>
 
 {{-- Modal Upload PO --}}
 @php
@@ -2639,6 +2857,15 @@
         $('#modal-fee-tax-display').text(taxInfo.tax > 0 ? '- Rp ' + taxInfo.tax.toLocaleString('id-ID') : 'Rp 0 (Bebas Pajak)');
         $('#modal-net-fee-received-display').html('Nett Fee: <strong class="text-primary">Rp ' + taxInfo.net.toLocaleString('id-ID') + '</strong>');
         $('#modal-net-sales-display').text('Rp ' + netGrand.toLocaleString('id-ID'));
+        $('#display-ref-net-fee').text('Rp ' + taxInfo.net.toLocaleString('id-ID'));
+
+        // If there's only 1 bank destination row, keep its nominal synced with net fee
+        var $rows = $('#fee-bank-rows-container .fee-bank-row');
+        if ($rows.length === 1) {
+            var $singleNominal = $rows.find('.fee-input-nominal');
+            $singleNominal.val(taxInfo.net > 0 ? taxInfo.net.toLocaleString('id-ID') : '');
+        }
+        recalcBankAllocation(taxInfo.net);
 
         // Check 10% limit - alert sales if > 10%, but KEEP submit enabled
         if (totalFee > (maxAllowed + 1)) {
@@ -2651,6 +2878,281 @@
             $('#modal-fee-percent-display').text(percent + '% dari quote (Standar 10%)');
         }
         $('#btn-submit-management-fee').prop('disabled', false);
+    });
+
+    // Recalculate bank allocation vs net fee
+    function recalcBankAllocation(targetNet) {
+        if (typeof targetNet === 'undefined') {
+            var totalFee = parseFloat($('#hidden-total-fee').val()) || 0;
+            targetNet = getFeeTax(totalFee).net;
+        }
+
+        var totalBankNominal = 0;
+        var $nominalInputs = $('.fee-input-nominal');
+        $nominalInputs.each(function () {
+            var val = parseFloat($(this).val().replace(/\D/g, '')) || 0;
+            totalBankNominal += val;
+        });
+
+        $('#display-total-bank-nominal').text('Rp ' + totalBankNominal.toLocaleString('id-ID'));
+        $('#display-ref-net-fee').text('Rp ' + targetNet.toLocaleString('id-ID'));
+
+        // Update each row's individual max hint based on targetNet and other rows
+        $nominalInputs.each(function () {
+            var currentVal = parseFloat($(this).val().replace(/\D/g, '')) || 0;
+            var otherSum = 0;
+            $nominalInputs.not(this).each(function () {
+                otherSum += (parseFloat($(this).val().replace(/\D/g, '')) || 0);
+            });
+            var maxForThis = Math.max(0, targetNet - otherSum);
+            var $hint = $(this).closest('.fee-bank-row').find('.fee-row-max-hint');
+            if ($hint.length) {
+                if (targetNet > 0) {
+                    $hint.text('(Maks: Rp ' + maxForThis.toLocaleString('id-ID') + ')');
+                } else {
+                    $hint.text('(Maks: Rp 0)');
+                }
+            }
+        });
+
+        var diff = targetNet - totalBankNominal;
+        var $badge = $('#bank-allocation-badge');
+        var $btnFill = $('#btn-fill-remaining-fee');
+
+        if (targetNet === 0 && totalBankNominal === 0) {
+            $badge.removeClass('bg-label-warning bg-label-danger').addClass('bg-label-secondary').text('Belum Ada Fee');
+            $btnFill.addClass('d-none');
+            $nominalInputs.removeClass('border-danger');
+            $('#btn-submit-management-fee').prop('disabled', false);
+        } else if (diff === 0) {
+            $badge.removeClass('bg-label-warning bg-label-danger bg-label-secondary').addClass('bg-label-success')
+                  .html('<i class="mdi mdi-check-circle me-1"></i>Alokasi Pas (Rp 0)');
+            $btnFill.addClass('d-none');
+            $nominalInputs.removeClass('border-danger');
+            $('#btn-submit-management-fee').prop('disabled', false);
+        } else if (diff > 0) {
+            $badge.removeClass('bg-label-success bg-label-danger bg-label-secondary').addClass('bg-label-warning')
+                  .html('<i class="mdi mdi-alert-circle-outline me-1"></i>Sisa Belum Dialokasikan: Rp ' + diff.toLocaleString('id-ID'));
+            $btnFill.removeClass('d-none').text('Alokasikan Sisa (+Rp ' + diff.toLocaleString('id-ID') + ')');
+            $nominalInputs.removeClass('border-danger');
+            $('#btn-submit-management-fee').prop('disabled', false);
+        } else {
+            var over = Math.abs(diff);
+            $badge.removeClass('bg-label-success bg-label-warning bg-label-secondary').addClass('bg-label-danger')
+                  .html('<i class="mdi mdi-alert-outline me-1"></i>Melebihi Batas Fee Rp ' + over.toLocaleString('id-ID'));
+            $btnFill.addClass('d-none');
+            $nominalInputs.addClass('border-danger');
+            $('#btn-submit-management-fee').prop('disabled', true);
+        }
+    }
+
+    // Format nominal on typing & enforce max limit synced with generated fee
+    $(document).on('input', '.fee-input-nominal', function () {
+        var totalFee = parseFloat($('#hidden-total-fee').val()) || 0;
+        var targetNet = getFeeTax(totalFee).net;
+
+        var raw = $(this).val().replace(/\D/g, '');
+        var num = parseFloat(raw) || 0;
+
+        if (targetNet <= 0 && num > 0) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Fee Belum Dihasilkan',
+                    text: 'Silakan isi alokasi Fee Item di atas terlebih dahulu agar nominal fee tersedia untuk ditransfer.',
+                    customClass: { confirmButton: 'btn btn-primary' },
+                    buttonsStyling: false
+                });
+            }
+            $(this).val('');
+            recalcBankAllocation(0);
+            return;
+        }
+
+        // Batas maksimal yang bisa dialokasikan untuk rekening ini
+        var otherNominals = 0;
+        var $current = $(this);
+        $('.fee-input-nominal').not($current).each(function () {
+            otherNominals += (parseFloat($(this).val().replace(/\D/g, '')) || 0);
+        });
+
+        var maxAvailable = Math.max(0, targetNet - otherNominals);
+
+        // Jika input melebihi sisa batas maksimal yang tersedia, otomatis batasi (clamp)
+        if (num > maxAvailable) {
+            num = maxAvailable;
+            $(this).val(num > 0 ? num.toLocaleString('id-ID') : '');
+
+            var $hint = $(this).closest('.fee-bank-row').find('.fee-row-max-hint');
+            $hint.addClass('text-danger fw-bold').text('(Maks: Rp ' + maxAvailable.toLocaleString('id-ID') + ')');
+            setTimeout(function () {
+                $hint.removeClass('text-danger fw-bold');
+            }, 2000);
+        } else {
+            $(this).val(num > 0 ? num.toLocaleString('id-ID') : '');
+        }
+
+        recalcBankAllocation(targetNet);
+    });
+
+    // Fill remaining fee to the last bank row
+    $(document).on('click', '#btn-fill-remaining-fee', function () {
+        var totalFee = parseFloat($('#hidden-total-fee').val()) || 0;
+        var targetNet = getFeeTax(totalFee).net;
+
+        var totalExceptLast = 0;
+        var $rows = $('#fee-bank-rows-container .fee-bank-row');
+        $rows.each(function (idx) {
+            if (idx < $rows.length - 1) {
+                var val = parseFloat($(this).find('.fee-input-nominal').val().replace(/\D/g, '')) || 0;
+                totalExceptLast += val;
+            }
+        });
+
+        var remain = Math.max(0, targetNet - totalExceptLast);
+        var $lastNominal = $rows.last().find('.fee-input-nominal');
+        $lastNominal.val(remain > 0 ? remain.toLocaleString('id-ID') : '');
+        recalcBankAllocation(targetNet);
+    });
+
+    // Dynamic Add Bank Row
+    $('#btn-add-fee-bank-row').on('click', function () {
+        var $container = $('#fee-bank-rows-container');
+        var nextIdx = new Date().getTime(); // unique index
+        var rowCount = $container.find('.fee-bank-row').length + 1;
+
+        // Calculate remaining fee to pre-fill in new row
+        var totalFee = parseFloat($('#hidden-total-fee').val()) || 0;
+        var targetNet = getFeeTax(totalFee).net;
+        var currentAllocated = 0;
+        $('.fee-input-nominal').each(function () {
+            currentAllocated += (parseFloat($(this).val().replace(/\D/g, '')) || 0);
+        });
+        var initialNominal = Math.max(0, targetNet - currentAllocated);
+
+        var rowHtml = `
+            <div class="fee-bank-row p-2.5 rounded border bg-light-subtle position-relative" data-row-index="${nextIdx}">
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                    <span class="fw-bold text-primary small d-flex align-items-center gap-1 fee-bank-row-title" style="font-size: 11px;">
+                        <i class="mdi mdi-credit-card-outline"></i> Rekening Tujuan #<span class="row-num">${rowCount}</span>
+                    </span>
+                    <button type="button" class="btn btn-xs text-danger p-0 btn-remove-fee-bank-row" title="Hapus Rekening">
+                        <i class="mdi mdi-trash-can-outline me-0.5"></i> Hapus
+                    </button>
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-3 col-6">
+                        <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Nama Bank</label>
+                        <input type="text" class="form-control form-control-sm fee-input-bank-name"
+                            name="fee_destinations[${nextIdx}][bank_name]"
+                            placeholder="Contoh: BCA, Mandiri">
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Nomor Rekening</label>
+                        <input type="text" class="form-control form-control-sm fee-input-bank-account"
+                            name="fee_destinations[${nextIdx}][bank_account]"
+                            placeholder="Contoh: 1234567890">
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Nama Pemilik (A/N)</label>
+                        <input type="text" class="form-control form-control-sm fee-input-bank-holder"
+                            name="fee_destinations[${nextIdx}][bank_holder]"
+                            placeholder="Contoh: John Doe">
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <label class="form-label small fw-semibold mb-1 text-primary d-flex justify-content-between align-items-center" style="font-size: 11px;">
+                            <span>Nominal Transfer (Rp)</span>
+                            <span class="text-muted fw-normal fee-row-max-hint" style="font-size: 9.5px;"></span>
+                        </label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text px-1.5 fw-bold" style="font-size: 10.5px;">Rp</span>
+                            <input type="text" class="form-control form-control-sm text-end fw-bold text-success fee-input-nominal"
+                                name="fee_destinations[${nextIdx}][nominal]"
+                                value="${initialNominal > 0 ? initialNominal.toLocaleString('id-ID') : ''}"
+                                placeholder="0" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-12">
+                        <label class="form-label small text-muted mb-1" style="font-size: 10.5px;">Cabang Bank <span class="fw-normal">(Opsional)</span></label>
+                        <input type="text" class="form-control form-control-sm fee-input-bank-branch"
+                            name="fee_destinations[${nextIdx}][bank_branch]"
+                            placeholder="Contoh: KCP Dago / BDG">
+                    </div>
+                    <div class="col-md-8 col-12">
+                        <label class="form-label small text-muted mb-1" style="font-size: 10.5px;">Peruntukan / Catatan Rekening <span class="fw-normal">(Opsional)</span></label>
+                        <input type="text" class="form-control form-control-sm fee-input-note"
+                            name="fee_destinations[${nextIdx}][note]"
+                            placeholder="Contoh: Fee mediator Pak Budi / Partner luar">
+                    </div>
+                </div>
+            </div>
+        `;
+
+        $container.append(rowHtml);
+        updateBankRowIndices();
+        recalcBankAllocation();
+    });
+
+    // Remove Bank Row
+    $(document).on('click', '.btn-remove-fee-bank-row', function () {
+        var $rows = $('#fee-bank-rows-container .fee-bank-row');
+        if ($rows.length > 1) {
+            $(this).closest('.fee-bank-row').remove();
+            updateBankRowIndices();
+            recalcBankAllocation();
+        }
+    });
+
+    function updateBankRowIndices() {
+        var $rows = $('#fee-bank-rows-container .fee-bank-row');
+        $rows.each(function (i) {
+            $(this).find('.row-num').text(i + 1);
+        });
+        if ($rows.length <= 1) {
+            $rows.find('.btn-remove-fee-bank-row').addClass('d-none');
+        } else {
+            $rows.find('.btn-remove-fee-bank-row').removeClass('d-none');
+        }
+    }
+
+    // Initial allocation check on document ready
+    $(document).ready(function () {
+        recalcBankAllocation();
+    });
+
+    // Form submit validation: ensure nominal does not exceed generated fee
+    $('#form-management-fee').on('submit', function (e) {
+        var totalFee = parseFloat($('#hidden-total-fee').val()) || 0;
+        var targetNet = getFeeTax(totalFee).net;
+
+        var totalBankNominal = 0;
+        $('.fee-input-nominal').each(function () {
+            totalBankNominal += (parseFloat($(this).val().replace(/\D/g, '')) || 0);
+        });
+
+        if (totalFee > 0 && totalBankNominal > targetNet) {
+            e.preventDefault();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Melebihi Batas Maksimal',
+                    text: 'Total nominal transfer rekening (Rp ' + totalBankNominal.toLocaleString('id-ID') + ') melebihi batas Nett Fee yang dihasilkan (Rp ' + targetNet.toLocaleString('id-ID') + ').',
+                    customClass: { confirmButton: 'btn btn-danger' },
+                    buttonsStyling: false
+                });
+            } else {
+                alert('Total nominal transfer rekening melebihi batas Nett Fee yang dihasilkan.');
+            }
+            return false;
+        }
+
+        if (totalFee > 0 && totalBankNominal < targetNet) {
+            var diff = targetNet - totalBankNominal;
+            if (!confirm('Total alokasi rekening (Rp ' + totalBankNominal.toLocaleString('id-ID') + ') belum mencapai total Nett Fee (Rp ' + targetNet.toLocaleString('id-ID') + '). Ada sisa Rp ' + diff.toLocaleString('id-ID') + ' yang belum dialokasikan. Tetap simpan?')) {
+                e.preventDefault();
+                return false;
+            }
+        }
     });
 
     $(document).on('click', '.btn-delete-fee-confirm', function (e) {

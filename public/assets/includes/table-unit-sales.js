@@ -83,6 +83,7 @@ $(function () {
         { key: "code", label: "Code" },
         { key: "serial_number", label: "Serial Number" },
         { key: "unit_category", label: "Kategori", render: categoryCol },
+        { key: "speed_type", label: "Speed Type" },
         { key: "lubricant", label: "Type / Lubricant" },
         { key: "power", label: "Motor Power" },
         { key: "bar", label: "Max. Working Pressure", render: barCol },
@@ -161,9 +162,11 @@ $(function () {
     var baruSpecs = {
         screw: [
             { data: "unit_category", render: categoryCol },
+            { data: "speed_type", render: dash },
             { data: "lubricant", render: dash },
             { data: "power", render: dash },
             { data: "air_cap", render: airCapCol },
+            { data: "bar", render: barCol },
         ],
         dryer: [
             { data: "unit_category", render: categoryCol },
@@ -249,7 +252,28 @@ $(function () {
             columns.push({ data: spec.data, render: spec.render });
         });
         columns.push({ data: "stock", className: "text-center", render: stockBadgeCol });
-        columns.push({ data: "harga_jual", render: function (d, t) { return t !== "display" ? (d || 0) : currency(d); } });
+        columns.push({
+            data: "harga_jual",
+            className: "text-nowrap",
+            render: function (data, type) {
+                if (type !== "display" && type !== "filter") {
+                    return data === null || data === "" || data === undefined ? 0 : data;
+                }
+                if (data === null || data === undefined || data === "" || Number(data) === 0) {
+                    return '<span class="text-muted">Belum diset</span>';
+                }
+                var n = parseFloat(data);
+                if (isNaN(n)) n = 0;
+                var num = String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                // "Rp" rata kiri, nominal rata kanan dalam satu sel persis seperti /product
+                return (
+                    '<div class="d-flex justify-content-between">' +
+                    '<span class="text-muted me-3">Rp</span>' +
+                    '<span>' + num + '</span>' +
+                    '</div>'
+                );
+            }
+        });
 
         var dt = $table.DataTable({
             ajax: {

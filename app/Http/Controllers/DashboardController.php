@@ -192,6 +192,7 @@ class DashboardController extends Controller
             $logisticService = new \App\Services\Dashboard\LogisticDashboardService();
             $logisticData = $logisticService->getDashboardData($notulens);
 
+            return view("pages.sales.dashboard", $logisticData);
         } elseif (Auth::user()->role == 'Project Manager') {
             $pmService = new \App\Services\Dashboard\ProjectManagerDashboardService();
             $pmData = $pmService->getDashboardData($notulens);

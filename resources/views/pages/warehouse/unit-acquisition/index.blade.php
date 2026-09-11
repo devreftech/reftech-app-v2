@@ -3,9 +3,11 @@
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="fw-bold mb-0">Unit Acquisition</h4>
-        <a href="{{ route('fixed.create') }}" class="btn btn-primary waves-effect">
-            Unit Acquisition Baru
-        </a>
+        @if (Auth::user()->role != 'Sales')
+            <a href="{{ route('fixed.create') }}" class="btn btn-primary waves-effect">
+                Unit Acquisition Baru
+            </a>
+        @endif
     </div>
 
     <div class="card mb-3">
@@ -174,6 +176,7 @@
                                     <tr>
                                         <th>Unit</th>
                                         <th>Type</th>
+                                        <th>Speed Type</th>
                                         <th>Lubricant</th>
                                         <th>Power</th>
                                         <th>Air Capacity</th>
@@ -183,6 +186,7 @@
                                         <th></th>
                                     </tr>
                                     <tr class="column-filters">
+                                        <th><input type="text" class="form-control form-control-sm" data-col-search /></th>
                                         <th><input type="text" class="form-control form-control-sm" data-col-search /></th>
                                         <th><input type="text" class="form-control form-control-sm" data-col-search /></th>
                                         <th><input type="text" class="form-control form-control-sm" data-col-search /></th>
@@ -713,6 +717,55 @@
             </div>
         </div>
     </div>
+
+    @if (Auth::user()->role == 'Admin')
+        <!-- Modal Edit Harga Jual Unit Baru -->
+        <div class="modal fade" id="modalEditHargaJualInventory" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form id="formEditHargaJualInventory">
+                        @csrf
+                        <input type="hidden" name="id_unit" id="modal-edit-harga-unit-id" value="">
+                        <div class="modal-header">
+                            <div>
+                                <h5 class="modal-title fw-bold mb-0">Edit Harga Jual Unit Baru</h5>
+                                <small class="text-muted" id="modal-edit-harga-unit-name">-</small>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <!-- Info Pricelist dari Catalog Unit -->
+                            <div id="modal-edit-harga-catalog-info" class="alert alert-info py-2 px-3 mb-3 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="d-block text-muted"><i class="mdi mdi-tag-outline me-1"></i>Pricelist Resmi Katalog:</small>
+                                    <strong id="modal-edit-harga-catalog-val" class="fs-6">Rp 0</strong>
+                                </div>
+                                <button type="button" class="btn btn-xs btn-outline-primary" id="btnApplyCatalogPrice">
+                                    <i class="mdi mdi-arrow-down-bold me-1"></i>Gunakan Pricelist
+                                </button>
+                            </div>
+                            <div id="modal-edit-harga-no-catalog-info" class="alert alert-light border py-2 px-3 mb-3 d-none">
+                                <small class="text-muted"><i class="mdi mdi-information-outline me-1"></i>Unit ini belum terdaftar atau belum memiliki setting harga di Katalog Unit.</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Harga Jual Unit (Rp) <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" name="harga_jual" id="modal-input-harga-jual" min="0" step="1" required placeholder="0">
+                                <div class="form-text small">Harga jual ini berlaku untuk semua unit fisik dengan model ini.</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary" id="btnSubmitHargaJualInventory">
+                                <span class="spinner-border spinner-border-sm me-1 d-none" id="spinnerSubmitHargaJual"></span>
+                                Simpan Harga
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
 @endsection
 
 @push('after-style')
@@ -734,6 +787,9 @@
 @endpush
 
 @push('page-script')
+    <script>
+        window.isInventoryAdmin = {{ Auth::user()->role == 'Admin' ? 'true' : 'false' }};
+    </script>
     <script src="{{ asset('assets') }}/js/tables-datatables-advanced.js"></script>
     <script src="{{ asset('assets') }}/includes/table-unit-acquisition.js?v={{ file_exists(public_path('assets/includes/table-unit-acquisition.js')) ? filemtime(public_path('assets/includes/table-unit-acquisition.js')) : time() }}"></script>
     <script src="{{ asset('assets') }}/includes/table-unit-inventory.js?v={{ file_exists(public_path('assets/includes/table-unit-inventory.js')) ? filemtime(public_path('assets/includes/table-unit-inventory.js')) : time() }}"></script>

@@ -52,4 +52,5 @@ Route::middleware(['auth'])->group(function () {
     // Notifikasi pop-up "Prospect Baru" (polling navbar Sales Manager / Admin) — meniru notifications.payment.*
     Route::get('/notifications/prospect/unread', [ProspectController::class, 'unreadProspectNotifications'])->name('notifications.prospect.unread');
     Route::post('/notifications/prospect/{id}/read', [ProspectController::class, 'markProspectNotificationRead'])->name('notifications.prospect.read');
+    Route::post('/notifications/mark-all-read', [ProspectController::class, 'markAllNotificationsRead'])->name('notifications.mark_all_read');
 });

@@ -138,6 +138,7 @@ Route::middleware(['auth'])->group(function () {
     // Logistic & Accounting index pages
     Route::get('/suo-logistic', [SuoController::class, 'logisticIndex'])->name('suo.logistic.index');
     Route::get('/suo-accounting', [SuoController::class, 'accountingIndex'])->name('suo.accounting.index');
+    Route::get('/notifications/suo/urgent-check', [SuoController::class, 'urgentCheck'])->name('notifications.suo.urgent_check');
 
     // Quotation Archive
     Route::get('/archive/quotation', [ArchiveController::class, 'archive_quotation'])->name('archive.quotation');
@@ -145,6 +146,9 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/delete-archive/quotation/{id}', [ArchiveController::class, 'delete_archive_quotation'])->name('delete-archive.quotation');
 
     // Legacy AJAX endpoints (app/api/quotation/*)
+    Route::get('/db/quotation/draft', function () {
+        require base_path('app/api/quotation/connectionDraft.php');
+    });
     Route::get('/db/quotation', function () {
         require_once base_path('app/api/quotation/connection.php');
     });

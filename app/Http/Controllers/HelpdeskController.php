@@ -30,6 +30,7 @@ class HelpdeskController extends Controller
         $ticket->id_user = Auth::id();
         $ticket->category = 'user_report';
         $ticket->title = $request->title;
+        $ticket->url_accessed = $request->url_accessed ?: $request->link ?: $request->url;
         $ticket->description = $request->description;
         $ticket->status = 'Open';
         $ticket->save();

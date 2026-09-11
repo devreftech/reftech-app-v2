@@ -1,19 +1,64 @@
- <form action="" method="post" enctype="multipart/form-data">
-    {{-- {{ csrf_token() }} --}}
+<style>
+    /* Ultra-smooth modal entrance and exit transition */
+    .smooth-prospect-modal.modal.fade .modal-dialog {
+        transform: scale(0.95) translateY(-20px);
+        opacity: 0;
+        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s ease !important;
+    }
+    .smooth-prospect-modal.modal.show .modal-dialog {
+        transform: scale(1) translateY(0) !important;
+        opacity: 1 !important;
+    }
+    .smooth-prospect-modal .modal-content {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.22);
+        overflow: hidden;
+    }
+    .smooth-prospect-modal .modal-header {
+        background: linear-gradient(180deg, #fbfcfe 0%, #f4f6fa 100%);
+        border-bottom: 1px solid #e7ebf0;
+        padding: 1.1rem 1.75rem;
+    }
+    .smooth-prospect-modal .modal-body {
+        padding: 1.5rem 1.75rem;
+    }
+    .smooth-prospect-modal .modal-footer {
+        border-top: 1px solid #e7ebf0;
+        padding: 1rem 1.75rem;
+    }
+    .modal-backdrop.fade {
+        opacity: 0;
+        transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+    .modal-backdrop.show {
+        opacity: 0.45 !important;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+    }
+    @media (min-width: 1200px) {
+        #createProspect .modal-dialog {
+            max-width: 1250px;
+            width: 92%;
+        }
+    }
+</style>
+
+<form action="" method="post" enctype="multipart/form-data">
     @csrf
-    <div class="modal modal-xl animate__animated animate__fadeIn" id="createProspect" tabindex="-1" style="display: none;"
-        aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal fade smooth-prospect-modal" id="createProspect" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title" id="exampleModalLabel5">Create Prospect
+                    <h4 class="modal-title" id="exampleModalLabel5">
+                        <i class="mdi mdi-account-plus-outline text-primary me-2"></i>Create Prospect
                     </h4>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     @if ($errors->any())
                         <div class="alert alert-danger">
-                            <ul>
+                            <ul class="mb-0">
                                 @foreach ($errors->all() as $error)
                                     <li>{{ $error }}</li>
                                 @endforeach
@@ -164,18 +209,11 @@
                                 </div>
                             </div>
                             <div class="row g-2 mb-3"> 
-                                <div class="col mb-2">
-                                    <div class="form-floating form-floating-outline mb-4">
+                                <div class="col-12 mb-2">
+                                    <div class="form-floating form-floating-outline mb-2">
                                         <textarea class="form-control h-px-100" name="address" id="addressTextarea1"
-                                            placeholder="Contoh: Jl Taman Kopo Indah 5 Kota...">{{ old('address', @$leads->address ?? '') }}</textarea>
+                                            placeholder="Contoh: Jl Taman Kopo Indah 5 Kota..." required>{{ old('address', @$leads->address ?? '') }}</textarea>
                                         <label for="addressTextarea1">Address</label>
-                                    </div>
-                                </div>
-                                <div class="col mb-2">
-                                    <div class="form-floating form-floating-outline mb-4">
-                                        <textarea class="form-control h-px-100" name="subAddress" id="addressTextarea2"
-                                            placeholder="Contoh: Jl Taman Kopo Indah 5 Kota...">{{ old('subAddress', @$leads->subAddress ?? '') }}</textarea>
-                                        <label for="addressTextarea2">Sub Address</label>
                                     </div>
                                 </div>
                             </div>
@@ -221,43 +259,68 @@
                             <div class="row mb-3">
                                 <div class="col-md-6 mb-2">
                                     <div class="form-floating form-floating-outline">
-                                        <select class="form-select" id="category"
-                                            aria-label="Default select example" name="category">
-                                            <option disabled>----- Choose Category -----</option>
-                                            <option value="Service Compressor"
-                                                {{ old('category', @$leads->category) == 'Service Compressor' ? 'selected' : '' }}>
-                                                Service Compressor
-                                            </option>
-                                            <option value="Rental Compressor"
-                                                {{ old('category', @$leads->category) == 'Rental Compressor' ? 'selected' : '' }}>
-                                                Rental Compressor
-                                            </option>
-                                            <option value="Sparepart Compressor"
-                                                {{ old('category', @$leads->category) == 'Sparepart Compressor' ? 'selected' : '' }}>
-                                                Sparepart Compressor
-                                            </option>
-                                            <option value="Instalasi Piping"
-                                                {{ old('category', @$leads->category) == 'Instalasi Piping' ? 'selected' : '' }}>
-                                                Instalasi Piping
-                                            </option>
-                                            <option value="Air Audit"
-                                                {{ old('category', @$leads->category) == 'Air Audit' ? 'selected' : '' }}>
-                                                Air Audit
-                                            </option>
-                                            <option value="Fire System"
-                                                {{ old('category', @$leads->category) == 'Fire System' ? 'selected' : '' }}>
-                                                Fire System
-                                            </option>
-                                            <option value="HVAC System"
-                                                {{ old('category', @$leads->category) == 'HVAC System' ? 'selected' : '' }}>
-                                                HVAC System
-                                            </option>
-                                            <option value="Unit Baru/Second"
-                                                {{ old('category', @$leads->category) == 'Unit Baru/Second' ? 'selected' : '' }}>
-                                                Unit Baru/Second
+                                        @php
+                                            $defaultCategories = [
+                                                'Service Compressor',
+                                                'Rental Compressor',
+                                                'Sparepart Compressor',
+                                                'Instalasi Piping',
+                                                'Air Audit',
+                                                'Fire System',
+                                                'HVAC System',
+                                                'Unit Baru/Second',
+                                            ];
+                                            $customCategories = [];
+                                            if (isset($categoryList)) {
+                                                if (is_array($categoryList)) {
+                                                    $customCategories = $categoryList;
+                                                } elseif ($categoryList instanceof \Illuminate\Support\Collection) {
+                                                    $customCategories = $categoryList->toArray();
+                                                }
+                                            }
+                                            $categoriesToDisplay = array_values(array_unique(array_merge($defaultCategories, $customCategories)));
+                                            $selectedCategory = old('category', @$leads->category ?? '');
+                                        @endphp
+                                        <select class="form-select @error('category') is-invalid @enderror" id="category"
+                                            aria-label="Category Selection" name="category" required>
+                                            <option value="" disabled {{ empty($selectedCategory) ? 'selected' : '' }}>----- Choose Category -----</option>
+                                            @foreach ($categoriesToDisplay as $cat)
+                                                <option value="{{ $cat }}" {{ $selectedCategory === $cat ? 'selected' : '' }}>
+                                                    {{ $cat }}
+                                                </option>
+                                            @endforeach
+                                            <option value="__add_new__" {{ $selectedCategory === '__add_new__' ? 'selected' : '' }} style="font-weight: 700; color: #696cff;">
+                                                ➕ + Tambah Kategori Baru...
                                             </option>
                                         </select>
                                         <label for="category">Category</label>
+                                    </div>
+                                    @error('category')
+                                        <div class="text-danger small mt-1">{{ $message }}</div>
+                                    @enderror
+
+                                    {{-- Custom New Category Input Box --}}
+                                    <div id="newCategoryWrapper" class="mt-2" style="{{ old('category') === '__add_new__' ? 'display: block;' : 'display: none;' }}">
+                                        <div class="p-2 border rounded-3 bg-light">
+                                            <label for="new_category" class="form-label text-primary fw-semibold small mb-1">
+                                                <i class="mdi mdi-plus-box-outline me-1"></i>Nama Kategori Baru:
+                                            </label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" id="new_category" name="new_category"
+                                                    class="form-control @error('new_category') is-invalid @enderror"
+                                                    placeholder="Ketik nama kategori baru..."
+                                                    value="{{ old('new_category') }}">
+                                                <button type="button" class="btn btn-outline-secondary" id="cancelNewCategoryBtn" title="Batal">
+                                                    <i class="mdi mdi-close"></i> Batal
+                                                </button>
+                                            </div>
+                                            @error('new_category')
+                                                <div class="text-danger small mt-1">{{ $message }}</div>
+                                            @enderror
+                                            <div class="text-muted small mt-1" style="font-size: 0.75rem;">
+                                                <i class="mdi mdi-information-outline me-1"></i>Kategori baru ini akan otomatis tersimpan & tersedia di pilihan berikutnya.
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-2">
@@ -326,5 +389,59 @@
                 </div>
             </div>
         </div>
-    </div>
 </form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const categorySelect = document.getElementById('category');
+        const newCategoryWrapper = document.getElementById('newCategoryWrapper');
+        const newCategoryInput = document.getElementById('new_category');
+        const cancelNewCategoryBtn = document.getElementById('cancelNewCategoryBtn');
+        let previousCategory = '';
+
+        if (categorySelect && newCategoryWrapper) {
+            categorySelect.addEventListener('focus', function() {
+                if (this.value !== '__add_new__') {
+                    previousCategory = this.value;
+                }
+            });
+
+            categorySelect.addEventListener('change', function() {
+                if (this.value === '__add_new__') {
+                    $(newCategoryWrapper).slideDown(220, function() {
+                        if (newCategoryInput) {
+                            newCategoryInput.focus();
+                            newCategoryInput.setAttribute('required', 'required');
+                        }
+                    });
+                } else {
+                    previousCategory = this.value;
+                    $(newCategoryWrapper).slideUp(180);
+                    if (newCategoryInput) {
+                        newCategoryInput.removeAttribute('required');
+                    }
+                }
+            });
+
+            if (cancelNewCategoryBtn) {
+                cancelNewCategoryBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    categorySelect.value = previousCategory || '';
+                    $(newCategoryWrapper).slideUp(180);
+                    if (newCategoryInput) {
+                        newCategoryInput.value = '';
+                        newCategoryInput.removeAttribute('required');
+                    }
+                });
+            }
+        }
+
+        @if ($errors->any())
+            const createModalEl = document.getElementById('createProspect');
+            if (createModalEl && typeof bootstrap !== 'undefined') {
+                const createModal = bootstrap.Modal.getOrCreateInstance(createModalEl);
+                createModal.show();
+            }
+        @endif
+    });
+</script>

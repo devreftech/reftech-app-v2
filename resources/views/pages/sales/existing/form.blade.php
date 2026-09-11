@@ -154,19 +154,17 @@
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-12 mb-2">
-                            <div class="form-floating form-floating-outline">
-                                <select id="selectAreaExisting{{ @$existing->id ?? 'Create' }}" class="select2 form-select select-area-existing" name="area">
-                                    <option value=""></option>
-                                    @php $selectedArea = old('area', @$existing->area ?? ''); @endphp
-                                    @if ($selectedArea)
-                                        <option value="{{ $selectedArea }}" selected>{{ $selectedArea }}</option>
-                                    @endif
-                                </select>
-                                <label for="selectAreaExisting{{ @$existing->id ?? 'Create' }}">Area</label>
-                            </div>
+                            <label class="form-label mb-1 fw-semibold text-dark" for="selectAreaExisting{{ @$existing->id ?? 'Create' }}">Area</label>
+                            @php $selectedArea = old('area', @$existing->area ?? ''); @endphp
+                            <select id="selectAreaExisting{{ @$existing->id ?? 'Create' }}" class="form-select select-area-existing" name="area" style="width: 100%;" data-placeholder="Ketik minimal 2 huruf untuk cari kota/kabupaten...">
+                                @if ($selectedArea)
+                                    <option value="{{ $selectedArea }}" selected="selected">{{ $selectedArea }}</option>
+                                @endif
+                                <option value=""></option>
+                            </select>
                         </div>
                     </div>
-                    <input type="hidden" name="npwp" value="{{ old('npwp', @$existing->npwp ?? '') }}">
+                    <input type="hidden" name="npwp" value="{{ old('npwp', @$existing->npwp ?? '0') }}">
                     <div class="row g-2 mb-3">
                         <div class="col-12 mb-2">
                             <div class="form-floating form-floating-outline mb-4">
@@ -231,6 +229,55 @@
 
 @push('after-style')
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/select2/select2.css" />
+    <style>
+        .select-area-existing + .select2-container,
+        .select2-container--default.select2-container {
+            width: 100% !important;
+        }
+        .select-area-existing + .select2-container .select2-selection--single {
+            height: 48px !important;
+            border: 1px solid #d9dee3 !important;
+            border-radius: 6px !important;
+            background-color: #fff !important;
+            position: relative !important;
+            display: block !important;
+        }
+        .select-area-existing + .select2-container .select2-selection--single .select2-selection__rendered {
+            line-height: 46px !important;
+            padding-left: 14px !important;
+            padding-right: 40px !important;
+            color: #566a7f !important;
+            font-size: 0.9375rem !important;
+            display: block !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+        }
+        .select-area-existing + .select2-container .select2-selection--single .select2-selection__arrow {
+            height: 46px !important;
+            position: absolute !important;
+            top: 0 !important;
+            right: 10px !important;
+            width: 20px !important;
+        }
+        .select-area-existing + .select2-container .select2-selection--single .select2-selection__clear {
+            cursor: pointer !important;
+            float: right !important;
+            font-weight: bold !important;
+            margin-right: 10px !important;
+            color: #888 !important;
+            font-size: 1.1rem !important;
+            line-height: 46px !important;
+        }
+        .select2-container--open {
+            z-index: 9999 !important;
+        }
+        .select2-dropdown {
+            z-index: 9999 !important;
+            border: 1px solid #d9dee3 !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12) !important;
+        }
+    </style>
 @endpush
 
 @push('after-script')
@@ -242,8 +289,15 @@
         $(function () {
             $('.select-area-existing').each(function () {
                 var $this = $(this);
+                if ($this.hasClass('select2-hidden-accessible')) {
+                    $this.select2('destroy');
+                }
+
+                var initialText = @json($selectedArea);
+
                 $this.select2({
-                    placeholder: 'Area',
+                    placeholder: 'Ketik minimal 2 huruf untuk cari kota/kabupaten...',
+                    allowClear: true,
                     width: '100%',
                     dropdownParent: $this.closest('.modal'),
                     minimumInputLength: 2,
@@ -261,6 +315,30 @@
                         cache: true
                     }
                 });
+
+                if (initialText) {
+                    if (!$this.find("option[value='" + initialText + "']").length) {
+                        var newOption = new Option(initialText, initialText, true, true);
+                        $this.append(newOption);
+                    }
+                    $this.val(initialText).trigger('change');
+                }
+
+                var $modal = $this.closest('.modal');
+                if ($modal.length) {
+                    $modal.on('shown.bs.modal', function () {
+                        if (initialText && !$this.val()) {
+                            $this.val(initialText).trigger('change');
+                        }
+                    });
+                }
+            });
+
+            $(document).on('select2:open', function () {
+                setTimeout(function () {
+                    var searchField = document.querySelector('.select2-container--open .select2-search__field');
+                    if (searchField) searchField.focus();
+                }, 50);
             });
         });
     </script>

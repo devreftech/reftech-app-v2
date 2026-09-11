@@ -59,22 +59,38 @@ class CatalogUnitController extends Controller
 
     public function update(Request $request, $id)
     {
-        $priceIdr = (int) preg_replace('/\D/', '', $request->input('price_idr', 0));
-        $request->merge(['price_idr' => $priceIdr]);
+        if (Auth::user()->role !== 'Admin') {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['message' => 'Hanya role Admin yang diizinkan mengubah harga katalog.'], 403);
+            }
+            abort(403, 'Hanya role Admin yang diizinkan mengubah harga katalog.');
+        }
+
+        $catalog = CatalogUnit::findOrFail($id);
+
+        $priceIdr = (int) preg_replace('/\D/', '', $request->input('price_idr', $catalog->price_idr));
+        $priceUsd = $request->has('price_usd') ? $request->input('price_usd') : $catalog->price_usd;
+        $request->merge([
+            'price_idr' => $priceIdr,
+            'price_usd' => $priceUsd,
+        ]);
 
         $request->validate([
             'price_idr' => 'required|integer|min:0',
             'price_usd' => 'required|numeric|min:0',
         ]);
 
-        $catalog = CatalogUnit::findOrFail($id);
         $priceChanged = $catalog->price_idr != $request->price_idr
             || $catalog->price_usd != $request->price_usd;
 
         $catalog->price_idr = $request->price_idr;
         $catalog->price_usd = $request->price_usd;
-        $catalog->spec_note = $request->spec_note;
-        $catalog->is_active = $request->boolean('is_active', true);
+        if ($request->has('spec_note')) {
+            $catalog->spec_note = $request->spec_note;
+        }
+        if ($request->has('is_active')) {
+            $catalog->is_active = $request->boolean('is_active', true);
+        }
         $catalog->save();
 
         if ($priceChanged) {
@@ -83,7 +99,20 @@ class CatalogUnitController extends Controller
                 'price_idr'       => $request->price_idr,
                 'price_usd'       => $request->price_usd,
                 'changed_by'      => Auth::id(),
-                'note'            => $request->note,
+                'note'            => $request->note ?: 'Update harga IDR dari tabel katalog',
+            ]);
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Harga IDR katalog berhasil diperbarui.',
+                'data' => [
+                    'id' => $catalog->id,
+                    'price_idr' => (int) $catalog->price_idr,
+                    'price_usd' => (float) $catalog->price_usd,
+                    'updated_at' => $catalog->updated_at ? $catalog->updated_at->format('Y-m-d H:i:s') : date('Y-m-d H:i:s'),
+                ],
             ]);
         }
 

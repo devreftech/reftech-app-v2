@@ -1,7 +1,9 @@
 <?php
 use Illuminate\Support\Facades\Auth;
 
-header('Content-Type: application/json');
+if (!headers_sent()) {
+    header('Content-Type: application/json');
+}
 
 if (!Auth::check()) {
     echo json_encode(['error' => 'Pengguna tidak terotentikasi']);
@@ -42,6 +44,12 @@ try {
 
     $query = "
     SELECT cu.id, cu.id_unit, cu.price_idr, cu.price_usd, cu.spec_note, cu.is_active,
+           COALESCE(
+               (SELECT h.created_at FROM catalog_unit_price_history h WHERE h.id_catalog_unit = cu.id ORDER BY h.id DESC LIMIT 1),
+               cu.updated_at,
+               cu.created_at
+           ) as price_updated_at,
+           (SELECT usr.name FROM catalog_unit_price_history h LEFT JOIN users usr ON usr.id = h.changed_by WHERE h.id_catalog_unit = cu.id ORDER BY h.id DESC LIMIT 1) as price_updated_by,
            u.sku, u.brand, u.model, u.unit AS category, u.type_unit, u.generation,
            u.power, u.air_cap, u.bar, u.cooling, u.connect, u.exhaust,
            u.refrigerant_type, u.pdp, u.dimension, u.weight, u.desc,

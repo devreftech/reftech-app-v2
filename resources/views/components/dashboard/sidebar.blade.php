@@ -1182,7 +1182,13 @@
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Sales Order</span>
             </li>
-            @php $suoPending = \App\Models\Suo::where('id_sales', Auth::id())->whereNull('id_quotation')->count(); @endphp
+            @php
+                $suoPending = \App\Models\Suo::where('id_sales', Auth::id())
+                    ->whereNull('id_quotation')
+                    ->whereNull('id_unit_quotation')
+                    ->where('status', '!=', 'converted')
+                    ->count();
+            @endphp
             <li class="menu-item {{ request()->is('suo') || request()->is('suo/*') ? 'active' : '' }}">
                 <a href="{{ route('suo.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-lightning-bolt-outline"></i>

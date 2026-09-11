@@ -41,6 +41,7 @@ class UnitQuotation extends Model
         'fee_bank_account',
         'fee_bank_holder',
         'fee_bank_branch',
+        'fee_bank_destinations',
         'fee_payment_status',
         'fee_transfer_date',
         'fee_transfer_proof',
@@ -59,15 +60,42 @@ class UnitQuotation extends Model
         'po_file',
         'po_received',
         'payment_method',
+        'is_draft',
     ];
 
     protected $casts = [
-        'date'              => 'date',
-        'expired_date'      => 'date',
-        'fee_transfer_date' => 'datetime',
-        'tax'               => 'boolean',
-        'hide_title'        => 'boolean',
+        'date'                  => 'date',
+        'expired_date'          => 'date',
+        'fee_transfer_date'     => 'datetime',
+        'tax'                   => 'boolean',
+        'hide_title'            => 'boolean',
+        'is_draft'              => 'boolean',
+        'fee_bank_destinations' => 'array',
     ];
+
+    public function getFeeBankDestinationsAttribute($value)
+    {
+        $destinations = is_string($value) ? json_decode($value, true) : $value;
+        if (is_array($destinations) && !empty($destinations)) {
+            return $destinations;
+        }
+
+        if (!empty($this->fee_bank_account)) {
+            $nominal = (float) ($this->fee_tax_data->net_fee ?? $this->fee ?? 0);
+            return [
+                [
+                    'bank_name'    => $this->fee_bank_name,
+                    'bank_branch'  => $this->fee_bank_branch,
+                    'bank_account' => $this->fee_bank_account,
+                    'bank_holder'  => $this->fee_bank_holder,
+                    'nominal'      => $nominal,
+                    'note'         => '',
+                ]
+            ];
+        }
+
+        return [];
+    }
 
     public function client()
     {
