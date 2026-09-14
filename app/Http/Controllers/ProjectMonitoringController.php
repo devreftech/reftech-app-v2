@@ -206,7 +206,24 @@ class ProjectMonitoringController extends Controller
      */
     public function show($id)
     {
-        $pendingRow = PendingPO::findOrFail($id);
+        $user = Auth::user();
+        $role = $user->role;
+
+        if (in_array($role, ['Client', 'Guest'])) {
+            abort(403, 'Anda tidak memiliki izin untuk mengakses detail project ini.');
+        }
+
+        $pendingRow = PendingPO::with(['quote', 'unitQuotation'])->findOrFail($id);
+
+        if ($role === 'Sales') {
+            $quoteSales = $pendingRow->quote?->id_sales;
+            $unitSales = $pendingRow->unitQuotation?->id_sales;
+            $isOwner = ($quoteSales == $user->id) || ($unitSales == $user->id);
+            if (!$isOwner) {
+                abort(403, 'Anda tidak memiliki izin untuk mengakses project ini.');
+            }
+        }
+
         $isUnit = (bool) $pendingRow->id_unit_quotation;
 
         if ($isUnit) {

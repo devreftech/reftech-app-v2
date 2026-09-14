@@ -10,13 +10,13 @@ class ToolFinanceController extends Controller
 {
     public function index(Request $request)
     {
-        if (!in_array(Auth::user()->role, ['Finance Manager', 'Admin'])) {
-            abort(403, 'Hanya Finance Manager / Admin yang bisa mengakses halaman ini.');
+        if (!in_array(Auth::user()->role, ['Finance Manager', 'Finance', 'Admin'])) {
+            abort(403, 'Hanya Finance / Finance Manager / Admin yang bisa mengakses halaman ini.');
         }
 
         $status = $request->get('status', 'belum');
 
-        $query = FixedAsset::where('type', 'Tools')->with(['toolsMaster', 'pic']);
+        $query = FixedAsset::where('type', 'Tools')->with(['toolsMaster', 'pic', 'aktiva']);
 
         if ($status == 'belum') {
             $query->whereNull('id_aktiva');

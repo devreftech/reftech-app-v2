@@ -86,6 +86,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Unit Quotation — URI publik "smart-quote" (rebrand tampilan), nama route tetap
     // "unit-quotation.*" biar semua route()/pemanggilan lain di app gak perlu diubah.
+    Route::get('/smart-quote/clients-search', [UnitQuotationController::class, 'searchClients'])->name('unit-quotation.clients-search');
     Route::resource('smart-quote', UnitQuotationController::class)->names('unit-quotation');
     Route::get('/smart-quote/{id}/print', [UnitQuotationController::class, 'print'])->name('unit-quotation.print');
     Route::get('/smart-quote/pics/{clientId}', [UnitQuotationController::class, 'getPics'])->name('unit-quotation.pics');

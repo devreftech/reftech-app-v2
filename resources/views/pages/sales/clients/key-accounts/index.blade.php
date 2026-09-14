@@ -49,74 +49,157 @@
         </form>
     </div>
 
-    <!-- KPI Cards Row -->
-    <div class="row mb-4">
-        <!-- Card 1: Total Revenue -->
-        <div class="col-md-4 col-sm-6 mb-4 mb-md-0">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="avatar avatar-md">
-                            <div class="avatar-initial bg-label-primary rounded">
-                                <i class="mdi mdi-currency-usd mdi-24px"></i>
-                            </div>
-                        </div>
-                        <span class="badge bg-label-primary">Total Revenue</span>
-                    </div>
-                    <h4 class="mb-1 text-primary fw-bold">Rp {{ number_format($totalRevenueYear, 0, ',', '.') }}</h4>
-                    <p class="mb-0 text-muted small">
-                        Penerimaan PO pada periode yang dipilih
-                    </p>
-                </div>
-            </div>
-        </div>
+    @php
+        $topCustomer = $keyAccounts->first();
+        $topCustomerPct = ($totalRevenueYear > 0 && $topCustomer) ? round(($topCustomer->total_po / $totalRevenueYear) * 100, 1) : 0;
 
-        <!-- Card 2: Top Customer -->
-        @php
-            $topCustomer = $keyAccounts->first();
-        @endphp
-        <div class="col-md-4 col-sm-6 mb-4 mb-md-0">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="avatar avatar-md">
-                            <div class="avatar-initial bg-label-success rounded">
-                                <i class="mdi mdi-trophy-outline mdi-24px"></i>
-                            </div>
-                        </div>
-                        <span class="badge bg-label-success">Top Key Account</span>
+        $chartLabels = [];
+        $chartSeries = [];
+        $top5Sum = 0;
+        
+        foreach ($keyAccounts->take(5) as $ka) {
+            $chartLabels[] = $ka->company;
+            $chartSeries[] = (int)$ka->total_po;
+            $top5Sum += $ka->total_po;
+        }
+        
+        $othersSum = $totalRevenueYear - $top5Sum;
+        if ($othersSum > 0) {
+            $chartLabels[] = 'Lainnya';
+            $chartSeries[] = (int)$othersSum;
+        }
+
+        $top5Pct = $totalRevenueYear > 0 ? round(($top5Sum / $totalRevenueYear) * 100, 1) : 0;
+        $avgRevenuePerCustomer = $keyAccounts->total() > 0 ? ($totalRevenueYear / $keyAccounts->total()) : 0;
+    @endphp
+
+    <!-- Executive Overview Row (Revenue Distribution & Reorganized Cards) -->
+    <div class="row g-4 mb-4 align-items-stretch">
+        <!-- Col 1: Revenue Distribution Donut Chart (Above Leaderboard) -->
+        <div class="col-xl-4 col-lg-5 col-12">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="mb-0 fw-bold text-dark">
+                            <i class="mdi mdi-chart-donut me-1 text-primary"></i> Revenue Distribution
+                        </h6>
+                        <small class="text-muted">Top 5 Pelanggan vs Lainnya</small>
                     </div>
-                    <h4 class="mb-1 text-success fw-bold text-truncate" title="{{ $topCustomer?->company ?? '-' }}">
-                        {{ $topCustomer?->company ?? '-' }}
-                    </h4>
-                    @if ($topCustomer)
-                        <p class="mb-0 text-muted small">
-                            Kontribusi: Rp {{ number_format($topCustomer->total_po, 0, ',', '.') }}
-                            ({{ $totalRevenueYear > 0 ? round(($topCustomer->total_po / $totalRevenueYear) * 100, 1) : 0 }}%)
-                        </p>
+                    @if ($totalRevenueYear > 0)
+                        <span class="badge bg-label-primary px-2 py-1" title="Top 5 menguasai {{ $top5Pct }}% omzet">
+                            Top 5: {{ $top5Pct }}%
+                        </span>
+                    @endif
+                </div>
+                <div class="card-body d-flex flex-column justify-content-center p-3" style="min-height: 310px;">
+                    @if ($totalRevenueYear > 0)
+                        <div id="keyAccountsDistributionChart" class="w-100 my-auto"></div>
                     @else
-                        <p class="mb-0 text-muted small">Belum ada transaksi di periode ini</p>
+                        <div class="text-center text-muted my-auto py-4">
+                            <i class="mdi mdi-chart-donut fs-1 d-block mb-2 text-secondary"></i>
+                            <span class="small">Tidak ada data transaksi untuk grafik periode ini.</span>
+                        </div>
                     @endif
                 </div>
             </div>
         </div>
 
-        <!-- Card 3: Active Key Accounts Count -->
-        <div class="col-md-4 col-sm-12">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="avatar avatar-md">
-                            <div class="avatar-initial bg-label-info rounded">
-                                <i class="mdi mdi-account-multiple-outline mdi-24px"></i>
+        <!-- Col 2: Rearranged Key Metrics (Top Key Account, Total Revenue, Active Customers) -->
+        <div class="col-xl-8 col-lg-7 col-12 d-flex flex-column justify-content-between gap-3">
+            
+            <!-- Card: Top Key Account Spotlight -->
+            <div class="card border-0 shadow-sm flex-fill">
+                <div class="card-body p-3 p-md-4">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3 mb-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="avatar avatar-md rounded bg-label-warning d-flex align-items-center justify-content-center">
+                                <i class="mdi mdi-crown text-warning fs-3"></i>
+                            </div>
+                            <div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-warning text-white fw-bold px-2 py-1">RANK #1 KEY ACCOUNT</span>
+                                    <small class="text-muted">Kontributor Tertinggi</small>
+                                </div>
+                                <h5 class="mb-0 fw-bold mt-1 text-dark">
+                                    @if ($topCustomer)
+                                        <a href="{{ route('existing.show', $topCustomer->id) }}" class="text-dark text-decoration-none">
+                                            {{ $topCustomer->company }}
+                                        </a>
+                                    @else
+                                        Belum Ada Transaksi
+                                    @endif
+                                </h5>
                             </div>
                         </div>
-                        <span class="badge bg-label-info">Active Customers</span>
+                        @if ($topCustomer)
+                            <div class="text-sm-end">
+                                <div class="text-muted small">Total Pembelian PO</div>
+                                <h4 class="mb-0 fw-bold text-success">
+                                    Rp {{ number_format($topCustomer->total_po, 0, ',', '.') }}
+                                </h4>
+                            </div>
+                        @endif
                     </div>
-                    <h4 class="mb-1 text-info fw-bold">{{ $keyAccounts->total() }} Customers</h4>
-                    <p class="mb-0 text-muted small">Jumlah pelanggan aktif dalam periode ini</p>
+
+                    @if ($topCustomer)
+                        <div class="p-3 bg-light rounded-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1 small">
+                                <span class="text-muted fw-semibold">Pangsa Omzet terhadap Total Revenue:</span>
+                                <span class="fw-bold text-primary">{{ $topCustomerPct }}%</span>
+                            </div>
+                            <div class="progress mb-2" style="height: 8px;">
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ min($topCustomerPct, 100) }}%" aria-valuenow="{{ $topCustomerPct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center pt-1 border-top border-light text-muted small">
+                                <span><i class="mdi mdi-receipt-text-outline me-1"></i> {{ $topCustomer->count_po }} Transaksi PO Selesai</span>
+                                <span><i class="mdi mdi-clock-outline me-1"></i> Order Terakhir: <strong>{{ $topCustomer->last_po_date ? \Carbon\Carbon::parse($topCustomer->last_po_date)->format('d-m-Y') : '-' }}</strong></span>
+                            </div>
+                        </div>
+                    @else
+                        <p class="text-muted small mb-0">Belum ada transaksi terekam pada periode ini.</p>
+                    @endif
                 </div>
             </div>
+
+            <!-- Row 2: Total Revenue & Active Customers -->
+            <div class="row g-3">
+                <!-- Total Revenue -->
+                <div class="col-sm-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="fw-semibold text-muted small">Total Revenue</span>
+                                <span class="avatar avatar-sm rounded bg-label-primary">
+                                    <i class="mdi mdi-currency-usd fs-5"></i>
+                                </span>
+                            </div>
+                            <h4 class="mb-1 text-primary fw-bold">Rp {{ number_format($totalRevenueYear, 0, ',', '.') }}</h4>
+                            <div class="d-flex align-items-center text-muted small">
+                                <span>Penerimaan PO Periode {{ $selectedYear }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Customers -->
+                <div class="col-sm-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="fw-semibold text-muted small">Active Customers</span>
+                                <span class="avatar avatar-sm rounded bg-label-info">
+                                    <i class="mdi mdi-account-group fs-5"></i>
+                                </span>
+                            </div>
+                            <h4 class="mb-1 text-info fw-bold">{{ $keyAccounts->total() }} Pelanggan</h4>
+                            <div class="d-flex align-items-center text-muted small">
+                                <span>Rata-rata: <strong>Rp {{ number_format($avgRevenuePerCustomer, 0, ',', '.') }}</strong> / akun</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -181,7 +264,7 @@
                                             Rp {{ number_format($ka->total_po / $ka->count_po, 0, ',', '.') }}
                                         </td>
                                         <td class="text-center small">
-                                            {{ $ka->last_po_date ? \Carbon\Carbon::parse($ka->last_po_date)->translatedFormat('d M Y') : '-' }}
+                                            {{ $ka->last_po_date ? \Carbon\Carbon::parse($ka->last_po_date)->format('d-m-Y') : '-' }}
                                         </td>
                                         <td class="text-end fw-semibold">
                                             {{ $totalRevenueYear > 0 ? round(($ka->total_po / $totalRevenueYear) * 100, 1) : 0 }}%
@@ -208,45 +291,6 @@
                             <div>
                                 {!! $keyAccounts->appends(request()->query())->links('pagination::bootstrap-5') !!}
                             </div>
-                        </div>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Chart Row -->
-    @php
-        $chartLabels = [];
-        $chartSeries = [];
-        $top5Sum = 0;
-        
-        foreach ($keyAccounts->take(5) as $ka) {
-            $chartLabels[] = $ka->company;
-            $chartSeries[] = (int)$ka->total_po;
-            $top5Sum += $ka->total_po;
-        }
-        
-        $othersSum = $totalRevenueYear - $top5Sum;
-        if ($othersSum > 0) {
-            $chartLabels[] = 'Lainnya';
-            $chartSeries[] = (int)$othersSum;
-        }
-    @endphp
-    <div class="row">
-        <div class="col-xl-4 col-lg-5 col-md-6 col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0 fw-bold">Revenue Distribution</h5>
-                    <small class="text-muted">Kontribusi Top 5 Pelanggan vs Lainnya</small>
-                </div>
-                <div class="card-body d-flex flex-column justify-content-between" style="min-height: 350px;">
-                    @if ($totalRevenueYear > 0)
-                        <div id="keyAccountsDistributionChart" class="my-auto"></div>
-                    @else
-                        <div class="text-center text-muted my-auto">
-                            <i class="mdi mdi-chart-donut fs-1 d-block mb-2"></i>
-                            Tidak ada data grafik untuk ditampilkan pada periode ini.
                         </div>
                     @endif
                 </div>

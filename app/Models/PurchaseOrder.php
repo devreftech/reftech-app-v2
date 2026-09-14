@@ -102,6 +102,30 @@ class PurchaseOrder extends Model
     }
 
     /**
+     * Dapatkan semua PR terkait (baik melalui id_purchase_request langsung maupun melalui alokasi detail).
+     */
+    public function getLinkedPurchaseRequestsAttribute()
+    {
+        $prIds = [];
+        if ($this->id_purchase_request) {
+            $prIds[] = $this->id_purchase_request;
+        }
+
+        $allocPrDetailIds = $this->prAllocations->pluck('id_purchase_request_detail')->filter()->unique();
+        if ($allocPrDetailIds->isNotEmpty()) {
+            $allocPrIds = PurchaseRequestDetail::whereIn('id', $allocPrDetailIds)->pluck('id_purchase_request')->toArray();
+            $prIds = array_merge($prIds, $allocPrIds);
+        }
+
+        $prIds = array_values(array_unique(array_filter($prIds)));
+        if (empty($prIds)) {
+            return collect();
+        }
+
+        return PurchaseRequest::whereIn('id', $prIds)->get();
+    }
+
+    /**
      * PO dengan termin (kredit/tempo) — satu-satunya tipe yang punya jatuh tempo AP.
      */
     public function isTempo(): bool

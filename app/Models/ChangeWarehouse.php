@@ -36,4 +36,8 @@ class ChangeWarehouse extends Model
     {
         return $this->belongsTo('App\Models\User', 'id_reciever', 'id');
     }
+    public function details()
+    {
+        return $this->hasMany('App\Models\DetailChangeWarehouse', 'id_change_warehouse', 'id');
+    }
 }

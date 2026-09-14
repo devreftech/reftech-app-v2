@@ -722,7 +722,7 @@
                             }
 
                             // 6. Payment Notifications
-                            if (in_array(Auth::user()?->role, ['Accounting', 'Admin', 'Sales']) && @$paymentNotifications && $paymentNotifications->count() > 0) {
+                            if (in_array(Auth::user()?->role, ['Accounting', 'Sales']) && @$paymentNotifications && $paymentNotifications->count() > 0) {
                                 foreach ($paymentNotifications as $pn) {
                                     $unifiedNotifications->push([
                                         'type' => 'payment',
@@ -960,7 +960,8 @@
                                             $pnUrl = route('contract.index');
                                         } elseif ($isContractApproved || $isContractSigned) {
                                             if ($pn->id_unit_quotation) {
-                                                $contract = \App\Models\Contract::where('id_unit_quotation', $pn->id_unit_quotation)->latest('id')->first();
+                                                $contract = $pn->unitQuotation?->contracts?->sortByDesc('id')->first()
+                                                    ?? \App\Models\Contract::where('id_unit_quotation', $pn->id_unit_quotation)->latest('id')->first();
                                                 if ($contract) {
                                                     $pnUrl = route('contract.show', $contract->id);
                                                 }
@@ -1281,11 +1282,16 @@
                         if (dot) dot.remove();
                     });
 
-                    // 4. Tutup semua floating toast yang sedang muncul di layar
+                    // 4. Tutup semua floating toast & modal alert prospect yang sedang muncul di layar
                     document.querySelectorAll('.prospect-floating-toast, .invoice-floating-toast').forEach(function (t) {
                         t.classList.add('toast-hiding');
                         setTimeout(function () { t.remove(); }, 300);
                     });
+                    var prospectModalEl = document.getElementById('prospectUrgentModal');
+                    if (prospectModalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        var pm = bootstrap.Modal.getInstance(prospectModalEl);
+                        if (pm) pm.hide();
+                    }
 
                     setTimeout(function () {
                         markAllBtn.disabled = false;

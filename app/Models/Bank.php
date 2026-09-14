@@ -106,4 +106,35 @@ class Bank extends Model
     {
         return $this->hasMany('App\Models\ManualManagementFee', 'id_source_bank');
     }
+
+    public function adjustments()
+    {
+        return $this->hasMany('App\Models\BankAdjustment', 'id_bank');
+    }
+
+    /**
+     * Check how many transactions are linked to this bank account across all financial modules.
+     */
+    public function getTransactionCount(): int
+    {
+        $arCount = Payment::where('id_bank', $this->id)->count();
+        $apCount = PurchasePayment::where('id_bank', $this->id)->count();
+        $expenseCount = Expense::where('id_bank', $this->id)->count();
+        $transferCount = BankTransfer::where('id_from_bank', $this->id)->orWhere('id_to_bank', $this->id)->count();
+        $feeCount = UnitQuotation::where('id_source_bank', $this->id)->where('fee_payment_status', 'paid')->count()
+                  + ManualManagementFee::where('id_source_bank', $this->id)->where('fee_payment_status', 'paid')->count();
+        $pettyCount = PettyCashTransaction::where('id_bank', $this->id)->orWhere('id_source_bank', $this->id)->count();
+        $adjustmentCount = BankAdjustment::where('id_bank', $this->id)->count();
+
+        return (int) ($arCount + $apCount + $expenseCount + $transferCount + $feeCount + $pettyCount + $adjustmentCount);
+    }
+
+    /**
+     * Determine whether this bank account has any transaction history.
+     */
+    public function hasTransactions(): bool
+    {
+        return $this->getTransactionCount() > 0;
+    }
 }
+

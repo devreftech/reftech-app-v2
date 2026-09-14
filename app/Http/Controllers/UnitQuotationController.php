@@ -51,10 +51,6 @@ class UnitQuotationController extends Controller
             ? User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->orderBy('name')->get(['id', 'name'])
             : collect();
 
-        $clients = $isManager
-            ? Client::orderBy('company')->get()
-            : Client::where('id_sales', Auth::id())->orderBy('company')->get();
-
         $selectedClient   = $request->get('client_id');
         $selectedPic      = $request->get('pic_id');
         $selectedProspect = $request->get('prospect_id');
@@ -67,17 +63,81 @@ class UnitQuotationController extends Controller
             }
         }
 
+        // Hanya muat client yang terpilih (jika ada preselection) agar halaman create
+        // tidak membebani ribuan elemen option di DOM (pencarian menggunakan Select2 AJAX).
+        $selectedClientModel = $selectedClient ? Client::find($selectedClient) : null;
+        $clients = $selectedClientModel ? collect([$selectedClientModel]) : collect();
+
         $paymentTemplates = $isManager
             ? collect()
-            : \App\Models\SalesPaymentTemplate::with('client')
+            : \App\Models\SalesPaymentTemplate::with('client:id,company')
                 ->where('id_sales', Auth::id())
                 ->orderBy('is_default', 'desc')
                 ->orderBy('name')
-                ->get();
+                ->get(['id', 'id_sales', 'id_client', 'name', 'payment_term', 'is_default']);
 
         $transportationPrices = \App\Models\TransportationPrice::orderBy('city')->get(['id', 'city', 'price']);
+        $rentalNoteTemplate = \App\Models\RentalNoteTemplate::first()?->note ?? '';
 
-        return view('pages.unit-quotation.create', compact('clients', 'defaultNoQuote', 'paymentTemplates', 'isManager', 'salesUsers', 'transportationPrices', 'selectedClient', 'selectedPic', 'selectedProspect'));
+        return view('pages.unit-quotation.create', compact('clients', 'defaultNoQuote', 'paymentTemplates', 'isManager', 'salesUsers', 'transportationPrices', 'selectedClient', 'selectedPic', 'selectedProspect', 'selectedClientModel', 'rentalNoteTemplate'));
+    }
+
+    /**
+     * Pencarian Client live via AJAX untuk Select2 (minimal 2 huruf).
+     * Sangat cepat karena di-query on-demand dan di-limit.
+     */
+    public function searchClients(Request $request)
+    {
+        if ($request->filled('client_id')) {
+            $c = Client::find($request->client_id);
+            return response()->json([
+                'client' => $c ? [
+                    'id'   => $c->id,
+                    'text' => $c->company,
+                    'role' => $c->role,
+                ] : null,
+            ]);
+        }
+
+        $q = trim($request->get('q', ''));
+        if (mb_strlen($q) < 2) {
+            return response()->json(['results' => []]);
+        }
+
+        $isManager = in_array(Auth::user()->role, ['Admin', 'Sales Manager']);
+        $salesId   = $request->get('sales_id', 'self');
+        $query     = Client::query();
+
+        if (!$isManager) {
+            // Role Sales: selalu hanya mencari client miliknya
+            $query->where('id_sales', Auth::id());
+        } else {
+            // Role Admin / Sales Manager: mengikuti filter sumber client
+            if ($salesId === 'self_leads' || $salesId === 'self') {
+                $query->where('id_sales', Auth::id());
+            } elseif ($salesId === 'all' || empty($salesId) || $salesId === '0') {
+                // Semua client
+            } else {
+                $query->where('id_sales', $salesId);
+            }
+        }
+
+        $clients = $query->where(function ($sub) use ($q) {
+                $sub->where('company', 'like', "%{$q}%")
+                    ->orWhere('ru', 'like', "%{$q}%");
+            })
+            ->orderBy('company')
+            ->limit(50)
+            ->get(['id', 'company', 'role'])
+            ->map(function ($c) {
+                return [
+                    'id'   => $c->id,
+                    'text' => $c->company,
+                    'role' => $c->role,
+                ];
+            });
+
+        return response()->json(['results' => $clients]);
     }
 
     public function getClientsBySales(Request $request, $salesId)
@@ -179,6 +239,7 @@ class UnitQuotationController extends Controller
             'shipping'         => $first['shipping'],
             'total'            => $first['total'],
             'note'             => $request->note,
+            'rental_terms'     => $request->type === 'Rental' ? $request->rental_terms : null,
             'validity'         => $request->validity,
             'pricing'          => $request->pricing,
             'warranty'         => $request->warranty,
@@ -466,8 +527,9 @@ class UnitQuotationController extends Controller
         $salesUsers = $isManager
             ? User::where('role', 'Sales')->where('active', '1')->where('id', '!=', 23)->orderBy('name')->get(['id', 'name'])
             : collect();
+        $rentalNoteTemplate = \App\Models\RentalNoteTemplate::first()?->note ?? '';
 
-        return view('pages.unit-quotation.edit', compact('quote', 'clients', 'editOptions', 'paymentTemplates', 'transportationPrices', 'isManager', 'salesUsers'));
+        return view('pages.unit-quotation.edit', compact('quote', 'clients', 'editOptions', 'paymentTemplates', 'transportationPrices', 'isManager', 'salesUsers', 'rentalNoteTemplate'));
     }
 
     public function update(Request $request, $id)
@@ -500,6 +562,7 @@ class UnitQuotationController extends Controller
             'shipping'         => $first['shipping'],
             'total'            => $first['total'],
             'note'             => $request->note,
+            'rental_terms'     => $request->type === 'Rental' ? $request->rental_terms : null,
             'validity'         => $request->validity,
             'pricing'          => $request->pricing,
             'warranty'         => $request->warranty,
@@ -576,6 +639,7 @@ class UnitQuotationController extends Controller
             'shipping'         => $source->shipping,
             'total'            => $source->total,
             'note'             => $source->note,
+            'rental_terms'     => $source->rental_terms,
             'validity'         => $source->validity,
             'pricing'          => $source->pricing,
             'warranty'         => $source->warranty,
@@ -1257,7 +1321,7 @@ class UnitQuotationController extends Controller
 
         // Notifikasi Accounting: ada payment baru masuk, perlu di-follow up (mis. terbitkan invoice).
         $quote = UnitQuotation::find($id);
-        $notifyUserIds = User::getAccountingRecipientsForSales($quote ? $quote->id_sales : null, true);
+        $notifyUserIds = User::getAccountingRecipientsForSales($quote ? $quote->id_sales : null, false);
         foreach ($notifyUserIds as $userId) {
             \App\Models\UnitQuotationPaymentNotification::create([
                 'id_payment' => $payment->id,
@@ -1272,12 +1336,12 @@ class UnitQuotationController extends Controller
         return redirect()->route('unit-quotation.show', $id)->with('success', 'Payment berhasil ditambahkan.');
     }
 
-    // Dipanggil polling navbar (role Accounting & Admin, plus Sales buat notifikasi
+    // Dipanggil polling navbar (role Accounting & Sales buat notifikasi
     // invoice yang sudah di-acc) supaya notifikasi payment baru, PO menunggu invoice,
     // dan invoice yang sudah terbit muncul tanpa reload halaman.
     public function unreadPaymentNotifications()
     {
-        if (!in_array(Auth::user()->role, ['Accounting', 'Admin', 'Sales'])) {
+        if (!in_array(Auth::user()->role, ['Accounting', 'Sales'])) {
             return response()->json(['count' => 0, 'items' => []]);
         }
 
@@ -1697,10 +1761,10 @@ class UnitQuotationController extends Controller
 
     // Notifikasi Accounting & Admin: ada invoice yang menunggu diterbitkan (muncul di
     // Invoice > tab Request), dipanggil setiap kali invoice baru dibuat lewat Upload PO
-    // maupun "Ajukan Invoice Selanjutnya" — hanya dikirim ke Accounting yang menangani sales terkait (+ Admin).
+    // maupun "Ajukan Invoice Selanjutnya" — hanya dikirim ke Accounting yang menangani sales terkait.
     private function notifyInvoiceRequested(UnitQuotation $quote, Invoice $invoice): void
     {
-        $notifyUserIds = User::getAccountingRecipientsForSales($quote->id_sales, true);
+        $notifyUserIds = User::getAccountingRecipientsForSales($quote->id_sales, false);
         foreach ($notifyUserIds as $userId) {
             \App\Models\UnitQuotationPaymentNotification::create([
                 'id_invoice' => $invoice->id,

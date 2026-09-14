@@ -44,7 +44,8 @@ class POController extends Controller
         $suppliers = Supplier::all();
         $previewNoPo = $this->generateNoPo();
         $units = \App\Models\Unit::where('type', 'global')->orderBy('brand')->get();
-        $products = Product::orderBy('commodity')->get();
+        // Optimized: Products are loaded on-demand via Select2 AJAX (searchProducts) to eliminate 9,200+ <option> tags bottleneck
+        $products = collect();
         $poTypes = PurchaseOrderType::orderBy('name')->get();
 
         $sourcePr = null;
@@ -147,6 +148,68 @@ class POController extends Controller
         ]);
     }
 
+    /**
+     * AJAX endpoint for paginated Select2 product search on PO create form.
+     */
+    public function searchProducts(Request $request)
+    {
+        // If single ID requested for Select2 pre-fill/hydration
+        if ($request->filled('id')) {
+            $product = Product::select('id', 'commodity', 'description', 'unit')->find($request->input('id'));
+            if ($product) {
+                $desc = !empty($product->description) && $product->description !== '-' ? ' — ' . $product->description : '';
+                return response()->json([
+                    'results' => [[
+                        'id' => $product->id,
+                        'text' => $product->commodity . $desc,
+                        'commodity' => $product->commodity,
+                        'description' => $product->description,
+                        'unit' => ($product->unit && $product->unit !== '-') ? $product->unit : 'Pcs',
+                    ]],
+                    'pagination' => ['more' => false],
+                ]);
+            }
+            return response()->json(['results' => [], 'pagination' => ['more' => false]]);
+        }
+
+        $q = trim($request->input('q', ''));
+        $page = max(1, (int) $request->input('page', 1));
+        $limit = 30;
+
+        $query = Product::select('id', 'commodity', 'description', 'unit');
+
+        if (!empty($q)) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('commodity', 'like', "%{$q}%")
+                    ->orWhere('description', 'like', "%{$q}%");
+            });
+        }
+
+        $totalCount = $query->count();
+        $products = $query->orderBy('commodity')
+            ->skip(($page - 1) * $limit)
+            ->take($limit)
+            ->get();
+
+        $results = $products->map(function ($p) {
+            $desc = !empty($p->description) && $p->description !== '-' ? ' — ' . $p->description : '';
+            return [
+                'id' => $p->id,
+                'text' => $p->commodity . $desc,
+                'commodity' => $p->commodity,
+                'description' => $p->description,
+                'unit' => ($p->unit && $p->unit !== '-') ? $p->unit : 'Pcs',
+            ];
+        });
+
+        return response()->json([
+            'results' => $results,
+            'pagination' => [
+                'more' => ($page * $limit) < $totalCount,
+            ],
+        ]);
+    }
+
     private function generateNoPo(): string
     {
         $year = now()->format('Y');
@@ -236,6 +299,15 @@ class POController extends Controller
                     }
                 }
             }
+
+            // Jika id_purchase_request belum diset tapi ada item dari PR, set ke PR pertama
+            if (!$purchase->id_purchase_request) {
+                $firstAlloc = PurchaseRequestDetailAllocation::where('id_purchase_order', $purchase->id)->first();
+                if ($firstAlloc && $firstAlloc->purchaseRequestDetail) {
+                    $purchase->id_purchase_request = $firstAlloc->purchaseRequestDetail->id_purchase_request;
+                    $purchase->save();
+                }
+            }
         }
         if ($purchaseSave && $dPurchaseSave) {
             return redirect('purchase/' . $purchase->id)->with('success', 'data berhasil ditambahkan');
@@ -264,8 +336,9 @@ class POController extends Controller
         $sourcePr = null;
         $prDeliveryDone = false;
         $prDeliveryType = null;
-        if ($purchase->id_purchase_request) {
-            $sourcePr = PurchaseRequest::find($purchase->id_purchase_request);
+        $linkedPrs = $purchase->linkedPurchaseRequests;
+        if ($linkedPrs->isNotEmpty()) {
+            $sourcePr = $linkedPrs->first();
             $prDeliveryType = $this->resolvePurchaseType($purchase->supplier->info ?? null);
 
             $poAllocations = PurchaseRequestDetailAllocation::where('id_purchase_order', $purchase->id)->get();
@@ -280,7 +353,7 @@ class POController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('pages.accounting.purchase.detail', compact('purchase', 'dPurchase', 'dpp', 'tax', 'totalPph', 'sourcePr', 'prDeliveryDone', 'prDeliveryType', 'productIns'));
+        return view('pages.accounting.purchase.detail', compact('purchase', 'dPurchase', 'dpp', 'tax', 'totalPph', 'sourcePr', 'linkedPrs', 'prDeliveryDone', 'prDeliveryType', 'productIns'));
     }
 
     private function resolvePurchaseType(?string $supplierInfo): string

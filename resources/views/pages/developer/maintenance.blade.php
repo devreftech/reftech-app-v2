@@ -35,6 +35,10 @@
                     <i class="mdi mdi-check-circle-outline me-1"></i> SYSTEM LIVE (NORMAL)
                 </span>
             @endif
+
+            <button type="button" class="btn btn-outline-success btn-sm px-3 py-2 d-flex align-items-center" onclick="if(window.openMaintenanceResumedModal){window.openMaintenanceResumedModal();}else{alert('Modal not available');}" title="Klik untuk menguji tampilan Pop-up setelah maintenance selesai">
+                <i class="mdi mdi-eye-check-outline me-1"></i> Preview Pop-up Pasca Update
+            </button>
         </div>
     </div>
 

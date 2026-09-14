@@ -1425,7 +1425,7 @@
     </div>
 @elseif(Auth::user()->role == 'Accounting')
     @include("pages.accounting.dashboard._content")
-@elseif (Auth::user()->role == 'Finance Manager')
+@elseif (in_array(Auth::user()->role, ['Finance Manager', 'Finance']))
     @php
         $financeView = $financeView ?? 'finance';
     @endphp
@@ -2867,6 +2867,84 @@
                         popup: 'animate__animated animate__fadeOutUp animate__faster',
                     },
                     confirmButtonText: 'Siap, Pantau Proyek! 🚀',
+                    customClass: {
+                        popup: 'swal-welcome-popup',
+                        confirmButton: 'btn btn-primary waves-effect waves-light',
+                    },
+                    buttonsStyling: false,
+                });
+            });
+        </script>
+    @endif
+
+    @if($showFinanceWelcomeAlert ?? false)
+        <script>
+            $(document).ready(function() {
+                Swal.fire({
+                    html: `
+                        <div class="welcome-alert-header" style="background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);">
+                            <span class="welcome-alert-wave">💰</span>
+                            <div class="welcome-alert-title">Hai {{ Auth::user()->name }}!</div>
+                            <div class="welcome-alert-subtitle">Berikut ringkasan posisi kas &amp; keuangan penting hari ini</div>
+                        </div>
+                        <div class="welcome-alert-body">
+                            <!-- 1. Likuiditas Kas & Bank -->
+                            <a href="{{ route('bank.index') }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-invoice"><i class="mdi mdi-bank"></i></div>
+                                <div>
+                                    <p class="welcome-alert-card-title">Rp {{ number_format($financeCashPosition ?? 0, 0, ',', '.') }} Likuiditas Kas &amp; Bank</p>
+                                    <p class="welcome-alert-card-text">{{ $financeActiveBankCount ?? 0 }} rekening bank aktif (Reftech &amp; Kojisha)</p>
+                                </div>
+                            </a>
+
+                            <!-- 2. Tagihan Supplier Jatuh Tempo (AP) -->
+                            <a href="{{ route('payable.index_aging') }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-fire"><i class="mdi mdi-receipt-text-clock-outline"></i></div>
+                                <div>
+                                    @if(($financeApOverdueCount ?? 0) > 0)
+                                        <p class="welcome-alert-card-title">{{ $financeApOverdueCount }} Tagihan Supplier Jatuh Tempo (Rp {{ number_format($financeApOverdueNominal ?? 0, 0, ',', '.') }})</p>
+                                        <p class="welcome-alert-card-text">Segera jadwalkan pembayaran hutang supplier</p>
+                                    @else
+                                        <p class="welcome-alert-card-title">Tagihan Supplier Aman</p>
+                                        <p class="welcome-alert-card-text">Tidak ada hutang supplier yang lewat jatuh tempo</p>
+                                    @endif
+                                </div>
+                            </a>
+
+                            <!-- 3. Piutang Customer Jatuh Tempo (AR) -->
+                            <a href="{{ route('payment_index.aging') }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-overdue"><i class="mdi mdi-account-cash-outline"></i></div>
+                                <div>
+                                    @if(($financeArOverdueCount ?? 0) > 0)
+                                        <p class="welcome-alert-card-title">{{ $financeArOverdueCount }} Piutang Customer Jatuh Tempo (Rp {{ number_format($financeArOverdueNominal ?? 0, 0, ',', '.') }})</p>
+                                        <p class="welcome-alert-card-text">Perlu konfirmasi &amp; percepatan penagihan kas masuk</p>
+                                    @else
+                                        <p class="welcome-alert-card-title">Piutang Pelanggan Terkendali</p>
+                                        <p class="welcome-alert-card-text">Semua pembayaran piutang berjalan tepat waktu</p>
+                                    @endif
+                                </div>
+                            </a>
+
+                            <!-- 4. Pengeluaran Beban Kas Bulan Ini -->
+                            <a href="{{ route('expense.index') }}" class="welcome-alert-card">
+                                <div class="welcome-alert-icon is-payment"><i class="mdi mdi-cash-multiple"></i></div>
+                                <div>
+                                    <p class="welcome-alert-card-title">Rp {{ number_format($financeExpenseMonth ?? 0, 0, ',', '.') }} Beban Kas Bulan Ini</p>
+                                    <p class="welcome-alert-card-text">Pantau realisasi pengeluaran kas terhadap anggaran</p>
+                                </div>
+                            </a>
+
+                            <div class="welcome-alert-footer">Semangat mengelola keuangan! 💼</div>
+                        </div>
+                    `,
+                    width: '44rem',
+                    showClass: {
+                        popup: 'animate__animated animate__zoomIn animate__faster',
+                    },
+                    hideClass: {
+                        popup: 'animate__animated animate__fadeOutUp animate__faster',
+                    },
+                    confirmButtonText: 'Siap, Pantau Keuangan! 🚀',
                     customClass: {
                         popup: 'swal-welcome-popup',
                         confirmButton: 'btn btn-primary waves-effect waves-light',

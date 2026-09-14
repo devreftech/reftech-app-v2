@@ -348,6 +348,106 @@
             </div>
         </div>
     @endif
+    @if (Auth::user()->role == 'Logistic')
+        {{-- Sliding Quick Preview Drawer (Offcanvas) for Good Receipt with Blur Effect --}}
+        <div class="offcanvas offcanvas-end shadow-lg" tabindex="-1" id="goodReceiptOffcanvas" aria-labelledby="goodReceiptOffcanvasLabel" style="width: 540px; max-width: 92vw;">
+            <div class="offcanvas-header bg-label-primary border-bottom py-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge bg-primary text-white font-11 rounded-pill" id="grDrawerDocCode">PO-0000</span>
+                        <div id="grDrawerStatusBadge"></div>
+                    </div>
+                    <h5 class="offcanvas-title fw-bold text-heading mb-0" id="goodReceiptOffcanvasLabel">Rincian Dokumen Good Receipt</h5>
+                </div>
+                <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body p-4">
+                {{-- Document Summary Card --}}
+                <div class="card border mb-3 bg-light">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
+                            <div>
+                                <span class="text-muted font-11 d-block text-uppercase fw-bold">Customer / Klien:</span>
+                                <h6 class="fw-bold text-heading font-14 mb-0" id="grDrawerCustomer">-</h6>
+                            </div>
+                            <div class="text-end">
+                                <span class="text-muted font-11 d-block text-uppercase fw-bold">Supplier / Vendor:</span>
+                                <span class="fw-semibold text-heading font-13" id="grDrawerSupplier">-</span>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 font-12">
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11">No. Purchase Order:</span>
+                                <strong class="text-primary font-monospace" id="grDrawerNoPo">-</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11" id="grDrawerRefLabel">No. Purchase Request:</span>
+                                <strong class="text-heading font-monospace" id="grDrawerRefDoc">-</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11">Tgl Dokumen:</span>
+                                <strong class="text-heading" id="grDrawerDate">-</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11">Tipe / Pengadaan:</span>
+                                <div id="grDrawerType">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Delivery / Warehouse Info Card --}}
+                <div class="card border mb-3 bg-white" id="grDrawerDeliveryCard">
+                    <div class="card-body p-3">
+                        <span class="text-muted font-11 d-block text-uppercase fw-bold mb-2">
+                            <i class="mdi mdi-truck-fast-outline text-info me-1"></i> Info Pengiriman &amp; Logistik
+                        </span>
+                        <div class="row g-2 font-12">
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11">Ekspedisi / Cargo:</span>
+                                <strong class="text-heading" id="grDrawerCargo">-</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11" id="grDrawerSubInfoLabel">Status Pengiriman:</span>
+                                <div id="grDrawerSubInfo">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Ordered / Received Items Table --}}
+                <div class="mb-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <label class="font-11 text-muted text-uppercase fw-bold mb-0">Daftar Barang / Sparepart (<span id="grDrawerItemCount">0</span> jenis)</label>
+                        <span class="badge bg-label-primary font-11" id="grDrawerTotalPcs">0 item</span>
+                    </div>
+                    <div class="table-responsive border rounded-3 bg-white">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr class="font-11 text-muted text-uppercase">
+                                    <th style="width: 30px;" class="text-center">#</th>
+                                    <th>Nama Barang &amp; Spesifikasi</th>
+                                    <th class="text-end" style="width: 120px;">Kuantitas</th>
+                                </tr>
+                            </thead>
+                            <tbody id="grDrawerItemsTbody" class="font-12">
+                                {{-- Dynamically populated --}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="offcanvas-footer border-top p-3 d-flex align-items-center justify-content-between gap-2">
+                <div id="grDrawerActionSlot">
+                    {{-- Primary action button e.g. Proses GR or Buka Detail --}}
+                </div>
+                <div class="d-flex align-items-center gap-2" id="grDrawerExtraLinks">
+                    {{-- Secondary links e.g. Buka PO, Buka PR --}}
+                </div>
+            </div>
+        </div>
+    @endif
     </div>
 @endsection
 
@@ -514,6 +614,47 @@
             border-radius: 6px !important;
             box-shadow: none !important;
         }
+
+        /* Item Preview Trigger Button */
+        .btn-item-preview {
+            background: #f4f5f9;
+            border: 1px solid #e2e5ec;
+            color: #435971;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .btn-item-preview:hover {
+            background: #696cff;
+            border-color: #696cff;
+            color: #ffffff;
+            box-shadow: 0 4px 10px rgba(105, 108, 255, 0.25);
+        }
+        .btn-item-preview:hover i,
+        .btn-item-preview:hover span {
+            color: #ffffff !important;
+        }
+
+        /* Glassmorphism Backdrop Blur for Offcanvas Drawer */
+        .offcanvas-backdrop {
+            transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        .offcanvas-backdrop.show {
+            backdrop-filter: blur(8px) saturate(160%) !important;
+            -webkit-backdrop-filter: blur(8px) saturate(160%) !important;
+            background-color: rgba(15, 23, 42, 0.5) !important;
+            opacity: 1 !important;
+        }
+
+        /* Slide-over Drawer Elevation */
+        #goodReceiptOffcanvas {
+            box-shadow: -15px 0 45px rgba(15, 23, 42, 0.3) !important;
+            border-left: 1px solid rgba(0, 0, 0, 0.08) !important;
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
     </style>
 @endpush
 
@@ -527,6 +668,277 @@
 @endpush
 
 @push('page-script')
+    <script>
+        function getGrRouteSafe(name, param, fallback) {
+            try {
+                if (typeof route === 'function') {
+                    return route(name, param);
+                }
+            } catch (e) {}
+            return fallback;
+        }
+
+        function formatGrDate(d) {
+            if (!d) return '-';
+            if (typeof moment !== 'undefined') {
+                var m = moment(d);
+                return m.isValid() ? m.format('DD-MM-YYYY') : d;
+            }
+            return d;
+        }
+
+        window.openGoodReceiptDrawer = function (full, drawerType) {
+            if (!full) return;
+
+            var offcanvasEl = document.getElementById('goodReceiptOffcanvas');
+            if (!offcanvasEl) return;
+
+            // Reset Drawer fields
+            $('#grDrawerDocCode').text('-');
+            $('#grDrawerStatusBadge').empty();
+            $('#grDrawerCustomer').text('-');
+            $('#grDrawerSupplier').text('-');
+            $('#grDrawerNoPo').text('-');
+            $('#grDrawerRefLabel').text('No. Purchase Request:');
+            $('#grDrawerRefDoc').text('-');
+            $('#grDrawerDate').text('-');
+            $('#grDrawerType').text('-');
+            $('#grDrawerCargo').text('-');
+            $('#grDrawerSubInfoLabel').text('Status Pengiriman:');
+            $('#grDrawerSubInfo').empty();
+            $('#grDrawerItemsTbody').empty();
+            $('#grDrawerActionSlot').empty();
+            $('#grDrawerExtraLinks').empty();
+
+            if (drawerType === 'received') {
+                // Tab Barang Diterima
+                var noGr = full.no_gr || ('GR #' + full.product_in_id);
+                $('#grDrawerDocCode').text(noGr);
+                $('#grDrawerStatusBadge').html('<span class="badge bg-label-success rounded-pill px-3 py-1 font-11 fw-semibold"><i class="mdi mdi-check-decagram me-1"></i>Telah Diterima</span>');
+
+                $('#grDrawerCustomer').text(full.no_do ? ('No DO: ' + full.no_do) : '-');
+                $('#grDrawerSupplier').text(full.received_by ? ('Diterima oleh: ' + full.received_by) : '-');
+                $('#grDrawerNoPo').text(full.no_po || '-');
+                $('#grDrawerRefLabel').text('No. Product In:');
+                $('#grDrawerRefDoc').text(full.no_product_in || ('#' + full.product_in_id));
+                $('#grDrawerDate').text(formatGrDate(full.date));
+                $('#grDrawerType').html('<span class="badge bg-label-success font-11">Good Receipt</span>');
+
+                $('#grDrawerCargo').text(full.received_by || '-');
+                $('#grDrawerSubInfoLabel').text('Kondisi / Retur:');
+                if (full.damaged_count > 0) {
+                    $('#grDrawerSubInfo').html('<span class="badge bg-label-danger font-11"><i class="mdi mdi-alert-circle-outline me-1"></i>' + full.damaged_count + ' item rusak / retur</span>');
+                } else {
+                    $('#grDrawerSubInfo').html('<span class="badge bg-label-success font-11"><i class="mdi mdi-check-circle-outline me-1"></i>Sesuai / Kondisi Baik</span>');
+                }
+
+                // Single item received row
+                var tbodyHtml = '<tr>' +
+                    '<td class="text-muted font-11 text-center align-middle">1</td>' +
+                    '<td>' +
+                        '<div class="fw-semibold text-heading font-12">' + (full.item || '-') + '</div>' +
+                        '<div class="font-11 text-muted mt-1"><i class="mdi mdi-map-marker-outline text-primary me-1"></i>Gudang ' + (full.warehouse || 'Tujuan') + '</div>' +
+                    '</td>' +
+                    '<td class="text-end align-middle"><span class="fw-bold font-13 text-primary">' + (full.qty || 1) + '</span> <span class="font-11 text-muted">pcs</span></td>' +
+                    '</tr>';
+                $('#grDrawerItemsTbody').html(tbodyHtml);
+                $('#grDrawerItemCount').text('1');
+                $('#grDrawerTotalPcs').text((full.qty || 1) + ' pcs');
+
+                var productInUrl = getGrRouteSafe('product-in.show', full.product_in_id, '/product-in/' + full.product_in_id);
+                $('#grDrawerActionSlot').html('<a href="' + productInUrl + '" class="btn btn-primary d-flex align-items-center gap-1 shadow-xs"><i class="mdi mdi-open-in-new me-1"></i> Buka Detail Penerimaan</a>');
+
+                if (full.id_purchase_order) {
+                    var poUrl = getGrRouteSafe('purchase.show', full.id_purchase_order, '/purchase/' + full.id_purchase_order);
+                    $('#grDrawerExtraLinks').html('<a href="' + poUrl + '" class="btn btn-outline-secondary d-flex align-items-center gap-1"><i class="mdi mdi-file-document-outline me-1"></i> Buka PO</a>');
+                }
+
+            } else if (drawerType === 'incoming-direct') {
+                // Tab Menunggu Penerimaan -> Subtab Non-PR
+                $('#grDrawerDocCode').text(full.no_po || ('PO #' + full.id));
+                if (full.is_on_delivery == 1) {
+                    $('#grDrawerStatusBadge').html('<span class="badge bg-label-warning rounded-pill px-3 py-1 font-11 fw-semibold"><i class="mdi mdi-truck-delivery-outline me-1"></i>Dalam Pengiriman</span>');
+                } else {
+                    $('#grDrawerStatusBadge').html('<span class="badge bg-label-secondary rounded-pill px-3 py-1 font-11 fw-semibold"><i class="mdi mdi-clock-outline me-1"></i>Belum Dikirim</span>');
+                }
+
+                $('#grDrawerCustomer').html('<span class="text-muted fst-italic">Direct Stock (Non-PR)</span>');
+                $('#grDrawerSupplier').text(full.supplier || '-');
+                $('#grDrawerNoPo').text(full.no_po || '-');
+                $('#grDrawerRefLabel').text('Kategori Dokumen:');
+                var catBadge = full.category === 'Unit' ? '<span class="badge bg-label-warning font-11">Unit</span>' : '<span class="badge bg-label-primary font-11">Parts</span>';
+                $('#grDrawerRefDoc').html(catBadge);
+                $('#grDrawerDate').text(formatGrDate(full.po_date));
+                var purchaseTypeBadge = full.purchase_type === 'Impor' ? '<span class="badge bg-label-info font-11">Impor</span>' : '<span class="badge bg-label-success font-11">Lokal</span>';
+                $('#grDrawerType').html(purchaseTypeBadge);
+
+                $('#grDrawerCargo').text(full.cargo || '-');
+                $('#grDrawerSubInfoLabel').text('Info Pengiriman:');
+                if (full.is_on_delivery == 1) {
+                    $('#grDrawerSubInfo').html('<span class="badge bg-label-warning font-11"><i class="mdi mdi-truck-fast me-1"></i>Dikirim</span>');
+                } else {
+                    $('#grDrawerSubInfo').html('<span class="badge bg-label-secondary font-11">Menunggu Pengiriman</span>');
+                }
+
+                // Items list rendering
+                var items = (full.items_detail || '').split('||').filter(Boolean);
+                var tbodyHtml = '';
+                if (items.length > 0) {
+                    items.forEach(function (it, idx) {
+                        var parts = it.split('::');
+                        var desc = parts[0] ? parts[0].trim() : it.trim();
+                        var match = desc.match(/^(.*?)\s*x(\d+(?:\.\d+)?)\s*(.*)$/);
+                        var itemName = match ? match[1].trim() : desc;
+                        var qtyVal = match ? match[2].trim() : (full.qty_full || '1');
+                        var unitVal = match ? (match[3].trim() || 'pcs') : '';
+
+                        tbodyHtml += '<tr>' +
+                            '<td class="text-muted font-11 text-center align-middle">' + (idx + 1) + '</td>' +
+                            '<td>' +
+                                '<div class="fw-semibold text-heading font-12">' + itemName + '</div>' +
+                                (full.category === 'Unit' ? '<span class="badge bg-label-warning font-10 mt-1">Unit</span>' : '') +
+                            '</td>' +
+                            '<td class="text-end align-middle"><span class="fw-bold font-13 text-primary">' + qtyVal + '</span> <span class="font-11 text-muted">' + unitVal + '</span></td>' +
+                            '</tr>';
+                    });
+                    $('#grDrawerItemCount').text(items.length);
+                    $('#grDrawerTotalPcs').text(full.qty_full || (items.length + ' item'));
+                } else {
+                    tbodyHtml = '<tr><td class="text-muted font-11 text-center align-middle">1</td><td><div class="fw-semibold text-heading font-12">' + (full.item || '-') + '</div></td><td class="text-end align-middle"><span class="fw-bold font-13 text-primary">' + (full.qty_full || '1 item') + '</span></td></tr>';
+                    $('#grDrawerItemCount').text('1');
+                    $('#grDrawerTotalPcs').text(full.qty_full || '1 item');
+                }
+                $('#grDrawerItemsTbody').html(tbodyHtml);
+
+                // Action button
+                if (full.is_on_delivery == 1) {
+                    var grUrl = (full.category === 'Unit')
+                        ? getGrRouteSafe('unit-product-in.goods-receipt-form', full.id, '/unit-product-in/' + full.id + '/goods-receipt-form')
+                        : getGrRouteSafe('purchase.goods-receipt-direct', full.id, '/purchase/' + full.id + '/goods-receipt-direct');
+                    $('#grDrawerActionSlot').html('<a href="' + grUrl + '" class="btn btn-primary d-flex align-items-center gap-1 shadow-xs"><i class="mdi mdi-checkbox-marked-circle-outline me-1"></i> Proses Good Receipt</a>');
+                } else {
+                    $('#grDrawerActionSlot').html('<button type="button" class="btn btn-secondary d-flex align-items-center gap-1" disabled><i class="mdi mdi-clock-outline me-1"></i> Menunggu Info Pengiriman</button>');
+                }
+
+                var poUrl = getGrRouteSafe('purchase.show', full.id, '/purchase/' + full.id);
+                $('#grDrawerExtraLinks').html('<a href="' + poUrl + '" class="btn btn-outline-secondary d-flex align-items-center gap-1"><i class="mdi mdi-file-document-outline me-1"></i> Buka PO</a>');
+
+            } else {
+                // Tab Menunggu Penerimaan -> Subtab PR ('incoming-pr')
+                $('#grDrawerDocCode').text(full.no_po || ('PO #' + full.id));
+                if (full.is_on_delivery == 1) {
+                    $('#grDrawerStatusBadge').html('<span class="badge bg-label-warning rounded-pill px-3 py-1 font-11 fw-semibold"><i class="mdi mdi-truck-delivery-outline me-1"></i>Dalam Pengiriman</span>');
+                } else {
+                    $('#grDrawerStatusBadge').html('<span class="badge bg-label-secondary rounded-pill px-3 py-1 font-11 fw-semibold"><i class="mdi mdi-clock-outline me-1"></i>Menunggu Info Pengiriman</span>');
+                }
+
+                $('#grDrawerCustomer').text(full.company || '-');
+                $('#grDrawerSupplier').text(full.supplier || '-');
+                $('#grDrawerNoPo').text(full.no_po || '-');
+                $('#grDrawerRefLabel').text('No. Purchase Request:');
+                $('#grDrawerRefDoc').text(full.no_pr || '-');
+                $('#grDrawerDate').text(formatGrDate(full.po_date));
+
+                var typeBadge = '';
+                if (full.purchase_type === 'Lokal') {
+                    typeBadge = '<span class="badge bg-label-success font-11">Lokal</span>';
+                } else if (full.purchase_type === 'Impor') {
+                    typeBadge = '<span class="badge bg-label-info font-11">Impor</span>';
+                } else if (full.purchase_type) {
+                    typeBadge = '<span class="badge bg-label-secondary font-11">' + full.purchase_type + '</span>';
+                } else {
+                    typeBadge = '-';
+                }
+                $('#grDrawerType').html(typeBadge);
+
+                $('#grDrawerCargo').text(full.cargo || '-');
+                $('#grDrawerSubInfoLabel').text('Status Pengiriman:');
+                if (full.is_on_delivery == 1) {
+                    $('#grDrawerSubInfo').html('<span class="badge bg-label-warning font-11"><i class="mdi mdi-truck-fast me-1"></i>Siap / Dikirim</span>');
+                } else {
+                    $('#grDrawerSubInfo').html('<span class="badge bg-label-secondary font-11">Menunggu Input Admin</span>');
+                }
+
+                // Items list rendering
+                var items = (full.items_detail || '').split('||').filter(Boolean);
+                var tbodyHtml = '';
+                if (items.length > 0) {
+                    items.forEach(function (it, idx) {
+                        var parts = it.split('::');
+                        var desc = parts[0] ? parts[0].trim() : it.trim();
+                        var extraStock = parts[1] ? parts[1].trim() : '';
+                        var go = parts[2] ? parts[2].trim() : '';
+
+                        var match = desc.match(/^(.*?)\s*x(\d+(?:\.\d+)?)\s*(.*)$/);
+                        var itemName = match ? match[1].trim() : desc;
+                        var qtyVal = match ? match[2].trim() : (full.qty_full || '1');
+                        var unitVal = match ? (match[3].trim() || 'pcs') : '';
+
+                        var badgesHtml = '';
+                        if (go === 'Genuine') {
+                            badgesHtml += '<span class="badge bg-label-primary font-10 me-1">Genuine (G)</span>';
+                        } else if (go && go !== '-') {
+                            badgesHtml += '<span class="badge bg-label-info font-10 me-1">' + go + '</span>';
+                        }
+                        if (extraStock && parseInt(extraStock) > 0) {
+                            badgesHtml += '<span class="badge bg-label-warning font-10" title="Kelebihan qty dari kebutuhan PR, buat tambahan stok">+' + extraStock + ' stok</span>';
+                        }
+
+                        tbodyHtml += '<tr>' +
+                            '<td class="text-muted font-11 text-center align-middle">' + (idx + 1) + '</td>' +
+                            '<td>' +
+                                '<div class="fw-semibold text-heading font-12">' + itemName + '</div>' +
+                                (badgesHtml ? ('<div class="mt-1">' + badgesHtml + '</div>') : '') +
+                            '</td>' +
+                            '<td class="text-end align-middle"><span class="fw-bold font-13 text-primary">' + qtyVal + '</span> <span class="font-11 text-muted">' + unitVal + '</span></td>' +
+                            '</tr>';
+                    });
+                    $('#grDrawerItemCount').text(items.length);
+                    $('#grDrawerTotalPcs').text(full.qty_full || (items.length + ' item'));
+                } else {
+                    tbodyHtml = '<tr><td class="text-muted font-11 text-center align-middle">1</td><td><div class="fw-semibold text-heading font-12">' + (full.item || '-') + '</div></td><td class="text-end align-middle"><span class="fw-bold font-13 text-primary">' + (full.qty_full || '1 item') + '</span></td></tr>';
+                    $('#grDrawerItemCount').text('1');
+                    $('#grDrawerTotalPcs').text(full.qty_full || '1 item');
+                }
+                $('#grDrawerItemsTbody').html(tbodyHtml);
+
+                // Action button
+                if (full.is_on_delivery == 1) {
+                    var grUrl = getGrRouteSafe('purchase.goods-receipt', full.id, '/purchase/' + full.id + '/goods-receipt');
+                    $('#grDrawerActionSlot').html('<a href="' + grUrl + '" class="btn btn-primary d-flex align-items-center gap-1 shadow-xs"><i class="mdi mdi-checkbox-marked-circle-outline me-1"></i> Proses Good Receipt</a>');
+                } else {
+                    $('#grDrawerActionSlot').html('<button type="button" class="btn btn-secondary d-flex align-items-center gap-1" disabled><i class="mdi mdi-clock-outline me-1"></i> Menunggu Info Pengiriman</button>');
+                }
+
+                var extraHtml = '';
+                var poUrl = getGrRouteSafe('purchase.show', full.id, '/purchase/' + full.id);
+                extraHtml += '<a href="' + poUrl + '" class="btn btn-outline-secondary d-flex align-items-center gap-1"><i class="mdi mdi-file-document-outline me-1"></i> Buka PO</a>';
+                if (full.id_pending) {
+                    var prUrl = getGrRouteSafe('purchase-request.show', full.id_pending, '/purchase-request/' + full.id_pending);
+                    extraHtml += '<a href="' + prUrl + '" class="btn btn-outline-secondary d-flex align-items-center gap-1"><i class="mdi mdi-clipboard-text-outline me-1"></i> Buka PR</a>';
+                }
+                $('#grDrawerExtraLinks').html(extraHtml);
+            }
+
+            // Show the offcanvas drawer
+            var bsOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
+            bsOffcanvas.show();
+        };
+
+        // Delegated click on .btn-gr-drawer to open slide-over
+        $(document).on('click', '.btn-gr-drawer', function (e) {
+            e.preventDefault();
+            var $tr = $(this).closest('tr');
+            var $table = $tr.closest('table');
+            if (!$table.length) return;
+            var dt = $table.DataTable();
+            var full = dt.row($tr).data();
+            if (!full) return;
+
+            var drawerType = $(this).data('drawer-type') || $table.data('drawer-type') || 'incoming-pr';
+            window.openGoodReceiptDrawer(full, drawerType);
+        });
+    </script>
     <script src="{{ asset('assets') }}/js/tables-datatables-basic.js"></script>
     <script src="{{ asset('assets') }}/includes/table-product-in-lokal.js"></script>
     <script src="{{ asset('assets') }}/includes/table-product-in-import.js"></script>
@@ -534,7 +946,7 @@
     <script src="{{ asset('assets') }}/includes/table-product-in-req-import.js"></script>
     <script src="{{ asset('assets') }}/includes/table-product-in-req-logistic.js"></script>
     <script src="{{ asset('assets') }}/includes/table-product-in-logistic.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-incoming-goods-pr.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-incoming-goods-direct.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-received-goods.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-incoming-goods-pr.js?v={{ time() }}"></script>
+    <script src="{{ asset('assets') }}/includes/table-incoming-goods-direct.js?v={{ time() }}"></script>
+    <script src="{{ asset('assets') }}/includes/table-received-goods.js?v={{ time() }}"></script>
 @endpush

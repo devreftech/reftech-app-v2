@@ -49,6 +49,7 @@ class UnitQuotation extends Model
         'fee_paid_by',
         'id_source_bank',
         'note',
+        'rental_terms',
         'validity',
         'pricing',
         'warranty',

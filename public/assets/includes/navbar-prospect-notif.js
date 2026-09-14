@@ -1,9 +1,8 @@
 /**
- * Pop-up notifikasi "Prospect Baru" untuk Sales Manager / Admin.
- *
- * Versi ramping dari navbar-payment-notif.js: hanya floating toast (tanpa integrasi lonceng
- * navbar), polling AJAX tiap 7 detik, dedupe via localStorage, chime WebAudio.
- * Hanya menangani item bertipe `prospect_created`.
+ * Prospect Real-time Alert Modal System (mirip alert darurat SUO)
+ * Menampilkan alert pop-up modal di tengah layar + nada chime saat ada Prospect baru:
+ * 1. Role Admin & Sales Manager: Saat Support membuat Prospect baru (type: 'prospect_created').
+ * 2. Role Sales: Saat Prospect didelegasikan/ditugaskan (type: 'prospect_assigned').
  */
 $(function () {
     var pollUrl = window.prospectNotifUnreadUrl;
@@ -12,9 +11,10 @@ $(function () {
     if (!pollUrl) return;
 
     var audioCtx = null;
+    var isModalOpen = false;
     var activeToastIds = new Set();
 
-    // Unlock Web Audio Context saat interaksi pertama user (kebijakan autoplay browser)
+    // Inisialisasi & unlock Web Audio Context saat interaksi pertama user
     function unlockAudioContext() {
         try {
             var Ctx = window.AudioContext || window.webkitAudioContext;
@@ -33,257 +33,60 @@ $(function () {
     document.addEventListener('mousemove', unlockAudioContext, { once: true, passive: true });
     window.addEventListener('focus', unlockAudioContext, { passive: true });
 
-    // Key untuk menyimpan ID toast yang sudah ditutup user agar tidak berulang-ulang popup
-    var STORAGE_DISMISSED_KEY = 'dismissed_prospect_toast_ids';
-    function getDismissedToastIds() {
-        try {
-            var raw = localStorage.getItem(STORAGE_DISMISSED_KEY) || sessionStorage.getItem(STORAGE_DISMISSED_KEY) || '[]';
-            return JSON.parse(raw).map(function (id) { return String(id); });
-        } catch (e) {
-            return [];
-        }
-    }
-    function addDismissedToastId(id) {
-        try {
-            var strId = String(id);
-            var dismissed = getDismissedToastIds();
-            if (dismissed.indexOf(strId) === -1) {
-                dismissed.push(strId);
-                var str = JSON.stringify(dismissed);
-                try { localStorage.setItem(STORAGE_DISMISSED_KEY, str); } catch (e) {}
-                try { sessionStorage.setItem(STORAGE_DISMISSED_KEY, str); } catch (e) {}
-            }
-        } catch (e) {}
-    }
-
-    // Suntikkan CSS Floating Toast ke <head> jika belum ada
-    function injectToastStyles() {
-        if ($('#prospectFloatingToastStyles').length) return;
-        var css = `
-            #prospectFloatingToastContainer {
-                position: fixed;
-                bottom: 24px;
-                right: 24px;
-                z-index: 999990;
-                display: flex;
-                flex-direction: column-reverse;
-                gap: 12px;
-                max-width: 420px;
-                width: calc(100vw - 36px);
-                pointer-events: none;
-            }
-            .prospect-floating-toast {
-                pointer-events: auto;
-                background: rgba(255, 255, 255, 0.98);
-                backdrop-filter: blur(12px);
-                -webkit-backdrop-filter: blur(12px);
-                border: 1px solid rgba(105, 108, 255, 0.3);
-                border-left: 5px solid #696cff;
-                border-radius: 14px;
-                box-shadow: 0 12px 32px rgba(34, 48, 62, 0.22), 0 2px 6px rgba(0,0,0,0.08);
-                overflow: hidden;
-                transform: translateY(0);
-                opacity: 1;
-                transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-                animation: prospectToastSlideIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            }
-            html.dark-style .prospect-floating-toast {
-                background: rgba(43, 44, 64, 0.97);
-                border-color: rgba(105, 108, 255, 0.45);
-                border-left: 5px solid #696cff;
-                box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-                color: #e4e6f0;
-            }
-            .prospect-floating-toast.toast-hiding {
-                opacity: 0;
-                transform: translateX(110%);
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            }
-            @keyframes prospectToastSlideIn {
-                from {
-                    opacity: 0;
-                    transform: translateY(28px) scale(0.96);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0) scale(1);
-                }
-            }
-            .prospect-floating-toast .toast-header-custom {
-                padding: 12px 16px 8px 16px;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                border-bottom: 1px dashed rgba(0,0,0,0.07);
-            }
-            html.dark-style .prospect-floating-toast .toast-header-custom {
-                border-bottom-color: rgba(255,255,255,0.08);
-            }
-            .prospect-floating-toast .toast-body-custom {
-                padding: 12px 16px;
-            }
-            .prospect-floating-toast .toast-footer-custom {
-                padding: 8px 16px 12px 16px;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                background: rgba(0,0,0,0.015);
-                border-top: 1px solid rgba(0,0,0,0.04);
-            }
-            html.dark-style .prospect-floating-toast .toast-footer-custom {
-                background: rgba(255,255,255,0.02);
-                border-top-color: rgba(255,255,255,0.06);
-            }
-            .prospect-toast-pulse {
-                width: 10px;
-                height: 10px;
-                border-radius: 50%;
-                background-color: #696cff;
-                display: inline-block;
-                position: relative;
-                box-shadow: 0 0 0 0 rgba(105, 108, 255, 0.7);
-                animation: prospectToastPulse 1.8s infinite;
-            }
-            @keyframes prospectToastPulse {
-                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(105, 108, 255, 0.7); }
-                70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(105, 108, 255, 0); }
-                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(105, 108, 255, 0); }
-            }
-            .prospect-floating-toast.prospect-toast-assigned {
-                border-left: 5px solid #28c76f;
-                border-color: rgba(40, 199, 111, 0.35);
-            }
-            .prospect-toast-pulse-success {
-                width: 10px;
-                height: 10px;
-                border-radius: 50%;
-                background-color: #28c76f;
-                display: inline-block;
-                position: relative;
-                box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7);
-                animation: prospectToastPulseSuccess 1.8s infinite;
-            }
-            @keyframes prospectToastPulseSuccess {
-                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7); }
-                70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(40, 199, 111, 0); }
-                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 199, 111, 0); }
-            }
-            .prospect-floating-toast.prospect-toast-mention {
-                border-left: 5px solid #ff9f43;
-                border-color: rgba(255, 159, 67, 0.35);
-            }
-            .prospect-toast-pulse-warning {
-                width: 10px;
-                height: 10px;
-                border-radius: 50%;
-                background-color: #ff9f43;
-                display: inline-block;
-                position: relative;
-                box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.7);
-                animation: prospectToastPulseWarning 1.8s infinite;
-            }
-            @keyframes prospectToastPulseWarning {
-                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 159, 67, 0.7); }
-                70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(255, 159, 67, 0); }
-                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 159, 67, 0); }
-            }
-            .prospect-floating-toast.prospect-toast-comment {
-                border-left: 5px solid #00cfe8;
-                border-color: rgba(0, 207, 232, 0.35);
-            }
-            .prospect-toast-pulse-info {
-                width: 10px;
-                height: 10px;
-                border-radius: 50%;
-                background-color: #00cfe8;
-                display: inline-block;
-                position: relative;
-                box-shadow: 0 0 0 0 rgba(0, 207, 232, 0.7);
-                animation: prospectToastPulseInfo 1.8s infinite;
-            }
-            @keyframes prospectToastPulseInfo {
-                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 207, 232, 0.7); }
-                70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(0, 207, 232, 0); }
-                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 207, 232, 0); }
-            }
-        `;
-        $('<style id="prospectFloatingToastStyles">' + css + '</style>').appendTo('head');
-    }
-
-    function ensureToastContainer() {
-        var $container = $('#prospectFloatingToastContainer');
-        if (!$container.length) {
-            $container = $('<div id="prospectFloatingToastContainer" aria-live="polite" aria-atomic="true"></div>');
-            $('body').append($container);
-        }
-        return $container;
-    }
-
-    function executeChimeSound() {
-        try {
-            if (!audioCtx) return;
-            var now = audioCtx.currentTime;
-
-            // Tone 1 (D5 - 587.33 Hz)
-            var osc1 = audioCtx.createOscillator();
-            var gain1 = audioCtx.createGain();
-            osc1.type = 'sine';
-            osc1.frequency.setValueAtTime(587.33, now);
-            gain1.gain.setValueAtTime(0, now);
-            gain1.gain.linearRampToValueAtTime(0.28, now + 0.02);
-            gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
-            osc1.connect(gain1);
-            gain1.connect(audioCtx.destination);
-            osc1.start(now);
-            osc1.stop(now + 0.33);
-
-            // Tone 2 (A5 - 880 Hz)
-            var osc2 = audioCtx.createOscillator();
-            var gain2 = audioCtx.createGain();
-            osc2.type = 'sine';
-            osc2.frequency.setValueAtTime(880.0, now + 0.11);
-            gain2.gain.setValueAtTime(0, now + 0.11);
-            gain2.gain.linearRampToValueAtTime(0.32, now + 0.13);
-            gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
-            osc2.connect(gain2);
-            gain2.connect(audioCtx.destination);
-            osc2.start(now + 0.11);
-            osc2.stop(now + 0.56);
-
-            // Tone 3 (D6 - 1174.66 Hz)
-            var osc3 = audioCtx.createOscillator();
-            var gain3 = audioCtx.createGain();
-            osc3.type = 'sine';
-            osc3.frequency.setValueAtTime(1174.66, now + 0.22);
-            gain3.gain.setValueAtTime(0, now + 0.22);
-            gain3.gain.linearRampToValueAtTime(0.35, now + 0.24);
-            gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
-            osc3.connect(gain3);
-            gain3.connect(audioCtx.destination);
-            osc3.start(now + 0.22);
-            osc3.stop(now + 0.76);
-        } catch (e) {
-            console.warn('Audio chime error:', e);
-        }
-    }
-
-    function playBeep() {
+    // Bunyikan nada chime ramah elegan (two-tone harmonious chime)
+    function playProspectAlarm() {
         try {
             var Ctx = window.AudioContext || window.webkitAudioContext;
             if (!Ctx) return;
-            if (!audioCtx) {
-                audioCtx = new Ctx();
+            if (!audioCtx) audioCtx = new Ctx();
+
+            function runTones() {
+                var now = audioCtx.currentTime;
+
+                function playBeep(freq, start, duration) {
+                    var osc = audioCtx.createOscillator();
+                    var gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, start);
+                    gain.gain.setValueAtTime(0, start);
+                    gain.gain.linearRampToValueAtTime(0.3, start + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(start);
+                    osc.stop(start + duration + 0.02);
+                }
+
+                // Nada pembuka harmonis
+                playBeep(659.25, now, 0.18);          // E5
+                playBeep(880.00, now + 0.16, 0.22);  // A5
+                playBeep(1318.51, now + 0.36, 0.32); // E6
             }
+
             if (audioCtx.state === 'suspended') {
-                audioCtx.resume().then(function () {
-                    executeChimeSound();
-                }).catch(function () {});
+                audioCtx.resume().then(runTones).catch(function () {});
             } else {
-                executeChimeSound();
+                runTones();
             }
         } catch (e) {
-            // Autoplay policy atau browser tak mendukung — abaikan.
+            console.warn('[ProspectAlert] Audio failed:', e);
         }
+    }
+
+    function isDismissed(notifId) {
+        try {
+            var key = 'dismissed_prospect_urgent_' + notifId;
+            return sessionStorage.getItem(key) === '1';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function setDismissed(notifId) {
+        try {
+            var key = 'dismissed_prospect_urgent_' + notifId;
+            sessionStorage.setItem(key, '1');
+        } catch (e) {}
     }
 
     function escapeHtml(str) {
@@ -295,165 +98,415 @@ $(function () {
         $.post(readUrlTemplate.replace('__ID__', id), { _token: window.csrfToken });
     }
 
-    function dismissToast(toastId, notifId) {
-        var $toast = $('#' + toastId);
-        if ($toast.length) {
-            $toast.addClass('toast-hiding');
-            setTimeout(function () {
-                $toast.remove();
-                if (notifId) {
-                    activeToastIds.delete(String(notifId));
-                }
-            }, 320);
-        }
-        if (notifId) {
-            addDismissedToastId(notifId);
-            // Tandai dibaca ke server agar tidak muncul lagi saat navigasi/reload halaman
-            markRead(notifId);
-        }
+    // Suntikkan CSS Alert Modal Prospect jika belum ada
+    function injectStyles() {
+        if ($('#prospectUrgentModalStyles').length) return;
+        var css = `
+            @keyframes prospectPingDot {
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(105, 108, 255, 0.7); }
+                70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(105, 108, 255, 0); }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(105, 108, 255, 0); }
+            }
+            @keyframes prospectPingDotSuccess {
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7); }
+                70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(40, 199, 111, 0); }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 199, 111, 0); }
+            }
+            @keyframes prospectShimmer {
+                0% { background-position: -200% 0; }
+                100% { background-position: 200% 0; }
+            }
+            #prospectUrgentModal .modal-dialog {
+                max-width: 540px;
+            }
+            #prospectUrgentModal .modal-content {
+                border-radius: 18px !important;
+                border: 1px solid rgba(105, 108, 255, 0.25) !important;
+                box-shadow: 0 24px 48px -12px rgba(105, 108, 255, 0.28), 0 4px 16px rgba(0, 0, 0, 0.06) !important;
+                overflow: hidden;
+                background: #ffffff;
+            }
+            html.dark-style #prospectUrgentModal .modal-content {
+                background: #2b2c40 !important;
+                border-color: rgba(105, 108, 255, 0.4) !important;
+                box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.6) !important;
+                color: #e4e6f0;
+            }
+            #prospectUrgentModal .prospect-top-stripe {
+                height: 5px;
+                background: linear-gradient(90deg, #696cff, #8a8dff, #38bdf8, #696cff);
+                background-size: 200% 100%;
+                animation: prospectShimmer 3s ease-in-out infinite;
+            }
+            #prospectUrgentModal.modal-assigned .prospect-top-stripe {
+                background: linear-gradient(90deg, #28c76f, #48da89, #71dd37, #28c76f);
+                background-size: 200% 100%;
+                animation: prospectShimmer 3s ease-in-out infinite;
+            }
+            #prospectUrgentModal .prospect-badge-alert {
+                background: #eef2ff;
+                color: #696cff;
+                font-weight: 700;
+                font-size: 0.76rem;
+                letter-spacing: 0.5px;
+                padding: 4px 11px;
+                border-radius: 20px;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                border: 1px solid rgba(105, 108, 255, 0.25);
+            }
+            #prospectUrgentModal .prospect-badge-alert.prospect-badge-assigned {
+                background: #e8fadf;
+                color: #28c76f;
+                border-color: rgba(40, 199, 111, 0.25);
+            }
+            #prospectUrgentModal .prospect-pulse-dot {
+                width: 8px;
+                height: 8px;
+                background-color: #696cff;
+                border-radius: 50%;
+                display: inline-block;
+                animation: prospectPingDot 1.4s infinite;
+            }
+            #prospectUrgentModal .prospect-pulse-dot-success {
+                width: 8px;
+                height: 8px;
+                background-color: #28c76f;
+                border-radius: 50%;
+                display: inline-block;
+                animation: prospectPingDotSuccess 1.4s infinite;
+            }
+            #prospectUrgentModal .prospect-info-card {
+                background: #f8f9fc;
+                border: 1px solid #edf0f5;
+                border-radius: 12px;
+                padding: 14px 16px;
+            }
+            html.dark-style #prospectUrgentModal .prospect-info-card {
+                background: #32344d;
+                border-color: #3b3e5b;
+            }
+            #prospectUrgentModal .prospect-info-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 8px 0;
+                border-bottom: 1px dashed #e4e7ed;
+            }
+            html.dark-style #prospectUrgentModal .prospect-info-row {
+                border-bottom-color: #434665;
+            }
+            #prospectUrgentModal .prospect-info-row:last-child {
+                border-bottom: none;
+                padding-bottom: 0;
+            }
+            #prospectUrgentModal .prospect-info-label {
+                font-size: 0.815rem;
+                color: #6c757d;
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            html.dark-style #prospectUrgentModal .prospect-info-label {
+                color: #a1a4b8;
+            }
+            #prospectUrgentModal .prospect-info-val {
+                font-size: 0.865rem;
+                font-weight: 600;
+                color: #2b303a;
+                text-align: right;
+                max-width: 65%;
+            }
+            html.dark-style #prospectUrgentModal .prospect-info-val {
+                color: #e4e6f0;
+            }
+            #prospectUrgentModal .prospect-notice-bar {
+                background: #f0f4ff;
+                border: 1px solid #d5e0ff;
+                border-radius: 10px;
+                padding: 10px 12px;
+                font-size: 0.81rem;
+                color: #3b4cb8;
+                display: flex;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            html.dark-style #prospectUrgentModal .prospect-notice-bar {
+                background: #2a2e4e;
+                border-color: #3d4576;
+                color: #a8b6ff;
+            }
+            #prospectUrgentModal.modal-assigned .prospect-notice-bar {
+                background: #eefaf2;
+                border-color: #c7eed5;
+                color: #1a7842;
+            }
+            html.dark-style #prospectUrgentModal.modal-assigned .prospect-notice-bar {
+                background: #1e3a2b;
+                border-color: #2a583e;
+                color: #8be0ab;
+            }
+            #prospectUrgentModal .btn-action-prospect {
+                background: linear-gradient(135deg, #696cff, #5053e6);
+                border: none;
+                color: #ffffff;
+                font-weight: 600;
+                font-size: 0.88rem;
+                padding: 9px 18px;
+                border-radius: 10px;
+                box-shadow: 0 4px 12px rgba(105, 108, 255, 0.35);
+                transition: all 0.2s ease;
+            }
+            #prospectUrgentModal .btn-action-prospect:hover {
+                background: linear-gradient(135deg, #5b5ee6, #4346d8);
+                color: #ffffff;
+                box-shadow: 0 6px 16px rgba(105, 108, 255, 0.45);
+                transform: translateY(-1px);
+            }
+            #prospectUrgentModal.modal-assigned .btn-action-prospect {
+                background: linear-gradient(135deg, #28c76f, #1f9d57);
+                box-shadow: 0 4px 12px rgba(40, 199, 111, 0.35);
+            }
+            #prospectUrgentModal.modal-assigned .btn-action-prospect:hover {
+                background: linear-gradient(135deg, #22b663, #198649);
+                box-shadow: 0 6px 16px rgba(40, 199, 111, 0.45);
+            }
+            #prospectUrgentModal .btn-dismiss-prospect {
+                background: #f1f3f6;
+                color: #5c6370;
+                border: none;
+                font-weight: 500;
+                font-size: 0.88rem;
+                padding: 9px 16px;
+                border-radius: 10px;
+                transition: all 0.15s ease;
+            }
+            #prospectUrgentModal .btn-dismiss-prospect:hover {
+                background: #e4e7ed;
+                color: #2b303a;
+            }
+            html.dark-style #prospectUrgentModal .btn-dismiss-prospect {
+                background: #3b3e5b;
+                color: #c7c9d9;
+            }
+            html.dark-style #prospectUrgentModal .btn-dismiss-prospect:hover {
+                background: #464a6e;
+                color: #ffffff;
+            }
+        `;
+        $('<style id="prospectUrgentModalStyles">' + css + '</style>').appendTo('head');
     }
 
-    function renderToast($container, item) {
-        var isAssigned = item.type === 'prospect_assigned';
-        var isMention = item.type === 'comment_mention';
-        var isComment = item.type === 'prospect_comment';
-        var toastDomId = 'prospectToast_' + String(item.id).replace(/[^a-zA-Z0-9_]/g, '_');
+    function showProspectModal(item) {
+        injectStyles();
 
-        var titleText = 'Prospect Baru';
-        var titleIcon = '<i class="mdi mdi-account-star-outline fs-5 text-primary"></i>';
-        var pulseEl = '<span class="prospect-toast-pulse"></span>';
-        var extraClass = '';
-        var btnColor = 'btn-primary';
-        var btnIcon = 'mdi-eye-outline';
-        var btnLabel = 'Lihat Prospek';
-        var bodyContent = '';
+        // Jangan buka modal baru jika modal SUO atau modal Prospect sedang tampil
+        if ($('#suoUrgentModal.show').length || $('#prospectUrgentModal.show').length) {
+            return;
+        }
 
-        if (isMention) {
-            titleText = 'Kamu Di-mention di Prospek!';
-            titleIcon = '<i class="mdi mdi-at fs-5 text-warning"></i>';
-            pulseEl = '<span class="prospect-toast-pulse-warning"></span>';
-            extraClass = ' prospect-toast-mention';
-            btnColor = 'btn-warning text-dark';
-            btnIcon = 'mdi-message-reply-text-outline';
-            btnLabel = 'Lihat Mention';
-            bodyContent =
-                '<div class="fw-bold text-truncate my-1 fs-6" title="' + escapeHtml(item.company) + '">' +
-                    '<i class="mdi mdi-office-building-outline text-muted me-1"></i>' + escapeHtml(item.company) +
-                '</div>' +
-                '<div class="p-2 rounded mt-1 border" style="background: rgba(255, 159, 67, 0.08); border-color: rgba(255, 159, 67, 0.25) !important;">' +
-                    '<div class="small fw-semibold text-dark mb-1 d-flex align-items-center gap-1">' +
-                        '<i class="mdi mdi-account-voice text-warning fs-6"></i> ' + escapeHtml(item.author_name) + ' me-mention Anda:' +
-                    '</div>' +
-                    '<div class="small text-secondary" style="font-style: italic; line-height: 1.4;">"' + escapeHtml(item.comment) + '"</div>' +
-                '</div>';
-        } else if (isComment) {
-            titleText = 'Komentar Baru pada Prospek';
-            titleIcon = '<i class="mdi mdi-comment-text-multiple-outline fs-5 text-info"></i>';
-            pulseEl = '<span class="prospect-toast-pulse-info"></span>';
-            extraClass = ' prospect-toast-comment';
-            btnColor = 'btn-info';
-            btnIcon = 'mdi-comment-eye-outline';
-            btnLabel = 'Lihat Komentar';
-            bodyContent =
-                '<div class="fw-bold text-truncate my-1 fs-6" title="' + escapeHtml(item.company) + '">' +
-                    '<i class="mdi mdi-office-building-outline text-muted me-1"></i>' + escapeHtml(item.company) +
-                '</div>' +
-                '<div class="p-2 rounded mt-1 border" style="background: rgba(0, 207, 232, 0.08); border-color: rgba(0, 207, 232, 0.25) !important;">' +
-                    '<div class="small fw-semibold text-dark mb-1 d-flex align-items-center gap-1">' +
-                        '<i class="mdi mdi-account-circle-outline text-info fs-6"></i> ' + escapeHtml(item.author_name) + ' berkomentar:' +
-                    '</div>' +
-                    '<div class="small text-secondary" style="font-style: italic; line-height: 1.4;">"' + escapeHtml(item.comment) + '"</div>' +
-                '</div>';
-        } else if (isAssigned) {
-            titleText = 'Prospek Baru Ditugaskan!';
-            titleIcon = '<i class="mdi mdi-account-arrow-right-outline fs-5 text-success"></i>';
-            pulseEl = '<span class="prospect-toast-pulse-success"></span>';
-            extraClass = ' prospect-toast-assigned';
-            btnColor = 'btn-success';
-            btnLabel = 'Lihat Prospek';
-            var kebutuhan = item.kebutuhan ? escapeHtml(item.kebutuhan) : '-';
-            var support = item.support_name ? escapeHtml(item.support_name) : 'Admin';
-            bodyContent =
-                '<div class="fw-bold text-truncate my-1 fs-6" title="' + escapeHtml(item.company) + '">' +
-                    '<i class="mdi mdi-office-building-outline text-muted me-1"></i>' + escapeHtml(item.company) +
-                '</div>' +
-                (item.category ? '<div class="small mb-1"><span class="badge bg-label-success">' + escapeHtml(item.category) + '</span></div>' : '') +
-                '<div class="small text-muted">' + kebutuhan + '</div>' +
-                '<div class="small text-muted mt-1"><i class="mdi mdi-account-tie-outline"></i> Ditugaskan oleh: ' + support + '</div>';
+        $('#prospectUrgentModal').remove();
+
+        var isAssigned = (item.type === 'prospect_assigned');
+        var modalThemeClass = isAssigned ? 'modal-assigned' : '';
+        var badgeText = isAssigned ? 'PROSPECT DITUGASKAN' : 'PROSPECT BARU';
+        var badgeClass = isAssigned ? 'prospect-badge-assigned' : '';
+        var pulseDotHtml = isAssigned ? '<span class="prospect-pulse-dot-success"></span>' : '<span class="prospect-pulse-dot"></span>';
+        var stageBadge = item.stage_badge || (isAssigned ? 'Ditugaskan ke Anda' : 'Baru Dibuat');
+        var stageTitle = item.stage_title || (isAssigned ? 'Anda Mendapat Penugasan Prospect Baru!' : 'Ada Prospect Baru Masuk!');
+        var stageDesc = item.stage_desc || (isAssigned
+            ? 'Prospek baru telah didelegasikan kepada Anda. Segera lakukan follow-up ke pelanggan untuk proses penawaran.'
+            : 'Tim Support baru saja menginput data prospek baru yang belum ditugaskan ke Sales. Segera tentukan dan tugaskan Sales penanggung jawab.');
+        var actionLabel = item.action_label || (isAssigned ? 'Buka Prospek' : 'Tugaskan ke Sales');
+
+        var avatarHtml = '';
+        if (item.support_image) {
+            avatarHtml = '<img src="' + escapeHtml(item.support_image) + '" class="rounded-circle me-1" style="width:22px;height:22px;object-fit:cover;" alt="' + escapeHtml(item.support_name || 'Support') + '">';
         } else {
-            var kebutuhan = item.kebutuhan ? escapeHtml(item.kebutuhan) : '-';
-            var support = item.support_name ? escapeHtml(item.support_name) : 'Support';
-            bodyContent =
-                '<div class="fw-bold text-truncate my-1 fs-6" title="' + escapeHtml(item.company) + '">' +
-                    '<i class="mdi mdi-office-building-outline text-muted me-1"></i>' + escapeHtml(item.company) +
-                '</div>' +
-                (item.category ? '<div class="small mb-1"><span class="badge bg-label-info">' + escapeHtml(item.category) + '</span></div>' : '') +
-                '<div class="small text-muted">' + kebutuhan + '</div>' +
-                '<div class="small text-muted mt-1"><i class="mdi mdi-account-tie-outline"></i> Dibuat oleh: ' + support + '</div>';
+            avatarHtml = '<span class="avatar-initial rounded-circle ' + (isAssigned ? 'bg-label-success' : 'bg-label-primary') + ' me-1" style="width:22px;height:22px;font-size:11px;display:inline-flex;align-items:center;justify-content:center;font-weight:bold;">' + (item.support_name ? item.support_name.charAt(0) : 'S') + '</span>';
         }
 
-        var toastHtml = $(
-            '<div id="' + toastDomId + '" class="prospect-floating-toast' + extraClass + '" role="alert" aria-live="assertive" aria-atomic="true">' +
-                '<div class="toast-header-custom">' +
-                    pulseEl +
-                    titleIcon +
-                    '<strong class="me-auto fs-6 fw-bold' + (isAssigned ? ' text-success' : (isMention ? ' text-warning' : (isComment ? ' text-info' : ''))) + '">' + titleText + '</strong>' +
-                    '<small class="text-muted">' + escapeHtml(item.created_at) + '</small>' +
-                    '<button type="button" class="btn-close ms-2 fs-7 btn-toast-dismiss" data-toast-id="' + toastDomId + '" data-notif-id="' + item.id + '" aria-label="Close"></button>' +
-                '</div>' +
-                '<div class="toast-body-custom py-2">' +
-                    bodyContent +
-                '</div>' +
-                '<div class="toast-footer-custom justify-content-between">' +
-                    '<a href="' + item.url + '" class="btn btn-xs ' + btnColor + ' btn-toast-go d-inline-flex align-items-center gap-1 flex-grow-1" data-notif-id="' + item.id + '">' +
-                        '<i class="mdi ' + btnIcon + '"></i> ' + btnLabel +
-                    '</a>' +
-                    '<button type="button" class="btn btn-xs btn-text-secondary btn-toast-dismiss" data-toast-id="' + toastDomId + '" data-notif-id="' + item.id + '">Nanti</button>' +
-                '</div>' +
-            '</div>'
-        );
+        var picContactHtml = escapeHtml(item.pic_name || '-');
+        if (item.pic_phone) {
+            picContactHtml += ' <span class="text-muted fw-normal small">(' + escapeHtml(item.pic_phone) + ')</span>';
+        }
 
-        $container.append(toastHtml);
-    }
+        var kebutuhanHtml = item.kebutuhan ? escapeHtml(item.kebutuhan) : (item.category ? escapeHtml(item.category) : '-');
 
-    function checkAndShowFloatingToasts(items) {
-        injectToastStyles();
-        var $container = ensureToastContainer();
-        var dismissed = getDismissedToastIds();
-        var hasNewToast = false;
+        var modalHtml = `
+            <div class="modal fade ${modalThemeClass}" id="prospectUrgentModal" tabindex="-1" aria-labelledby="prospectUrgentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <!-- Top Accent Line -->
+                        <div class="prospect-top-stripe"></div>
 
-        items.forEach(function (item) {
-            var notifKey = String(item.id);
-            if (item.is_read) return;
-            var validTypes = ['prospect_created', 'prospect_assigned', 'prospect_comment', 'comment_mention'];
-            if (validTypes.indexOf(item.type) === -1) return;
-            if (dismissed.indexOf(notifKey) !== -1) return;
-            if (activeToastIds.has(notifKey)) return;
+                        <!-- Modal Header -->
+                        <div class="p-4 pb-2 d-flex align-items-start justify-content-between border-0">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="prospect-badge-alert ${badgeClass}">
+                                    ${pulseDotHtml}
+                                    <span>${badgeText}</span>
+                                </div>
+                                <span class="badge ${isAssigned ? 'bg-label-success' : 'bg-label-primary'} rounded-pill fw-semibold" style="font-size: 0.74rem;">
+                                    ${stageBadge}
+                                </span>
+                            </div>
+                            <span class="text-muted" style="font-size: 0.78rem;">
+                                <i class="mdi mdi-clock-outline me-1"></i>${escapeHtml(item.created_at_time || item.created_at)}
+                            </span>
+                        </div>
 
-            activeToastIds.add(notifKey);
-            hasNewToast = true;
-            renderToast($container, item);
-        });
+                        <!-- Modal Body -->
+                        <div class="modal-body px-4 pt-1 pb-3">
+                            <div class="mb-3">
+                                <h5 class="fw-bold text-dark mb-1" id="prospectUrgentModalLabel">${stageTitle}</h5>
+                                <p class="text-muted small mb-0" style="line-height: 1.45;">${stageDesc}</p>
+                            </div>
 
-        if (hasNewToast) {
-            playBeep();
+                            <!-- Structured Info Card -->
+                            <div class="prospect-info-card mb-3">
+                                <div class="prospect-info-row">
+                                    <span class="prospect-info-label">
+                                        <i class="mdi mdi-domain ${isAssigned ? 'text-success' : 'text-primary'} fs-6"></i> Perusahaan / Customer
+                                    </span>
+                                    <span class="prospect-info-val text-truncate fw-bold ${isAssigned ? 'text-success' : 'text-primary'}" title="${escapeHtml(item.company)}">
+                                        ${escapeHtml(item.company)}
+                                    </span>
+                                </div>
+                                <div class="prospect-info-row">
+                                    <span class="prospect-info-label">
+                                        <i class="mdi mdi-account-outline text-secondary fs-6"></i> PIC Customer
+                                    </span>
+                                    <span class="prospect-info-val">${picContactHtml}</span>
+                                </div>
+                                <div class="prospect-info-row">
+                                    <span class="prospect-info-label">
+                                        <i class="mdi mdi-headset text-info fs-6"></i> Diinput Oleh
+                                    </span>
+                                    <span class="prospect-info-val d-inline-flex align-items-center justify-content-end">
+                                        ${avatarHtml}
+                                        <span class="text-truncate">${escapeHtml(item.support_name || 'Support')}</span>
+                                    </span>
+                                </div>
+                                <div class="prospect-info-row">
+                                    <span class="prospect-info-label">
+                                        <i class="mdi mdi-clipboard-text-outline text-warning fs-6"></i> Kebutuhan
+                                    </span>
+                                    <span class="prospect-info-val text-truncate" title="${kebutuhanHtml}">${kebutuhanHtml}</span>
+                                </div>
+                            </div>
+
+                            <!-- Notice Alert -->
+                            <div class="prospect-notice-bar">
+                                <i class="mdi mdi-information-outline fs-5 flex-shrink-0" style="margin-top: -1px;"></i>
+                                <div>Segera respon dan tindak lanjuti prospek ini untuk meningkatkan peluang dealing & kepuasan pelanggan.</div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Footer -->
+                        <div class="p-3 px-4 bg-light border-top d-flex align-items-center justify-content-between">
+                            <button type="button" class="btn-dismiss-prospect btn-prospect-dismiss" data-notif-id="${item.id}">
+                                Nanti Dulu
+                            </button>
+                            <a href="${item.url}" class="btn-action-prospect d-inline-flex align-items-center gap-1 btn-prospect-action" data-notif-id="${item.id}">
+                                <span>${actionLabel}</span>
+                                <i class="mdi mdi-arrow-right fs-5"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        $('body').append(modalHtml);
+
+        var modalEl = document.getElementById('prospectUrgentModal');
+        var opened = false;
+
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            try {
+                var bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
+                bsModal.show();
+                opened = true;
+            } catch (e) {
+                console.warn('[ProspectAlert] bootstrap.Modal error:', e);
+            }
+        }
+        if (!opened && typeof $ !== 'undefined' && $.fn && $.fn.modal) {
+            try {
+                $('#prospectUrgentModal').modal({ backdrop: 'static', keyboard: false, show: true });
+                opened = true;
+            } catch (e) {
+                console.warn('[ProspectAlert] jQuery.modal error:', e);
+            }
+        }
+
+        if (opened) {
+            isModalOpen = true;
+            playProspectAlarm();
         }
     }
 
-    // Klik tombol dismiss (X / Nanti)
-    $(document).on('click', '.prospect-floating-toast .btn-toast-dismiss', function (e) {
-        e.preventDefault();
-        dismissToast($(this).data('toast-id'), $(this).data('notif-id'));
+    // Listener saat modal ditutup (hidden)
+    $(document).on('hidden.bs.modal', '#prospectUrgentModal', function () {
+        isModalOpen = false;
+        $('#prospectUrgentModal').remove();
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open').css('overflow', '');
     });
 
-    // Klik "Lihat Prospek" — tandai dibaca sebelum pindah halaman
-    $(document).on('click', '.prospect-floating-toast .btn-toast-go', function () {
+    // Klik tombol Buka Prospek -> tandai dibaca & simpan dismissal
+    $(document).on('click', '.btn-prospect-action', function () {
         var notifId = $(this).data('notif-id');
         if (notifId) {
-            addDismissedToastId(notifId);
+            setDismissed(notifId);
             markRead(notifId);
         }
+        isModalOpen = false;
     });
+
+    // Klik tombol Nanti Dulu -> tutup modal & simpan dismissal agar tidak pop-up berulang kali di sesi ini
+    $(document).on('click', '.btn-prospect-dismiss', function () {
+        var notifId = $(this).data('notif-id');
+        if (notifId) {
+            setDismissed(notifId);
+        }
+
+        var modalEl = document.getElementById('prospectUrgentModal');
+        if (modalEl) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                var bsModal = bootstrap.Modal.getInstance(modalEl);
+                if (bsModal) bsModal.hide();
+            }
+            if (typeof $ !== 'undefined' && $.fn && $.fn.modal) {
+                $('#prospectUrgentModal').modal('hide');
+            }
+            setTimeout(function () {
+                $('#prospectUrgentModal').remove();
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open').css('overflow', '');
+            }, 350);
+        }
+        isModalOpen = false;
+    });
+
+    // Helper untuk test manual langsung di browser console
+    window.showTestProspectModal = function (type) {
+        showProspectModal({
+            id: 'test_' + Date.now(),
+            type: type || 'prospect_created',
+            company: 'PT Demo Test Modal Mandiri',
+            pic_name: 'Bapak Hendra Wijaya',
+            pic_phone: '0812-3456-7890',
+            support_name: 'Sandhy (Support)',
+            kebutuhan: 'Pengetesan Pop-up Modal Alert Prospect Baru (Air Compressor ELGi Screw 50HP)',
+            url: window.location.href,
+            created_at: 'Baru saja',
+            created_at_time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+        });
+    };
 
     // Klik item notifikasi di dropdown lonceng navbar — tandai dibaca
     $(document).on('click', '.prospect-notif-item', function () {
@@ -500,40 +553,16 @@ $(function () {
             if (!existing.length) {
                 var isCreated = (item.type === 'prospect_created');
                 var isAssigned = (item.type === 'prospect_assigned');
-                var isMention = (item.type === 'comment_mention');
-                var isComment = (item.type === 'prospect_comment');
 
-                var cardTypeClass = 'notif-card-prospect-new';
-                var iconColor = 'bg-primary text-white';
-                var iconClass = 'mdi-account-star-outline';
-                var badgeColor = 'bg-label-primary';
-                var badgeText = 'Prospect Baru';
-                var dotClass = '';
+                var cardTypeClass = isAssigned ? 'notif-card-prospect-assigned' : 'notif-card-prospect-new';
+                var iconColor = isAssigned ? 'bg-success text-white' : 'bg-primary text-white';
+                var iconClass = isAssigned ? 'mdi-account-arrow-right-outline' : 'mdi-account-star-outline';
+                var badgeColor = isAssigned ? 'bg-label-success' : 'bg-label-primary';
+                var badgeText = isAssigned ? 'Ditugaskan' : 'Prospect Baru';
+                var dotClass = isAssigned ? 'dot-success' : '';
                 var descHtml = '';
 
-                if (isMention) {
-                    cardTypeClass = 'notif-card-mention';
-                    iconColor = 'bg-warning text-white';
-                    iconClass = 'mdi-at';
-                    badgeColor = 'bg-label-warning';
-                    badgeText = 'Mention Prospek';
-                    dotClass = 'dot-warning';
-                    descHtml = '<span class="fw-semibold text-dark">' + escapeHtml(item.author_name) + ' me-mention Anda:</span> "' + escapeHtml(item.comment) + '"';
-                } else if (isComment) {
-                    cardTypeClass = 'notif-card-comment';
-                    iconColor = 'bg-info text-white';
-                    iconClass = 'mdi-comment-text-multiple-outline';
-                    badgeColor = 'bg-label-info';
-                    badgeText = 'Komentar Prospek';
-                    dotClass = 'dot-info';
-                    descHtml = '<span class="fw-semibold text-dark">' + escapeHtml(item.author_name) + ' berkomentar:</span> "' + escapeHtml(item.comment) + '"';
-                } else if (isAssigned) {
-                    cardTypeClass = 'notif-card-prospect-assigned';
-                    iconColor = 'bg-success text-white';
-                    iconClass = 'mdi-account-arrow-right-outline';
-                    badgeColor = 'bg-label-success';
-                    badgeText = 'Ditugaskan';
-                    dotClass = 'dot-success';
+                if (isAssigned) {
                     var catTextAssigned = item.category ? '<strong class="text-success">' + escapeHtml(item.category) + '</strong> • ' : '';
                     descHtml = 'Kategori: ' + catTextAssigned + escapeHtml(item.kebutuhan);
                 } else {
@@ -543,9 +572,6 @@ $(function () {
                 }
 
                 var avatarHtml = '<div class="notif-card-avatar ' + iconColor + '"><i class="mdi ' + iconClass + '"></i></div>';
-                if ((isMention || isComment) && item.author_image) {
-                    avatarHtml = '<img src="' + escapeHtml(item.author_image) + '" alt="' + escapeHtml(item.author_name) + '" class="notif-card-avatar" style="object-fit: cover;">';
-                }
 
                 var itemHtml = $(
                     '<a href="' + item.url + '" class="notif-card ' + cardTypeClass + ' prospect-notif-item" ' +
@@ -558,7 +584,7 @@ $(function () {
                                     '<span class="notif-time-ago">' +
                                         '<i class="mdi mdi-clock-outline fs-7"></i> ' + escapeHtml(item.created_at) +
                                     '</span>' +
-                                '</div>' +
+                                </div>' +
                                 '<h6 class="notif-card-title">' + escapeHtml(item.company) + '</h6>' +
                                 '<p class="notif-card-desc">' + descHtml + '</p>' +
                             '</div>' +
@@ -576,6 +602,22 @@ $(function () {
         });
     }
 
+    function checkAndShowProspectModal(items) {
+        if (isModalOpen) return;
+
+        // Cari notifikasi prospect belum dibaca dan belum di-dismiss
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            if (item.is_read) continue;
+            if (item.type !== 'prospect_created' && item.type !== 'prospect_assigned') continue;
+            if (isDismissed(item.id)) continue;
+
+            // Tampilkan modal untuk prospect pertama yang ditemukan
+            showProspectModal(item);
+            break;
+        }
+    }
+
     function poll() {
         $.getJSON(pollUrl).done(function (res) {
             var items = res.items || [];
@@ -583,17 +625,64 @@ $(function () {
             if (unreadCount > 0) {
                 $('#navbarBellDot').removeClass('d-none');
             }
-            checkAndShowFloatingToasts(items);
+            checkAndShowProspectModal(items);
             updateNavbarDropdown(items);
         }).fail(function (xhr, status, err) {
             console.warn('[ProspectNotif] Poll failed:', status, err);
         });
     }
 
+    var urgentCheckUrl = window.prospectUrgentCheckUrl;
+
+    function pollUrgentProspect() {
+        if (!urgentCheckUrl) return;
+        if (isModalOpen) return;
+        // Jika modal SUO sedang aktif di layar, jangan tumpuk modal prospect
+        if ($('#suoUrgentModal.show').length || $('#prospectUrgentModal.show').length) return;
+
+        $.getJSON(urgentCheckUrl).done(function (res) {
+            if (res && res.has_urgent && res.prospect) {
+                var p = res.prospect;
+                if (!isDismissed(p.id)) {
+                    showProspectModal({
+                        id: p.id,
+                        type: 'prospect_created',
+                        company: p.company,
+                        pic_name: p.pic_name,
+                        pic_phone: p.pic_phone,
+                        pic_position: p.pic_position,
+                        support_name: p.support_name,
+                        support_image: p.support_image,
+                        category: p.category,
+                        kebutuhan: p.kebutuhan,
+                        stage_badge: p.stage_badge,
+                        stage_title: p.stage_title,
+                        stage_desc: p.stage_desc,
+                        action_label: p.action_label,
+                        url: p.action_url,
+                        created_at: p.created_at,
+                        created_at_time: p.created_at_time
+                    });
+                }
+            }
+        }).fail(function (xhr, status, err) {
+            console.warn('[ProspectUrgentCheck] Poll failed:', status, err);
+        });
+    }
+
+    // Polling awal dan berulang tiap 5 detik
     poll();
     setInterval(poll, 5000);
 
+    if (urgentCheckUrl) {
+        pollUrgentProspect();
+        setInterval(pollUrgentProspect, 5000);
+    }
+
     document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'visible') poll();
+        if (document.visibilityState === 'visible') {
+            poll();
+            if (urgentCheckUrl) pollUrgentProspect();
+        }
     });
 });

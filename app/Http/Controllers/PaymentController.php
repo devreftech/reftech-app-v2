@@ -875,10 +875,15 @@ class PaymentController extends Controller
             trim($this->terbilang($amount))
         );
 
+        $clientFlag = $client?->info ?? ($payment->unitQuotation?->flag ?? ($payment->quotation?->flag ?? 'Reftech'));
+        $isKojisha = (strtolower($clientFlag) === 'kojisha');
+
         return view('pages.accounting.payment.kwitansi', compact(
             'payment',
             'client',
             'clientName',
+            'clientFlag',
+            'isKojisha',
             'noInvoice',
             'invoiceNumber',
             'poNumber',

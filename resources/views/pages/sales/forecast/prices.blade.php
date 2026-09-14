@@ -104,6 +104,12 @@
                     <span class="badge rounded-pill bg-info ms-1" style="font-size: 11px;">{{ $transportationPrices->count() }}</span>
                 </button>
             </li>
+            <li class="nav-item">
+                <button type="button" class="nav-link fw-bold py-2.5 fs-6" role="tab" data-bs-toggle="tab" data-bs-target="#tab-rental-note" aria-controls="tab-rental-note" aria-selected="false">
+                    <i class="mdi mdi-file-document-check-outline me-2 fs-5 text-warning"></i> Ketentuan Rental Unit Kompresor
+                    <span class="badge rounded-pill bg-warning text-dark ms-1" style="font-size: 11px;">Smart Quote</span>
+                </button>
+            </li>
         </ul>
 
         <div class="tab-content p-0 bg-transparent border-0 shadow-none">
@@ -425,6 +431,112 @@
                                 @endforelse
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: KETENTUAN RENTAL UNIT KOMPRESOR -->
+            <div class="tab-pane fade" id="tab-rental-note" role="tabpanel">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 py-3 border-bottom">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="mdi mdi-file-document-check-outline text-warning fs-3"></i>
+                            <div>
+                                <h5 class="card-title mb-0 fw-bold">KETENTUAN RENTAL UNIT KOMPRESOR</h5>
+                                <small class="text-muted">Master template klausul ketentuan rental yang otomatis tampil sebagai card tersendiri di form Smart Quote saat tipe yang dipilih adalah <strong>Rental</strong>.</small>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="badge bg-label-warning px-3 py-2 fs-7 rounded-pill">
+                                <i class="mdi mdi-sync me-1"></i> Auto-fill di Smart Quote
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body p-4">
+                        <form action="{{ route('forecast.prices.rental-note.update') }}" method="POST" id="formRentalNote">
+                            @csrf
+                            <div class="row g-4">
+                                <div class="col-lg-8">
+                                    <div class="p-3 bg-light rounded-3 border mb-3">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <h6 class="fw-bold mb-0 text-dark">
+                                                <i class="mdi mdi-file-document-edit-outline text-warning me-1"></i> Form Ketentuan Rental Unit Kompresor
+                                            </h6>
+                                            <div class="d-flex gap-2">
+                                                <button type="button" class="btn btn-xs btn-outline-primary py-1 px-2.5 rounded shadow-none" id="btnSampleRentalNote" title="Muat draft format klausul rental standar">
+                                                    <i class="mdi mdi-auto-fix me-1"></i> Contoh Format Standar
+                                                </button>
+                                                <button type="button" class="btn btn-xs btn-outline-danger py-1 px-2 rounded shadow-none" id="btnClearRentalNote" title="Bersihkan isi textarea">
+                                                    <i class="mdi mdi-eraser me-1"></i> Kosongkan
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <p class="text-muted small mb-2">
+                                            Ketik poin-poin ketentuan sewa/rental di bawah ini. Textarea ini memiliki fitur <strong>auto-bullet otomatis (•)</strong> saat Anda menekan tombol <kbd>Enter</kbd>.
+                                        </p>
+                                        <textarea class="form-control desc-pm-bullet bg-white" name="note" id="rental_note_textarea" rows="10" placeholder="• Masukkan ketentuan rental unit kompresor di sini..." style="overflow-y: hidden; resize: none; font-size: 0.92rem; line-height: 1.6;">{{ old('note', $rentalNoteTemplate->note ?? '') }}</textarea>
+                                        <div class="form-text text-muted mt-2 d-flex align-items-center justify-content-between">
+                                            <span><i class="mdi mdi-information-outline me-1 text-primary"></i>Tekan <kbd>Enter</kbd> untuk baris baru otomatis ber-bullet.</span>
+                                            <span id="charCountRentalNote" class="small text-muted"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex align-items-center gap-2">
+                                        <button type="submit" class="btn btn-warning d-flex align-items-center gap-2 shadow-sm waves-effect waves-light px-4">
+                                            <i class="mdi mdi-content-save-outline fs-5"></i>
+                                            <span class="fw-semibold">Simpan Ketentuan Rental</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-4">
+                                    <!-- Info & Status Card -->
+                                    <div class="card border border-warning-subtle shadow-none bg-label-warning bg-opacity-10 mb-3" style="border-radius: 10px;">
+                                        <div class="card-body p-3">
+                                            <h6 class="fw-bold mb-2 text-warning d-flex align-items-center gap-2">
+                                                <i class="mdi mdi-information-outline fs-5"></i>
+                                                <span>Status Template</span>
+                                            </h6>
+                                            <ul class="list-unstyled mb-0 small text-dark">
+                                                <li class="mb-2 d-flex justify-content-between">
+                                                    <span class="text-muted">Status:</span>
+                                                    @if(!empty($rentalNoteTemplate?->note))
+                                                        <span class="badge bg-success">Aktif / Terisi</span>
+                                                    @else
+                                                        <span class="badge bg-secondary">Belum Diatur</span>
+                                                    @endif
+                                                </li>
+                                                <li class="mb-2 d-flex justify-content-between">
+                                                    <span class="text-muted">Terakhir Diupdate:</span>
+                                                    <span class="fw-semibold">{{ $rentalNoteTemplate?->updated_at ? $rentalNoteTemplate->updated_at->format('d M Y, H:i') : '-' }}</span>
+                                                </li>
+                                                <li class="d-flex justify-content-between">
+                                                    <span class="text-muted">Diupdate Oleh:</span>
+                                                    <span class="fw-semibold">{{ $rentalNoteTemplate?->user?->name ?? 'System' }}</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    <!-- Guide Card -->
+                                    <div class="card border shadow-none bg-light" style="border-radius: 10px;">
+                                        <div class="card-body p-3">
+                                            <h6 class="fw-bold mb-2 text-dark d-flex align-items-center gap-2">
+                                                <i class="mdi mdi-help-circle-outline text-primary fs-5"></i>
+                                                <span>Cara Kerja Fitur</span>
+                                            </h6>
+                                            <ol class="ps-3 mb-0 small text-muted" style="line-height: 1.6;">
+                                                <li class="mb-2">Saat sales membuka halaman <strong>Smart Quote Create / Edit</strong>.</li>
+                                                <li class="mb-2">Ketika sales memilih tipe penawaran <strong>Type: Rental</strong>.</li>
+                                                <li class="mb-2">Akan muncul card baru khusus bertuliskan <strong>"KETENTUAN RENTAL UNIT KOMPRESOR"</strong> secara terpisah dari Note / Remarks biasa.</li>
+                                                <li class="mb-2">Card tersebut otomatis terisi dengan klausul master ini.</li>
+                                                <li>Sales tetap dapat menyesuaikan klausul per quotation sebelum disimpan jika ada ketentuan khusus.</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -1080,6 +1192,79 @@
             });
             autoResizeDescPm(ta);
         });
+
+        // Contoh Format Standar Klausul Rental
+        var DEFAULT_RENTAL_SAMPLE = [
+            "• Minimal periode sewa adalah 1 (satu) bulan.",
+            "• Pembayaran sewa dilakukan di awal setiap periode (billing monthly in advance).",
+            "• Reftech bertanggung jawab atas perawatan berkala (periodic maintenance) serta penggantian consumable parts pemakaian normal.",
+            "• Kerusakan atau kehilangan komponen unit akibat kelalaian operasional dan human error menjadi tanggung jawab penyewa.",
+            "• Biaya mobilisasi & demobilisasi (pengiriman dan penjemputan unit compressor) ditanggung oleh pihak penyewa.",
+            "• Sumber daya listrik / power supply, kabel instalasi, dan pondasi penempatan unit di lokasi disediakan oleh penyewa."
+        ].join('\n');
+
+        $('#btnSampleRentalNote').on('click', function() {
+            var $ta = $('#rental_note_textarea');
+            if ($ta.val().trim() !== '' && $ta.val().trim() !== '•') {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Terapkan Format Contoh Standar?',
+                        text: 'Teks yang sudah diketik akan digantikan dengan template contoh standar rental.',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Ya, Ganti Format',
+                        cancelButtonText: 'Batal',
+                        customClass: {
+                            confirmButton: 'btn btn-primary waves-effect waves-light me-2',
+                            cancelButton: 'btn btn-label-secondary waves-effect'
+                        },
+                        buttonsStyling: false
+                    }).then(function(result) {
+                        if (result.isConfirmed) {
+                            $ta.val(DEFAULT_RENTAL_SAMPLE).trigger('input');
+                        }
+                    });
+                    return;
+                }
+            }
+            $ta.val(DEFAULT_RENTAL_SAMPLE).trigger('input');
+        });
+
+        $('#btnClearRentalNote').on('click', function() {
+            var $ta = $('#rental_note_textarea');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Kosongkan Note Rental?',
+                    text: 'Seluruh teks catatan rental akan dihapus.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, Kosongkan',
+                    cancelButtonText: 'Batal',
+                    customClass: {
+                        confirmButton: 'btn btn-danger waves-effect waves-light me-2',
+                        cancelButton: 'btn btn-label-secondary waves-effect'
+                    },
+                    buttonsStyling: false
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        $ta.val('').trigger('input');
+                    }
+                });
+            } else {
+                $ta.val('').trigger('input');
+            }
+        });
+
+        // Tab sync via URL param (?tab=rental-note atau ?tab=bearing-kit atau ?tab=transportation)
+        var urlParams = new URLSearchParams(window.location.search);
+        var tabParam = urlParams.get('tab');
+        if (tabParam) {
+            var $targetTabBtn = $('button[data-bs-target="#tab-' + tabParam + '"]');
+            if ($targetTabBtn.length) {
+                var tabInstance = bootstrap.Tab.getOrCreateInstance($targetTabBtn[0]);
+                tabInstance.show();
+            }
+        }
     });
 </script>
 @endpush

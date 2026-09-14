@@ -138,6 +138,7 @@
 
                 <!--  Maintenance Warning Banner & Modal  -->
                 @include('components.maintenance-warning')
+                @include('components.maintenance-resumed-modal')
 
                 <!--  Navbar  -->
                 @include('layouts.sales.navbar')
@@ -183,7 +184,7 @@
     {{-- Main JS --}}
     <script src="{{ asset('assets') }}/js/main.js?v={{ file_exists(public_path('assets/js/main.js')) ? filemtime(public_path('assets/js/main.js')) : time() }}"></script>
 
-    @if (Auth::check() && in_array(Auth::user()->role, ['Accounting', 'Admin', 'Sales']))
+    @if (Auth::check() && in_array(Auth::user()->role, ['Accounting', 'Sales']))
         {{-- Polling notifikasi payment & PO menunggu invoice (Unit Quotation) — bell bergerak + suara tanpa reload --}}
         <script>
             window.paymentNotifUnreadUrl = '{{ route('notifications.payment.unread') }}';
@@ -195,11 +196,13 @@
     @endif
 
     @if (Auth::check())
-        {{-- Polling notifikasi Prospect baru, penugasan, komentar & mention — pop-up toast + suara tanpa reload --}}
+        {{-- Polling notifikasi Prospect baru (Alert Darurat Penugasan Sales untuk Admin, lonceng & modal untuk Sales) --}}
         <script>
             window.prospectNotifUnreadUrl = '{{ route('notifications.prospect.unread') }}';
             window.prospectNotifReadUrlTemplate = '{{ url('notifications/prospect/__ID__/read') }}';
+            window.prospectUrgentCheckUrl = '{{ route('notifications.prospect.urgent_check') }}';
             window.csrfToken = window.csrfToken || '{{ csrf_token() }}';
+            window.currentUserRole = '{{ Auth::user()->role }}';
         </script>
         <script src="{{ asset('assets') }}/includes/navbar-prospect-notif.js?v={{ file_exists(public_path('assets/includes/navbar-prospect-notif.js')) ? filemtime(public_path('assets/includes/navbar-prospect-notif.js')) : time() }}"></script>
     @endif
@@ -590,6 +593,7 @@
         });
     </script>
 
+    @include('components.modal.finance.pin-modal')
 </body>
 
 </html>

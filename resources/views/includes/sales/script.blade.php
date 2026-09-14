@@ -13,3 +13,6 @@
     <script src="{{ asset ('assets')}}/vendor/js/menu.js"></script>
     {{-- endbuild --}}
 
+    {{-- Universal Indonesian Rupiah & Thousands Input Masking (000.000) --}}
+    <script src="{{ asset('assets/js/reftech-currency-mask.js') }}"></script>
+

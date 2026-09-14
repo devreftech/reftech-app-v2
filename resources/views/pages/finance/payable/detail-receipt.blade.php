@@ -415,7 +415,7 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold small">Nominal Bayar (Rp) <span class="text-danger">*</span></label>
-                        <input type="number" name="amount" class="form-control fw-bold text-primary" value="{{ $remaining > 0 ? $remaining : $product->total }}" min="1" max="{{ $remaining > 0 ? $remaining : $product->total }}" required>
+                        <input type="text" inputmode="numeric" name="amount" class="form-control fw-bold text-primary rupiah-mask" value="{{ number_format($remaining > 0 ? $remaining : $product->total, 0, ',', '.') }}" required>
                         <small class="text-muted">Masukkan nominal DP atau pelunasan bertahap.</small>
                     </div>
 

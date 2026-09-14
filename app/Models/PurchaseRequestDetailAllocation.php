@@ -34,6 +34,10 @@ class PurchaseRequestDetailAllocation extends Model
     {
         return $this->belongsTo('App\Models\PurchaseRequestDetail', 'id_purchase_request_detail', 'id');
     }
+    public function purchaseRequestDetail()
+    {
+        return $this->belongsTo('App\Models\PurchaseRequestDetail', 'id_purchase_request_detail', 'id');
+    }
     public function purchaseOrder()
     {
         return $this->belongsTo('App\Models\PurchaseOrder', 'id_purchase_order', 'id');

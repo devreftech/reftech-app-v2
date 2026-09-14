@@ -84,12 +84,11 @@
                                     </div>
                                     <div class="col-md-3 col-12 mb-md-0 mb-3">
                                         <label class="mb-2">Harga</label>
-                                        <input type="number" class="form-control" name="harga[]" min="0" required>
+                                        <input type="text" inputmode="numeric" class="form-control rupiah-mask" name="harga[]" required placeholder="0">
                                     </div>
                                     <div class="col-md-3 col-12 mb-md-0 mb-3">
                                         <label class="mb-2 field-biaya-label">Biaya Tambahan</label>
-                                        <input type="number" class="form-control" name="biaya_tambahan[]" min="0"
-                                            value="0">
+                                        <input type="text" inputmode="numeric" class="form-control rupiah-mask" name="biaya_tambahan[]" value="0" placeholder="0">
                                     </div>
                                 </div>
                                 <div class="d-flex flex-column align-items-center justify-content-between border-start p-2">

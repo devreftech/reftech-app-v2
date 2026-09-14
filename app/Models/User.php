@@ -159,7 +159,7 @@ class User extends Authenticatable
      * tabel accounting_sales_mapping. Jika includeAdmin true, sertakan juga Admin.
      * Jika sales belum dimapping ke siapapun, fallback ke semua user Accounting aktif.
      */
-    public static function getAccountingRecipientsForSales(?int $salesId, bool $includeAdmin = true): array
+    public static function getAccountingRecipientsForSales(?int $salesId, bool $includeAdmin = false): array
     {
         $accountingIds = [];
         if ($salesId) {

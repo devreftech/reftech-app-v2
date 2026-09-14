@@ -2461,7 +2461,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Jumlah (Rp) <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" name="amount" required min="1" placeholder="Masukkan jumlah yang diterima">
+                            <input type="text" inputmode="numeric" class="form-control rupiah-mask" name="amount" required placeholder="Masukkan jumlah yang diterima">
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Persentase (%)</label>

@@ -1,58 +1,60 @@
-<div class="table-responsive text-nowrap border rounded">
-    <table class="table table-bordered datatable-sorder mb-0" id="{{ $tableId }}">
-        <thead>
-            <tr class="table-light">
-                <th>No SO</th>
-                <th>No PO</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Part Desc</th>
-                <th class="text-center">Status</th>
-                <th class="text-center">Sales</th>
+<div class="table-responsive">
+    <table class="table table-hover align-middle datatable-sorder mb-0 w-100" id="{{ $tableId }}">
+        <thead class="table-light">
+            <tr>
+                <th class="text-uppercase fw-bold text-secondary text-nowrap col-so-po" style="font-size: 0.75rem; letter-spacing: 0.5px;">SO & PO</th>
+                <th class="text-uppercase fw-bold text-secondary text-nowrap col-date" style="font-size: 0.75rem; letter-spacing: 0.5px;">Date</th>
+                <th class="text-uppercase fw-bold text-secondary col-customer" style="font-size: 0.75rem; letter-spacing: 0.5px;">Customer</th>
+                <th class="text-uppercase fw-bold text-secondary col-desc" style="font-size: 0.75rem; letter-spacing: 0.5px;">Part Desc</th>
+                <th class="text-center text-uppercase fw-bold text-secondary text-nowrap col-status" style="font-size: 0.75rem; letter-spacing: 0.5px;">Status</th>
+                <th class="text-center text-uppercase fw-bold text-secondary text-nowrap col-sales" style="font-size: 0.75rem; letter-spacing: 0.5px;">Sales</th>
             </tr>
         </thead>
         <tbody>
             @foreach ($orderList as $order)
-                <tr>
-                    <td>
-                        <a href="{{ $order->detail_route ?? route('pending-po.show', $order->id) }}" class="fw-semibold text-primary">
+                <tr class="table-row-hover">
+                    <td class="col-so-po">
+                        <a href="{{ $order->detail_route ?? route('pending-po.show', $order->id) }}" class="fw-semibold text-primary d-block text-truncate text-decoration-none" style="max-width: 165px; font-size: 0.85rem;" title="{{ $order->no_pending }}">
                             {{ $order->no_pending }}
                         </a>
-                    </td>
-                    <td>
-                        {{ $order->no_po ?? '-' }}
-                    </td>
-                    <td>
-                        <span class="text-muted">{{ $order->order_date ? \Carbon\Carbon::parse($order->order_date)->format('d-m-Y') : '-' }}</span>
-                    </td>
-                    <td>{{ $order->company }}</td>
-                    <td class="text-wrap" style="min-width: 250px;">{{ $order->title }}</td>
-                    <td class="text-center">
-                        @if ($order->status == 0)
-                            <span class="badge bg-secondary">New PO</span>
-                        @elseif ($order->status == 1)
-                            <span class="badge bg-warning">On Check</span>
-                        @elseif ($order->status == 2)
-                            <span class="badge bg-info">Ready Stock</span>
-                        @elseif ($order->status == 3)
-                            <span class="badge bg-danger">Kurang</span>
-                        @elseif ($order->status == 4)
-                            <span class="badge bg-primary">Pre-delivery</span>
-                        @elseif ($order->status == 5)
-                            <span class="badge bg-info">Delivery Process</span>
-                        @elseif ($order->status == 6)
-                            <span class="badge bg-success">Done</span>
-                        @elseif ($order->status == 8)
-                            <span class="badge bg-warning">Return</span>
-                        @elseif ($order->status == 9)
-                            <span class="badge bg-danger">Delayed</span>
-                        @else
-                            <span class="badge bg-primary">In Progress</span>
+                        @if (!empty($order->no_po) && $order->no_po !== '-')
+                            <span class="text-muted d-block small text-truncate" style="max-width: 165px; font-size: 0.78rem;" title="PO: {{ $order->no_po }}">
+                                PO: {{ $order->no_po }}
+                            </span>
                         @endif
                     </td>
-                    <td class="text-center">
-                        <div class="avatar avatar-sm d-inline-block" data-bs-toggle="tooltip" data-popup="tooltip-custom" data-bs-placement="top" title="{{ $order->sales_name }}">
-                            <img src="{{ $order->sales_image ? asset($order->sales_image) : asset('assets/img/avatars/1.png') }}" alt="Avatar" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
+                    <td data-order="{{ $order->date_timestamp }}" class="text-nowrap col-date">
+                        <div class="d-flex align-items-center">
+                            <i class="mdi mdi-calendar-blank-outline me-1 text-muted" style="font-size: 0.95rem;"></i>
+                            <span class="fw-medium text-body small">{{ $order->formatted_date }}</span>
+                        </div>
+                    </td>
+                    <td class="col-customer">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar avatar-xs me-2 flex-shrink-0">
+                                <span class="avatar-initial rounded-circle bg-label-secondary text-primary fw-bold" style="font-size: 0.65rem;">
+                                    {{ strtoupper(substr($order->company ?? 'C', 0, 2)) }}
+                                </span>
+                            </div>
+                            <span class="fw-semibold text-dark text-truncate d-block" style="max-width: 240px;" title="{{ $order->company }}">
+                                {{ $order->company }}
+                            </span>
+                        </div>
+                    </td>
+                    <td class="col-desc">
+                        <span class="text-secondary small d-block" style="line-height: 1.4;" title="{{ $order->title ?? '-' }}">
+                            {{ $order->title ?? '-' }}
+                        </span>
+                    </td>
+                    <td class="text-center text-nowrap col-status">
+                        <span class="badge {{ $order->progress_badge ?? 'bg-label-primary' }} rounded-pill px-2 py-1 d-inline-flex align-items-center">
+                            <span class="status-dot me-1"></span>
+                            {{ $order->progress_label ?? 'New PO' }}
+                        </span>
+                    </td>
+                    <td class="text-center text-nowrap col-sales">
+                        <div class="avatar avatar-xs d-inline-block position-relative" data-bs-toggle="tooltip" data-popup="tooltip-custom" data-bs-placement="top" title="{{ $order->sales_name }}">
+                            <img src="{{ $order->sales_avatar }}" alt="Avatar" class="rounded-circle shadow-xs" style="width: 30px; height: 30px; object-fit: cover; border: 1.5px solid #fff;">
                         </div>
                     </td>
                 </tr>

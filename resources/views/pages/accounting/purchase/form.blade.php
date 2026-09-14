@@ -2,36 +2,184 @@
 @section('title', @$purchase ? 'Edit Purchase Order' : 'Create Purchase Order')
 @section('content')
     <style>
-        /* Nonaktifkan efek hover geser-ke-atas (translateY) khusus di halaman ini */
+        /* Card design refinements */
+        #formAuthentication .card {
+            border-radius: 12px;
+            border: 1px solid #e7e7ee !important;
+            box-shadow: 0 2px 8px 0 rgba(34, 41, 47, 0.04) !important;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
         #formAuthentication .card:hover {
             transform: none !important;
-            box-shadow: 0 4px 18px 0 rgba(24, 28, 33, 0.03) !important;
+            box-shadow: 0 4px 16px 0 rgba(34, 41, 47, 0.07) !important;
+        }
+        .po-section-header {
+            background-color: #fbfbfe;
+            border-bottom: 1px solid #eef0f6;
+            padding: 0.95rem 1.25rem;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .po-section-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #2b3445;
+            display: flex;
+            align-items: center;
+            margin: 0;
+        }
+        .po-section-step {
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            background: #eef0fd;
+            color: #696cff;
+            font-weight: 700;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+        }
+        
+        /* Repeater row styling */
+        .repeater-wrapper {
+            transition: background-color 0.15s ease;
+        }
+        .repeater-wrapper:hover {
+            background-color: #fafbfe;
+        }
+        .repeater-wrapper:not(:last-child) .repeater-row-inner {
+            border-bottom: 1px dashed #e7e7ee;
+        }
+        .repeater-row-inner {
+            padding: 1.15rem 1.25rem;
+        }
+        
+        /* Category segmented pills */
+        .item-category-pills {
+            display: inline-flex;
+            background: #f1f3f9;
+            padding: 3px;
+            border-radius: 8px;
+            gap: 2px;
+        }
+        .item-category-pills .category-pill-label {
+            cursor: pointer;
+            margin: 0;
+            padding: 4px 10px;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #697a8d;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .item-category-pills .item-category-radio {
+            display: none;
+        }
+        .item-category-pills .item-category-radio:checked + .category-pill-label {
+            background: #ffffff;
+            color: #696cff;
+            box-shadow: 0 1px 4px rgba(67, 89, 113, 0.12);
+        }
+
+        /* Ship To Card selector */
+        .ship-to-card {
+            cursor: pointer;
+            border: 1.5px solid #e7e7ee;
+            border-radius: 10px;
+            padding: 1rem;
+            transition: all 0.2s ease;
+            background: #ffffff;
+            height: 100%;
+        }
+        .ship-to-card:hover {
+            border-color: #b4b6fc;
+            background: #fdfdff;
+        }
+        .ship-to-card.active {
+            border-color: #696cff !important;
+            background: #f8f9ff !important;
+            box-shadow: 0 2px 8px rgba(105, 108, 255, 0.12);
+        }
+        
+        /* Financial Summary Box */
+        .summary-card-inner {
+            background: #ffffff;
+            border: 1px solid #e6e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .summary-grand-total {
+            background: linear-gradient(135deg, #f0f2ff 0%, #e6e9ff 100%);
+            border: 1.5px dashed #696cff;
+            border-radius: 10px;
+            padding: 1.15rem 1.25rem;
+        }
+
+        /* Drag handle */
+        .btn-drag-handle {
+            cursor: grab;
+            color: #a1acb8;
+            padding: 4px 6px;
+            border-radius: 6px;
+            transition: all 0.15s;
+        }
+        .btn-drag-handle:hover {
+            color: #566a7f;
+            background-color: #eceef1;
+        }
+        .btn-drag-handle:active {
+            cursor: grabbing;
+        }
+
+        /* Sticky bottom action bar */
+        .po-sticky-footer {
+            position: sticky;
+            bottom: 15px;
+            z-index: 1010;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(10px);
+            border: 1px solid #e2e4ed;
+            border-radius: 12px;
+            box-shadow: 0 6px 24px rgba(34, 41, 47, 0.1);
+            padding: 0.85rem 1.25rem;
+            margin-top: 1.5rem;
         }
     </style>
 
     {{-- Hero Page Header & Top Bar --}}
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center py-3 mb-3 gap-3">
         <div>
-            <h4 class="fw-bold mb-1">
+            <h4 class="fw-bold mb-1 d-flex align-items-center gap-2">
                 <span class="text-muted fw-light">Procurement / <a href="{{ route('purchase.index') }}" class="text-muted">Purchase Order</a> /</span>
-                {{ @$purchase ? 'Edit' : 'Create' }}
+                <span class="text-primary">{{ @$purchase ? 'Edit #' . $purchase->no_po : 'Create New PO' }}</span>
             </h4>
-            <p class="text-muted mb-0 small"><i class="mdi mdi-cart-outline me-1"></i> Buat dokumen Purchase Order ke Supplier</p>
+            <p class="text-muted mb-0 small">
+                <i class="mdi mdi-file-document-edit-outline me-1 text-primary"></i>
+                Lengkapi rincian pemesanan, rekanan supplier, termin pembayaran, dan daftar item belanja.
+            </p>
         </div>
-        <div class="d-flex gap-2 align-items-center">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
             @if (!@$purchase)
-                <span id="poDraftStatus" class="badge bg-label-secondary d-none align-self-center" title="Draft otomatis tersimpan di browser ini">
-                    <i class="mdi mdi-cloud-outline me-1"></i><span class="txt">Draft</span>
+                <span id="poDraftStatus" class="badge bg-label-secondary d-inline-flex align-items-center py-2 px-3 align-self-center shadow-xs" title="Status autosave draf lokal">
+                    <i class="mdi mdi-cloud-check-outline me-1"></i><span class="txt">Autosave Aktif</span>
                 </span>
-                <button type="button" id="poDraftReset" class="btn btn-label-danger d-none" title="Hapus draft tersimpan & mulai ulang">
-                    <i class="mdi mdi-restore me-1"></i> Reset Draft
+                <button type="button" id="poDraftReset" class="btn btn-outline-danger btn-sm d-none" title="Hapus draf tersimpan & mulai ulang">
+                    <i class="mdi mdi-trash-can-outline me-1"></i> Reset Draf
                 </button>
             @endif
             <a href="{{ route('purchase.index') }}" class="btn btn-label-secondary">
-                <i class="mdi mdi-arrow-left me-1"></i> Back
+                <i class="mdi mdi-arrow-left me-1"></i> Kembali
             </a>
-            <button type="submit" form="formAuthentication" class="btn btn-primary shadow-sm">
-                <i class="mdi mdi-content-save me-1"></i> Save PO
+            <button type="submit" form="formAuthentication" class="btn btn-primary shadow-sm px-3">
+                <i class="mdi mdi-content-save-outline me-1"></i> Simpan Dokumen PO
             </button>
         </div>
     </div>
@@ -44,20 +192,50 @@
             @method('patch')
         @endif
         <input type="hidden" name="id_purchase_request" value="{{ old('id_purchase_request', $sourcePr->id ?? '') }}">
-        @if ($sourcePr ?? null)
-            <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
-                <i class="mdi mdi-file-document-outline fs-5"></i>
-                <div>Item Sparepart di bawah otomatis dari <strong>{{ $sourcePr->no_pr }}</strong>. Silakan pilih supplier & lengkapi harga.</div>
-            </div>
-        @elseif ($sourceProductSet ?? null)
-            <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
-                <i class="mdi mdi-package-variant-closed fs-5"></i>
-                <div>Item Sparepart di bawah otomatis dari Bundle <strong>{{ $sourceProductSet->product->commodity ?? 'Product Set' }}</strong>. Silakan pilih supplier & lengkapi harga.</div>
+
+        @if (!@$purchase)
+            {{-- Auto-Save Draft Recovery Alert Banner --}}
+            <div id="poDraftRecoveryAlert" class="alert alert-warning border-warning shadow-sm d-none align-items-center justify-content-between flex-wrap gap-3 mb-4" style="border-radius: 12px; background: #fffdf5; border-left: 5px solid #f59e0b !important;">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="badge rounded-circle p-2 bg-label-warning flex-shrink-0" style="width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center;">
+                        <i class="mdi mdi-history fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark" style="font-size: 0.95rem;">
+                            Ditemukan draf PO sebelumnya yang belum disimpan!
+                        </div>
+                        <div class="text-muted small" id="poDraftInfoText">
+                            Tersimpan pada <span class="fw-semibold text-dark" id="poDraftTimeText">-</span> (<span id="poDraftItemCount" class="fw-semibold text-primary">0</span> item terdata).
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-warning text-dark btn-sm fw-semibold shadow-xs" id="btnApplyDraft">
+                        <i class="mdi mdi-restore me-1"></i> Pulihkan Draf
+                    </button>
+                    <button type="button" class="btn btn-label-secondary btn-sm" id="btnDismissDraft">
+                        Abaikan & Buat Baru
+                    </button>
+                </div>
             </div>
         @endif
+
+        @if ($sourcePr ?? null)
+            <div class="alert alert-info d-flex align-items-center gap-2 mb-3 shadow-xs border-0" style="border-radius: 10px; background: #f0f4ff; color: #35508c;">
+                <i class="mdi mdi-file-document-outline fs-5 text-primary"></i>
+                <div>Item Sparepart di bawah otomatis ditarik dari Purchase Request <strong>{{ $sourcePr->no_pr }}</strong>. Silakan tentukan supplier & lengkapi penawaran harga.</div>
+            </div>
+        @elseif ($sourceProductSet ?? null)
+            <div class="alert alert-info d-flex align-items-center gap-2 mb-3 shadow-xs border-0" style="border-radius: 10px; background: #f0f4ff; color: #35508c;">
+                <i class="mdi mdi-package-variant-closed fs-5 text-primary"></i>
+                <div>Item Sparepart di bawah otomatis dari Bundle <strong>{{ $sourceProductSet->product->commodity ?? 'Product Set' }}</strong>. Silakan tentukan supplier & lengkapi harga.</div>
+            </div>
+        @endif
+
         @if ($errors->any())
-            <div class="alert alert-danger">
-                <ul class="mb-0">
+            <div class="alert alert-danger shadow-xs border-0" style="border-radius: 10px;">
+                <div class="fw-bold mb-1"><i class="mdi mdi-alert-circle-outline me-1"></i> Periksa kembali data input:</div>
+                <ul class="mb-0 ps-3">
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
@@ -65,17 +243,22 @@
             </div>
         @endif
 
-        {{-- Hero No PO Card --}}
-        <div class="card mb-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%); border-left: 5px solid #696cff !important;">
-            <div class="card-body py-3">
+        {{-- Hero Document No PO Card --}}
+        <div class="card mb-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #f8f9ff 0%, #f1f3fd 100%); border-left: 5px solid #696cff !important;">
+            <div class="card-body py-3 px-4">
                 <div class="row align-items-center g-3">
                     <div class="col-md-8 col-12">
                         <label class="form-label text-uppercase fw-bold text-primary small mb-1" style="letter-spacing: .5px;">
-                            <i class="mdi mdi-pound me-1"></i> PO Number
+                            <i class="mdi mdi-pound me-1"></i> Purchase Order Number
                         </label>
-                        <input type="text" class="form-control form-control-lg fw-bold bg-white text-primary border-primary-subtle shadow-sm"
-                            id="no_po_display" name="no_po" required style="font-size: 1.35rem;"
-                            value="{{ old('no_po', @$purchase->no_po ?? $previewNoPo ?? '') }}">
+                        <div class="input-group input-group-merge">
+                            <span class="input-group-text bg-white border-primary-subtle fw-bold text-primary px-3">
+                                <i class="mdi mdi-file-document-outline fs-5"></i>
+                            </span>
+                            <input type="text" class="form-control form-control-lg fw-bold bg-white text-primary border-primary-subtle shadow-xs"
+                                id="no_po_display" name="no_po" required style="font-size: 1.25rem; letter-spacing: 0.5px;"
+                                value="{{ old('no_po', @$purchase->no_po ?? $previewNoPo ?? '') }}">
+                        </div>
                     </div>
                     <div class="col-md-4 col-12 text-md-end">
                         @if (@$purchase)
@@ -83,36 +266,36 @@
                                 <i class="mdi mdi-shape-outline me-1"></i> {{ $purchase->category }}
                             </span>
                         @else
-                            <span class="badge bg-label-secondary px-3 py-2 fs-6 rounded-pill">
-                                <i class="mdi mdi-clock-outline me-1"></i> NEW PO
-                            </span>
+                            <div class="d-inline-flex align-items-center gap-2">
+                                <span class="badge bg-label-success px-3 py-2 fs-6 rounded-pill">
+                                    <i class="mdi mdi-plus-circle-outline me-1"></i> DOKUMEN BARU
+                                </span>
+                            </div>
                         @endif
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- SUPPLIER & PO DETAILS --}}
+        {{-- 1. SUPPLIER & CONTACT DETAILS --}}
         <div class="card mb-4 border-0 shadow-sm">
-            <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center">
-                <h6 class="card-title mb-0 fw-bold text-dark">
-                    <i class="mdi mdi-domain me-2 text-primary fs-5"></i> Supplier & Purchase Order Details
-                </h6>
+            <div class="po-section-header">
+                <div class="po-section-title">
+                    <span class="po-section-step">1</span>
+                    <span>Informasi Supplier &amp; Rekanan</span>
+                </div>
+                <span class="badge bg-label-primary px-2 py-1" style="font-size: 11px;">Data Supplier &amp; PIC</span>
             </div>
-            <div class="card-body pt-4">
+            <div class="card-body p-4">
                 <div class="row g-3">
-                    <div class="col-12">
-                        <div class="d-flex align-items-center text-muted small fw-bold text-uppercase mb-1" style="letter-spacing:.5px;">
-                            <i class="mdi mdi-account-group-outline me-1"></i> Supplier & Kontak
-                        </div>
-                    </div>
+                    {{-- Supplier Dropdown & Quick Add/Edit Buttons --}}
                     <div class="col-12">
                         <div class="d-flex align-items-center gap-2">
                             <div class="form-floating form-floating-outline flex-grow-1">
                                 <select id="supplier-dropdown" class="select2 form-select invoice-item-supplier"
                                     data-allow-clear="true" name="supplier" data-id="1" required
                                     {{ Auth::user()->role == 'Logistic' ? 'disabled' : '' }}>
-                                    <option value="">Pilih Supplier...</option>
+                                    <option value="">Pilih Rekanan Supplier...</option>
                                     @foreach ($suppliers as $supp)
                                         <option value="{{ $supp->id }}" data-info="{{ $supp->info }}"
                                             data-code="{{ $supp->code }}" data-phone="{{ $supp->phone }}"
@@ -122,20 +305,22 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <label for="supplier-dropdown">Supplier</label>
+                                <label for="supplier-dropdown">Nama Supplier <span class="text-danger">*</span></label>
                             </div>
-                            <button type="button" class="btn btn-label-secondary"
+                            <button type="button" class="btn btn-outline-primary"
                                 data-bs-toggle="modal" data-bs-target="#quickAddSupplierModal"
-                                {{ Auth::user()->role == 'Logistic' ? 'disabled' : '' }}>
-                                <i class="mdi mdi-domain me-1"></i>Supplier Baru
+                                {{ Auth::user()->role == 'Logistic' ? 'disabled' : '' }} title="Tambah Supplier Baru">
+                                <i class="mdi mdi-domain-plus me-1"></i>Supplier Baru
                             </button>
                             <button type="button" id="btn-edit-supplier" class="btn btn-label-primary d-none"
                                 data-bs-toggle="modal" data-bs-target="#editSupplierModal"
-                                {{ Auth::user()->role == 'Logistic' ? 'disabled' : '' }}>
+                                {{ Auth::user()->role == 'Logistic' ? 'disabled' : '' }} title="Edit Informasi Supplier">
                                 <i class="mdi mdi-pencil-outline me-1"></i>Edit Supplier
                             </button>
                         </div>
                     </div>
+
+                    {{-- ATTN (PIC) & Mobile Phone --}}
                     <div class="col-md-6">
                         <div class="d-flex align-items-center gap-2">
                             <div class="form-floating form-floating-outline flex-grow-1">
@@ -146,56 +331,69 @@
                                         </option>
                                     @endif
                                 </select>
-                                <label for="attn">ATTN (PIC)</label>
+                                <label for="attn">ATTN (PIC Supplier)</label>
                             </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-add-attn-pic" title="Tambah PIC Baru">
+                                <i class="mdi mdi-account-plus"></i>
+                            </button>
                             <button type="button" class="btn btn-label-primary btn-sm d-none" id="btn-edit-attn-pic" title="Edit PIC">
                                 <i class="mdi mdi-pencil-outline"></i>
                             </button>
-                            <button type="button" class="btn btn-label-secondary btn-sm" id="btn-add-attn-pic" title="Tambah PIC">
-                                <i class="mdi mdi-plus"></i>
-                            </button>
                         </div>
                         <div class="form-text small text-muted" id="attn-empty-hint" style="display:none;">
-                            Belum ada PIC untuk supplier ini.
+                            <i class="mdi mdi-information-outline me-1"></i>Belum ada kontak PIC tercatat untuk supplier ini.
                         </div>
                     </div>
+
                     <div class="col-md-6">
                         <div class="form-floating form-floating-outline">
                             <input class="form-control" type="text" placeholder="Nomor HP / Telepon PIC..."
                                 id="mobile" name="mobile" value="{{ old('mobile', @$purchase->mobile ?? '') }}">
-                            <label for="mobile">No. HP / Telepon PIC</label>
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="form-floating form-floating-outline">
-                            <textarea class="form-control" id="address" name="address" rows="2"
-                                placeholder="Alamat supplier akan ter-load otomatis saat supplier dipilih">{{ old('address', @$purchase->address ?? '') }}</textarea>
-                            <label for="address">Address (Supplier)</label>
+                            <label for="mobile">No. HP / Kontak Telepon</label>
                         </div>
                     </div>
 
+                    {{-- Supplier Address --}}
                     <div class="col-12">
-                        <hr class="my-2">
-                        <div class="d-flex align-items-center text-muted small fw-bold text-uppercase mb-1" style="letter-spacing:.5px;">
-                            <i class="mdi mdi-file-document-outline me-1"></i> PO Parameters
+                        <div class="form-floating form-floating-outline">
+                            <textarea class="form-control" id="address" name="address" rows="2" style="height: 72px;"
+                                placeholder="Alamat supplier akan terisi otomatis saat supplier dipilih">{{ old('address', @$purchase->address ?? '') }}</textarea>
+                            <label for="address">Alamat Supplier</label>
                         </div>
                     </div>
-                    <div class="col-md-2">
+                </div>
+            </div>
+        </div>
+
+        {{-- 2. TRANSACTION PARAMETERS & DELIVERY --}}
+        <div class="card mb-4 border-0 shadow-sm">
+            <div class="po-section-header">
+                <div class="po-section-title">
+                    <span class="po-section-step">2</span>
+                    <span>Ketentuan Transaksi &amp; Pengiriman</span>
+                </div>
+                <span class="badge bg-label-info px-2 py-1" style="font-size: 11px;">Termin &amp; Destinasi</span>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3 col-sm-6">
                         <div class="form-floating form-floating-outline">
                             <input class="form-control" type="date" id="date" name="date" required
                                 value="{{ old('date', !empty($purchase->date) ? \Carbon\Carbon::parse($purchase->date)->format('Y-m-d') : \Carbon\Carbon::today()->format('Y-m-d')) }}">
-                            <label for="date">Date</label>
+                            <label for="date">Tanggal PO <span class="text-danger">*</span></label>
                         </div>
                     </div>
-                    <div class="col-md-3">
+
+                    <div class="col-md-3 col-sm-6">
                         <div class="form-floating form-floating-outline">
-                            <input class="form-control" type="text" placeholder="No. Reference (optional)..."
+                            <input class="form-control" type="text" placeholder="No. Reference..."
                                 id="no_reference" name="no_reference"
                                 value="{{ old('no_reference', @$purchase->no_reference ?? '') }}">
-                            <label for="no_reference">No. Reference <span class="text-muted small">(optional)</span></label>
+                            <label for="no_reference">No. Reference <span class="text-muted small">(opsional)</span></label>
                         </div>
                     </div>
-                    <div class="col-md-2">
+
+                    <div class="col-md-3 col-sm-6">
                         <div class="form-floating form-floating-outline">
                             <input class="form-control" type="text" placeholder="Delivery Time..."
                                 id="delivery" name="delivery"
@@ -203,57 +401,8 @@
                             <label for="delivery">Delivery Time</label>
                         </div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="form-floating form-floating-outline">
-                            <select class="form-select" id="payment-select">
-                                <optgroup label="Standar System">
-                                    <option value="Cash Before Delivery">Cash Before Delivery</option>
-                                    <option value="DP 50% & BP 50%">DP 50% & BP 50%</option>
-                                    <option value="DP 30% & BP 70%">DP 30% & BP 70%</option>
-                                    <option value="14 Days after invoice release">14 Days after invoice release</option>
-                                    <option value="30 Days after invoice release">30 Days after invoice release</option>
-                                </optgroup>
-                                <option value="manual">-- Custom (Isi Sendiri) --</option>
-                            </select>
-                            <label for="payment-select">Payment</label>
-                            <input type="hidden" name="payment" id="input-payment-hidden"
-                                value="{{ old('payment', @$purchase->payment ?? 'Cash Before Delivery') }}">
-                        </div>
-                        <div class="mt-2" id="manual-payment-wrapper" style="display:none;">
-                            <input type="text" class="form-control" id="input-payment-manual"
-                                placeholder="Ketik custom payment term...">
-                        </div>
-                    </div>
-                    @php
-                        $pmtType = old('payment_type', @$purchase->payment_type ?? 'cash');
-                        $topDays = old('top_days', @$purchase->top_days);
-                        $dueEst = old('due_date_estimate', !empty($purchase->due_date_estimate) ? \Carbon\Carbon::parse($purchase->due_date_estimate)->format('Y-m-d') : '');
-                    @endphp
-                    <div class="col-md-2">
-                        <div class="form-floating form-floating-outline">
-                            <select class="form-select" id="payment-type-select" name="payment_type">
-                                <option value="cash" {{ $pmtType == 'cash' ? 'selected' : '' }}>Cash</option>
-                                <option value="transfer" {{ $pmtType == 'transfer' ? 'selected' : '' }}>Transfer</option>
-                                <option value="tempo" {{ $pmtType == 'tempo' ? 'selected' : '' }}>Tempo (Credit)</option>
-                            </select>
-                            <label for="payment-type-select">Tipe Pembayaran</label>
-                        </div>
-                    </div>
-                    <div class="col-md-2 tempo-field" style="{{ $pmtType == 'tempo' ? '' : 'display:none;' }}">
-                        <div class="form-floating form-floating-outline">
-                            <input class="form-control" type="number" min="0" id="top-days-input" name="top_days"
-                                placeholder="30" value="{{ $topDays !== null && $topDays !== '' ? $topDays : 30 }}">
-                            <label for="top-days-input">Termin (hari)</label>
-                        </div>
-                    </div>
-                    <div class="col-md-2 tempo-field" style="{{ $pmtType == 'tempo' ? '' : 'display:none;' }}">
-                        <div class="form-floating form-floating-outline">
-                            <input class="form-control" type="date" id="due-date-estimate-input" name="due_date_estimate"
-                                value="{{ $dueEst }}">
-                            <label for="due-date-estimate-input">Estimasi Jatuh Tempo</label>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
+
+                    <div class="col-md-3 col-sm-6">
                         <div class="d-flex align-items-center gap-2">
                             <div class="form-floating form-floating-outline flex-grow-1">
                                 @php
@@ -271,23 +420,167 @@
                                 </select>
                                 <label for="po-type-select">PO Type</label>
                             </div>
-                            <button type="button" class="btn btn-label-secondary" data-bs-toggle="modal"
-                                data-bs-target="#quickAddPoTypeModal" title="Tambah Tipe PO">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+                                data-bs-target="#quickAddPoTypeModal" title="Tambah Tipe PO Baru">
                                 <i class="mdi mdi-plus"></i>
                             </button>
                         </div>
                     </div>
+
+                    <div class="col-md-4 col-sm-6">
+                        <div class="form-floating form-floating-outline">
+                            <select class="form-select" id="payment-select">
+                                <optgroup label="Standar System">
+                                    <option value="Cash Before Delivery">Cash Before Delivery</option>
+                                    <option value="DP 50% & BP 50%">DP 50% & BP 50%</option>
+                                    <option value="DP 30% & BP 70%">DP 30% & BP 70%</option>
+                                    <option value="14 Days after invoice release">14 Days after invoice release</option>
+                                    <option value="30 Days after invoice release">30 Days after invoice release</option>
+                                </optgroup>
+                                <option value="manual">-- Custom (Isi Sendiri) --</option>
+                            </select>
+                            <label for="payment-select">Payment Terms</label>
+                            <input type="hidden" name="payment" id="input-payment-hidden"
+                                value="{{ old('payment', @$purchase->payment ?? 'Cash Before Delivery') }}">
+                        </div>
+                        <div class="mt-2" id="manual-payment-wrapper" style="display:none;">
+                            <input type="text" class="form-control" id="input-payment-manual"
+                                placeholder="Ketik custom payment term...">
+                        </div>
+                    </div>
+
+                    @php
+                        $pmtType = old('payment_type', @$purchase->payment_type ?? 'cash');
+                        $topDays = old('top_days', @$purchase->top_days);
+                        $dueEst = old('due_date_estimate', !empty($purchase->due_date_estimate) ? \Carbon\Carbon::parse($purchase->due_date_estimate)->format('Y-m-d') : '');
+                    @endphp
+                    <div class="col-md-3 col-sm-6">
+                        <div class="form-floating form-floating-outline">
+                            <select class="form-select" id="payment-type-select" name="payment_type">
+                                <option value="cash" {{ $pmtType == 'cash' ? 'selected' : '' }}>Cash</option>
+                                <option value="transfer" {{ $pmtType == 'transfer' ? 'selected' : '' }}>Transfer</option>
+                                <option value="tempo" {{ $pmtType == 'tempo' ? 'selected' : '' }}>Tempo (Credit)</option>
+                            </select>
+                            <label for="payment-type-select">Metode Pembayaran</label>
+                        </div>
+                    </div>
+
+                    <div class="col-md-2 col-sm-6 tempo-field" style="{{ $pmtType == 'tempo' ? '' : 'display:none;' }}">
+                        <div class="form-floating form-floating-outline">
+                            <input class="form-control" type="number" min="0" id="top-days-input" name="top_days"
+                                placeholder="30" value="{{ $topDays !== null && $topDays !== '' ? $topDays : 30 }}">
+                            <label for="top-days-input">Termin (hari)</label>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 col-sm-6 tempo-field" style="{{ $pmtType == 'tempo' ? '' : 'display:none;' }}">
+                        <div class="form-floating form-floating-outline">
+                            <input class="form-control" type="date" id="due-date-estimate-input" name="due_date_estimate"
+                                value="{{ $dueEst }}">
+                            <label for="due-date-estimate-input">Estimasi Jatuh Tempo</label>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Ship To Destination Cards --}}
+                @php
+                    $addrBdg = 'Taman Kopo Indah V, Ruko Soho Sommerville No. 31 Bandung - Jawabarat 40218';
+                    $addrBks = 'Jl. Nancep No.45A, Cibening, Kec. Setu, Kabupaten Bekasi, Jawa Barat 17320';
+                    $currentShipTo = old('ship_to', @$purchase->ship_to ?? $addrBdg);
+                    $isBdg = $currentShipTo == $addrBdg;
+                    $isBks = $currentShipTo == $addrBks;
+                    $isCustom = !$isBdg && !$isBks && !empty($currentShipTo);
+                    if (!$isBdg && !$isBks && !$isCustom) {
+                        $isBdg = true;
+                        $currentShipTo = $addrBdg;
+                    }
+                @endphp
+                <div class="border-top pt-3">
+                    <label class="form-label fw-bold text-dark small text-uppercase mb-2" style="letter-spacing: .5px;">
+                        <i class="mdi mdi-map-marker-radius-outline me-1 text-primary"></i> Alamat Pengiriman (Ship To)
+                    </label>
+                    <div class="row g-3">
+                        {{-- Option BDG --}}
+                        <div class="col-md-6 col-12">
+                            <div class="ship-to-card {{ $isBdg ? 'active' : '' }}" id="opt-wrapper-bdg">
+                                <div class="form-check d-flex align-items-start gap-2 mb-0">
+                                    <input name="ship_to_preset" class="form-check-input mt-1 ship-to-radio" type="radio" value="BDG" id="shipToBdg" {{ $isBdg ? 'checked' : '' }}>
+                                    <label class="form-check-label w-100 cursor-pointer" for="shipToBdg">
+                                        <div class="fw-bold text-dark mb-1 d-flex align-items-center gap-1">
+                                            <i class="mdi mdi-office-building-marker text-primary fs-5"></i>
+                                            <span>BDG (Bandung)</span>
+                                            <span class="badge bg-label-primary ms-auto" style="font-size: 10px;">Gudang Bandung</span>
+                                        </div>
+                                        <div class="text-muted small" style="line-height:1.4;">
+                                            {{ $addrBdg }}
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Option BKS --}}
+                        <div class="col-md-6 col-12">
+                            <div class="ship-to-card {{ $isBks ? 'active' : '' }}" id="opt-wrapper-bks">
+                                <div class="form-check d-flex align-items-start gap-2 mb-0">
+                                    <input name="ship_to_preset" class="form-check-input mt-1 ship-to-radio" type="radio" value="BKS" id="shipToBks" {{ $isBks ? 'checked' : '' }}>
+                                    <label class="form-check-label w-100 cursor-pointer" for="shipToBks">
+                                        <div class="fw-bold text-dark mb-1 d-flex align-items-center gap-1">
+                                            <i class="mdi mdi-warehouse text-primary fs-5"></i>
+                                            <span>BKS (Bekasi)</span>
+                                            <span class="badge bg-label-primary ms-auto" style="font-size: 10px;">Gudang Bekasi</span>
+                                        </div>
+                                        <div class="text-muted small" style="line-height:1.4;">
+                                            {{ $addrBks }}
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Option Custom / Alamat Lain --}}
+                        <div class="col-12">
+                            <div class="ship-to-card {{ $isCustom ? 'active' : '' }}" id="opt-wrapper-custom">
+                                <div class="form-check d-flex align-items-center gap-2 mb-1">
+                                    <input name="ship_to_preset" class="form-check-input ship-to-radio" type="radio" value="CUSTOM" id="shipToCustom" {{ $isCustom ? 'checked' : '' }}>
+                                    <label class="form-check-label fw-bold text-dark cursor-pointer mb-0 d-flex align-items-center gap-1" for="shipToCustom">
+                                        <i class="mdi mdi-map-marker-plus-outline text-primary fs-5"></i>
+                                        <span>Alamat Pengiriman Lain (Input Manual)</span>
+                                    </label>
+                                </div>
+                                <div id="custom-ship-to-wrapper" class="{{ $isCustom ? '' : 'd-none' }} mt-2 ps-4">
+                                    <textarea class="form-control" id="ship_to_custom_input" rows="2" placeholder="Tuliskan alamat lengkap pengiriman khusus untuk PO ini...">{{ $isCustom ? $currentShipTo : '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" name="ship_to" id="ship_to_hidden" value="{{ $currentShipTo }}">
                 </div>
             </div>
         </div>
 
-        {{-- LINE ITEMS --}}
+        {{-- 3. LINE ITEMS --}}
         <div class="card mb-4 border-0 shadow-sm">
-            <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center justify-content-between">
-                <h6 class="card-title mb-0 fw-bold text-dark">
-                    <i class="mdi mdi-cube-outline me-2 text-primary fs-5"></i> Purchase Order Items
-                </h6>
-                <span class="badge bg-label-secondary" id="items-count-badge">0 Items</span>
+            <div class="po-section-header flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="po-section-step">3</span>
+                    <h6 class="po-section-title mb-0">Daftar Item Purchase Order</h6>
+                    <span class="badge bg-label-primary" id="items-count-badge">0 Items</span>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <button type="button" class="btn btn-sm btn-primary shadow-xs btn-add" data-repeater-create="">
+                        <i class="mdi mdi-plus me-1"></i> Add Item
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary shadow-xs" id="btn-pull-pr-items" data-bs-toggle="modal" data-bs-target="#modalPullPrItems">
+                        <i class="mdi mdi-file-import-outline me-1"></i> Tarik Item dari PR
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-info" id="btn-add-header-title">
+                        <i class="mdi mdi-format-header-1 me-1"></i> Head Title
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-add-custom-item">
+                        <i class="mdi mdi-format-list-bulleted me-1"></i> Custom Item
+                    </button>
+                </div>
             </div>
             <div class="card-body p-0">
                 <div class="form-invoice-repeater source-item">
@@ -296,9 +589,7 @@
                     @endphp
                     @if (@$purchase)
                         <div class="mb-0" data-repeater-list="group-a">
-                            @php
-                                $no = 1;
-                            @endphp
+                            @php $no = 1; @endphp
                             @foreach ($dPurchase as $item)
                                 @if (($item->category ?? '') === 'Header')
                                     <div class="repeater-wrapper header-row-wrapper" data-repeater-item="" data-category="Header">
@@ -337,54 +628,242 @@
                                     </div>
                                 @else
                                     <div class="repeater-wrapper" data-repeater-item="">
-                                        <div class="position-relative border-bottom p-3">
+                                        <div class="position-relative repeater-row-inner">
                                             <div class="d-flex align-items-start gap-2">
-                                                <div class="btn btn-sm btn-icon btn-label-secondary btn-drag-handle cursor-move mt-1 flex-shrink-0" title="Geser (drag & drop) untuk memindahkan posisi" style="cursor: grab;">
+                                                <div class="btn-drag-handle mt-1 flex-shrink-0" title="Geser urutan baris">
                                                     <i class="mdi mdi-drag-vertical fs-5"></i>
                                                 </div>
-                                                <div class="row w-100">
-                                                    <input type="hidden" class="invoice-item-detail-id" name="detail_id[]"
-                                                        value="{{ $item->id }}">
-                                                <input type="hidden" name="pr_detail_id[]" value="">
-                                                <div class="col-md col-12 mb-md-0 item-fields">
-                                                    <div class="item-category-toggle mb-2">
-                                                        <div class="form-check form-check-inline">
-                                                            <input class="form-check-input item-category-radio" type="radio"
-                                                                value="Sparepart" {{ ($item->category ?? 'Sparepart') != 'Unit' && ($item->category ?? '') != 'Accessories' && ($item->category ?? '') != 'Custom' ? 'checked' : '' }}>
-                                                            <label class="form-check-label small">Sparepart</label>
+                                                <div class="row w-100 g-2">
+                                                    <input type="hidden" class="invoice-item-detail-id" name="detail_id[]" value="{{ $item->id }}">
+                                                    <input type="hidden" name="pr_detail_id[]" value="">
+
+                                                    {{-- Item Selection & Category Selector --}}
+                                                    <div class="col-lg-5 col-12 mb-2 mb-lg-0 item-fields">
+                                                        <div class="d-flex align-items-center justify-content-between mb-1">
+                                                            <div class="item-category-pills">
+                                                                <label class="category-pill-label">
+                                                                    <input class="item-category-radio" type="radio" value="Sparepart"
+                                                                        {{ ($item->category ?? 'Sparepart') != 'Unit' && ($item->category ?? '') != 'Accessories' && ($item->category ?? '') != 'Custom' ? 'checked' : '' }}>
+                                                                    <span>Sparepart</span>
+                                                                </label>
+                                                                <label class="category-pill-label">
+                                                                    <input class="item-category-radio" type="radio" value="Unit"
+                                                                        {{ ($item->category ?? '') == 'Unit' ? 'checked' : '' }}>
+                                                                    <span>Unit Global</span>
+                                                                </label>
+                                                                <label class="category-pill-label">
+                                                                    <input class="item-category-radio" type="radio" value="Accessories"
+                                                                        {{ ($item->category ?? '') == 'Accessories' ? 'checked' : '' }}>
+                                                                    <span>Aksesoris</span>
+                                                                </label>
+                                                                <label class="category-pill-label">
+                                                                    <input class="item-category-radio" type="radio" value="Custom"
+                                                                        {{ ($item->category ?? '') == 'Custom' ? 'checked' : '' }}>
+                                                                    <span>Custom</span>
+                                                                </label>
+                                                            </div>
                                                         </div>
-                                                        <div class="form-check form-check-inline">
-                                                            <input class="form-check-input item-category-radio" type="radio"
-                                                                value="Unit" {{ ($item->category ?? '') == 'Unit' ? 'checked' : '' }}>
-                                                            <label class="form-check-label small">Unit Global</label>
+                                                        <input type="hidden" class="item-category-value" name="item_category[]"
+                                                            value="{{ ($item->category ?? '') == 'Unit' ? 'Unit' : (($item->category ?? '') == 'Accessories' ? 'Accessories' : (($item->category ?? '') == 'Custom' ? 'Custom' : 'Sparepart')) }}">
+
+                                                        <div class="field-product-sparepart">
+                                                            <select class="form-select form-select-sm select2-product-po" name="id_product[]">
+                                                                <option value="">Cari SKU / Product...</option>
+                                                                @if (!empty($item->id_product))
+                                                                    <option value="{{ $item->id_product }}"
+                                                                        data-label="{{ $item->product ?? '' }}"
+                                                                        data-unit="{{ $item->info_qty ?? 'Pcs' }}"
+                                                                        selected>
+                                                                        {{ $item->product ?? 'Product #' . $item->id_product }}
+                                                                    </option>
+                                                                @endif
+                                                            </select>
                                                         </div>
-                                                        <div class="form-check form-check-inline">
-                                                            <input class="form-check-input item-category-radio" type="radio"
-                                                                value="Accessories" {{ ($item->category ?? '') == 'Accessories' ? 'checked' : '' }}>
-                                                            <label class="form-check-label small">Aksesoris Rental</label>
+                                                        <div class="field-product-unit" style="display:none;">
+                                                            <select class="form-select form-select-sm select2-unit-po" name="id_unit[]">
+                                                                <option value="">Cari Unit...</option>
+                                                                @foreach ($units ?? [] as $u)
+                                                                    <option value="{{ $u->id }}"
+                                                                        data-sku="{{ $u->sku }}"
+                                                                        data-name="{{ $u->brand }} {{ $u->model }}"
+                                                                        data-label="{{ $u->sku }} - {{ $u->brand }} {{ $u->model }}"
+                                                                        {{ $item->id_unit == $u->id ? 'selected' : '' }}>
+                                                                        {{ $u->sku }} {{ $u->brand }} {{ $u->model }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                            <select class="form-select form-select-sm mt-1 select-kondisi-unit" name="kondisi[]">
+                                                                <option value="Baru" {{ ($item->kondisi ?? 'Baru') == 'Baru' ? 'selected' : '' }}>Unit Baru (masuk stok jual)</option>
+                                                                <option value="Second" {{ ($item->kondisi ?? '') == 'Second' ? 'selected' : '' }}>Unit Second (jadi Fixed Asset, QC dulu)</option>
+                                                            </select>
                                                         </div>
-                                                        <div class="form-check form-check-inline">
-                                                            <input class="form-check-input item-category-radio" type="radio"
-                                                                value="Custom" {{ ($item->category ?? '') == 'Custom' ? 'checked' : '' }}>
-                                                            <label class="form-check-label small">Custom Item</label>
+                                                        <div class="field-product-accessory" style="display:none;">
+                                                            <select class="form-select form-select-sm select2-accessory-po" name="id_rental_accessory[]">
+                                                                <option value="">Pilih Aksesoris Rental...</option>
+                                                                @foreach ($accessories ?? [] as $acc)
+                                                                    <option value="{{ $acc->id }}"
+                                                                        data-code="{{ $acc->code }}"
+                                                                        data-name="{{ $acc->name }}"
+                                                                        data-category="{{ $acc->category }}"
+                                                                        data-label="{{ $acc->name }} ({{ $acc->code ?? '-' }})"
+                                                                        {{ ($item->id_rental_accessory ?? '') == $acc->id ? 'selected' : '' }}>
+                                                                        {{ $acc->name }} [{{ strtoupper($acc->category) }}] {{ $acc->code ? "({$acc->code})" : '' }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                        <div class="field-product-custom" style="display:none;">
+                                                            <textarea class="form-control form-control-sm invoice-item-detail-product"
+                                                                name="product[]" rows="2"
+                                                                placeholder="Nama/Deskripsi Item Custom...">{{ $item->product }}</textarea>
                                                         </div>
                                                     </div>
-                                                    {{-- Radio di atas gak punya name (per-baris, exclusivity dihandle JS) supaya
-                                                         gak nabrak grup radio baris lain — nilainya disinkronkan ke sini lewat
-                                                         applyRowCategory() tiap kali berubah, ini yang beneran ke-submit. --}}
-                                                    <input type="hidden" class="item-category-value" name="item_category[]"
-                                                        value="{{ ($item->category ?? '') == 'Unit' ? 'Unit' : (($item->category ?? '') == 'Accessories' ? 'Accessories' : (($item->category ?? '') == 'Custom' ? 'Custom' : 'Sparepart')) }}">
+
+                                                    {{-- Price & Interactive Tax Calculation --}}
+                                                    <div class="col-lg-3 col-md-4 col-12 mb-2 mb-md-0">
+                                                        <label class="form-label text-muted small mb-1">Harga Satuan</label>
+                                                        <div class="input-group input-group-sm" data-price="{{ $no }}">
+                                                            <span class="input-group-text bg-light text-muted fw-semibold">Rp</span>
+                                                            <input type="text" class="form-control invoice-item-price-label text-end fw-semibold"
+                                                                id="priceLabel-{{ $no }}" data-id="{{ $no }}" name="harga"
+                                                                placeholder="0" data-type="currency" min="0"
+                                                                value="{{ fmod($item->price, 1) != 0 ? number_format($item->price, 2, ',', '.') : number_format($item->price, 0, ',', '.') }}">
+                                                            <input class="form-control invoice-item-price" type="number" step="any"
+                                                                name="price[]" id="price-{{ $no }}"
+                                                                value="{{ old('price[]', $item->price) }}" hidden>
+                                                        </div>
+                                                        <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
+                                                            <div class="hint-calc-wrapper">
+                                                                <div class="text-secondary mb-1">
+                                                                    <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
+                                                                    DPP (Exc. PPN): <strong class="text-primary exc-ppn-val">Rp 0</strong><br>
+                                                                    <span class="ppn-val text-muted" style="font-size: 10px;">PPN (11%): Rp 0</span>
+                                                                </div>
+                                                                <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
+                                                                    <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP
+                                                                </button>
+                                                            </div>
+                                                            <div class="hint-applied-wrapper d-none">
+                                                                <div class="d-flex align-items-center justify-content-between text-success">
+                                                                    <span style="font-size: 10px;">
+                                                                        <i class="mdi mdi-check-circle-outline me-1"></i>DPP: <strong class="applied-dpp-text">Rp 0</strong>
+                                                                    </span>
+                                                                    <button type="button" class="btn btn-xs btn-link text-danger p-0 ms-1 btn-reset-dpp" style="font-size: 10px; text-decoration: underline; line-height: 1;">
+                                                                        Batal
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Qty & Live Stock Hint --}}
+                                                    <div class="col-lg-1 col-md-2 col-4">
+                                                        <label class="form-label text-muted small mb-1">Qty</label>
+                                                        <input type="number" class="form-control form-control-sm invoice-item-qty text-center"
+                                                            placeholder="1" name="qty[]" id="qty-{{ $no }}"
+                                                            data-id="{{ $no }}" min="1" value="{{ $item->qty }}">
+                                                    </div>
+
+                                                    {{-- Info Qty (Unit Satuan) --}}
+                                                    <div class="col-lg-1 col-md-2 col-4">
+                                                        <label class="form-label text-muted small mb-1">Satuan</label>
+                                                        <select class="form-select form-select-sm invoice-item-info select2-info-qty"
+                                                            id="info-qty-{{ $no }}" data-id="{{ $no }}" name="info_qty[]">
+                                                            <option disabled value="">-Pilih-</option>
+                                                            @foreach ($unitList as $uOpt)
+                                                                <option value="{{ $uOpt }}" {{ strcasecmp($item->info_qty, $uOpt) === 0 ? 'selected' : '' }}>{{ $uOpt }}</option>
+                                                            @endforeach
+                                                            @if (!empty($item->info_qty) && !collect($unitList)->contains(fn($u) => strcasecmp($u, $item->info_qty) === 0))
+                                                                <option value="{{ $item->info_qty }}" selected>{{ $item->info_qty }}</option>
+                                                            @endif
+                                                        </select>
+                                                    </div>
+
+                                                    {{-- Disc (%) --}}
+                                                    <div class="col-lg-1 col-md-2 col-4">
+                                                        <label class="form-label text-muted small mb-1">Disc (%)</label>
+                                                        <div class="input-group input-group-sm" data-disc="{{ $no }}">
+                                                            <input type="text" class="form-control invoice-item-disc text-center"
+                                                                id="disc-{{ $no }}" data-id="{{ $no }}" name="disc[]" placeholder="0"
+                                                                value="{{ old('disc[]', $item->disc) }}">
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Amount & Delete --}}
+                                                    <div class="col-lg-1 col-md-2 col-12 text-md-end d-flex flex-column justify-content-between">
+                                                        <div>
+                                                            <label class="form-label text-muted small mb-1">Amount</label>
+                                                            <div class="amount-label fw-bold text-primary" id="amount-label-{{ $no }}" data-id="{{ $no }}">
+                                                                {{ number_format($item->amount, 0, ',', '.') }}
+                                                            </div>
+                                                            <input type="number" class="form-control invoice-item-amount"
+                                                                name="amount[]" id="amount-{{ $no }}" data-id="{{ $no }}"
+                                                                value="{{ old('amount[]', $item->amount) }}" hidden>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="ms-1 flex-shrink-0">
+                                                    <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del mt-4"
+                                                        data-repeater-delete="" title="Hapus Baris Item">
+                                                        <i class="mdi mdi-delete-outline"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                                @php $no++; @endphp
+                            @endforeach
+                        </div>
+                    @elseif (!empty($prefillItems))
+                        <div class="mb-0" data-repeater-list="group-a">
+                            @foreach ($prefillItems as $i => $pi)
+                                @php $rno = $i + 1; @endphp
+                                <div class="repeater-wrapper" data-repeater-item="">
+                                    <div class="position-relative repeater-row-inner">
+                                        <div class="d-flex align-items-start gap-2">
+                                            <div class="btn-drag-handle mt-1 flex-shrink-0" title="Geser urutan baris">
+                                                <i class="mdi mdi-drag-vertical fs-5"></i>
+                                            </div>
+                                            <div class="row w-100 g-2">
+                                                <input type="hidden" class="invoice-item-detail-id" name="detail_id[]" value="">
+                                                <input type="hidden" name="pr_detail_id[]" value="{{ $pi['pr_detail_id'] ?? '' }}">
+
+                                                {{-- Item Selection & Category Selector --}}
+                                                <div class="col-lg-5 col-12 mb-2 mb-lg-0 item-fields">
+                                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                                        <div class="item-category-pills">
+                                                            <label class="category-pill-label">
+                                                                <input class="item-category-radio" type="radio" value="Sparepart" checked>
+                                                                <span>Sparepart</span>
+                                                            </label>
+                                                            <label class="category-pill-label">
+                                                                <input class="item-category-radio" type="radio" value="Unit">
+                                                                <span>Unit Global</span>
+                                                            </label>
+                                                            <label class="category-pill-label">
+                                                                <input class="item-category-radio" type="radio" value="Accessories">
+                                                                <span>Aksesoris</span>
+                                                            </label>
+                                                            <label class="category-pill-label">
+                                                                <input class="item-category-radio" type="radio" value="Custom">
+                                                                <span>Custom</span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <input type="hidden" class="item-category-value" name="item_category[]" value="Sparepart">
+
                                                     <div class="field-product-sparepart">
                                                         <select class="form-select form-select-sm select2-product-po" name="id_product[]">
                                                             <option value="">Cari SKU / Product...</option>
-                                                            @foreach ($products ?? [] as $p)
-                                                                <option value="{{ $p->id }}"
-                                                                    data-label="{{ $p->commodity }} — {{ $p->description }}"
-                                                                    data-unit="{{ $p->unit }}"
-                                                                    {{ $item->id_product == $p->id ? 'selected' : '' }}>
-                                                                    {{ $p->commodity }} — {{ $p->description }}
+                                                            @if (!empty($pi['id_product']))
+                                                                <option value="{{ $pi['id_product'] }}"
+                                                                    data-label="{{ $pi['label'] ?? '' }}"
+                                                                    data-unit="{{ $pi['unit'] ?? 'Pcs' }}"
+                                                                    selected>
+                                                                    {{ $pi['label'] ?? 'Product #' . $pi['id_product'] }}
                                                                 </option>
-                                                            @endforeach
+                                                            @endif
                                                         </select>
                                                     </div>
                                                     <div class="field-product-unit" style="display:none;">
@@ -394,15 +873,14 @@
                                                                 <option value="{{ $u->id }}"
                                                                     data-sku="{{ $u->sku }}"
                                                                     data-name="{{ $u->brand }} {{ $u->model }}"
-                                                                    data-label="{{ $u->sku }} - {{ $u->brand }} {{ $u->model }}"
-                                                                    {{ $item->id_unit == $u->id ? 'selected' : '' }}>
+                                                                    data-label="{{ $u->sku }} - {{ $u->brand }} {{ $u->model }}">
                                                                     {{ $u->sku }} {{ $u->brand }} {{ $u->model }}
                                                                 </option>
                                                             @endforeach
                                                         </select>
                                                         <select class="form-select form-select-sm mt-1 select-kondisi-unit" name="kondisi[]">
-                                                            <option value="Baru" {{ ($item->kondisi ?? 'Baru') == 'Baru' ? 'selected' : '' }}>Unit Baru (masuk stok jual)</option>
-                                                            <option value="Second" {{ ($item->kondisi ?? '') == 'Second' ? 'selected' : '' }}>Unit Second (jadi Fixed Asset, QC dulu)</option>
+                                                            <option value="Baru" selected>Unit Baru (masuk stok jual)</option>
+                                                            <option value="Second">Unit Second (jadi Fixed Asset, QC dulu)</option>
                                                         </select>
                                                     </div>
                                                     <div class="field-product-accessory" style="display:none;">
@@ -413,8 +891,7 @@
                                                                     data-code="{{ $acc->code }}"
                                                                     data-name="{{ $acc->name }}"
                                                                     data-category="{{ $acc->category }}"
-                                                                    data-label="{{ $acc->name }} ({{ $acc->code ?? '-' }})"
-                                                                    {{ ($item->id_rental_accessory ?? '') == $acc->id ? 'selected' : '' }}>
+                                                                    data-label="{{ $acc->name }} ({{ $acc->code ?? '-' }})">
                                                                     {{ $acc->name }} [{{ strtoupper($acc->category) }}] {{ $acc->code ? "({$acc->code})" : '' }}
                                                                 </option>
                                                             @endforeach
@@ -423,22 +900,20 @@
                                                     <div class="field-product-custom" style="display:none;">
                                                         <textarea class="form-control form-control-sm invoice-item-detail-product"
                                                             name="product[]" rows="2"
-                                                            placeholder="Nama/Deskripsi Item Custom...">{{ $item->product }}</textarea>
+                                                            placeholder="Nama/Deskripsi Item Custom..."></textarea>
                                                     </div>
                                                 </div>
-                                                <div class="col-md-3 col-12 mb-md-0 mb-3">
-                                                    <p class="mb-2 repeater-title small text-muted">Price</p>
-                                                    <div class="input-group input-group-sm" data-price="{{ $no }}">
-                                                        <span class="input-group-text">Rp. </span>
-                                                        <input type="text" class="form-control invoice-item-price-label"
-                                                            id="priceLabel-{{ $no }}"
-                                                            data-id="{{ $no }}" name="harga"
-                                                            placeholder="Put Price Here" data-type="currency"
-                                                            min="0"
-                                                            value="{{ fmod($item->price, 1) != 0 ? number_format($item->price, 2, ',', '.') : number_format($item->price, 0, ',', '.') }}">
+
+                                                {{-- Price & Tax Calc --}}
+                                                <div class="col-lg-3 col-md-4 col-12 mb-2 mb-md-0">
+                                                    <label class="form-label text-muted small mb-1">Harga Satuan</label>
+                                                    <div class="input-group input-group-sm" data-price="{{ $rno }}">
+                                                        <span class="input-group-text bg-light text-muted fw-semibold">Rp</span>
+                                                        <input type="text" class="form-control invoice-item-price-label text-end fw-semibold"
+                                                            id="priceLabel-{{ $rno }}" data-id="{{ $rno }}" name="harga"
+                                                            placeholder="0" data-type="currency" min="0" value="">
                                                         <input class="form-control invoice-item-price" type="number" step="any"
-                                                            name="price[]" id="price-{{ $no }}"
-                                                            value="{{ old('price[]', $item->price) }}" hidden>
+                                                            name="price[]" id="price-{{ $rno }}" value="" hidden>
                                                     </div>
                                                     <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
                                                         <div class="hint-calc-wrapper">
@@ -448,13 +923,13 @@
                                                                 <span class="ppn-val text-muted" style="font-size: 10px;">PPN (11%): Rp 0</span>
                                                             </div>
                                                             <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
-                                                                <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP (Exc. PPN)
+                                                                <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP
                                                             </button>
                                                         </div>
                                                         <div class="hint-applied-wrapper d-none">
                                                             <div class="d-flex align-items-center justify-content-between text-success">
                                                                 <span style="font-size: 10px;">
-                                                                    <i class="mdi mdi-check-circle-outline me-1"></i>DPP Exc. PPN: <strong class="applied-dpp-text">Rp 0</strong>
+                                                                    <i class="mdi mdi-check-circle-outline me-1"></i>DPP: <strong class="applied-dpp-text">Rp 0</strong>
                                                                 </span>
                                                                 <button type="button" class="btn btn-xs btn-link text-danger p-0 ms-1 btn-reset-dpp" style="font-size: 10px; text-decoration: underline; line-height: 1;">
                                                                     Batal
@@ -463,109 +938,101 @@
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div class="col-md-1 col-12 mb-md-0 mb-3">
-                                                    <p class="mb-2 repeater-title small text-muted">Qty</p>
-                                                    <input type="number" class="form-control form-control-sm invoice-item-qty"
-                                                        placeholder="Min 1" name="qty[]" id="qty-{{ $no }}"
-                                                        data-id="{{ $no }}" min="1"
-                                                        value="{{ $item->qty }}">
+
+                                                {{-- Qty & Live Stock Hint --}}
+                                                <div class="col-lg-1 col-md-2 col-4">
+                                                    <label class="form-label text-muted small mb-1">Qty</label>
+                                                    <input type="number" class="form-control form-control-sm invoice-item-qty text-center"
+                                                        placeholder="1" name="qty[]" id="qty-{{ $rno }}" data-id="{{ $rno }}"
+                                                        data-pr-remaining="{{ $pi['qty'] ?? '' }}"
+                                                        min="1" value="{{ $pi['qty'] ?? 1 }}">
+                                                    <div class="qty-stock-hint text-info small d-none" id="qty-stock-hint-{{ $rno }}" style="font-size: 10px; line-height: 1.2;"></div>
                                                 </div>
-                                                <div class="col-md-1 col-12 mb-md-0 mb-3">
-                                                    <p class="mb-2 repeater-title small text-muted">Info Qty</p>
-                                                    <select class="form-select form-select-sm invoice-item-info select2-info-qty"
-                                                        id="info-qty-{{ $no }}"
-                                                        data-id="{{ $no }}"
-                                                        aria-label="Default select example" name="info_qty[]">
-                                                        <option disabled value="">---Info---</option>
+
+                                                {{-- Info Qty (Satuan) --}}
+                                                <div class="col-lg-1 col-md-2 col-4">
+                                                    <label class="form-label text-muted small mb-1">Satuan</label>
+                                                    <select class="form-select form-select-sm invoice-item-info select2-info-qty" id="info-qty-{{ $rno }}"
+                                                        data-id="{{ $rno }}" name="info_qty[]">
+                                                        <option disabled value="">-Pilih-</option>
+                                                        @php $defUnit = !empty($pi['unit']) ? $pi['unit'] : 'Pcs'; @endphp
                                                         @foreach ($unitList as $uOpt)
-                                                            <option value="{{ $uOpt }}" {{ strcasecmp($item->info_qty, $uOpt) === 0 ? 'selected' : '' }}>{{ $uOpt }}</option>
+                                                            <option value="{{ $uOpt }}" {{ strcasecmp($defUnit, $uOpt) === 0 ? 'selected' : '' }}>{{ $uOpt }}</option>
                                                         @endforeach
-                                                        @if (!empty($item->info_qty) && !collect($unitList)->contains(fn($u) => strcasecmp($u, $item->info_qty) === 0))
-                                                            <option value="{{ $item->info_qty }}" selected>{{ $item->info_qty }}</option>
-                                                        @endif
                                                     </select>
                                                 </div>
-                                                <div class="col-md-1 col-12 mb-md-0 mb-3">
-                                                    <p class="mb-2 repeater-title small text-muted">Disc (%)</p>
-                                                    <div class="input-group input-group-sm" data-disc="{{$no}}">
-                                                        <input type="text" class="form-control invoice-item-disc"
-                                                            id="disc-{{ $no }}" data-id="{{ $no }}"
-                                                            name="disc[]" placeholder="%"
-                                                            value="{{ old('disc[]', $item->disc) }}">
+
+                                                {{-- Disc (%) --}}
+                                                <div class="col-lg-1 col-md-2 col-4">
+                                                    <label class="form-label text-muted small mb-1">Disc (%)</label>
+                                                    <div class="input-group input-group-sm" data-disc="{{ $rno }}">
+                                                        <input type="text" class="form-control invoice-item-disc text-center"
+                                                            id="disc-{{ $rno }}" data-id="{{ $rno }}" name="disc[]" placeholder="0"
+                                                            value="0">
                                                     </div>
                                                 </div>
-                                                <div class="col-md-2 col-12 pe-4 text-md-end">
-                                                    <p class="mb-2 repeater-title small text-muted">Amount</p>
-                                                    <p class="mb-0 amount-label fw-semibold text-primary" id="amount-label-{{$no}}" data-id="{{$no}}">
-                                                        {{ number_format($item->amount, 0, ',', '.') }}</p>
-                                                    <input type="number" class="form-control invoice-item-amount"
-                                                        name="amount[]" id="amount-{{ $no }}"
-                                                        data-id="{{ $no }}"
-                                                        value="{{ old('amount[]', $item->amount) }}" hidden>
+
+                                                {{-- Amount & Delete --}}
+                                                <div class="col-lg-1 col-md-2 col-12 text-md-end d-flex flex-column justify-content-between">
+                                                    <div>
+                                                        <label class="form-label text-muted small mb-1">Amount</label>
+                                                        <div class="amount-label fw-bold text-primary" id="amount-label-{{ $rno }}" data-id="{{ $rno }}">0</div>
+                                                        <input type="number" class="form-control invoice-item-amount"
+                                                            name="amount[]" id="amount-{{ $rno }}" data-id="{{ $rno }}"
+                                                            value="" hidden>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class="position-absolute top-0 end-0 m-2">
-                                                <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del"
-                                                    data-repeater-delete="" title="Hapus Baris">
+                                            <div class="ms-1 flex-shrink-0">
+                                                <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del mt-4"
+                                                    data-repeater-delete="" title="Hapus Baris Item">
                                                     <i class="mdi mdi-delete-outline"></i>
                                                 </button>
                                             </div>
                                         </div>
                                     </div>
-                                @endif
-                                @php
-                                    $no++;
-                                @endphp
+                                </div>
                             @endforeach
                         </div>
-                    @elseif (!empty($prefillItems))
+                    @else
                         <div class="mb-0" data-repeater-list="group-a">
-                            @foreach ($prefillItems as $i => $pi)
-                                @php $rno = $i + 1; @endphp
-                                <div class="repeater-wrapper" data-repeater-item="">
-                                    <div class="position-relative border-bottom p-3">
-                                        <div class="d-flex align-items-start gap-2">
-                                            <div class="btn btn-sm btn-icon btn-label-secondary btn-drag-handle cursor-move mt-1 flex-shrink-0" title="Geser (drag & drop) untuk memindahkan posisi" style="cursor: grab;">
-                                                <i class="mdi mdi-drag-vertical fs-5"></i>
-                                            </div>
-                                            <div class="row w-100">
-                                                <input type="hidden" class="invoice-item-detail-id" name="detail_id[]" value="">
-                                            <input type="hidden" name="pr_detail_id[]" value="{{ $pi['pr_detail_id'] ?? '' }}">
-                                            <div class="col-md col-12 mb-md-0 item-fields">
-                                                <div class="item-category-toggle mb-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input item-category-radio" type="radio"
-                                                            value="Sparepart" checked>
-                                                        <label class="form-check-label small">Sparepart</label>
-                                                    </div>
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input item-category-radio" type="radio"
-                                                            value="Unit">
-                                                        <label class="form-check-label small">Unit Global</label>
-                                                    </div>
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input item-category-radio" type="radio"
-                                                            value="Accessories">
-                                                        <label class="form-check-label small">Aksesoris Rental</label>
-                                                    </div>
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input item-category-radio" type="radio"
-                                                            value="Custom">
-                                                        <label class="form-check-label small">Custom Item</label>
+                            <div class="repeater-wrapper" data-repeater-item="">
+                                <div class="position-relative repeater-row-inner">
+                                    <div class="d-flex align-items-start gap-2">
+                                        <div class="btn-drag-handle mt-1 flex-shrink-0" title="Geser urutan baris">
+                                            <i class="mdi mdi-drag-vertical fs-5"></i>
+                                        </div>
+                                        <div class="row w-100 g-2">
+                                            <input type="hidden" class="invoice-item-detail-id" name="detail_id[]" value="">
+                                            <input type="hidden" name="pr_detail_id[]" value="">
+
+                                            {{-- Item Selection & Category Selector --}}
+                                            <div class="col-lg-5 col-12 mb-2 mb-lg-0 item-fields">
+                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                    <div class="item-category-pills">
+                                                        <label class="category-pill-label">
+                                                            <input class="item-category-radio" type="radio" value="Sparepart" checked>
+                                                            <span>Sparepart</span>
+                                                        </label>
+                                                        <label class="category-pill-label">
+                                                            <input class="item-category-radio" type="radio" value="Unit">
+                                                            <span>Unit Global</span>
+                                                        </label>
+                                                        <label class="category-pill-label">
+                                                            <input class="item-category-radio" type="radio" value="Accessories">
+                                                            <span>Aksesoris</span>
+                                                        </label>
+                                                        <label class="category-pill-label">
+                                                            <input class="item-category-radio" type="radio" value="Custom">
+                                                            <span>Custom</span>
+                                                        </label>
                                                     </div>
                                                 </div>
                                                 <input type="hidden" class="item-category-value" name="item_category[]" value="Sparepart">
+
                                                 <div class="field-product-sparepart">
                                                     <select class="form-select form-select-sm select2-product-po" name="id_product[]">
                                                         <option value="">Cari SKU / Product...</option>
-                                                        @foreach ($products ?? [] as $p)
-                                                            <option value="{{ $p->id }}"
-                                                                data-label="{{ $p->commodity }} — {{ $p->description }}"
-                                                                data-unit="{{ $p->unit }}"
-                                                                {{ $pi['id_product'] == $p->id ? 'selected' : '' }}>
-                                                                {{ $p->commodity }} — {{ $p->description }}
-                                                            </option>
-                                                        @endforeach
                                                     </select>
                                                 </div>
                                                 <div class="field-product-unit" style="display:none;">
@@ -602,18 +1069,21 @@
                                                 <div class="field-product-custom" style="display:none;">
                                                     <textarea class="form-control form-control-sm invoice-item-detail-product"
                                                         name="product[]" rows="2"
-                                                        placeholder="Nama/Deskripsi Item Custom...">{{ $pi['label'] }}</textarea>
+                                                        placeholder="Nama/Deskripsi Item Custom..."></textarea>
                                                 </div>
                                             </div>
-                                            <div class="col-md-3 col-12 mb-md-0 mb-3">
-                                                <p class="mb-2 repeater-title small text-muted">Price</p>
-                                                <div class="input-group input-group-sm" data-price="{{ $rno }}">
-                                                    <span class="input-group-text">Rp. </span>
-                                                    <input type="text" class="form-control invoice-item-price-label"
-                                                        id="priceLabel-{{ $rno }}" data-id="{{ $rno }}" name="harga"
-                                                        placeholder="Put Price Here" data-type="currency" min="0" value="">
+
+                                            {{-- Price & Tax Calc --}}
+                                            <div class="col-lg-3 col-md-4 col-12 mb-2 mb-md-0">
+                                                <label class="form-label text-muted small mb-1">Harga Satuan</label>
+                                                <div class="input-group input-group-sm" data-price="1">
+                                                    <span class="input-group-text bg-light text-muted fw-semibold">Rp</span>
+                                                    <input type="text" class="form-control invoice-item-price-label text-end fw-semibold"
+                                                        id="priceLabel-1" data-id="1" name="harga"
+                                                        placeholder="0" data-type="currency" min="0"
+                                                        value="{{ old('price[]') }}">
                                                     <input class="form-control invoice-item-price" type="number" step="any"
-                                                        name="price[]" id="price-{{ $rno }}" value="" hidden>
+                                                        name="price[]" id="price-1" value="{{ old('price[]') }}" hidden>
                                                 </div>
                                                 <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
                                                     <div class="hint-calc-wrapper">
@@ -623,13 +1093,13 @@
                                                             <span class="ppn-val text-muted" style="font-size: 10px;">PPN (11%): Rp 0</span>
                                                         </div>
                                                         <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
-                                                            <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP (Exc. PPN)
+                                                            <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP
                                                         </button>
                                                     </div>
                                                     <div class="hint-applied-wrapper d-none">
                                                         <div class="d-flex align-items-center justify-content-between text-success">
                                                             <span style="font-size: 10px;">
-                                                                <i class="mdi mdi-check-circle-outline me-1"></i>DPP Exc. PPN: <strong class="applied-dpp-text">Rp 0</strong>
+                                                                <i class="mdi mdi-check-circle-outline me-1"></i>DPP: <strong class="applied-dpp-text">Rp 0</strong>
                                                             </span>
                                                             <button type="button" class="btn btn-xs btn-link text-danger p-0 ms-1 btn-reset-dpp" style="font-size: 10px; text-decoration: underline; line-height: 1;">
                                                                 Batal
@@ -638,248 +1108,127 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="col-md-1 col-12 mb-md-0 mb-3">
-                                                <p class="mb-2 repeater-title small text-muted">Qty</p>
-                                                <input type="number" class="form-control form-control-sm invoice-item-qty"
-                                                    placeholder="Min 1" name="qty[]" id="qty-{{ $rno }}" data-id="{{ $rno }}"
-                                                    data-pr-remaining="{{ $pi['pr_remaining'] ?? '' }}"
-                                                    min="1" value="{{ $pi['qty'] }}">
-                                                <small class="text-info d-block mt-1 qty-stock-hint {{ ($pi['pr_remaining'] ?? null) !== null && $pi['qty'] > $pi['pr_remaining'] ? '' : 'd-none' }}"
-                                                    id="qty-stock-hint-{{ $rno }}">
-                                                    <i class="mdi mdi-information-outline"></i>
-                                                    {{ $pi['pr_remaining'] ?? 0 }} pcs utk PR, +{{ max(0, $pi['qty'] - ($pi['pr_remaining'] ?? 0)) }} stok
-                                                </small>
+
+                                            {{-- Qty & Live Stock Hint --}}
+                                            <div class="col-lg-1 col-md-2 col-4">
+                                                <label class="form-label text-muted small mb-1">Qty</label>
+                                                <input type="number" class="form-control form-control-sm invoice-item-qty text-center"
+                                                    placeholder="1" name="qty[]" id="qty-1" data-id="1"
+                                                    min="1" value="{{ old('qty[]') }}">
                                             </div>
-                                            <div class="col-md-1 col-12 mb-md-0 mb-3">
-                                                <p class="mb-2 repeater-title small text-muted">Info Qty</p>
-                                                <select class="form-select form-select-sm invoice-item-info select2-info-qty" id="info-qty-{{ $rno }}"
-                                                    data-id="{{ $rno }}" aria-label="Default select example" name="info_qty[]">
-                                                    <option disabled value="">---Info---</option>
-                                                    @php
-                                                        $defUnit = !empty($pi['unit']) ? $pi['unit'] : 'Pcs';
-                                                    @endphp
+
+                                            {{-- Info Qty (Satuan) --}}
+                                            <div class="col-lg-1 col-md-2 col-4">
+                                                <label class="form-label text-muted small mb-1">Satuan</label>
+                                                <select class="form-select form-select-sm invoice-item-info select2-info-qty" id="info-qty-1"
+                                                    data-id="1" name="info_qty[]">
+                                                    <option disabled value="">-Pilih-</option>
                                                     @foreach ($unitList as $uOpt)
-                                                        <option value="{{ $uOpt }}" {{ strcasecmp($defUnit, $uOpt) === 0 ? 'selected' : '' }}>{{ $uOpt }}</option>
+                                                        <option value="{{ $uOpt }}" {{ $uOpt === 'Pcs' ? 'selected' : '' }}>{{ $uOpt }}</option>
                                                     @endforeach
                                                 </select>
                                             </div>
-                                            <div class="col-md-1 col-12 mb-md-0 mb-3">
-                                                <p class="mb-2 repeater-title small text-muted">Disc (%)</p>
-                                                <div class="input-group input-group-sm" data-disc="{{ $rno }}">
-                                                    <input type="text" class="form-control invoice-item-disc"
-                                                        id="disc-{{ $rno }}" data-id="{{ $rno }}" name="disc[]" placeholder="%"
-                                                        value="0">
+
+                                            {{-- Disc (%) --}}
+                                            <div class="col-lg-1 col-md-2 col-4">
+                                                <label class="form-label text-muted small mb-1">Disc (%)</label>
+                                                <div class="input-group input-group-sm" data-disc="1">
+                                                    <input type="text" class="form-control invoice-item-disc text-center"
+                                                        id="disc-1" data-id="1" name="disc[]" placeholder="0"
+                                                        value="{{ old('disc[]', 0) }}">
                                                 </div>
                                             </div>
-                                            <div class="col-md-2 col-12 pe-4 text-md-end">
-                                                <p class="mb-2 repeater-title small text-muted">Amount</p>
-                                                <p class="mb-0 amount-label fw-semibold text-primary" id="amount-label-{{ $rno }}" data-id="{{ $rno }}"></p>
-                                                <input type="number" class="form-control invoice-item-amount"
-                                                    name="amount[]" id="amount-{{ $rno }}" data-id="{{ $rno }}"
-                                                    value="" hidden>
+
+                                            {{-- Amount & Delete --}}
+                                            <div class="col-lg-1 col-md-2 col-12 text-md-end d-flex flex-column justify-content-between">
+                                                <div>
+                                                    <label class="form-label text-muted small mb-1">Amount</label>
+                                                    <div class="amount-label fw-bold text-primary" id="amount-label-1" data-id="1">
+                                                        {{ old(strval('amount[]')) ?? '0' }}
+                                                    </div>
+                                                    <input type="number" class="form-control invoice-item-amount"
+                                                        name="amount[]" id="amount-1" data-id="1"
+                                                        value="{{ old('amount[]') }}" hidden>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="position-absolute top-0 end-0 m-2">
-                                            <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del"
-                                                data-repeater-delete="" title="Hapus Baris">
+                                        <div class="ms-1 flex-shrink-0">
+                                            <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del mt-4"
+                                                data-repeater-delete="" title="Hapus Baris Item">
                                                 <i class="mdi mdi-delete-outline"></i>
                                             </button>
                                         </div>
                                     </div>
                                 </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <div class="mb-0" data-repeater-list="group-a">
-                            <div class="repeater-wrapper" data-repeater-item="">
-                                <div class="position-relative border-bottom p-3">
-                                    <div class="d-flex align-items-start gap-2">
-                                        <div class="btn btn-sm btn-icon btn-label-secondary btn-drag-handle cursor-move mt-1 flex-shrink-0" title="Geser (drag & drop) untuk memindahkan posisi" style="cursor: grab;">
-                                            <i class="mdi mdi-drag-vertical fs-5"></i>
-                                        </div>
-                                        <div class="row w-100">
-                                            <input type="hidden" class="invoice-item-detail-id" name="detail_id[]" value="">
-                                        <input type="hidden" name="pr_detail_id[]" value="">
-                                        <div class="col-md col-12 mb-md-0 item-fields">
-                                            <div class="item-category-toggle mb-2">
-                                                <div class="form-check form-check-inline">
-                                                    <input class="form-check-input item-category-radio" type="radio"
-                                                        value="Sparepart" checked>
-                                                    <label class="form-check-label small">Sparepart</label>
-                                                </div>
-                                                <div class="form-check form-check-inline">
-                                                    <input class="form-check-input item-category-radio" type="radio"
-                                                        value="Unit">
-                                                    <label class="form-check-label small">Unit Global</label>
-                                                </div>
-                                                <div class="form-check form-check-inline">
-                                                    <input class="form-check-input item-category-radio" type="radio"
-                                                        value="Accessories">
-                                                    <label class="form-check-label small">Aksesoris Rental</label>
-                                                </div>
-                                                <div class="form-check form-check-inline">
-                                                    <input class="form-check-input item-category-radio" type="radio"
-                                                        value="Custom">
-                                                    <label class="form-check-label small">Custom Item</label>
-                                                </div>
-                                            </div>
-                                            <input type="hidden" class="item-category-value" name="item_category[]" value="Sparepart">
-                                            <div class="field-product-sparepart">
-                                                <select class="form-select form-select-sm select2-product-po" name="id_product[]">
-                                                    <option value="">Cari SKU / Product...</option>
-                                                    @foreach ($products ?? [] as $p)
-                                                        <option value="{{ $p->id }}"
-                                                            data-label="{{ $p->commodity }} — {{ $p->description }}"
-                                                            data-unit="{{ $p->unit }}">
-                                                            {{ $p->commodity }} — {{ $p->description }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                            <div class="field-product-unit" style="display:none;">
-                                                <select class="form-select form-select-sm select2-unit-po" name="id_unit[]">
-                                                    <option value="">Cari Unit...</option>
-                                                    @foreach ($units ?? [] as $u)
-                                                        <option value="{{ $u->id }}"
-                                                            data-sku="{{ $u->sku }}"
-                                                            data-name="{{ $u->brand }} {{ $u->model }}"
-                                                            data-label="{{ $u->sku }} - {{ $u->brand }} {{ $u->model }}">
-                                                            {{ $u->sku }} {{ $u->brand }} {{ $u->model }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                <select class="form-select form-select-sm mt-1 select-kondisi-unit" name="kondisi[]">
-                                                    <option value="Baru" selected>Unit Baru (masuk stok jual)</option>
-                                                    <option value="Second">Unit Second (jadi Fixed Asset, QC dulu)</option>
-                                                </select>
-                                            </div>
-                                            <div class="field-product-accessory" style="display:none;">
-                                                <select class="form-select form-select-sm select2-accessory-po" name="id_rental_accessory[]">
-                                                    <option value="">Pilih Aksesoris Rental...</option>
-                                                    @foreach ($accessories ?? [] as $acc)
-                                                        <option value="{{ $acc->id }}"
-                                                            data-code="{{ $acc->code }}"
-                                                            data-name="{{ $acc->name }}"
-                                                            data-category="{{ $acc->category }}"
-                                                            data-label="{{ $acc->name }} ({{ $acc->code ?? '-' }})">
-                                                            {{ $acc->name }} [{{ strtoupper($acc->category) }}] {{ $acc->code ? "({$acc->code})" : '' }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                            <div class="field-product-custom" style="display:none;">
-                                                <textarea class="form-control form-control-sm invoice-item-detail-product"
-                                                    name="product[]" rows="2"
-                                                    placeholder="Nama/Deskripsi Item Custom..."></textarea>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3 col-12 mb-md-0 mb-3">
-                                            <p class="mb-2 repeater-title small text-muted">Price</p>
-                                            <div class="input-group input-group-sm" data-price="1">
-                                                <span class="input-group-text">Rp. </span>
-                                                <input type="text" class="form-control invoice-item-price-label"
-                                                    id="priceLabel-1" data-id="1" name="harga"
-                                                    placeholder="Put Price Here" data-type="currency" min="0"
-                                                    value="{{ old('price[]') }}">
-                                                <input class="form-control invoice-item-price" type="number" step="any"
-                                                    name="price[]" id="price-1" value="{{ old('price[]') }}" hidden>
-                                            </div>
-                                            <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
-                                                <div class="hint-calc-wrapper">
-                                                    <div class="text-secondary mb-1">
-                                                        <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
-                                                        DPP (Exc. PPN): <strong class="text-primary exc-ppn-val">Rp 0</strong><br>
-                                                        <span class="ppn-val text-muted" style="font-size: 10px;">PPN (11%): Rp 0</span>
-                                                    </div>
-                                                    <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
-                                                        <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP (Exc. PPN)
-                                                    </button>
-                                                </div>
-                                                <div class="hint-applied-wrapper d-none">
-                                                    <div class="d-flex align-items-center justify-content-between text-success">
-                                                        <span style="font-size: 10px;">
-                                                            <i class="mdi mdi-check-circle-outline me-1"></i>DPP Exc. PPN: <strong class="applied-dpp-text">Rp 0</strong>
-                                                        </span>
-                                                        <button type="button" class="btn btn-xs btn-link text-danger p-0 ms-1 btn-reset-dpp" style="font-size: 10px; text-decoration: underline; line-height: 1;">
-                                                            Batal
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-1 col-12 mb-md-0 mb-3">
-                                            <p class="mb-2 repeater-title small text-muted">Qty</p>
-                                            <input type="number" class="form-control form-control-sm invoice-item-qty"
-                                                placeholder="Min 1" name="qty[]" id="qty-1" data-id="1"
-                                                min="1" value="{{ old('qty[]') }}">
-                                        </div>
-                                        <div class="col-md-1 col-12 mb-md-0 mb-3">
-                                            <p class="mb-2 repeater-title small text-muted">Info Qty</p>
-                                            <select class="form-select form-select-sm invoice-item-info select2-info-qty" id="info-qty-1"
-                                                data-id="1" aria-label="Default select example" name="info_qty[]">
-                                                <option disabled value="">---Info---</option>
-                                                @foreach ($unitList as $uOpt)
-                                                    <option value="{{ $uOpt }}" {{ $uOpt === 'Pcs' ? 'selected' : '' }}>{{ $uOpt }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="col-md-1 col-12 mb-md-0 mb-3">
-                                            <p class="mb-2 repeater-title small text-muted">Disc (%)</p>
-                                            <div class="input-group input-group-sm" data-disc="1">
-                                                <input type="text" class="form-control invoice-item-disc"
-                                                    id="disc-1" data-id="1" name="disc[]" placeholder="%"
-                                                    value="{{ old('disc[]', 0) }}">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-2 col-12 pe-4 text-md-end">
-                                            <p class="mb-2 repeater-title small text-muted">Amount</p>
-                                            <p class="mb-0 amount-label fw-semibold text-primary" id="amount-label-1" data-id="1">
-                                                {{ old(strval('amount[]')) }}</p>
-                                            <input type="number" class="form-control invoice-item-amount"
-                                                name="amount[]" id="amount-1" data-id="1"
-                                                value="{{ old('amount[]') }}" hidden>
-                                        </div>
-                                    </div>
-                                    <div class="position-absolute top-0 end-0 m-2">
-                                        <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del"
-                                            data-repeater-delete="" title="Hapus Baris">
-                                            <i class="mdi mdi-delete-outline"></i>
-                                        </button>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     @endif
-                    <div class="d-flex flex-wrap gap-2 p-3 border-top bg-light-subtle">
-                        <button type="button" class="btn btn-sm btn-primary shadow-sm btn-add" data-repeater-create="">
+                    <div class="d-flex flex-wrap gap-2 p-3 border-top bg-light-subtle align-items-center">
+                        <button type="button" class="btn btn-sm btn-primary shadow-xs btn-add" data-repeater-create="">
                             <i class="mdi mdi-plus me-1"></i> Add Item
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-add-custom-item">
-                            <i class="mdi mdi-format-list-bulleted me-1"></i> Add Custom Item
+                        <button type="button" class="btn btn-sm btn-outline-primary shadow-xs" id="btn-pull-pr-items" data-bs-toggle="modal" data-bs-target="#modalPullPrItems">
+                            <i class="mdi mdi-file-import-outline me-1"></i> Tarik Item dari PR
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-info" id="btn-add-header-title">
                             <i class="mdi mdi-format-header-1 me-1"></i> Add Head Title
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-add-custom-item">
+                            <i class="mdi mdi-format-list-bulleted me-1"></i> Add Custom Item
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-            {{-- 1. TOTAL SUMMARY (FINANCE SUMMARY) --}}
-        <div class="row justify-content-end mb-4">
+
+        {{-- 4. REMARKS & FINANCIAL SUMMARY (2-COLUMN LAYOUT) --}}
+        <div class="row g-4 mb-4">
+            {{-- Left Column: Catatan / Remarks PO --}}
             <div class="col-lg-6 col-12">
-                <div class="card border-0 shadow-sm overflow-hidden" style="background: #ffffff; border: 1px solid #e0e0ff !important; border-radius: 12px;">
-                    <div class="card-header py-3 px-4 bg-light border-bottom d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center">
-                            <div class="avatar avatar-xs bg-label-primary rounded me-2 d-flex align-items-center justify-content-center" style="width:28px; height:28px;">
-                                <i class="mdi mdi-calculator text-primary fs-6"></i>
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="po-section-header">
+                        <div class="po-section-title">
+                            <span class="po-section-step">4</span>
+                            <span>Catatan &amp; Instruksi PO</span>
+                        </div>
+                        <span class="badge bg-label-secondary px-2 py-1" style="font-size: 10.5px;">PO Remarks</span>
+                    </div>
+                    <div class="card-body p-4 d-flex flex-column">
+                        <div class="form-floating form-floating-outline mb-3 flex-grow-1">
+                            <textarea class="form-control" rows="5" style="height: 140px;" placeholder="Tuliskan catatan khusus atau instruksi pengiriman PO di sini..."
+                                id="po_note" name="note">{{ @$purchase->note }}</textarea>
+                            <label for="po_note">Catatan Tambahan (dicetak di dokumen PO)</label>
+                        </div>
+                        <div class="p-3 rounded-3" style="background: #f8f9fc; border: 1px dashed #dbe0eb;">
+                            <div class="d-flex align-items-center gap-2 text-primary fw-bold small mb-1">
+                                <i class="mdi mdi-lightbulb-on-outline"></i> Petunjuk Singkat:
                             </div>
-                            <h6 class="fw-bold mb-0 text-dark">Total Summary</h6>
+                            <ul class="text-muted small mb-0 ps-3" style="font-size: 11.5px; line-height: 1.5;">
+                                <li>Gunakan fitur <strong>Tarik Item dari PR</strong> untuk menggabungkan beberapa Purchase Request yang disetujui.</li>
+                                <li>Centang opsi <strong>Tax (PPN 11%)</strong> jika pembelian dikenakan pajak pertambahan nilai.</li>
+                                <li>Draf PO disimpan otomatis di browser dan dapat dipulihkan sewaktu-waktu jika halaman tertutup.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Right Column: Total Summary (Finance Summary) --}}
+            <div class="col-lg-6 col-12">
+                <div class="summary-card-inner shadow-sm">
+                    <div class="po-section-header">
+                        <div class="po-section-title">
+                            <span class="avatar avatar-xs bg-label-primary rounded me-2 d-flex align-items-center justify-content-center" style="width:24px; height:24px;">
+                                <i class="mdi mdi-calculator text-primary" style="font-size: 14px;"></i>
+                            </span>
+                            <span>Rincian Pembayaran</span>
                         </div>
                         <span class="badge bg-label-primary px-2 py-1" style="font-size:10px;">IDR SUMMARY</span>
                     </div>
-                    <div class="card-body p-4">
+                    <div class="p-4">
+                        {{-- Subtotal --}}
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="text-muted small">Subtotal</span>
+                            <span class="text-muted fw-semibold">Subtotal Item</span>
                             <div class="text-end">
                                 <span class="fw-bold text-dark fs-6 subtotal-label" id="subtotal-label" data-id="1">
                                     {{ old('subtotal', @$purchase->subtotal ? 'RP ' . number_format(@$purchase->subtotal, 0, '', '.') : 'RP 0') }}
@@ -889,11 +1238,12 @@
                             </div>
                         </div>
 
+                        {{-- Global Discount --}}
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <span class="text-muted small">Discount</span>
-                            <div style="width: 160px;">
+                            <span class="text-muted fw-semibold">Diskon Global</span>
+                            <div style="width: 170px;">
                                 <div class="input-group input-group-sm">
-                                    <span class="input-group-text">Rp</span>
+                                    <span class="input-group-text bg-light text-muted fw-semibold">Rp</span>
                                     <input type="text" id="diskon-label" class="form-control text-end fw-semibold"
                                         placeholder="0" data-type="currency"
                                         pattern="^[0-9]\d{0,2}(\.\d{3})*$"
@@ -904,15 +1254,16 @@
                             </div>
                         </div>
 
+                        {{-- Tax (PPN 11%) --}}
                         <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
                             <div class="d-flex align-items-center gap-2">
-                                <span class="text-muted small">Tax (PPN 11%)</span>
+                                <span class="text-muted fw-semibold">Tax (PPN 11%)</span>
                                 <div class="form-check form-switch mb-0">
                                     <input class="form-check-input" type="checkbox" role="switch"
                                         id="taxSwitch" {{ (@$purchase->vat == '12' || @$purchase->vat == '11') ? 'checked' : '' }}>
                                 </div>
                             </div>
-                            <span class="fw-semibold tax-amount-label text-muted small" id="taxAmountLabel">
+                            <span class="fw-bold text-dark tax-amount-label" id="taxAmountLabel">
                                 @if (@$purchase && ($purchase->vat == '12' || $purchase->vat == '11'))
                                     {{ 'RP ' . number_format(($purchase->subtotal - $purchase->diskon) * $purchase->vat / 100, 0, '', '.') }}
                                 @endif
@@ -920,11 +1271,12 @@
                             <input type="hidden" id="tax" name="tax" value="{{ old('tax', @$purchase->vat ?? '0') }}">
                         </div>
 
+                        {{-- Delivery Cost --}}
                         <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
-                            <span class="text-muted small">Delivery Cost</span>
-                            <div style="width: 160px;">
+                            <span class="text-muted fw-semibold">Biaya Pengiriman</span>
+                            <div style="width: 170px;">
                                 <div class="input-group input-group-sm">
-                                    <span class="input-group-text">Rp</span>
+                                    <span class="input-group-text bg-light text-muted fw-semibold">Rp</span>
                                     <input type="text" id="delivery-cost-label" class="form-control text-end fw-semibold"
                                         placeholder="0" data-type="currency"
                                         pattern="^[0-9]\d{0,2}(\.\d{3})*$"
@@ -936,10 +1288,10 @@
                         </div>
 
                         {{-- Total Hero Box --}}
-                        <div class="p-3 rounded-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #f0f2ff 0%, #e8ebff 100%); border: 1px dashed #696cff;">
+                        <div class="summary-grand-total d-flex justify-content-between align-items-center">
                             <div>
-                                <div class="text-uppercase fw-bold text-primary" style="font-size: 10px; letter-spacing: 0.8px;">Total Amount</div>
-                                <div class="text-muted" style="font-size: 10px;">( Inclusive of Tax &amp; Discount )</div>
+                                <div class="text-uppercase fw-bold text-primary" style="font-size: 11px; letter-spacing: 0.8px;">Total Tagihan PO</div>
+                                <div class="text-muted small" style="font-size: 11px;">( Termasuk Pajak, Diskon &amp; Ongkir )</div>
                             </div>
                             <div class="fw-bolder text-primary fs-3 harga-total-label" id="hargaTotalLabel" data-id="1" style="letter-spacing: -0.5px;">
                                 {{ old('harga_total', @$purchase->total ? 'RP ' . number_format(@$purchase->total, 0, '', '.') : 'RP 0') }}
@@ -952,200 +1304,259 @@
             </div>
         </div>
 
-        {{-- 2. SHIP TO CARD --}}
-        @php
-            $addrBdg = 'Taman Kopo Indah V, Ruko Soho Sommerville No. 31 Bandung - Jawabarat 40218';
-            $addrBks = 'Jl. Nancep No.45A, Cibening, Kec. Setu, Kabupaten Bekasi, Jawa Barat 17320';
-            $currentShipTo = old('ship_to', @$purchase->ship_to ?? $addrBdg);
-            $isBdg = $currentShipTo == $addrBdg;
-            $isBks = $currentShipTo == $addrBks;
-            $isCustom = !$isBdg && !$isBks && !empty($currentShipTo);
-            if (!$isBdg && !$isBks && !$isCustom) {
-                $isBdg = true;
-                $currentShipTo = $addrBdg;
-            }
-        @endphp
-        <div class="card mb-4 border-0 shadow-sm">
-            <div class="card-header py-3 px-4 bg-light border-bottom d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center">
-                    <div class="avatar avatar-xs bg-label-primary rounded me-2 d-flex align-items-center justify-content-center" style="width:28px; height:28px;">
-                        <i class="mdi mdi-map-marker-radius text-primary fs-6"></i>
-                    </div>
-                    <h6 class="fw-bold mb-0 text-dark">Ship to :</h6>
-                </div>
-                <span class="badge bg-label-info px-2 py-1" style="font-size:10.5px;">Alamat Pengiriman PO</span>
+        {{-- Sticky Floating Bottom Action Bar --}}
+        <div class="po-sticky-footer d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <a href="{{ route('purchase.index') }}" class="btn btn-label-secondary">
+                    <i class="mdi mdi-arrow-left me-1"></i> Batal / Kembali
+                </a>
+                <span class="text-muted small d-none d-md-inline">
+                    Pastikan rincian harga dan supplier sudah sesuai sebelum disimpan.
+                </span>
             </div>
-            <div class="card-body p-4">
-                <div class="row g-3 mb-3">
-                    {{-- Option BDG --}}
-                    <div class="col-md-6">
-                        <div class="p-3 border rounded h-100 {{ $isBdg ? 'border-primary bg-label-primary bg-opacity-10' : 'bg-white' }}" style="cursor: pointer;" id="opt-wrapper-bdg">
-                            <div class="form-check d-flex align-items-start gap-2 mb-0">
-                                <input name="ship_to_preset" class="form-check-input mt-1 ship-to-radio" type="radio" value="BDG" id="shipToBdg" {{ $isBdg ? 'checked' : '' }}>
-                                <label class="form-check-label w-100 cursor-pointer" for="shipToBdg">
-                                    <div class="fw-bold text-dark mb-1">
-                                        <i class="mdi mdi-office-building-marker me-1 text-primary"></i>BDG (Bandung)
-                                    </div>
-                                    <div class="text-muted small" style="line-height:1.4;">
-                                        {{ $addrBdg }}
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Option BKS --}}
-                    <div class="col-md-6">
-                        <div class="p-3 border rounded h-100 {{ $isBks ? 'border-primary bg-label-primary bg-opacity-10' : 'bg-white' }}" style="cursor: pointer;" id="opt-wrapper-bks">
-                            <div class="form-check d-flex align-items-start gap-2 mb-0">
-                                <input name="ship_to_preset" class="form-check-input mt-1 ship-to-radio" type="radio" value="BKS" id="shipToBks" {{ $isBks ? 'checked' : '' }}>
-                                <label class="form-check-label w-100 cursor-pointer" for="shipToBks">
-                                    <div class="fw-bold text-dark mb-1">
-                                        <i class="mdi mdi-warehouse me-1 text-primary"></i>BKS (Bekasi)
-                                    </div>
-                                    <div class="text-muted small" style="line-height:1.4;">
-                                        {{ $addrBks }}
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Option Custom / Alamat Lain --}}
-                <div class="p-3 border rounded {{ $isCustom ? 'border-primary bg-label-primary bg-opacity-10' : 'bg-white' }}" id="opt-wrapper-custom">
-                    <div class="form-check d-flex align-items-center gap-2 mb-2">
-                        <input name="ship_to_preset" class="form-check-input ship-to-radio" type="radio" value="CUSTOM" id="shipToCustom" {{ $isCustom ? 'checked' : '' }}>
-                        <label class="form-check-label fw-bold text-dark cursor-pointer mb-0" for="shipToCustom">
-                            <i class="mdi mdi-map-marker-plus-outline me-1 text-primary"></i>Alamat Pengiriman Lain (Input Manual)
-                        </label>
-                    </div>
-                    <div id="custom-ship-to-wrapper" class="{{ $isCustom ? '' : 'd-none' }} mt-2 ps-4">
-                        <textarea class="form-control" id="ship_to_custom_input" rows="2" placeholder="Tuliskan alamat lengkap pengiriman di sini...">{{ $isCustom ? $currentShipTo : '' }}</textarea>
-                    </div>
-                </div>
-
-                {{-- Hidden input actual value sent to backend --}}
-                <input type="hidden" name="ship_to" id="ship_to_hidden" value="{{ $currentShipTo }}">
+            <div class="d-flex align-items-center gap-2">
+                <button type="submit" class="btn btn-primary shadow-sm px-4">
+                    <i class="mdi mdi-content-save-outline me-1"></i> Simpan Dokumen PO
+                </button>
             </div>
-        </div>
-
-        {{-- 3. NOTE / PO REMARKS CARD --}}
-        <div class="card mb-4 border-0 shadow-sm">
-            <div class="card-header py-3 px-4 bg-light border-bottom d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center">
-                    <div class="avatar avatar-xs bg-label-primary rounded me-2 d-flex align-items-center justify-content-center" style="width:28px; height:28px;">
-                        <i class="mdi mdi-notebook-edit-outline text-primary fs-6"></i>
-                    </div>
-                    <h6 class="fw-bold mb-0 text-dark">Note / PO Remarks</h6>
-                </div>
-            </div>
-            <div class="card-body p-4">
-                <textarea class="form-control" rows="3" placeholder="Tuliskan catatan atau instruksi khusus PO di sini..."
-                    name="note">{{ @$purchase->note }}</textarea>
-            </div>
-        </div>
-
-        <div class="d-flex justify-content-end gap-2 mb-4">
-            <a href="{{ route('purchase.index') }}" class="btn btn-label-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary shadow-sm px-4">
-                <i class="mdi mdi-content-save me-1"></i> Save PO
-            </button>
         </div>
     </form>
 
-    <div class="modal fade" id="quickAddSupplierModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Supplier Baru</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <!-- Modal: Tambah Supplier Baru -->
+    <div class="modal fade" id="quickAddSupplierModal" tabindex="-1" aria-labelledby="quickAddSupplierModalTitle" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+                <div class="modal-header border-bottom py-3 px-4 bg-white d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="avatar avatar-md flex-shrink-0">
+                            <span class="avatar-initial rounded-3 bg-label-primary shadow-xs">
+                                <i class="mdi mdi-domain-plus font-22"></i>
+                            </span>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-0" id="quickAddSupplierModalTitle">Supplier Baru</h5>
+                            <small class="text-muted font-12">Daftarkan data master vendor / supplier baru</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Code <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="qsCode" placeholder="SUP001">
+                <div class="modal-body p-4 bg-white">
+                    <div id="qsError" class="alert alert-danger d-none d-flex align-items-center py-2 px-3 mb-3 font-13" role="alert">
+                        <i class="mdi mdi-alert-circle-outline me-2 font-16 flex-shrink-0"></i>
+                        <span id="qsErrorText"></span>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Supplier Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="qsName" placeholder="PT Contoh Jaya">
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold text-dark font-13" for="qsCode">
+                                Kode Supplier <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-barcode"></i>
+                                </span>
+                                <input type="text" class="form-control border-start-0 ps-1" id="qsCode" placeholder="Contoh: SUP-001" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold text-dark font-13" for="qsInfo">
+                                Kategori Asal <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-earth"></i>
+                                </span>
+                                <select class="form-select border-start-0 ps-1" id="qsInfo">
+                                    <option value="" disabled selected>-- Pilih Kategori --</option>
+                                    <option value="Lokal">Lokal (Domestik)</option>
+                                    <option value="Import">Import (Luar Negeri)</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
+
                     <div class="mb-3">
-                        <label class="form-label">Info <span class="text-danger">*</span></label>
-                        <select class="form-select" id="qsInfo">
-                            <option value="" disabled selected>-- Pilih --</option>
-                            <option value="Lokal">Lokal</option>
-                            <option value="Import">Import</option>
-                        </select>
+                        <label class="form-label fw-semibold text-dark font-13" for="qsName">
+                            Nama Supplier / Perusahaan <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group input-group-merge">
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                <i class="mdi mdi-domain"></i>
+                            </span>
+                            <input type="text" class="form-control border-start-0 ps-1" id="qsName" placeholder="Contoh: PT Sumber Rejeki Abadi" autocomplete="off">
+                        </div>
                     </div>
-                    <div id="qsError" class="alert alert-danger d-none"></div>
+
+                    <div class="row g-3 mb-1">
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold text-dark font-13" for="qsPhone">
+                                No. Telepon Kantor
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-phone-outline"></i>
+                                </span>
+                                <input type="text" class="form-control border-start-0 ps-1" id="qsPhone" placeholder="021-xxxxxxx / 08xx" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold text-dark font-13" for="qsEmail">
+                                Email Perusahaan
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-email-outline"></i>
+                                </span>
+                                <input type="email" class="form-control border-start-0 ps-1" id="qsEmail" placeholder="info@supplier.com" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-primary" id="saveQuickAddSupplier">
-                        <i class="mdi mdi-content-save-outline me-1"></i> Simpan
+                <div class="modal-footer border-top py-3 px-4 bg-light d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-label-secondary px-3" data-bs-dismiss="modal">
+                        <i class="mdi mdi-close me-1"></i> Batal
+                    </button>
+                    <button type="button" class="btn btn-primary px-4 shadow-sm" id="saveQuickAddSupplier">
+                        <i class="mdi mdi-content-save-outline me-1"></i> Simpan Supplier
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="editSupplierModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Edit Supplier</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <!-- Modal: Edit Informasi Supplier -->
+    <div class="modal fade" id="editSupplierModal" tabindex="-1" aria-labelledby="editSupplierModalTitle" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: 720px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+                <div class="modal-header border-bottom py-3 px-4 bg-white d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="avatar avatar-md flex-shrink-0">
+                            <span class="avatar-initial rounded-3 bg-label-primary shadow-xs">
+                                <i class="mdi mdi-domain-edit font-22"></i>
+                            </span>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-0" id="editSupplierModalTitle">Edit Informasi Supplier</h5>
+                            <small class="text-muted font-12">Perbarui data profil, legalitas, dan kontak vendor terpilih</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <div id="editSupplierAlert" class="alert alert-danger d-none"></div>
+                <div class="modal-body p-4 bg-white">
+                    <div id="editSupplierAlert" class="alert alert-danger d-none d-flex align-items-center py-2 px-3 mb-3 font-13" role="alert">
+                        <i class="mdi mdi-alert-circle-outline me-2 font-16 flex-shrink-0"></i>
+                        <span id="editSupplierAlertText"></span>
+                    </div>
                     <input type="hidden" id="esId">
-                    <div class="row g-2 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Supplier</label>
-                            <input type="text" class="form-control" id="esSupplier">
+
+                    <!-- Bagian 1: Informasi Utama -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-7">
+                            <label class="form-label fw-semibold text-dark font-13" for="esSupplier">
+                                Nama Supplier / Perusahaan <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-domain"></i>
+                                </span>
+                                <input type="text" class="form-control border-start-0 ps-1" id="esSupplier" placeholder="Nama Supplier" required autocomplete="off">
+                            </div>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Info</label>
-                            <select class="form-select" id="esInfo">
-                                <option value="Lokal">Lokal</option>
-                                <option value="Import">Import</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Code</label>
-                            <input type="text" class="form-control" id="esCode">
-                        </div>
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Email</label>
-                            <input type="text" class="form-control" id="esEmail">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Phone</label>
-                            <input type="text" class="form-control" id="esPhone">
-                        </div>
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">NPWP</label>
-                            <input type="text" class="form-control" id="esNpwp">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Area</label>
-                            <input type="text" class="form-control" id="esArea">
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold text-dark font-13" for="esCode">
+                                Kode Supplier <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-barcode"></i>
+                                </span>
+                                <input type="text" class="form-control border-start-0 ps-1" id="esCode" placeholder="Kode Supplier" required autocomplete="off">
+                            </div>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Address</label>
-                        <textarea class="form-control" id="esAddress" rows="2"></textarea>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-dark font-13" for="esInfo">
+                                Kategori Asal <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-earth"></i>
+                                </span>
+                                <select class="form-select border-start-0 ps-1" id="esInfo">
+                                    <option value="Lokal">Lokal (Domestik)</option>
+                                    <option value="Import">Import (Luar Negeri)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-dark font-13" for="esArea">
+                                Area / Kota Operasional
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-map-marker-outline"></i>
+                                </span>
+                                <input type="text" class="form-control border-start-0 ps-1" id="esArea" placeholder="Contoh: Jakarta / Bandung / Shanghai" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bagian 2: Kontak & Legalitas -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-dark font-13" for="esPhone">
+                                No. Telepon Kantor
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-phone-outline"></i>
+                                </span>
+                                <input type="text" class="form-control border-start-0 ps-1" id="esPhone" placeholder="021-xxxxxxx / 08xx" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-dark font-13" for="esEmail">
+                                Email Perusahaan
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-email-outline"></i>
+                                </span>
+                                <input type="email" class="form-control border-start-0 ps-1" id="esEmail" placeholder="info@perusahaan.com" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold text-dark font-13" for="esNpwp">
+                                Nomor Pokok Wajib Pajak (NPWP)
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-card-account-details-outline"></i>
+                                </span>
+                                <input type="text" class="form-control border-start-0 ps-1" id="esNpwp" placeholder="00.000.000.0-000.000" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bagian 3: Alamat -->
+                    <div class="mb-1">
+                        <label class="form-label fw-semibold text-dark font-13" for="esAddress">
+                            Alamat Lengkap
+                        </label>
+                        <textarea class="form-control" id="esAddress" rows="3" placeholder="Alamat lengkap kantor pusat, gudang, atau workshop supplier..." style="resize: vertical;"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Tutup</button>
-                    <button type="button" class="btn btn-primary" id="esSaveBtn">
-                        <i class="mdi mdi-content-save-outline me-1"></i> Simpan Supplier
+                <div class="modal-footer border-top py-3 px-4 bg-light d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-label-secondary px-3" data-bs-dismiss="modal">
+                        <i class="mdi mdi-close me-1"></i> Batal
+                    </button>
+                    <button type="button" class="btn btn-primary px-4 shadow-sm" id="esSaveBtn">
+                        <i class="mdi mdi-content-save-outline me-1"></i> Simpan Perubahan
                     </button>
                 </div>
             </div>
@@ -1176,37 +1587,153 @@
         </div>
     </div>
 
-    <div class="modal fade" id="quickAddPicModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="quickAddPicModalTitle">Tambah PIC Supplier</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <!-- Modal: Tambah/Edit PIC Supplier -->
+    <div class="modal fade" id="quickAddPicModal" tabindex="-1" aria-labelledby="quickAddPicModalTitle" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+                <div class="modal-header border-bottom py-3 px-4 bg-white d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="avatar avatar-md flex-shrink-0">
+                            <span class="avatar-initial rounded-3 bg-label-primary shadow-xs" id="quickAddPicAvatar">
+                                <i class="mdi mdi-account-plus-outline font-22"></i>
+                            </span>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-0" id="quickAddPicModalTitle">Tambah PIC Supplier</h5>
+                            <small class="text-muted font-12" id="quickAddPicModalSubtitle">Kontak person (ATTN) untuk supplier terpilih</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4 bg-white">
                     <input type="hidden" id="qpId">
-                    <div id="qpError" class="alert alert-danger d-none"></div>
-                    <div class="mb-3">
-                        <label class="form-label">Nama PIC <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="qpName" placeholder="Nama PIC">
+                    <div id="qpError" class="alert alert-danger d-none d-flex align-items-center py-2 px-3 mb-3 font-13" role="alert">
+                        <i class="mdi mdi-alert-circle-outline me-2 font-16 flex-shrink-0"></i>
+                        <span id="qpErrorText"></span>
                     </div>
+
                     <div class="mb-3">
-                        <label class="form-label">Position</label>
-                        <input type="text" class="form-control" id="qpPosition" placeholder="Contoh: Sales">
+                        <label class="form-label fw-semibold text-dark font-13" for="qpName">
+                            Nama PIC <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group input-group-merge">
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                <i class="mdi mdi-account-outline"></i>
+                            </span>
+                            <input type="text" class="form-control border-start-0 ps-1" id="qpName" placeholder="Contoh: Bpk. Hendra / Ibu Sarah" autofocus autocomplete="off">
+                        </div>
                     </div>
+
                     <div class="mb-3">
-                        <label class="form-label">Phone</label>
-                        <input type="text" class="form-control" id="qpPhone" placeholder="08xxxxxxxxxx">
+                        <label class="form-label fw-semibold text-dark font-13" for="qpPhone">
+                            No. Telepon / WhatsApp
+                        </label>
+                        <div class="input-group input-group-merge">
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                <i class="mdi mdi-phone-outline"></i>
+                            </span>
+                            <input type="text" class="form-control border-start-0 ps-1" id="qpPhone" placeholder="08xxxxxxxxxx" autocomplete="off">
+                        </div>
+                        <div class="form-text font-11 text-muted">Nomor ini otomatis mengisi kolom Mobile saat PIC dipilih.</div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="text" class="form-control" id="qpEmail" placeholder="xxxx@xxx.xx">
+
+                    <div class="mb-1">
+                        <label class="form-label fw-semibold text-dark font-13" for="qpEmail">
+                            Email PIC
+                        </label>
+                        <div class="input-group input-group-merge">
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                <i class="mdi mdi-email-outline"></i>
+                            </span>
+                            <input type="email" class="form-control border-start-0 ps-1" id="qpEmail" placeholder="nama@perusahaan.com" autocomplete="off">
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-primary" id="saveQuickAddPic">
-                        <i class="mdi mdi-content-save-outline me-1"></i> Simpan
+                <div class="modal-footer border-top py-3 px-4 bg-light d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-label-secondary px-3" data-bs-dismiss="modal">
+                        <i class="mdi mdi-close me-1"></i> Batal
+                    </button>
+                    <button type="button" class="btn btn-primary px-4 shadow-sm" id="saveQuickAddPic">
+                        <i class="mdi mdi-content-save-outline me-1"></i> Simpan PIC
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal: Tarik Item dari PR Disetujui (Multi-PR Consolidation) --}}
+    <div class="modal fade" id="modalPullPrItems" tabindex="-1" aria-labelledby="modalPullPrItemsLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+                <div class="modal-header border-bottom py-3 px-4 bg-white d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="avatar avatar-md flex-shrink-0">
+                            <span class="avatar-initial rounded-3 bg-label-primary shadow-xs">
+                                <i class="mdi mdi-file-import-outline font-22"></i>
+                            </span>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-0" id="modalPullPrItemsLabel">Tarik Item dari Purchase Request (PR)</h5>
+                            <small class="text-muted font-12">
+                                Pilih item dari PR yang disetujui (lintas PR/SO) untuk digabung ke dalam dokumen Purchase Order ini
+                            </small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-2 mb-3 align-items-center justify-content-between">
+                        <div class="col-md-7 col-12">
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-white border-end-0"><i class="mdi mdi-magnify text-muted"></i></span>
+                                <input type="text" id="inputSearchPrItems" class="form-control border-start-0 ps-0" placeholder="Ketik nomor PR, nomor SO, part number, atau nama barang...">
+                            </div>
+                        </div>
+                        <div class="col-md-5 col-12 text-md-end d-flex align-items-center justify-content-md-end gap-2">
+                            <span class="badge bg-label-primary py-2 px-3">
+                                <span id="countSelectedPrItems">0</span> item dipilih
+                            </span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnReloadPrItems" title="Muat ulang data item PR">
+                                <i class="mdi mdi-refresh me-1"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive border rounded" style="max-height: 440px; overflow-y: auto;">
+                        <table class="table table-hover align-middle mb-0" id="tablePullPrItems">
+                            <thead class="table-light sticky-top" style="z-index: 2;">
+                                <tr>
+                                    <th class="text-center" style="width: 40px;">
+                                        <input type="checkbox" class="form-check-input" id="checkAllModalPrItems">
+                                    </th>
+                                    <th style="width: 170px;">Dokumen PR</th>
+                                    <th style="width: 150px;">SO / Proyek</th>
+                                    <th>Item / Sparepart</th>
+                                    <th class="text-center" style="width: 90px;">Sisa PR</th>
+                                    <th class="text-center" style="width: 110px;">Qty Ambil</th>
+                                    <th style="width: 130px;">Catatan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyPullPrItems">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">
+                                        <span class="spinner-border spinner-border-sm me-2 text-primary" role="status"></span>
+                                        Memuat daftar item Purchase Request yang tersedia...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-2 text-muted small d-flex align-items-center gap-1">
+                        <i class="mdi mdi-information-outline text-primary"></i>
+                        <span>Anda dapat mencentang beberapa item dari PR berbeda. Qty Ambil dapat diubah sebelum dimasukkan ke PO.</span>
+                    </div>
+                </div>
+                <div class="modal-footer border-top bg-light bg-opacity-25 px-4 py-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-primary d-flex align-items-center gap-1 shadow-xs" id="btnApplyPullPrItems" disabled>
+                        <i class="mdi mdi-check-bold me-1"></i>
+                        <span>Tambahkan ke PO</span>
                     </button>
                 </div>
             </div>
@@ -1487,10 +2014,10 @@
             }
 
             function resetPicModal() {
-                $('#qpError').addClass('d-none').text('');
+                $('#qpError').addClass('d-none');
+                $('#qpErrorText').text('');
                 $('#qpId').val('');
                 $('#qpName').val('');
-                $('#qpPosition').val('');
                 $('#qpPhone').val('');
                 $('#qpEmail').val('');
             }
@@ -1503,6 +2030,9 @@
                 }
                 resetPicModal();
                 $('#quickAddPicModalTitle').text('Tambah PIC Supplier');
+                $('#quickAddPicModalSubtitle').text('Kontak person (ATTN) untuk supplier terpilih');
+                $('#quickAddPicAvatar').html('<i class="mdi mdi-account-plus-outline font-22"></i>');
+                $('#saveQuickAddPic').html('<i class="mdi mdi-content-save-outline me-1"></i> Simpan PIC');
                 $('#quickAddPicModal').modal('show');
             });
 
@@ -1515,10 +2045,12 @@
                 resetPicModal();
                 $('#qpId').val(picId);
                 $('#qpName').val($selected.val());
-                $('#qpPosition').val($selected.data('position') || '');
                 $('#qpPhone').val($selected.data('phone') || '');
                 $('#qpEmail').val($selected.data('email') || '');
                 $('#quickAddPicModalTitle').text('Edit PIC Supplier');
+                $('#quickAddPicModalSubtitle').text('Perbarui kontak person (ATTN) untuk supplier terpilih');
+                $('#quickAddPicAvatar').html('<i class="mdi mdi-account-edit-outline font-22"></i>');
+                $('#saveQuickAddPic').html('<i class="mdi mdi-content-save-outline me-1"></i> Perbarui PIC');
                 $('#quickAddPicModal').modal('show');
             });
 
@@ -1527,14 +2059,19 @@
                 var picId = $('#qpId').val();
                 var name = $('#qpName').val().trim();
                 if (!name) {
-                    $('#qpError').removeClass('d-none').text('Nama PIC wajib diisi.');
+                    $('#qpError').removeClass('d-none');
+                    $('#qpErrorText').text('Nama PIC wajib diisi.');
                     return;
                 }
+
+                var $btn = $(this);
+                var origText = $btn.html();
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...');
 
                 var payload = {
                     _token: '{{ csrf_token() }}',
                     namePic: name,
-                    position: $('#qpPosition').val(),
+                    position: '',
                     phonePic: $('#qpPhone').val(),
                     emailPic: $('#qpEmail').val(),
                 };
@@ -1549,6 +2086,7 @@
                     headers: { 'Accept': 'application/json' },
                     data: payload,
                     success: function(res) {
+                        $btn.prop('disabled', false).html(origText);
                         if (res.success) {
                             var pic = res.data;
                             if (picId) {
@@ -1561,15 +2099,23 @@
                             $('#attn-empty-hint').hide();
                             $('#quickAddPicModal').modal('hide');
                         } else {
-                            $('#qpError').removeClass('d-none').text('Gagal menyimpan PIC.');
+                            $('#qpError').removeClass('d-none');
+                            $('#qpErrorText').text('Gagal menyimpan PIC.');
                         }
                     },
                     error: function(xhr) {
+                        $btn.prop('disabled', false).html(origText);
                         var msg = xhr.responseJSON && xhr.responseJSON.message ?
                             xhr.responseJSON.message : 'Gagal menyimpan, coba lagi.';
-                        $('#qpError').removeClass('d-none').text(msg);
+                        $('#qpError').removeClass('d-none');
+                        $('#qpErrorText').text(msg);
                     }
                 });
+            });
+
+            $('#quickAddSupplierModal').on('show.bs.modal', function() {
+                $('#qsError').addClass('d-none');
+                $('#qsErrorText').text('');
             });
 
             // Quick Add Supplier (AJAX, tanpa reload)
@@ -1577,11 +2123,18 @@
                 var code = $('#qsCode').val().trim();
                 var name = $('#qsName').val().trim();
                 var info = $('#qsInfo').val();
+                var phone = $('#qsPhone').length ? $('#qsPhone').val().trim() : '';
+                var email = $('#qsEmail').length ? $('#qsEmail').val().trim() : '';
 
                 if (!code || !name || !info) {
-                    $('#qsError').removeClass('d-none').text('Semua field wajib diisi.');
+                    $('#qsError').removeClass('d-none');
+                    $('#qsErrorText').text('Kode Supplier, Nama Supplier, dan Kategori Asal wajib diisi.');
                     return;
                 }
+
+                var $btn = $(this);
+                var origText = $btn.html();
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...');
 
                 $.ajax({
                     url: '{{ route('supplier.quick-store') }}',
@@ -1590,9 +2143,12 @@
                         _token: '{{ csrf_token() }}',
                         code: code,
                         supplier: name,
-                        info: info
+                        info: info,
+                        phone: phone,
+                        email: email
                     },
                     success: function(res) {
+                        $btn.prop('disabled', false).html(origText);
                         if (res.success) {
                             var newSupplier = res.data;
                             var option = new Option(newSupplier.supplier, newSupplier.id, true, true);
@@ -1603,14 +2159,19 @@
                             $('#qsCode').val('');
                             $('#qsName').val('');
                             $('#qsInfo').val('');
-                            $('#qsError').addClass('d-none').text('');
+                            if ($('#qsPhone').length) $('#qsPhone').val('');
+                            if ($('#qsEmail').length) $('#qsEmail').val('');
+                            $('#qsError').addClass('d-none');
+                            $('#qsErrorText').text('');
                             $('#quickAddSupplierModal').modal('hide');
                         }
                     },
                     error: function(xhr) {
+                        $btn.prop('disabled', false).html(origText);
                         var msg = xhr.responseJSON && xhr.responseJSON.message ?
                             xhr.responseJSON.message : 'Gagal menyimpan, coba lagi.';
-                        $('#qsError').removeClass('d-none').text(msg);
+                        $('#qsError').removeClass('d-none');
+                        $('#qsErrorText').text(msg);
                     }
                 });
             });
@@ -1618,9 +2179,11 @@
             // Edit Supplier (AJAX, tanpa reload halaman)
             $('#editSupplierModal').on('show.bs.modal', function() {
                 var id = $supplierDropdown.val();
-                $('#editSupplierAlert').addClass('d-none').text('');
+                $('#editSupplierAlert').addClass('d-none');
+                $('#editSupplierAlertText').text('');
                 if (!id) {
-                    $('#editSupplierAlert').removeClass('d-none').text('Pilih supplier terlebih dahulu.');
+                    $('#editSupplierAlert').removeClass('d-none');
+                    $('#editSupplierAlertText').text('Pilih supplier terlebih dahulu.');
                     return;
                 }
                 $('#esId').val(id);
@@ -1630,17 +2193,18 @@
                     type: 'GET',
                     success: function(res) {
                         var s = res.supplier;
-                        $('#esSupplier').val(s.supplier);
-                        $('#esInfo').val(s.info);
-                        $('#esCode').val(s.code);
-                        $('#esEmail').val(s.email);
-                        $('#esPhone').val(s.phone);
-                        $('#esNpwp').val(s.npwp);
-                        $('#esArea').val(s.area);
-                        $('#esAddress').val(s.address);
+                        $('#esSupplier').val(s.supplier || '');
+                        $('#esInfo').val(s.info || 'Lokal');
+                        $('#esCode').val(s.code || '');
+                        $('#esEmail').val(s.email || '');
+                        $('#esPhone').val(s.phone || '');
+                        $('#esNpwp').val(s.npwp || '');
+                        $('#esArea').val(s.area || '');
+                        $('#esAddress').val(s.address || '');
                     },
                     error: function() {
-                        $('#editSupplierAlert').removeClass('d-none').text('Gagal memuat data supplier.');
+                        $('#editSupplierAlert').removeClass('d-none');
+                        $('#editSupplierAlertText').text('Gagal memuat data supplier.');
                     }
                 });
             });
@@ -1649,7 +2213,9 @@
             $('#esSaveBtn').on('click', function() {
                 var id = $('#esId').val();
                 if (!id) return;
-                var $btn = $(this).prop('disabled', true);
+                var $btn = $(this);
+                var origHtml = $btn.html();
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...');
 
                 $.ajax({
                     url: '/supplier/' + id,
@@ -1680,14 +2246,18 @@
                             $('#address').val(realValue(res.data.address));
                             $('#editSupplierModal').modal('hide');
                         } else {
-                            $('#editSupplierAlert').removeClass('d-none').text('Gagal menyimpan perubahan.');
+                            $('#editSupplierAlert').removeClass('d-none');
+                            $('#editSupplierAlertText').text('Gagal menyimpan perubahan.');
                         }
                     },
-                    error: function() {
-                        $('#editSupplierAlert').removeClass('d-none').text('Gagal menyimpan perubahan.');
+                    error: function(xhr) {
+                        var msg = xhr.responseJSON && xhr.responseJSON.message ?
+                            xhr.responseJSON.message : 'Gagal menyimpan perubahan.';
+                        $('#editSupplierAlert').removeClass('d-none');
+                        $('#editSupplierAlertText').text(msg);
                     },
                     complete: function() {
-                        $btn.prop('disabled', false);
+                        $btn.prop('disabled', false).html(origHtml);
                     }
                 });
             });
@@ -2057,7 +2627,42 @@
                         $el.select2({
                             placeholder: 'Cari SKU / Product...',
                             width: '100%',
-                            dropdownParent: $el.closest('.field-product-sparepart')
+                            dropdownParent: $el.closest('.field-product-sparepart'),
+                            allowClear: true,
+                            ajax: {
+                                url: '{{ route("purchase.products.search") }}',
+                                dataType: 'json',
+                                delay: 250,
+                                data: function(params) {
+                                    return {
+                                        q: params.term || '',
+                                        page: params.page || 1
+                                    };
+                                },
+                                processResults: function(data, params) {
+                                    params.page = params.page || 1;
+                                    return {
+                                        results: data.results,
+                                        pagination: data.pagination
+                                    };
+                                },
+                                cache: true
+                            },
+                            minimumInputLength: 0,
+                            templateResult: function(item) {
+                                if (!item.id) return item.text;
+                                var $box = $('<div></div>');
+                                var $title = $('<div class="fw-bold text-dark"></div>').text(item.commodity || item.text);
+                                $box.append($title);
+                                if (item.description && item.description !== '-') {
+                                    $box.append($('<div class="text-muted small" style="font-size: 0.78rem;"></div>').text(item.description));
+                                }
+                                return $box;
+                            },
+                            templateSelection: function(item) {
+                                return item.text || item.commodity || 'Cari SKU / Product...';
+                            },
+                            escapeMarkup: function(m) { return m; }
                         });
                     }
                 });
@@ -2215,10 +2820,45 @@
                 }, 50);
             });
 
-            // Add Custom Item: pakai mekanisme "Add Item" yang sama, lalu langsung set ke mode Custom
+            // Helper membuat baris item baru di repeater secara bersih, andal, dan sinkron
+            function createItemRow() {
+                var $repeaterBtn = $('.form-invoice-repeater [data-repeater-create]').first();
+                if (!$repeaterBtn.length) {
+                    $repeaterBtn = $('[data-repeater-create]').last();
+                }
+                $repeaterBtn.trigger('click');
+
+                var $row = $('[data-repeater-list="group-a"] .repeater-wrapper').not('.header-row-wrapper').last();
+
+                // Pastikan langsung terlihat tanpa menunggu durasi slideDown
+                $row.stop(true, true).show();
+
+                // Bersihkan artefak DOM Select2 lama dari hasil clone template repeater
+                var $fields = $row.find('.item-fields');
+                $fields.find('.select2-container').remove();
+                $fields.find('.select2-hidden-accessible')
+                    .removeClass('select2-hidden-accessible')
+                    .removeAttr('data-select2-id')
+                    .removeAttr('aria-hidden')
+                    .removeAttr('tabindex');
+
+                // Inisialisasi Select2 segar untuk baris baru
+                initItemSelect2($fields);
+                applyRowCategory($fields);
+
+                return $row;
+            }
+
+            // Hubungkan tombol Add Item di header card section ke fungsi pembuat baris repeater
+            $(document).on('click', '.po-section-header .btn-add[data-repeater-create]', function(e) {
+                e.preventDefault();
+                createItemRow();
+            });
+
+            // Add Custom Item: buat baris baru lalu set ke mode Custom
             $('#btn-add-custom-item').on('click', function() {
-                pendingCustomAdd = true;
-                $('.btn-add[data-repeater-create]').trigger('click');
+                var $row = createItemRow();
+                $row.find('.item-category-radio[value="Custom"]').prop('checked', true).trigger('change');
             });
 
             // Add Head Title: tambah baris grup header custom
@@ -2295,6 +2935,20 @@
                 applyRowCategory($fields);
             });
 
+            // Handler khusus ketika item dipilih lewat Select2 AJAX
+            $(document).on('select2:select', '.select2-product-po', function(e) {
+                var data = e.params.data;
+                var $fields = $(this).closest('.item-fields');
+                if (data) {
+                    if (data.unit) {
+                        lockInfoQty($fields, data.unit);
+                    }
+                    var fullLabel = data.text || (data.commodity + (data.description && data.description !== '-' ? ' — ' + data.description : ''));
+                    $fields.find('.invoice-item-detail-product').val(fullLabel);
+                    applyRowCategory($fields);
+                }
+            });
+
             // Handler Pilihan Ship To (BDG / BKS / Custom)
             const addrBdg = 'Taman Kopo Indah V, Ruko Soho Sommerville No. 31 Bandung - Jawabarat 40218';
             const addrBks = 'Jl. Nancep No.45A, Cibening, Kec. Setu, Kabupaten Bekasi, Jawa Barat 17320';
@@ -2347,6 +3001,225 @@
                     $('#ship_to_hidden').val($(this).val().trim());
                 }
             });
+
+            // ── Handler Modal Tarik Item PR (Multi-PR Consolidation) ──
+            var cachedPrItems = [];
+
+            function loadAvailablePrItems() {
+                var $tbody = $('#tbodyPullPrItems');
+                $tbody.html('<tr><td colspan="7" class="text-center py-4 text-muted">' +
+                    '<span class="spinner-border spinner-border-sm me-2 text-primary" role="status"></span>' +
+                    'Memuat daftar item Purchase Request yang tersedia...</td></tr>');
+                $('#checkAllModalPrItems').prop('checked', false);
+                $('#btnApplyPullPrItems').prop('disabled', true);
+                $('#countSelectedPrItems').text('0');
+
+                $.ajax({
+                    url: '{{ route("purchase-request.available-items") }}',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function (res) {
+                        cachedPrItems = res.items || [];
+                        renderPrItemsTable(cachedPrItems);
+                    },
+                    error: function () {
+                        $tbody.html('<tr><td colspan="7" class="text-center py-4 text-danger">' +
+                            '<i class="mdi mdi-alert-circle-outline me-1"></i> Gagal memuat data item PR. Silakan coba lagi.</td></tr>');
+                    }
+                });
+            }
+
+            function renderPrItemsTable(items) {
+                var $tbody = $('#tbodyPullPrItems');
+                $tbody.empty();
+
+                var query = ($('#inputSearchPrItems').val() || '').trim().toLowerCase();
+                var filtered = items;
+                if (query) {
+                    filtered = items.filter(function (it) {
+                        var pool = (it.no_pr + ' ' + it.no_so + ' ' + it.brand_pn + ' ' + it.product_name + ' ' + it.note).toLowerCase();
+                        return pool.indexOf(query) !== -1;
+                    });
+                }
+
+                if (!filtered.length) {
+                    $tbody.html('<tr><td colspan="7" class="text-center py-4 text-muted">' +
+                        '<i class="mdi mdi-information-outline me-1"></i> Tidak ada item PR yang cocok / tersedia.</td></tr>');
+                    return;
+                }
+
+                filtered.forEach(function (it) {
+                    var $tr = $('<tr>' +
+                        '<td class="text-center">' +
+                            '<input type="checkbox" class="form-check-input check-pr-item" data-id="' + it.pr_detail_id + '">' +
+                        '</td>' +
+                        '<td>' +
+                            '<span class="fw-bold text-primary font-monospace font-12">' + it.no_pr + '</span>' +
+                            '<div class="text-muted font-11"><i class="mdi mdi-calendar-outline me-1"></i>' + it.pr_date + '</div>' +
+                        '</td>' +
+                        '<td>' +
+                            '<span class="badge bg-label-dark font-11">' + it.no_so + '</span>' +
+                        '</td>' +
+                        '<td>' +
+                            '<div class="fw-semibold text-dark font-13">' + it.product_name + '</div>' +
+                            (it.brand_pn && it.brand_pn !== it.product_name ? '<div class="text-muted font-11">' + it.brand_pn + '</div>' : '') +
+                        '</td>' +
+                        '<td class="text-center">' +
+                            '<span class="badge bg-label-info font-12">' + it.remaining_qty + ' ' + it.unit + '</span>' +
+                        '</td>' +
+                        '<td class="text-center">' +
+                            '<input type="number" class="form-control form-control-sm text-center input-qty-take mx-auto" ' +
+                                'data-id="' + it.pr_detail_id + '" min="1" max="' + it.remaining_qty + '" value="' + it.remaining_qty + '" style="width: 80px;">' +
+                        '</td>' +
+                        '<td>' +
+                            '<span class="text-muted small">' + it.note + '</span>' +
+                        '</td>' +
+                    '</tr>');
+                    $tbody.append($tr);
+                });
+
+                updateModalSelectionCount();
+            }
+
+            function updateModalSelectionCount() {
+                var checkedCount = $('#tablePullPrItems .check-pr-item:checked').length;
+                $('#countSelectedPrItems').text(checkedCount);
+                $('#btnApplyPullPrItems').prop('disabled', checkedCount === 0);
+                $('#btnApplyPullPrItems span').text(checkedCount > 0 ? 'Tambahkan (' + checkedCount + ' item) ke PO' : 'Tambahkan ke PO');
+            }
+
+            $('#modalPullPrItems').on('shown.bs.modal', function () {
+                if (!cachedPrItems.length) {
+                    loadAvailablePrItems();
+                }
+                $('#inputSearchPrItems').focus();
+            });
+
+            $('#btnReloadPrItems').on('click', function () {
+                loadAvailablePrItems();
+            });
+
+            $('#inputSearchPrItems').on('input', function () {
+                renderPrItemsTable(cachedPrItems);
+            });
+
+            $('#checkAllModalPrItems').on('change', function () {
+                var isChecked = $(this).is(':checked');
+                $('#tablePullPrItems .check-pr-item').prop('checked', isChecked);
+                updateModalSelectionCount();
+            });
+
+            $(document).on('change', '.check-pr-item', function () {
+                updateModalSelectionCount();
+            });
+
+            // Action: Tambahkan Item Terpilih ke Repeater Form PO
+            $('#btnApplyPullPrItems').on('click', function () {
+                var selected = [];
+                $('#tablePullPrItems .check-pr-item:checked').each(function () {
+                    var detailId = $(this).data('id');
+                    var it = cachedPrItems.find(function (x) { return String(x.pr_detail_id) === String(detailId); });
+                    if (it) {
+                        var $qtyInput = $('#tablePullPrItems .input-qty-take[data-id="' + detailId + '"]');
+                        var takeQty = parseInt($qtyInput.val(), 10) || it.remaining_qty || 1;
+                        selected.push({
+                            item: it,
+                            qty: takeQty
+                        });
+                    }
+                });
+
+                if (!selected.length) return;
+
+                // Cek apakah baris pertama repeater kosong (bisa ditimpa)
+                var $existingRows = $('[data-repeater-list="group-a"] .repeater-wrapper').not('.header-row-wrapper');
+                var canReuseFirstRow = false;
+                if ($existingRows.length === 1) {
+                    var $first = $existingRows.first();
+                    var hasVal = ($first.find('.select2-product-po').val() || $first.find('.select2-unit-po').val() ||
+                        $first.find('.select2-accessory-po').val() || ($first.find('textarea[name="product[]"]').val() || '').trim() ||
+                        parseFloat($first.find('.invoice-item-qty').val()) > 0);
+                    if (!hasVal) {
+                        canReuseFirstRow = true;
+                    }
+                }
+
+                selected.forEach(function (entry, idx) {
+                    var it = entry.item;
+                    var takeQty = entry.qty;
+
+                    var $row;
+                    if (idx === 0 && canReuseFirstRow) {
+                        $row = $existingRows.first();
+                        var $fields = $row.find('.item-fields');
+                        $fields.find('.select2-container').remove();
+                        $fields.find('.select2-hidden-accessible')
+                            .removeClass('select2-hidden-accessible')
+                            .removeAttr('data-select2-id')
+                            .removeAttr('aria-hidden')
+                            .removeAttr('tabindex');
+                        initItemSelect2($fields);
+                    } else {
+                        $row = createItemRow();
+                    }
+
+                    // Isi data ke baris repeater
+                    $row.find('input[name="pr_detail_id[]"]').val(it.pr_detail_id);
+
+                    if (it.id_product) {
+                        $row.find('.item-category-radio[value="Sparepart"]').prop('checked', true).trigger('change');
+                        var $productSelect = $row.find('.select2-product-po');
+                        if (!$productSelect.find('option[value="' + it.id_product + '"]').length) {
+                            $productSelect.append(new Option(it.product_name, it.id_product, true, true));
+                        }
+                        $productSelect.val(String(it.id_product)).trigger('change');
+                        $row.find('.invoice-item-detail-product').val(it.product_name);
+                    } else {
+                        $row.find('.item-category-radio[value="Custom"]').prop('checked', true).trigger('change');
+                        $row.find('.field-product-custom textarea[name="product[]"]').val(it.product_name);
+                        $row.find('.invoice-item-detail-product').val(it.product_name);
+                    }
+
+                    // Set Qty & Satuan
+                    $row.find('.invoice-item-qty').val(takeQty).attr('data-pr-remaining', it.remaining_qty).trigger('input');
+                    if (it.unit) {
+                        var $infoSelect = $row.find('.invoice-item-info');
+                        if (!$infoSelect.find('option[value="' + it.unit + '"]').length) {
+                            $infoSelect.append(new Option(it.unit, it.unit, true, true));
+                        }
+                        $infoSelect.val(it.unit).trigger('change');
+                    }
+
+                    // Badge asal PR & SO
+                    $row.find('.badge-pr-origin').remove();
+                    var $badge = $('<div class="mt-1 badge-pr-origin">' +
+                        '<span class="badge bg-label-primary font-11 d-inline-flex align-items-center gap-1">' +
+                            '<i class="mdi mdi-clipboard-text-outline"></i> ' + it.no_pr + ' &bull; SO: ' + it.no_so +
+                        '</span>' +
+                    '</div>');
+                    $row.find('.item-fields').append($badge);
+                });
+
+                // Update hidden id_purchase_request jika belum ada
+                var $mainPrInput = $('input[name="id_purchase_request"]');
+                if (!$mainPrInput.val() && selected[0] && selected[0].item.pr_id) {
+                    $mainPrInput.val(selected[0].item.pr_id);
+                }
+
+                $('#modalPullPrItems').modal('hide');
+                recalculateTotals();
+                updateItemsCountBadge();
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Item Ditambahkan',
+                        text: selected.length + ' item dari Purchase Request berhasil dimasukkan ke dalam PO.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }
+            });
         })
     </script>
 @endpush
@@ -2363,8 +3236,10 @@
     --}}
     <script>
         (function () {
-            const DRAFT_KEY = 'po_create_draft_v1';
             const qs = new URLSearchParams(window.location.search);
+            const USER_ID = @json(Auth::id() ?? 'guest');
+            const SOURCE_PR = qs.get('from_pr') || 'new';
+            const DRAFT_KEY = 'po_draft_' + USER_ID + '_' + SOURCE_PR;
             const HAS_PREFILL = qs.has('from_pr') || qs.has('from_product_set') || qs.has('items') || qs.has('product_ids');
 
             let draft = null;
@@ -2377,7 +3252,7 @@
             const $status = $('#poDraftStatus');
 
             function markStatus(text, cls) {
-                $status.removeClass('d-none bg-label-secondary bg-label-success bg-label-info')
+                $status.removeClass('d-none bg-label-secondary bg-label-success bg-label-warning bg-label-info')
                     .addClass(cls || 'bg-label-success');
                 $status.find('.txt').text(text);
                 $('#poDraftReset').removeClass('d-none');
@@ -2386,6 +3261,8 @@
             // ── Kumpulkan snapshot form ──
             function collectDraft() {
                 const d = {
+                    saved_at: Date.now(),
+                    saved_at_formatted: new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }),
                     supplier: $('#supplier-dropdown').val() || '',
                     supplier_label: $('#supplier-dropdown option:selected').text().trim() || '',
                     attn: $('#attn').val() || '',
@@ -2434,6 +3311,7 @@
 
             let saveTimer = null;
             function scheduleSave() {
+                markStatus('Menyimpan...', 'bg-label-warning');
                 clearTimeout(saveTimer);
                 saveTimer = setTimeout(function () {
                     try {
@@ -2465,12 +3343,13 @@
                             .find('input[name="product[]"]').val(it.product || '');
                         return;
                     }
+                    var $r;
                     if (it.category === 'Custom') {
-                        $('#btn-add-custom-item').trigger('click');
+                        $r = createItemRow();
+                        $r.find('.item-category-radio[value="Custom"]').prop('checked', true).trigger('change');
                     } else {
-                        $('.btn-add[data-repeater-create]').first().trigger('click');
+                        $r = createItemRow();
                     }
-                    const $r = $('[data-repeater-list="group-a"] .repeater-wrapper').not('.header-row-wrapper').last();
 
                     if (it.category && it.category !== 'Sparepart') {
                         $r.find('.item-category-radio[value="' + it.category + '"]').prop('checked', true).trigger('change');
@@ -2536,7 +3415,7 @@
                 // Line items
                 restoreItems(draft.items);
 
-                // Mobile/Address/ATTN di-set setelah supplier change (yang menimpanya) selesai
+                // Mobile/Address/ATTN di-set setelah supplier change selesai
                 setTimeout(function () {
                     if (draft.mobile) $('#mobile').val(draft.mobile);
                     if (draft.address) $('#address').val(draft.address);
@@ -2549,7 +3428,7 @@
                     }
                 }, 1200);
 
-                markStatus('Draft dipulihkan', 'bg-label-info');
+                markStatus('Draf dipulihkan', 'bg-label-info');
             }
 
             $(function () {
@@ -2557,24 +3436,39 @@
                     i.id_product || i.id_unit || i.id_rental_accessory || (i.product || '').trim())));
 
                 if (hasContent && !HAS_PREFILL) {
-                    // beri jeda supaya select2 / repeater / handler utama sudah siap
-                    setTimeout(restoreDraft, 400);
+                    const validCount = (draft.items || []).filter(i => i.id_product || i.id_unit || i.id_rental_accessory || (i.product || '').trim()).length;
+                    $('#poDraftTimeText').text(draft.saved_at_formatted || 'sebelumnya');
+                    $('#poDraftItemCount').text(validCount);
+                    $('#poDraftRecoveryAlert').removeClass('d-none').addClass('d-flex');
+                    $('#poDraftReset').removeClass('d-none');
+                    markStatus('Draf tersimpan', 'bg-label-info');
                 } else {
                     $('#poDraftReset').removeClass('d-none');
-                    $status.removeClass('d-none').addClass('bg-label-secondary').find('.txt').text('Autosave aktif');
+                    $status.removeClass('d-none').addClass('bg-label-secondary').find('.txt').text('Autosave Aktif');
                 }
+
+                $('#btnApplyDraft').on('click', function () {
+                    $('#poDraftRecoveryAlert').removeClass('d-flex').addClass('d-none');
+                    restoreDraft();
+                });
+
+                $('#btnDismissDraft').on('click', function () {
+                    $('#poDraftRecoveryAlert').removeClass('d-flex').addClass('d-none');
+                    try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+                    markStatus('Autosave Aktif', 'bg-label-secondary');
+                });
 
                 // Autosave saat ada perubahan di form
                 $('#formAuthentication').on('input change', 'input, select, textarea', scheduleSave);
                 $(document).on('repeater:added repeater:deleted', scheduleSave);
 
-                // Bersihkan draft saat submit
+                // Bersihkan draft saat submit berhasil
                 $('#formAuthentication').on('submit', function () {
                     try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
                 });
 
                 $('#poDraftReset').on('click', function () {
-                    if (confirm('Hapus draft PO tersimpan dan mulai dari awal?')) {
+                    if (confirm('Hapus draf PO tersimpan dan mulai dari awal?')) {
                         try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
                         window.location = window.location.pathname;
                     }

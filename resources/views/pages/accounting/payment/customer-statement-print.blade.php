@@ -196,19 +196,19 @@
     <table class="table-custom mb-4">
         <thead>
             <tr>
-                <th style="width: 80px;" class="text-center">Tanggal</th>
-                <th style="width: 140px;">No. Referensi / Inv</th>
-                <th style="width: 100px;">No. PO Klien</th>
+                <th style="width: 85px; white-space: nowrap;" class="text-center">Tanggal</th>
+                <th style="width: 140px; white-space: nowrap;">No. Referensi / Inv</th>
+                <th style="width: 100px; white-space: nowrap;">No. PO Klien</th>
                 <th>Deskripsi Transaksi</th>
-                <th style="width: 110px;" class="text-end">Tagihan / Debit (+)</th>
-                <th style="width: 110px;" class="text-end">Pelunasan / Kredit (-)</th>
-                <th style="width: 120px;" class="text-end">Saldo Piutang</th>
+                <th style="width: 110px; white-space: nowrap;" class="text-end">Tagihan / Debit (+)</th>
+                <th style="width: 110px; white-space: nowrap;" class="text-end">Pelunasan / Kredit (-)</th>
+                <th style="width: 120px; white-space: nowrap;" class="text-end">Saldo Piutang</th>
             </tr>
         </thead>
         <tbody>
             {{-- Saldo Awal --}}
             <tr class="opening-row">
-                <td class="text-center">{{ Carbon\Carbon::parse($startDate)->format('d/m/Y') }}</td>
+                <td class="text-center" style="white-space: nowrap;">{{ Carbon\Carbon::parse($startDate)->format('d/m/Y') }}</td>
                 <td colspan="3"><em>SALDO AWAL PIUTANG (Sebelum {{ Carbon\Carbon::parse($startDate)->format('d/m/Y') }})</em></td>
                 <td class="text-end">-</td>
                 <td class="text-end">-</td>
@@ -217,8 +217,8 @@
 
             @forelse ($ledger as $item)
                 <tr>
-                    <td class="text-center">{{ Carbon\Carbon::parse($item['date'])->format('d/m/Y') }}</td>
-                    <td class="fw-semibold">
+                    <td class="text-center" style="white-space: nowrap;">{{ Carbon\Carbon::parse($item['date'])->format('d/m/Y') }}</td>
+                    <td class="fw-semibold" style="white-space: nowrap;">
                         {{ $item['ref_no'] }}
                         @if($item['type'] === 'DEBIT')
                             <span class="badge bg-light text-dark border ms-1" style="font-size: 9px;">INV</span>

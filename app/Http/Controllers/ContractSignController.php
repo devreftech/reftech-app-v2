@@ -151,7 +151,7 @@ class ContractSignController extends Controller
         if ($contract->id_unit_quotation) {
             $quote = UnitQuotation::with(['client', 'pic', 'details'])->find($contract->id_unit_quotation);
             if ($quote) {
-                $accUserIds = \App\Models\User::getAccountingRecipientsForSales($quote->id_sales, true);
+                $accUserIds = \App\Models\User::getAccountingRecipientsForSales($quote->id_sales, false);
                 $invoice = null;
 
                 // Otomatisasi Upload PO jika quotation belum dalam status po_received

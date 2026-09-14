@@ -32,14 +32,38 @@
                 <hr class="my-0">
                 <div class="card-body mb-3">
                     <div class="row">
-                        <div class="col-4 col-lg-2 fw-medium">
-                            <p class="mb-1">Client </p>
-                            <p class="mb-1">Sales </p>
-                        </div>
-                        <div class="col-8">
-                            <p class="mb-1">: {{ $quote->pic->client->company }} - {{ $quote->pic->name_pic }}</p>
-                            <p class="mb-1">: {{ $quote->sales->name }}</p>
-                        </div>
+                        @if ($quote)
+                            <div class="col-4 col-lg-2 fw-medium">
+                                <p class="mb-1">Customer / Client</p>
+                                <p class="mb-1">PIC Contact</p>
+                                <p class="mb-1">Sales Person</p>
+                                <p class="mb-1">No. Quotation</p>
+                            </div>
+                            <div class="col-8">
+                                <p class="mb-1 fw-bold">: {{ $quote->pic?->client?->company ?? '-' }}</p>
+                                <p class="mb-1">: {{ $quote->pic?->name_pic ?? '-' }}</p>
+                                <p class="mb-1">: {{ $quote->sales?->name ?? '-' }}</p>
+                                <p class="mb-1">: <span class="badge bg-label-primary">{{ $quote->no_quote ?? '-' }}</span></p>
+                            </div>
+                        @elseif (isset($productIn) && $productIn)
+                            <div class="col-4 col-lg-2 fw-medium">
+                                <p class="mb-1">Vendor / Supplier</p>
+                                <p class="mb-1">No. Invoice</p>
+                                <p class="mb-1">No. Penerimaan</p>
+                            </div>
+                            <div class="col-8">
+                                <p class="mb-1 fw-bold">: {{ $productIn->supplier?->nama_supplier ?? '-' }}</p>
+                                <p class="mb-1">: {{ $productIn->invoice ?? '-' }}</p>
+                                <p class="mb-1">: <span class="badge bg-label-info">{{ $productIn->no_product_in ?? '-' }}</span></p>
+                            </div>
+                        @else
+                            <div class="col-4 col-lg-2 fw-medium">
+                                <p class="mb-1">Tipe Dokumen</p>
+                            </div>
+                            <div class="col-8">
+                                <p class="mb-1 text-muted">: Dokumen Retur Standar (#{{ $return->no_return }})</p>
+                            </div>
+                        @endif
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -65,10 +89,12 @@
                                     <td class="align-top">{{ $no }}</td>
                                     <td class="text-nowrap align-top">
                                         <p class="mb-0 fw-semibold" style="font-size: 12px">
-                                            {{ $product->replacement->replacement }}
+                                            {{ $product->replacement?->replacement ?? ('Item #' . $product->id) }}
                                         </p>
-                                        <pre class="mb-0"
-                                            style="font-size: 10px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 100%; overflow-x: auto; white-space: pre-wrap;">{{ $product->replacement->product->description }}</pre>
+                                        @if ($product->replacement?->product?->description)
+                                            <pre class="mb-0"
+                                                style="font-size: 10px; font-family: inherit; max-width: 100%; overflow-x: auto; white-space: pre-wrap;">{{ $product->replacement->product->description }}</pre>
+                                        @endif
                                     </td>
                                     <td class="align-top">{{ $product->qty }}
                                     </td>

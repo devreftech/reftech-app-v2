@@ -9,12 +9,22 @@
                     <div class="avatar avatar-md me-3">
                         <div class="avatar-initial bg-label-success rounded"><i class="mdi mdi-wallet-outline mdi-24px"></i></div>
                     </div>
-                    <div>
-                        <small class="text-muted d-block">Cash Position</small>
-                        <h5 class="mb-0">Total Cash Available</h5>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <small class="text-muted d-block">Cash Position</small>
+                            <a href="{{ route('bank.index') }}" class="small text-primary text-decoration-none" title="Buka Master Kas & Bank">
+                                <i class="mdi mdi-open-in-new"></i>
+                            </a>
+                        </div>
+                        <h5 class="mb-0">Rp {{ number_format($financeCashPosition ?? 0, 0, ',', '.') }}</h5>
                     </div>
                 </div>
-                <span class="badge bg-label-secondary">Under Development</span>
+                <div class="d-flex align-items-center justify-content-between">
+                    <small class="text-muted" title="Reftech: Rp {{ number_format($financeCashReftech, 0, ',', '.') }} | Kojisha: Rp {{ number_format($financeCashKojisha, 0, ',', '.') }}">{{ $financeActiveBankCount ?? 0 }} Rekening (Reftech &amp; Kojisha)</small>
+                    <a href="{{ route('bank.index') }}" class="badge bg-label-success text-decoration-none">
+                        Kas &amp; Bank &rarr;
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -41,12 +51,22 @@
                     <div class="avatar avatar-md me-3">
                         <div class="avatar-initial bg-label-warning rounded"><i class="mdi mdi-file-document-outline mdi-24px"></i></div>
                     </div>
-                    <div>
-                        <small class="text-muted d-block">Outstanding AP (Hutang)</small>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <small class="text-muted d-block">Outstanding AP (Hutang)</small>
+                            <a href="{{ route('payable.index_aging') }}" class="small text-primary text-decoration-none" title="Buka Aging Report AP">
+                                <i class="mdi mdi-open-in-new"></i>
+                            </a>
+                        </div>
                         <h5 class="mb-0">Rp {{ number_format($financeOutstandingAP, 0, ',', '.') }}</h5>
                     </div>
                 </div>
-                <small class="text-muted">Total Supplier Bill belum lunas</small>
+                <div class="d-flex align-items-center justify-content-between">
+                    <small class="text-muted">Total Supplier Bill belum lunas</small>
+                    <a href="{{ route('payable.index_aging') }}" class="badge bg-label-warning text-decoration-none">
+                        Aging AP &rarr;
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -99,11 +119,23 @@
     </div>
     <div class="col-lg-6 mb-4">
         <div class="card h-100">
-            <div class="card-header">
-                <h5 class="mb-0">Aging Payable (Hutang)</h5>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">Aging Payable (Hutang)</h5>
+                    <small class="text-muted">Rp {{ number_format($financeOutstandingAP, 0, ',', '.') }}</small>
+                </div>
+                <a href="{{ route('payable.index_aging') }}" class="small text-primary text-decoration-none" title="Buka Aging Report AP">
+                    <i class="mdi mdi-open-in-new"></i>
+                </a>
             </div>
-            <div class="card-body d-flex align-items-center justify-content-center" style="min-height: 260px;">
-                <span class="badge bg-label-secondary">Under Development</span>
+            <div class="card-body">
+                @if ($financeOutstandingAP > 0)
+                    <div id="financeAgingPayableChart"></div>
+                @else
+                    <div class="d-flex align-items-center justify-content-center text-muted" style="min-height: 260px;">
+                        Tidak ada hutang supplier beredar.
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -134,9 +166,24 @@
     </div>
     <div class="col-lg-4 mb-4">
         <div class="card h-100">
-            <div class="card-header">
-                <h5 class="mb-0">Expense</h5>
-                <small class="text-muted">Actual bulanan (Budget: <span class="badge bg-label-secondary">Under Development</span>)</small>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">Expense</h5>
+                    @if (($financeMonthlyBudget ?? 0) > 0)
+                        <small class="text-muted">
+                            Budget bln ini Rp {{ number_format($financeMonthlyBudget, 0, ',', '.') }}
+                            &bull;
+                            <span class="badge bg-label-{{ ($financeExpenseBudgetAchievement ?? 0) > 100 ? 'danger' : (($financeExpenseBudgetAchievement ?? 0) >= 85 ? 'warning' : 'success') }}">
+                                {{ $financeExpenseBudgetAchievement }}% terpakai
+                            </span>
+                        </small>
+                    @else
+                        <small class="text-muted">Actual bulanan (Budget: <a href="{{ route('finance.expense-budget.index') }}" class="badge bg-label-secondary text-decoration-none">Atur Plafon &rarr;</a>)</small>
+                    @endif
+                </div>
+                <a href="{{ route('finance.expense-budget.index') }}" class="small text-primary text-decoration-none" title="Expense Budget Management">
+                    <i class="mdi mdi-tune-vertical"></i>
+                </a>
             </div>
             <div class="card-body">
                 <div id="financeExpenseChart"></div>
@@ -145,11 +192,41 @@
     </div>
     <div class="col-lg-4 mb-4">
         <div class="card h-100">
-            <div class="card-header">
-                <h5 class="mb-0">Cash & Bank Balance</h5>
+            <div class="card-header d-flex justify-content-between align-items-center pb-2">
+                <div>
+                    <h5 class="mb-0">Cash &amp; Bank Balance</h5>
+                    <small class="text-muted">Total: Rp {{ number_format($financeCashPosition, 0, ',', '.') }}</small>
+                </div>
+                <a href="{{ route('bank.index') }}" class="small text-primary text-decoration-none" title="Buka Master Kas & Bank">
+                    <i class="mdi mdi-open-in-new"></i>
+                </a>
             </div>
-            <div class="card-body d-flex align-items-center justify-content-center" style="min-height: 260px;">
-                <span class="badge bg-label-secondary">Under Development</span>
+            <div class="card-body pt-2">
+                {{-- Pemisahan Entitas: Reftech vs Kojisha --}}
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="p-2 rounded bg-label-info border border-info border-opacity-25 text-center">
+                            <small class="text-muted d-block fw-semibold" style="font-size: 11px;">PT REFTECH</small>
+                            <div class="fw-bold text-info" style="font-size: 13px;">Rp {{ number_format($financeCashReftech, 0, ',', '.') }}</div>
+                            <small class="d-block text-muted" style="font-size: 10px;">{{ $financeBankReftech->count() }} Rekening</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 rounded bg-label-warning border border-warning border-opacity-25 text-center">
+                            <small class="text-muted d-block fw-semibold" style="font-size: 11px;">PT KOJISHA</small>
+                            <div class="fw-bold text-warning" style="font-size: 13px;">Rp {{ number_format($financeCashKojisha, 0, ',', '.') }}</div>
+                            <small class="d-block text-muted" style="font-size: 10px;">{{ $financeBankKojisha->count() }} Rekening</small>
+                        </div>
+                    </div>
+                </div>
+
+                @if ($financeCashPosition > 0)
+                    <div id="financeCashBankChart"></div>
+                @else
+                    <div class="d-flex align-items-center justify-content-center text-muted" style="min-height: 180px;">
+                        Belum ada saldo kas/bank tercatat.
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -253,88 +330,6 @@
     </div>
 </div>
 
-@php
-    $chartLabels = [];
-    $chartSeries = [];
-    $top5Sum = 0;
-    
-    foreach ($financeKeyAccounts->take(5) as $ka) {
-        $chartLabels[] = $ka->company;
-        $chartSeries[] = (int)$ka->total_po;
-        $top5Sum += $ka->total_po;
-    }
-    
-    $othersSum = $financeRevenueYTD - $top5Sum;
-    if ($othersSum > 0) {
-        $chartLabels[] = 'Lainnya';
-        $chartSeries[] = (int)$othersSum;
-    }
-@endphp
-
-<!-- Key Accounts Leaderboard -->
-<div class="row mb-2">
-    <div class="col-lg-8 mb-4">
-        <div class="card h-100">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <h5 class="mb-0">Top 10 Key Accounts (YTD)</h5>
-                <small class="text-muted">Tahun {{ \Carbon\Carbon::now()->year }}</small>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive text-nowrap">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>No</th>
-                                <th>Pelanggan</th>
-                                <th class="text-end">Total PO (Value)</th>
-                                <th class="text-center">Jumlah PO</th>
-                                <th class="text-end">Kontribusi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($financeKeyAccounts as $index => $ka)
-                                <tr>
-                                    <td>{{ $index + 1 }}</td>
-                                    <td>
-                                        <a href="{{ route('detail.customers', $ka->id) }}" class="fw-semibold">
-                                            {{ $ka->company }}
-                                        </a>
-                                    </td>
-                                    <td class="text-end text-success fw-semibold">
-                                        Rp {{ number_format($ka->total_po, 0, ',', '.') }}
-                                    </td>
-                                    <td class="text-center">{{ $ka->count_po }}</td>
-                                    <td class="text-end">
-                                        {{ $financeRevenueYTD > 0 ? round(($ka->total_po / $financeRevenueYTD) * 100, 1) : 0 }}%
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" class="text-center text-muted">Belum ada data transaksi.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-4 mb-4">
-        <div class="card h-100">
-            <div class="card-header">
-                <h5 class="mb-0">Key Accounts Contribution</h5>
-                <small class="text-muted">Pangsa Pendapatan YTD</small>
-            </div>
-            <div class="card-body d-flex flex-column justify-content-between" style="min-height: 290px;">
-                @if ($financeRevenueYTD > 0)
-                    <div id="financeKeyAccountsChart" class="my-auto"></div>
-                @else
-                    <div class="text-center text-muted my-auto">Belum ada data pendapatan tahunan.</div>
-                @endif
-            </div>
-        </div>
-    </div>
-</div>
 
 
 @push('before-style')
@@ -369,6 +364,34 @@
                 }).render();
             }
 
+            // Aging Payable donut
+            const agingPayableEl = document.querySelector('#financeAgingPayableChart');
+            if (agingPayableEl && @json($financeOutstandingAP) > 0) {
+                new ApexCharts(agingPayableEl, {
+                    chart: { type: 'donut', height: 260 },
+                    labels: ['Current (0-30 Hari)', '31 - 60 Hari', '61 - 90 Hari', '> 90 Hari'],
+                    series: @json(array_values($financeAgingPayableBuckets)),
+                    colors: ['#71dd37', '#03c3ec', '#ffab00', '#ff3e1d'],
+                    legend: { position: 'bottom', labels: { colors: labelColor } },
+                    dataLabels: { enabled: true, formatter: (val) => val.toFixed(1) + '%' },
+                    tooltip: { y: { formatter: formatRp } },
+                }).render();
+            }
+
+            // Cash & Bank Balance Donut Chart
+            const cashBankEl = document.querySelector('#financeCashBankChart');
+            if (cashBankEl && @json($financeCashPosition) > 0) {
+                new ApexCharts(cashBankEl, {
+                    chart: { type: 'donut', height: 210 },
+                    labels: @json($financeBankChartLabels),
+                    series: @json($financeBankChartSeries),
+                    colors: ['#696cff', '#03c3ec', '#71dd37', '#ffab00', '#8592a3', '#ff3e1d'],
+                    legend: { position: 'bottom', labels: { colors: labelColor }, fontSize: '11px' },
+                    dataLabels: { enabled: true, formatter: (val) => val.toFixed(1) + '%' },
+                    tooltip: { y: { formatter: formatRp } },
+                }).render();
+            }
+
             const monthLabels = @json($financeMonthlyLabels);
 
             // Revenue actual vs target (Sales Target) line chart
@@ -396,35 +419,30 @@
                 }).render();
             }
 
-            // Expense actual line chart
+            // Expense actual vs budget line chart
             const expenseEl = document.querySelector('#financeExpenseChart');
+            const monthlyBudget = @json($financeMonthlyBudgetSeries ?? []);
             if (expenseEl) {
+                const hasBudget = Array.isArray(monthlyBudget) && monthlyBudget.some(v => v > 0);
+                const expenseSeries = [{ name: 'Actual', type: 'line', data: @json($financeMonthlyExpense) }];
+                if (hasBudget) {
+                    expenseSeries.push({ name: 'Budget Plafon', type: 'line', data: monthlyBudget });
+                }
                 new ApexCharts(expenseEl, {
-                    chart: { type: 'line', height: 260, toolbar: { show: false } },
-                    series: [{ name: 'Actual', data: @json($financeMonthlyExpense) }],
-                    colors: ['#71dd37'],
-                    stroke: { curve: 'smooth', width: 3 },
+                    chart: { height: 260, toolbar: { show: false } },
+                    series: expenseSeries,
+                    colors: ['#71dd37', '#ff3e1d'],
+                    stroke: { width: hasBudget ? [3, 2] : [3], curve: 'smooth', dashArray: hasBudget ? [0, 5] : [0] },
+                    markers: { size: hasBudget ? [3, 0] : [3] },
                     dataLabels: { enabled: false },
+                    legend: hasBudget ? { show: true, position: 'top', labels: { colors: labelColor } } : { show: false },
                     xaxis: { categories: monthLabels, labels: { style: { colors: labelColor } } },
                     yaxis: { labels: { formatter: formatRp, style: { colors: labelColor } } },
                     grid: { borderColor, strokeDashArray: 5 },
-                    tooltip: { y: { formatter: formatRp } },
+                    tooltip: { shared: true, y: { formatter: formatRp } },
                 }).render();
             }
 
-            // Key Accounts contribution chart
-            const keyAccountsEl = document.querySelector('#financeKeyAccountsChart');
-            if (keyAccountsEl && @json($financeRevenueYTD) > 0) {
-                new ApexCharts(keyAccountsEl, {
-                    chart: { type: 'donut', height: 260 },
-                    labels: @json($chartLabels),
-                    series: @json($chartSeries),
-                    colors: ['#696cff', '#03c3ec', '#71dd37', '#ffab00', '#ff3e1d', '#8592a3'],
-                    legend: { position: 'bottom', labels: { colors: labelColor } },
-                    dataLabels: { enabled: true, formatter: (val) => val.toFixed(1) + '%' },
-                    tooltip: { y: { formatter: formatRp } },
-                }).render();
-            }
         })();
     </script>
 @endpush

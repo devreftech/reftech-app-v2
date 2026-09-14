@@ -1,184 +1,368 @@
 @extends('layouts.sales.app')
-@section('title', 'Income Statement')
+@section('title', 'Income Statement (Laba Rugi) - Finance ERP')
+
+@push('after-style')
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css" />
+    <style>
+        .finance-kpi-card {
+            transition: all 0.25s ease;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 6px 0 rgba(67, 89, 113, 0.07);
+        }
+        .finance-kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px 0 rgba(67, 89, 113, 0.12);
+        }
+        .nav-tabs-finance .nav-link {
+            font-weight: 600;
+            color: #64748b;
+            border: none;
+            border-bottom: 3px solid transparent;
+            padding: 0.85rem 1.4rem;
+            background: transparent;
+            transition: all 0.2s ease;
+            border-radius: 0;
+            font-size: 0.92rem;
+        }
+        .nav-tabs-finance .nav-link:hover {
+            color: #4f46e5;
+            background: rgba(79, 70, 229, 0.04);
+        }
+        .nav-tabs-finance .nav-link.active {
+            color: #4f46e5;
+            border-bottom-color: #4f46e5;
+            background: transparent;
+            font-weight: 700;
+        }
+        .filter-toolbar {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+        }
+        .dark-style .filter-toolbar {
+            background-color: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        .income-filter-card {
+            background: #ffffff;
+            border: 1px solid rgba(67, 89, 113, 0.1) !important;
+            border-left: 4px solid #696cff !important;
+            box-shadow: 0 2px 8px 0 rgba(67, 89, 113, 0.08) !important;
+            transition: all 0.25s ease;
+        }
+        .income-filter-card:hover {
+            box-shadow: 0 4px 14px 0 rgba(67, 89, 113, 0.12) !important;
+        }
+        .dark-style .income-filter-card {
+            background: #2b2c40;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            border-left-color: #696cff !important;
+        }
+        .income-filter-pill {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.65rem;
+            padding: 0.45rem 0.65rem;
+            transition: all 0.2s ease-in-out;
+        }
+        .income-filter-pill:hover,
+        .income-filter-pill:focus-within {
+            background: #ffffff;
+            border-color: #696cff;
+            box-shadow: 0 2px 8px rgba(105, 108, 255, 0.12);
+        }
+        .dark-style .income-filter-pill {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+        .dark-style .income-filter-pill:hover,
+        .dark-style .income-filter-pill:focus-within {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        .table th {
+            font-size: 11.5px !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700 !important;
+            background-color: #f8fafc !important;
+            color: #475569 !important;
+        }
+        .dark-style .table th {
+            background-color: rgba(255, 255, 255, 0.04) !important;
+            color: #cbd5e1 !important;
+        }
+    </style>
+@endpush
+
 @section('content')
+<div class="container-xxl flex-grow-1 container-p-y">
+
+    {{-- Page Header --}}
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center py-3 mb-3 gap-3">
         <div>
             <h4 class="fw-bold mb-1">
                 <span class="text-muted fw-light">Finance / Statement /</span> Income Statement
             </h4>
-            <p class="text-muted mb-0 small"><i class="mdi mdi-book-open-outline me-1"></i> Laba rugi &amp; pendapatan/beban lain-lain</p>
+            <p class="text-muted mb-0 small">
+                <i class="mdi mdi-book-open-outline me-1 text-primary"></i> Laporan Laba Rugi komprehensif, performa penjualan, beban pokok HPP, &amp; margin keuntungan
+            </p>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <button type="button" class="btn btn-primary btn-sm px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#createStatement">
+                <i class="mdi mdi-plus-circle-outline me-1"></i> Catat Pendapatan / Beban Lain
+            </button>
         </div>
     </div>
 
-    <div class="card mb-3 border-0 shadow-sm">
-        <div class="card-header bg-transparent border-bottom py-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
-            <h6 class="card-title mb-0 fw-bold text-dark">
-                <i class="mdi mdi-book-open-outline me-2 text-primary fs-5"></i> Daftar Pendapatan / Beban Lain-Lain
-            </h6>
-            <div class="d-flex flex-wrap gap-2">
-                <div class="form-floating form-floating-outline" style="width: 170px;">
-                    <input class="form-control" type="month" id="html5-month-input">
-                    <label for="html5-month-input">Print Bulanan</label>
-                </div>
-                <div class="form-floating form-floating-outline" style="width: 120px;">
-                    <select id="yearSelect" class="form-control"></select>
-                    <label for="html5-year-input">Print Tahunan</label>
+    {{-- Unified Statement Navigation Tabs --}}
+    <ul class="nav nav-tabs nav-tabs-finance mb-4 border-bottom" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" href="{{ route('expense-income.index') }}">
+                <i class="mdi mdi-book-open-outline me-1"></i> Income Statement (Laba Rugi)
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('expense-balance.index') }}">
+                <i class="mdi mdi-scale-balance me-1"></i> Balance Statement (Neraca)
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('expense-equity.index') }}">
+                <i class="mdi mdi-chart-donut me-1"></i> Equity Statement (Perubahan Modal)
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('expense-cashflow.index') }}">
+                <i class="mdi mdi-cash-sync me-1"></i> Cashflow Statement (Arus Kas)
+            </a>
+        </li>
+    </ul>
+
+    {{-- 4 Executive Finance KPI Cards (YTD) --}}
+    <div class="row g-3 mb-4">
+        {{-- KPI 1: Total Pendapatan Usaha (Revenue) --}}
+        <div class="col-xl-3 col-sm-6 col-12">
+            <div class="card finance-kpi-card h-100 rounded-3">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small fw-semibold">Pendapatan Usaha (Revenue)</span>
+                        <div class="avatar avatar-sm bg-label-primary rounded-3 d-flex align-items-center justify-content-center">
+                            <i class="mdi mdi-chart-timeline-variant-shimmer fs-4"></i>
+                        </div>
+                    </div>
+                    <h4 class="fw-bold text-primary mb-1">
+                        Rp {{ number_format($poYear, 0, ',', '.') }}
+                    </h4>
+                    <div class="d-flex align-items-center justify-content-between small">
+                        <span class="text-muted">Realisasi PO YTD {{ $currentYear }}</span>
+                        <span class="badge bg-label-primary fw-bold rounded-pill">Top Line</span>
+                    </div>
                 </div>
             </div>
         </div>
+
+        {{-- KPI 2: HPP (Modal Barang / COGS) --}}
+        <div class="col-xl-3 col-sm-6 col-12">
+            <div class="card finance-kpi-card h-100 rounded-3">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small fw-semibold">Beban Pokok Penjualan (HPP)</span>
+                        <div class="avatar avatar-sm bg-label-warning rounded-3 d-flex align-items-center justify-content-center">
+                            <i class="mdi mdi-package-variant-closed fs-4"></i>
+                        </div>
+                    </div>
+                    <h4 class="fw-bold text-dark mb-1">
+                        Rp {{ number_format($modalYear, 0, ',', '.') }}
+                    </h4>
+                    <div class="d-flex align-items-center justify-content-between small">
+                        <span class="text-muted">Harga modal unit serial PO</span>
+                        <span class="badge bg-label-warning text-dark fw-bold rounded-pill">COGS</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- KPI 3: Gross Profit & Margin % --}}
+        <div class="col-xl-3 col-sm-6 col-12">
+            <div class="card finance-kpi-card h-100 rounded-3">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small fw-semibold">Laba Kotor (Gross Profit)</span>
+                        <div class="avatar avatar-sm bg-label-info rounded-3 d-flex align-items-center justify-content-center">
+                            <i class="mdi mdi-finance fs-4"></i>
+                        </div>
+                    </div>
+                    <h4 class="fw-bold text-info mb-1">
+                        Rp {{ number_format($grossProfitYear, 0, ',', '.') }}
+                    </h4>
+                    <div class="d-flex align-items-center justify-content-between small">
+                        <span class="text-muted">Gross Margin Ratio</span>
+                        <span class="badge bg-label-info fw-bold rounded-pill">{{ $grossMarginPct }}%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- KPI 4: Laba Bersih (Net Profit) --}}
+        <div class="col-xl-3 col-sm-6 col-12">
+            <div class="card finance-kpi-card h-100 rounded-3">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small fw-semibold">Laba Bersih Berjalan (Net)</span>
+                        <div class="avatar avatar-sm {{ $netProfitYear >= 0 ? 'bg-label-success' : 'bg-label-danger' }} rounded-3 d-flex align-items-center justify-content-center">
+                            <i class="mdi {{ $netProfitYear >= 0 ? 'mdi-trending-up' : 'mdi-trending-down' }} fs-4"></i>
+                        </div>
+                    </div>
+                    <h4 class="fw-bold {{ $netProfitYear >= 0 ? 'text-success' : 'text-danger' }} mb-1">
+                        Rp {{ number_format($netProfitYear, 0, ',', '.') }}
+                    </h4>
+                    <div class="d-flex align-items-center justify-content-between small">
+                        <span class="text-muted">Net Margin Ratio</span>
+                        <span class="badge {{ $netProfitYear >= 0 ? 'bg-label-success' : 'bg-label-danger' }} fw-bold rounded-pill">
+                            {{ $netMarginPct }}% Net
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Period Selector & Report Actions Toolbar (Single Row with Selections) --}}
+    <div class="card border-0 shadow-sm rounded-3 mb-4">
+        <div class="card-body py-3 px-4">
+            <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3">
+                {{-- Left: Icon & Title in 1 clean line --}}
+                <div class="d-flex align-items-center gap-2">
+                    <i class="mdi mdi-printer-eye text-primary fs-4"></i>
+                    <div>
+                        <h6 class="card-title mb-0 fw-bold text-dark">
+                            Cetak Laporan Resmi Income Statement (Laba Rugi)
+                        </h6>
+                        <small class="text-muted d-none d-sm-inline">Pilih periode untuk melihat rincian laba rugi atau mencetak dokumen resmi</small>
+                    </div>
+                </div>
+
+                {{-- Right: All filters & actions in 1 neat row --}}
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    {{-- Dropdown Bulan --}}
+                    <div class="input-group input-group-sm" style="width: auto;">
+                        <span class="input-group-text bg-light text-muted">
+                            <i class="mdi mdi-calendar-month-outline"></i>
+                        </span>
+                        <select id="income-month-select" class="form-select form-select-sm" style="min-width: 140px;">
+                            <option value="all">Semua Bulan (1 Thn)</option>
+                            @php
+                                $bulanOptions = [
+                                    '01' => 'Januari', '02' => 'Februari', '03' => 'Maret',
+                                    '04' => 'April', '05' => 'Mei', '06' => 'Juni',
+                                    '07' => 'Juli', '08' => 'Agustus', '09' => 'September',
+                                    '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
+                                ];
+                            @endphp
+                            @foreach($bulanOptions as $mNum => $mName)
+                                <option value="{{ $mNum }}" {{ (int)$mNum == (int)date('m') ? 'selected' : '' }}>
+                                    {{ $mName }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Dropdown Tahun --}}
+                    <div class="input-group input-group-sm" style="width: auto;">
+                        <span class="input-group-text bg-light text-muted">
+                            <i class="mdi mdi-calendar-range"></i>
+                        </span>
+                        <select id="income-year-select" class="form-select form-select-sm" style="min-width: 105px;">
+                            @foreach($years as $yr)
+                                <option value="{{ $yr }}" {{ $yr == $currentYear ? 'selected' : '' }}>
+                                    Tahun {{ $yr }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Tombol Buka Laba Rugi --}}
+                    <button type="button" id="btn-view-income" class="btn btn-primary btn-sm px-3 shadow-xs">
+                        <i class="mdi mdi-eye-outline me-1"></i> Buka Laba Rugi
+                    </button>
+
+                    {{-- Tombol Cetak PDF --}}
+                    <button type="button" id="btn-print-income" class="btn btn-outline-primary btn-sm px-3 shadow-xs">
+                        <i class="mdi mdi-printer me-1"></i> Cetak PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Datatable Card: Pendapatan / Beban Lain-Lain --}}
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-header bg-white border-bottom py-3">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                <div>
+                    <h6 class="card-title mb-0 fw-bold text-dark d-flex align-items-center gap-2">
+                        <i class="mdi mdi-format-list-bulleted-square text-primary fs-5"></i>
+                        Daftar Pendapatan &amp; Beban Lain-Lain (Other Income &amp; Expenses)
+                    </h6>
+                    <small class="text-muted">Pendapatan dan biaya non-operasional (bunga bank, selisih kurs, pendapatan lain)</small>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-label-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#createStatement">
+                        <i class="mdi mdi-plus me-1"></i> Tambah Transaksi
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div class="card-datatable table-responsive pt-0">
-            <table class="datatable-income-stat table table-bordered">
+            <table class="datatable-income-stat table table-hover border-bottom mb-0">
                 <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Description</th>
-                        <th>type</th>
-                        <th>Amount</th>
+                        <th style="min-width: 130px;">Tanggal</th>
+                        <th style="min-width: 250px;">Keterangan / Deskripsi</th>
+                        <th style="min-width: 160px;">Tipe Pos Akun</th>
+                        <th class="text-end" style="min-width: 150px;">Nominal (IDR)</th>
                     </tr>
                 </thead>
             </table>
         </div>
     </div>
-    @include('components.modal.finance.income')
-@endsection()
 
-@push('after-style')
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
-    <link rel="stylesheet"
-        href="{{ asset('assets') }}/vendor/libs/datatables-checkboxes-jquery/datatables.checkboxes.css" />
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css" />
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/animate-css/animate.css">
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-rowgroup-bs5/rowgroup.bootstrap5.css" />
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/formvalidation/dist/css/formValidation.min.css" />
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css" />
-@endpush
+    @include('components.modal.finance.income')
+</div>
+@endsection
 
 @push('after-script')
     <script src="{{ asset('assets') }}/vendor/libs/moment/moment.js"></script>
-    <script src="{{ asset('assets') }}/vendor/libs/flatpickr/flatpickr.js"></script>
-    <script src="{{ asset('assets') }}/vendor/libs/formvalidation/dist/js/FormValidation.min.js"></script>
-    <script src="{{ asset('assets') }}/vendor/libs/formvalidation/dist/js/plugins/Bootstrap5.min.js"></script>
-    <script src="{{ asset('assets') }}/vendor/libs/formvalidation/dist/js/plugins/AutoFocus.min.js"></script>
     <script src="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
     <script src="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.js"></script>
 @endpush
 
 @push('page-script')
-    <script src="{{ asset('assets') }}/js/extended-ui-sweetalert2.js"></script>
-    <script src="{{ asset('assets') }}/js/tables-datatables-advanced.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-income-data.js"></script>
-@endpush
-
-@push('script')
+    <script src="{{ asset('assets') }}/includes/table-income-data.js?v={{ file_exists(public_path('assets/includes/table-income-data.js')) ? filemtime(public_path('assets/includes/table-income-data.js')) : time() }}"></script>
     <script>
-        const yearSelect = document.getElementById('yearSelect');
-        const currentYear = new Date().getFullYear();
+        $(function() {
+            $('#btn-view-income').on('click', function() {
+                var m = $('#income-month-select').val();
+                var y = $('#income-year-select').val();
+                if (m && m !== 'all') {
+                    window.location.href = '/income-detail/' + m + '/' + y;
+                } else {
+                    window.location.href = '/income-detail/' + y;
+                }
+            });
 
-        // generate year -5 sampai +5
-        for (let y = currentYear - 5; y <= currentYear + 5; y++) {
-            const option = document.createElement('option');
-            option.value = y;
-            option.textContent = y;
-            if (y === currentYear) option.selected = true;
-            yearSelect.appendChild(option);
-        }
-
-        yearSelect.addEventListener('change', function() {
-            if (!this.value) return;
-
-            window.open(`/income-print/${this.value}`, '_blank');
-        });
-        
-        document.getElementById('html5-month-input').addEventListener('change', function() {
-            if (!this.value) return;
-
-            const [year, month] = this.value.split('-');
-
-            window.open(`/income-print/${month}/${year}`, '_blank');
-        });
-
-        function formatNumber(n) {
-            return n.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-        }
-
-        $(".invoice-item-price-label").on('keyup', function() {
-            var input = $(this)
-            var input_val = input.val();
-
-            // original length
-            var original_len = input_val.length;
-
-            // add commas to number
-            // remove all non-digits
-            input_val = formatNumber(input_val);
-            input_val = input_val;
-
-            // send updated string to input
-            input.val(input_val);
-            var nomorInt = parseFloat(input_val.replace(/[.,]/g, ''));
-            console.log(nomorInt);
-            $(`#pricy`).val(nomorInt);
-        });
-
-        // Initialize Bootstrap tooltips using jQuery
-        $(document).ready(function() {
-            $('[data-bs-toggle="tooltip"]').tooltip();
-        });
-
-        $(document).on('click', '.delete-expense', function() {
-            var id = $(this).data('id');
-            Swal.fire({
-                title: "Are you sure?",
-                text: "You won't be able to revert this!",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: "Yes, delete it!",
-                customClass: {
-                    confirmButton: "btn btn-primary me-3 waves-effect waves-light",
-                    cancelButton: "btn btn-label-secondary waves-effect",
-                },
-                buttonsStyling: false,
-            }).then(function(result) {
-                if (result.value) {
-                    $.ajax({
-                        'url': '{{ url('expense-account') }}/' + id,
-                        'type': 'POST',
-                        'data': {
-                            '_method': 'DELETE',
-                            '_token': '{{ csrf_token() }}'
-                        },
-                        success: function(response) {
-                            if (response == 1) {
-                                Swal.fire({
-                                    icon: "success",
-                                    title: "Deleted!",
-                                    text: "Your file has been deleted.",
-                                    customClass: {
-                                        confirmButton: "btn btn-success waves-effect",
-                                    },
-                                })
-                                window.setTimeout(function() {
-                                    window.location.href = '/expense-account';
-                                }, 2000);
-                            } else {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Oops...',
-                                    text: 'Data Failed to Delete!'
-                                });
-                            }
-                        }
-                    });
-                } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    Swal.fire({
-                        title: "Cancelled",
-                        text: "Your imaginary file is safe :)",
-                        icon: "error",
-                        customClass: {
-                            confirmButton: "btn btn-success waves-effect",
-                        },
-                    });
+            $('#btn-print-income').on('click', function() {
+                var m = $('#income-month-select').val();
+                var y = $('#income-year-select').val();
+                if (m && m !== 'all') {
+                    window.open('/income-print/' + m + '/' + y, '_blank');
+                } else {
+                    window.open('/income-print/' + y, '_blank');
                 }
             });
         });

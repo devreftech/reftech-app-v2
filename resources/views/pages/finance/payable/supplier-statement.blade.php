@@ -134,22 +134,22 @@
                 <table class="table table-hover mb-0" style="font-size: 13px;">
                     <thead class="table-light">
                         <tr>
-                            <th style="width: 100px;" class="fw-semibold text-dark">Tanggal</th>
-                            <th style="width: 110px;" class="fw-semibold text-dark text-center">Tipe</th>
-                            <th style="width: 180px;" class="fw-semibold text-dark">No. Referensi</th>
+                            <th style="width: 110px; white-space: nowrap;" class="fw-semibold text-dark text-nowrap">Tanggal</th>
+                            <th style="width: 110px;" class="fw-semibold text-dark text-center text-nowrap">Tipe</th>
+                            <th style="width: 180px; white-space: nowrap;" class="fw-semibold text-dark text-nowrap">No. Referensi</th>
                             <th class="fw-semibold text-dark">Deskripsi / Keterangan</th>
-                            <th style="width: 150px;" class="fw-semibold text-dark text-end">Pembelian (Debit)</th>
-                            <th style="width: 150px;" class="fw-semibold text-dark text-end">Pembayaran (Kredit)</th>
-                            <th style="width: 160px;" class="fw-semibold text-dark text-end">Saldo Hutang</th>
-                            <th style="width: 80px;" class="fw-semibold text-dark text-center">Bukti</th>
+                            <th style="width: 150px;" class="fw-semibold text-dark text-end text-nowrap">Pembelian (Debit)</th>
+                            <th style="width: 150px;" class="fw-semibold text-dark text-end text-nowrap">Pembayaran (Kredit)</th>
+                            <th style="width: 160px;" class="fw-semibold text-dark text-end text-nowrap">Saldo Hutang</th>
+                            <th style="width: 80px;" class="fw-semibold text-dark text-center text-nowrap">Bukti</th>
                         </tr>
                     </thead>
                     <tbody>
                         {{-- Row Saldo Awal --}}
                         <tr class="table-light">
-                            <td class="fw-bold">{{ Carbon\Carbon::parse($startDate)->format('d-m-Y') }}</td>
+                            <td class="fw-bold text-nowrap" style="white-space: nowrap;">{{ Carbon\Carbon::parse($startDate)->format('d-m-Y') }}</td>
                             <td class="text-center"><span class="badge bg-label-secondary rounded-pill px-2 py-1">SALDO AWAL</span></td>
-                            <td class="text-muted">-</td>
+                            <td class="text-muted text-nowrap" style="white-space: nowrap;">-</td>
                             <td class="fw-semibold text-dark">Saldo Awal per {{ Carbon\Carbon::parse($startDate)->format('d F Y') }}</td>
                             <td class="text-end text-muted">-</td>
                             <td class="text-end text-muted">-</td>
@@ -159,19 +159,19 @@
 
                         @forelse ($transactions as $t)
                             <tr>
-                                <td>{{ Carbon\Carbon::parse($t->date)->format('d-m-Y') }}</td>
+                                <td class="text-nowrap" style="white-space: nowrap;">{{ Carbon\Carbon::parse($t->date)->format('d-m-Y') }}</td>
                                 <td class="text-center">
                                     <span class="badge {{ $t->badge_class }} rounded-pill px-2 py-1" style="font-size: 10px;">
                                         {{ $t->type }}
                                     </span>
                                 </td>
-                                <td>
+                                <td class="text-nowrap" style="white-space: nowrap;">
                                     @if($t->link)
-                                        <a href="{{ $t->link }}" class="fw-bold text-primary text-decoration-none">
+                                        <a href="{{ $t->link }}" class="fw-bold text-primary text-decoration-none text-nowrap" style="white-space: nowrap;">
                                             {{ $t->ref }}
                                         </a>
                                     @else
-                                        <span class="fw-semibold text-dark">{{ $t->ref }}</span>
+                                        <span class="fw-semibold text-dark text-nowrap" style="white-space: nowrap;">{{ $t->ref }}</span>
                                     @endif
                                 </td>
                                 <td>{{ $t->description }}</td>

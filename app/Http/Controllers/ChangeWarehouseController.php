@@ -19,7 +19,33 @@ class ChangeWarehouseController extends Controller
      */
     public function index()
     {
-        return view('pages.warehouse.changing.index');
+        $transfers = ChangeWarehouse::with([
+            'sender',
+            'reciever',
+            'details.replacement.product'
+        ])
+        ->orderBy('date', 'desc')
+        ->orderBy('id', 'desc')
+        ->get();
+
+        $totalTransfer = $transfers->count();
+        $inTransitCount = $transfers->where('status', '!=', 2)->count();
+        $receivedCount = $transfers->where('status', 2)->count();
+        $bksToBdgCount = $transfers->where('from', 'BKS')->count();
+        $bdgToBksCount = $transfers->where('from', 'BDG')->count();
+        $totalQty = $transfers->sum(function ($transfer) {
+            return $transfer->details->sum('qty');
+        });
+
+        return view('pages.warehouse.changing.index', compact(
+            'transfers',
+            'totalTransfer',
+            'inTransitCount',
+            'receivedCount',
+            'bksToBdgCount',
+            'bdgToBksCount',
+            'totalQty'
+        ));
     }
 
     /**
@@ -29,7 +55,10 @@ class ChangeWarehouseController extends Controller
      */
     public function create()
     {
-        $detProduct = DetailProduct::join('product', 'detail_product.id_product', '=', 'product.id')->get('detail_product.*');
+        $detProduct = DetailProduct::with('product')
+            ->whereHas('product')
+            ->orderBy('id', 'asc')
+            ->get();
         return view('pages.warehouse.changing.form', compact('detProduct'));
     }
 
@@ -41,28 +70,39 @@ class ChangeWarehouseController extends Controller
      */
     public function store(Request $request)
     {
-        // dd($request->all());
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'info' => 'required|in:BDG,BKS',
+            'replacement' => 'required|array',
+            'qty' => 'required|array',
+        ]);
+
         $changing = new ChangeWarehouse();
         $changing->id_sender = Auth::user()->id;
         $changing->date = Carbon::now();
         $changing->status = 1;
         $changing->title = $request->title;
-        $changing->kurir = $request->kurir;
-        $changing->note = $request->note;
+        $changing->kurir = $request->kurir ?? 'Internal Staff';
+        $changing->note = $request->note ?? '-';
         $changing->to = $request->info;
         $changing->from = $request->info == 'BDG' ? 'BKS' : 'BDG';
         $changingSave = $changing->save();
 
-        foreach ($request->replacement as $item => $value) {
-            $detChanging = new DetailChangeWarehouse();
-            $detChanging->id_change_warehouse = $changing->id;
-            $detChanging->id_replacement = $request->replacement[$item];
-            $detChanging->qty = $request->qty[$item];
-            $detChanging->save();
+        if ($request->has('replacement')) {
+            foreach ($request->replacement as $item => $value) {
+                if (empty($value)) continue;
+                $qty = isset($request->qty[$item]) ? (int) $request->qty[$item] : 1;
+                if ($qty <= 0) continue;
+
+                $detChanging = new DetailChangeWarehouse();
+                $detChanging->id_change_warehouse = $changing->id;
+                $detChanging->id_replacement = $value;
+                $detChanging->qty = $qty;
+                $detChanging->save();
+            }
         }
-        if ($changingSave) {
-            return redirect('/change-warehouse')->with('success', 'Data telah ditambahkan');
-        }
+
+        return redirect()->route('change-warehouse.index')->with('success', 'Transfer antar gudang #' . str_pad($changing->id, 4, '0', STR_PAD_LEFT) . ' berhasil dibuat.');
     }
 
     /**
@@ -73,20 +113,11 @@ class ChangeWarehouseController extends Controller
      */
     public function show($id)
     {
-        $change = ChangeWarehouse::find($id);
-        $detChange = DetailChangeWarehouse::where('id_change_warehouse', $id)->get();
-        foreach ($detChange as $detail) {
-            $detProduct = DetailProduct::find($detail->id_replacement);
-            if (!$detProduct) {
-                dd('Detail product not found', $detail->id_replacement);
-            }
+        $change = ChangeWarehouse::with(['sender', 'reciever'])->findOrFail($id);
+        $detChange = DetailChangeWarehouse::with(['replacement.product'])
+            ->where('id_change_warehouse', $id)
+            ->get();
 
-            $product = Product::find($detProduct->id_product);
-            if (!$product) {
-                dd('Product not found', $detProduct->id_product);
-            }
-        }
-        // dd($change->to);
         return view('pages.warehouse.changing.detail', compact('detChange', 'change'));
     }
 
@@ -126,34 +157,46 @@ class ChangeWarehouseController extends Controller
 
     public function accept(Request $request, $id)
     {
-        $change = ChangeWarehouse::find($id);
+        $change = ChangeWarehouse::findOrFail($id);
         $change->id_reciever = Auth::user()->id;
         $change->date_recieve = Carbon::today();
         $change->note_recieve = $request->note;
         $change->status = 2;
         $changeSave = $change->save();
+
         $detChange = DetailChangeWarehouse::where('id_change_warehouse', $id)->get();
         foreach ($detChange as $detail) {
             $detProduct = DetailProduct::find($detail->id_replacement);
-            $product = Product::find($detProduct->id_product);
-            if ($change->to == 'BKS') {
-                $detProduct->stock -= $detail->qty;
-                $detProduct->warehouse_stock += $detail->qty;
-
-                $product->stock -= $detail->qty;
-                $product->warehouse_stock += $detail->qty;
-            } else {
-                $detProduct->stock += $detail->qty;
-                $detProduct->warehouse_stock -= $detail->qty;
-
-                $product->stock += $detail->qty;
-                $product->warehouse_stock -= $detail->qty;
+            if ($detProduct) {
+                $product = Product::find($detProduct->id_product);
+                if ($change->to == 'BKS') {
+                    $detProduct->stock -= $detail->qty;
+                    $detProduct->warehouse_stock += $detail->qty;
+                    if ($product) {
+                        $product->stock -= $detail->qty;
+                        $product->warehouse_stock += $detail->qty;
+                        $product->save();
+                    }
+                } else {
+                    $detProduct->stock += $detail->qty;
+                    $detProduct->warehouse_stock -= $detail->qty;
+                    if ($product) {
+                        $product->stock += $detail->qty;
+                        $product->warehouse_stock -= $detail->qty;
+                        $product->save();
+                    }
+                }
+                $detProduct->save();
             }
-            $detProduct->save();
-            $product->save();
         }
-        if ($changeSave) {
-            return redirect('/change-warehouse')->with('success', 'Data telah ditambahkan');
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Barang transfer berhasil diterima dan stok telah diperbarui.'
+            ]);
         }
+
+        return redirect()->back()->with('success', 'Barang transfer berhasil diterima dan stok telah diperbarui.');
     }
 }

@@ -465,7 +465,7 @@
                 </div>
                 <div class="col-6">
                     <label class="form-label required small mb-1">Harga Beli HPP (Rp)</label>
-                    <input type="number" step="100" name="price_idr" id="drawerInputPrice" class="form-control form-control-sm" placeholder="Rp 0" required>
+                    <input type="text" inputmode="numeric" name="price_idr" id="drawerInputPrice" class="form-control form-control-sm rupiah-mask" placeholder="Rp 0" required>
                 </div>
                 <div class="col-6">
                     <label class="form-label required small mb-1">Tanggal Inquiry</label>
@@ -580,7 +580,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Harga Beli / HPP (Rp)</label>
-                                    <input type="number" step="100" name="price_idr" class="form-control" placeholder="Rp 0">
+                                    <input type="text" inputmode="numeric" name="price_idr" class="form-control rupiah-mask" placeholder="Rp 0">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label">Tanggal Update</label>

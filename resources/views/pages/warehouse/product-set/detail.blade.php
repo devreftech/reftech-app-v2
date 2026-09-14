@@ -804,7 +804,7 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-7">
                             <div class="form-floating form-floating-outline">
-                                <input type="number" id="vp_price_idr" class="form-control" name="price_idr" placeholder="0" required min="0">
+                                <input type="text" inputmode="numeric" id="vp_price_idr" class="form-control rupiah-mask" name="price_idr" placeholder="0" required>
                                 <label for="vp_price_idr">Harga Penawaran (IDR) *</label>
                             </div>
                         </div>

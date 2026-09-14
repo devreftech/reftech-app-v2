@@ -180,6 +180,38 @@
             </div>
             @endif
 
+            {{-- Ketentuan Rental Unit Kompresor (Khusus Tipe Rental jika ada isinya) --}}
+            @if (!empty($quote->rental_terms))
+            <div style="border:1px solid #ffe0b2; border-left:3px solid #ff9800; border-radius:6px; padding:10px 14px; font-size:11px; color:#333; margin-bottom:14px; background:#fffdf8; page-break-inside: avoid !important; break-inside: avoid !important;">
+                <p class="mb-1 fw-semibold" style="font-size:10px; color:#e65100; text-transform:uppercase; letter-spacing:.5px;">Ketentuan Rental Unit Kompresor</p>
+                @php
+                    $rentalLines = explode("\n", str_replace("\r", "", $quote->rental_terms));
+                @endphp
+                <div style="font-size:11px; color:#222; line-height:1.5;">
+                    @foreach ($rentalLines as $line)
+                        @php
+                            $trimmed = trim($line);
+                        @endphp
+                        @if (empty($trimmed))
+                            <div style="height:3px;"></div>
+                        @else
+                            @php
+                                $hasBullet = preg_match('/^([•\-\*]|\d+[\.\)])\s*(.*)/u', $trimmed, $matches);
+                            @endphp
+                            @if ($hasBullet && !empty($matches[1]) && !empty($matches[2]))
+                                <div style="display:flex; align-items:flex-start; margin-bottom:3px;">
+                                    <span style="flex-shrink:0; min-width:20px; color:#ff9800; font-weight:600;">{{ $matches[1] }}</span>
+                                    <span style="flex:1;">{{ $matches[2] }}</span>
+                                </div>
+                            @else
+                                <div style="margin-bottom:3px;">{{ $line }}</div>
+                            @endif
+                        @endif
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             {{-- T&C --}}
             <div style="border:1px solid #e0e0e0; border-radius:6px; padding:12px 16px; font-size:11px; background:#fff; margin-bottom:16px; page-break-inside: avoid !important; break-inside: avoid !important;">
                 <p class="mb-2 fw-semibold" style="font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:#888;">Term &amp; Condition</p>

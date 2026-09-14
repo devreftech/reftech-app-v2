@@ -237,8 +237,8 @@
 
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Harga Jual (Rp) <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" name="harga_jual" id="inputHargaJualDetail" min="0" step="1"
-                                    value="{{ $unit->harga_jual ? (int) $unit->harga_jual : '' }}" required placeholder="0">
+                                <input type="text" inputmode="numeric" class="form-control rupiah-mask" name="harga_jual" id="inputHargaJualDetail"
+                                    value="{{ $unit->harga_jual ? number_format((int) $unit->harga_jual, 0, ',', '.') : '' }}" required placeholder="0">
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -344,8 +344,8 @@
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label small text-muted mb-1">Biaya (Rp)</label>
-                                    <input type="number" class="form-control form-control-sm" name="amount"
-                                        placeholder="0" min="0" required>
+                                    <input type="text" inputmode="numeric" class="form-control form-control-sm rupiah-mask" name="amount"
+                                        placeholder="0" required>
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small text-muted mb-1">Catatan</label>

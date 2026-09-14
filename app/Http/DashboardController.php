@@ -1339,23 +1339,8 @@ class DashboardController extends Controller
             ->take(10)
             ->values();
 
-        // Top 10 Key Accounts YTD
-        $financeKeyAccounts = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')
-            ->join('client', 'client.id', '=', 'pic.id_client')
-            ->whereBetween('quotation.po_date', [$startYear->toDateString(), $dateNow->toDateString()])
-            ->where('quotation.status', '100')
-            ->where('quotation.level', '1')
-            ->where('quotation.is_primary', '1')
-            ->select(
-                'client.id',
-                'client.company',
-                DB::raw('SUM(quotation.nett) as total_po'),
-                DB::raw('COUNT(quotation.id) as count_po')
-            )
-            ->groupBy('client.id', 'client.company')
-            ->orderByDesc('total_po')
-            ->limit(10)
-            ->get();
+        // Key Accounts removed per user request
+        $financeKeyAccounts = collect();
 
         return compact(
             'financeAgingBuckets',

@@ -32,13 +32,17 @@
             <form method="GET" action="{{ route('customer.statement') }}" class="row g-3 align-items-end">
                 <div class="col-12 col-md-4">
                     <label class="form-label fw-semibold small">Pilih Customer / Klien <span class="text-danger">*</span></label>
-                    <select name="client_id" class="form-select select2" required>
-                        <option value="">-- Pilih Customer --</option>
-                        @foreach ($clients as $c)
-                            <option value="{{ $c->id }}" {{ $selectedClientId == $c->id ? 'selected' : '' }}>
-                                {{ $c->company }} {{ $c->ru ? '(' . $c->ru . ')' : '' }}
+                    <select name="client_id" id="selectClientStatement" class="form-select" required>
+                        @if($selectedClient)
+                            <option value="{{ $selectedClient->id }}" 
+                                    data-sales="{{ $selectedClient->sales?->name ?? 'No Sales' }}"
+                                    data-company="{{ $selectedClient->company }}{{ $selectedClient->ru ? ' (' . $selectedClient->ru . ')' : '' }}"
+                                    selected>
+                                [{{ $selectedClient->sales?->name ?? 'No Sales' }}] {{ $selectedClient->company }} {{ $selectedClient->ru ? '(' . $selectedClient->ru . ')' : '' }}
                             </option>
-                        @endforeach
+                        @else
+                            <option value="">-- Ketik minimal 2 huruf nama customer --</option>
+                        @endif
                     </select>
                 </div>
                 <div class="col-12 col-md-3">
@@ -134,21 +138,21 @@
                 <table class="table table-hover mb-0" style="font-size: 13px;">
                     <thead class="table-light">
                         <tr>
-                            <th style="width: 100px;" class="fw-semibold text-dark">Tanggal</th>
-                            <th style="width: 120px;" class="fw-semibold text-dark text-center">Tipe</th>
-                            <th style="width: 180px;" class="fw-semibold text-dark">No. Referensi</th>
+                            <th style="width: 110px; white-space: nowrap;" class="fw-semibold text-dark text-nowrap">Tanggal</th>
+                            <th style="width: 120px;" class="fw-semibold text-dark text-center text-nowrap">Tipe</th>
+                            <th style="width: 180px; white-space: nowrap;" class="fw-semibold text-dark text-nowrap">No. Referensi</th>
                             <th class="fw-semibold text-dark">Deskripsi / Keterangan</th>
-                            <th style="width: 150px;" class="fw-semibold text-dark text-end">Tagihan (Debit)</th>
-                            <th style="width: 150px;" class="fw-semibold text-dark text-end">Pembayaran (Kredit)</th>
-                            <th style="width: 160px;" class="fw-semibold text-dark text-end">Saldo Piutang</th>
+                            <th style="width: 150px;" class="fw-semibold text-dark text-end text-nowrap">Tagihan (Debit)</th>
+                            <th style="width: 150px;" class="fw-semibold text-dark text-end text-nowrap">Pembayaran (Kredit)</th>
+                            <th style="width: 160px;" class="fw-semibold text-dark text-end text-nowrap">Saldo Piutang</th>
                         </tr>
                     </thead>
                     <tbody>
                         {{-- Row Saldo Awal --}}
                         <tr class="table-light">
-                            <td class="fw-bold">{{ Carbon\Carbon::parse($startDate)->format('d-m-Y') }}</td>
+                            <td class="fw-bold text-nowrap" style="white-space: nowrap;">{{ Carbon\Carbon::parse($startDate)->format('d-m-Y') }}</td>
                             <td class="text-center"><span class="badge bg-label-secondary rounded-pill px-2 py-1">SALDO AWAL</span></td>
-                            <td class="text-muted">-</td>
+                            <td class="text-muted text-nowrap" style="white-space: nowrap;">-</td>
                             <td class="fw-semibold text-dark">Saldo Awal Piutang per {{ Carbon\Carbon::parse($startDate)->format('d F Y') }}</td>
                             <td class="text-end text-muted">-</td>
                             <td class="text-end text-muted">-</td>
@@ -157,19 +161,19 @@
 
                         @forelse ($transactions as $t)
                             <tr>
-                                <td>{{ Carbon\Carbon::parse($t->date)->format('d-m-Y') }}</td>
+                                <td class="text-nowrap" style="white-space: nowrap;">{{ Carbon\Carbon::parse($t->date)->format('d-m-Y') }}</td>
                                 <td class="text-center">
                                     <span class="badge {{ $t->badge_class }} rounded-pill px-2 py-1" style="font-size: 10px;">
                                         {{ $t->type }}
                                     </span>
                                 </td>
-                                <td>
+                                <td class="text-nowrap" style="white-space: nowrap;">
                                     @if($t->link)
-                                        <a href="{{ $t->link }}" class="fw-bold text-primary text-decoration-none">
+                                        <a href="{{ $t->link }}" class="fw-bold text-primary text-decoration-none text-nowrap" style="white-space: nowrap;">
                                             {{ $t->ref }}
                                         </a>
                                     @else
-                                        <span class="fw-semibold text-dark">{{ $t->ref }}</span>
+                                        <span class="fw-semibold text-dark text-nowrap" style="white-space: nowrap;">{{ $t->ref }}</span>
                                     @endif
                                 </td>
                                 <td>{{ $t->description }}</td>
@@ -226,10 +230,93 @@
 @push('script')
     <script>
         $(document).ready(function() {
-            $('.select2').select2({
-                placeholder: "-- Pilih Customer --",
+            function formatCustomer(item) {
+                if (!item.id) {
+                    return item.text;
+                }
+                var sales = item.sales || $(item.element).data('sales');
+                var company = item.company || $(item.element).data('company');
+
+                if (!sales && !company) {
+                    return item.text;
+                }
+
+                var isNoSales = !sales || sales === 'No Sales';
+                var badgeClass = isNoSales ? 'bg-label-secondary text-muted' : 'bg-label-primary text-primary';
+                var salesText = sales || 'No Sales';
+                var companyText = company || item.text;
+
+                return $(
+                    '<div class="d-flex align-items-center py-1">' +
+                        '<span class="badge ' + badgeClass + ' me-2 px-2 py-1 flex-shrink-0" style="font-size: 11px; letter-spacing: .2px;">' +
+                            '<i class="mdi mdi-account-tie me-1"></i>' + salesText +
+                        '</span>' +
+                        '<span class="fw-semibold text-dark text-truncate">' + companyText + '</span>' +
+                    '</div>'
+                );
+            }
+
+            function formatCustomerSelection(item) {
+                if (!item.id) {
+                    return item.text;
+                }
+                var sales = item.sales || $(item.element).data('sales');
+                var company = item.company || $(item.element).data('company');
+
+                if (!sales && !company) {
+                    return item.text;
+                }
+
+                var isNoSales = !sales || sales === 'No Sales';
+                var badgeClass = isNoSales ? 'bg-label-secondary text-muted' : 'bg-label-primary text-primary';
+                var salesText = sales || 'No Sales';
+                var companyText = company || item.text;
+
+                return $(
+                    '<span class="d-inline-flex align-items-center">' +
+                        '<span class="badge ' + badgeClass + ' me-2 px-2 py-1" style="font-size: 11px;">' +
+                            '<i class="mdi mdi-account-tie me-1"></i>' + salesText +
+                        '</span>' +
+                        '<span class="fw-semibold">' + companyText + '</span>' +
+                    '</span>'
+                );
+            }
+
+            $('#selectClientStatement').select2({
+                placeholder: "-- Ketik minimal 2 huruf nama customer --",
                 allowClear: true,
-                width: '100%'
+                width: '100%',
+                minimumInputLength: 2,
+                templateResult: formatCustomer,
+                templateSelection: formatCustomerSelection,
+                escapeMarkup: function(m) { return m; },
+                language: {
+                    inputTooShort: function () {
+                        return 'Ketik minimal 2 huruf nama customer...';
+                    },
+                    searching: function () {
+                        return 'Mencari customer...';
+                    },
+                    noResults: function () {
+                        return 'Customer tidak ditemukan';
+                    }
+                },
+                ajax: {
+                    url: '{{ route("customer.statement_search") }}',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            q: params.term
+                        };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: data
+                        };
+                    },
+                    cache: true
+                }
             });
         });
     </script>

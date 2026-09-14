@@ -750,7 +750,7 @@
 
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Harga Jual Unit (Rp) <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" name="harga_jual" id="modal-input-harga-jual" min="0" step="1" required placeholder="0">
+                                <input type="text" inputmode="numeric" class="form-control rupiah-mask" name="harga_jual" id="modal-input-harga-jual" required placeholder="0">
                                 <div class="form-text small">Harga jual ini berlaku untuk semua unit fisik dengan model ini.</div>
                             </div>
                         </div>

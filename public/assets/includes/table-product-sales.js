@@ -1,6 +1,6 @@
 $(function () {
     var dt_table_product_sales = $(".datatable-product-sales");
-    var Url = "db/product/sales";
+    var Url = "/db/product/sales";
 
     if (!dt_table_product_sales.length) return;
 
@@ -74,6 +74,12 @@ $(function () {
                 updateSalesStats(data);
                 return data;
             },
+            error: function (xhr, error, thrown) {
+                console.error("Gagal memuat katalog produk:", error, thrown);
+                $("#table-filtered-info").html(
+                    '<span class="text-danger"><i class="mdi mdi-alert-circle-outline me-1"></i>Gagal memuat data. <button type="button" class="btn btn-xs btn-outline-danger ms-1" id="btn-retry-table">Coba Lagi</button></span>'
+                );
+            }
         },
         columns: [
             { data: "" },
@@ -276,8 +282,9 @@ $(function () {
             $('[data-toggle="tooltip"]').tooltip();
             $('[data-bs-toggle="tooltip"]').tooltip();
 
-            var count = dt_product.rows({ filter: "applied" }).count();
-            var total = dt_product.rows().count();
+            var api = this.api();
+            var count = api ? api.rows({ filter: "applied" }).count() : 0;
+            var total = api ? api.rows().count() : 0;
             if (count === total) {
                 $("#table-filtered-info").html('<i class="mdi mdi-check-all me-1 text-success"></i> ' + total.toLocaleString("id-ID") + ' item');
             } else {
@@ -330,7 +337,9 @@ $(function () {
         $(".stat-card").removeClass("active-filter");
         $('.stat-card[data-filter="' + filter + '"]').addClass("active-filter");
 
-        dt_product.draw();
+        if (dt_product) {
+            dt_product.draw();
+        }
     }
 
     $(document).on("click", "#sales-filter-btn-group button[data-filter]", function () {
@@ -343,17 +352,35 @@ $(function () {
         applyFilter(filter);
     });
 
-    // ── Refresh Button ──────────────────────────────────────────────────
+    // ── Refresh & Retry Button ──────────────────────────────────────────
+    function reloadCatalogData(forceRefresh, onComplete) {
+        $("#table-filtered-info").html(
+            '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Memuat data...'
+        );
+        var targetUrl = forceRefresh ? Url + "?refresh=1&_t=" + Date.now() : Url;
+        if (dt_product) {
+            dt_product.ajax.url(targetUrl).load(function () {
+                if (typeof onComplete === "function") {
+                    onComplete();
+                }
+            }, false);
+        }
+    }
+
     $("#btn-refresh-table").on("click", function () {
         var $btn = $(this);
         var $icon = $btn.find("i");
         $btn.prop("disabled", true);
         $icon.addClass("mdi-spin");
 
-        dt_product.ajax.reload(function () {
+        reloadCatalogData(true, function () {
             $btn.prop("disabled", false);
             $icon.removeClass("mdi-spin");
-        }, false);
+        });
+    });
+
+    $(document).on("click", "#btn-retry-table", function () {
+        reloadCatalogData(true);
     });
 
     // ── Copy Part Number to Clipboard ───────────────────────────────────

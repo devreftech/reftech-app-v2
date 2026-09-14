@@ -4,42 +4,19 @@ $(function () {
 
     if (dt_table_account_data.length) {
         $('[data-toggle="tooltip"]').tooltip();
-        // Setup - add a text input to each footer cell
-        $(".datatable-account-data thead tr")
-            .clone(true)
-            .appendTo(".datatable-account-data thead");
-        $(".datatable-account-data thead tr:eq(1) th").each(function (i) {
-            var title = $(this).text();
-            $(this).html(
-                '<input type="text" class="form-control" placeholder="Search ' +
-                    title +
-                    '" />',
-            );
-
-            $("input", this).on("keyup change", function () {
-                if (dt_filter.column(i).search() !== this.value) {
-                    dt_filter.column(i).search(this.value).draw();
-                }
-            });
-        });
 
         var dt_filter = dt_table_account_data.DataTable({
+            processing: true,
             ajax: {
                 type: "GET",
                 url: Url,
+                data: function(d) {
+                    d.category = $("#filter-account-category").val() || "";
+                    d.level = $("#filter-account-level").val() || "";
+                },
                 headers: {
                     "Content-Type": "application/json",
                 },
-
-                // success: function (hasil, Url) {
-                //     console.log("Url:", Url);
-                //     console.log(hasil);
-                // },
-                // error: function (error) {
-                //     console.log("Url:", Url);
-                //     console.error("Error:", error);
-                //     console.log("error disini");
-                // },
             },
             columns: [
                 { data: "code" },
@@ -51,67 +28,108 @@ $(function () {
             ],
             columnDefs: [
                 {
-                    targets: [0, 1, 2, 3, 4],
+                    targets: 0,
                     render: function (data, type, row) {
-                        if (row.level == 1) {
-                            return "<strong>" + data + "</strong>";
-                        }
-                        return data;
+                        var isHeader = (row.level == 1);
+                        var badgeClass = isHeader ? 'bg-label-primary fw-bold' : 'bg-label-secondary';
+                        return '<span class="badge ' + badgeClass + ' code-pill"><i class="mdi ' + (isHeader ? 'mdi-folder-outline' : 'mdi-file-document-outline') + ' me-1"></i>' + data + '</span>';
                     },
                 },
-                // {
-                //     targets: 1,
-                //     render: function (data, type, full, row) {
-                //         if (type === "display") {
-                //             var id = full["id"];
-                //             return (
-                //                 '<a class="text-black cursor-pointer" data-bs-toggle="modal" data-bs-target="#detailPending-' +
-                //                 id +
-                //                 '">' +
-                //                 data +
-                //                 "</a>"
-                //             );
-                //         }
-                //         return data;
-                //     },
-                // },
+                {
+                    targets: 1,
+                    render: function (data, type, row) {
+                        var isHeader = (row.level == 1);
+                        if (isHeader) {
+                            return '<div class="fw-bold text-dark fs-6">' + data + ' <span class="badge bg-label-info ms-1" style="font-size:10px;">HEADER</span></div>';
+                        }
+                        return '<div class="ms-3 text-secondary"><i class="mdi mdi-subdirectory-arrow-right text-muted me-1"></i>' + data + '</div>';
+                    },
+                },
+                {
+                    targets: 2,
+                    render: function (data, type, row) {
+                        if (!data) return '<span class="text-muted">-</span>';
+                        var badgeColor = 'bg-label-info';
+                        var cat = data.toLowerCase();
+                        if (cat.indexOf('expense') !== -1 || cat.indexOf('cost') !== -1) {
+                            badgeColor = 'bg-label-danger';
+                        } else if (cat.indexOf('revenue') !== -1 || cat.indexOf('income') !== -1) {
+                            badgeColor = 'bg-label-success';
+                        } else if (cat.indexOf('asset') !== -1 || cat.indexOf('cash') !== -1) {
+                            badgeColor = 'bg-label-primary';
+                        } else if (cat.indexOf('liabilit') !== -1 || cat.indexOf('payable') !== -1) {
+                            badgeColor = 'bg-label-warning';
+                        } else if (cat.indexOf('equity') !== -1) {
+                            badgeColor = 'bg-label-secondary';
+                        }
+                        return '<span class="badge ' + badgeColor + ' fw-semibold">' + data + '</span>';
+                    },
+                },
+                {
+                    targets: 3,
+                    render: function (data) {
+                        return '<span class="badge bg-label-secondary fw-semibold">' + (data || 'IDR') + '</span>';
+                    },
+                },
+                {
+                    targets: 4,
+                    render: function (data) {
+                        if (data === 'Debit' || data === 'D') {
+                            return '<span class="badge bg-label-primary fw-semibold">Debit (D)</span>';
+                        } else if (data === 'Kredit' || data === 'K') {
+                            return '<span class="badge bg-label-danger fw-semibold">Kredit (K)</span>';
+                        }
+                        return '<span class="text-muted">' + (data || '-') + '</span>';
+                    },
+                },
                 {
                     targets: -1,
+                    className: "text-center",
+                    orderable: false,
                     render: function (data, type, full, row) {
                         var id = full["id"];
                         return (
-                            '<a href="#" data-id="' +
-                            id +
-                            '" class="btn btn-sm btn-label-danger delete-account m-2"><i class="menu-icon tf-icons mdi mdi-14px mdi-delete-outline m-0"></i></a>'+
-                            '<button type="button" class="btn btn-sm btn-warning editAccount" data-id="'+ id +'" data-bs-toggle="modal" data-bs-target="#editAccount"> Edit </button>'
-                            // '<a type="button" href="#" data-bs-toggle="modal" data-bs-target="#updatePic-' +
-                            // id +
-                            // '" data-id="' +
-                            // id +
-                            // '" class="btn btn-sm btn-label-primary"><i class="menu-icon tf-icons mdi mdi-14px mdi-note-edit-outline m-0"></i></a>'
+                            '<div class="d-inline-flex gap-1">' +
+                            '<button type="button" class="btn btn-icon btn-sm btn-label-warning editAccount" data-id="' + id + '" data-bs-toggle="modal" data-bs-target="#editAccount" title="Edit Akun"><i class="mdi mdi-pencil-outline"></i></button>' +
+                            '<button type="button" class="btn btn-icon btn-sm btn-label-danger delete-account" data-id="' + id + '" title="Hapus Akun"><i class="mdi mdi-delete-outline"></i></button>' +
+                            '</div>'
                         );
                     },
                 },
             ],
             order: [[0, "asc"]],
-            // orderCellsTop: true,
             dom:
-                '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f><"dt-action-buttons text-end pt-3 pt-md-0"B>>' +
+                '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>' +
                 '<"table-responsive"t>' +
                 '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
-            buttons: [
-                {
-                    text: '<i class="mdi mdi-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add New Account</span>',
-                    className: "btn btn-primary",
-                    attr: {
-                        "data-bs-target": "#createAccount",
-                        "data-bs-toggle": "modal",
-                    },
-                },
-            ],
+            language: {
+                search: "",
+                searchPlaceholder: "Cari kode atau nama akun COA...",
+                lengthMenu: "_MENU_",
+                info: "Menampilkan _START_ s/d _END_ dari _TOTAL_ akun",
+                paginate: {
+                    first: '<i class="mdi mdi-chevron-double-left"></i>',
+                    previous: '<i class="mdi mdi-chevron-left"></i>',
+                    next: '<i class="mdi mdi-chevron-right"></i>',
+                    last: '<i class="mdi mdi-chevron-double-right"></i>'
+                }
+            }
+        });
+
+        // Filter toolbar handlers
+        $("#filter-account-category, #filter-account-level").on("change", function () {
+            dt_filter.ajax.reload();
+        });
+
+        $("#btn-reset-account-filter").on("click", function () {
+            $("#filter-account-category").val("");
+            $("#filter-account-level").val("");
+            dt_filter.search("").draw();
+            dt_filter.ajax.reload();
+        });
+
+        dt_table_account_data.on("draw", function () {
+            $('[data-bs-toggle="tooltip"]').tooltip();
         });
     }
-    dt_table_account_data.on("draw", function () {
-        $('[data-toggle="tooltip"]').tooltip();
-    });
 });

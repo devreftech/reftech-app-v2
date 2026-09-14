@@ -327,7 +327,7 @@
                                             <input type="date" class="form-control form-control-sm form-control-modern" name="visits[{{ $index }}][planned_date]" value="{{ \Carbon\Carbon::parse($visit->planned_date)->format('Y-m-d') }}" required>
                                         </td>
                                         <td>
-                                            <input type="number" class="form-control form-control-sm form-control-modern" name="visits[{{ $index }}][estimated_revenue]" value="{{ $visit->estimated_revenue }}" required min="0">
+                                            <input type="text" inputmode="numeric" class="form-control form-control-sm form-control-modern rupiah-mask" name="visits[{{ $index }}][estimated_revenue]" value="{{ number_format($visit->estimated_revenue, 0, ',', '.') }}" required placeholder="0">
                                         </td>
                                         <td>
                                             <input type="text" class="form-control form-control-sm form-control-modern" name="visits[{{ $index }}][description]" value="{{ $visit->description }}">
@@ -344,7 +344,7 @@
                                             <input type="date" class="form-control form-control-sm form-control-modern" name="visits[0][planned_date]" required>
                                         </td>
                                         <td>
-                                            <input type="number" class="form-control form-control-sm form-control-modern" name="visits[0][estimated_revenue]" required min="0" placeholder="0">
+                                            <input type="text" inputmode="numeric" class="form-control form-control-sm form-control-modern rupiah-mask" name="visits[0][estimated_revenue]" required placeholder="0">
                                         </td>
                                         <td>
                                             <input type="text" class="form-control form-control-sm form-control-modern" name="visits[0][description]" placeholder="PM1 / Regular Service">
@@ -385,7 +385,7 @@
                         <input type="date" class="form-control form-control-sm form-control-modern" name="visits[${rowCount}][planned_date]" required>
                     </td>
                     <td>
-                        <input type="number" class="form-control form-control-sm form-control-modern" name="visits[${rowCount}][estimated_revenue]" required min="0" placeholder="0">
+                        <input type="text" inputmode="numeric" class="form-control form-control-sm form-control-modern rupiah-mask" name="visits[${rowCount}][estimated_revenue]" required placeholder="0">
                     </td>
                     <td>
                         <input type="text" class="form-control form-control-sm form-control-modern" name="visits[${rowCount}][description]" placeholder="PM1 / Regular Service">
@@ -450,7 +450,7 @@
                             <input type="date" class="form-control form-control-sm form-control-modern" name="visits[${i}][planned_date]" value="${dateStr}" required>
                         </td>
                         <td>
-                            <input type="number" class="form-control form-control-sm form-control-modern" name="visits[${i}][estimated_revenue]" value="0" required min="0" placeholder="0">
+                            <input type="text" inputmode="numeric" class="form-control form-control-sm form-control-modern rupiah-mask" name="visits[${i}][estimated_revenue]" value="0" required placeholder="0">
                         </td>
                         <td>
                             <input type="text" class="form-control form-control-sm form-control-modern" name="visits[${i}][description]" value="${pmLabel} - Quarterly Service">

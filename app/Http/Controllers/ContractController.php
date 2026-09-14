@@ -312,7 +312,7 @@ class ContractController extends Controller
         ]);
 
         if ($sellcon) {
-            $notifyUserIds = \App\Models\User::getAccountingRecipientsForSales($quote->id_sales, true);
+            $notifyUserIds = \App\Models\User::getAccountingRecipientsForSales($quote->id_sales, false);
             foreach ($notifyUserIds as $userId) {
                 \App\Models\UnitQuotationPaymentNotification::create([
                     'id_unit_quotation' => $quote->id,

@@ -1888,7 +1888,7 @@
                         <label class="form-label fw-semibold">Jumlah (IDR) <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text">Rp</span>
-                            <input type="text" inputmode="numeric" class="form-control" name="amount" id="add-payment-amount"
+                            <input type="text" inputmode="numeric" class="form-control rupiah-mask" name="amount" id="add-payment-amount"
                                    placeholder="Masukkan jumlah yang diterima" required>
                         </div>
                     </div>
@@ -1961,8 +1961,8 @@
                         <label class="form-label fw-semibold">Jumlah (IDR) <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text">Rp</span>
-                            <input type="number" class="form-control" name="amount" id="edit-payment-amount"
-                                   min="1" step="1" required>
+                            <input type="text" inputmode="numeric" class="form-control rupiah-mask" name="amount" id="edit-payment-amount"
+                                   required>
                         </div>
                     </div>
                     <div class="mb-3">

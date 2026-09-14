@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DetailProduct;
 use App\Models\DetailQuotation;
 use App\Models\DetailReturn;
 use App\Models\Invoice;
 use App\Models\PendingPO;
+use App\Models\ProductIn;
 use App\Models\Quotation;
+use App\Models\Retur;
 use App\Models\ReturnQ;
 use App\Models\SerialProduct;
 use Illuminate\Http\Request;
@@ -18,9 +21,31 @@ class ReturnController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        return view('pages.warehouse.return.index');
+        $returns = Retur::with([
+            'pending.quotation.pic.client',
+            'pending.quotation.sales',
+            'productIn.supplier',
+            'detail.replacement.product',
+        ])
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+        $totalCount = $returns->count();
+        $pendingCount = $returns->where('status', 0)->count();
+        $completedCount = $returns->where('status', 1)->count();
+        $totalQty = $returns->sum(function ($r) {
+            return $r->detail->sum('qty');
+        });
+
+        return view('pages.warehouse.return.index', compact(
+            'returns',
+            'totalCount',
+            'pendingCount',
+            'completedCount',
+            'totalQty'
+        ));
     }
 
     /**
@@ -52,14 +77,13 @@ class ReturnController extends Controller
      */
     public function show($id)
     {
-        $return = ReturnQ::find($id);
-        $dReturn = DetailReturn::where('id_retur', $id)->get();
-        $pending = PendingPO::find($return->id_pending);
-        $quote = Quotation::find($pending->id_quotation);
-        // $tax = $return->subtotal * $return->tax / 100;
-        // dd($pending);
-        // $dQuote = DetailQuotation::where('id_quotation', $return->id_quotation)->get();
-        return view('pages.warehouse.return.detail', compact('return', 'dReturn', 'pending', 'quote'));
+        $return = Retur::findOrFail($id);
+        $dReturn = DetailReturn::where('id_retur', $id)->with('replacement.product')->get();
+        $pending = $return->id_pending ? PendingPO::find($return->id_pending) : null;
+        $quote = $pending ? Quotation::find($pending->id_quotation) : null;
+        $productIn = $return->id_product_in ? ProductIn::find($return->id_product_in) : null;
+
+        return view('pages.warehouse.return.detail', compact('return', 'dReturn', 'pending', 'quote', 'productIn'));
     }
 
     /**
@@ -156,65 +180,53 @@ class ReturnController extends Controller
      */
     public function destroy($id)
     {
-        //
+        try {
+            $return = Retur::findOrFail($id);
+            DetailReturn::where('id_retur', $id)->delete();
+            $return->delete();
+
+            return redirect()->route('return.index')->with('success', 'Data return berhasil dihapus.');
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Gagal menghapus data return: ' . $e->getMessage());
+        }
     }
 
     public function accept($id)
     {
         $dReturn = DetailReturn::find($id);
-        $dReturn->status = 1;
-        $returnSave = $dReturn->save();
-        if ($returnSave) {
-            return 1;
-        } else {
+        if (!$dReturn) {
             return 0;
         }
+        $dReturn->status = 1;
+        $returnSave = $dReturn->save();
+        return $returnSave ? 1 : 0;
     }
 
     public function accept_return($id)
     {
-        $return = ReturnQ::find($id);
-        $dReturn = DetailReturn::where('id_return', $id)->get();
-        $quote = Quotation::find($return->id_quotation);
-
-        $return->lvl = '1';
-        $status = $return->save();
-
-        foreach ($dReturn as $product) {
-            $equiv = SerialProduct::find($product->id_pn);
-            $equiv->product->stock += $product->qty;
-            $status = $equiv->save();
-
-            $dQuote = DetailQuotation::where('id_equivalent', $product->id_pn)->where('id_quotation', $return->id_quotation)->first();
-            if ($dQuote->qty - $product->qty == 0) {
-                $dQuoteDel = $dQuote->delete();
-            } elseif ($dQuote->qty - $product->qty > 0) {
-                $dQuote->qty -= $product->qty;
-                if ($dQuote->disc > 0) {
-                    $dQuote->amount = $dQuote->qty * $dQuote->price * ($dQuote->disc / 100);
-                } elseif ($dQuote->disc == 0) {
-                    $dQuote->amount = $dQuote->qty * $dQuote->price;
-                }
-                $dQuote->save();
-            }
-        }
-        $detailQ = DetailQuotation::where('id_quotation', $quote->id)->get();
-        $subtotal = 0;
-        foreach ($detailQ as $product) {
-            $subtotal += $product->amount;
-        }
-
-        $quote->subtotal = $subtotal;
-        $dTotal = $subtotal - $quote->diskon;
-        $quote->nett = $subtotal;
-        $quote->total_no_tax = $dTotal + $quote->shipping;
-        $quote->harga_total = $dTotal + ($dTotal * $quote->tax / 100) + $quote->shipping;
-        $status = $quote->save();
-        if ($status && $dQuoteDel) {
-            return 1;
-        } else {
+        $return = Retur::find($id);
+        if (!$return) {
             return 0;
         }
+        $dReturn = DetailReturn::where('id_retur', $id)->get();
+        $pending = $return->id_pending ? PendingPO::find($return->id_pending) : null;
+        $quote = $pending ? Quotation::find($pending->id_quotation) : null;
 
+        $return->status = 1;
+        $return->done_date = now();
+        $status = $return->save();
+
+        if ($quote) {
+            foreach ($dReturn as $product) {
+                if ($product->id_replacement) {
+                    $equiv = DetailProduct::find($product->id_replacement);
+                    if ($equiv && $equiv->product) {
+                        $equiv->product->stock += $product->qty;
+                        $equiv->product->save();
+                    }
+                }
+            }
+        }
+        return $status ? 1 : 0;
     }
 }

@@ -11,15 +11,14 @@ $(function () {
         return { full: full, short: short };
     }
 
-    // Kolom Item selalu jadi tombol expand yang buka child row berisi rincian
-    // tiap item — sama polanya kayak tabel PR, biar tampilannya konsisten.
+    // Kolom Item membuka drawer modal slider dari kanan (persis seperti halaman Purchase Request)
     function itemCol(data, type, full) {
-        if (type !== "display") return data || "-";
-        if (full.items_detail) {
-            return '<a href="javascript:;" class="item-expand-toggle text-primary fw-semibold text-decoration-none">' +
-                '<i class="mdi mdi-chevron-right item-expand-icon me-1"></i>' + (data || "-") + "</a>";
-        }
-        return data || "-";
+        if (type !== "display") return (full && full.item_count) ? parseInt(full.item_count) : (data || "-");
+        var countText = data || ((full && full.item_count) ? (full.item_count + ' item') : '1 item');
+        return '<button type="button" class="btn-item-preview d-inline-flex align-items-center gap-1 btn-gr-drawer text-start" data-drawer-type="incoming-direct" data-bs-toggle="tooltip" title="Klik untuk membuka slide-over rincian PO &amp; item">' +
+            '<i class="mdi mdi-package-variant-closed font-14 text-primary"></i>' +
+            '<span class="fw-semibold">' + countText + '</span>' +
+            '</button>';
     }
 
     // Format items_detail sama kayak tabel PR ("deskripsi::(kosong)::(kosong)")

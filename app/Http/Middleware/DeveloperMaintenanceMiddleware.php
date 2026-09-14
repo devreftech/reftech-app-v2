@@ -67,7 +67,12 @@ class DeveloperMaintenanceMiddleware
             ], 503);
         }
 
-        // 6. Redirect all non-developers and guests to the maintenance page
+        // 6. Save intended URL into session if it's a regular GET page request
+        if ($request->isMethod('GET') && !$request->expectsJson() && !$request->ajax() && !$request->is('maintenance*')) {
+            session(['maint_intended_url' => $request->fullUrl()]);
+        }
+
+        // 7. Redirect all non-developers and guests to the maintenance page
         return redirect()->route('maintenance.page');
     }
 }

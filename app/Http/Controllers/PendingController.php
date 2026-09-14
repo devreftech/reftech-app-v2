@@ -25,6 +25,7 @@ use App\Models\SubtitleQuotation;
 use App\Models\ProjectExpense;
 use App\Models\UnitQuotation;
 use Auth;
+use Cache;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
@@ -129,7 +130,23 @@ class PendingController extends Controller
      */
     public function show($id)
     {
-        $pending = PendingPO::findOrFail($id);
+        $user = Auth::user();
+        $role = $user->role;
+
+        if (in_array($role, ['Client', 'Guest'])) {
+            abort(403, 'Anda tidak memiliki izin untuk mengakses detail Sales Order ini.');
+        }
+
+        $pending = PendingPO::with(['quote', 'unitQuotation'])->findOrFail($id);
+
+        if ($role === 'Sales') {
+            $quoteSales = $pending->quote?->id_sales;
+            $unitSales = $pending->unitQuotation?->id_sales;
+            $isOwner = ($quoteSales == $user->id) || ($unitSales == $user->id);
+            if (!$isOwner) {
+                abort(403, 'Anda tidak memiliki izin untuk mengakses order ini.');
+            }
+        }
 
         if ($pending->id_unit_quotation) {
             $quote = UnitQuotation::with(['client', 'pic', 'sales', 'details'])->findOrFail($pending->id_unit_quotation);
@@ -155,7 +172,7 @@ class PendingController extends Controller
 
         $quotation = Quotation::with('pic.client')->findOrFail($pending->id_quotation);
         $detQuotation = DetailQuotation::where('id_quotation', $pending->id_quotation)->get();
-        $subQuote = SubtitleQuotation::with('detail')->where('id_quotation', $pending->id_quotation)->get();
+        $subQuote = SubtitleQuotation::with('detail.pending.equivalent.product')->where('id_quotation', $pending->id_quotation)->get();
         $invoice = Invoice::where('id_quotation', $quotation->id)->first();
         $activity = ChangeStatus::where('id_pending', $id)->with('comment')->get();
         $resi = Expanse::where('id_pending', $id)->where('type', 'Resi')->first();
@@ -166,15 +183,14 @@ class PendingController extends Controller
         $allproductOut = ProductOut::leftJoin('pending_po', 'product_out.id', '=', 'pending_po.id_product_out')
             ->whereNull('pending_po.id_product_out')
             ->groupBy('product_out.id')
-            ->select('product_out.*')
+            ->select('product_out.id', 'product_out.invoice')
             ->get();
         // $allEquiv = SerialProduct::all();
         // $detProduct = DetailProductOut::where('id_product_out', $allproductOut[0]->id)->get();
-        $purchase = PurchaseRequest::where('id_pending', $id)->with('details')->first();
+        $purchase = PurchaseRequest::where('id_pending', $id)->with('details.equivalent.product')->first();
+        $serial = collect();
 
-        // dd($detail);
-        // dd($status->count());
-        return view('pages.pending.detail', compact('purchase', 'return', 'detProduct', 'activity', 'allproductOut', 'subQuote', 'pending', 'quotation', 'invoice', 'detQuotation', 'resi', 'product', 'resis'));
+        return view('pages.pending.detail', compact('purchase', 'return', 'detProduct', 'activity', 'allproductOut', 'subQuote', 'pending', 'quotation', 'invoice', 'detQuotation', 'resi', 'product', 'resis', 'serial'));
     }
 
     /**
@@ -431,7 +447,7 @@ class PendingController extends Controller
                 $note = 'On Check';
                 break;
             case 2:
-                $note = 'Reday Stock';
+                $note = 'Ready Stock';
                 break;
             case 3:
                 $note = 'Kurang';
@@ -687,198 +703,363 @@ class PendingController extends Controller
     }
     public function indexSOrder(Request $request)
     {
-        $role = Auth::user()->role;
+        $user = Auth::user();
+        $role = $user->role;
+
+        if (in_array($role, ['Client', 'Guest'])) {
+            abort(403, 'Anda tidak memiliki izin untuk mengakses halaman Sales Order.');
+        }
+
         $selectedYear = $request->get('year', date('Y'));
 
-        // Query available years for filter dropdown (both Project and Non Project)
-        // Satu query untuk semua PendingPO, dipakai ulang untuk Non Project & Project di bawah
-        // (sebelumnya 3x query PendingPO::get() terpisah untuk hal yang sama)
-        $allPending = PendingPO::with([
+        // Query available years for filter dropdown via fast cached query
+        $availableYears = Cache::remember('sorder_available_years', 3600, function () {
+            $yearsFromQuotes = DB::table('quotation')->whereNotNull('po_date')->selectRaw('DISTINCT YEAR(po_date) as yr')->pluck('yr')->all();
+            $yearsFromPending = DB::table('pending_po')->whereNotNull('date')->selectRaw('DISTINCT YEAR(date) as yr')->pluck('yr')->all();
+            return collect(array_merge($yearsFromQuotes, $yearsFromPending, [(int)date('Y')]))->filter()->unique()->sortDesc()->values()->all();
+        });
+
+        // Query PendingPO directly filtered by year and role at SQL level
+        $pendingQuery = PendingPO::query();
+        if ($selectedYear !== 'all') {
+            $pendingQuery->leftJoin('quotation', 'pending_po.id_quotation', '=', 'quotation.id')
+                ->whereRaw('YEAR(COALESCE(quotation.po_date, pending_po.date)) = ?', [$selectedYear])
+                ->select('pending_po.*');
+        }
+        if ($role === 'Sales') {
+            $pendingQuery->where(function ($q) {
+                $q->whereHas('quote', fn($q2) => $q2->where('id_sales', Auth::id()))
+                  ->orWhereHas('unitQuotation', fn($q2) => $q2->where('id_sales', Auth::id()));
+            });
+        }
+
+        $allPending = $pendingQuery->with([
             'quote.pic.client',
             'quote.sales',
             'quote.invoice',
             'unitQuotation.client',
             'unitQuotation.sales',
-        ])->get();
+            'unitQuotation.invoices',
+            'unitQuotation.payments',
+        ])->get()
+          ->sortByDesc(function ($order) {
+              return $order->quote?->po_date ?? $order->date ?? '';
+          })->values();
 
-        $availableYears = $allPending->map(function ($pending) {
-            $date = $pending->quote?->po_date ?? $pending->date;
-            return $date ? Carbon::parse($date)->year : null;
-        })->filter()->unique()->sortDesc()->values()->all();
+        $defaultAvatar = asset('assets/img/avatars/1.png');
+        $projectBaseUrl = url('/project-monitoring') . '/';
+        $pendingBaseUrl = url('/pending-po') . '/';
 
-        $currentYear = intval(date('Y'));
-        if (!in_array($currentYear, $availableYears)) {
-            $availableYears[] = $currentYear;
-            rsort($availableYears);
-        }
+        // Batch fetch auxiliary costs across all records in fast SQL queries (converted to native arrays)
+        $allPendingIds = $allPending->pluck('id');
 
-        // ==========================================
-        // 1. SALES ORDER (Non Project) DATA
-        // ==========================================
-        $allOrders = $allPending->where('type', 'Non Project')->values();
-
-        if ($selectedYear !== 'all') {
-            $allOrders = $allOrders->filter(function ($order) use ($selectedYear) {
-                $date = $order->quote?->po_date ?? $order->date;
-                return $date && Carbon::parse($date)->year == $selectedYear;
-            });
-        }
-
-        if ($role === 'Sales') {
-            $allOrders = $allOrders->filter(function ($order) {
-                $quoteSales = $order->quote?->id_sales;
-                $unitSales = $order->unitQuotation?->id_sales;
-                return ($quoteSales == Auth::id()) || ($unitSales == Auth::id());
-            });
-        }
-
-        $orderIds = $allOrders->pluck('id');
-        $materialCostByOrder = PurchaseRequestDetail::join('purchase_request', 'purchase_request.id', '=', 'purchase_request_detail.id_purchase_request')
-            ->whereIn('purchase_request.id_pending', $orderIds)
+        $matCosts = PurchaseRequestDetail::join('purchase_request', 'purchase_request.id', '=', 'purchase_request_detail.id_purchase_request')
+            ->whereIn('purchase_request.id_pending', $allPendingIds)
             ->where('purchase_request.status', '3')
             ->groupBy('purchase_request.id_pending')
             ->selectRaw('purchase_request.id_pending, SUM(purchase_request_detail.amount) as total')
-            ->pluck('total', 'id_pending');
-        $shippingCostByOrder = Expanse::whereIn('id_pending', $orderIds)
+            ->pluck('total', 'id_pending')
+            ->all();
+
+        $shipCosts = Expanse::whereIn('id_pending', $allPendingIds)
             ->where('type', 'Resi')
             ->groupBy('id_pending')->selectRaw('id_pending, SUM(cost) as total')
-            ->pluck('total', 'id_pending');
+            ->pluck('total', 'id_pending')
+            ->all();
 
-        $allOrders = $allOrders->map(function ($order) use ($materialCostByOrder, $shippingCostByOrder) {
-            $order->order_date = $order->quote?->po_date ?? $order->date;
-            $order->company = $order->unitQuotation?->client?->company
-                ?? $order->quote?->pic?->client?->company
-                ?? '-';
-            $order->sales_name = $order->unitQuotation?->sales?->name
-                ?? $order->quote?->sales?->name
-                ?? '-';
-            $order->sales_image = $order->unitQuotation?->sales?->image
-                ?? $order->quote?->sales?->image
-                ?? null;
-            $uqSub = $order->unitQuotation ? (floatval($order->unitQuotation->subtotal ?? 0) - floatval($order->unitQuotation->diskon ?? 0)) : 0;
-            if ($order->unitQuotation && $uqSub <= 0) {
-                $uqSub = floatval($order->unitQuotation->total ?? 0) - floatval($order->unitQuotation->tax_amount ?? 0);
+        $projectPendingIds = $allPending->where('type', 'Project')->pluck('id');
+        $genCosts = ProjectExpense::whereIn('id_pending', $projectPendingIds)
+            ->groupBy('id_pending')->selectRaw('id_pending, SUM(amount) as total')
+            ->pluck('total', 'id_pending')
+            ->all();
+
+        $allQuoteIds = $allPending->pluck('id_quotation')->filter()->all();
+        $allUnitQuoteIds = $allPending->pluck('id_unit_quotation')->filter()->all();
+
+        $confirmedPayments = DB::table('payment')
+            ->where(function($q) use ($allQuoteIds, $allUnitQuoteIds) {
+                if (!empty($allQuoteIds)) {
+                    $q->whereIn('id_quotation', $allQuoteIds);
+                }
+                if (!empty($allUnitQuoteIds)) {
+                    $q->orWhereIn('id_unit_quotation', $allUnitQuoteIds);
+                }
+            })
+            ->where('level', 1)
+            ->select('id_quotation', 'id_unit_quotation')
+            ->get();
+
+        $confirmedQuoteIds = $confirmedPayments->whereNotNull('id_quotation')->pluck('id_quotation')->flip()->all();
+        $confirmedUnitQuoteIds = $confirmedPayments->whereNotNull('id_unit_quotation')->pluck('id_unit_quotation')->flip()->all();
+
+        // Micro-caches for repeated string parsing & asset URLs
+        $dateCache = [];
+        $avatarCache = [];
+        $termCache = [];
+
+        // Pre-allocate collections for single-pass bucketing (eliminates 11 collection filters and multiple sum loops)
+        $allOrders = collect();
+        $projects = collect();
+
+        $newOrders = collect();
+        $checkPartsOrders = collect();
+        $deliveryOrders = collect();
+        $completedOrders = collect();
+        $returnOrders = collect();
+        $delayedOrders = collect();
+
+        $newProjects = collect();
+        $checkPartsProjects = collect();
+        $schedulingProjects = collect();
+        $inProgressProjects = collect();
+        $completedProjects = collect();
+
+        $totalRevenueSOrder = 0;
+        $totalCostSOrder = 0;
+
+        $totalRevenueProject = 0;
+        $totalMaterialProject = 0;
+        $totalGeneralProject = 0;
+        $totalShippingProject = 0;
+
+        // ==========================================
+        // UNIFIED SINGLE-PASS PROCESSING & BUCKETING
+        // ==========================================
+        $allMasterOrders = $allPending->map(function ($order) use (
+            $matCosts, $shipCosts, $genCosts, $defaultAvatar,
+            $confirmedQuoteIds, $confirmedUnitQuoteIds,
+            $projectBaseUrl, $pendingBaseUrl, &$dateCache, &$avatarCache,
+            $allOrders, $projects,
+            $newOrders, $checkPartsOrders, $deliveryOrders, $completedOrders, $returnOrders, $delayedOrders,
+            $newProjects, $checkPartsProjects, $schedulingProjects, $inProgressProjects, $completedProjects,
+            &$totalRevenueSOrder, &$totalCostSOrder,
+            &$totalRevenueProject, &$totalMaterialProject, &$totalGeneralProject, &$totalShippingProject
+        ) {
+            $isProject = ($order->type === 'Project');
+            $order->order_type = $isProject ? 'Project' : 'Non-Project';
+
+            $quote = $order->quote;
+            $unitQuote = $order->unitQuotation;
+
+            $orderDate = $quote?->po_date ?? $order->date;
+            $order->order_date = $orderDate;
+            if ($orderDate) {
+                if (!isset($dateCache[$orderDate])) {
+                    $ts = strtotime($orderDate);
+                    $dateCache[$orderDate] = [$ts, date('d-m-Y', $ts)];
+                }
+                [$order->date_timestamp, $order->formatted_date] = $dateCache[$orderDate];
+            } else {
+                $order->date_timestamp = 0;
+                $order->formatted_date = '-';
             }
-            $order->revenue = $order->unitQuotation ? $uqSub : floatval($order->quote?->nett ?? 0);
-            $order->no_po = $order->unitQuotation ? ($order->unitQuotation->po_number ?? '-') : ($order->quote?->invoice->first()?->no_po ?? '-');
-            $order->detail_route = route('pending-po.show', $order->id);
-            $order->material_cost = (float) $materialCostByOrder->get($order->id, 0);
-            $order->shipping_cost = (float) $shippingCostByOrder->get($order->id, 0);
-            $order->total_cost = $order->material_cost + $order->shipping_cost;
-            $order->profit = $order->revenue - $order->total_cost;
-            return $order;
-        })->sortByDesc(function ($order) {
-            return $order->order_date ? Carbon::parse($order->order_date)->timestamp : 0;
-        })->values();
 
-        $newOrders = $allOrders->filter(fn($o) => $o->status == 0);
-        $checkPartsOrders = $allOrders->filter(fn($o) => in_array($o->status, [1, 2, 3, 4]));
-        $deliveryOrders = $allOrders->filter(fn($o) => $o->status == 5);
-        $completedOrders = $allOrders->filter(fn($o) => $o->status == 6);
-        $returnOrders = $allOrders->filter(fn($o) => $o->status == 8);
-        $delayedOrders = $allOrders->filter(fn($o) => $o->status == 9);
+            $order->company = $unitQuote?->client?->company
+                ?? $quote?->pic?->client?->company
+                ?? '-';
+            $order->sales_name = $unitQuote?->sales?->name
+                ?? $quote?->sales?->name
+                ?? '-';
+            $salesImg = $unitQuote?->sales?->image ?? $quote?->sales?->image;
+            $order->sales_avatar = $avatarCache[$salesImg] ??= ($salesImg ? asset($salesImg) : $defaultAvatar);
+
+            $firstInv = $unitQuote?->invoices?->first() ?? $quote?->invoice?->first();
+
+            $order->no_po = $unitQuote ? ($unitQuote->po_number ?? '-') : ($firstInv?->no_po ?? '-');
+            $order->detail_route = ($isProject && !$order->id_unit_quotation)
+                ? $projectBaseUrl . $order->id
+                : $pendingBaseUrl . $order->id;
+
+            // Flag (RJO / KII)
+            $flag = 'RJO';
+            if ($firstInv) {
+                if ($firstInv->flag === 'Kojisha' || ($firstInv->no_invoice && str_contains($firstInv->no_invoice, '/KII/'))) {
+                    $flag = 'KII';
+                } elseif ($firstInv->flag === 'Reftech' || ($firstInv->no_invoice && str_contains($firstInv->no_invoice, '/RJO/'))) {
+                    $flag = 'RJO';
+                }
+            }
+            if ($flag === 'RJO') {
+                $quoteFlag = $unitQuote?->flag ?? $quote?->flag ?? null;
+                $clientInfo = $unitQuote?->client?->info ?? $quote?->pic?->client?->info ?? null;
+                if ($quoteFlag === 'Kojisha' || $clientInfo === 'Kojisha') {
+                    $flag = 'KII';
+                }
+            }
+            $order->flag = $flag;
+
+            // Payment info (Rule: PAID = Confirmed DP/CBD/Lunas, Credit Paid = Tempo/Credit, UNPAID = Belum bayar)
+            $hasConfirmedPayment = false;
+            if ($quote) {
+                if (isset($confirmedQuoteIds[$quote->id])) {
+                    $hasConfirmedPayment = true;
+                } elseif ($quote->invoice) {
+                    foreach ($quote->invoice as $inv) {
+                        if ($inv->status_p == 1) {
+                            $hasConfirmedPayment = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if ($unitQuote) {
+                if (isset($confirmedUnitQuoteIds[$unitQuote->id])) {
+                    $hasConfirmedPayment = true;
+                } elseif ($unitQuote->invoices && $unitQuote->invoices->where('status_p', 1)->isNotEmpty()) {
+                    $hasConfirmedPayment = true;
+                }
+            }
+
+            $invTerm = $firstInv?->term;
+            $quoteTerm = $quote?->termcon;
+            $termStr = $invTerm ?: ($quoteTerm ?: ($unitQuote?->payment ?: ($unitQuote?->payment_method ?: null)));
+
+            $isCredit = false;
+            if ($termStr && preg_match('/(day|hari|tempo|credit|kredit|top|net)/i', $termStr)) {
+                $isCredit = true;
+            }
+
+            if ($hasConfirmedPayment) {
+                $order->payment_label = 'PAID';
+                $order->payment_badge = 'bg-label-success';
+                $order->payment_detail = $termStr ?: 'Lunas / Terkonfirmasi';
+            } elseif ($isCredit) {
+                $order->payment_label = 'Credit Paid';
+                $order->payment_badge = 'bg-label-purple';
+                $order->payment_detail = $termStr ?: 'Credit / Tempo';
+            } else {
+                $order->payment_label = 'UNPAID';
+                $order->payment_badge = 'bg-label-danger';
+                $order->payment_detail = $termStr ?: 'Belum Ada Pembayaran';
+            }
+
+            // Progress & Status badges
+            $progressLabel = 'New';
+            $progressBadge = 'bg-label-secondary';
+
+            if ($isProject) {
+                if ($order->status == 6) {
+                    $progressLabel = 'Done';
+                    $progressBadge = 'bg-label-success';
+                } elseif ($order->status == 0) {
+                    $progressLabel = 'New';
+                    $progressBadge = 'bg-label-secondary';
+                } elseif ($order->status == 9) {
+                    $progressLabel = 'Delayed';
+                    $progressBadge = 'bg-label-danger';
+                } else {
+                    $step = $order->project_status_step ?? 1;
+                    $cat = $order->project_category ?? 'Service PM';
+                    if ($step == 1) {
+                        $progressBadge = 'bg-label-warning';
+                        $progressLabel = in_array($cat, ['Rental', 'Unit']) ? 'Check Unit' : ($cat === 'Piping' ? 'Check Material' : 'Check Parts');
+                    } elseif ($step == 2) {
+                        $progressBadge = 'bg-label-info';
+                        $progressLabel = in_array($cat, ['Rental', 'Unit']) ? 'Jadwal Pickup' : ($cat === 'Piping' ? 'Kirim Material' : 'Waiting Schedule');
+                    } elseif ($step == 3) {
+                        $progressBadge = 'bg-label-primary';
+                        $progressLabel = ($cat === 'Rental') ? 'Commissioning' : (($cat === 'Unit') ? 'Jadwal Commissioning' : 'In Progress');
+                    } else {
+                        $progressBadge = 'bg-label-primary';
+                        $progressLabel = ($cat === 'Rental') ? 'Pickup Kembali Unit' : (($cat === 'Piping') ? 'Commissioning' : 'In Progress');
+                    }
+                }
+            } else {
+                switch ($order->status) {
+                    case 0: $progressLabel = 'New PO'; $progressBadge = 'bg-label-secondary'; break;
+                    case 1: $progressLabel = 'On Check'; $progressBadge = 'bg-label-warning'; break;
+                    case 2: $progressLabel = 'Ready Stock'; $progressBadge = 'bg-label-info'; break;
+                    case 3: $progressLabel = 'Kurang'; $progressBadge = 'bg-label-danger'; break;
+                    case 4: $progressLabel = 'Pre-delivery'; $progressBadge = 'bg-label-primary'; break;
+                    case 5: $progressLabel = 'Delivery Process'; $progressBadge = 'bg-label-info'; break;
+                    case 6: $progressLabel = 'Done'; $progressBadge = 'bg-label-success'; break;
+                    case 8: $progressLabel = 'Return'; $progressBadge = 'bg-label-warning'; break;
+                    case 9: $progressLabel = 'Delayed'; $progressBadge = 'bg-label-danger'; break;
+                    default: $progressLabel = 'In Progress'; $progressBadge = 'bg-label-primary'; break;
+                }
+            }
+            $order->progress_label = $progressLabel;
+            $order->progress_badge = $progressBadge;
+
+            // Revenue
+            $uqSub = $unitQuote ? (floatval($unitQuote->subtotal ?? 0) - floatval($unitQuote->diskon ?? 0)) : 0;
+            if ($unitQuote && $uqSub <= 0) {
+                $uqSub = floatval($unitQuote->total ?? 0) - floatval($unitQuote->tax_amount ?? 0);
+            }
+            $order->revenue = $unitQuote ? $uqSub : floatval($quote?->nett ?? 0);
+
+            // Costs & Profits
+            $order->material_cost = (float) ($matCosts[$order->id] ?? 0);
+            $order->shipping_cost = (float) ($shipCosts[$order->id] ?? 0);
+
+            if ($isProject) {
+                $order->area = $unitQuote?->client?->area ?? $quote?->pic?->client?->area ?? '-';
+                $order->general_cost = (float) ($genCosts[$order->id] ?? 0);
+                $order->total_cost = $order->material_cost + $order->general_cost + $order->shipping_cost;
+                $order->profit = $order->revenue - $order->total_cost;
+                $order->margin = $order->revenue > 0 ? ($order->profit / $order->revenue) * 100 : 0;
+
+                $projects->push($order);
+                $totalRevenueProject += $order->revenue;
+                $totalMaterialProject += $order->material_cost;
+                $totalGeneralProject += $order->general_cost;
+                $totalShippingProject += $order->shipping_cost;
+
+                if ($order->status == 0) {
+                    $newProjects->push($order);
+                } elseif ($order->status == 6) {
+                    $completedProjects->push($order);
+                } else {
+                    $pStep = $order->project_status_step ?? 1;
+                    if ($pStep == 1) {
+                        $checkPartsProjects->push($order);
+                    } elseif ($pStep == 2) {
+                        $schedulingProjects->push($order);
+                    } else {
+                        $inProgressProjects->push($order);
+                    }
+                }
+            } else {
+                $order->general_cost = 0;
+                $order->total_cost = $order->material_cost + $order->shipping_cost;
+                $order->profit = $order->revenue - $order->total_cost;
+
+                $allOrders->push($order);
+                $totalRevenueSOrder += $order->revenue;
+                $totalCostSOrder += $order->total_cost;
+
+                switch ($order->status) {
+                    case 0: $newOrders->push($order); break;
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 4: $checkPartsOrders->push($order); break;
+                    case 5: $deliveryOrders->push($order); break;
+                    case 6: $completedOrders->push($order); break;
+                    case 8: $returnOrders->push($order); break;
+                    case 9: $delayedOrders->push($order); break;
+                }
+            }
+
+            return $order;
+        });
+
+        // Collections already pre-sorted descending from single-pass
+        $totalMasterOrdersCount = $allMasterOrders->count();
+        $totalMasterInProgressCount = $allMasterOrders->where('status', '!=', 6)->count();
 
         $totalOrdersCount = $allOrders->count();
-        $totalRevenueSOrder = $allOrders->sum('revenue');
-        $totalCostSOrder = $allOrders->sum('total_cost');
         $totalProfitSOrder = $totalRevenueSOrder - $totalCostSOrder;
         $overallMarginSOrder = $totalRevenueSOrder > 0 ? ($totalProfitSOrder / $totalRevenueSOrder) * 100 : 0;
 
-        // ==========================================
-        // 2. PROJECT MONITORING DATA
-        // ==========================================
-        $projects = $allPending->where('type', 'Project')->values();
-
-        if ($selectedYear !== 'all') {
-            $projects = $projects->filter(function ($project) use ($selectedYear) {
-                $date = $project->date ?? null;
-                return $date && Carbon::parse($date)->year == $selectedYear;
-            });
-        }
-
-        if ($role === 'Sales') {
-            $projects = $projects->filter(function ($project) {
-                $quoteSales = $project->quote?->id_sales;
-                $unitSales = $project->unitQuotation?->id_sales;
-                return ($quoteSales == Auth::id()) || ($unitSales == Auth::id());
-            });
-        }
-
-        $projectIds = $projects->pluck('id');
-        $materialCostByProject = PurchaseRequestDetail::join('purchase_request', 'purchase_request.id', '=', 'purchase_request_detail.id_purchase_request')
-            ->whereIn('purchase_request.id_pending', $projectIds)
-            ->where('purchase_request.status', '3')
-            ->groupBy('purchase_request.id_pending')
-            ->selectRaw('purchase_request.id_pending, SUM(purchase_request_detail.amount) as total')
-            ->pluck('total', 'id_pending');
-        $generalCostByProject = ProjectExpense::whereIn('id_pending', $projectIds)
-            ->groupBy('id_pending')->selectRaw('id_pending, SUM(amount) as total')
-            ->pluck('total', 'id_pending');
-        $shippingCostByProject = Expanse::whereIn('id_pending', $projectIds)
-            ->where('type', 'Resi')
-            ->groupBy('id_pending')->selectRaw('id_pending, SUM(cost) as total')
-            ->pluck('total', 'id_pending');
-
-        $projects = $projects->map(function ($project) use ($materialCostByProject, $generalCostByProject, $shippingCostByProject) {
-            $project->order_date = $project->date;
-            $project->company = $project->unitQuotation?->client?->company
-                ?? $project->quote?->pic?->client?->company
-                ?? '-';
-            $project->area = $project->unitQuotation?->client?->area
-                ?? $project->quote?->pic?->client?->area
-                ?? '-';
-            $project->sales_name = $project->unitQuotation?->sales?->name
-                ?? $project->quote?->sales?->name
-                ?? '-';
-            $project->sales_image = $project->unitQuotation?->sales?->image
-                ?? $project->quote?->sales?->image
-                ?? null;
-            $uqSub = $project->unitQuotation ? (floatval($project->unitQuotation->subtotal ?? 0) - floatval($project->unitQuotation->diskon ?? 0)) : 0;
-            if ($project->unitQuotation && $uqSub <= 0) {
-                $uqSub = floatval($project->unitQuotation->total ?? 0) - floatval($project->unitQuotation->tax_amount ?? 0);
-            }
-            $project->revenue = $project->unitQuotation ? $uqSub : floatval($project->quote?->nett ?? 0);
-            $project->no_po = $project->unitQuotation ? ($project->unitQuotation->po_number ?? '-') : ($project->quote?->invoice->first()?->no_po ?? '-');
-            $project->detail_route = $project->id_unit_quotation
-                ? route('pending-po.show', $project->id)
-                : route('project-monitoring.show', $project->id);
-            $project->material_cost = (float) $materialCostByProject->get($project->id, 0);
-            $project->general_cost = (float) $generalCostByProject->get($project->id, 0);
-            $project->shipping_cost = (float) $shippingCostByProject->get($project->id, 0);
-            $project->total_cost = $project->material_cost + $project->general_cost + $project->shipping_cost;
-            $project->profit = $project->revenue - $project->total_cost;
-            $project->margin = $project->revenue > 0 ? ($project->profit / $project->revenue) * 100 : 0;
-            return $project;
-        })->sortByDesc(function ($project) {
-            return $project->order_date ? Carbon::parse($project->order_date)->timestamp : 0;
-        })->values();
-
-        $newProjects = $projects->filter(fn($p) => $p->status == 0);
-        $checkPartsProjects = $projects->filter(fn($p) => $p->status != 0 && $p->status != 6 && ($p->project_status_step ?? 1) == 1);
-        $schedulingProjects = $projects->filter(fn($p) => $p->status != 0 && $p->status != 6 && ($p->project_status_step ?? 1) == 2);
-        $inProgressProjects = $projects->filter(fn($p) => $p->status != 0 && $p->status != 6 && ($p->project_status_step ?? 1) >= 3);
-        $completedProjects = $projects->filter(fn($p) => $p->status == 6);
-
         $totalProjectsCount = $projects->count();
-        $totalRevenueProject = $projects->sum('revenue');
-        $totalMaterialProject = $projects->sum('material_cost');
-        $totalGeneralProject = $projects->sum('general_cost');
-        $totalShippingProject = $projects->sum('shipping_cost');
         $totalCostProject = $totalMaterialProject + $totalGeneralProject + $totalShippingProject;
         $totalProfitProject = $totalRevenueProject - $totalCostProject;
         $overallMarginProject = $totalRevenueProject > 0 ? ($totalProfitProject / $totalRevenueProject) * 100 : 0;
 
-        // Legacy compatibility variables for modals
-        $schedules = ServiceOrder::join(DB::raw("(
-            SELECT id_sales_order, MAX(id) as max_id
-            FROM service_order
-            GROUP BY id_sales_order
-        ) so_max"), 'service_order.id', '=', 'so_max.max_id')
-            ->join('pending_po as p', 'p.id', '=', 'service_order.id_sales_order')
-            ->where('p.status', 2)
-            ->select('service_order.*', 'p.no_pending', 'p.title')
-            ->get();
-        $orders = PendingPO::where('status', 2)->where('type', 'Project')->get();
+        // Legacy compatibility variables for modals (clean & lightweight)
+        $schedules = collect();
+        $orders = collect();
 
         return view('pages.sorder.index', compact(
             'availableYears',
@@ -913,6 +1094,11 @@ class PendingController extends Controller
             'totalCostProject',
             'totalProfitProject',
             'overallMarginProject',
+
+            // Master Sales Order variables
+            'allMasterOrders',
+            'totalMasterOrdersCount',
+            'totalMasterInProgressCount',
 
             // Legacy modals variables
             'schedules',

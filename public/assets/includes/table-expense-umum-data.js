@@ -4,42 +4,19 @@ $(function () {
 
     if (dt_table_expense_umum_data.length) {
         $('[data-toggle="tooltip"]').tooltip();
-        // Setup - add a text input to each footer cell
-        $(".datatable-expense-umum-data thead tr")
-            .clone(true)
-            .appendTo(".datatable-expense-umum-data thead");
-        $(".datatable-expense-umum-data thead tr:eq(1) th").each(function (i) {
-            var title = $(this).text();
-            $(this).html(
-                '<input type="text" class="form-control" placeholder="Search ' +
-                    title +
-                    '" />'
-            );
-
-            $("input", this).on("keyup change", function () {
-                if (dt_filter.column(i).search() !== this.value) {
-                    dt_filter.column(i).search(this.value).draw();
-                }
-            });
-        });
 
         var dt_filter = dt_table_expense_umum_data.DataTable({
+            processing: true,
             ajax: {
                 type: "GET",
                 url: Url,
+                data: function(d) {
+                    d.year = $("#filter-umum-year").val() || "all";
+                    d.month = $("#filter-umum-month").val() || "all";
+                },
                 headers: {
                     "Content-Type": "application/json",
                 },
-
-                // success: function (hasil, Url) {
-                //     console.log("Url:", Url);
-                //     console.log(hasil);
-                // },
-                // error: function (error) {
-                //     console.log("Url:", Url);
-                //     console.error("Error:", error);
-                //     console.log("error disini");
-                // },
             },
             columns: [
                 { data: "date" },
@@ -47,71 +24,111 @@ $(function () {
                 { data: "no_invoice" },
                 { data: "no_cheque" },
                 { data: "amount" },
+                { data: "id" },
             ],
             columnDefs: [
-                // {
-                //     targets: 1,
-                //     render: function (data, type, full, row) {
-                //         if (type === "display") {
-                //             var id = full["id"];
-                //             return (
-                //                 '<a class="text-black cursor-pointer" data-bs-toggle="modal" data-bs-target="#detailPending-' +
-                //                 id +
-                //                 '">' +
-                //                 data +
-                //                 "</a>"
-                //             );
-                //         }
-                //         return data;
-                //     },
-                // },
+                {
+                    targets: 0,
+                    render: function (data) {
+                        if (!data) return '<span class="text-muted">-</span>';
+                        var d = new Date(data);
+                        if (isNaN(d.getTime())) return data;
+                        var formatted = d.toLocaleDateString("id-ID", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                        });
+                        return '<span class="text-nowrap"><i class="mdi mdi-calendar-blank-outline me-1 text-muted"></i>' + formatted + '</span>';
+                    },
+                },
                 {
                     targets: 1,
-                    render: function (data, type, full, row) {
-                        if (type === "display") {
-                            var $dataId = full["id"];
-                            var detailRoute = route("expense.show", $dataId);
-                            return (
-                                '<a class="text-dark" href="' +
-                                detailRoute +
-                                '">' +
-                                data +
-                                "</a>"
-                            );
-                        }
-                        return data;
+                    render: function (data, type, full) {
+                        var id = full["id"];
+                        var detailRoute = "/expense/" + id;
+                        return (
+                            '<div class="d-flex flex-column">' +
+                            '<a class="fw-semibold text-dark text-decoration-none hover-primary mb-1" href="' + detailRoute + '">' + (data || 'Pengeluaran Kas Umum') + '</a>' +
+                            '<small class="text-muted"><i class="mdi mdi-cash me-1"></i>Kas Operasional Langsung</small>' +
+                            '</div>'
+                        );
+                    },
+                },
+                {
+                    targets: 2,
+                    render: function (data) {
+                        if (!data) return '<span class="text-muted">-</span>';
+                        return (
+                            '<div class="d-flex align-items-center">' +
+                            '<span class="badge bg-label-secondary font-monospace"><i class="mdi mdi-receipt me-1"></i>' + data + '</span>' +
+                            '</div>'
+                        );
+                    },
+                },
+                {
+                    targets: 3,
+                    render: function (data) {
+                        if (!data) return '<span class="text-muted">-</span>';
+                        return '<span class="badge bg-label-info font-monospace">' + data + '</span>';
                     },
                 },
                 {
                     targets: 4,
-                    render: $.fn.dataTable.render.number(".", "", 0, "Rp."),
-                },
-            ],
-            order: [[2, "desc"]],
-            // orderCellsTop: true,
-            dom:
-                '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f><"dt-action-buttons text-end pt-3 pt-md-0"B>>' +
-                '<"table-responsive"t>' +
-                '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
-            buttons: [
-                {
-                    text: '<i class="mdi mdi-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add New Expense</span>',
-                    className: "btn btn-primary btn-new",
-                    action: function (e, dt, node, config) {
-                        window.location = route("expense-umum.create");
+                    className: "text-end",
+                    render: function (data) {
+                        var val = parseFloat(data || 0);
+                        return '<span class="fw-bold text-danger">Rp ' + val.toLocaleString("id-ID") + '</span>';
                     },
                 },
-                // {
-                //     text: '<i class="mdi mdi-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">Add New expense</span>',
-                //     className: "btn btn-primary",
-                //     attr: {
-                //         href: "{{ route('expense.create') }}",
-                //     },
-                // },
+                {
+                    targets: 5,
+                    className: "text-center",
+                    orderable: false,
+                    render: function (data, type, full, row) {
+                        var id = full["id"];
+                        return (
+                            '<div class="d-inline-flex gap-1">' +
+                            '<a href="/expense/' + id + '" class="btn btn-icon btn-sm btn-label-info" title="Lihat Detail"><i class="mdi mdi-eye-outline"></i></a>' +
+                            '<a href="/expense-print/' + id + '" target="_blank" class="btn btn-icon btn-sm btn-label-secondary" title="Cetak Voucher"><i class="mdi mdi-printer-outline"></i></a>' +
+                            '<button type="button" class="btn btn-icon btn-sm btn-label-danger delete-expense" data-id="' + id + '" title="Hapus Voucher"><i class="mdi mdi-delete-outline"></i></button>' +
+                            '</div>'
+                        );
+                    },
+                },
             ],
+            order: [[0, "desc"]],
+            dom:
+                '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>' +
+                '<"table-responsive"t>' +
+                '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
+            language: {
+                search: "",
+                searchPlaceholder: "Cari memo, no bukti...",
+                lengthMenu: "_MENU_",
+                info: "Menampilkan _START_ s/d _END_ dari _TOTAL_ kas umum",
+                paginate: {
+                    first: '<i class="mdi mdi-chevron-double-left"></i>',
+                    previous: '<i class="mdi mdi-chevron-left"></i>',
+                    next: '<i class="mdi mdi-chevron-right"></i>',
+                    last: '<i class="mdi mdi-chevron-double-right"></i>'
+                }
+            }
+        });
+
+        // Filter toolbar handlers
+        $("#filter-umum-year, #filter-umum-month").on("change", function () {
+            dt_filter.ajax.reload();
+        });
+
+        $("#btn-reset-umum-filter").on("click", function () {
+            $("#filter-umum-year").val("");
+            $("#filter-umum-month").val("");
+            dt_filter.search("").draw();
+            dt_filter.ajax.reload();
+        });
+
+        dt_table_expense_umum_data.on("draw", function () {
+            $('[data-toggle="tooltip"]').tooltip();
         });
     }
-    dt_table_expense_umum_data.on("draw", function () {
-        $('[data-toggle="tooltip"]').tooltip();
-    });
 });

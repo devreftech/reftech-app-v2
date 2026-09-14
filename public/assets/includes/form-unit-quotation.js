@@ -1000,18 +1000,61 @@ $(function () {
             $clientSelect.select2('destroy');
         }
         $clientSelect.select2({
-            placeholder: '-- Select Client --',
+            placeholder: '-- Ketik minimal 2 huruf nama client --',
             allowClear: true,
+            width: '100%',
+            minimumInputLength: 2,
+            language: {
+                inputTooShort: function () {
+                    return 'Ketik minimal 2 huruf nama client...';
+                },
+                searching: function () {
+                    return 'Mencari client...';
+                },
+                noResults: function () {
+                    return 'Client tidak ditemukan';
+                }
+            },
+            ajax: {
+                url: '/smart-quote/clients-search',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    var salesId = 'self';
+                    var $salesSelect = $('#sales-select');
+                    if ($salesSelect.length) {
+                        var sourceType = $('input[name="client_source_type"]:checked').val() || 'by_sales';
+                        if (sourceType === 'self_leads') {
+                            salesId = 'self_leads';
+                        } else {
+                            salesId = $salesSelect.val() || 'all';
+                        }
+                    }
+                    return {
+                        q: params.term,
+                        sales_id: salesId
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: data.results || []
+                    };
+                },
+                cache: true
+            },
             templateResult: function (option) {
                 if (!option.id) return option.text;
-                var role = $(option.element).data('role');
-                return $('<span>' + clientBadge(role) + option.text + '</span>');
+                var role = option.role || (option.element ? option.element.getAttribute('data-role') : '');
+                var badge = clientBadge(role);
+                return $('<span>' + badge + (option.text || '') + '</span>');
             },
             templateSelection: function (option) {
                 if (!option.id) return option.text;
-                var role = $(option.element).data('role');
-                return $('<span>' + clientBadge(role) + option.text + '</span>');
+                var role = option.role || (option.element ? option.element.getAttribute('data-role') : '');
+                var badge = clientBadge(role);
+                return $('<span>' + badge + (option.text || '') + '</span>');
             },
+            escapeMarkup: function (m) { return m; }
         });
     }
     initClientSelect2();
@@ -1022,58 +1065,25 @@ $(function () {
         $salesSelect.select2({ placeholder: '-- Semua Sales (Default) --', allowClear: true });
 
         $salesSelect.on('change', function () {
-            var salesId = $(this).val() || 'all';
             var $clientSelect = $('#client-select');
-            var currentClientId = $clientSelect.val();
-
-            $clientSelect.empty().append('<option value="">-- Loading Clients... --</option>');
-
-            $.get('/smart-quote/clients-by-sales/' + salesId, function (res) {
-                $clientSelect.empty().append('<option value="">-- Select Client --</option>');
-                (res.clients || []).forEach(function (c) {
-                    var selected = (currentClientId && String(c.id) === String(currentClientId)) ? ' selected' : '';
-                    $clientSelect.append('<option value="' + c.id + '" data-role="' + (c.role || '') + '"' + selected + '>' + c.company + '</option>');
-                });
-                initClientSelect2();
-            });
+            $clientSelect.empty().append('<option value="">-- Ketik minimal 2 huruf nama client --</option>').trigger('change');
+            initClientSelect2();
         });
 
         // Handler for switching between "By Sales" and "Leads Sendiri"
         $('input[name="client_source_type"]').on('change', function () {
             var mode = $(this).val();
             var $clientSelect = $('#client-select');
-            var currentClientId = $clientSelect.val();
+            $clientSelect.empty().append('<option value="">-- Ketik minimal 2 huruf nama client --</option>').trigger('change');
 
             if (mode === 'self_leads') {
                 $('#sales-select-container').hide();
                 $('#self-leads-banner').removeClass('d-none').addClass('d-flex');
-                $clientSelect.empty().append('<option value="">-- Loading Leads Sendiri... --</option>');
-
-                $.get('/smart-quote/clients-by-sales/self_leads', function (res) {
-                    var count = (res.clients || []).length;
-                    $clientSelect.empty().append('<option value="">-- Pilih Leads Sendiri (' + count + ' Data) --</option>');
-                    (res.clients || []).forEach(function (c) {
-                        var selected = (currentClientId && String(c.id) === String(currentClientId)) ? ' selected' : '';
-                        $clientSelect.append('<option value="' + c.id + '" data-role="' + (c.role || '') + '"' + selected + '>' + c.company + '</option>');
-                    });
-                    initClientSelect2();
-                });
             } else {
                 $('#sales-select-container').show();
                 $('#self-leads-banner').removeClass('d-flex').addClass('d-none');
-
-                var salesId = $('#sales-select').val() || 'all';
-                $clientSelect.empty().append('<option value="">-- Loading Clients... --</option>');
-
-                $.get('/smart-quote/clients-by-sales/' + salesId, function (res) {
-                    $clientSelect.empty().append('<option value="">-- Select Client --</option>');
-                    (res.clients || []).forEach(function (c) {
-                        var selected = (currentClientId && String(c.id) === String(currentClientId)) ? ' selected' : '';
-                        $clientSelect.append('<option value="' + c.id + '" data-role="' + (c.role || '') + '"' + selected + '>' + c.company + '</option>');
-                    });
-                    initClientSelect2();
-                });
             }
+            initClientSelect2();
         });
     }
 
@@ -1781,6 +1791,85 @@ $(function () {
     }
     $('#select-type').on('change', toggleUnitCondition);
     toggleUnitCondition();
+
+    // ── KETENTUAN RENTAL UNIT KOMPRESOR Card & Auto-fill Logic ────────────
+    function checkRentalTermsCard(userInitiated) {
+        var isRental = $('#select-type').val() === 'Rental';
+        var $wrapper = $('#rental-terms-card-wrapper');
+
+        if (isRental) {
+            $wrapper.slideDown(200);
+            var $rentalTerms = $('#rental_terms');
+            if ($rentalTerms.length && window.RENTAL_NOTE_TEMPLATE && window.RENTAL_NOTE_TEMPLATE.trim() !== '') {
+                var currentVal = ($rentalTerms.val() || '').trim();
+                // Jika masih kosong atau cuma bullet, langsung isi otomatis dengan template master
+                if (currentVal === '' || currentVal === '•' || currentVal === '\u2022') {
+                    $rentalTerms.val(window.RENTAL_NOTE_TEMPLATE).trigger('input');
+                    if ($rentalTerms[0]) {
+                        $rentalTerms[0].style.height = 'auto';
+                        $rentalTerms[0].style.height = Math.max($rentalTerms[0].scrollHeight, 100) + 'px';
+                    }
+                }
+            }
+        } else {
+            $wrapper.slideUp(200);
+        }
+    }
+
+    $('#select-type').on('change', function () {
+        checkRentalTermsCard(true);
+    });
+    checkRentalTermsCard(false);
+
+    // Tombol muat ulang / reset template rental terms
+    $(document).on('click', '#btnResetRentalTerms', function () {
+        if (!window.RENTAL_NOTE_TEMPLATE || window.RENTAL_NOTE_TEMPLATE.trim() === '') {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Template Belum Diatur',
+                    text: 'Master Ketentuan Rental belum diatur di menu Forecast > Master Harga.'
+                });
+            } else {
+                alert('Master Ketentuan Rental belum diatur di menu Forecast > Master Harga.');
+            }
+            return;
+        }
+
+        var $rentalTerms = $('#rental_terms');
+        var currentVal = ($rentalTerms.val() || '').trim();
+        if (currentVal !== '' && currentVal !== '•' && currentVal !== window.RENTAL_NOTE_TEMPLATE.trim()) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Muat Ulang Template?',
+                    text: 'Teks ketentuan rental saat ini akan digantikan dengan master template klausul rental.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, Muat Ulang',
+                    cancelButtonText: 'Batal',
+                    customClass: {
+                        confirmButton: 'btn btn-warning waves-effect waves-light me-2',
+                        cancelButton: 'btn btn-label-secondary waves-effect'
+                    },
+                    buttonsStyling: false
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        $rentalTerms.val(window.RENTAL_NOTE_TEMPLATE).trigger('input');
+                        if ($rentalTerms[0]) {
+                            $rentalTerms[0].style.height = 'auto';
+                            $rentalTerms[0].style.height = Math.max($rentalTerms[0].scrollHeight, 100) + 'px';
+                        }
+                    }
+                });
+                return;
+            }
+        }
+        $rentalTerms.val(window.RENTAL_NOTE_TEMPLATE).trigger('input');
+        if ($rentalTerms[0]) {
+            $rentalTerms[0].style.height = 'auto';
+            $rentalTerms[0].style.height = Math.max($rentalTerms[0].scrollHeight, 100) + 'px';
+        }
+    });
 
     // ── Reorder Items Logic (Drag & Drop + Up/Down Buttons) ──────────────
     // Nama field item di-rewrite jadi options[optIdx][items][itemIdx][...] tiap

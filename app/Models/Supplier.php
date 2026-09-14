@@ -30,4 +30,8 @@ class Supplier extends Model
     {
         return $this->hasMany('App\Models\PurchaseOrder', 'id_supplier');
     }
+    public function pics()
+    {
+        return $this->hasMany('App\Models\SupplierPic', 'id_supplier');
+    }
 }
