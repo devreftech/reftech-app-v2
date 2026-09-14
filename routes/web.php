@@ -7847,6 +7847,20 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
     });
 
     // ------------------------------------------------------------------------
+    // Finance - Marketplace Management Routes (master data, pencairan/settlement,
+    // and held-vs-disbursed reconciliation for escrow payments)
+    // ------------------------------------------------------------------------
+    Route::prefix('finance/marketplace')->name('finance.marketplace.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\MarketplaceController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\MarketplaceController::class, 'store'])->name('store');
+        Route::post('/{id}/update', [\App\Http\Controllers\MarketplaceController::class, 'update'])->name('update');
+        Route::post('/{id}/toggle', [\App\Http\Controllers\MarketplaceController::class, 'toggleActive'])->name('toggle');
+        Route::get('/{id}/held-payments', [\App\Http\Controllers\MarketplaceController::class, 'heldPayments'])->name('held-payments');
+        Route::post('/settlements', [\App\Http\Controllers\MarketplaceController::class, 'storeSettlement'])->name('settlements.store');
+        Route::post('/payments/{paymentId}/assign', [\App\Http\Controllers\MarketplaceController::class, 'assignPayment'])->name('payments.assign');
+    });
+
+    // ------------------------------------------------------------------------
     // Finance - Expense Budgeting Routes
     // ------------------------------------------------------------------------
     Route::prefix('finance/expense-budget')->name('finance.expense-budget.')->group(function () {

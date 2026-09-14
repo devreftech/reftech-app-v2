@@ -46,15 +46,19 @@
                                     </div>
                                 </div>
                                 <div class="col-6 mb-3" id="escrow-channel-group" style="display:none;">
+                                    @php
+                                        $activeMarketplaces = \App\Models\Marketplace::where('is_active', 1)->orderBy('name')->get();
+                                    @endphp
                                     <div class="form-floating form-floating-outline">
                                         <select class="form-select" id="selectEscrowChannel" name="escrow_channel">
                                             <option value="" disabled selected>-- Pilih Akun --</option>
-                                            <option value="Airend Center">Airend Center</option>
-                                            <option value="Parts Compressor">Parts Compressor</option>
-                                            <option value="Kojisha Filter">Kojisha Filter</option>
+                                            @foreach ($activeMarketplaces as $mkt)
+                                                <option value="{{ $mkt->name }}" data-id-marketplace="{{ $mkt->id }}">{{ $mkt->name }}</option>
+                                            @endforeach
                                         </select>
                                         <label for="selectEscrowChannel">Akun Marketplace</label>
                                     </div>
+                                    <input type="hidden" name="id_marketplace" id="selectedIdMarketplace">
                                 </div>
                                 <div class="col-6 mb-3">
                                     <div class="form-floating form-floating-outline">
@@ -144,7 +148,11 @@
             $('#selectEscrowChannel').prop('required', isEscrow);
             if (!isEscrow) {
                 $('#selectEscrowChannel').val('');
+                $('#selectedIdMarketplace').val('');
             }
+        });
+        $('#selectEscrowChannel').on('change', function () {
+            $('#selectedIdMarketplace').val($(this).find(':selected').data('id-marketplace') || '');
         });
     </script>
 @endpush

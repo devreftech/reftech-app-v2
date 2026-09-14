@@ -22,6 +22,8 @@ class Payment extends Model
         'type',
         'method',
         'escrow_channel',
+        'id_marketplace',
+        'disbursement_status',
         'date_confirm',
         'due_date',
         'overdue',
@@ -44,5 +46,15 @@ class Payment extends Model
     public function bank()
     {
         return $this->belongsTo('App\Models\Bank', 'id_bank', 'id');
+    }
+
+    public function marketplace()
+    {
+        return $this->belongsTo(Marketplace::class, 'id_marketplace');
+    }
+
+    public function settlementItems()
+    {
+        return $this->hasMany(MarketplaceSettlementItem::class, 'id_payment');
     }
 }

@@ -77,6 +77,11 @@ class Bank extends Model
         return $this->hasMany('App\Models\PurchasePayment', 'id_bank');
     }
 
+    public function marketplaceSettlements()
+    {
+        return $this->hasMany('App\Models\MarketplaceSettlement', 'id_bank');
+    }
+
     public function expenses()
     {
         return $this->hasMany('App\Models\Expense', 'id_bank');
@@ -125,8 +130,9 @@ class Bank extends Model
                   + ManualManagementFee::where('id_source_bank', $this->id)->where('fee_payment_status', 'paid')->count();
         $pettyCount = PettyCashTransaction::where('id_bank', $this->id)->orWhere('id_source_bank', $this->id)->count();
         $adjustmentCount = BankAdjustment::where('id_bank', $this->id)->count();
+        $marketplaceSettlementCount = MarketplaceSettlement::where('id_bank', $this->id)->count();
 
-        return (int) ($arCount + $apCount + $expenseCount + $transferCount + $feeCount + $pettyCount + $adjustmentCount);
+        return (int) ($arCount + $apCount + $expenseCount + $transferCount + $feeCount + $pettyCount + $adjustmentCount + $marketplaceSettlementCount);
     }
 
     /**
