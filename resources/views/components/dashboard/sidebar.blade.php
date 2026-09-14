@@ -2408,6 +2408,22 @@
                 </a>
             </li>
 
+            @php
+                $marketplaceHeldCount = $marketplaceHeldCount ?? \App\Models\Payment::where('method', 'Escrow')
+                    ->where('disbursement_status', 'held')
+                    ->whereNotNull('id_marketplace')
+                    ->count();
+            @endphp
+            <li class="menu-item {{ request()->is('finance/marketplace*') ? 'active' : '' }}">
+                <a href="{{ route('finance.marketplace.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-storefront-outline"></i>
+                    <div data-i18n="Marketplace Management">Marketplace Management</div>
+                    @if ($marketplaceHeldCount >= 1)
+                        <div class="badge bg-warning rounded-pill ms-auto">{{ $marketplaceHeldCount }}</div>
+                    @endif
+                </a>
+            </li>
+
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Perpajakan (Taxation)</span>
             </li>

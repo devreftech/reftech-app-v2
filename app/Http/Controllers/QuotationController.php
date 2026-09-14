@@ -1843,9 +1843,11 @@ class QuotationController extends Controller
         if ($request->method == 'Escrow') {
             $payment->level = 1;
             $payment->escrow_channel = $request->escrow_channel;
+            $payment->id_marketplace = $request->id_marketplace ?: null;
         } else {
             $payment->level = 0;
             $payment->escrow_channel = null;
+            $payment->id_marketplace = null;
         }
         $payment->percent = $request->percent;
         if ($request->type == 'Tempo') {

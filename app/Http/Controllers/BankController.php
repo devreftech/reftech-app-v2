@@ -7,6 +7,7 @@ use App\Models\BankAdjustment;
 use App\Models\BankTransfer;
 use App\Models\Expense;
 use App\Models\ManualManagementFee;
+use App\Models\MarketplaceSettlement;
 use App\Models\Payable;
 use App\Models\Payment;
 use App\Models\PettyCashTransaction;
@@ -32,10 +33,12 @@ class BankController extends Controller
             $bank->has_transactions = $bank->total_tx_count > 0;
             $adjIn = (float) BankAdjustment::where('id_bank', $bank->id)->where('difference', '>', 0)->sum('difference');
             $adjOut = (float) BankAdjustment::where('id_bank', $bank->id)->where('difference', '<', 0)->sum(DB::raw('ABS(difference)'));
+            $marketplaceIn = (float) MarketplaceSettlement::where('id_bank', $bank->id)->sum('net_amount');
 
             $bank->total_in = (float) Payment::where('id_bank', $bank->id)->where('level', 1)->sum('amount')
                             + (float) PettyCashTransaction::where('id_bank', $bank->id)->where('type', 'topup')->sum('amount')
-                            + $adjIn;
+                            + $adjIn
+                            + $marketplaceIn;
             $bank->total_out = (float) PurchasePayment::where('id_bank', $bank->id)->sum('amount')
                              + (float) Expense::where('id_bank', $bank->id)->sum('amount')
                              + (float) PettyCashTransaction::where('id_bank', $bank->id)->where('type', 'disbursement')->sum('amount')
@@ -430,8 +433,17 @@ class BankController extends Controller
             ->where('difference', '<', 0)
             ->sum(DB::raw('ABS(difference)'));
 
+        // Marketplace Settlements before start_date
+        $prevMarketplaceSettlements = (float) MarketplaceSettlement::where('id_bank', $id)
+            ->where(function($q) use ($startDate) {
+                $q->whereDate('settlement_date', '<', $startDate)
+                  ->orWhere(function($sub) use ($startDate) {
+                      $sub->whereNull('settlement_date')->whereDate('created_at', '<', $startDate);
+                  });
+            })->sum('net_amount');
+
         $initialBalance = (float) ($bank->initial_balance ?: 0);
-        $openingBalance = $initialBalance + $prevAr + $prevTrfIn + $prevPctTopupIn + $prevAdjIn - ($prevAp + $prevExpense + $prevTrfOut + $prevUqFees + $prevManualFees + $prevPctTopupOut + $prevPctDisburseOut + $prevAdjOut);
+        $openingBalance = $initialBalance + $prevAr + $prevTrfIn + $prevPctTopupIn + $prevAdjIn + $prevMarketplaceSettlements - ($prevAp + $prevExpense + $prevTrfOut + $prevUqFees + $prevManualFees + $prevPctTopupOut + $prevPctDisburseOut + $prevAdjOut);
 
         // Transactions in date range
         // 1. AR Customer Payments (Penerimaan / Masuk / Kredit)
@@ -675,6 +687,31 @@ class BankController extends Controller
                 ];
             });
 
+        // 11. Marketplace Settlements (Pencairan Dana Marketplace)
+        $marketplaceSettlements = MarketplaceSettlement::where('id_bank', $id)
+            ->where(function($q) use ($startDate, $endDate) {
+                $q->whereBetween('settlement_date', [$startDate, $endDate])
+                  ->orWhere(function($sub) use ($startDate, $endDate) {
+                      $sub->whereNull('settlement_date')->whereBetween('created_at', [$startDate, $endDate]);
+                  });
+            })
+            ->with('marketplace')
+            ->get()->map(function ($ms) {
+                $mktName = $ms->marketplace?->name ?? 'Marketplace';
+                $refStr = $ms->reference_no ? " (Ref: {$ms->reference_no})" : '';
+                $feeStr = $ms->fee_amount > 0 ? " [Gross: Rp " . number_format($ms->gross_amount, 0, ',', '.') . " - Fee: Rp " . number_format($ms->fee_amount, 0, ',', '.') . "]" : "";
+                return [
+                    'date' => $ms->settlement_date ? Carbon::parse($ms->settlement_date)->toDateString() : ($ms->created_at ? $ms->created_at->toDateString() : Carbon::now()->toDateString()),
+                    'module' => 'Pencairan Marketplace',
+                    'badge_class' => 'bg-label-primary',
+                    'ref_no' => $ms->settlement_number,
+                    'description' => "Pencairan Dana Escrow dari {$mktName}{$refStr}{$feeStr}" . ($ms->note ? " - {$ms->note}" : ''),
+                    'in' => (float) $ms->net_amount,
+                    'out' => 0,
+                    'type' => 'IN',
+                ];
+            });
+
         $all = $arPayments->concat($apPayments)
             ->concat($expenses)
             ->concat($transfersIn)
@@ -685,6 +722,7 @@ class BankController extends Controller
             ->concat($pettyCashTopupsIn)
             ->concat($pettyCashDisbursements)
             ->concat($adjustments)
+            ->concat($marketplaceSettlements)
             ->sortBy('date')
             ->values();
 
@@ -801,8 +839,17 @@ class BankController extends Controller
             ->where('difference', '<', 0)
             ->sum(DB::raw('ABS(difference)'));
 
+        // Marketplace Settlements before start_date
+        $prevMarketplaceSettlements = (float) MarketplaceSettlement::where('id_bank', $id)
+            ->where(function($q) use ($startDate) {
+                $q->whereDate('settlement_date', '<', $startDate)
+                  ->orWhere(function($sub) use ($startDate) {
+                      $sub->whereNull('settlement_date')->whereDate('created_at', '<', $startDate);
+                  });
+            })->sum('net_amount');
+
         $initialBalance = (float) ($bank->initial_balance ?: 0);
-        $openingBalance = $initialBalance + $prevAr + $prevTrfIn + $prevPctTopupIn + $prevAdjIn - ($prevAp + $prevExpense + $prevTrfOut + $prevUqFees + $prevManualFees + $prevPctTopupOut + $prevPctDisburseOut + $prevAdjOut);
+        $openingBalance = $initialBalance + $prevAr + $prevTrfIn + $prevPctTopupIn + $prevAdjIn + $prevMarketplaceSettlements - ($prevAp + $prevExpense + $prevTrfOut + $prevUqFees + $prevManualFees + $prevPctTopupOut + $prevPctDisburseOut + $prevAdjOut);
 
         // Transactions in date range
         $arPayments = Payment::where('id_bank', $id)
@@ -1029,6 +1076,31 @@ class BankController extends Controller
                 ];
             });
 
+        // 11. Marketplace Settlements (Pencairan Dana Marketplace)
+        $marketplaceSettlements = MarketplaceSettlement::where('id_bank', $id)
+            ->where(function($q) use ($startDate, $endDate) {
+                $q->whereBetween('settlement_date', [$startDate, $endDate])
+                  ->orWhere(function($sub) use ($startDate, $endDate) {
+                      $sub->whereNull('settlement_date')->whereBetween('created_at', [$startDate, $endDate]);
+                  });
+            })
+            ->with('marketplace')
+            ->get()->map(function ($ms) {
+                $mktName = $ms->marketplace?->name ?? 'Marketplace';
+                $refStr = $ms->reference_no ? " (Ref: {$ms->reference_no})" : '';
+                $feeStr = $ms->fee_amount > 0 ? " [Gross: Rp " . number_format($ms->gross_amount, 0, ',', '.') . " - Fee: Rp " . number_format($ms->fee_amount, 0, ',', '.') . "]" : "";
+                return [
+                    'date' => $ms->settlement_date ? Carbon::parse($ms->settlement_date)->toDateString() : ($ms->created_at ? $ms->created_at->toDateString() : Carbon::now()->toDateString()),
+                    'module' => 'Pencairan Marketplace',
+                    'badge_class' => 'bg-label-primary',
+                    'ref_no' => $ms->settlement_number,
+                    'description' => "Pencairan Dana Escrow dari {$mktName}{$refStr}{$feeStr}" . ($ms->note ? " - {$ms->note}" : ''),
+                    'in' => (float) $ms->net_amount,
+                    'out' => 0,
+                    'type' => 'IN',
+                ];
+            });
+
         $all = $arPayments->concat($apPayments)
             ->concat($expenses)
             ->concat($transfersIn)
@@ -1039,6 +1111,7 @@ class BankController extends Controller
             ->concat($pettyCashTopupsIn)
             ->concat($pettyCashDisbursements)
             ->concat($adjustments)
+            ->concat($marketplaceSettlements)
             ->sortBy('date')
             ->values();
 

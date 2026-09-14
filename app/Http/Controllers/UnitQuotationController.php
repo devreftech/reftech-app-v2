@@ -1261,6 +1261,7 @@ class UnitQuotationController extends Controller
         $payment->method            = $request->method;
         $isEscrow                   = ($request->method === 'Escrow');
         $payment->escrow_channel    = $isEscrow ? $request->escrow_channel : null;
+        $payment->id_marketplace    = $isEscrow ? ($request->id_marketplace ?: null) : null;
         $payment->level             = $isEscrow ? 1 : 0;
         $payment->date              = now()->toDateString();
         if ($isEscrow) {

@@ -1254,6 +1254,18 @@
                             </div>
                         </div>
 
+                        {{-- Subtotal After Discount (hanya muncul jika ada nominal Diskon Global) --}}
+                        <div class="d-flex justify-content-between align-items-center mb-3 subtotal-after-discount-row d-none">
+                            <span class="text-muted fw-semibold">Subtotal After Discount</span>
+                            <span class="fw-bold text-dark" id="subtotalAfterDiscountLabel">RP 0</span>
+                        </div>
+
+                        {{-- DPP Nilai Lain (hanya muncul jika Tax PPN 12% aktif) --}}
+                        <div class="d-flex justify-content-between align-items-center mb-3 dpp-nilai-lain-row d-none">
+                            <span class="text-muted fw-semibold">DPP Nilai Lain</span>
+                            <span class="fw-bold text-dark" id="dppNilaiLainLabel">RP 0</span>
+                        </div>
+
                         {{-- Tax (PPN 12%) --}}
                         <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
                             <div class="d-flex align-items-center gap-2">
@@ -2353,7 +2365,7 @@
 
             // Live calculation helper: Hitung Harga DPP (Exc. PPN) dan PPN jika harga yang diinput adalah include PPN (12%)
             function updatePriceTaxHint($input) {
-                var $col = $input.closest('.col-md-3');
+                var $col = $input.closest('.col-lg-3');
                 var $hint = $col.find('.price-tax-hint');
                 if (!$hint.length) return;
 
@@ -2388,7 +2400,7 @@
 
             $(document).on('keyup input', '.invoice-item-price-label', function(e) {
                 var input = $(this);
-                var $col = input.closest('.col-md-3');
+                var $col = input.closest('.col-lg-3');
                 var $row = input.closest('.repeater-wrapper');
 
                 if (e.type === 'keyup' && [37, 38, 39, 40, 9, 16, 17, 18, 27].includes(e.which)) {
@@ -2432,7 +2444,7 @@
                 e.preventDefault();
                 e.stopPropagation();
 
-                var $col = $(this).closest('.col-md-3');
+                var $col = $(this).closest('.col-lg-3');
                 var $row = $(this).closest('.repeater-wrapper');
                 var excPpn = parseFloat($(this).data('exc-ppn')) || 0;
                 var dppFormatted = $(this).data('dpp-formatted') || formatDecimalDisplay(excPpn);
@@ -2477,7 +2489,7 @@
                 e.preventDefault();
                 e.stopPropagation();
 
-                var $col = $(this).closest('.col-md-3');
+                var $col = $(this).closest('.col-lg-3');
                 var $row = $(this).closest('.repeater-wrapper');
                 var origPrice = $col.data('orig-price');
                 var $priceLabel = $col.find('.invoice-item-price-label');
@@ -2587,8 +2599,23 @@
                 var deliveryCost = parseFloat($('#delivery-cost').val()) || 0;
                 var dTotal = Math.max(0, sTotal - discount);
                 var taxPercent = parseFloat($('#tax').val()) || 0;
-                var taxAmount = Math.round(dTotal * taxPercent / 100);
+
+                if (discount > 0) {
+                    $('.subtotal-after-discount-row').removeClass('d-none');
+                    $('#subtotalAfterDiscountLabel').html(formatter.format(dTotal));
+                } else {
+                    $('.subtotal-after-discount-row').addClass('d-none');
+                }
+                var dppNilaiLain = taxPercent > 0 ? Math.round(dTotal * 11 / 12) : 0;
+                var taxAmount = taxPercent > 0 ? Math.round(dppNilaiLain * taxPercent / 100) : 0;
                 var hTotal = Math.round(dTotal + taxAmount + deliveryCost);
+
+                if (taxPercent > 0) {
+                    $('.dpp-nilai-lain-row').removeClass('d-none');
+                    $('#dppNilaiLainLabel').html(formatter.format(dppNilaiLain));
+                } else {
+                    $('.dpp-nilai-lain-row').addClass('d-none');
+                }
 
                 $('#taxAmountLabel').html(taxPercent > 0 ? formatter.format(taxAmount) : '');
                 $('#hargaTotal').val(hTotal);
