@@ -735,9 +735,9 @@
                                                         <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
                                                             <div class="hint-calc-wrapper">
                                                                 <div class="text-secondary mb-1">
-                                                                    <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
+                                                                    <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (12%):<br>
                                                                     DPP (Exc. PPN): <strong class="text-primary exc-ppn-val">Rp 0</strong><br>
-                                                                    <span class="ppn-val text-muted" style="font-size: 10px;">PPN (11%): Rp 0</span>
+                                                                    <span class="ppn-val text-muted" style="font-size: 10px;">PPN (12%): Rp 0</span>
                                                                 </div>
                                                                 <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
                                                                     <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP
@@ -918,9 +918,9 @@
                                                     <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
                                                         <div class="hint-calc-wrapper">
                                                             <div class="text-secondary mb-1">
-                                                                <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
+                                                                <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (12%):<br>
                                                                 DPP (Exc. PPN): <strong class="text-primary exc-ppn-val">Rp 0</strong><br>
-                                                                <span class="ppn-val text-muted" style="font-size: 10px;">PPN (11%): Rp 0</span>
+                                                                <span class="ppn-val text-muted" style="font-size: 10px;">PPN (12%): Rp 0</span>
                                                             </div>
                                                             <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
                                                                 <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP
@@ -1088,9 +1088,9 @@
                                                 <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
                                                     <div class="hint-calc-wrapper">
                                                         <div class="text-secondary mb-1">
-                                                            <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
+                                                            <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (12%):<br>
                                                             DPP (Exc. PPN): <strong class="text-primary exc-ppn-val">Rp 0</strong><br>
-                                                            <span class="ppn-val text-muted" style="font-size: 10px;">PPN (11%): Rp 0</span>
+                                                            <span class="ppn-val text-muted" style="font-size: 10px;">PPN (12%): Rp 0</span>
                                                         </div>
                                                         <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
                                                             <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP
@@ -1205,7 +1205,7 @@
                             </div>
                             <ul class="text-muted small mb-0 ps-3" style="font-size: 11.5px; line-height: 1.5;">
                                 <li>Gunakan fitur <strong>Tarik Item dari PR</strong> untuk menggabungkan beberapa Purchase Request yang disetujui.</li>
-                                <li>Centang opsi <strong>Tax (PPN 11%)</strong> jika pembelian dikenakan pajak pertambahan nilai.</li>
+                                <li>Centang opsi <strong>Tax (PPN 12%)</strong> jika pembelian dikenakan pajak pertambahan nilai.</li>
                                 <li>Draf PO disimpan otomatis di browser dan dapat dipulihkan sewaktu-waktu jika halaman tertutup.</li>
                             </ul>
                         </div>
@@ -1254,10 +1254,10 @@
                             </div>
                         </div>
 
-                        {{-- Tax (PPN 11%) --}}
+                        {{-- Tax (PPN 12%) --}}
                         <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
                             <div class="d-flex align-items-center gap-2">
-                                <span class="text-muted fw-semibold">Tax (PPN 11%)</span>
+                                <span class="text-muted fw-semibold">Tax (PPN 12%)</span>
                                 <div class="form-check form-switch mb-0">
                                     <input class="form-check-input" type="checkbox" role="switch"
                                         id="taxSwitch" {{ (@$purchase->vat == '12' || @$purchase->vat == '11') ? 'checked' : '' }}>
@@ -2345,13 +2345,13 @@
                 recalculateTotals();
             });
 
-            // Toggle Tax (PPN 11%) on/off
+            // Toggle Tax (PPN 12%) on/off
             $(document).on('change', '#taxSwitch', function() {
-                $('#tax').val($(this).is(':checked') ? 11 : 0);
+                $('#tax').val($(this).is(':checked') ? 12 : 0);
                 recalculateTotals();
             });
 
-            // Live calculation helper: Hitung Harga DPP (Exc. PPN) dan PPN jika harga yang diinput adalah include PPN (11%)
+            // Live calculation helper: Hitung Harga DPP (Exc. PPN) dan PPN jika harga yang diinput adalah include PPN (12%)
             function updatePriceTaxHint($input) {
                 var $col = $input.closest('.col-md-3');
                 var $hint = $col.find('.price-tax-hint');
@@ -2366,7 +2366,7 @@
                 var nomorFloat = parseCurrency(inputVal);
 
                 if (nomorFloat > 0) {
-                    var dppPrecise = nomorFloat / 1.11;
+                    var dppPrecise = nomorFloat / 1.12;
                     var ppnPrecise = nomorFloat - dppPrecise;
 
                     var dppFormatted = formatDecimalDisplay(dppPrecise);
@@ -2462,10 +2462,10 @@
                     $hint.find('.hint-applied-wrapper').removeClass('d-none');
                     $hint.removeClass('d-none');
 
-                    // Auto-aktifkan toggle Tax PPN 11% di summary jika belum aktif
+                    // Auto-aktifkan toggle Tax PPN 12% di summary jika belum aktif
                     if (!$('#taxSwitch').is(':checked')) {
                         $('#taxSwitch').prop('checked', true);
-                        $('#tax').val(11);
+                        $('#tax').val(12);
                     }
 
                     recalculateTotals();

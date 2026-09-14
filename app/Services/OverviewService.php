@@ -619,7 +619,7 @@ class OverviewService
                     return [
                         'id' => $c->id,
                         'company' => $c->company ?? '-',
-                        'address' => $c->address ?? $c->area ?? '-',
+                        'address' => $c->area ?? $c->address ?? '-',
                         'phone' => $c->phone ?? '-',
                         'date' => $c->created_at ? $c->created_at->format('d/m/Y') : '-',
                         'source' => $c->source ?? 'Canvasing',
