@@ -113,18 +113,25 @@
                 </div>
 
                 <div style="font-size:11.5px; color:#333;" class="my-auto">
-                    <div class="d-flex align-items-center mb-1 pb-1" style="border-bottom:1px dashed #f0f0f0;">
-                        <span class="text-muted" style="min-width:90px;"><i class="mdi mdi-pound me-1 text-primary"></i>No. Reference</span>
-                        <span class="fw-medium text-dark">: {{ $purchase->no_reference ?: '-' }}</span>
-                    </div>
-                    <div class="d-flex align-items-center mb-1 pb-1" style="border-bottom:1px dashed #f0f0f0;">
-                        <span class="text-muted" style="min-width:90px;"><i class="mdi mdi-truck-outline me-1 text-primary"></i>Delivery</span>
-                        <span class="fw-medium text-dark">: {{ $purchase->delivery ?: '-' }}</span>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <span class="text-muted" style="min-width:90px;"><i class="mdi mdi-credit-card-outline me-1 text-primary"></i>Payment</span>
-                        <span class="fw-medium text-dark">: {{ $purchase->payment ?: '-' }}</span>
-                    </div>
+                    <table style="width:100%; border-collapse:collapse; font-size:11.5px;">
+                        <tbody>
+                            <tr style="border-bottom:1px dashed #f0f0f0;">
+                                <td class="text-muted py-1" style="width:105px; white-space:nowrap; vertical-align:middle;"><i class="mdi mdi-pound me-1 text-primary"></i>No. Reference</td>
+                                <td class="py-1 text-muted" style="width:10px; text-align:center; vertical-align:middle;">:</td>
+                                <td class="fw-medium text-dark py-1 ps-1" style="vertical-align:middle;">{{ $purchase->no_reference ?: '-' }}</td>
+                            </tr>
+                            <tr style="border-bottom:1px dashed #f0f0f0;">
+                                <td class="text-muted py-1" style="white-space:nowrap; vertical-align:middle;"><i class="mdi mdi-truck-outline me-1 text-primary"></i>Delivery</td>
+                                <td class="py-1 text-muted" style="text-align:center; vertical-align:middle;">:</td>
+                                <td class="fw-medium text-dark py-1 ps-1" style="vertical-align:middle;">{{ $purchase->delivery ?: '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-1" style="white-space:nowrap; vertical-align:middle;"><i class="mdi mdi-credit-card-outline me-1 text-primary"></i>Payment</td>
+                                <td class="py-1 text-muted" style="text-align:center; vertical-align:middle;">:</td>
+                                <td class="fw-medium text-dark py-1 ps-1" style="vertical-align:middle;">{{ $purchase->payment ?: '-' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -185,9 +192,9 @@
                     {{-- Finance Summary Rows --}}
                     @php
                         $hargaSebelumPpn = ($purchase->subtotal ?? 0) - ($purchase->diskon ?? 0);
-                        $dpp = isset($dpp) ? $dpp : (($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 12) : 0);
-                        $tax = isset($tax) ? $tax : (($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 100) : 0);
-                        $summaryRows = 2 + ($purchase->diskon > 0 ? 1 : 0) + ($purchase->vat > 0 ? 2 : 0) + ($totalPph > 0 ? 1 : 0);
+                        $dpp = isset($dpp) && $dpp > 0 ? $dpp : (($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 12) : 0);
+                        $tax = isset($tax) && $tax > 0 ? $tax : (($purchase->vat ?? 0) > 0 ? round(($dpp * 12) / 100) : 0);
+                        $summaryRows = 2 + ($purchase->diskon > 0 ? 2 : 0) + ($purchase->vat > 0 ? 2 : 0) + ($totalPph > 0 ? 1 : 0);
                     @endphp
                     <tr class="compact-item-row">
                         <td colspan="2" rowspan="{{ $summaryRows }}" class="summary-empty-space" style="border-left: hidden !important; border-bottom: hidden !important; border-top: 1px solid rgb(60,60,60) !important; border-right: 1px solid rgb(60,60,60) !important; background: #ffffff !important; padding: 0 !important;"></td>
@@ -228,7 +235,7 @@
                     @if ($purchase->vat > 0)
                         <tr class="compact-item-row">
                             <td colspan="{{ $hasDisc ? '3' : '2' }}" class="text-end fw-semibold text-uppercase px-2" style="border: 1px solid rgb(60,60,60); background: #ffffff; color: #333; vertical-align: middle;">
-                                DPP
+                                DPP NILAI LAIN
                             </td>
                             <td class="px-2" style="border: 1px solid rgb(60,60,60); background: #ffffff; color: #111; vertical-align: middle;">
                                 <div class="d-flex justify-content-between align-items-center">
@@ -239,7 +246,7 @@
                         </tr>
                         <tr class="compact-item-row">
                             <td colspan="{{ $hasDisc ? '3' : '2' }}" class="text-end fw-semibold text-uppercase px-2" style="border: 1px solid rgb(60,60,60); background: #ffffff; color: #333; vertical-align: middle;">
-                                PPN {{ $purchase->vat }}%
+                                PPN 12%
                             </td>
                             <td class="px-2" style="border: 1px solid rgb(60,60,60); background: #ffffff; color: #111; vertical-align: middle;">
                                 <div class="d-flex justify-content-between align-items-center">
@@ -262,14 +269,14 @@
                             </td>
                         </tr>
                     @endif
-                    <tr>
-                        <td colspan="{{ $hasDisc ? '3' : '2' }}" class="text-end fw-bolder text-uppercase py-2 px-3" style="border: 1px solid rgb(60,60,60); background: yellow !important; color: #000; font-size: 13px; vertical-align: middle;">
+                    <tr class="compact-item-row">
+                        <td colspan="{{ $hasDisc ? '3' : '2' }}" class="text-end fw-bolder text-uppercase px-2" style="border: 1px solid rgb(60,60,60); background: yellow !important; color: #000; font-size: 13px; vertical-align: middle;">
                             TOTAL PRICE
                         </td>
-                        <td class="py-2 px-3 fw-bold" style="border: 1px solid rgb(60,60,60); background: yellow !important; color: #000; font-size: 13px; vertical-align: middle;">
+                        <td class="px-2 fw-bold" style="border: 1px solid rgb(60,60,60); background: yellow !important; color: #000; font-size: 13px; vertical-align: middle;">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="fw-bold">Rp</span>
-                                <span class="fw-bold fs-6">{{ $purchase->total == '0' ? '0' : number_format($purchase->total, 0, '', '.') }}</span>
+                                <span class="fw-bold">{{ $purchase->total == '0' ? '0' : number_format($purchase->total, 0, '', '.') }}</span>
                             </div>
                         </td>
                     </tr>

@@ -601,8 +601,8 @@
             {{-- Calculations & Notes --}}
             @php
                 $hargaSebelumPpn = ($purchase->subtotal ?? 0) - ($purchase->diskon ?? 0);
-                $dpp = isset($dpp) ? $dpp : (($purchase->vat ?? 0) > 0 ? $hargaSebelumPpn : 0);
-                $tax = isset($tax) ? $tax : (($purchase->vat ?? 0) > 0 ? round(($dpp * $purchase->vat) / 100) : 0);
+                $dpp = isset($dpp) && $dpp > 0 ? $dpp : (($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 12) : 0);
+                $tax = isset($tax) && $tax > 0 ? $tax : (($purchase->vat ?? 0) > 0 ? round(($dpp * 12) / 100) : 0);
             @endphp
 
             {{-- Finance Summary Table --}}
@@ -642,7 +642,7 @@
                                 @endif
                                 @if ($purchase->vat > 0)
                                     <tr>
-                                        <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">DPP</td>
+                                        <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">DPP NILAI LAIN</td>
                                         <td class="py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #111; vertical-align: middle;">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <span>Rp</span>
@@ -651,7 +651,7 @@
                                         </td>
                                     </tr>
                                     <tr>
-                                        <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">PPN {{ $purchase->vat }}%</td>
+                                        <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">PPN 12%</td>
                                         <td class="py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #111; vertical-align: middle;">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <span>Rp</span>

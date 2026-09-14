@@ -496,9 +496,6 @@ class LeadsController extends Controller
 
             'area' =>
                 'required',
-
-            'npwp' =>
-                'required',
         ];
 
         $message = [
@@ -511,7 +508,6 @@ class LeadsController extends Controller
             'mobile.required' => 'Field Mobile Wajib Diisi',
             'address.required' => 'Field Address Wajib Diisi',
             'area.required' => 'Field Area Wajib Diisi',
-            'npwp.required' => 'Field npwp Wajib Diisi',
         ];
 
         $this->validate($request, $rule, $message);
@@ -524,7 +520,9 @@ class LeadsController extends Controller
         $leads->ru = $request->ru;
         $leads->unit = $request->unit;
         $leads->source = $request->source;
-        $leads->npwp = $request->npwp;
+        if ($request->has('npwp')) {
+            $leads->npwp = $request->npwp;
+        }
         $leads->mobile = $request->mobile;
         if (Auth::user()->id == 1 || Auth::user()->id == 16) {
             $leads->info = $request->info;
@@ -613,7 +611,7 @@ class LeadsController extends Controller
         }
         $action->status = $request->status;
         $action->action = $request->action;
-        $action->week = $request->week;
+        $action->week = $this->currentCalendarWeek();
         $action->note = $request->note;
         $action->date = \Carbon\Carbon::today();
         $action->follow_up = $request->follow_up;
@@ -655,6 +653,17 @@ class LeadsController extends Controller
                 return redirect("/leads/detail/" . $id)->with("success", "Data telah ditambahkan");
             }
         }
+    }
+
+    /**
+     * Minggu ke-berapa (1-5) hari ini dalam bulan berjalan, berbasis kalender kerja
+     * Senin-Minggu — konsisten dengan OverviewService::getWeekSqlExpr().
+     */
+    private function currentCalendarWeek(): int
+    {
+        $today = Carbon::today();
+        $firstDayWeekday = $today->copy()->startOfMonth()->dayOfWeekIso - 1; // 0=Senin .. 6=Minggu
+        return min(5, (int) ceil(($today->day + $firstDayWeekday) / 7));
     }
 
     public function convertToCustomers(Request $request, $id)

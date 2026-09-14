@@ -86,18 +86,25 @@
                                 <i class="mdi mdi-information-outline me-1 text-primary"></i> Term & Info
                             </p>
                             <div style="font-size:11.5px; color:#333;" class="my-auto">
-                                <div class="d-flex align-items-center mb-1 pb-1" style="border-bottom:1px dashed #e8e8e8;">
-                                    <span class="text-muted" style="min-width:95px;"><i class="mdi mdi-pound me-1 text-primary"></i>No. Reference</span>
-                                    <span class="fw-semibold text-dark">: {{ $purchase->no_reference ?: '-' }}</span>
-                                </div>
-                                <div class="d-flex align-items-center mb-1 pb-1" style="border-bottom:1px dashed #e8e8e8;">
-                                    <span class="text-muted" style="min-width:95px;"><i class="mdi mdi-truck-delivery-outline me-1 text-primary"></i>Delivery</span>
-                                    <span class="fw-semibold text-dark">: {{ $purchase->delivery ?: '-' }}</span>
-                                </div>
-                                <div class="d-flex align-items-center">
-                                    <span class="text-muted" style="min-width:95px;"><i class="mdi mdi-credit-card-outline me-1 text-primary"></i>Payment</span>
-                                    <span class="fw-semibold text-dark">: {{ $purchase->payment ?: '-' }}</span>
-                                </div>
+                                <table style="width:100%; border-collapse:collapse; font-size:11.5px;">
+                                    <tbody>
+                                        <tr style="border-bottom:1px dashed #e8e8e8;">
+                                            <td class="text-muted py-1" style="width:105px; white-space:nowrap; vertical-align:middle;"><i class="mdi mdi-pound me-1 text-primary"></i>No. Reference</td>
+                                            <td class="py-1 text-muted" style="width:10px; text-align:center; vertical-align:middle;">:</td>
+                                            <td class="fw-semibold text-dark py-1 ps-1" style="vertical-align:middle;">{{ $purchase->no_reference ?: '-' }}</td>
+                                        </tr>
+                                        <tr style="border-bottom:1px dashed #e8e8e8;">
+                                            <td class="text-muted py-1" style="white-space:nowrap; vertical-align:middle;"><i class="mdi mdi-truck-delivery-outline me-1 text-primary"></i>Delivery</td>
+                                            <td class="py-1 text-muted" style="text-align:center; vertical-align:middle;">:</td>
+                                            <td class="fw-semibold text-dark py-1 ps-1" style="vertical-align:middle;">{{ $purchase->delivery ?: '-' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-muted py-1" style="white-space:nowrap; vertical-align:middle;"><i class="mdi mdi-credit-card-outline me-1 text-primary"></i>Payment</td>
+                                            <td class="py-1 text-muted" style="text-align:center; vertical-align:middle;">:</td>
+                                            <td class="fw-semibold text-dark py-1 ps-1" style="vertical-align:middle;">{{ $purchase->payment ?: '-' }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -171,8 +178,9 @@
                     {{-- Calculations & Notes --}}
                     @php
                         $hargaSebelumPpn = ($purchase->subtotal ?? 0) - ($purchase->diskon ?? 0);
+                        $vatRate = (isset($purchase->vat) && $purchase->vat > 0) ? (float)$purchase->vat : 12;
                         $dpp = isset($dpp) ? $dpp : (($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 12) : 0);
-                        $tax = isset($tax) ? $tax : (($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 100) : 0);
+                        $tax = isset($tax) ? $tax : (($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * $vatRate) / 100) : 0);
                     @endphp
 
                     {{-- Finance Summary Table --}}
@@ -212,7 +220,7 @@
                                         @endif
                                         @if ($purchase->vat > 0)
                                             <tr>
-                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">DPP</td>
+                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">DPP NILAI LAIN</td>
                                                 <td class="py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #111; vertical-align: middle;">
                                                     <div class="d-flex justify-content-between align-items-center">
                                                         <span>Rp</span>
@@ -221,7 +229,7 @@
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">PPN {{ $purchase->vat }}%</td>
+                                                <td class="text-end fw-semibold text-uppercase py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #333; vertical-align: middle;">PPN 12%</td>
                                                 <td class="py-1_5 px-3" style="border-color: #c5c5c5; background: #ffffff; color: #111; vertical-align: middle;">
                                                     <div class="d-flex justify-content-between align-items-center">
                                                         <span>Rp</span>
