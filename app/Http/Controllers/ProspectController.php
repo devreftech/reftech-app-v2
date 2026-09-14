@@ -206,7 +206,7 @@ class ProspectController extends Controller
                     ->orWhere('id', 38);
             })
             ->where('active', '1')
-            ->whereNotIn('id', [23, 16])
+            ->whereNotIn('id', [23, 16, 38])
             ->orderBy('name')
             ->withCount(['prospects as weekly_leads' => function ($query) use ($startOfWeek, $endOfWeek) {
                 $query->whereBetween('created_at', [$startOfWeek, $endOfWeek]);
