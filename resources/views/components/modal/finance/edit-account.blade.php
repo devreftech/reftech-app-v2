@@ -1,78 +1,92 @@
-<form action="{{ route('expense-account.update', 1) }}" id="editForm" method="POST" enctype="multipart/form-data">
+<form action="{{ route('expense-account.update', 1) }}" id="editForm" method="POST">
     @csrf
     @method('PATCH')
-    <div class="modal-onboarding modal fade animate__animated" id="editAccount" tabindex="-1" style="display: none;"
-        aria-hidden="true">
+    <div class="modal fade" id="editAccount" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content text-center">
-                <div class="modal-header border-0">
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-warning py-3 text-white">
+                    <h5 class="modal-title text-white d-flex align-items-center">
+                        <i class="mdi mdi-pencil-circle-outline me-2"></i> Edit Akun Chart of Accounts (COA)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-0">
-                    <div class="onboarding-content mb-0">
-                        <h4 class="onboarding-title text-body">Edit Account</h4>
-                        <form>
-                            <div class="row">
-                                <div class="col-6 mb-3">
-                                    <div class="form-floating form-floating-outline">
-                                        <input type="text" id="code" class="form-control edit_code" name="code"
-                                            placeholder="Put Code Here.....">
-                                        <label for="code">Code</label>
-                                    </div>
-                                </div>
-                                <div class="col-6 mb-3">
-                                    <div class="form-floating form-floating-outline">
-                                        <input type="text" id="category" class="form-control edit_category" name="category"
-                                            placeholder="Put Category Here.....">
-                                        <label for="category">Category</label>
-                                    </div>
-                                </div>
-                                <div class="col-12 mb-3">
-                                    <div class="form-floating form-floating-outline">
-                                        <input type="text" id="name" class="form-control edit_name" name="name"
-                                            placeholder="Put Name Here.....">
-                                        <label for="name">Name</label>
-                                    </div>
-                                </div>
-                                <div class="col-6 mb-3">
-                                    <div class="form-floating form-floating-outline">
-                                        <input type="text" id="currency" class="form-control edit_currency" name="currency"
-                                            placeholder="Put currency Here.....">
-                                        <label for="currency">Currency</label>
-                                    </div>
-                                </div>
-                                <div class="col-6 mb-3">
-                                    <div class="form-floating form-floating-outline">
-                                        <input type="text" id="saldo" class="form-control edit_saldo" name="saldo"
-                                            placeholder="Put saldo Here.....">
-                                        <label for="saldo">Saldo (D/K)</label>
-                                    </div>
-                                </div>
-                                <p class="text-muted">Note : Bila Parents Maka Kosongkan</p>
-                                <div class="col-12 ">
-                                    <div class="form-floating form-floating-outline mb-2">
-                                        <select class="select2 form-select edit_parent" data-allow-clear="true" name="parent"
-                                            id="parent">
-                                            <option> ---- Choose Parents Account Here ---- </option>
-                                            @foreach ($prim as $acc)
-                                                <option value="{{ $acc->id }}" >
-                                                    {{ $acc->code }} - {{ $acc->name }} {{ $acc->category }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        <label for="parent" class="mb-2">Parents</label>
-                                    </div>
-                                </div>
-                                {{-- <input type="hidden" name="type" value="{{$type}}"> --}}
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-floating form-floating-outline">
+                                <input type="text" id="edit_code_input" class="form-control edit_code" name="code" placeholder="Misal: 6101" required>
+                                <label for="edit_code_input">Kode Akun <span class="text-danger">*</span></label>
                             </div>
-                        </form>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating form-floating-outline">
+                                <select class="form-select edit_category" id="edit_category_select" name="category" required>
+                                    <option value="">-- Pilih Kategori --</option>
+                                    <option value="Cash/Bank">Cash / Bank</option>
+                                    <option value="Expense">Expense (Beban Operasional)</option>
+                                    <option value="Cost Of Good Sold">Cost of Goods Sold (HPP)</option>
+                                    <option value="Other Expense">Other Expense (Beban Lain-lain)</option>
+                                    <option value="Revenue">Revenue (Pendapatan Usaha)</option>
+                                    <option value="Other Income">Other Income (Pendapatan Lain-lain)</option>
+                                    <option value="Fixed Asset">Fixed Asset (Aset Tetap)</option>
+                                    <option value="Other Current Asset">Other Current Asset (Aset Lancar Lainnya)</option>
+                                    <option value="Account Receivable">Account Receivable (Piutang Usaha)</option>
+                                    <option value="Account Payable">Account Payable (Hutang Usaha)</option>
+                                    <option value="Other Current Liabilities">Other Current Liabilities (Kewajiban Lancar)</option>
+                                    <option value="Long Term Liabilities">Long Term Liabilities (Kewajiban Jk Panjang)</option>
+                                    <option value="Equity">Equity (Ekuitas / Modal)</option>
+                                    <option value="Accumulated Depreciation">Accumulated Depreciation (Akumulasi Penyusutan)</option>
+                                </select>
+                                <label for="edit_category_select">Kategori Akun <span class="text-danger">*</span></label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-floating form-floating-outline">
+                                <input type="text" id="edit_name_input" class="form-control edit_name" name="name" placeholder="Nama Akun Pembukuan" required>
+                                <label for="edit_name_input">Nama Akun (COA) <span class="text-danger">*</span></label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating form-floating-outline">
+                                <select class="form-select edit_currency" id="edit_currency_select" name="currency">
+                                    <option value="IDR" selected>IDR (Rupiah)</option>
+                                    <option value="USD">USD (US Dollar)</option>
+                                    <option value="EUR">EUR (Euro)</option>
+                                    <option value="SGD">SGD (Singapore Dollar)</option>
+                                </select>
+                                <label for="edit_currency_select">Mata Uang (Currency)</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-floating form-floating-outline">
+                                <select class="form-select edit_saldo" id="edit_saldo_select" name="saldo">
+                                    <option value="Debit">Debit (D)</option>
+                                    <option value="Kredit">Kredit (K)</option>
+                                </select>
+                                <label for="edit_saldo_select">Posisi Saldo Normal</label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-floating form-floating-outline">
+                                <select class="form-select edit_parent" name="parent" id="parent">
+                                    <option value="">-- Tanpa Induk (Jadikan Header Akun Level 1) --</option>
+                                    @foreach ($account as $acc)
+                                        <option value="{{ $acc->id }}">
+                                            {{ $acc->code }} - {{ $acc->name }} ({{ $acc->category }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <label for="parent">Akun Induk (Parent COA)</label>
+                            </div>
+                            <small class="text-muted mt-1 d-block">Pilih akun induk jika akun ini merupakan sub-akun transaksi (Level 2).</small>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">
-                        Close
+                <div class="modal-footer border-top py-2">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-warning px-4 text-white">
+                        <i class="mdi mdi-check-circle-outline me-1"></i> Perbarui Akun
                     </button>
-                    <button type="submit" class="btn btn-primary waves-effect waves-light">Submit</button>
                 </div>
             </div>
         </div>

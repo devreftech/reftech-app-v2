@@ -44,83 +44,94 @@ class AppServiceProvider extends ServiceProvider
                         ->get();
                     $view->with('pendingCancelQuotes', $pendingCancelQuotes);
 
-                    // AP Due Date Alerts (Due Today, Due Soon <= 7 days, Overdue)
-                    $today = \Carbon\Carbon::today();
-                    $unpaidInvoices = \App\Models\ProductIn::whereNotNull('invoice')
-                        ->whereIn('accept', ['0', '2'])
-                        ->with(['supplier', 'purchaseOrder'])
-                        ->get();
+                    // AP Due Date Alerts (Due Today, Due Soon <= 7 days, Overdue) - Cached 60s
+                    $apAlertData = \Illuminate\Support\Facades\Cache::remember('navbar_ap_due_alerts', 60, function () {
+                        $today = \Carbon\Carbon::today();
+                        $unpaidInvoices = \App\Models\ProductIn::whereNotNull('invoice')
+                            ->whereIn('accept', ['0', '2'])
+                            ->with(['supplier', 'purchaseOrder', 'payments'])
+                            ->get();
 
-                    $apDueToday = [];
-                    $apDueSoon = [];
-                    $apOverdue = [];
+                        $apDueToday = [];
+                        $apDueSoon = [];
+                        $apOverdue = [];
 
-                    foreach ($unpaidInvoices as $item) {
-                        $remaining = $item->remaining_payable;
-                        if ($remaining <= 0) continue;
+                        foreach ($unpaidInvoices as $item) {
+                            $remaining = $item->remaining_payable;
+                            if ($remaining <= 0) continue;
 
-                        $dueDateStr = $item->due_date;
-                        if (!$dueDateStr) continue;
+                            $dueDateStr = $item->due_date;
+                            if (!$dueDateStr) continue;
 
-                        $due = \Carbon\Carbon::parse($dueDateStr)->startOfDay();
-                        $notifItem = (object) [
-                            'id' => $item->id,
-                            'invoice' => $item->invoice ?: $item->no_product_in,
-                            'supplier_name' => $item->supplier?->supplier ?? $item->supplier ?? 'Supplier',
-                            'remaining' => $remaining,
-                            'due_date' => $dueDateStr,
-                            'url' => route('payable.show_invoice', $item->id),
-                        ];
+                            $due = \Carbon\Carbon::parse($dueDateStr)->startOfDay();
+                            $notifItem = (object) [
+                                'id' => $item->id,
+                                'invoice' => $item->invoice ?: $item->no_product_in,
+                                'supplier_name' => $item->supplier?->supplier ?? $item->supplier ?? 'Supplier',
+                                'remaining' => $remaining,
+                                'due_date' => $dueDateStr,
+                                'url' => route('payable.show_invoice', $item->id),
+                            ];
 
-                        if ($due->isToday()) {
-                            $notifItem->status_type = 'today';
-                            $notifItem->status_badge = 'JATUH TEMPO HARI INI';
-                            $notifItem->badge_class = 'bg-danger text-white';
-                            $notifItem->avatar_bg = 'bg-danger';
-                            $notifItem->icon = 'mdi-calendar-alert';
-                            $notifItem->priority = 1;
-                            $apDueToday[] = $notifItem;
-                        } elseif ($today->gt($due)) {
-                            $daysOverdue = $today->diffInDays($due);
-                            $notifItem->status_type = 'overdue';
-                            $notifItem->status_badge = "LEWAT JATUH TEMPO ({$daysOverdue} Hari)";
-                            $notifItem->badge_class = 'bg-label-danger';
-                            $notifItem->avatar_bg = 'bg-label-danger';
-                            $notifItem->icon = 'mdi-alert-circle-outline';
-                            $notifItem->days_overdue = $daysOverdue;
-                            $notifItem->priority = 3;
-                            $apOverdue[] = $notifItem;
-                        } elseif ($today->diffInDays($due, false) <= 7) {
-                            $daysLeft = $today->diffInDays($due, false);
-                            $notifItem->status_type = 'due_soon';
-                            $notifItem->status_badge = $daysLeft == 1 ? 'BESOK JATUH TEMPO' : "JATUH TEMPO {$daysLeft} HARI LAGI";
-                            $notifItem->badge_class = 'bg-warning text-dark';
-                            $notifItem->avatar_bg = 'bg-label-warning';
-                            $notifItem->icon = 'mdi-clock-alert-outline';
-                            $notifItem->days_left = $daysLeft;
-                            $notifItem->priority = 2;
-                            $apDueSoon[] = $notifItem;
+                            if ($due->isToday()) {
+                                $notifItem->status_type = 'today';
+                                $notifItem->status_badge = 'JATUH TEMPO HARI INI';
+                                $notifItem->badge_class = 'bg-danger text-white';
+                                $notifItem->avatar_bg = 'bg-danger';
+                                $notifItem->icon = 'mdi-calendar-alert';
+                                $notifItem->priority = 1;
+                                $apDueToday[] = $notifItem;
+                            } elseif ($today->gt($due)) {
+                                $daysOverdue = $today->diffInDays($due);
+                                $notifItem->status_type = 'overdue';
+                                $notifItem->status_badge = "LEWAT JATUH TEMPO ({$daysOverdue} Hari)";
+                                $notifItem->badge_class = 'bg-label-danger';
+                                $notifItem->avatar_bg = 'bg-label-danger';
+                                $notifItem->icon = 'mdi-alert-circle-outline';
+                                $notifItem->days_overdue = $daysOverdue;
+                                $notifItem->priority = 3;
+                                $apOverdue[] = $notifItem;
+                            } elseif ($today->diffInDays($due, false) <= 7) {
+                                $daysLeft = $today->diffInDays($due, false);
+                                $notifItem->status_type = 'due_soon';
+                                $notifItem->status_badge = $daysLeft == 1 ? 'BESOK JATUH TEMPO' : "JATUH TEMPO {$daysLeft} HARI LAGI";
+                                $notifItem->badge_class = 'bg-warning text-dark';
+                                $notifItem->avatar_bg = 'bg-label-warning';
+                                $notifItem->icon = 'mdi-clock-alert-outline';
+                                $notifItem->days_left = $daysLeft;
+                                $notifItem->priority = 2;
+                                $apDueSoon[] = $notifItem;
+                            }
                         }
-                    }
 
-                    // Urutkan overdue dari yang paling lama/kritis, due soon dari yang terdekat
-                    usort($apOverdue, fn($a, $b) => $b->days_overdue <=> $a->days_overdue);
-                    usort($apDueSoon, fn($a, $b) => $a->days_left <=> $b->days_left);
+                        // Urutkan overdue dari yang paling lama/kritis, due soon dari yang terdekat
+                        usort($apOverdue, fn($a, $b) => $b->days_overdue <=> $a->days_overdue);
+                        usort($apDueSoon, fn($a, $b) => $a->days_left <=> $b->days_left);
 
-                    $apNotifications = collect(array_merge($apDueToday, $apDueSoon, array_slice($apOverdue, 0, 10)));
-                    $view->with('apNotifications', $apNotifications);
-                    $view->with('apDueTodayCount', count($apDueToday));
-                    $view->with('apDueSoonCount', count($apDueSoon));
-                    $view->with('apOverdueCount', count($apOverdue));
-                    $view->with('apTotalAlertCount', count($apDueToday) + count($apDueSoon));
+                        $apNotifications = collect(array_merge($apDueToday, $apDueSoon, array_slice($apOverdue, 0, 10)));
+
+                        return [
+                            'apNotifications' => $apNotifications,
+                            'apDueTodayCount' => count($apDueToday),
+                            'apDueSoonCount' => count($apDueSoon),
+                            'apOverdueCount' => count($apOverdue),
+                            'apTotalAlertCount' => count($apDueToday) + count($apDueSoon),
+                        ];
+                    });
+
+                    $view->with('apNotifications', $apAlertData['apNotifications']);
+                    $view->with('apDueTodayCount', $apAlertData['apDueTodayCount']);
+                    $view->with('apDueSoonCount', $apAlertData['apDueSoonCount']);
+                    $view->with('apOverdueCount', $apAlertData['apOverdueCount']);
+                    $view->with('apTotalAlertCount', $apAlertData['apTotalAlertCount']);
                 }
 
-                if (in_array(Auth::user()->role, ['Accounting', 'Admin', 'Sales'])) {
+                if (in_array(Auth::user()->role, ['Accounting', 'Sales'])) {
                     // Daftar ini menampilkan notifikasi terbaru terlepas dari status baca,
                     // supaya klik "tandai dibaca" cuma menghilangkan penanda merahnya —
                     // bukan menghapus notifikasi dari daftar. Badge merah tetap hitung dari unread saja.
                     $paymentNotifications = \App\Models\UnitQuotationPaymentNotification::where('id_user', Auth::id())
-                        ->with(['unitQuotation.client', 'payment', 'invoice'])
+                        ->with(['unitQuotation.client', 'unitQuotation.contracts', 'payment', 'invoice'])
                         ->orderByDesc('created_at')
                         ->take(15)
                         ->get();
@@ -134,23 +145,52 @@ class AppServiceProvider extends ServiceProvider
         // muncul di semua halaman untuk role Admin/Accounting, bukan cuma di Dashboard.
         View::composer('components.dashboard.sidebar', function ($view) {
             if (Auth::check() && in_array(Auth::user()->role, ['Admin', 'Accounting'])) {
-                // Samakan persis dengan filter di PurchaseController::index():
-                // 1. PR status 0 (New Purchase)
-                // 2. id_pending memiliki quotation/unit_quotation valid
-                // 3. Memiliki detail item (bukan draft kosong)
-                $validPendingIds = \App\Models\PendingPO::where(function ($q) {
-                    $q->whereNotNull('id_quotation')->orWhereNotNull('id_unit_quotation');
-                })->pluck('id');
+                $sidebarAdminData = \Illuminate\Support\Facades\Cache::remember('sidebar_admin_counts', 60, function () {
+                    $validPendingIds = \App\Models\PendingPO::where(function ($q) {
+                        $q->whereNotNull('id_quotation')->orWhereNotNull('id_unit_quotation');
+                    })->pluck('id');
 
-                $prCount = PurchaseRequest::where('status', '0')
-                    ->whereIn('id_pending', $validPendingIds)
-                    ->has('details')
-                    ->count();
+                    $prCount = PurchaseRequest::where('status', '0')
+                        ->whereIn('id_pending', $validPendingIds)
+                        ->has('details')
+                        ->count();
 
-                $requestContract = \App\Models\Contract::where('level', '0')->count();
+                    $requestContract = \App\Models\Contract::where('level', '0')->count();
 
-                $view->with('prCount', $prCount);
-                $view->with('requestContract', $requestContract);
+                    $suoAccountingPending = \App\Models\Suo::where('status', 'confirmed')->whereNull('no_invoice_booking')->count();
+
+                    $monitoringBoard = \App\Models\KanbanBoard::where('type', 'monitoring')->first();
+                    $monitoringCount = 0;
+                    if ($monitoringBoard) {
+                        $monitoringCount = \App\Models\KanbanTask::where('board_id', $monitoringBoard->id)
+                            ->whereIn('column_id', function($query) use ($monitoringBoard) {
+                                $query->select('id')
+                                    ->from('kanban_columns')
+                                    ->where('board_id', $monitoringBoard->id)
+                                    ->whereIn('title', ['PO REFTECH', 'PO E-COMMERCE']);
+                            })
+                            ->count();
+                    }
+
+                    $pendingFeeCount = \App\Models\UnitQuotation::where('fee', '>', 0)
+                        ->where('fee_payment_status', '!=', 'paid')
+                        ->where('status', 'po_received')
+                        ->count();
+
+                    return [
+                        'prCount' => $prCount,
+                        'requestContract' => $requestContract,
+                        'suoAccountingPending' => $suoAccountingPending,
+                        'monitoringCount' => $monitoringCount,
+                        'pendingFeeCount' => $pendingFeeCount,
+                    ];
+                });
+
+                $view->with('prCount', $sidebarAdminData['prCount']);
+                $view->with('requestContract', $sidebarAdminData['requestContract']);
+                $view->with('suoAccountingPending', $sidebarAdminData['suoAccountingPending']);
+                $view->with('monitoringCount', $sidebarAdminData['monitoringCount']);
+                $view->with('pendingFeeCount', $sidebarAdminData['pendingFeeCount']);
             }
         });
 
@@ -158,7 +198,9 @@ class AppServiceProvider extends ServiceProvider
         // untuk Admin, konsisten dengan badge $prCount di atas.
         View::composer('components.dashboard.sidebar', function ($view) {
             if (Auth::check() && Auth::user()->role == 'Admin') {
-                $openTicketCount = HelpdeskTicket::where('status', 'Open')->count();
+                $openTicketCount = \Illuminate\Support\Facades\Cache::remember('sidebar_open_ticket_count', 60, function () {
+                    return HelpdeskTicket::where('status', 'Open')->count();
+                });
                 $view->with('openTicketCount', $openTicketCount);
             }
         });
@@ -167,7 +209,9 @@ class AppServiceProvider extends ServiceProvider
         // nunggu approval (pending). Approve dulu baru kehitung di badge Sales.
         View::composer('components.dashboard.sidebar', function ($view) {
             if (Auth::check() && in_array(Auth::user()->role, ['ServiceM', 'Admin'])) {
-                $srPendingApprovalCount = \App\Models\Reports::where('approval_status', 'pending')->count();
+                $srPendingApprovalCount = \Illuminate\Support\Facades\Cache::remember('sidebar_sr_approval_count', 60, function () {
+                    return \App\Models\Reports::where('approval_status', 'pending')->count();
+                });
                 $view->with('srPendingApprovalCount', $srPendingApprovalCount);
             }
         });

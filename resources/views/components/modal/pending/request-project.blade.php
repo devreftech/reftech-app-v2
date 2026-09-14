@@ -30,17 +30,9 @@
                                             <tr>
                                                 <td class="text-start">
                                                     <div class="form-floating form-floating-outline mb-2">
-                                                        <select class="select2 form-select select-project" data-allow-clear="true"
-                                                            name="id_equivalent" data-id="1">
-                                                            <option> ---- Choose Equivalent Here ---- </option>
-                                                            @foreach ($serial as $replacement)
-                                                                <option value="{{ $replacement->id }}"
-                                                                    {{ $product->pending[0]->id_equivalent == $replacement->id ? 'selected' : '' }}>
-                                                                    {{ $replacement->brand }}
-                                                                    {{ $replacement->pn }} -
-                                                                    {{ $replacement->product?->go == 'Replacement' ? 'R' : 'G' }}
-                                                                </option>
-                                                            @endforeach
+                                                        <select class="form-select select2-equivalent-ajax" data-allow-clear="true"
+                                                            name="id_equivalent" data-id="1" style="width: 100%;">
+                                                            <option value="0"> ---- Choose Equivalent Here ---- </option>
                                                         </select>
                                                         <label for="Equivalent" class="mb-2">Equivalent</label>
                                                     </div>

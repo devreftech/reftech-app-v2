@@ -5,9 +5,9 @@
 @endphp
 
 @if ($template === 'dark')
-    @include('errors.maintenance-dark', ['details' => $details])
+    @include('errors.maintenance-dark', ['details' => $details, 'intendedUrl' => $intendedUrl ?? '/'])
 @elseif ($template === 'light')
-    @include('errors.maintenance-light', ['details' => $details])
+    @include('errors.maintenance-light', ['details' => $details, 'intendedUrl' => $intendedUrl ?? '/'])
 @else
-    @include('errors.maintenance-animated', ['details' => $details])
+    @include('errors.maintenance-animated', ['details' => $details, 'intendedUrl' => $intendedUrl ?? '/'])
 @endif

@@ -179,15 +179,99 @@ class PayableController extends Controller
 
     public function show_aging($id)
     {
-        $product = ProductIn::findOrFail($id);
-        $detProduct = DetailProductIn::where('id_product_in', $id)->get();
+        $product = ProductIn::with(['supp', 'purchaseOrder', 'creator'])->findOrFail($id);
+        $detProduct = DetailProductIn::with(['detailProduct.product'])->where('id_product_in', $id)->get();
+        $return = Retur::where('id_product_in', $id)->get();
+
         $today = Carbon::today();
         $baseDate = $product->date_invoice ?: $product->date;
-        $diffDue = $baseDate ? $today->diffInDays(Carbon::parse($baseDate), false) : 0;
+        $ageDays = $baseDate ? (int) $today->diffInDays(Carbon::parse($baseDate)) : 0;
+
+        // Aging Bracket & Credit Risk Level
+        if ($ageDays > 90) {
+            $bracketLabel = '> 90 Hari';
+            $bracketBadge = 'bg-label-danger';
+            $riskLevel = 'Kritis (High Risk)';
+            $riskBadge = 'badge bg-danger';
+            $riskDesc = 'Usia hutang telah melewati 90 hari. Sangat disarankan segera dijadwalkan pelunasan prioritas.';
+        } elseif ($ageDays >= 61) {
+            $bracketLabel = '61 - 90 Hari';
+            $bracketBadge = 'bg-label-warning';
+            $riskLevel = 'Peringatan (Warning)';
+            $riskBadge = 'badge bg-warning text-dark';
+            $riskDesc = 'Usia hutang memasuki 2-3 bulan. Perlu konfirmasi jadwal pembayaran dengan vendor.';
+        } elseif ($ageDays >= 31) {
+            $bracketLabel = '31 - 60 Hari';
+            $bracketBadge = 'bg-label-info';
+            $riskLevel = 'Perhatian (Attention)';
+            $riskBadge = 'badge bg-info';
+            $riskDesc = 'Usia hutang melewati termin standar 30 hari. Masuk daftar antrean pembayaran bulanan.';
+        } else {
+            $bracketLabel = '0 - 30 Hari';
+            $bracketBadge = 'bg-label-success';
+            $riskLevel = 'Lancar / Normal';
+            $riskBadge = 'badge bg-success';
+            $riskDesc = 'Hutang dalam kondisi termin lancar dan wajar.';
+        }
+
+        // Due date calculation
+        $dueDate = $product->due_date;
+        $diffDue = 0;
+        $dueStatusText = 'Tepat Waktu';
+        $dueStatusBadge = 'bg-label-success';
+
+        if ($dueDate) {
+            $dueCarbon = Carbon::parse($dueDate)->startOfDay();
+            $diffDue = $today->diffInDays($dueCarbon, false); // negative means past due
+            if ($diffDue < 0) {
+                $dueStatusText = 'Terlambat ' . abs($diffDue) . ' Hari';
+                $dueStatusBadge = 'bg-label-danger';
+            } elseif ($diffDue == 0) {
+                $dueStatusText = 'Jatuh Tempo Hari Ini';
+                $dueStatusBadge = 'bg-label-danger';
+            } elseif ($diffDue <= 7) {
+                $dueStatusText = 'Jatuh Tempo ' . $diffDue . ' Hari Lagi';
+                $dueStatusBadge = 'bg-label-warning';
+            } else {
+                $dueStatusText = 'Jatuh Tempo ' . $diffDue . ' Hari Lagi';
+                $dueStatusBadge = 'bg-label-primary';
+            }
+        } elseif ($baseDate) {
+            $diffDue = $today->diffInDays(Carbon::parse($baseDate), false);
+        }
+
         $banks = Bank::orderBy('bank')->get();
         $payments = $product->payments()->with(['bank', 'creator'])->orderBy('date', 'desc')->get();
 
-        return view('pages.finance.payable.detail-aging', compact('product', 'detProduct', 'diffDue', 'banks', 'payments'));
+        $total = (float) $product->total;
+        $totalPaid = (float) $payments->sum('amount');
+        if ($product->accept == '1' && $payments->isEmpty()) {
+            $totalPaid = $total;
+        }
+        $remaining = max(0, $total - $totalPaid);
+        $percentPaid = $total > 0 ? min(100, round(($totalPaid / $total) * 100)) : 0;
+
+        return view('pages.finance.payable.detail-aging', compact(
+            'product',
+            'detProduct',
+            'return',
+            'ageDays',
+            'bracketLabel',
+            'bracketBadge',
+            'riskLevel',
+            'riskBadge',
+            'riskDesc',
+            'dueDate',
+            'diffDue',
+            'dueStatusText',
+            'dueStatusBadge',
+            'banks',
+            'payments',
+            'total',
+            'totalPaid',
+            'remaining',
+            'percentPaid'
+        ));
     }
 
     public function index_receipt()

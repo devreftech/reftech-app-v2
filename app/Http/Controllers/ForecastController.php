@@ -9,6 +9,7 @@ use App\Models\UnitPmTemplateItem;
 use App\Models\PowerServicePrice;
 use App\Models\BearingKitPrice;
 use App\Models\TransportationPrice;
+use App\Models\RentalNoteTemplate;
 use App\Models\Contract;
 use App\Models\ContractVisitSchedule;
 use App\Models\Quotation;
@@ -649,7 +650,10 @@ class ForecastController extends Controller
         // Master harga Transportation per kota (dipakai tombol "Add Transport" di quotation & template PM)
         $transportationPrices = TransportationPrice::orderBy('city')->get();
 
-        return view('pages.sales.forecast.prices', compact('prices', 'availablePowers', 'defaultTemplate', 'bearingKitPrices', 'transportationPrices'));
+        // Master Note / Remarks Rental untuk Smart Quote
+        $rentalNoteTemplate = RentalNoteTemplate::with('user')->first();
+
+        return view('pages.sales.forecast.prices', compact('prices', 'availablePowers', 'defaultTemplate', 'bearingKitPrices', 'transportationPrices', 'rentalNoteTemplate'));
     }
 
     /**
@@ -844,6 +848,28 @@ class ForecastController extends Controller
         self::clearForecastCache();
 
         return redirect()->route('forecast.prices')->with('message', 'Data harga Transportation berhasil dihapus.');
+    }
+
+    /**
+     * Update Master Note / Remarks Template for Smart Quote (Rental Type)
+     */
+    public function updateRentalNoteTemplate(Request $request)
+    {
+        $request->validate([
+            'note' => 'nullable|string',
+        ]);
+
+        $template = RentalNoteTemplate::first();
+        if (!$template) {
+            $template = new RentalNoteTemplate();
+        }
+
+        $template->note = $request->note;
+        $template->updated_by = Auth::id();
+        $template->save();
+
+        return redirect()->route('forecast.prices', ['tab' => 'rental-note'])
+            ->with('message', 'Master template Note / Remarks Rental berhasil diperbarui.');
     }
 
     /**

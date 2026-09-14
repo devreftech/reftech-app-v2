@@ -13,6 +13,7 @@ use App\Services\DeletionGuardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
@@ -24,49 +25,61 @@ class ProductController extends Controller
      */
     public function index()
     {
-        $commodity = Product::count();
-        $dproduct = DetailProduct::count();
-        $sproduct = SerialProduct::count();
-        $asset = DetailProduct::sum(DB::raw('modal * stock'));
-        $revenue = DB::table(DB::raw('(SELECT p.stock * s.price AS val FROM serial_product s JOIN product p ON p.id = s.id_product GROUP BY p.id) as sub'))
-            ->sum('val');
-        // dd($revenue);
+        $user = Auth::user();
+        $isSales = ($user && $user->role === 'Sales');
+
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
         $leveledProspect = Prospect::whereNULL('level')->where('id_sales', Auth::id())->count();
 
+        if ($isSales) {
+            $commodity = 0;
+            $dproduct = 0;
+            $sproduct = 0;
+            $asset = 0;
+            $revenue = 0;
+            $commentAdmin = collect();
+            $unreadCommentAdmin = collect();
+        } else {
+            $commodity = Product::count();
+            $dproduct = DetailProduct::count();
+            $sproduct = SerialProduct::count();
+            $asset = DetailProduct::sum(DB::raw('modal * stock'));
+            $revenue = DB::table(DB::raw('(SELECT p.stock * s.price AS val FROM serial_product s JOIN product p ON p.id = s.id_product GROUP BY p.id) as sub'))
+                ->sum('val');
 
-        // Comment Buat Admin
-        $firstComments = Comment::where('id_user', Auth::id())
-            ->groupBy('id_status')
-            ->get();
+            // Comment Buat Admin
+            $firstComments = Comment::where('id_user', Auth::id())
+                ->groupBy('id_status')
+                ->get();
 
-        $statusIds = $firstComments->pluck('id_status')->toArray();
-        $dates = $firstComments->pluck('created_at', 'id_status');
+            $statusIds = $firstComments->pluck('id_status')->toArray();
+            $dates = $firstComments->pluck('created_at', 'id_status');
 
-        $commentsQuery = Comment::join('change_status as c', 'c.id', '=', 'comment.id_status')
-            ->join('quotation as q', 'q.id', '=', 'c.id_quotation')
-            ->join('users as u', 'u.id', '=', 'comment.id_user')
-            ->whereIn('comment.id_status', $statusIds)
-            ->where(function ($query) use ($dates) {
-                foreach ($dates as $statusId => $createdAt) {
-                    $query->orWhere(function ($subQuery) use ($statusId, $createdAt) {
-                        $subQuery->where('comment.id_status', $statusId)
-                            ->whereRaw('TIMESTAMPDIFF(SECOND, ?, comment.created_at) > 0', [$createdAt]);
-                    });
-                }
-            })
-            ->where('comment.id_user', '!=', Auth::id());
+            $commentsQuery = Comment::join('change_status as c', 'c.id', '=', 'comment.id_status')
+                ->join('quotation as q', 'q.id', '=', 'c.id_quotation')
+                ->join('users as u', 'u.id', '=', 'comment.id_user')
+                ->whereIn('comment.id_status', $statusIds)
+                ->where(function ($query) use ($dates) {
+                    foreach ($dates as $statusId => $createdAt) {
+                        $query->orWhere(function ($subQuery) use ($statusId, $createdAt) {
+                            $subQuery->where('comment.id_status', $statusId)
+                                ->whereRaw('TIMESTAMPDIFF(SECOND, ?, comment.created_at) > 0', [$createdAt]);
+                        });
+                    }
+                })
+                ->where('comment.id_user', '!=', Auth::id());
 
-        // Ambil semua komentar yang relevan
-        $commentAdmin = $commentsQuery->orderBy('comment.id_status')
-            ->orderByDesc('comment.created_at')
-            ->get(['q.id as idQ', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'q.no_quote', 'u.name', 'u.image']);
+            // Ambil semua komentar yang relevan
+            $commentAdmin = $commentsQuery->orderBy('comment.id_status')
+                ->orderByDesc('comment.created_at')
+                ->get(['q.id as idQ', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'q.no_quote', 'u.name', 'u.image']);
 
-        // Filter untuk komentar dengan level '1'
-        $unreadCommentAdmin = $commentsQuery->where('comment.level', '1')
-            ->orderBy('comment.id_status')
-            ->orderByDesc('comment.created_at')
-            ->get(['q.id as idQ', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'q.no_quote', 'u.name', 'u.image']);
+            // Filter untuk komentar dengan level '1'
+            $unreadCommentAdmin = $commentsQuery->where('comment.level', '1')
+                ->orderBy('comment.id_status')
+                ->orderByDesc('comment.created_at')
+                ->get(['q.id as idQ', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'q.no_quote', 'u.name', 'u.image']);
+        }
 
         // End Comment Admin
         $quotationComment = Quotation::join('change_status as c', 'c.id_quotation', '=', 'quotation.id')
@@ -686,4 +699,50 @@ class ProductController extends Controller
         return view('pages.warehouse.unit.detail', compact('product', 'comment', 'unreadComment', 'commentAdmin', 'unreadCommentAdmin', 'details', 'leveledProspect', 'noSaleProspect', 'serials', 'allStock'));
     }
 
+    /**
+     * Data catalog produk untuk DataTables role Sales.
+     * Menggunakan selective columns dan cache untuk performa tinggi.
+     */
+    public function getSalesData(Request $request)
+    {
+        $cacheKey = 'catalog_products_sales_v3';
+
+        if ($request->has('refresh')) {
+            Cache::forget($cacheKey);
+        }
+
+        $data = Cache::remember($cacheKey, 180, function () {
+            return DB::table('serial_product as s')
+                ->join('product as p', 'p.id', '=', 's.id_product')
+                ->whereIn('p.category', [
+                    'Consumable Part',
+                    'Non Consumable Part',
+                    'NON-CONSUMABLE PART',
+                    'consumable part',
+                    'non consumable part',
+                    'consumable-part',
+                    'non-consumable-part'
+                ])
+                ->select([
+                    's.id',
+                    'p.id as product_id',
+                    's.image',
+                    's.brand',
+                    's.pn',
+                    'p.description',
+                    'p.go',
+                    'p.stock',
+                    'p.warehouse_stock',
+                    'p.pending_stock',
+                    's.price',
+                    's.price_updated_at',
+                ])
+                ->orderByDesc('s.id')
+                ->get();
+        });
+
+        return response()->json(['data' => $data]);
+    }
+
 }
+

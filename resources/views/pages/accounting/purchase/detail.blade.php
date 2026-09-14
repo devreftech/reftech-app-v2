@@ -415,7 +415,7 @@
                             @endif
                         @endif
                     @endif
-                    @if ($sourcePr)
+                    @if ($sourcePr || (isset($linkedPrs) && $linkedPrs->count()))
                         @if ($prDeliveryDone)
                             <div class="alert alert-success py-2 px-3 mb-3 small">
                                 <i class="mdi mdi-check-circle-outline me-1"></i> Info pengiriman untuk PO ini sudah dikirim.
@@ -425,9 +425,29 @@
                                 <i class="mdi mdi-truck-delivery me-1"></i> On Delivery
                             </a>
                         @endif
-                        <a href="{{ route('purchase-request.show', $sourcePr->id_pending) }}" class="btn btn-label-secondary d-grid w-100 mb-3 waves-effect">
-                            <i class="mdi mdi-file-document-outline me-1"></i> Lihat Purchase Request
-                        </a>
+                        @php
+                            $allPrs = (isset($linkedPrs) && $linkedPrs->count()) ? $linkedPrs : ($sourcePr ? collect([$sourcePr]) : collect());
+                        @endphp
+                        @if ($allPrs->count() == 1)
+                            @php $onePr = $allPrs->first(); @endphp
+                            <a href="{{ route('purchase-request.show', $onePr->id_pending) }}" class="btn btn-label-secondary d-grid w-100 mb-3 waves-effect">
+                                <i class="mdi mdi-file-document-outline me-1"></i> Lihat Purchase Request ({{ $onePr->no_pr ?? ('#' . $onePr->id) }})
+                            </a>
+                        @elseif ($allPrs->count() > 1)
+                            <div class="border rounded p-2 mb-3 bg-light">
+                                <small class="fw-bold text-dark d-block mb-1">
+                                    <i class="mdi mdi-clipboard-text-multiple-outline me-1 text-primary"></i> PR Terkait ({{ $allPrs->count() }} PR):
+                                </small>
+                                <div class="d-flex flex-column gap-1">
+                                    @foreach ($allPrs as $prItem)
+                                        <a href="{{ route('purchase-request.show', $prItem->id_pending) }}" class="btn btn-xs btn-outline-primary text-start d-flex align-items-center justify-content-between py-1 px-2" target="_blank">
+                                            <span><i class="mdi mdi-file-document-outline me-1"></i>{{ $prItem->no_pr ?? ('PR #' . $prItem->id) }}</span>
+                                            <i class="mdi mdi-open-in-new font-11"></i>
+                                        </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                     @endif
                     <a class="btn btn-primary d-grid w-100 mb-3 waves-effect" target="_blank"
                         href="{{ route('purchase.show_print', $purchase->id) }}">

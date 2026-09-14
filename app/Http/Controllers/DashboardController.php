@@ -164,7 +164,7 @@ class DashboardController extends Controller
             $accountingData = $accountingService->getDashboardData($notulens);
 
             return view("pages.sales.dashboard", $accountingData);
-        } elseif (Auth::user()->role == 'Finance Manager') {
+        } elseif (in_array(Auth::user()->role, ['Finance Manager', 'Finance'])) {
             $financeView = request()->query('view', 'finance');
             if (!in_array($financeView, ['finance', 'accounting', 'logistic', 'workshop'], true)) {
                 $financeView = 'finance';

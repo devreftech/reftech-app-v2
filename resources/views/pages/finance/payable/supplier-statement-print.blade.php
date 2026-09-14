@@ -147,20 +147,20 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 80px;">Tanggal</th>
-                <th style="width: 70px;" class="text-center">Tipe</th>
-                <th style="width: 130px;">No. Referensi</th>
+                <th style="width: 85px; white-space: nowrap;">Tanggal</th>
+                <th style="width: 70px; white-space: nowrap;" class="text-center">Tipe</th>
+                <th style="width: 140px; white-space: nowrap;">No. Referensi</th>
                 <th>Keterangan / Deskripsi</th>
-                <th style="width: 120px;" class="text-end">Pembelian (Dr)</th>
-                <th style="width: 120px;" class="text-end">Pembayaran (Cr)</th>
-                <th style="width: 130px;" class="text-end">Saldo Hutang</th>
+                <th style="width: 120px; white-space: nowrap;" class="text-end">Pembelian (Dr)</th>
+                <th style="width: 120px; white-space: nowrap;" class="text-end">Pembayaran (Cr)</th>
+                <th style="width: 130px; white-space: nowrap;" class="text-end">Saldo Hutang</th>
             </tr>
         </thead>
         <tbody>
             <tr style="background: #fafafa; font-weight: bold;">
-                <td>{{ Carbon\Carbon::parse($startDate)->format('d/m/Y') }}</td>
+                <td style="white-space: nowrap;">{{ Carbon\Carbon::parse($startDate)->format('d/m/Y') }}</td>
                 <td class="text-center">AWAL</td>
-                <td>-</td>
+                <td style="white-space: nowrap;">-</td>
                 <td>Saldo Awal Hutang per {{ Carbon\Carbon::parse($startDate)->format('d/m/Y') }}</td>
                 <td class="text-end">-</td>
                 <td class="text-end">-</td>
@@ -168,9 +168,9 @@
             </tr>
             @forelse ($transactions as $t)
                 <tr>
-                    <td>{{ Carbon\Carbon::parse($t->date)->format('d/m/Y') }}</td>
+                    <td style="white-space: nowrap;">{{ Carbon\Carbon::parse($t->date)->format('d/m/Y') }}</td>
                     <td class="text-center" style="font-size: 10px;">{{ $t->type }}</td>
-                    <td>{{ $t->ref }}</td>
+                    <td style="white-space: nowrap;">{{ $t->ref }}</td>
                     <td>{{ $t->description }}</td>
                     <td class="text-end">{{ $t->debit > 0 ? 'Rp ' . number_format($t->debit, 0, ',', '.') : '-' }}</td>
                     <td class="text-end">{{ $t->credit > 0 ? 'Rp ' . number_format($t->credit, 0, ',', '.') : '-' }}</td>

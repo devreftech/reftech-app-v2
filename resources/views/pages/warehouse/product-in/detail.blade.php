@@ -673,7 +673,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label small fw-semibold">Nominal (Rp)</label>
-                                    <input type="number" class="form-control form-control-sm" name="amount" min="1" required
+                                    <input type="text" inputmode="numeric" class="form-control form-control-sm rupiah-mask" name="amount" required
                                         placeholder="0">
                                 </div>
                                 <div class="col-md-2">

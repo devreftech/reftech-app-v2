@@ -63,6 +63,17 @@
             <button type="button" class="btn btn-primary btn-sm px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#disbursementModal">
                 <i class="mdi mdi-plus-circle-outline me-1"></i> Catat Pengeluaran (BKK)
             </button>
+            @if(in_array(auth::user()?->role, ['Finance Manager', 'Finance', 'Developer']) || auth::user()?->isDeveloper())
+                <a href="{{ route('finance.security.manage') }}" class="btn btn-label-secondary btn-sm px-2 shadow-sm" title="Pengaturan PIN Finance">
+                    <i class="mdi mdi-shield-key-outline"></i>
+                </a>
+            @endif
+            <form action="{{ route('finance.security.lock') }}" method="POST" class="d-inline">
+                @csrf
+                <button type="submit" class="btn btn-outline-secondary btn-sm px-2 shadow-sm" title="Kunci Sesi Vault">
+                    <i class="mdi mdi-lock-outline"></i>
+                </button>
+            </form>
         </div>
     </div>
 
@@ -470,7 +481,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold small">Nominal Pengeluaran (Rp) <span class="text-danger">*</span></label>
-                                <input type="number" step="any" min="1" name="amount" class="form-control form-control-lg fw-bold text-danger" placeholder="0" required>
+                                <input type="text" inputmode="numeric" name="amount" class="form-control form-control-lg fw-bold text-danger rupiah-mask" placeholder="0" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold small">Kategori Pengeluaran <span class="text-danger">*</span></label>
@@ -548,11 +559,11 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold small">Nominal Pengisian (Rp) <span class="text-danger">*</span></label>
-                                <input type="number" step="any" min="1" name="amount" id="topupAmount" class="form-control form-control-lg fw-bold text-success" placeholder="0" required>
+                                <input type="text" inputmode="numeric" name="amount" id="topupAmount" class="form-control form-control-lg fw-bold text-success rupiah-mask" placeholder="0" required>
                             </div>
                             @if($selectedBank && $selectedBank->plafond > 0 && ($selectedBank->plafond - $selectedBank->saldo) > 0)
                                 <div class="col-12">
-                                    <button type="button" class="btn btn-xs btn-label-primary rounded-pill" onclick="document.getElementById('topupAmount').value = '{{ $selectedBank->plafond - $selectedBank->saldo }}'">
+                                    <button type="button" class="btn btn-xs btn-label-primary rounded-pill" onclick="document.getElementById('topupAmount').value = '{{ number_format($selectedBank->plafond - $selectedBank->saldo, 0, ',', '.') }}'">
                                         <i class="mdi mdi-auto-fix me-1"></i> Isi Penuh Sesuai Plafon (Rp {{ number_format($selectedBank->plafond - $selectedBank->saldo, 0, ',', '.') }})
                                     </button>
                                 </div>

@@ -628,13 +628,37 @@
             setInterval(updateCountdown, 1000);
         }
 
+        const intendedUrl = @json($intendedUrl ?? '/');
+
+        function onMaintenanceEnded(data) {
+            try {
+                sessionStorage.setItem('maint_just_resumed', '1');
+                if (data && data.last_deactivated_timestamp) {
+                    sessionStorage.setItem('maint_resumed_ts', data.last_deactivated_timestamp);
+                }
+            } catch (e) {}
+
+            let target = intendedUrl;
+            if (!target || target.includes('/maintenance')) {
+                target = '/';
+            }
+
+            try {
+                let urlObj = new URL(target, window.location.origin);
+                urlObj.searchParams.set('maintenance_resumed', '1');
+                window.location.href = urlObj.toString();
+            } catch (e) {
+                window.location.href = target + (target.includes('?') ? '&' : '?') + 'maintenance_resumed=1';
+            }
+        }
+
         // Auto polling every 15 seconds to check if maintenance has ended
         function checkStatus() {
             fetch('/api/maintenance/status')
                 .then(res => res.json())
                 .then(data => {
                     if (data && data.is_active === false) {
-                        window.location.href = '/';
+                        onMaintenanceEnded(data);
                     }
                 })
                 .catch(() => {});
@@ -651,7 +675,7 @@
                 .then(data => {
                     if (icon) icon.classList.remove('mdi-spin');
                     if (data && data.is_active === false) {
-                        window.location.href = '/';
+                        onMaintenanceEnded(data);
                     } else {
                         alert('Sistem saat ini masih dalam proses pemeliharaan. Mohon tunggu beberapa saat.');
                     }

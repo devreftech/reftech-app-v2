@@ -75,6 +75,10 @@ class PendingPO extends Model
     {
         return $this->hasMany('App\Models\ProjectExpense', 'id_pending');
     }
+    public function changeStatus()
+    {
+        return $this->hasMany('App\Models\ChangeStatus', 'id_pending');
+    }
 
     public function getRevenueAttribute()
     {

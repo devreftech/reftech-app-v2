@@ -55,18 +55,18 @@
                                                         <td>{{ $no }}</td>
                                                         <td>
                                                             <div class="form-floating form-floating-outline mb-2">
-                                                                <select class="select2 form-select"
+                                                                <select class="form-select select2-equivalent-ajax"
                                                                     data-allow-clear="true" name="equivalent[]"
-                                                                    data-id="1">
-                                                                    <option> ---- Choose Equivalent Here ---- </option>
-                                                                    @foreach ($serial as $replacement)
-                                                                        <option value="{{ $replacement->id }}"
-                                                                            {{ $product->pending[0]->id_equivalent == $replacement->id ? 'selected' : '' }}>
-                                                                            {{ $replacement->brand }}
-                                                                            {{ $replacement->pn }} -
-                                                                            {{ $replacement->product?->go == 'Replacement' ? 'R' : 'G' }}
+                                                                    data-id="1" style="width: 100%;">
+                                                                    <option value="0"> ---- Choose Equivalent Here ---- </option>
+                                                                    @php
+                                                                        $currEq = $product->pending[0]->equivalent ?? null;
+                                                                    @endphp
+                                                                    @if ($currEq)
+                                                                        <option value="{{ $currEq->id }}" selected>
+                                                                            {{ $currEq->brand }} {{ $currEq->pn }} - {{ $currEq->product?->go == 'Replacement' ? 'R' : 'G' }}
                                                                         </option>
-                                                                    @endforeach
+                                                                    @endif
                                                                 </select>
                                                                 <label for="Equivalent"
                                                                     class="mb-2">Equivalent</label>

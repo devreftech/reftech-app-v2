@@ -14,9 +14,10 @@ class DeveloperMaintenanceController extends Controller
     public function showMaintenancePage(Request $request)
     {
         $details = MaintenanceService::getDetails();
+        $intendedUrl = session('maint_intended_url', '/');
 
         // Always render view directly (prevents any redirect ping-pong loops)
-        return view('errors.maintenance', compact('details'));
+        return view('errors.maintenance', compact('details', 'intendedUrl'));
     }
 
     /**

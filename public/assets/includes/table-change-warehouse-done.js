@@ -1,6 +1,6 @@
 $(function () {
     var dt_change_warehouse_done = $(".datatable-change-warehouse-done");
-    var Url = "db/change-warehouse/done";
+    var Url = "/db/change-warehouse/done";
 
     if (dt_change_warehouse_done.length) {
         $('[data-toggle="tooltip"]').tooltip();
@@ -61,7 +61,9 @@ $(function () {
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             var id = full["id"];
-                            detailRoute = route("change-warehouse.show", id);
+                            var detailRoute = (typeof route === "function")
+                                ? route("change-warehouse.show", id)
+                                : ("/change-warehouse/" + id);
                             return (
                                 '<a class="text-black cursor-pointer" href="' +
                                 detailRoute +

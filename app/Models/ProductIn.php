@@ -69,7 +69,9 @@ class ProductIn extends Model
 
     public function getTotalPaidAttribute()
     {
-        $paidFromPayments = (float) $this->payments()->sum('amount');
+        $paidFromPayments = $this->relationLoaded('payments')
+            ? (float) $this->payments->sum('amount')
+            : (float) $this->payments()->sum('amount');
         if ($paidFromPayments > 0) {
             return $paidFromPayments;
         }

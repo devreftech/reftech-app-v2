@@ -14,6 +14,14 @@ $(function () {
         $("#barang-diterima-count-badge").text(total).toggleClass("d-none", total === 0);
     }
 
+    function itemCol(data, type, full) {
+        if (type !== "display") return data || "-";
+        return '<button type="button" class="btn-item-preview d-inline-flex align-items-center gap-1 btn-gr-drawer text-start" data-drawer-type="received" data-bs-toggle="tooltip" title="Klik untuk membuka slide-over rincian Good Receipt">' +
+            '<i class="mdi mdi-package-variant-closed font-14 text-primary"></i>' +
+            '<span class="fw-semibold">' + (data || "-") + '</span>' +
+            '</button>';
+    }
+
     function initReceivedGoodsTable(selector, ajaxUrl, warehouse, subtabBadgeId) {
         var $table = $(selector);
         if (!$table.length) return;
@@ -23,6 +31,9 @@ $(function () {
         function init() {
             if (initialized) return;
             initialized = true;
+
+            $table.data('warehouse', warehouse);
+            $table.data('drawer-type', 'received');
 
             $table.DataTable({
                 ajax: {
@@ -34,7 +45,9 @@ $(function () {
                         receivedCounts[warehouse] = count;
                         $("#" + subtabBadgeId).text(count).toggleClass("d-none", count === 0);
                         updateReceivedTotalBadge();
-                        return json.data || [];
+                        var list = json.data || [];
+                        list.forEach(function (row) { row.warehouse = warehouse; });
+                        return list;
                     },
                 },
                 columns: [
@@ -60,7 +73,8 @@ $(function () {
                             return '<a href="' + url + '" class="fw-semibold text-primary">' + label + "</a>";
                         },
                     },
-                    { targets: [1, 2, 3, 5], render: function (data) { return data || "-"; } },
+                    { targets: [1, 2, 5], render: function (data) { return data || "-"; } },
+                    { targets: 3, render: itemCol },
                     { targets: 4, className: "text-center fw-bold", render: function (data) { return data; } },
                     { targets: 6, render: function (data) { return dateCol(data); } },
                     {

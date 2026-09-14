@@ -249,6 +249,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::delete('/forecast/prices/bearing-kit/{id}', [ForecastController::class, 'deleteBearingKitPrice'])->name('forecast.prices.bearing-kit.delete');
     Route::post('/forecast/prices/transportation', [ForecastController::class, 'updateTransportationPrice'])->name('forecast.prices.transportation.update');
     Route::delete('/forecast/prices/transportation/{id}', [ForecastController::class, 'deleteTransportationPrice'])->name('forecast.prices.transportation.delete');
+    Route::post('/forecast/prices/rental-note', [ForecastController::class, 'updateRentalNoteTemplate'])->name('forecast.prices.rental-note.update');
     Route::get('/forecast/contracts', [ForecastController::class, 'manageContracts'])->name('forecast.contracts');
     Route::post('/forecast/contracts/store', [ForecastController::class, 'storeContract'])->name('forecast.contracts.store');
     Route::post('/forecast/contracts/{id}/schedule', [ForecastController::class, 'storeContractSchedule'])->name('forecast.contracts.schedule');
@@ -1431,9 +1432,10 @@ Route::group(["middleware" => "auth"], function () {
     
     // Customer Statement of Account (SOA / Kartu Piutang) & Digital Kwitansi
     Route::get('/payment-index/aging-export', [PaymentController::class, 'exportAgingExcel'])->name('payment_index.aging_export');
-    Route::get('/customer-statement', [PaymentController::class, 'customerStatement'])->name('customer.statement');
-    Route::get('/customer-statement/{id}/export', [PaymentController::class, 'exportCustomerStatementExcel'])->name('customer.statement_export');
-    Route::get('/customer-statement-print/{id}', [PaymentController::class, 'customerStatementPrint'])->name('customer.statement_print');
+    Route::get('/customer-statement', [\App\Http\Controllers\CustomerStatementController::class, 'index'])->name('customer.statement');
+    Route::get('/customer-statement-search', [\App\Http\Controllers\CustomerStatementController::class, 'searchClients'])->name('customer.statement_search');
+    Route::get('/customer-statement/{id}/export', [\App\Http\Controllers\CustomerStatementController::class, 'exportExcel'])->name('customer.statement_export');
+    Route::get('/customer-statement-print/{id}', [\App\Http\Controllers\CustomerStatementController::class, 'print'])->name('customer.statement_print');
     Route::get('/payment-detail/kwitansi/{id}', [PaymentController::class, 'showKwitansi'])->name('payment.kwitansi');
 
     Route::resource('/delivery', DeliveryController::class);
@@ -1467,47 +1469,69 @@ Route::group(["middleware" => "auth"], function () {
     Route::resource('/return', ReturnController::class);
     Route::post('/accept/return/{id}', [ReturnController::class, 'accept'])->name('return.accept');
     Route::get('/db/request-return', function () {
-        $return = ReturnQ::join('quotation as q', 'q.id', '=', 'return.id_quotation')
-            ->join('pic as p', 'p.id', '=', 'q.id_pic')
-            ->join('client as c', 'c.id', '=', 'p.id_client')
-            ->join('users as u', 'u.id', '=', 'q.id_sales')
-            ->where('return.lvl', '0')
-            ->get([
-                'return.*',
-                'u.name',
-                'c.company',
-                'q.no_quote'
-            ]);
-        return response()->json(['data' => $return]);
+        $returns = Retur::with(['pending.quotation.pic.client', 'pending.quotation.sales', 'productIn.supplier', 'detail'])
+            ->where('status', 0)
+            ->get();
+        $data = $returns->map(function ($r) {
+            $company = $r->pending?->quotation?->pic?->client?->company ?? $r->productIn?->supplier?->nama_supplier ?? '-';
+            $sales = $r->pending?->quotation?->sales?->name ?? '-';
+            $noQuote = $r->pending?->quotation?->no_quote ?? $r->productIn?->invoice ?? '-';
+            return [
+                'id' => $r->id,
+                'no_return' => $r->no_return,
+                'company' => $company,
+                'note' => $r->detail->pluck('note')->filter()->implode(', ') ?: '-',
+                'total' => $r->detail->sum('qty'),
+                'name' => $sales,
+                'date' => $r->date ? date('d-m-Y', strtotime($r->date)) : '-',
+                'no_quote' => $noQuote,
+                'status' => $r->status,
+            ];
+        });
+        return response()->json(['data' => $data]);
     });
     Route::get('/db/return', function () {
-        $return = ReturnQ::join('quotation as q', 'q.id', '=', 'return.id_quotation')
-            ->join('pic as p', 'p.id', '=', 'q.id_pic')
-            ->join('client as c', 'c.id', '=', 'p.id_client')
-            ->join('users as u', 'u.id', '=', 'q.id_sales')
-            ->where('return.lvl', '1')
-            ->get([
-                'return.*',
-                'u.name',
-                'c.company',
-                'q.no_quote'
-            ]);
-        return response()->json(['data' => $return]);
+        $returns = Retur::with(['pending.quotation.pic.client', 'pending.quotation.sales', 'productIn.supplier', 'detail'])
+            ->where('status', 1)
+            ->get();
+        $data = $returns->map(function ($r) {
+            $company = $r->pending?->quotation?->pic?->client?->company ?? $r->productIn?->supplier?->nama_supplier ?? '-';
+            $sales = $r->pending?->quotation?->sales?->name ?? '-';
+            $noQuote = $r->pending?->quotation?->no_quote ?? $r->productIn?->invoice ?? '-';
+            return [
+                'id' => $r->id,
+                'no_return' => $r->no_return,
+                'company' => $company,
+                'note' => $r->detail->pluck('note')->filter()->implode(', ') ?: '-',
+                'total' => $r->detail->sum('qty'),
+                'name' => $sales,
+                'date' => $r->date ? date('d-m-Y', strtotime($r->date)) : '-',
+                'no_quote' => $noQuote,
+                'status' => $r->status,
+            ];
+        });
+        return response()->json(['data' => $data]);
     });
     Route::get('/db/retur', function () {
-        $return = Retur::join('pending_po as pe', 'pe.id', '=', 'return.id_pending')
-            ->join('quotation as q', 'q.id', '=', 'pe.id_quotation')
-            ->join('pic as p', 'p.id', '=', 'q.id_pic')
-            ->join('client as c', 'c.id', '=', 'p.id_client')
-            ->join('users as u', 'u.id', '=', 'q.id_sales')
-            ->get([
-                'return.*',
-                'u.name',
-                'c.company',
-                // 'q.no_quote',
-                'q.po_date'
-            ]);
-        return response()->json(['data' => $return]);
+        $returns = Retur::with(['pending.quotation.pic.client', 'pending.quotation.sales', 'productIn.supplier', 'detail'])
+            ->get();
+        $data = $returns->map(function ($r) {
+            $company = $r->pending?->quotation?->pic?->client?->company ?? $r->productIn?->supplier?->nama_supplier ?? '-';
+            $sales = $r->pending?->quotation?->sales?->name ?? '-';
+            $noQuote = $r->pending?->quotation?->no_quote ?? $r->productIn?->invoice ?? '-';
+            return [
+                'id' => $r->id,
+                'no_return' => $r->no_return,
+                'company' => $company,
+                'note' => $r->detail->pluck('note')->filter()->implode(', ') ?: '-',
+                'total' => $r->detail->sum('qty'),
+                'name' => $sales,
+                'date' => $r->date ? date('d-m-Y', strtotime($r->date)) : '-',
+                'no_quote' => $noQuote,
+                'status' => $r->status,
+            ];
+        });
+        return response()->json(['data' => $data]);
     });
 
     Route::resource('/warehouse', WarehouseController::class);
@@ -1601,23 +1625,41 @@ Route::group(["middleware" => "auth"], function () {
     Route::resource('/change-warehouse', ChangeWarehouseController::class);
     Route::post('/change-warehouse/accept/{id}', [ChangeWarehouseController::class, 'accept'])->name('change-warehouse.accept');
 
-    // Master Kas & Bank Account
-    Route::get('/finance/bank', [\App\Http\Controllers\BankController::class, 'index'])->name('bank.index');
-    Route::post('/finance/bank', [\App\Http\Controllers\BankController::class, 'store'])->name('bank.store');
-    Route::post('/finance/bank/transfer', [\App\Http\Controllers\BankController::class, 'transfer'])->name('bank.transfer');
-    Route::put('/finance/bank/{id}', [\App\Http\Controllers\BankController::class, 'update'])->name('bank.update');
-    Route::delete('/finance/bank/{id}', [\App\Http\Controllers\BankController::class, 'destroy'])->name('bank.destroy');
-    Route::post('/finance/bank/{id}/toggle-status', [\App\Http\Controllers\BankController::class, 'toggleStatus'])->name('bank.toggle_status');
-    Route::get('/finance/bank/{id}/statement', [\App\Http\Controllers\BankController::class, 'statement'])->name('bank.statement');
-    Route::get('/finance/bank/{id}/statement-print', [\App\Http\Controllers\BankController::class, 'statementPrint'])->name('bank.statement_print');
+    // ------------------------------------------------------------------------
+    // Finance PIN Security & Vault Protection
+    // ------------------------------------------------------------------------
+    Route::get('/finance/security/verify', [\App\Http\Controllers\FinanceSecurityPinController::class, 'verifyForm'])->name('finance.security.verify_form');
+    Route::post('/finance/security/verify', [\App\Http\Controllers\FinanceSecurityPinController::class, 'verifyPin'])->name('finance.security.verify');
+    Route::post('/finance/security/verify-pin', [\App\Http\Controllers\FinanceSecurityPinController::class, 'verifyPin'])->name('finance.security.verify_pin');
+    Route::post('/finance/security/lock', [\App\Http\Controllers\FinanceSecurityPinController::class, 'lock'])->name('finance.security.lock');
+    Route::redirect('/finance/security', '/finance/security/manage');
+    Route::get('/finance/security/manage', [\App\Http\Controllers\FinanceSecurityPinController::class, 'manage'])->name('finance.security.manage');
+    Route::post('/finance/security/update-pin', [\App\Http\Controllers\FinanceSecurityPinController::class, 'updatePin'])->name('finance.security.update_pin');
 
-    // Petty Cash (Kas Kecil) Management
-    Route::get('/finance/petty-cash', [\App\Http\Controllers\PettyCashController::class, 'index'])->name('petty_cash.index');
-    Route::post('/finance/petty-cash/disbursement', [\App\Http\Controllers\PettyCashController::class, 'storeDisbursement'])->name('petty_cash.disbursement');
-    Route::post('/finance/petty-cash/topup', [\App\Http\Controllers\PettyCashController::class, 'storeTopup'])->name('petty_cash.topup');
-    Route::delete('/finance/petty-cash/{id}', [\App\Http\Controllers\PettyCashController::class, 'destroy'])->name('petty_cash.destroy');
-    Route::get('/finance/petty-cash/{id}/print-voucher', [\App\Http\Controllers\PettyCashController::class, 'printVoucher'])->name('petty_cash.print_voucher');
-    Route::get('/finance/petty-cash/print-statement', [\App\Http\Controllers\PettyCashController::class, 'printStatement'])->name('petty_cash.print_statement');
+    // Master Kas & Bank Account & Petty Cash (Protected by finance.pin)
+    Route::middleware(['finance.pin'])->group(function () {
+        Route::get('/finance/bank', [\App\Http\Controllers\BankController::class, 'index'])->name('bank.index');
+        Route::post('/finance/bank', [\App\Http\Controllers\BankController::class, 'store'])->name('bank.store');
+        Route::post('/finance/bank/transfer', [\App\Http\Controllers\BankController::class, 'transfer'])->name('bank.transfer');
+        Route::post('/finance/bank/adjustment', [\App\Http\Controllers\BankController::class, 'adjustment'])->name('bank.adjustment');
+        Route::put('/finance/bank/{id}', [\App\Http\Controllers\BankController::class, 'update'])->name('bank.update');
+        Route::delete('/finance/bank/{id}', [\App\Http\Controllers\BankController::class, 'destroy'])->name('bank.destroy');
+        Route::post('/finance/bank/{id}/toggle-status', [\App\Http\Controllers\BankController::class, 'toggleStatus'])->name('bank.toggle_status');
+        Route::get('/finance/bank/{id}/statement', [\App\Http\Controllers\BankController::class, 'statement'])->name('bank.statement');
+        Route::get('/finance/bank/{id}/statement-print', [\App\Http\Controllers\BankController::class, 'statementPrint'])->name('bank.statement_print');
+
+        // Petty Cash (Kas Kecil) Management
+        Route::get('/finance/petty-cash', [\App\Http\Controllers\PettyCashController::class, 'index'])->name('petty_cash.index');
+        Route::post('/finance/petty-cash/disbursement', [\App\Http\Controllers\PettyCashController::class, 'storeDisbursement'])->name('petty_cash.disbursement');
+        Route::post('/finance/petty-cash/topup', [\App\Http\Controllers\PettyCashController::class, 'storeTopup'])->name('petty_cash.topup');
+        Route::delete('/finance/petty-cash/{id}', [\App\Http\Controllers\PettyCashController::class, 'destroy'])->name('petty_cash.destroy');
+        Route::get('/finance/petty-cash/{id}/print-voucher', [\App\Http\Controllers\PettyCashController::class, 'printVoucher'])->name('petty_cash.print_voucher');
+        Route::get('/finance/petty-cash/print-statement', [\App\Http\Controllers\PettyCashController::class, 'printStatement'])->name('petty_cash.print_statement');
+
+        // Bank Reconciliation (Protected by finance.pin)
+        Route::get('/finance/bank-reconciliation', [\App\Http\Controllers\BankReconciliationController::class, 'index'])->name('finance.reconciliation.index');
+        Route::post('/finance/bank-reconciliation', [\App\Http\Controllers\BankReconciliationController::class, 'save'])->name('finance.reconciliation.save');
+    });
 
 
     // account
@@ -1643,10 +1685,14 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/expense-ongkir', [ExpenseController::class, 'indexOngkir'])->name('expense-ongkir.index');
     Route::post('/expense-ongkir/{id}', [ExpenseController::class, 'postOngkir'])->name('expense-ongkir.post');
 
+    Route::get('/statement', [ExpenseController::class, 'indexStatement'])->name('finance.statement.index');
     Route::get('/income', [ExpenseController::class, 'indexIncome'])->name('expense-income.index');
     Route::post('/income', [ExpenseController::class, 'storeIncome'])->name('expense-income.store');
+    Route::get('/income-detail/{mounth}/{year}', [ExpenseController::class, 'detailBulanIncome'])->name('expense-income.detail-bulan');
+    Route::get('/income-detail/{year}', [ExpenseController::class, 'detailTahunIncome'])->name('expense-income.detail-tahun');
     Route::get('/income-print/{mounth}/{year}', [ExpenseController::class, 'printBulan'])->name('expense-income.print-bulan');
     Route::get('/income-print/{year}', [ExpenseController::class, 'printTahun'])->name('expense-income.print-tahun');
+    Route::get('/api/statement/income-kpi', [ExpenseController::class, 'apiIncomeKpi'])->name('finance.statement.income-kpi');
 
     Route::get('/balance', [ExpenseController::class, 'indexBalance'])->name('expense-balance.index');
     Route::get('/balance-detail/{mounth}/{year}', [ExpenseController::class, 'detailBulanBalance'])->name('expense-balance.detail-bulan');
@@ -1682,6 +1728,12 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/purchase-request/{id}/discussion', [PurchaseController::class, 'addDiscussion'])->name('purchase-request.add-discussion');
     Route::post('/purchase-request/mention/{id}/read', [PurchaseController::class, 'readPrMention'])->name('purchase-request.mention-read');
     Route::patch('/purchase-request/update/{id}', [PurchaseController::class, 'update'])->name('purchase-request.update');
+    Route::post('/purchase-request/{id}/manual-gr', [PurchaseController::class, 'completeManualGr'])->name('purchase-request.manual-gr');
+    Route::post('/purchase-request/{id}/dev-action', [PurchaseController::class, 'devAction'])->name('purchase-request.dev-action');
+    Route::post('/purchase-request/{id}/link-po', [PurchaseController::class, 'linkPurchaseOrder'])->name('purchase-request.link-po');
+    Route::post('/purchase-request/{id}/unlink-po', [PurchaseController::class, 'unlinkPurchaseOrder'])->name('purchase-request.unlink-po');
+    Route::get('/db/purchase-order/search-to-link', [PurchaseController::class, 'searchPoToLink'])->name('purchase-order.search-to-link');
+    Route::get('/db/purchase-request/available-items', [PurchaseController::class, 'getAvailablePrItems'])->name('purchase-request.available-items');
     
 
     // Dashboard Function
@@ -1878,6 +1930,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/purchase/{id}/goods-receipt-direct', [PurchaseController::class, 'goodsReceiptFormDirect'])->name('purchase.goods-receipt-direct');
     Route::post('/purchase/{id}/goods-receipt-direct', [PurchaseController::class, 'storeGoodsReceiptDirect'])->name('purchase.store-goods-receipt-direct');
     Route::post('/purchase-order-type/quick-store', [POController::class, 'quickStoreType'])->name('purchase-order-type.quick-store');
+    Route::get('/db/purchase-order/products/search', [POController::class, 'searchProducts'])->name('purchase.products.search');
 
     // Product Set
     Route::resource('/product-set', ProductSetController::class);
@@ -4560,9 +4613,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'), DB::raw('(SELECT COALESCE(COUNT
 
         return response()->json(['data' => $data]);
     });
-    Route::get('/db/product/sales', function () {
-        require_once base_path('app/api/product/connectionSales.php');
-    });
+    Route::get('/db/product/sales', [\App\Http\Controllers\ProductController::class, 'getSalesData'])->name('product.sales.data');
     Route::get('/db/user', function () {
         require_once base_path('app/api/user/connection.php');
     });
@@ -6586,7 +6637,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
     Route::get('/db/change-warehouse/recieve', function () {
         $to = Auth::user()->id == 23 ? 'BKS' : 'BDG';
 
-        $warehouse = ChangeWarehouse::join('users as s', 'change_warehouse.id_sender', '=', 's.id')
+        $warehouse = ChangeWarehouse::leftJoin('users as s', 'change_warehouse.id_sender', '=', 's.id')
             ->leftJoin('users as r', 'change_warehouse.id_reciever', '=', 'r.id')
             // ->when(Auth::user()->role != 'Admin', function ($query) use ($to) {
             //     $query->where('change_warehouse.to', $to);
@@ -6605,8 +6656,8 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         return response()->json(['data' => $warehouse]);
     });
     Route::get('/db/change-warehouse/done', function () {
-        $warehouse = ChangeWarehouse::join('users as s', 'change_warehouse.id_sender', '=', 's.id')
-            ->join('users as r', 'change_warehouse.id_reciever', '=', 'r.id')
+        $warehouse = ChangeWarehouse::leftJoin('users as s', 'change_warehouse.id_sender', '=', 's.id')
+            ->leftJoin('users as r', 'change_warehouse.id_reciever', '=', 'r.id')
             ->where('change_warehouse.status', '=', 2)
             ->orderBy('change_warehouse.status')
             ->orderBy('change_warehouse.date', 'desc')
@@ -6622,20 +6673,46 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         return response()->json(['data' => $warehouse]);
     });
 
-    Route::get('/db/account/data', function () {
-        $account = Account::orderByDesc('id')->get();
+    Route::get('/db/account/data', function (\Illuminate\Http\Request $request) {
+        $query = Account::query();
+        if ($request->filled('category') && $request->category != 'all') {
+            $query->where('category', $request->category);
+        }
+        if ($request->filled('level') && $request->level != 'all') {
+            $query->where('level', $request->level);
+        }
+        $account = $query->orderBy('code')->get();
         return response()->json(['data' => $account]);
     });
-    Route::get('/db/expense/data', function () {
-        $expense = Expense::whereNotNULL('id_bank')->get();
+    Route::get('/db/expense/data', function (\Illuminate\Http\Request $request) {
+        $query = Expense::with('bank')->whereNotNull('id_bank');
+
+        if ($request->filled('year') && $request->year != 'all') {
+            $query->whereYear('date', $request->year);
+        }
+        if ($request->filled('month') && $request->month != 'all') {
+            $query->whereMonth('date', $request->month);
+        }
+        if ($request->filled('bank_id') && $request->bank_id != 'all') {
+            $query->where('id_bank', $request->bank_id);
+        }
+
+        $expense = $query->orderByDesc('date')->orderByDesc('id')->get();
         return response()->json(['data' => $expense]);
     });
-    Route::get('/db/expense/umum/data', function () {
-        $expense = Expense::whereNULL('id_bank')->get();
+    Route::get('/db/expense/umum/data', function (\Illuminate\Http\Request $request) {
+        $query = Expense::whereNull('id_bank');
+        if ($request->filled('year') && $request->year != 'all') {
+            $query->whereYear('date', $request->year);
+        }
+        if ($request->filled('month') && $request->month != 'all') {
+            $query->whereMonth('date', $request->month);
+        }
+        $expense = $query->orderByDesc('date')->orderByDesc('id')->get();
         return response()->json(['data' => $expense]);
     });
-    Route::get('/db/expense/inventory', function () {
-        $expense = Expense::join('detail_expense as de', 'de.id_expense', '=', 'expense.id')
+    Route::get('/db/expense/inventory', function (\Illuminate\Http\Request $request) {
+        $query = Expense::join('detail_expense as de', 'de.id_expense', '=', 'expense.id')
             ->join('account as acc', 'acc.id', '=', 'de.id_account')
             ->join('detail_inventory_adj as da', 'da.id_detail_expense', '=', 'de.id')
             ->leftJoin('detail_product as dp', 'dp.id', '=', 'da.id_product')
@@ -6650,18 +6727,38 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         ")
             )
             ->whereNotNull('da.id_product')
-            ->whereNull('expense.id_bank')
-            ->groupBy('expense.id')
-            ->get();
+            ->whereNull('expense.id_bank');
+
+        if ($request->filled('year') && $request->year != 'all') {
+            $query->whereYear('expense.date', $request->year);
+        }
+        if ($request->filled('month') && $request->month != 'all') {
+            $query->whereMonth('expense.date', $request->month);
+        }
+
+        $expense = $query->groupBy('expense.id')->orderByDesc('expense.date')->orderByDesc('expense.id')->get();
         return response()->json(['data' => $expense]);
     });
-    Route::get('/db/expense/ongkir', function () {
-        $expanse = Expanse::join('pending_po as p', 'p.id', '=', 'expanse.id_pending')
+    Route::get('/db/expense/ongkir', function (\Illuminate\Http\Request $request) {
+        $query = Expanse::join('pending_po as p', 'p.id', '=', 'expanse.id_pending')
             ->where('expanse.type', 'Resi')
             ->where('expanse.charged', '1')
-            ->select('expanse.*', 'p.no_pending', 'p.title')
-            ->orderByDesc('expanse.id')
-            ->get();
+            ->select('expanse.*', 'p.no_pending', 'p.title');
+
+        if ($request->filled('status') && $request->status != 'all') {
+            if ($request->status == 'pending') {
+                $query->where(function($q) {
+                    $q->where('expanse.status', 'pending')->orWhereNull('expanse.status');
+                });
+            } else {
+                $query->where('expanse.status', $request->status);
+            }
+        }
+        if ($request->filled('kurir') && $request->kurir != 'all') {
+            $query->where('expanse.kurir', $request->kurir);
+        }
+
+        $expanse = $query->orderByDesc('expanse.date')->orderByDesc('expanse.id')->get();
         return response()->json(['data' => $expanse]);
     });
     $purchaseRequestListQuery = function (string $status) {
@@ -6774,6 +6871,47 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
     Route::get('/db/purchase-request/delivery', function () use ($purchaseRequestListQuery) {
         return response()->json(['data' => $purchaseRequestListQuery('2')->get()]);
     });
+
+    Route::get('/db/product-in/unlinked', function (\Illuminate\Http\Request $request) {
+        $q = trim($request->get('q', ''));
+        $query = \App\Models\ProductIn::with('supplier')
+            ->whereNull('id_purchase_order');
+
+        if (!empty($q)) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('no_product_in', 'like', "%{$q}%")
+                    ->orWhere('no_do', 'like', "%{$q}%")
+                    ->orWhere('supplier', 'like', "%{$q}%");
+            });
+        }
+
+        $results = $query->orderByDesc('id')->take(30)->get();
+
+        $data = $results->map(function ($item) {
+            $suppName = $item->supplier?->name ?: ($item->supplier ?: '');
+            $text = $item->no_product_in;
+            if ($item->no_do) {
+                $text .= " (DO: {$item->no_do})";
+            }
+            if ($item->date) {
+                $formattedDate = \Carbon\Carbon::parse($item->date)->format('d/m/Y');
+                $text .= " - {$formattedDate}";
+            }
+            if (!empty($suppName)) {
+                $text .= " [{$suppName}]";
+            }
+            return [
+                'id' => $item->id,
+                'no_product_in' => $item->no_product_in,
+                'no_do' => $item->no_do,
+                'date' => $item->date,
+                'text' => $text,
+            ];
+        });
+
+        return response()->json(['data' => $data]);
+    });
+
     Route::get('/db/purchase-request/done', function () {
         // Tab Good Receipt beda dari tab lain: di-root dari purchase_order (bukan
         // purchase_request), jadi satu baris = satu PO. Kalau 1 PR pecah ke beberapa PO,
@@ -7707,5 +7845,20 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         Route::delete('/manual/{id}', [\App\Http\Controllers\ManagementFeeController::class, 'destroyManual'])->name('destroy-manual');
         Route::post('/manual/{id}/disbursement', [\App\Http\Controllers\ManagementFeeController::class, 'updateManualDisbursement'])->name('update-manual-disbursement');
     });
+
+    // ------------------------------------------------------------------------
+    // Finance - Expense Budgeting Routes
+    // ------------------------------------------------------------------------
+    Route::prefix('finance/expense-budget')->name('finance.expense-budget.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ExpenseBudgetController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\ExpenseBudgetController::class, 'storeOrUpdate'])->name('store');
+        Route::get('/monthly-details', [\App\Http\Controllers\ExpenseBudgetController::class, 'monthlyDetails'])->name('monthly-details');
+    });
+
+    // ------------------------------------------------------------------------
+    // Finance - Tax & Cash Flow Forecast Routes
+    // ------------------------------------------------------------------------
+    Route::get('/finance/tax-report', [\App\Http\Controllers\TaxReportController::class, 'index'])->name('finance.tax.index');
+    Route::get('/finance/cashflow-forecast', [\App\Http\Controllers\CashFlowForecastController::class, 'index'])->name('finance.cashflow.forecast');
 });
 Auth::routes();

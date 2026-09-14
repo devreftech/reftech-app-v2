@@ -1,6 +1,6 @@
 $(function () {
     var dt_change_warehouse_recieve = $(".datatable-change-warehouse-recieve");
-    var Url = "db/change-warehouse/recieve";
+    var Url = "/db/change-warehouse/recieve";
 
     if (dt_change_warehouse_recieve.length) {
         $('[data-toggle="tooltip"]').tooltip();
@@ -59,7 +59,9 @@ $(function () {
                     render: function (data, type, full, row) {
                         if (type === "display") {
                             var id = full["id"];
-                            detailRoute = route("change-warehouse.show", id);
+                            var detailRoute = (typeof route === "function")
+                                ? route("change-warehouse.show", id)
+                                : ("/change-warehouse/" + id);
                             return (
                                 '<a class="text-black cursor-pointer" href="' +
                                 detailRoute +
@@ -304,7 +306,7 @@ $(function () {
                     text: '<i class="mdi mdi-plus me-sm-1"></i> <span class="d-none d-sm-inline-block">New Change Warehouse</span>',
                     className: "btn btn-primary btn-new",
                     action: function (e, dt, node, config) {
-                        window.location = route("change-warehouse.create");
+                        window.location = (typeof route === "function") ? route("change-warehouse.create") : "/change-warehouse/create";
                     },
                 },
             ],

@@ -246,6 +246,29 @@
                             <div class="form-text text-muted mt-1"><i class="mdi mdi-information-outline me-1"></i>Tekan <kbd>Enter</kbd> untuk baris baru otomatis ber-bullet.</div>
                         </div>
 
+                        {{-- KETENTUAN RENTAL UNIT KOMPRESOR (Card terpisah khusus tipe Rental) --}}
+                        <div class="mb-4 pb-3 border-bottom" id="rental-terms-card-wrapper" style="{{ (old('type', $quote->type) === 'Rental') ? '' : 'display: none;' }}">
+                            <div class="card border border-warning shadow-none" style="background: #fffdf9; border-radius: 8px;">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <h6 class="fw-bold mb-0 text-dark d-flex align-items-center">
+                                            <i class="mdi mdi-file-document-check-outline me-2 text-warning fs-5"></i> KETENTUAN RENTAL UNIT KOMPRESOR
+                                        </h6>
+                                        <button type="button" class="btn btn-xs btn-outline-warning py-0.5 px-2 rounded shadow-none" id="btnResetRentalTerms" title="Muat ulang template klausul ketentuan rental dari master setting">
+                                            <i class="mdi mdi-sync me-1"></i> Muat Ulang Template
+                                        </button>
+                                    </div>
+                                    <textarea class="form-control bg-white" name="rental_terms" id="rental_terms"
+                                        rows="4" placeholder="• Masukkan klausul ketentuan rental unit kompresor di sini..."
+                                        style="overflow-y: hidden; resize: none;">{{ old('rental_terms', $quote->rental_terms ?? $rentalNoteTemplate ?? '') }}</textarea>
+                                    <div class="form-text text-muted mt-1 d-flex justify-content-between align-items-center">
+                                        <span><i class="mdi mdi-information-outline me-1 text-warning"></i>Ketentuan khusus rental kompresor. Tekan <kbd>Enter</kbd> untuk baris baru otomatis ber-bullet.</span>
+                                        <span class="badge bg-label-warning small">Khusus Type Rental</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {{-- Terms & Conditions --}}
                         <div>
                             <h6 class="fw-bold mb-3 text-dark">
@@ -704,6 +727,7 @@
         window.EDIT_ADDRESS = @json($quote->address ?? '');
         window.EDIT_PAYMENT = @json($quote->payment ?? '');
         window.TRANSPORT_PRICES = @json($transportationPrices);
+        window.RENTAL_NOTE_TEMPLATE = @json($rentalNoteTemplate ?? '');
     </script>
     <script src="{{ asset('assets') }}/includes/form-unit-quotation.js?v={{ filemtime(public_path('assets/includes/form-unit-quotation.js')) }}"></script>
 
@@ -726,63 +750,68 @@
             });
         })();
 
-        // ── Auto-bullet on Note textarea ──
+        // ── Auto-bullet on Note & Ketentuan Rental textarea ──
         (function () {
             const BULLET = '\u2022 ';
-            const ta = document.getElementById('note');
-            if (!ta) return;
 
-            // When user first focuses & textarea is empty, pre-fill bullet
-            ta.addEventListener('focus', function () {
-                if (this.value.trim() === '') {
-                    this.value = BULLET;
-                    this.setSelectionRange(BULLET.length, BULLET.length);
+            function attachAutoBullet(ta) {
+                if (!ta) return;
+
+                // When user first focuses & textarea is empty, pre-fill bullet
+                ta.addEventListener('focus', function () {
+                    if (this.value.trim() === '') {
+                        this.value = BULLET;
+                        this.setSelectionRange(BULLET.length, BULLET.length);
+                    }
+                });
+
+                ta.addEventListener('keydown', function (e) {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+
+                    const start = this.selectionStart;
+                    const end   = this.selectionEnd;
+                    const val   = this.value;
+
+                    // Find the current line
+                    const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+                    const currentLine = val.substring(lineStart, start);
+
+                    // If current line is only a bullet (empty item), remove bullet & exit list
+                    if (currentLine === BULLET || currentLine === '\u2022') {
+                        this.value = val.substring(0, lineStart) + val.substring(end);
+                        this.setSelectionRange(lineStart, lineStart);
+                        return;
+                    }
+
+                    // Otherwise insert newline + bullet
+                    const insert = '\n' + BULLET;
+                    this.value = val.substring(0, start) + insert + val.substring(end);
+                    const newPos = start + insert.length;
+                    this.setSelectionRange(newPos, newPos);
+                });
+
+                // Ensure first line starts with bullet on blur if not empty
+                ta.addEventListener('blur', function () {
+                    if (this.value && !this.value.startsWith(BULLET)) {
+                        this.value = BULLET + this.value;
+                    }
+                });
+
+                // Auto-resize height to fit content (including existing content on load)
+                function autoResize() {
+                    ta.style.height = 'auto';
+                    ta.style.height = Math.max(ta.scrollHeight, 80) + 'px';
                 }
-            });
-
-            ta.addEventListener('keydown', function (e) {
-                if (e.key !== 'Enter') return;
-                e.preventDefault();
-
-                const start = this.selectionStart;
-                const end   = this.selectionEnd;
-                const val   = this.value;
-
-                // Find the current line
-                const lineStart = val.lastIndexOf('\n', start - 1) + 1;
-                const currentLine = val.substring(lineStart, start);
-
-                // If current line is only a bullet (empty item), remove bullet & exit list
-                if (currentLine === BULLET || currentLine === '\u2022') {
-                    this.value = val.substring(0, lineStart) + val.substring(end);
-                    this.setSelectionRange(lineStart, lineStart);
-                    return;
-                }
-
-                // Otherwise insert newline + bullet
-                const insert = '\n' + BULLET;
-                this.value = val.substring(0, start) + insert + val.substring(end);
-                const newPos = start + insert.length;
-                this.setSelectionRange(newPos, newPos);
-            });
-
-            // Ensure first line starts with bullet on blur if not empty
-            ta.addEventListener('blur', function () {
-                if (this.value && !this.value.startsWith(BULLET)) {
-                    this.value = BULLET + this.value;
-                }
-            });
-
-            // Auto-resize height to fit content (including existing content on load)
-            function autoResize() {
-                ta.style.height = 'auto';
-                ta.style.height = ta.scrollHeight + 'px';
+                ta.addEventListener('input', autoResize);
+                ta.addEventListener('keydown', function () {
+                    setTimeout(autoResize, 0);
+                });
+                autoResize(); // run immediately to fit existing content
             }
-            ta.addEventListener('input', autoResize);
-            ta.addEventListener('keydown', function () {
-                setTimeout(autoResize, 0);
-            });
-            autoResize(); // run immediately to fit existing content
+
+            attachAutoBullet(document.getElementById('note'));
+            attachAutoBullet(document.getElementById('rental_terms'));
         })();
 
         $(document).on('click', '.btn-action-draft', function(e) {

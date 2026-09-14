@@ -134,10 +134,16 @@
                     <div class="col-md-4">
                         <div class="form-floating form-floating-outline">
                             <select class="select2 form-select" name="id_client" id="client-select">
-                                <option value="">-- Select Client --</option>
-                                @foreach ($clients as $c)
-                                    <option value="{{ $c->id }}" data-role="{{ $c->role }}" {{ (old('id_client', $selectedClient ?? '') == $c->id) ? 'selected' : '' }}>{{ $c->company }}</option>
-                                @endforeach
+                                @if (isset($selectedClientModel) && $selectedClientModel)
+                                    <option value="{{ $selectedClientModel->id }}" data-role="{{ $selectedClientModel->role }}" selected>
+                                        {{ $selectedClientModel->company }}
+                                    </option>
+                                @else
+                                    <option value="">-- Ketik minimal 2 huruf nama client --</option>
+                                    @foreach ($clients as $c)
+                                        <option value="{{ $c->id }}" data-role="{{ $c->role }}" {{ (old('id_client', $selectedClient ?? '') == $c->id) ? 'selected' : '' }}>{{ $c->company }}</option>
+                                    @endforeach
+                                @endif
                             </select>
                             <label>Client *</label>
                         </div>
@@ -375,6 +381,29 @@
                                 <label class="col-sm-4 col-form-label text-muted small fw-semibold" for="delivery">Delivery Process</label>
                                 <div class="col-sm-8">
                                     <textarea id="delivery" class="form-control form-control-sm" name="delivery_process" rows="1" style="resize: vertical;">{{ old('delivery_process', 'Ready stock') }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- KETENTUAN RENTAL UNIT KOMPRESOR (Card terpisah khusus tipe Rental) --}}
+                        <div class="col-12" id="rental-terms-card-wrapper" style="display: none;">
+                            <div class="card border border-warning shadow-none" style="background: #fffdf9; border-radius: 8px;">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <h6 class="fw-bold mb-0 text-dark d-flex align-items-center">
+                                            <i class="mdi mdi-file-document-check-outline me-2 text-warning fs-5"></i> KETENTUAN RENTAL UNIT KOMPRESOR
+                                        </h6>
+                                        <button type="button" class="btn btn-xs btn-outline-warning py-0.5 px-2 rounded shadow-none" id="btnResetRentalTerms" title="Muat ulang template klausul ketentuan rental dari master setting">
+                                            <i class="mdi mdi-sync me-1"></i> Muat Ulang Template
+                                        </button>
+                                    </div>
+                                    <textarea class="form-control bg-white" name="rental_terms" id="rental_terms"
+                                        rows="4" placeholder="• Masukkan klausul ketentuan rental unit kompresor di sini..."
+                                        style="overflow-y: hidden; resize: none;">{{ old('rental_terms', $rentalNoteTemplate ?? '') }}</textarea>
+                                    <div class="form-text text-muted mt-1 d-flex justify-content-between align-items-center">
+                                        <span><i class="mdi mdi-information-outline me-1 text-warning"></i>Ketentuan khusus rental kompresor. Tekan <kbd>Enter</kbd> untuk baris baru otomatis ber-bullet.</span>
+                                        <span class="badge bg-label-warning small">Khusus Type Rental</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -854,6 +883,7 @@
             @endif
         }
         window.TRANSPORT_PRICES = @json($transportationPrices);
+        window.RENTAL_NOTE_TEMPLATE = @json($rentalNoteTemplate ?? '');
     </script>
     <script src="{{ asset('assets') }}/includes/form-unit-quotation.js?v={{ filemtime(public_path('assets/includes/form-unit-quotation.js')) }}"></script>
     
@@ -871,7 +901,18 @@
 
             if (savedDraftData && savedDraftData.id_client) {
                 setTimeout(function() {
-                    $('#client-select').val(savedDraftData.id_client).trigger('change');
+                    var $cs = $('#client-select');
+                    if (!$cs.find('option[value="' + savedDraftData.id_client + '"]').length) {
+                        $.get('/smart-quote/clients-search', { client_id: savedDraftData.id_client }, function(res) {
+                            if (res && res.client) {
+                                var newOpt = new Option(res.client.text, res.client.id, true, true);
+                                if (res.client.role) $(newOpt).attr('data-role', res.client.role);
+                                $cs.append(newOpt).trigger('change');
+                            }
+                        });
+                    } else {
+                        $cs.val(savedDraftData.id_client).trigger('change');
+                    }
                 }, 150);
             } else if (@json(isset($selectedClient) && $selectedClient)) {
                 setTimeout(function() {
@@ -912,6 +953,7 @@
                     unit_condition: $('#select-unit-condition').val() || '',
                     week: $('#select-week').val() || '',
                     note: $('#note').val() || '',
+                    rental_terms: $('#rental_terms').val() || '',
                     validity: $('#validity').val() || '',
                     pricing: $('#pricing').val() || '',
                     payment_select: $('#payment-select').val() || '',
@@ -995,6 +1037,7 @@
                 if (savedDraftData.unit_condition) $('#select-unit-condition').val(savedDraftData.unit_condition);
                 if (savedDraftData.week) $('#select-week').val(savedDraftData.week);
                 if (savedDraftData.note) $('#note').val(savedDraftData.note);
+                if (savedDraftData.rental_terms) $('#rental_terms').val(savedDraftData.rental_terms);
                 if (savedDraftData.validity) $('#validity').val(savedDraftData.validity);
                 if (savedDraftData.pricing) $('#pricing').val(savedDraftData.pricing);
                 if (savedDraftData.warranty) $('#warranty').val(savedDraftData.warranty);
@@ -1045,63 +1088,68 @@
             });
         })();
 
-        // ── Auto-bullet on Note textarea ──
+        // ── Auto-bullet on Note & Ketentuan Rental textarea ──
         (function () {
             const BULLET = '\u2022 ';
-            const ta = document.getElementById('note');
-            if (!ta) return;
 
-            // When user first focuses & textarea is empty, pre-fill bullet
-            ta.addEventListener('focus', function () {
-                if (this.value.trim() === '') {
-                    this.value = BULLET;
-                    this.setSelectionRange(BULLET.length, BULLET.length);
+            function attachAutoBullet(ta) {
+                if (!ta) return;
+
+                // When user first focuses & textarea is empty, pre-fill bullet
+                ta.addEventListener('focus', function () {
+                    if (this.value.trim() === '') {
+                        this.value = BULLET;
+                        this.setSelectionRange(BULLET.length, BULLET.length);
+                    }
+                });
+
+                ta.addEventListener('keydown', function (e) {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+
+                    const start = this.selectionStart;
+                    const end   = this.selectionEnd;
+                    const val   = this.value;
+
+                    // Find the current line
+                    const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+                    const currentLine = val.substring(lineStart, start);
+
+                    // If current line is only a bullet (empty item), remove bullet & exit list
+                    if (currentLine === BULLET || currentLine === '\u2022') {
+                        this.value = val.substring(0, lineStart) + val.substring(end);
+                        this.setSelectionRange(lineStart, lineStart);
+                        return;
+                    }
+
+                    // Otherwise insert newline + bullet
+                    const insert = '\n' + BULLET;
+                    this.value = val.substring(0, start) + insert + val.substring(end);
+                    const newPos = start + insert.length;
+                    this.setSelectionRange(newPos, newPos);
+                });
+
+                // Ensure first line starts with bullet on blur if not empty
+                ta.addEventListener('blur', function () {
+                    if (this.value && !this.value.startsWith(BULLET)) {
+                        this.value = BULLET + this.value;
+                    }
+                });
+
+                // Auto-resize height to fit content
+                function autoResize() {
+                    ta.style.height = 'auto';
+                    ta.style.height = Math.max(ta.scrollHeight, 80) + 'px';
                 }
-            });
-
-            ta.addEventListener('keydown', function (e) {
-                if (e.key !== 'Enter') return;
-                e.preventDefault();
-
-                const start = this.selectionStart;
-                const end   = this.selectionEnd;
-                const val   = this.value;
-
-                // Find the current line
-                const lineStart = val.lastIndexOf('\n', start - 1) + 1;
-                const currentLine = val.substring(lineStart, start);
-
-                // If current line is only a bullet (empty item), remove bullet & exit list
-                if (currentLine === BULLET || currentLine === '\u2022') {
-                    this.value = val.substring(0, lineStart) + val.substring(end);
-                    this.setSelectionRange(lineStart, lineStart);
-                    return;
-                }
-
-                // Otherwise insert newline + bullet
-                const insert = '\n' + BULLET;
-                this.value = val.substring(0, start) + insert + val.substring(end);
-                const newPos = start + insert.length;
-                this.setSelectionRange(newPos, newPos);
-            });
-
-            // Ensure first line starts with bullet on blur if not empty
-            ta.addEventListener('blur', function () {
-                if (this.value && !this.value.startsWith(BULLET)) {
-                    this.value = BULLET + this.value;
-                }
-            });
-
-            // Auto-resize height to fit content
-            function autoResize() {
-                ta.style.height = 'auto';
-                ta.style.height = ta.scrollHeight + 'px';
+                ta.addEventListener('input', autoResize);
+                ta.addEventListener('keydown', function () {
+                    setTimeout(autoResize, 0);
+                });
+                autoResize();
             }
-            ta.addEventListener('input', autoResize);
-            ta.addEventListener('keydown', function () {
-                setTimeout(autoResize, 0);
-            });
-            autoResize();
+
+            attachAutoBullet(document.getElementById('note'));
+            attachAutoBullet(document.getElementById('rental_terms'));
         })();
     </script>
 @endpush

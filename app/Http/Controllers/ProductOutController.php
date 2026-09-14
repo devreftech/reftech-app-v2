@@ -26,7 +26,22 @@ class ProductOutController extends Controller
     public function index()
     {
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
-        return view('pages.warehouse.product-out.index', compact('noSaleProspect'));
+        $totalDoc = DB::table('product_out')->count();
+        $thisMonthDoc = DB::table('product_out')->whereYear('date', now()->year)->whereMonth('date', now()->month)->count();
+        $totalQtyThisMonth = (int) DB::table('detail_product_out as d')
+            ->join('product_out as p', 'd.id_product_out', '=', 'p.id')
+            ->whereYear('p.date', now()->year)
+            ->whereMonth('p.date', now()->month)
+            ->sum('d.qty');
+        $totalClients = DB::table('product_out')->distinct('detail_client')->count('detail_client');
+
+        return view('pages.warehouse.product-out.index', compact(
+            'noSaleProspect',
+            'totalDoc',
+            'thisMonthDoc',
+            'totalQtyThisMonth',
+            'totalClients'
+        ));
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bank;
+use App\Models\BankAdjustment;
 use App\Models\BankTransfer;
 use App\Models\Expense;
 use App\Models\ManualManagementFee;
@@ -27,18 +28,19 @@ class BankController extends Controller
     public function index()
     {
         $banks = Bank::with('pic')->orderBy('is_active', 'desc')->orderBy('bank', 'asc')->get()->map(function ($bank) {
-            $arCount = Payment::where('id_bank', $bank->id)->where('level', 1)->count();
-            $apCount = PurchasePayment::where('id_bank', $bank->id)->count();
-            $expenseCount = Expense::where('id_bank', $bank->id)->count();
-            $pettyCount = PettyCashTransaction::where('id_bank', $bank->id)->count();
-            
-            $bank->total_tx_count = $arCount + $apCount + $expenseCount + $pettyCount;
+            $bank->total_tx_count = $bank->getTransactionCount();
+            $bank->has_transactions = $bank->total_tx_count > 0;
+            $adjIn = (float) BankAdjustment::where('id_bank', $bank->id)->where('difference', '>', 0)->sum('difference');
+            $adjOut = (float) BankAdjustment::where('id_bank', $bank->id)->where('difference', '<', 0)->sum(DB::raw('ABS(difference)'));
+
             $bank->total_in = (float) Payment::where('id_bank', $bank->id)->where('level', 1)->sum('amount')
-                            + (float) PettyCashTransaction::where('id_bank', $bank->id)->where('type', 'topup')->sum('amount');
+                            + (float) PettyCashTransaction::where('id_bank', $bank->id)->where('type', 'topup')->sum('amount')
+                            + $adjIn;
             $bank->total_out = (float) PurchasePayment::where('id_bank', $bank->id)->sum('amount')
                              + (float) Expense::where('id_bank', $bank->id)->sum('amount')
                              + (float) PettyCashTransaction::where('id_bank', $bank->id)->where('type', 'disbursement')->sum('amount')
-                             + (float) PettyCashTransaction::where('id_source_bank', $bank->id)->where('type', 'topup')->sum('amount');
+                             + (float) PettyCashTransaction::where('id_source_bank', $bank->id)->where('type', 'topup')->sum('amount')
+                             + $adjOut;
             return $bank;
         });
 
@@ -52,6 +54,14 @@ class BankController extends Controller
             return strtolower($b->entity ?? 'reftech') === 'reftech';
         });
 
+        $reftechPusatBanks = $banks->filter(function($b) {
+            return strtolower($b->entity ?? 'reftech') === 'reftech' && stripos($b->branch ?? '', 'palembang') === false;
+        });
+
+        $palembangBanks = $banks->filter(function($b) {
+            return stripos($b->branch ?? '', 'palembang') !== false || stripos($b->description ?? '', 'palembang') !== false;
+        });
+
         $kojishaBanks = $banks->filter(function($b) {
             return strtolower($b->entity ?? '') === 'kojisha';
         });
@@ -61,6 +71,8 @@ class BankController extends Controller
         return view('pages.finance.bank.index', compact(
             'banks',
             'reftechBanks',
+            'reftechPusatBanks',
+            'palembangBanks',
             'kojishaBanks',
             'totalLiquidBalance',
             'totalInitialBalance',
@@ -116,6 +128,10 @@ class BankController extends Controller
     {
         $bank = Bank::findOrFail($id);
 
+        if ($bank->hasTransactions()) {
+            return redirect()->back()->with('error', "Rekening {$bank->bank} ({$bank->no_rek}) TIDAK BISA DIUBAH karena telah memiliki {$bank->getTransactionCount()} riwayat transaksi. Untuk menjaga integritas pembukuan dan rekonsiliasi keuangan, identitas rekening & saldo tidak diizinkan diubah. Silakan gunakan opsi 'Nonaktifkan' jika rekening ini sudah tidak aktif.");
+        }
+
         $request->validate([
             'bank' => 'required|string|max:100',
             'no_rek' => 'required|string|max:100',
@@ -167,9 +183,6 @@ class BankController extends Controller
         return redirect()->back()->with('success', "Rekening {$bank->bank} berhasil {$statusLabel}.");
     }
 
-    /**
-     * Remove the specified bank account from storage.
-     */
     /**
      * Handle internal transfer between bank accounts.
      */
@@ -237,24 +250,92 @@ class BankController extends Controller
     }
 
     /**
+     * Handle bank balance reconciliation / cut-off adjustment (Opname Kas & Bank).
+     */
+    public function adjustment(Request $request)
+    {
+        $request->validate([
+            'id_bank' => 'required|exists:bank,id',
+            'adjusted_balance' => 'required|numeric',
+            'date' => 'required|date',
+            'reason' => 'required|string|max:500',
+            'proof_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'is_cutoff_initial' => 'nullable|in:0,1',
+        ], [
+            'id_bank.required' => 'Pilih rekening bank yang akan disesuaikan.',
+            'adjusted_balance.required' => 'Nominal saldo riil rekening koran wajib diisi.',
+            'reason.required' => 'Alasan penyesuaian saldo wajib diisi untuk keperluan jejak audit akuntansi.',
+        ]);
+
+        $bank = Bank::findOrFail($request->id_bank);
+        $previousBalance = (float) $bank->saldo;
+        $adjustedBalance = (float) $request->adjusted_balance;
+        $difference = round($adjustedBalance - $previousBalance, 2);
+        $isCutoff = $request->has('is_cutoff_initial') && (int)$request->is_cutoff_initial === 1;
+
+        $type = 'neutral';
+        if ($difference > 0) {
+            $type = 'in';
+        } elseif ($difference < 0) {
+            $type = 'out';
+        }
+
+        $proofPath = null;
+        if ($request->hasFile('proof_file')) {
+            $file = $request->file('proof_file');
+            $filename = 'adj_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $proofPath = $file->storeAs('bank_adjustments', $filename, 'public');
+        }
+
+        // Generate adjustment number: ADJ-YYYYMM-XXXX
+        $prefix = 'ADJ-' . Carbon::parse($request->date)->format('Ym') . '-';
+        $lastAdj = BankAdjustment::where('adjustment_number', 'like', $prefix . '%')->latest('id')->first();
+        $seq = 1;
+        if ($lastAdj) {
+            $lastSeq = (int) substr($lastAdj->adjustment_number, -4);
+            $seq = $lastSeq + 1;
+        }
+        $adjustmentNumber = $prefix . str_pad($seq, 4, '0', STR_PAD_LEFT);
+
+        DB::transaction(function () use ($bank, $adjustmentNumber, $previousBalance, $adjustedBalance, $difference, $type, $request, $proofPath, $isCutoff) {
+            BankAdjustment::create([
+                'adjustment_number' => $adjustmentNumber,
+                'id_bank' => $bank->id,
+                'previous_balance' => $previousBalance,
+                'adjusted_balance' => $adjustedBalance,
+                'difference' => $difference,
+                'type' => $type,
+                'date' => $request->date,
+                'reason' => $request->reason,
+                'proof_file' => $proofPath,
+                'is_cutoff_initial' => $isCutoff,
+                'created_by' => Auth::id(),
+            ]);
+
+            $bank->saldo = $adjustedBalance;
+            if ($isCutoff) {
+                $bank->initial_balance = $adjustedBalance;
+            }
+            $bank->save();
+        });
+
+        $diffFormatted = number_format(abs($difference), 0, ',', '.');
+        $diffText = $difference >= 0 ? "+ Rp {$diffFormatted}" : "- Rp {$diffFormatted}";
+
+        return redirect()->route('bank.index')->with('success', "Penyesuaian saldo rekening {$bank->bank} ({$bank->no_rek}) berhasil dicatat ({$adjustmentNumber}). Saldo disesuaikan menjadi Rp " . number_format($adjustedBalance, 0, ',', '.') . " (Selisih: {$diffText}).");
+    }
+
+    /**
      * Remove the specified bank account from storage.
      */
     public function destroy($id)
     {
         $bank = Bank::findOrFail($id);
 
-        $arCount = Payment::where('id_bank', $bank->id)->count();
-        $apCount = PurchasePayment::where('id_bank', $bank->id)->count();
-        $expenseCount = Expense::where('id_bank', $bank->id)->count();
-        $payableCount = Payable::where('id_bank', $bank->id)->count();
-        $projectExpenseCount = ProjectExpense::where('id_bank', $bank->id)->count();
-        $transferCount = BankTransfer::where('id_from_bank', $bank->id)->orWhere('id_to_bank', $bank->id)->count();
-        $feeCount = UnitQuotation::where('id_source_bank', $bank->id)->where('fee_payment_status', 'paid')->count()
-                  + ManualManagementFee::where('id_source_bank', $bank->id)->where('fee_payment_status', 'paid')->count();
-        $totalTx = $arCount + $apCount + $expenseCount + $payableCount + $projectExpenseCount + $transferCount + $feeCount;
+        $totalTx = $bank->getTransactionCount();
 
         if ($totalTx > 0) {
-            return redirect()->back()->with('error', "Rekening {$bank->bank} ({$bank->no_rek}) TIDAK BISA DIHAPUS karena telah memiliki {$totalTx} riwayat transaksi terkait (AR/AP/Expense/Voucher/Transfer/Management Fee). Silakan gunakan opsi 'Nonaktifkan' jika rekening ini sudah tidak digunakan agar integritas laporan keuangan tetap aman.");
+            return redirect()->back()->with('error', "Rekening {$bank->bank} ({$bank->no_rek}) TIDAK BISA DIHAPUS karena telah memiliki {$totalTx} riwayat transaksi terkait (AR/AP/Expense/Voucher/Transfer/Management Fee/Kas Kecil). Silakan gunakan opsi 'Nonaktifkan' jika rekening ini sudah tidak digunakan agar integritas laporan keuangan tetap aman.");
         }
 
         $bank->delete();
@@ -338,8 +419,19 @@ class BankController extends Controller
             ->whereDate('date', '<', $startDate)
             ->sum('amount');
 
+        // Bank Balance Adjustments before start_date
+        $prevAdjIn = (float) BankAdjustment::where('id_bank', $id)
+            ->whereDate('date', '<', $startDate)
+            ->where('difference', '>', 0)
+            ->sum('difference');
+
+        $prevAdjOut = (float) BankAdjustment::where('id_bank', $id)
+            ->whereDate('date', '<', $startDate)
+            ->where('difference', '<', 0)
+            ->sum(DB::raw('ABS(difference)'));
+
         $initialBalance = (float) ($bank->initial_balance ?: 0);
-        $openingBalance = $initialBalance + $prevAr + $prevTrfIn + $prevPctTopupIn - ($prevAp + $prevExpense + $prevTrfOut + $prevUqFees + $prevManualFees + $prevPctTopupOut + $prevPctDisburseOut);
+        $openingBalance = $initialBalance + $prevAr + $prevTrfIn + $prevPctTopupIn + $prevAdjIn - ($prevAp + $prevExpense + $prevTrfOut + $prevUqFees + $prevManualFees + $prevPctTopupOut + $prevPctDisburseOut + $prevAdjOut);
 
         // Transactions in date range
         // 1. AR Customer Payments (Penerimaan / Masuk / Kredit)
@@ -562,6 +654,27 @@ class BankController extends Controller
                 ];
             });
 
+        // 10. Bank Balance Adjustments (Penyesuaian Saldo / Opname Kas & Bank)
+        $adjustments = BankAdjustment::where('id_bank', $id)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->with('creator')
+            ->get()->map(function ($adj) {
+                $creatorName = $adj->creator?->name ?? 'Finance';
+                $diffAbs = abs($adj->difference);
+                $isPlus = $adj->difference >= 0;
+                $cutoffNote = $adj->is_cutoff_initial ? ' [Cut-Off Saldo Awal]' : '';
+                return [
+                    'date' => $adj->date ? $adj->date->toDateString() : Carbon::now()->toDateString(),
+                    'module' => 'Penyesuaian Saldo',
+                    'badge_class' => 'bg-label-warning',
+                    'ref_no' => $adj->adjustment_number,
+                    'description' => "Penyesuaian Saldo (Opname): Saldo Sistem (Rp " . number_format($adj->previous_balance, 0, ',', '.') . ") disesuaikan ke Saldo Riil (Rp " . number_format($adj->adjusted_balance, 0, ',', '.') . "). Alasan: {$adj->reason}{$cutoffNote} (Oleh: {$creatorName})",
+                    'in' => $isPlus ? $diffAbs : 0,
+                    'out' => !$isPlus ? $diffAbs : 0,
+                    'type' => $isPlus ? 'IN' : 'OUT',
+                ];
+            });
+
         $all = $arPayments->concat($apPayments)
             ->concat($expenses)
             ->concat($transfersIn)
@@ -571,6 +684,7 @@ class BankController extends Controller
             ->concat($pettyCashTopupsOut)
             ->concat($pettyCashTopupsIn)
             ->concat($pettyCashDisbursements)
+            ->concat($adjustments)
             ->sortBy('date')
             ->values();
 
@@ -676,8 +790,19 @@ class BankController extends Controller
             ->whereDate('date', '<', $startDate)
             ->sum('amount');
 
+        // Bank Balance Adjustments before start_date
+        $prevAdjIn = (float) BankAdjustment::where('id_bank', $id)
+            ->whereDate('date', '<', $startDate)
+            ->where('difference', '>', 0)
+            ->sum('difference');
+
+        $prevAdjOut = (float) BankAdjustment::where('id_bank', $id)
+            ->whereDate('date', '<', $startDate)
+            ->where('difference', '<', 0)
+            ->sum(DB::raw('ABS(difference)'));
+
         $initialBalance = (float) ($bank->initial_balance ?: 0);
-        $openingBalance = $initialBalance + $prevAr + $prevTrfIn + $prevPctTopupIn - ($prevAp + $prevExpense + $prevTrfOut + $prevUqFees + $prevManualFees + $prevPctTopupOut + $prevPctDisburseOut);
+        $openingBalance = $initialBalance + $prevAr + $prevTrfIn + $prevPctTopupIn + $prevAdjIn - ($prevAp + $prevExpense + $prevTrfOut + $prevUqFees + $prevManualFees + $prevPctTopupOut + $prevPctDisburseOut + $prevAdjOut);
 
         // Transactions in date range
         $arPayments = Payment::where('id_bank', $id)
@@ -884,6 +1009,26 @@ class BankController extends Controller
                 ];
             });
 
+        // Bank Balance Adjustments (Penyesuaian Saldo / Opname Kas & Bank)
+        $adjustments = BankAdjustment::where('id_bank', $id)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->with('creator')
+            ->get()->map(function ($adj) {
+                $creatorName = $adj->creator?->name ?? 'Finance';
+                $diffAbs = abs($adj->difference);
+                $isPlus = $adj->difference >= 0;
+                $cutoffNote = $adj->is_cutoff_initial ? ' [Cut-Off Saldo Awal]' : '';
+                return [
+                    'date' => $adj->date ? $adj->date->toDateString() : Carbon::now()->toDateString(),
+                    'module' => 'Penyesuaian Saldo',
+                    'ref_no' => $adj->adjustment_number,
+                    'description' => "Penyesuaian Saldo (Opname): Saldo Sistem (Rp " . number_format($adj->previous_balance, 0, ',', '.') . ") disesuaikan ke Saldo Riil (Rp " . number_format($adj->adjusted_balance, 0, ',', '.') . "). Alasan: {$adj->reason}{$cutoffNote} (Oleh: {$creatorName})",
+                    'in' => $isPlus ? $diffAbs : 0,
+                    'out' => !$isPlus ? $diffAbs : 0,
+                    'type' => $isPlus ? 'IN' : 'OUT',
+                ];
+            });
+
         $all = $arPayments->concat($apPayments)
             ->concat($expenses)
             ->concat($transfersIn)
@@ -893,6 +1038,7 @@ class BankController extends Controller
             ->concat($pettyCashTopupsOut)
             ->concat($pettyCashTopupsIn)
             ->concat($pettyCashDisbursements)
+            ->concat($adjustments)
             ->sortBy('date')
             ->values();
 

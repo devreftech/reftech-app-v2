@@ -4,11 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kwitansi Pembayaran - {{ $kwitansiNumber }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css">
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background-color: #f3f4f6;
             color: #1f2937;
         }
@@ -161,6 +164,10 @@
     </div>
 
     <div class="kwitansi-container">
+        @php
+            $isKojisha = $isKojisha ?? (($client?->info ?? '') === 'Kojisha');
+        @endphp
+
         {{-- Watermark Status --}}
         @if($payment->level == 1)
             <div class="watermark-paid">LUNAS / VERIFIED</div>
@@ -170,11 +177,30 @@
         <div class="header-kwitansi">
             <div class="row align-items-center">
                 <div class="col-7">
-                    <h5 class="fw-bold mb-0 text-primary" style="font-size: 16px; letter-spacing: 0.5px;">PT. REFRIGERASI TEKNIK INDONESIA</h5>
-                    <small class="text-muted d-block" style="font-size: 11px;">
-                        Ruko Grand Galaxy City Blok RSN 7 No. 15, Bekasi Selatan, Jawa Barat<br>
-                        Telp: (021) 8273 4567 | NPWP: 72.123.456.7-432.000
-                    </small>
+                    <div class="d-flex align-items-center gap-3 mb-2">
+                        <img src="{{ asset('/asset') }}/logo/{{ $isKojisha ? 'Kojisha-Log.png' : 'Reftech-Log.png' }}" 
+                             alt="{{ $isKojisha ? 'PT Kojisha Innotiv Indonesia' : 'PT Reftech Jaya Optima' }}" 
+                             style="max-height: 42px; max-width: 140px; object-fit: contain;">
+                        <div>
+                            <h5 class="fw-bold mb-0 text-dark" style="font-size: 15px; letter-spacing: 0.5px;">
+                                {{ $isKojisha ? 'PT KOJISHA INNOTIV INDONESIA' : 'PT REFTECH JAYA OPTIMA' }}
+                            </h5>
+                            <span class="badge {{ $isKojisha ? 'bg-label-warning text-warning' : 'bg-label-primary text-primary' }} rounded-pill" style="font-size: 10px;">
+                                {{ $isKojisha ? 'Kojisha' : 'Reftech' }}
+                            </span>
+                        </div>
+                    </div>
+                    @if($isKojisha)
+                        <small class="text-muted d-block" style="font-size: 11px; line-height: 1.45;">
+                            Jl. Nancep No. 45A, Setu, Cibitung - Kab. Bekasi 17320<br>
+                            Telp: +62 812-1000-0997 &nbsp;|&nbsp; Email: admin@kojisha.com &nbsp;|&nbsp; NPWP: 96.484.859.2-413.000
+                        </small>
+                    @else
+                        <small class="text-muted d-block" style="font-size: 11px; line-height: 1.45;">
+                            Taman Kopo Indah V, Ruko Sommerville No. 31, Bandung – Jawa Barat 40218<br>
+                            Telp: 022 54417653 &nbsp;|&nbsp; Email: info@reftech.id &nbsp;|&nbsp; NPWP: 07.372.857.1-842.9000
+                        </small>
+                    @endif
                 </div>
                 <div class="col-5 text-end">
                     <div class="title-kwitansi">KWITANSI</div>
@@ -255,12 +281,12 @@
                 </div>
                 <div class="col-6 text-center">
                     <div class="text-muted small">
-                        Bekasi, {{ $payment->created_at ? Carbon\Carbon::parse($payment->created_at)->translatedFormat('d F Y') : Carbon\Carbon::now()->translatedFormat('d F Y') }}
+                        {{ $isKojisha ? 'Bekasi' : 'Bandung' }}, {{ $payment->created_at ? Carbon\Carbon::parse($payment->created_at)->translatedFormat('d F Y') : Carbon\Carbon::now()->translatedFormat('d F Y') }}
                     </div>
                     <div class="fw-semibold small text-muted">Bagian Keuangan &amp; Akuntansi</div>
-                    <div style="height: 65px;"></div>
+                    <div style="height: 60px;"></div>
                     <div class="fw-bold text-decoration-underline" style="font-size: 13px;">( Finance &amp; Accounting )</div>
-                    <small class="text-muted" style="font-size: 10px;">PT. Refrigerasi Teknik Indonesia</small>
+                    <small class="text-muted" style="font-size: 10px;">{{ $isKojisha ? 'PT. Kojisha Innotiv Indonesia' : 'PT. Reftech Jaya Optima' }}</small>
                 </div>
             </div>
         </div>

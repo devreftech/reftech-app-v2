@@ -29,7 +29,7 @@
                         </div>
                     </td>
                     <td class="px-3">
-                        <div class="d-flex align-items-center gap-1 mb-1">
+                        <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
                             @if(($item->entity ?? 'Reftech') == 'Kojisha')
                                 <span class="badge bg-label-warning rounded-pill px-2 py-0.5" style="font-size: 11px;">
                                     <i class="mdi mdi-office-building me-1"></i> KOJISHA
@@ -39,9 +39,23 @@
                                     <i class="mdi mdi-domain me-1"></i> REFTECH
                                 </span>
                             @endif
+
+                            @if(stripos($item->branch ?? '', 'palembang') !== false || stripos($item->description ?? '', 'palembang') !== false)
+                                <span class="badge bg-label-success rounded-pill px-2 py-0.5" style="font-size: 11px;">
+                                    <i class="mdi mdi-map-marker me-1"></i> Palembang
+                                </span>
+                            @elseif($item->branch)
+                                <span class="badge bg-label-secondary rounded-pill px-2 py-0.5" style="font-size: 11px;">
+                                    <i class="mdi mdi-city me-1"></i> {{ $item->branch }}
+                                </span>
+                            @else
+                                <span class="badge bg-label-secondary rounded-pill px-2 py-0.5" style="font-size: 11px;">
+                                    <i class="mdi mdi-city me-1"></i> Bandung
+                                </span>
+                            @endif
                         </div>
                         <span class="fw-semibold text-dark d-block" style="font-size: 12.5px;">{{ $item->atas_nama ?: 'PT. Refrigerasi Teknik Indonesia' }}</span>
-                        <small class="text-muted">{{ $item->branch ? 'KCP ' . $item->branch : '-' }}</small>
+                        <small class="text-muted">{{ $item->branch ? 'KCP ' . $item->branch : 'Pusat (Bandung)' }}</small>
                     </td>
                     <td class="px-3">
                         @if($item->is_petty_cash)
@@ -94,33 +108,56 @@
                         @endif
                     </td>
                     <td class="px-3 text-center">
-                        <span class="badge bg-label-info rounded-pill px-2.5 py-1">
-                            {{ $item->total_tx_count }} Mutasi
-                        </span>
+                        @if($item->total_tx_count > 0)
+                            <span class="badge bg-label-info rounded-pill px-2.5 py-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Telah tercatat {{ $item->total_tx_count }} transaksi (AR, AP, Expense, Petty Cash, Transfer, dsb)">
+                                <i class="mdi mdi-lock-outline me-1 text-warning"></i>{{ $item->total_tx_count }} Mutasi
+                            </span>
+                        @else
+                            <span class="badge bg-label-secondary rounded-pill px-2.5 py-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Belum ada riwayat transaksi (Bisa diubah/dihapus)">
+                                0 Mutasi
+                            </span>
+                        @endif
                     </td>
                     <td class="px-3 text-center">
-                        <div class="d-flex justify-content-center gap-1">
+                        <div class="d-flex justify-content-center align-items-center gap-1">
                             <a href="{{ route('bank.statement', $item->id) }}" class="btn btn-xs btn-label-primary rounded-pill px-2.5" title="Lihat Rekening Koran / Buku Bank">
                                 <i class="mdi mdi-book-open-outline me-1"></i> Buku Bank
                             </a>
-                            <button type="button" class="btn btn-xs btn-label-warning rounded-pill px-2" title="Edit Bank"
-                                data-bs-toggle="modal" data-bs-target="#editBankModal-{{ $item->id }}">
-                                <i class="mdi mdi-pencil"></i>
-                            </button>
+
+                            @if($item->total_tx_count > 0)
+                                <button type="button" class="btn btn-xs btn-label-secondary rounded-pill px-2"
+                                    data-bs-toggle="modal" data-bs-target="#editBankModal-{{ $item->id }}"
+                                    title="Terkunci: Memiliki {{ $item->total_tx_count }} transaksi (Klik untuk melihat info detail)">
+                                    <i class="mdi mdi-lock-outline text-warning me-1"></i> Terkunci
+                                </button>
+                            @else
+                                <button type="button" class="btn btn-xs btn-label-warning rounded-pill px-2" title="Edit Rekening Bank"
+                                    data-bs-toggle="modal" data-bs-target="#editBankModal-{{ $item->id }}">
+                                    <i class="mdi mdi-pencil"></i>
+                                </button>
+                            @endif
+
                             <form action="{{ route('bank.toggle_status', $item->id) }}" method="POST" class="d-inline">
                                 @csrf
-                                <button type="submit" class="btn btn-xs {{ $item->is_active ? 'btn-label-secondary' : 'btn-label-success' }} rounded-pill px-2" title="{{ $item->is_active ? 'Nonaktifkan' : 'Aktifkan' }}">
+                                <button type="submit" class="btn btn-xs {{ $item->is_active ? 'btn-label-secondary' : 'btn-label-success' }} rounded-pill px-2" title="{{ $item->is_active ? 'Nonaktifkan Rekening' : 'Aktifkan Rekening' }}">
                                     <i class="mdi {{ $item->is_active ? 'mdi-eye-off-outline' : 'mdi-eye-outline' }}"></i>
                                 </button>
                             </form>
+
                             @if($item->total_tx_count == 0)
                                 <form action="{{ route('bank.destroy', $item->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus rekening {{ $item->bank }}?');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn btn-xs btn-label-danger rounded-pill px-2" title="Hapus">
+                                    <button type="submit" class="btn btn-xs btn-label-danger rounded-pill px-2" title="Hapus Rekening">
                                         <i class="mdi mdi-trash-can-outline"></i>
                                     </button>
                                 </form>
+                            @else
+                                <button type="button" class="btn btn-xs btn-label-secondary rounded-pill px-2" disabled
+                                    data-bs-toggle="tooltip" data-bs-placement="top"
+                                    title="Tidak dapat dihapus karena telah memiliki {{ $item->total_tx_count }} riwayat transaksi keuangan. Gunakan opsi Nonaktifkan jika rekening sudah tidak digunakan.">
+                                    <i class="mdi mdi-trash-can-outline opacity-50"></i>
+                                </button>
                             @endif
                         </div>
                     </td>

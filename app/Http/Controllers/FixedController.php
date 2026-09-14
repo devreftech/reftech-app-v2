@@ -25,7 +25,30 @@ class FixedController extends Controller
      */
     public function index()
     {
-        return view('pages.finance.fixed.index');
+        $allAssets = FixedAsset::all();
+        $totalNilaiPerolehan = $allAssets->sum('total');
+        $totalPenyusutan = 0;
+        $totalNilaiBuku = 0;
+
+        foreach ($allAssets as $a) {
+            $nb = $a->hitungNilaiBuku();
+            $totalPenyusutan += $nb['total_penyusutan'];
+            $totalNilaiBuku += $nb['nilai_buku'];
+        }
+
+        $totalCount = $allAssets->count();
+        $assetCounts = FixedAsset::select('type', DB::raw('COUNT(*) as count'), DB::raw('SUM(total) as total_val'))
+            ->groupBy('type')
+            ->get()
+            ->keyBy('type');
+
+        return view('pages.finance.fixed.index', compact(
+            'totalNilaiPerolehan',
+            'totalPenyusutan',
+            'totalNilaiBuku',
+            'totalCount',
+            'assetCounts'
+        ));
     }
 
     /**
@@ -75,7 +98,7 @@ class FixedController extends Controller
      */
     public function create()
     {
-        if (Auth::user()->role == 'Sales') {
+        if (Auth::user()?->role == 'Sales') {
             abort(403, 'Role Sales tidak memiliki izin untuk menambah Unit Acquisition baru.');
         }
 
@@ -137,7 +160,7 @@ class FixedController extends Controller
 
     public function store(Request $request)
     {
-        if (Auth::user()->role == 'Sales') {
+        if (Auth::user()?->role == 'Sales') {
             abort(403, 'Role Sales tidak memiliki izin untuk menambah Unit Acquisition baru.');
         }
 
@@ -153,7 +176,15 @@ class FixedController extends Controller
             ]);
         }
 
-        // dd($request->all());
+        $tglBeli = $request->beli ?: ($request->pay ?: ($request->date ?: now()->toDateString()));
+        $tglBayar = $request->bayar ?: ($request->date ?: ($request->pay ?: $tglBeli));
+        $tglPakai = $request->pakai ?: $tglBeli;
+
+        $totalInput = $request->total;
+        if ((!$totalInput || $totalInput == 0) && $request->harga) {
+            $totalInput = (float) str_replace(['.', ','], ['', '.'], $request->harga);
+        }
+
         $fixed = new FixedAsset;
         $fixed->id_aktiva = $request->aktiva;
         $fixed->id_penyusutan = $request->penyusutan;
@@ -163,15 +194,16 @@ class FixedController extends Controller
         $fixed->type = $request->type;
         $fixed->code = $request->code ?: $this->generateAssetCode($request->type);
         $fixed->no_invoice = $request->no_invoice;
-        $fixed->beli = $request->pay;
-        $fixed->pakai = $request->pakai;
-        $fixed->bayar = $request->date;
-        $fixed->metode = $request->metode;
+        $fixed->beli = $tglBeli;
+        $fixed->pakai = $tglPakai;
+        $fixed->bayar = $tglBayar;
+        $fixed->metode = $request->metode ?: 'Metode Garis Lurus';
         $fixed->desc = $request->desc;
-        $fixed->umur = $request->umur;
-        $fixed->qty = $request->qty;
-        $fixed->total = $request->total;
+        $fixed->umur = $request->umur ?: 48;
+        $fixed->qty = $request->qty ?: 1;
+        $fixed->total = $totalInput ?: 0;
         $fixed->status = $request->status ?? 0;
+        $fixed->mulai_penyusutan = $tglBeli;
 
         if ($request->type == 'Kendaraan') {
             $fixed->jenis_kendaraan = $request->jenis_kendaraan;
@@ -179,14 +211,11 @@ class FixedController extends Controller
             $fixed->bahan_bakar = $request->bahan_bakar;
             $fixed->plat_nomor = $request->plat_nomor;
             $fixed->atas_nama = $request->atas_nama;
-            $fixed->mulai_penyusutan = $fixed->beli;
-        } else {
-            $fixed->mulai_penyusutan = $fixed->beli;
         }
 
         $fixedSave = $fixed->save();
         if ($fixedSave) {
-            return redirect('fixed')->with('success', 'data telah di tambahkan');
+            return redirect('fixed')->with('success', 'Data aset tetap berhasil ditambahkan');
         }
     }
 
@@ -198,7 +227,7 @@ class FixedController extends Controller
      */
     public function show($id)
     {
-        $fixed = FixedAsset::find($id);
+        $fixed = FixedAsset::with(['unit', 'aktiva', 'penyusutan', 'beban', 'pengeluaran', 'supplier', 'toolsMaster', 'pic'])->findOrFail($id);
         $services = FixedAssetService::where('id_fixed_asset', $id)->with('detailProduct.product')->get();
         $maintenanceLogs = $fixed->type === 'Kendaraan' ? $fixed->maintenanceLogs()->get() : collect();
 
@@ -217,7 +246,7 @@ class FixedController extends Controller
      */
     public function edit($id)
     {
-        $fixed = FixedAsset::find($id);
+        $fixed = FixedAsset::findOrFail($id);
         $account = Account::all();
         $suppliers = Supplier::all();
         $units = Unit::where('type', 'global')->orderBy('brand')->get();
@@ -227,51 +256,68 @@ class FixedController extends Controller
     /**
      * Update the specified resource in storage.
      *
-     * Kategori (type) dan kondisi (Second/Baru) sengaja tidak diubah di sini —
-     * dua field itu menentukan alur QC/penyusutan dan dikirim sebagai hidden
-     * input read-only dari form. Edit ini cuma untuk membetulkan data yang
-     * salah input (kode, tanggal, harga, akun, dst), bukan mengubah alur.
-     *
      * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id)
     {
-        $fixed = FixedAsset::find($id);
-        $fixed->id_aktiva = $request->aktiva;
-        $fixed->id_penyusutan = $request->penyusutan;
-        $fixed->id_beban = $request->beban;
-        $fixed->id_supplier = $request->supplier;
-        $fixed->id_pengeluaran = $request->bank;
-        $fixed->code = $request->code;
-        $fixed->no_invoice = $request->no_invoice;
-        $fixed->beli = $request->pay;
-        $fixed->pakai = $request->pakai;
-        $fixed->bayar = $request->date;
-        $fixed->metode = $request->metode;
-        $fixed->desc = $request->desc;
-        $fixed->umur = $request->umur;
-        $fixed->qty = $request->qty;
-        $fixed->total = $request->total;
-        $fixed->status = $request->status ?? 0;
+        $fixed = FixedAsset::findOrFail($id);
+
+        $tglBeli = $request->beli ?: ($request->pay ?: ($request->date ?: $fixed->beli));
+        $tglBayar = $request->bayar ?: ($request->date ?: ($request->pay ?: ($fixed->bayar ?: $tglBeli)));
+        $tglPakai = $request->pakai ?: ($fixed->pakai ?: $tglBeli);
+
+        $totalInput = $request->total;
+        if ((!$totalInput || $totalInput == 0) && $request->harga) {
+            $totalInput = (float) str_replace(['.', ','], ['', '.'], $request->harga);
+        }
+
+        $fixed->id_aktiva = $request->aktiva ?: $fixed->id_aktiva;
+        $fixed->id_penyusutan = $request->penyusutan ?: $fixed->id_penyusutan;
+        $fixed->id_beban = $request->beban ?: $fixed->id_beban;
+        $fixed->id_supplier = $request->supplier ?: $fixed->id_supplier;
+        $fixed->id_pengeluaran = $request->bank ?: $fixed->id_pengeluaran;
+        if ($request->code) $fixed->code = $request->code;
+        $fixed->no_invoice = $request->no_invoice ?: $fixed->no_invoice;
+        $fixed->beli = $tglBeli;
+        $fixed->pakai = $tglPakai;
+        $fixed->bayar = $tglBayar;
+        if ($request->metode) $fixed->metode = $request->metode;
+        if ($request->desc) $fixed->desc = $request->desc;
+        if ($request->umur) $fixed->umur = $request->umur;
+        if ($request->qty) $fixed->qty = $request->qty;
+        if ($totalInput !== null && $totalInput !== '') $fixed->total = $totalInput;
+        $fixed->status = $request->status ?? $fixed->status;
+        $fixed->mulai_penyusutan = $fixed->mulai_penyusutan ?: $tglBeli;
 
         if ($fixed->type == 'Mesin') {
-            $fixed->id_unit = $request->id_unit;
-            $fixed->serial_number = $request->serial_number;
+            $fixed->id_unit = $request->id_unit ?: $fixed->id_unit;
+            $fixed->serial_number = $request->serial_number ?: $fixed->serial_number;
         }
 
         if ($fixed->type == 'Kendaraan') {
-            $fixed->jenis_kendaraan = $request->jenis_kendaraan;
-            $fixed->merk_model = $request->merk_model;
-            $fixed->bahan_bakar = $request->bahan_bakar;
-            $fixed->plat_nomor = $request->plat_nomor;
-            $fixed->atas_nama = $request->atas_nama;
+            $fixed->jenis_kendaraan = $request->jenis_kendaraan ?: $fixed->jenis_kendaraan;
+            $fixed->merk_model = $request->merk_model ?: $fixed->merk_model;
+            $fixed->bahan_bakar = $request->bahan_bakar ?: $fixed->bahan_bakar;
+            $fixed->plat_nomor = $request->plat_nomor ?: $fixed->plat_nomor;
+            $fixed->atas_nama = $request->atas_nama ?: $fixed->atas_nama;
+        }
+
+        if ($fixed->type == 'Tools') {
+            if ($request->has('id_tools_master') && $request->id_tools_master) $fixed->id_tools_master = $request->id_tools_master;
+            if ($request->has('id_pic') && $request->id_pic) $fixed->id_pic = $request->id_pic;
+            if ($request->has('tanggal_serah_terima') && $request->tanggal_serah_terima) $fixed->tanggal_serah_terima = $request->tanggal_serah_terima;
         }
 
         $fixed->save();
 
-        return redirect('/fixed/' . $id)->with('success', 'Data berhasil diupdate');
+        $redirectTo = $request->get('redirect_to');
+        if ($redirectTo) {
+            return redirect($redirectTo)->with('success', 'Data aset berhasil diupdate');
+        }
+
+        return redirect('/fixed/' . $id)->with('success', 'Data aset berhasil diupdate');
     }
 
     /**
@@ -283,10 +329,14 @@ class FixedController extends Controller
     public function destroy($id)
     {
         $fixed = FixedAsset::find($id);
-        $fixedDel = $fixed->delete();
-        if ($fixedDel) {
-            return 1;
-        } else {
+        if (!$fixed) {
+            return 0;
+        }
+
+        try {
+            $fixedDel = $fixed->delete();
+            return $fixedDel ? 1 : 0;
+        } catch (\Throwable $e) {
             return 0;
         }
     }

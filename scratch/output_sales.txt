@@ -1,0 +1,13 @@
+Status: 200
+Time: 151.01ms
+Length: 6132542
+Preview: {
+    "data": [
+        {
+            "id": 1,
+            "commodity": "JOC-88041 | W940",
+            "description": "Replacement Oil Filter Spin-On",
+            "detail_desc": "OF",
+            "go": "Replacement",
+            "category": "Consumable Part",
+            "procurement_type": "ready

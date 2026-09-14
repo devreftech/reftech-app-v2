@@ -766,7 +766,25 @@ class ProductInController extends Controller
 
     public function indexSupplier()
     {
-        return view('pages.warehouse.supplier.index');
+        $suppliers = Supplier::with(['pics'])
+            ->withCount(['productIn', 'purchase'])
+            ->orderBy('supplier', 'asc')
+            ->get();
+
+        $totalCount = $suppliers->count();
+        $importCount = $suppliers->filter(fn($s) => stripos($s->info ?? '', 'import') !== false || stripos($s->area ?? '', 'china') !== false || stripos($s->area ?? '', 'shanghai') !== false)->count();
+        $lokalCount = $totalCount - $importCount;
+        $activeCount = $suppliers->where('product_in_count', '>', 0)->count();
+        $totalTransactions = $suppliers->sum('product_in_count');
+
+        return view('pages.warehouse.supplier.index', compact(
+            'suppliers',
+            'totalCount',
+            'lokalCount',
+            'importCount',
+            'activeCount',
+            'totalTransactions'
+        ));
     }
     public function detailSupplier($id)
     {
@@ -877,27 +895,46 @@ class ProductInController extends Controller
             'code'     => 'required|string|max:255',
             'supplier' => 'required|string|max:255',
             'info'     => 'required|in:Lokal,Import',
+            'phone'    => 'nullable|string|max:255',
+            'email'    => 'nullable|string|max:255',
         ]);
 
         $supplier = new Supplier();
         $supplier->code = $request->code;
         $supplier->supplier = $request->supplier;
         $supplier->info = $request->info;
+        if ($request->filled('phone')) {
+            $supplier->phone = $request->phone;
+        }
+        if ($request->filled('email')) {
+            $supplier->email = $request->email;
+        }
         $supplier->save();
 
         return response()->json([
             'success' => true,
-            'data'    => $supplier->only('id', 'code', 'supplier', 'info'),
+            'data'    => $supplier,
         ]);
     }
 
     public function deleteSupplier($id)
     {
         $supplier = Supplier::find($id);
-        $supplierDel = $supplier->delete();
-        if ($supplierDel) {
-            return 1;
-        } else {
+        if (!$supplier) {
+            return 0;
+        }
+
+        if ($supplier->productIn()->exists() || $supplier->purchase()->exists()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Supplier tidak dapat dihapus karena memiliki riwayat transaksi pembelian (Product In / PO).'
+            ], 422);
+        }
+
+        try {
+            $supplierDel = $supplier->delete();
+            return $supplierDel ? 1 : 0;
+        } catch (\Throwable $e) {
             return 0;
         }
     }

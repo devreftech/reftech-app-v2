@@ -285,36 +285,102 @@
     </div>
 
     {{-- Modal: Quick Add Supplier --}}
-    <div class="modal fade" id="quickAddSupplierModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Supplier Baru</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <!-- Modal: Tambah Supplier Baru -->
+    <div class="modal fade" id="quickAddSupplierModal" tabindex="-1" aria-labelledby="quickAddSupplierModalTitle" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+                <div class="modal-header border-bottom py-3 px-4 bg-white d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="avatar avatar-md flex-shrink-0">
+                            <span class="avatar-initial rounded-3 bg-label-primary shadow-xs">
+                                <i class="mdi mdi-domain-plus font-22"></i>
+                            </span>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-0" id="quickAddSupplierModalTitle">Supplier Baru</h5>
+                            <small class="text-muted font-12">Daftarkan data master vendor / supplier baru</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Code <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="qsCode" placeholder="SUP001">
+                <div class="modal-body p-4 bg-white">
+                    <div id="qsError" class="alert alert-danger d-none d-flex align-items-center py-2 px-3 mb-3 font-13" role="alert">
+                        <i class="mdi mdi-alert-circle-outline me-2 font-16 flex-shrink-0"></i>
+                        <span id="qsErrorText"></span>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Supplier Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="qsName" placeholder="PT Contoh Jaya">
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold text-dark font-13" for="qsCode">
+                                Kode Supplier <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-barcode"></i>
+                                </span>
+                                <input type="text" class="form-control border-start-0 ps-1" id="qsCode" placeholder="Contoh: SUP-001" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold text-dark font-13" for="qsInfo">
+                                Kategori Asal <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-earth"></i>
+                                </span>
+                                <select class="form-select border-start-0 ps-1" id="qsInfo">
+                                    <option value="" disabled selected>-- Pilih Kategori --</option>
+                                    <option value="Lokal">Lokal (Domestik)</option>
+                                    <option value="Import">Import (Luar Negeri)</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
+
                     <div class="mb-3">
-                        <label class="form-label">Info <span class="text-danger">*</span></label>
-                        <select class="form-select" id="qsInfo">
-                            <option value="" disabled selected>-- Pilih --</option>
-                            <option value="Lokal">Lokal</option>
-                            <option value="Import">Import</option>
-                        </select>
+                        <label class="form-label fw-semibold text-dark font-13" for="qsName">
+                            Nama Supplier / Perusahaan <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group input-group-merge">
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                <i class="mdi mdi-domain"></i>
+                            </span>
+                            <input type="text" class="form-control border-start-0 ps-1" id="qsName" placeholder="Contoh: PT Sumber Rejeki Abadi" autocomplete="off">
+                        </div>
                     </div>
-                    <div id="qsError" class="alert alert-danger d-none"></div>
+
+                    <div class="row g-3 mb-1">
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold text-dark font-13" for="qsPhone">
+                                No. Telepon Kantor
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-phone-outline"></i>
+                                </span>
+                                <input type="text" class="form-control border-start-0 ps-1" id="qsPhone" placeholder="021-xxxxxxx / 08xx" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold text-dark font-13" for="qsEmail">
+                                Email Perusahaan
+                            </label>
+                            <div class="input-group input-group-merge">
+                                <span class="input-group-text bg-light border-end-0 text-muted">
+                                    <i class="mdi mdi-email-outline"></i>
+                                </span>
+                                <input type="email" class="form-control border-start-0 ps-1" id="qsEmail" placeholder="info@supplier.com" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-primary" id="saveQuickAddSupplier">
-                        <i class="mdi mdi-content-save-outline me-1"></i> Simpan
+                <div class="modal-footer border-top py-3 px-4 bg-light d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-label-secondary px-3" data-bs-dismiss="modal">
+                        <i class="mdi mdi-close me-1"></i> Batal
+                    </button>
+                    <button type="button" class="btn btn-primary px-4 shadow-sm" id="saveQuickAddSupplier">
+                        <i class="mdi mdi-content-save-outline me-1"></i> Simpan Supplier
                     </button>
                 </div>
             </div>
@@ -430,22 +496,42 @@
         }
     });
 
+    $('#quickAddSupplierModal').on('show.bs.modal', function () {
+        $('#qsError').addClass('d-none');
+        $('#qsErrorText').text('');
+    });
+
     // Quick Add Supplier (AJAX, tanpa reload)
     $('#saveQuickAddSupplier').on('click', function () {
         var code = $('#qsCode').val().trim();
         var name = $('#qsName').val().trim();
         var info = $('#qsInfo').val();
+        var phone = $('#qsPhone').length ? $('#qsPhone').val().trim() : '';
+        var email = $('#qsEmail').length ? $('#qsEmail').val().trim() : '';
 
         if (!code || !name || !info) {
-            $('#qsError').removeClass('d-none').text('Semua field wajib diisi.');
+            $('#qsError').removeClass('d-none');
+            $('#qsErrorText').text('Kode Supplier, Nama Supplier, dan Kategori Asal wajib diisi.');
             return;
         }
+
+        var $btn = $(this);
+        var origText = $btn.html();
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...');
 
         $.ajax({
             url: '{{ route("supplier.quick-store") }}',
             type: 'POST',
-            data: { _token: '{{ csrf_token() }}', code: code, supplier: name, info: info },
+            data: {
+                _token: '{{ csrf_token() }}',
+                code: code,
+                supplier: name,
+                info: info,
+                phone: phone,
+                email: email
+            },
             success: function (res) {
+                $btn.prop('disabled', false).html(origText);
                 if (res.success) {
                     var newSupplier = res.data;
                     suppliers.push(newSupplier);
@@ -459,14 +545,19 @@
                     $('#qsCode').val('');
                     $('#qsName').val('');
                     $('#qsInfo').val('');
-                    $('#qsError').addClass('d-none').text('');
+                    if ($('#qsPhone').length) $('#qsPhone').val('');
+                    if ($('#qsEmail').length) $('#qsEmail').val('');
+                    $('#qsError').addClass('d-none');
+                    $('#qsErrorText').text('');
                     $('#quickAddSupplierModal').modal('hide');
                 }
             },
             error: function (xhr) {
+                $btn.prop('disabled', false).html(origText);
                 var msg = xhr.responseJSON && xhr.responseJSON.message
                     ? xhr.responseJSON.message : 'Gagal menyimpan, coba lagi.';
-                $('#qsError').removeClass('d-none').text(msg);
+                $('#qsError').removeClass('d-none');
+                $('#qsErrorText').text(msg);
             }
         });
     });

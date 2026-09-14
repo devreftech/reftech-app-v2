@@ -28,10 +28,12 @@
         </div>
     @endif
 
-    <div class="card mb-4 text-white border-0 overflow-hidden position-relative shadow-sm" style="background: linear-gradient(135deg, #696cff 0%, #3f42b3 100%) !important;">
-        <!-- Subtle background circle decorations -->
-        <div class="position-absolute translate-middle" style="top: 0; right: 0; width: 250px; height: 250px; border-radius: 50%; background: rgba(255,255,255,0.08); z-index: 1;"></div>
-        <div class="position-absolute translate-middle" style="bottom: -50px; left: -50px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255,255,255,0.05); z-index: 1;"></div>
+    <div class="card mb-4 text-white border-0 position-relative shadow-sm" style="background: linear-gradient(135deg, #696cff 0%, #3f42b3 100%) !important;">
+        <div class="position-absolute overflow-hidden" style="inset: 0; border-radius: inherit; z-index: 1;">
+            <!-- Subtle background circle decorations -->
+            <div class="position-absolute translate-middle" style="top: 0; right: 0; width: 250px; height: 250px; border-radius: 50%; background: rgba(255,255,255,0.08);"></div>
+            <div class="position-absolute translate-middle" style="bottom: -50px; left: -50px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255,255,255,0.05);"></div>
+        </div>
         <div class="card-body p-4 position-relative" style="z-index: 2;">
             <div class="row align-items-center">
                 <div class="col-md-8">
@@ -62,7 +64,7 @@
                     @if ($pending->status != '6' && $pending->status != '8' && $pending->status != '9')
                         <div class="btn-group">
                             <button type="button" class="btn btn-outline-light dropdown-toggle waves-effect waves-light text-white"
-                                data-bs-toggle="dropdown" aria-expanded="false" {{ (auth()->user()->role != 'Sales' && $isInvoiceApproved) ? '' : 'disabled' }}>
+                                data-bs-toggle="dropdown" aria-expanded="false" {{ $isInvoiceApproved ? '' : 'disabled' }}>
                                 <i class="mdi mdi-square-edit-outline me-1"></i> Update Status
                             </button>
                             <ul class="dropdown-menu">
@@ -1439,12 +1441,37 @@
             onAddressSelectChange(prefix, 'shipping');
         }
 
-        // Initialize Bootstrap tooltips using jQuery
+        // Initialize Bootstrap tooltips & Select2
         $(document).ready(function() {
             $('[data-bs-toggle="tooltip"]').tooltip();
-            $('.select-project').select2({
-                dropdownParent: $('#purchaseReqPrj')
+
+            $('.select2-equivalent-ajax').each(function () {
+                var $sel = $(this);
+                $sel.select2({
+                    dropdownParent: $sel.closest('.modal'),
+                    placeholder: '---- Choose Equivalent Here ----',
+                    allowClear: true,
+                    width: '100%',
+                    minimumInputLength: 1,
+                    ajax: {
+                        url: '/db/equivalent/search',
+                        dataType: 'json',
+                        delay: 300,
+                        data: function (params) { return { q: params.term }; },
+                        processResults: function (data) {
+                            var items = Array.isArray(data) ? data : (data.data || []);
+                            return {
+                                results: $.map(items, function (eq) {
+                                    var id = eq.id_equivalent || eq.id;
+                                    var text = (eq.brand || '') + ' ' + (eq.pn || '') + ' - ' + (eq.genuine_status === 'Replacement' ? 'R' : 'G');
+                                    return { id: id, text: text };
+                                })
+                            };
+                        }
+                    }
+                });
             });
+
             $('#editAddresses').on('shown.bs.modal', function () {
                 toggleAddressLayout('detail');
             });

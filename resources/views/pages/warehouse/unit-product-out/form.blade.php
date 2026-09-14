@@ -147,7 +147,7 @@
                                             <label class="form-label small text-muted mb-1">Harga Jual</label>
                                             <div class="input-group">
                                                 <span class="input-group-text">Rp</span>
-                                                <input type="number" class="form-control field-harga-jual" name="harga_jual[]" min="0" required>
+                                                <input type="text" inputmode="numeric" class="form-control field-harga-jual rupiah-mask" name="harga_jual[]" required placeholder="0">
                                             </div>
                                         </div>
                                         <div class="col-md-1 col-12 text-md-end">
@@ -224,7 +224,8 @@
 
             function updateRowSelisih($row) {
                 var nilaiPokok = Number($row.find('.field-nilai-pokok').data('raw')) || 0;
-                var hargaJual = Number($row.find('.field-harga-jual').val()) || 0;
+                var rawJual = String($row.find('.field-harga-jual').val() || '').replace(/\D/g, '');
+                var hargaJual = Number(rawJual) || 0;
                 var selisih = hargaJual - nilaiPokok;
                 var $sel = $row.find('.field-selisih');
                 $sel.text(currency(selisih));
@@ -236,7 +237,8 @@
                 var totalPokok = 0, totalJual = 0;
                 $('.item-row').each(function () {
                     totalPokok += Number($(this).find('.field-nilai-pokok').data('raw')) || 0;
-                    totalJual += Number($(this).find('.field-harga-jual').val()) || 0;
+                    var rawJual = String($(this).find('.field-harga-jual').val() || '').replace(/\D/g, '');
+                    totalJual += Number(rawJual) || 0;
                 });
                 var totalSelisih = totalJual - totalPokok;
                 $('#summaryNilaiPokok').text(currency(totalPokok));

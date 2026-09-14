@@ -1023,4 +1023,351 @@ class PurchaseController extends Controller
 
         return $prefix . $nextSeq;
     }
+
+    /**
+     * Selesaikan Purchase Request yang barang fisiknya sudah diinput secara manual (GR Manual).
+     * Dapat diakses oleh: Logistic, Admin, Super Admin, Developer.
+     */
+    public function completeManualGr(Request $request, $id)
+    {
+        $user = Auth::user();
+        $userRole = $user ? $user->getRawOriginal('role') : '';
+        $allowedRoles = ['Logistic', 'Admin', 'Super Admin', 'Developer'];
+
+        if (!in_array($userRole, $allowedRoles) && !$user?->isDeveloper()) {
+            return response()->json(['message' => 'Anda tidak memiliki hak akses untuk aksi ini.'], 403);
+        }
+
+        $purchase = PurchaseRequest::find($id);
+        if (!$purchase) {
+            return response()->json(['message' => 'Data Purchase Request tidak ditemukan.'], 404);
+        }
+
+        $idProductIn = $request->input('id_product_in');
+        $noGr = trim($request->input('no_gr', ''));
+        $note = trim($request->input('note', ''));
+        $grDate = $request->input('gr_date', now()->format('Y-m-d'));
+
+        $productIn = null;
+        if (!empty($idProductIn)) {
+            $productIn = ProductIn::find($idProductIn);
+            if ($productIn && empty($noGr)) {
+                $noGr = $productIn->no_product_in;
+            }
+        }
+
+        // Ubah status PR ke Done (3)
+        $purchase->status = '3';
+        $purchase->save();
+
+        // Update seluruh PO terkait menjadi Received & hubungkan ke Product In jika ada
+        $pos = $purchase->purchaseOrders;
+        foreach ($pos as $po) {
+            $po->receipt_status = 'Received';
+            if (!empty($noGr)) {
+                $po->no_gr = $noGr;
+            } elseif (empty($po->no_gr)) {
+                $po->no_gr = 'GR-MANUAL';
+            }
+            if (empty($po->gr_sent_at)) {
+                $po->gr_sent_at = $grDate ? \Carbon\Carbon::parse($grDate) : now();
+            }
+            $po->save();
+
+            // Hubungkan dokumen Barang Masuk (product_in) ke PO ini jika belum tertaut
+            if ($productIn && empty($productIn->id_purchase_order)) {
+                $productIn->id_purchase_order = $po->id;
+                $productIn->save();
+            }
+        }
+
+        $linkedText = $productIn ? ' dan berhasil ditautkan ke Barang Masuk (' . $productIn->no_product_in . ').' : '.';
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Purchase Request ' . ($purchase->no_pr ?: '#' . $purchase->id) . ' berhasil diselesaikan dengan GR Manual' . $linkedText
+        ]);
+    }
+
+    /**
+     * Quick Action khusus role Developer untuk troubleshooting status PR (Bypass / Rollback).
+     */
+    public function devAction(Request $request, $id)
+    {
+        $user = Auth::user();
+        $userRole = $user ? $user->getRawOriginal('role') : '';
+
+        if ($userRole !== 'Developer' && !$user?->isDeveloper()) {
+            return response()->json(['message' => 'Aksi ini hanya dapat dilakukan oleh role Developer.'], 403);
+        }
+
+        $purchase = PurchaseRequest::find($id);
+        if (!$purchase) {
+            return response()->json(['message' => 'Data Purchase Request tidak ditemukan.'], 404);
+        }
+
+        $action = $request->input('action');
+
+        if ($action === 'force_done') {
+            $purchase->status = '3';
+            $purchase->save();
+
+            // Update seluruh PO terkait (jika ada) ke Received
+            foreach ($purchase->purchaseOrders as $po) {
+                $po->receipt_status = 'Received';
+                if (empty($po->no_gr)) {
+                    $po->no_gr = 'GR-DEV-CLOSE';
+                }
+                $po->save();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Developer Action: PR ' . ($purchase->no_pr ?: '#' . $purchase->id) . ' berhasil dipaksa selesai (Done / status 3).'
+            ]);
+        } elseif ($action === 'rollback_approved') {
+            $purchase->status = '1';
+            $purchase->save();
+
+            // Bersihkan info delivery pada details alokasi
+            $purchase->details()->update([
+                'purchase_type' => null,
+                'cargo' => null,
+                'no_resi' => null,
+                'purchase_date' => null,
+            ]);
+
+            \App\Models\PurchaseRequestDetailAllocation::whereIn('id_purchase_request_detail', $purchase->details()->pluck('id'))
+                ->update([
+                    'purchase_type' => null,
+                    'cargo' => null,
+                    'no_resi' => null,
+                    'purchase_date' => null,
+                ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Developer Action: PR ' . ($purchase->no_pr ?: '#' . $purchase->id) . ' berhasil di-rollback ke Approved (status 1).'
+            ]);
+        }
+
+        return response()->json(['message' => 'Aksi developer tidak valid.'], 422);
+    }
+
+    /**
+     * Cari PO yang tersedia untuk dihubungkan ke PR.
+     */
+    public function searchPoToLink(Request $request)
+    {
+        $q = trim($request->get('q', ''));
+        $currentPrId = $request->get('pr_id');
+
+        $query = PurchaseOrder::query();
+
+        if (!empty($q)) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('no_po', 'like', "%{$q}%")
+                    ->orWhere('company', 'like', "%{$q}%")
+                    ->orWhere('no_reference', 'like', "%{$q}%");
+            });
+        }
+
+        // Jangan tampilkan PO yang sudah tertaut ke PR ini
+        if ($currentPrId) {
+            $query->where(function ($sub) use ($currentPrId) {
+                $sub->whereNull('id_purchase_request')
+                    ->orWhere('id_purchase_request', '!=', $currentPrId);
+            });
+        }
+
+        $results = $query->orderByDesc('id')->take(30)->get();
+
+        $data = $results->map(function ($po) {
+            $dateStr = $po->date ? Carbon::parse($po->date)->format('d/m/Y') : '-';
+            $companyStr = $po->company ?: 'Tanpa Vendor';
+            $statusStr = $po->receipt_status ?: 'Open';
+            $totalStr = $po->total ? 'Rp ' . number_format($po->total, 0, ',', '.') : '';
+
+            $text = "{$po->no_po} — {$companyStr} [Tgl: {$dateStr}]";
+            if ($totalStr) {
+                $text .= " ({$totalStr})";
+            }
+            if ($po->id_purchase_request) {
+                $text .= " (Tertaut ke PR #{$po->id_purchase_request})";
+            }
+
+            return [
+                'id' => $po->id,
+                'no_po' => $po->no_po,
+                'company' => $companyStr,
+                'date' => $dateStr,
+                'total' => $totalStr,
+                'status' => $statusStr,
+                'text' => $text,
+                'is_linked_other' => (bool) $po->id_purchase_request,
+            ];
+        });
+
+        return response()->json([
+            'results' => $data,
+            'data' => $data
+        ]);
+    }
+
+    /**
+     * Hubungkan Purchase Request ke satu atau beberapa PO yang sudah terbit.
+     */
+    public function linkPurchaseOrder(Request $request, $id)
+    {
+        $purchase = PurchaseRequest::where('id_pending', $id)->orWhere('id', $id)->first();
+        if (!$purchase) {
+            return response()->json(['success' => false, 'message' => 'Purchase Request tidak ditemukan.'], 404);
+        }
+
+        $poIds = (array) $request->input('id_purchase_order', []);
+        if (empty($poIds)) {
+            return response()->json(['success' => false, 'message' => 'Silakan pilih minimal satu Purchase Order (PO).'], 422);
+        }
+
+        $linkedPoNames = [];
+        foreach ($poIds as $poId) {
+            $po = PurchaseOrder::with('detail')->find($poId);
+            if (!$po) continue;
+
+            $po->id_purchase_request = $purchase->id;
+            $po->save();
+            $linkedPoNames[] = $po->no_po ?: ('PO #' . $po->id);
+
+            // Alokasikan item PR ke PO ini jika belum teralokasi
+            foreach ($purchase->details as $prDetail) {
+                $existingAlloc = PurchaseRequestDetailAllocation::where('id_purchase_request_detail', $prDetail->id)
+                    ->where('id_purchase_order', $po->id)
+                    ->first();
+
+                if (!$existingAlloc) {
+                    $matchingPoDetail = null;
+                    $prProductId = $prDetail->equivalent->id_product ?? null;
+                    if ($prProductId) {
+                        $matchingPoDetail = $po->detail->firstWhere('id_product', $prProductId);
+                    }
+
+                    $allocQty = $matchingPoDetail ? min($matchingPoDetail->qty, $prDetail->qty) : ($prDetail->remainingQty > 0 ? $prDetail->remainingQty : $prDetail->qty);
+
+                    PurchaseRequestDetailAllocation::create([
+                        'id_purchase_request_detail' => $prDetail->id,
+                        'id_purchase_order' => $po->id,
+                        'qty' => $allocQty > 0 ? $allocQty : 1,
+                        'purchase_type' => $po->category == 'Unit' ? 'Lokal' : null,
+                        'cargo' => $po->on_delivery_cargo,
+                        'no_resi' => $po->on_delivery_no_resi,
+                        'purchase_date' => $po->date,
+                    ]);
+                }
+            }
+        }
+
+        $poListStr = implode(', ', $linkedPoNames);
+        return response()->json([
+            'success' => true,
+            'message' => "Purchase Order ({$poListStr}) berhasil dihubungkan ke Purchase Request ini."
+        ]);
+    }
+
+    /**
+     * Lepaskan tautan PO dari Purchase Request.
+     */
+    public function unlinkPurchaseOrder(Request $request, $id)
+    {
+        $purchase = PurchaseRequest::where('id_pending', $id)->orWhere('id', $id)->first();
+        if (!$purchase) {
+            return response()->json(['success' => false, 'message' => 'Purchase Request tidak ditemukan.'], 404);
+        }
+
+        $poId = $request->input('id_purchase_order');
+        $po = PurchaseOrder::find($poId);
+        if ($po && $po->id_purchase_request == $purchase->id) {
+            $po->id_purchase_request = null;
+            $po->save();
+
+            // Hapus alokasi detail PR untuk PO ini
+            PurchaseRequestDetailAllocation::whereIn('id_purchase_request_detail', $purchase->details->pluck('id'))
+                ->where('id_purchase_order', $po->id)
+                ->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Tautan Purchase Order {$po->no_po} berhasil dilepas dari PR ini."
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Purchase Order tidak tertaut ke PR ini.'], 400);
+    }
+
+    /**
+     * Ambil daftar item PR yang sudah di-approve (status == 1) dan masih memiliki sisa kebutuhan (remainingQty > 0).
+     * Digunakan oleh halaman pembuatan PO untuk konsolidasi item dari beberapa PR.
+     */
+    public function getAvailablePrItems(Request $request)
+    {
+        $q = trim($request->get('q', ''));
+
+        // Cari PR yang statusnya 1 (Approved)
+        $prs = PurchaseRequest::where('status', 1)
+            ->with([
+                'pending',
+                'details.equivalent.product',
+                'details.allocations'
+            ])
+            ->orderByDesc('id')
+            ->get();
+
+        $items = [];
+        foreach ($prs as $pr) {
+            $noPr = $pr->no_pr ?: ('PR #' . $pr->id);
+            $noSo = $pr->pending->no_pending ?? '-';
+            $prDate = $pr->date ? Carbon::parse($pr->date)->format('d/m/Y') : ($pr->created_at ? $pr->created_at->format('d/m/Y') : '-');
+
+            foreach ($pr->details as $detail) {
+                $rem = $detail->remainingQty;
+                if ($rem <= 0) continue;
+
+                $product = $detail->equivalent->product ?? null;
+                $brandPn = trim(($detail->equivalent->brand ?? '') . ' ' . ($detail->equivalent->pn ?? ''));
+                $commodityDesc = $product ? trim(($product->commodity ?? '') . ' — ' . ($product->description ?? '')) : '';
+                $productName = $commodityDesc ?: ($brandPn ?: 'Item #' . $detail->id);
+                $productId = $product ? $product->id : null;
+                $unit = ($product && $product->unit && $product->unit !== '-') ? $product->unit : 'Pcs';
+
+                // Filter pencarian jika q diisi
+                if (!empty($q)) {
+                    $searchPool = strtolower("{$noPr} {$noSo} {$brandPn} {$commodityDesc} {$detail->note}");
+                    if (!str_contains($searchPool, strtolower($q))) {
+                        continue;
+                    }
+                }
+
+                $items[] = [
+                    'pr_detail_id' => $detail->id,
+                    'pr_id' => $pr->id,
+                    'no_pr' => $noPr,
+                    'pr_date' => $prDate,
+                    'no_so' => $noSo,
+                    'id_product' => $productId,
+                    'brand_pn' => $brandPn,
+                    'product_name' => $productName,
+                    'unit' => $unit,
+                    'total_qty' => $detail->totalQty,
+                    'remaining_qty' => $rem,
+                    'qty_to_take' => $rem,
+                    'note' => $detail->note ?: '-',
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'total' => count($items),
+            'items' => $items
+        ]);
+    }
 }

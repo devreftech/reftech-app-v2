@@ -218,7 +218,7 @@
 
                                     <div class="col-md-6">
                                         <label class="form-label fw-semibold small">Nominal Bayar (Rp) <span class="text-danger">*</span></label>
-                                        <input type="number" name="amount" class="form-control" value="{{ $remaining }}" max="{{ $remaining }}" required>
+                                        <input type="text" inputmode="numeric" name="amount" class="form-control rupiah-mask" value="{{ number_format($remaining, 0, ',', '.') }}" required>
                                     </div>
 
                                     <div class="col-12">

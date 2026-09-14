@@ -36,6 +36,9 @@ class MaintenanceService
             'bgm_enabled' => true,
             'bgm_url' => '/assets/audio/Water_Lily.mp3',
             'bgm_title' => 'Lofi Ambient Relaxing - Water Lily',
+            // Post-maintenance resumption tracking
+            'last_deactivated_at' => null,
+            'last_deactivated_timestamp' => null,
         ];
     }
 
@@ -115,6 +118,8 @@ class MaintenanceService
             'end_time' => null,
             'started_at' => null,
             'started_by' => null,
+            'last_deactivated_at' => date('Y-m-d H:i:s'),
+            'last_deactivated_timestamp' => time(),
         ]);
 
         return (bool) file_put_contents(self::getFilePath(), json_encode($data, JSON_PRETTY_PRINT));

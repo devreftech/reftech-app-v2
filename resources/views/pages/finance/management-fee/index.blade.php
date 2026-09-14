@@ -1250,7 +1250,7 @@
                             <label class="form-label small fw-semibold" for="manual_gross_fee">Nominal Gross Fee (Rp) <span class="text-danger">*</span></label>
                             <div class="input-group input-group-merge input-group-sm">
                                 <span class="input-group-text fw-bold">Rp</span>
-                                <input type="number" class="form-control" id="manual_gross_fee" name="gross_fee" min="1" step="any" placeholder="0" required>
+                                <input type="text" inputmode="numeric" class="form-control rupiah-mask" id="manual_gross_fee" name="gross_fee" placeholder="0" required>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -1622,7 +1622,8 @@
         // Live Tax Policy 2026 Calculator for Manual Fee Modal
         // --------------------------------------------------------------------
         function calcTax2026(fee) {
-            var val = parseFloat(fee) || 0;
+            var raw = String(fee || '').replace(/\D/g, '');
+            var val = parseFloat(raw) || 0;
             var taxRate = 0;
             var taxLabel = '0% (Bebas Pajak)';
             if (val < 1500000) {

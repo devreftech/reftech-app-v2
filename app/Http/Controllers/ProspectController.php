@@ -206,7 +206,7 @@ class ProspectController extends Controller
                     ->orWhere('id', 38);
             })
             ->where('active', '1')
-            ->whereNotIn('id', [23, 16])
+            ->whereNotIn('id', [23, 16, 38])
             ->orderBy('name')
             ->withCount(['prospects as weekly_leads' => function ($query) use ($startOfWeek, $endOfWeek) {
                 $query->whereBetween('created_at', [$startOfWeek, $endOfWeek]);
@@ -517,6 +517,73 @@ class ProspectController extends Controller
     }
 
     /**
+     * Endpoint polling alert darurat "Prospect Baru Belum Ditugaskan" untuk Admin & Manajemen
+     * Mirip sistem Urgent Alert SUO pada Accounting:
+     * Selama ada data prospect baru dari Support yang belum ditugaskan ke Sales (id_sales null),
+     * modal pop-up alert akan muncul di layar Admin untuk mengingatkan agar segera mendelegasikan.
+     */
+    public function urgentCheck()
+    {
+        if (!Auth::check()) {
+            return response()->json(['has_urgent' => false]);
+        }
+
+        $user = Auth::user();
+        $role = $user->role;
+
+        // Hanya untuk akun Admin / Developer / Super Admin yang bertugas menugaskan prospek
+        if (!in_array($role, ['Admin', 'Developer', 'Super Admin'])) {
+            return response()->json(['has_urgent' => false]);
+        }
+
+        // Cari prospect yang belum ditugaskan ke Sales
+        $prospect = Prospect::with(['pic.client', 'support'])
+            ->where(function ($q) {
+                $q->whereNull('id_sales')->orWhere('id_sales', 0);
+            })
+            ->where(function ($q) {
+                $q->whereNull('provide')->orWhere('provide', '!=', '1');
+            })
+            ->latest('id')
+            ->first();
+
+        if (!$prospect) {
+            return response()->json(['has_urgent' => false]);
+        }
+
+        $pic = $prospect->pic;
+        $client = $pic ? $pic->client : null;
+
+        $timeAgo = 'Baru saja';
+        if ($prospect->created_at instanceof \Carbon\Carbon) {
+            $timeAgo = $prospect->created_at->diffForHumans();
+        }
+
+        return response()->json([
+            'has_urgent' => true,
+            'prospect'   => [
+                'id'              => (string) $prospect->id,
+                'company'         => $client->company ?? ($prospect->company_name ?? '-'),
+                'pic_name'        => $pic->name_pic ?? '-',
+                'pic_phone'       => $pic->phone_pic ?? null,
+                'pic_position'    => $pic->position ?? null,
+                'support_name'    => $prospect->support->name ?? 'Support',
+                'support_image'   => $prospect->support && $prospect->support->image ? asset($prospect->support->image) : null,
+                'category'        => $prospect->category ?? '-',
+                'kebutuhan'       => Str::limit((string) ($prospect->kebutuhan ?? ''), 150),
+                'stage'           => 'unassigned_prospect',
+                'stage_badge'     => 'Admin • Butuh Penugasan Sales',
+                'stage_title'     => 'Ada Prospect Baru Masuk!',
+                'stage_desc'      => 'Tim Support baru saja menginput data prospek baru yang belum ditugaskan ke Sales. Segera tentukan dan tugaskan Sales penanggung jawab.',
+                'action_url'      => route('prospect.show', $prospect->id),
+                'action_label'    => 'Tugaskan ke Sales',
+                'created_at'      => $timeAgo,
+                'created_at_time' => optional($prospect->created_at)->format('H:i, d M Y'),
+            ],
+        ]);
+    }
+
+    /**
      * Endpoint polling navbar untuk penerima notifikasi prospect & komentar — mengambil notifikasi
      * prospect baru serta komentar/mention yang belum dibaca supaya bisa dimunculkan sebagai floating toast
      * dan membunyikan alert suara secara otomatis tanpa reload.
@@ -543,15 +610,20 @@ class ProspectController extends Controller
 
             return [
                 'id' => (string) $n->id,
+                'prospect_id' => $p ? (string) $p->id : null,
                 'type' => $n->type,
                 'is_read' => (bool) $n->is_read,
                 'company' => $client->company ?? ($p->company_name ?? '-'),
-                'pic_name' => $pic->name_pic ?? null,
+                'pic_name' => $pic->name_pic ?? '-',
+                'pic_phone' => $pic->phone_pic ?? null,
+                'pic_position' => $pic->position ?? null,
                 'support_name' => $p && $p->support ? $p->support->name : null,
+                'support_image' => $p && $p->support && $p->support->image ? asset($p->support->image) : null,
                 'category' => $p->category ?? null,
-                'kebutuhan' => Str::limit((string) ($p->kebutuhan ?? ''), 90),
+                'kebutuhan' => Str::limit((string) ($p->kebutuhan ?? ''), 120),
                 'url' => $p ? route('prospect.show', $p->id) : url('prospect'),
                 'created_at' => optional($n->created_at)->diffForHumans(),
+                'created_at_time' => optional($n->created_at)->format('H:i, d M Y'),
             ];
         });
 
