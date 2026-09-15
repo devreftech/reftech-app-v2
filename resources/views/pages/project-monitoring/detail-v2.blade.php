@@ -530,16 +530,28 @@
                                 </div>
                             </div>
 
-                            <!-- Clean Metric Rows -->
+                            @php
+                                $materialPercent = $totalCost > 0 ? ($materialCost / $totalCost) * 100 : 0;
+                                $generalPercent  = $totalCost > 0 ? ($generalCost / $totalCost) * 100 : 0;
+                            @endphp
+
+                            <!-- Clean Metric Rows with HPP Percentages -->
                             <div class="d-flex flex-column gap-2 mb-3">
                                 <div class="d-flex align-items-center justify-content-between p-2 rounded-2 border border-light-subtle bg-white">
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="avatar avatar-xs bg-label-danger rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
                                             <i class="mdi mdi-package-variant-closed" style="font-size: 14px;"></i>
                                         </div>
-                                        <span class="text-secondary small fw-semibold">Biaya Material</span>
+                                        <div>
+                                            <span class="text-secondary small fw-semibold d-block">Biaya Material</span>
+                                        </div>
                                     </div>
-                                    <strong class="text-danger" style="font-size: 13.5px;">Rp {{ number_format($materialCost, 0, '', '.') }}</strong>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-label-danger rounded-pill px-2 py-0.5" style="font-size: 11px; font-weight: 700;" data-bs-toggle="tooltip" title="{{ number_format($materialPercent, 1) }}% dari Total HPP">
+                                            {{ number_format($materialPercent, 1) }}%
+                                        </span>
+                                        <strong class="text-danger" style="font-size: 13.5px;">Rp {{ number_format($materialCost, 0, '', '.') }}</strong>
+                                    </div>
                                 </div>
 
                                 <div class="d-flex align-items-center justify-content-between p-2 rounded-2 border border-light-subtle bg-white">
@@ -547,9 +559,28 @@
                                         <div class="avatar avatar-xs bg-label-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
                                             <i class="mdi mdi-gas-station-outline" style="font-size: 14px;"></i>
                                         </div>
-                                        <span class="text-secondary small fw-semibold">Operasional Lapangan</span>
+                                        <div>
+                                            <span class="text-secondary small fw-semibold d-block">Operasional Lapangan</span>
+                                        </div>
                                     </div>
-                                    <strong class="text-danger" style="font-size: 13.5px;">Rp {{ number_format($generalCost, 0, '', '.') }}</strong>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-label-warning rounded-pill px-2 py-0.5" style="font-size: 11px; font-weight: 700;" data-bs-toggle="tooltip" title="{{ number_format($generalPercent, 1) }}% dari Total HPP">
+                                            {{ number_format($generalPercent, 1) }}%
+                                        </span>
+                                        <strong class="text-danger" style="font-size: 13.5px;">Rp {{ number_format($generalCost, 0, '', '.') }}</strong>
+                                    </div>
+                                </div>
+
+                                <!-- Mini HPP Composition Bar -->
+                                <div class="px-1 pt-1">
+                                    <div class="d-flex justify-content-between text-muted mb-1" style="font-size: 10px;">
+                                        <span><i class="mdi mdi-circle text-danger me-1" style="font-size: 8px;"></i>Material: {{ number_format($materialPercent, 1) }}%</span>
+                                        <span><i class="mdi mdi-circle text-warning me-1" style="font-size: 8px;"></i>Operasional: {{ number_format($generalPercent, 1) }}%</span>
+                                    </div>
+                                    <div class="progress rounded-pill" style="height: 5px; background-color: #f1f5f9;">
+                                        <div class="progress-bar bg-danger" role="progressbar" style="width: {{ $materialPercent }}%;" title="Material: {{ number_format($materialPercent, 1) }}%"></div>
+                                        <div class="progress-bar bg-warning" role="progressbar" style="width: {{ $generalPercent }}%;" title="Operasional: {{ number_format($generalPercent, 1) }}%"></div>
+                                    </div>
                                 </div>
                             </div>
 

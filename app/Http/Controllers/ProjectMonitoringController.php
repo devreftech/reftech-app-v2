@@ -219,7 +219,27 @@ class ProjectMonitoringController extends Controller
             $quoteSales = $pendingRow->quote?->id_sales;
             $unitSales = $pendingRow->unitQuotation?->id_sales;
             $isOwner = ($quoteSales == $user->id) || ($unitSales == $user->id);
-            if (!$isOwner) {
+
+            // Sales yang bukan owner deal ini tetap boleh masuk kalau dia member
+            // kanban board/card project ini (mis. dilibatkan lewat kartu kanban).
+            $isKanbanMemberEarly = \App\Models\KanbanTask::where(function ($q) use ($pendingRow) {
+                $q->where('pending_po_id', $pendingRow->id);
+                if (!empty($pendingRow->id_unit_quotation)) {
+                    $q->orWhere('id_unit_quotation', $pendingRow->id_unit_quotation);
+                }
+            })
+            ->with('board.members', 'assignees')
+            ->get()
+            ->contains(function ($task) use ($user) {
+                return $task->assigned_to == $user->id
+                    || $task->assignees->contains($user->id)
+                    || ($task->board && (
+                        $task->board->created_by == $user->id
+                        || $task->board->members->contains($user->id)
+                    ));
+            });
+
+            if (!$isOwner && !$isKanbanMemberEarly) {
                 abort(403, 'Anda tidak memiliki izin untuk mengakses project ini.');
             }
         }
