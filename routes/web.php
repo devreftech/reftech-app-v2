@@ -421,7 +421,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/product-in/return/{id}', [ProductInController::class, 'edit_return'])->name('product-in.return');
     Route::post('/product-in/return-store/{id}', [ProductInController::class, 'return_in'])->name('product-in.return-store');
     Route::post('/product-in/accept/{id}', [ProductInController::class, 'acceptIn'])->name('product-in.accept');
-    Route::post('/product-in/return/{id}', [ProductInController::class, 'return'])->name('product-in.return');
+    Route::post('/product-in/return/{id}', [ProductInController::class, 'return'])->name('product-in.return-post');
     Route::post('/product-in/clear-return/{id}', [ProductInController::class, 'clearReturn'])->name('product-in.clear-return');
     // Tab "Biaya Tambahan" (landed cost dkk) di halaman detail Product In.
     Route::post('/product-in/{id}/costs', [ProductInController::class, 'addCost'])->name('product-in.costs.store');
@@ -1607,7 +1607,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/pending-po/comment/{id}', [PendingController::class, 'add_comment'])->name('pending-po.addComment');
     Route::get('/pending-po/product-out/{id}', [PendingController::class, 'pending_out'])->name('pending-po.product_out');
     Route::get('/pending-po/product-out-project/{id}', [PendingController::class, 'pending_out_project'])->name('pending-po.product_out_project');
-    Route::post('/pending-po/product-out/{id}', [PendingController::class, 'product_out'])->name('pending-po.product_out');
+    Route::post('/pending-po/product-out/{id}', [PendingController::class, 'product_out'])->name('pending-po.product_out-post');
     Route::post('/pending-po/done/{id}', [PendingController::class, 'donePending'])->name('pending-po.donePending');
     Route::get('/pending-po-done', [PendingController::class, 'indexDone'])->name('pending-po.done');
     Route::get('/pending-po-project', [PendingController::class, 'indexProject'])->name('pending-po.index-project');
@@ -1749,7 +1749,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/dashboard/filteredDc/{sales}', [DashboardController::class, 'filteredDcAdmin'])->name('filteredDc.dashboard');
     Route::get('/dashboard/filteredCRM/{sales}', [DashboardController::class, 'filteredCRMAdmin'])->name('filteredCRM.dashboard');
     Route::get('/dashboard/filteredQuote/{sales}', [DashboardController::class, 'filteredQuoteAdmin'])->name('filteredQuote.dashboard');
-    Route::get('/dashboard/filteredProspectAdmin/{sales}', [DashboardController::class, 'filteredProspectAdmin'])->name('filteredProspect.dashboard');
+    Route::get('/dashboard/filteredProspectAdmin/{sales}', [DashboardController::class, 'filteredProspectAdmin'])->name('filteredProspectAdmin.dashboard');
     Route::get('/dashboard/filteredAllProspect/{sales}', [DashboardController::class, 'filteredAllProspectAdmin'])->name('filteredAllProspect.dashboard');
     Route::get('/dashboard/filteredTargetLeads/{sales}', [DashboardController::class, 'filteredTargetLeadsAdmin'])->name('filteredTargetLeads.dashboard');
     Route::get('/dashboard/filteredTargetQuote/{sales}', [DashboardController::class, 'filteredTargetQuoteAdmin'])->name('filteredTargetQuote.dashboard');
@@ -1766,10 +1766,10 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/dashboard/filteredSW/{sales}', [DashboardController::class, 'filteredSWAdmin'])->name('filteredSW.dashboard');
     Route::get('/dashboard/filteredVideo/{sales}', [DashboardController::class, 'filteredVideoAdmin'])->name('filteredVideo.dashboard');
     Route::get('/dashboard/filteredDelivery/{sales}', [DashboardController::class, 'filteredDeliveryAdmin'])->name('filteredDelivery.dashboard');
-    Route::get('/dashboard/filteredStat/{sales}', [DashboardController::class, 'filteredStatAdmin'])->name('filteredVideo.dashboard');
-    Route::get('/dashboard/filteredCustomer/{sales}', [DashboardController::class, 'filteredCustomerAdmin'])->name('filteredVideo.dashboard');
-    Route::get('/dashboard/filteredResponse/{sales}', [DashboardController::class, 'filteredResponseAdmin'])->name('filteredVideo.dashboard');
-    Route::get('/dashboard/filteredRating/{sales}', [DashboardController::class, 'filteredRatingAdmin'])->name('filteredVideo.dashboard');
+    Route::get('/dashboard/filteredStat/{sales}', [DashboardController::class, 'filteredStatAdmin'])->name('filteredStat.dashboard');
+    Route::get('/dashboard/filteredCustomer/{sales}', [DashboardController::class, 'filteredCustomerAdmin'])->name('filteredCustomer.dashboard');
+    Route::get('/dashboard/filteredResponse/{sales}', [DashboardController::class, 'filteredResponseAdmin'])->name('filteredResponse.dashboard');
+    Route::get('/dashboard/filteredRating/{sales}', [DashboardController::class, 'filteredRatingAdmin'])->name('filteredRating.dashboard');
 
     // Route::get('/dashboard/totalTargetPO/{sales}', [DashboardController::class, 'target'])->name('target.dashboard');
     // Ajax Support
@@ -1777,8 +1777,8 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/dashboard/filteredProspect/{sales}', [DashboardController::class, 'filteredProspect'])->name('filteredProspect.dashboard');
     Route::get('/dashboard/filteredProvide/{sales}', [DashboardController::class, 'filteredProvide'])->name('filteredProvide.dashboard');
     Route::get('/dashboard/filteredNotProvide/{sales}', [DashboardController::class, 'filteredNotProvide'])->name('filteredNotProvide.dashboard');
-    Route::get('/dashboard/filteredProspectQuote/{sales}', [DashboardController::class, 'filteredProspectedQuotation'])->name('filteredProspect.dashboard');
-    Route::get('/dashboard/filteredProspectPO/{sales}', [DashboardController::class, 'filteredProspectedPO'])->name('filteredProspect.dashboard');
+    Route::get('/dashboard/filteredProspectQuote/{sales}', [DashboardController::class, 'filteredProspectedQuotation'])->name('filteredProspectQuote.dashboard');
+    Route::get('/dashboard/filteredProspectPO/{sales}', [DashboardController::class, 'filteredProspectedPO'])->name('filteredProspectPO.dashboard');
     Route::get('/dashboard/totalForecast/{sales}', [DashboardController::class, 'totalForecastAdmin'])->name('totalForecast.dashboard');
     Route::get('/dashboard/totalProspectProspect/{sales}', [DashboardController::class, 'totalProspectedProspect'])->name('totalProspectedProspect.dashboard');
     Route::get('/dashboard/totalProspectPO/{sales}', [DashboardController::class, 'totalProspectedPO'])->name('totalProspectedPO.dashboard');

@@ -1,4 +1,4 @@
-<form action="{{ route('product-in.return', $product->id) }}" method="post" enctype="multipart/form-data">
+<form action="{{ route('product-in.return-post', $product->id) }}" method="post" enctype="multipart/form-data">
     @csrf
     <div class="modal-onboarding modal fade animate__animated" id="productReturn" tabindex="-1" style="display: none;"
         aria-hidden="true">

@@ -1,7 +1,7 @@
 @extends('layouts.sales.app')
 @section('title', 'Product Out')
 @section('content')
-    <form action="{{ route('pending-po.product_out', $id) }}" method="post" enctype="multipart/form-data">
+    <form action="{{ route('pending-po.product_out-post', $id) }}" method="post" enctype="multipart/form-data">
         @csrf
         <div class="row">
             <div class="col-12 col-md-6">
