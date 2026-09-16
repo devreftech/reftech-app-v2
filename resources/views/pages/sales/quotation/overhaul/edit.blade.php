@@ -11,7 +11,7 @@
         </div>
     @endif
     <form id="formAuthentication" class="mb-3 fv-plugins-bootstrap5 fv-plugins-framework"
-        action="{{ route('edit-overhaul.quotation', $quotation->id) }}"
+        action="{{ route('update-overhaul.quotation', $quotation->id) }}"
         method="post" enctype="multipart/form-data">
         @method('PATCH')
         @csrf

@@ -52,8 +52,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/quotation/pdf/{id}', [QuotationController::class, 'pdf_quote'])->name('pdf.quotation');
     Route::get('/quotation/sales/{id}', [QuotationController::class, 'sales_quotation'])->name('sales.quotation');
     Route::get('/po/sales/{id}', [QuotationController::class, 'sales_po'])->name('sales.po');
-    Route::get('/quotation/sparepart/{id}', [QuotationController::class, 'replacementDetailSparepart'])->name('detail.replacement');
-    Route::get('/quotation/unit/{id}', [QuotationController::class, 'replacementDetailUnit'])->name('detail.replacement');
+    Route::get('/quotation/sparepart/{id}', [QuotationController::class, 'replacementDetailSparepart'])->name('detail-sparepart.replacement');
+    Route::get('/quotation/unit/{id}', [QuotationController::class, 'replacementDetailUnit'])->name('detail-unit.replacement');
     Route::get('/quotation/client/{id}', function ($id) {
         $client = Client::find($id);
         return response()->json($client);
@@ -82,7 +82,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/quote/overhaul-revision/{id}', [QuotationController::class, 'revisionOverhaul'])->name('overhaul-revision.quotation');
     Route::post('/quote/overhaul-update/{id}', [QuotationController::class, 'updateOverhaul'])->name('overhaul-update.quotation');
     Route::get('/quotation/edit-overhaul/{id}', [QuotationController::class, 'editOverhaul'])->name('edit-overhaul.quotation');
-    Route::patch('/quotation/edit-overhaul/{id}', [QuotationController::class, 'updateOverhaulDirect'])->name('edit-overhaul.quotation');
+    Route::patch('/quotation/edit-overhaul/{id}', [QuotationController::class, 'updateOverhaulDirect'])->name('update-overhaul.quotation');
 
     // Unit Quotation — URI publik "smart-quote" (rebrand tampilan), nama route tetap
     // "unit-quotation.*" biar semua route()/pemanggilan lain di app gak perlu diubah.
