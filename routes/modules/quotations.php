@@ -46,7 +46,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/quotation/edit-sparepart/{id}', [QuotationController::class, 'edit_parts'])->name('edit-sparepart.quotation');
     Route::get('/quotation/edit-service/{id}', [QuotationController::class, 'edit_service'])->name('edit-service.quotation');
     Route::patch('/quotation/edit-sparepart/{id}', [QuotationController::class, 'update_part'])->name('update-sparepart.quotation');
-    Route::patch('/quotation/edit-service/{id}', [QuotationController::class, 'update_service'])->name('edit-service.quotation');
+    Route::patch('/quotation/edit-service/{id}', [QuotationController::class, 'update_service'])->name('update-edit-service.quotation');
     Route::get('/quotation/revision-overhaul/{id}', [QuotationController::class, 'revisionService'])->name('revisi-overhaul.quotation');
     Route::get('/quotation/print/{id}', [QuotationController::class, 'print_quote'])->name('print.quotation');
     Route::get('/quotation/pdf/{id}', [QuotationController::class, 'pdf_quote'])->name('pdf.quotation');
