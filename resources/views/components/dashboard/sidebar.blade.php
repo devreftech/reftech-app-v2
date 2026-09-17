@@ -987,12 +987,14 @@
                     <div data-i18n="Evaluasi Kinerja">Evaluasi Kinerja</div>
                 </a>
             </li>
+            @if (Auth::user()?->employee)
             <li class="menu-item {{ request()->is('hr/my-portal*') ? 'active' : '' }}">
                 <a href="{{ route('hr.portal.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-card-account-details-star-outline"></i>
                     <div data-i18n="Portal Mandiri">Portal Mandiri (ESS)</div>
                 </a>
             </li>
+            @endif
 
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Master</span>
@@ -3008,8 +3010,8 @@
             </li>
         @endif
 
-        {{-- Akses Universal Portal Karyawan (ESS) untuk seluruh staf / role non-Client --}}
-        @if (Auth::user() && Auth::user()->role !== 'Client')
+        {{-- Akses Universal Portal Karyawan (ESS) untuk seluruh staf yang sudah terhubung dengan data Employee --}}
+        @if (Auth::user() && Auth::user()->role !== 'Client' && Auth::user()->employee)
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Portal Karyawan</span>
             </li>

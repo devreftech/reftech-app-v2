@@ -85,9 +85,14 @@ $(function () {
     function isDismissed(notifId, stage) {
         try {
             var key = 'snoozed_prospect_urgent_' + notifId + (stage ? '_' + stage : '');
-            var until = parseInt(sessionStorage.getItem(key), 10);
+            var until = parseInt(localStorage.getItem(key) || sessionStorage.getItem(key), 10);
             if (until && Date.now() < until) {
                 return true; // Masih dalam masa tunda (snooze)
+            }
+            // Global snooze check
+            var globalUntil = parseInt(localStorage.getItem('snoozed_prospect_global_until'), 10);
+            if (globalUntil && Date.now() < globalUntil) {
+                return true;
             }
             return false;
         } catch (e) {
@@ -99,7 +104,15 @@ $(function () {
         try {
             var key = 'snoozed_prospect_urgent_' + notifId + (stage ? '_' + stage : '');
             var duration = snoozeMs || 60000; // default snooze 60 detik
-            sessionStorage.setItem(key, Date.now() + duration);
+            var expireAt = Date.now() + duration;
+            localStorage.setItem(key, expireAt);
+            sessionStorage.setItem(key, expireAt);
+        } catch (e) {}
+    }
+
+    function setGlobalSnooze(snoozeMs) {
+        try {
+            localStorage.setItem('snoozed_prospect_global_until', Date.now() + snoozeMs);
         } catch (e) {}
     }
 
@@ -439,7 +452,24 @@ $(function () {
                             </div>
 
                             <!-- Action Buttons -->
-                            <div class="d-flex align-items-center gap-2 pt-1">
+                            <div class="d-flex align-items-center gap-2 pt-1 flex-wrap">
+                                <!-- Dropdown Snooze Fleksibel -->
+                                <div class="dropdown">
+                                    <button class="btn btn-dismiss-prospect dropdown-toggle d-inline-flex align-items-center gap-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Tunda pop-up alert ini">
+                                        <i class="mdi mdi-clock-alert-outline fs-6 text-primary"></i>
+                                        <span>Snooze</span>
+                                    </button>
+                                    <ul class="dropdown-menu shadow-sm dropdown-menu-start" style="border-radius: 12px; font-size: 0.85rem; min-width: 210px;">
+                                        <li><h6 class="dropdown-header text-muted font-11 text-uppercase mb-0">Tunda Alert Pop-up</h6></li>
+                                        <li><a class="dropdown-item btn-snooze-duration d-flex align-items-center" href="javascript:void(0);" data-ms="900000" data-label="15 Menit" data-notif-id="${item.id}" data-stage="${item.stage || ''}"><i class="mdi mdi-clock-fast text-primary me-2"></i>15 Menit</a></li>
+                                        <li><a class="dropdown-item btn-snooze-duration d-flex align-items-center" href="javascript:void(0);" data-ms="3600000" data-label="1 Jam" data-notif-id="${item.id}" data-stage="${item.stage || ''}"><i class="mdi mdi-clock-outline text-info me-2"></i>1 Jam</a></li>
+                                        <li><a class="dropdown-item btn-snooze-duration d-flex align-items-center" href="javascript:void(0);" data-ms="14400000" data-label="4 Jam" data-notif-id="${item.id}" data-stage="${item.stage || ''}"><i class="mdi mdi-timer-sand text-warning me-2"></i>4 Jam</a></li>
+                                        <li><a class="dropdown-item btn-snooze-duration d-flex align-items-center" href="javascript:void(0);" data-ms="86400000" data-label="1 Hari Penuh" data-notif-id="${item.id}" data-stage="${item.stage || ''}"><i class="mdi mdi-calendar-today text-secondary me-2"></i>1 Hari (Sampai Besok)</a></li>
+                                        <li><hr class="dropdown-divider my-1"></li>
+                                        <li><a class="dropdown-item btn-snooze-duration text-danger d-flex align-items-center" href="javascript:void(0);" data-ms="604800000" data-label="7 Hari" data-notif-id="${item.id}" data-stage="${item.stage || ''}"><i class="mdi mdi-bell-off-outline me-2"></i>Nonaktifkan 7 Hari</a></li>
+                                    </ul>
+                                </div>
+
                                 <button type="button" class="btn btn-dismiss-prospect btn-prospect-dismiss flex-shrink-0" data-notif-id="${item.id}" data-stage="${item.stage || ''}">
                                     Nanti Dulu
                                 </button>
@@ -502,7 +532,43 @@ $(function () {
         isModalOpen = false;
     });
 
-    // Klik tombol Nanti Dulu -> tutup modal & snooze sementara
+    // Klik tombol Pilihan Snooze Durasi (15 menit, 1 jam, 4 jam, 1 hari, 7 hari)
+    $(document).on('click', '.btn-snooze-duration', function () {
+        var ms = parseInt($(this).data('ms'), 10) || 3600000;
+        var notifId = $(this).data('notif-id');
+        var stage = $(this).data('stage');
+        var label = $(this).data('label') || 'beberapa saat';
+
+        if (notifId) {
+            setDismissed(notifId, stage, ms);
+        }
+        // Set global snooze juga agar tidak muncul prospek lain yang unassigned dalam durasi ini
+        setGlobalSnooze(ms);
+
+        var modalEl = document.getElementById('prospectUrgentModal');
+        if (modalEl) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                var bsModal = bootstrap.Modal.getInstance(modalEl);
+                if (bsModal) bsModal.hide();
+            }
+            if (typeof $ !== 'undefined' && $.fn && $.fn.modal) {
+                $('#prospectUrgentModal').modal('hide');
+            }
+            setTimeout(function () {
+                $('#prospectUrgentModal').remove();
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open').css('overflow', '');
+            }, 350);
+        }
+        isModalOpen = false;
+
+        // Feedback toast mini jika library toastr atau alert tersedia
+        if (typeof toastr !== 'undefined') {
+            toastr.info('Alert pop-up prospek berhasil di-snooze selama ' + label + '.');
+        }
+    });
+
+    // Klik tombol Nanti Dulu -> tutup modal & snooze sementara (60 detik)
     $(document).on('click', '.btn-prospect-dismiss', function () {
         var notifId = $(this).data('notif-id');
         var stage = $(this).data('stage');

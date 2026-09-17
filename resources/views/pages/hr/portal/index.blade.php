@@ -84,23 +84,16 @@
                             <i class="mdi mdi-shield-account-outline me-1"></i> Bebas Presensi Online
                         </span>
                     @elseif (!$todayAttendance || !$todayAttendance->clock_in)
-                        <form action="{{ route('hr.portal.clockin') }}" method="POST">
-                            @csrf
-                            <input type="hidden" name="work_type" value="WFO">
-                            <button type="submit" class="btn btn-success shadow-xs px-3" {{ (isset($isWifiRestrictionEnabled) && $isWifiRestrictionEnabled && !$isWifiVerified) ? 'disabled title="Hubungkan ke WiFi Kantor untuk Clock In"' : '' }}>
-                                <i class="mdi mdi-clock-in me-1"></i> Presensi Masuk (Clock In)
-                            </button>
-                        </form>
+                        <button type="button" class="btn btn-success shadow-xs px-3" data-bs-toggle="modal" data-bs-target="#navClockInModal">
+                            <i class="mdi mdi-clock-in me-1"></i> Presensi Masuk (Clock In)
+                        </button>
                     @elseif ($todayAttendance && !$todayAttendance->clock_out)
                         <div class="small me-2 text-success fw-semibold">
                             <i class="mdi mdi-check-circle me-1"></i>Masuk: {{ substr($todayAttendance->clock_in, 0, 5) }}
                         </div>
-                        <form action="{{ route('hr.portal.clockout') }}" method="POST">
-                            @csrf
-                            <button type="submit" class="btn btn-warning shadow-xs px-3" {{ (isset($isWifiRestrictionEnabled) && $isWifiRestrictionEnabled && !$isWifiVerified) ? 'disabled title="Hubungkan ke WiFi Kantor untuk Clock Out"' : '' }}>
-                                <i class="mdi mdi-clock-out me-1"></i> Presensi Pulang (Clock Out)
-                            </button>
-                        </form>
+                        <button type="button" class="btn btn-warning shadow-xs px-3" data-bs-toggle="modal" data-bs-target="#navClockOutModal">
+                            <i class="mdi mdi-clock-out me-1"></i> Presensi Pulang (Clock Out)
+                        </button>
                     @else
                         <span class="badge bg-label-success py-2 px-3 fs-7">
                             <i class="mdi mdi-check-all me-1"></i> Presensi Lengkap ({{ substr($todayAttendance->clock_in, 0, 5) }} - {{ substr($todayAttendance->clock_out, 0, 5) }})

@@ -435,7 +435,40 @@
                                                     <p class="mb-0 fw-bold text-dark" style="font-size: 12px">{{ $item->label }}</p>
                                                 @endif
                                                 @if ($item->description)
-                                                     <div style="font-size: 11px; color: #444; white-space: pre-line; margin-top: 3px; line-height: 1.4;">{{ $item->description }}</div>
+                                                    @php
+                                                        $descLines = explode("\n", str_replace("\r", "", $item->description));
+                                                    @endphp
+                                                    <div class="text-muted spec-detail-rows" style="font-size:11px; margin-top:3px; line-height:1.4; {{ $invoice->show_spec ? '' : 'display:none;' }}">
+                                                        @foreach ($descLines as $dLine)
+                                                            @php
+                                                                $trimmedDLine = trim($dLine);
+                                                            @endphp
+                                                            @if (empty($trimmedDLine))
+                                                                <div style="height:2px;"></div>
+                                                            @else
+                                                                @php
+                                                                    $hasBullet = preg_match('/^([•\-\*]|\d+[\.\)])\s*(.*)/u', $trimmedDLine, $dMatches);
+                                                                    $hasColon  = !$hasBullet && str_contains($trimmedDLine, ':');
+                                                                @endphp
+                                                                @if ($hasBullet && !empty($dMatches[1]) && !empty($dMatches[2]))
+                                                                    <div style="display:flex; align-items:flex-start; margin-bottom:2px;">
+                                                                        <span style="flex-shrink:0; min-width:14px; color:#696cff; font-weight:600;">{{ $dMatches[1] }}</span>
+                                                                        <span style="flex:1;">{{ $dMatches[2] }}</span>
+                                                                    </div>
+                                                                @elseif ($hasColon)
+                                                                    @php
+                                                                        [$sKey, $sVal] = explode(':', $trimmedDLine, 2);
+                                                                    @endphp
+                                                                    <div style="display:flex; padding:1px 0;">
+                                                                        <span style="min-width:110px; flex-shrink:0; font-weight:600; color:#555;">{{ trim($sKey) }}</span>
+                                                                        <span style="color:#222;">: {{ trim($sVal) }}</span>
+                                                                    </div>
+                                                                @else
+                                                                    <div style="margin-bottom:2px; font-weight:600; color:#222;">{{ $dLine }}</div>
+                                                                @endif
+                                                            @endif
+                                                        @endforeach
+                                                    </div>
                                                 @endif
                                             </td>
                                             <td class="text-center align-top py-2">
@@ -655,7 +688,7 @@
                                 @endif
                                 @if ($quote->tax)
                                     <tr style="border-top:1px solid #eeeeff;">
-                                        <td style="padding:6px 16px 6px 14px; color:#555;">PPN 11%</td>
+                                        <td style="padding:6px 16px 6px 14px; color:#555;">PPN 12%</td>
                                         <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($quote->tax_amount, 0, '', '.') }}</td>
                                     </tr>
                                 @endif
