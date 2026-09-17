@@ -55,6 +55,7 @@ try {
         uq.id,
         uq.no_quote,
         COALESCE(NULLIF(c.company, ''), '-') AS client,
+        cp.name AS plant_name,
         COALESCE(NULLIF(uq.title, ''), '-') AS title,
         DATE_FORMAT(uq.date, '%d-%m-%Y') AS date,
         uq.total,
@@ -71,6 +72,7 @@ try {
          ORDER BY sh.created_at DESC LIMIT 1) AS last_note
     FROM unit_quotation uq
     LEFT JOIN client c ON c.id = NULLIF(uq.id_client, '')
+    LEFT JOIN client_plants cp ON cp.id = NULLIF(uq.id_plant, '')
     INNER JOIN users u ON u.id = uq.id_sales
     $where
     ORDER BY uq.id DESC

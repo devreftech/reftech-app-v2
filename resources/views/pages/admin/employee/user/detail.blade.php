@@ -77,6 +77,46 @@
                             <i class="mdi mdi-trash-can-outline me-1"></i>Delete
                         </a>
                     </div>
+
+                    {{-- Status Integrasi Modul HR --}}
+                    <div class="mt-4 pt-3 border-top text-start">
+                        @if ($users->employee)
+                            <div class="p-3 rounded bg-label-primary border border-primary border-opacity-25">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <strong class="text-primary small d-flex align-items-center">
+                                        <i class="mdi mdi-account-badge-outline me-1"></i> Data Karyawan HR
+                                    </strong>
+                                    <span class="badge bg-label-{{ $users->employee->employment_status == 'Tetap' ? 'success' : 'info' }}">
+                                        {{ $users->employee->employment_status }}
+                                    </span>
+                                </div>
+                                <div class="small text-muted mb-2">
+                                    <div>Departemen: <strong>{{ $users->employee->department?->name ?? 'Belum Diatur' }}</strong></div>
+                                    <div>Jabatan: <strong>{{ $users->employee->position?->name ?? 'Belum Diatur' }}</strong></div>
+                                </div>
+                                <a href="{{ route('employees.show', $users->employee->id) }}" class="btn btn-sm btn-primary w-100 shadow-xs">
+                                    <i class="mdi mdi-open-in-new me-1"></i> Buka Profil HR Karyawan
+                                </a>
+                            </div>
+                        @else
+                            <div class="p-3 rounded bg-light border">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted fw-semibold small d-flex align-items-center">
+                                        <i class="mdi mdi-account-off-outline me-1"></i> Modul HR
+                                    </span>
+                                    <span class="badge bg-label-secondary">Non-Karyawan</span>
+                                </div>
+                                <p class="small text-muted mb-2">
+                                    Akun ini belum memiliki data kepegawaian di modul HR.
+                                </p>
+                                @if ($users->role !== 'Client')
+                                    <a href="{{ route('employees.create') }}?user_id={{ $users->id }}" class="btn btn-sm btn-outline-primary w-100">
+                                        <i class="mdi mdi-account-plus-outline me-1"></i> Daftarkan ke Modul HR
+                                    </a>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>

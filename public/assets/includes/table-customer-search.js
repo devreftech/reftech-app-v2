@@ -53,11 +53,11 @@ $(function () {
             ],
             columnDefs: [
                 {
-                    targets: [1, 2, 7],
+                    targets: [1, 7],
                     className: "text-center",
                 },
                 {
-                    targets: [5, 6],
+                    targets: [2, 5, 6],
                     className: "text-center text-nowrap",
                 },
                 {
@@ -138,7 +138,7 @@ $(function () {
                         return (
                             '<button type="button" class="btn btn-xs ' +
                             config.badgeClass +
-                            ' rounded-pill px-2 py-1 btn-change-status d-inline-flex align-items-center gap-1" ' +
+                            ' rounded-pill px-2 py-1 btn-change-status d-inline-flex align-items-center gap-1 text-nowrap" ' +
                             'data-id="' +
                             full.id +
                             '" ' +

@@ -111,8 +111,12 @@ class InvoiceController extends Controller
             + Invoice::pendingUnitRequest()->count();
         $invoice = Invoice::find($id);
 
+        if (!$invoice) {
+            return redirect()->route('invoice.index')->with('error', 'Invoice tidak ditemukan');
+        }
+
         // Unit quotation invoice — arahkan ke halaman yang benar
-        if ($invoice && $invoice->id_unit_quotation) {
+        if ($invoice->id_unit_quotation) {
             return redirect()->route('invoice.show_unit', $id);
         }
 
@@ -122,6 +126,9 @@ class InvoiceController extends Controller
             ->pluck('id')
             ->search($id) + 1;
         $quote = Quotation::where('id', $invoice->id_quotation)->first();
+        if (!$quote) {
+            return redirect()->route('invoice.index')->with('error', 'Quotation untuk invoice ini tidak ditemukan');
+        }
         if ($quote->type != 'Sparepart') {
             $subQuote = SubtitleQuotation::with('detail')->where('id_quotation', $quote->id)->get();
         }
@@ -1365,7 +1372,7 @@ class InvoiceController extends Controller
     public function show_unit($id)
     {
         $invoice = Invoice::findOrFail($id);
-        $quote   = UnitQuotation::with(['client', 'pic', 'sales', 'details.unit', 'details.fixedAsset.unit', 'details.equivalent.product', 'deliveries.detail'])->findOrFail($invoice->id_unit_quotation);
+        $quote   = UnitQuotation::with(['client', 'pic', 'plant', 'sales', 'details.unit', 'details.fixedAsset.unit', 'details.equivalent.product', 'deliveries.detail'])->findOrFail($invoice->id_unit_quotation);
 
         $allInvoices = Invoice::where('id_unit_quotation', $quote->id)
             ->orderByRaw("FIELD(type,'DP','BP','CT')")
@@ -1418,7 +1425,7 @@ class InvoiceController extends Controller
     public function print_unit($id)
     {
         $invoice       = Invoice::findOrFail($id);
-        $quote         = UnitQuotation::with(['client', 'pic', 'details.unit', 'details.equivalent.product'])->findOrFail($invoice->id_unit_quotation);
+        $quote         = UnitQuotation::with(['client', 'pic', 'plant', 'details.unit', 'details.equivalent.product'])->findOrFail($invoice->id_unit_quotation);
 
         $percent       = floatval($invoice->percent ?? 100);
         $invoiceAmount = round($quote->total * $percent / 100);
@@ -1437,7 +1444,7 @@ class InvoiceController extends Controller
     public function before_accept_unit($id)
     {
         $invoice = Invoice::findOrFail($id);
-        $quote   = UnitQuotation::with(['client', 'pic', 'details.unit', 'details.equivalent.product', 'sales'])->findOrFail($invoice->id_unit_quotation);
+        $quote   = UnitQuotation::with(['client', 'pic', 'plant', 'details.unit', 'details.equivalent.product', 'sales'])->findOrFail($invoice->id_unit_quotation);
 
         // Kumpulkan semua invoice untuk unit quotation ini (DP & BP → 2 record)
         $allInvoices = Invoice::where('id_unit_quotation', $quote->id)

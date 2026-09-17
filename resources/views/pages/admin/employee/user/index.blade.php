@@ -204,6 +204,19 @@
                     $noticeNonSales.stop(true, true).slideDown(220);
                 }
 
+                // Toggle HR employee registration box based on role
+                var $hrBox = $('#hrEmployeeIntegrationBox');
+                var $hrCheck = $('#create_employee_check');
+                if (role === 'Client') {
+                    $hrBox.stop(true, true).slideUp(200);
+                    $hrCheck.prop('checked', false);
+                } else if (isCreateModal) {
+                    $hrBox.stop(true, true).slideDown(200);
+                    if (isUserAction && !$hrCheck.data('manually-toggled')) {
+                        $hrCheck.prop('checked', true);
+                    }
+                }
+
                 // Update input placeholders
                 $posInput.attr('placeholder', config.position);
                 $areaInput.attr('placeholder', config.areaPlaceholder);
@@ -223,6 +236,10 @@
             // Mark inputs if manually modified by user
             $(document).on('input', '.user-position-input, .user-area-input', function() {
                 $(this).data('custom-edited', true);
+            });
+
+            $(document).on('change', '#create_employee_check', function() {
+                $(this).data('manually-toggled', true);
             });
 
             // Listen for role select changes

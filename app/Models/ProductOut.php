@@ -24,8 +24,16 @@ class ProductOut extends Model
         'no_type',
         'note',
         'vers',
+        'flag',
         'total',
     ];
+    public function isKojisha(): bool
+    {
+        return strtolower($this->flag ?? '') === 'kojisha'
+            || (is_string($this->no_product_out) && str_contains($this->no_product_out, 'BK-KII'))
+            || (is_string($this->invoice) && str_contains($this->invoice, '/KII/'))
+            || (is_string($this->po) && str_contains($this->po, 'KII'));
+    }
     public function detail()
     {
         return $this->hasMany('App\Models\DetailProductOut', 'id_product_out');

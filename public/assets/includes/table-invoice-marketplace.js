@@ -75,6 +75,17 @@ $(function () {
                     },
                 },
                 {
+                    targets: 2,
+                    className: "text-start",
+                    render: function (data, type, full) {
+                        if (type !== "display") return data;
+                        var plantBadge = full["plant_name"]
+                            ? ' <span class="badge bg-label-success ms-1" style="font-size: 10.5px;">' + $('<div>').text(full["plant_name"]).html() + '</span>'
+                            : '';
+                        return (data || "-") + plantBadge;
+                    },
+                },
+                {
                     targets: 3,
                     className: "text-center",
                     render: function (data, type) {

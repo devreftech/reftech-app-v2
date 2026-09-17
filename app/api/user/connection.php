@@ -23,8 +23,11 @@ if (Auth::check()) {
         // Query database for data
         $query = "SELECT u.*,
             (SELECT du.position FROM detail_users du WHERE du.id_users = u.id ORDER BY du.id DESC LIMIT 1) AS position,
-            (SELECT du.area FROM detail_users du WHERE du.id_users = u.id ORDER BY du.id DESC LIMIT 1) AS area
+            (SELECT du.area FROM detail_users du WHERE du.id_users = u.id ORDER BY du.id DESC LIMIT 1) AS area,
+            e.id AS employee_id,
+            e.employment_status AS employee_status
             FROM users u
+            LEFT JOIN employees e ON e.user_id = u.id
             ORDER BY u.name ASC";
 
         $stmt = $pdo->prepare($query);

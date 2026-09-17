@@ -1,88 +1,104 @@
 <form action="{{ route('purchase-request.store', $pending->id) }}" method="post" enctype="multipart/form-data">
-    {{-- @method('PATCH') --}}
     @csrf
-    <div class="modal-onboarding modal fade animate__animated" id="purchaseReq" tabindex="-1" style="display: none;"
-        aria-hidden="true">
+    <div class="modal fade" id="purchaseReq" tabindex="-1" aria-labelledby="purchaseReqLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
-            <div class="modal-content text-center">
-                <div class="modal-header border-0">
-
+            <div class="modal-content">
+                <div class="modal-header bg-light py-3 border-bottom">
+                    <div>
+                        <h5 class="modal-title fw-bold text-primary mb-1 d-flex align-items-center" id="purchaseReqLabel">
+                            <i class="mdi mdi-cart-plus me-2 fs-4"></i> Buat Purchase Request (PR)
+                        </h5>
+                        <div class="text-muted font-12">
+                            <span class="fw-semibold text-dark">{{ $pending->quote->invoice[0]?->no_invoice ?? ($pending->quote->pic->client->company ?? '-') }}</span>
+                            &bull; SO #{{ $pending->id }}
+                        </div>
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-0">
+                <div class="modal-body p-3">
+                    <div class="alert alert-primary d-flex align-items-center py-2 px-3 mb-3">
+                        <i class="mdi mdi-information-outline fs-5 me-2"></i>
+                        <span class="font-12">
+                            Masukkan <strong>Qty PR</strong> dan <strong>Catatan</strong> untuk item yang ingin dipesan ke supplier. Item dengan Qty 0 akan diabaikan secara otomatis.
+                        </span>
+                    </div>
 
-                    <div class="onboarding-content mb-0">
-                        <h4 class="onboarding-title text-body">
-                            {{ $pending->quote->invoice[0]?->no_invoice ?? $pending->quote->pic->client->company }}</h4>
-                        <form>
-                            <div class="card">
-                                <div class="table-responsive text-nowrap h-100">
-                                    <table class="table table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th style="width: 5%">No</th>
-                                                <th style="width: 35%">Item</th>
-                                                {{-- <th>Desc</th> --}}
-                                                <th>Qty</th>
-                                                <th style="width: 35%">Note</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="table-border-bottom-0">
-                                            @php
-                                                $no = 1;
-                                            @endphp
-                                            @foreach ($detQuotation as $item)
-                                                <tr>
-                                                    <td>{{ $no }}</td>
-                                                    {{-- <td>
-                                                        @if ($item->id_equivalent == '0')
-                                                            -
-                                                        @else
-                                                            {{ $item->equivalent->brand }} {{ $item->equivalent->pn }}
+                    <div class="card border shadow-none mb-0">
+                        <div class="table-responsive text-nowrap">
+                            <table class="table table-hover table-bordered align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr class="font-12">
+                                        <th style="width: 40px;" class="text-center">No</th>
+                                        <th>Item &amp; Equivalent</th>
+                                        <th style="width: 130px;" class="text-center">Stok &amp; Status</th>
+                                        <th style="width: 90px;" class="text-center">Qty Order</th>
+                                        <th style="width: 120px;" class="text-center">Qty PR</th>
+                                        <th style="width: 250px;">Catatan PR</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="font-13">
+                                    @php $no = 1; @endphp
+                                    @foreach ($detQuotation as $item)
+                                        @php
+                                            $prod = $item->equivalent->product ?? null;
+                                            $bdgStock = $prod->stock ?? 0;
+                                            $bksStock = $prod->warehouse_stock ?? 0;
+                                            $defaultQty = ($item->status == 3) ? (float)$item->qty : 0;
+                                        @endphp
+                                        <tr>
+                                            <td class="text-center fw-medium">{{ $no }}</td>
+                                            <td style="max-width: 320px; white-space: normal;">
+                                                <input type="hidden" name="id_equivalent[]" value="{{ $item->id_equivalent }}">
+                                                @if ($item->id_equivalent == '0' || !$item->equivalent)
+                                                    <span class="text-muted">-</span>
+                                                @else
+                                                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                                                        <span class="fw-bold text-dark">{{ $item->equivalent->brand ?? '' }} {{ $item->equivalent->pn ?? '' }}</span>
+                                                        @if ($prod && $prod->go)
+                                                            <span class="badge {{ $prod->go == 'Genuine' ? 'bg-label-success' : 'bg-label-warning' }} font-10">{{ $prod->go }}</span>
                                                         @endif
-                                                    </td> --}}
-                                                    @php
-                                                        $title = 'BDG (' . $item->equivalent->product->stock . ') | BKS (' . $item->equivalent->product->warehouse_stock . ')';
-                                                    @endphp
-                                                    <td class="text-start">
-                                                        <pre class="mb-0"
-                                                            style="font-size: 15px; font-family: 'Inter', Tahoma, Geneva, Verdana, sans-serif; max-width: 100%; overflow-x: auto; white-space: pre-wrap;"
-                                                            data-bs-toggle="tooltip" 
-                                                            data-bs-placement="top" 
-                                                            title="{{ $title }}">{{$item->equivalent->product->go == "Genuine" ? 'G' : 'R'}} - {{ $item->equivalent->brand }} {{ $item->equivalent->pn }}</pre>
-                                                    </td>
-                                                    <td>
-                                                        <div class="form-floating form-floating-outline">
-                                                            <input type="number" class="form-control"
-                                                                id="exampleFormControlinput1" name="qty[]"
-                                                                placeholder="Stock..."
-                                                                value="{{ @$item->bdg }}" min="0"></input>
-                                                            <label for="exampleFormControlinput1">Qty</label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div class="form-floating form-floating-outline">
-                                                            <textarea class="form-control" id="exampleFormControlTextarea1" name="note[]" placeholder="Text Note here..."></textarea>
-                                                            <label for="exampleFormControlTextarea1">Note</label>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                                @php
-                                                    $no++;
-                                                @endphp
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </form>
+                                                    </div>
+                                                    @if ($prod && $prod->description)
+                                                        <div class="text-muted font-11 mt-1">{{ $prod->description }}</div>
+                                                    @endif
+                                                @endif
+                                            </td>
+                                            <td class="text-center">
+                                                @if ($item->status == 3)
+                                                    <span class="badge bg-label-danger font-11 mb-1">Kurang</span>
+                                                @elseif ($item->status == 2)
+                                                    <span class="badge bg-label-success font-11 mb-1">Ready</span>
+                                                @else
+                                                    <span class="badge bg-label-secondary font-11 mb-1">On Check</span>
+                                                @endif
+                                                <div class="text-muted font-10">BDG: {{ $bdgStock }} | BKS: {{ $bksStock }}</div>
+                                            </td>
+                                            <td class="text-center fw-bold text-dark">
+                                                {{ $item->qty }} {{ $item->info_qty ?? ($prod->unit ?? '') }}
+                                            </td>
+                                            <td>
+                                                <input type="number" class="form-control form-control-sm text-center fw-bold"
+                                                    name="qty[]" min="0" step="any"
+                                                    value="{{ $defaultQty }}" placeholder="0">
+                                            </td>
+                                            <td>
+                                                <input type="text" class="form-control form-control-sm"
+                                                    name="note[]" value="{{ $item->status == 3 ? 'Kebutuhan SO kurang stok' : '' }}"
+                                                    placeholder="Catatan item...">
+                                            </td>
+                                        </tr>
+                                        @php $no++; @endphp
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">
-                        Close
+                <div class="modal-footer bg-light py-2 border-top">
+                    <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary waves-effect waves-light">
+                        <i class="mdi mdi-cart-plus me-1"></i> Buat Purchase Request
                     </button>
-                    <button type="submit" class="btn btn-primary waves-effect waves-light">Submit</button>
                 </div>
             </div>
         </div>

@@ -241,4 +241,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(\App\Models\MailboxMessage::class, 'user_id');
     }
+
+    public function employee()
+    {
+        return $this->hasOne(Employee::class, 'user_id');
+    }
 }

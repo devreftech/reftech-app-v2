@@ -38,6 +38,39 @@
                 </li>
             @endif
 
+            <!-- Presensi Harian Quick Widget -->
+            @if (Auth::user() && Auth::user()->role !== 'Client')
+                @php
+                    $navEmp = Auth::user()->employee;
+                    $navTodayAtt = null;
+                    if ($navEmp && $navEmp->can_online_attendance) {
+                        $navTodayAtt = \App\Models\Hr\HrAttendance::where('employee_id', $navEmp->id)
+                            ->whereDate('date', \Carbon\Carbon::today())
+                            ->first();
+                    }
+                @endphp
+                @if ($navEmp && $navEmp->can_online_attendance)
+                <li class="nav-item me-2">
+                    @if (!$navTodayAtt || !$navTodayAtt->clock_in)
+                        <a href="{{ route('hr.portal.index') }}" class="btn btn-sm btn-success rounded-pill px-3 py-1 d-flex align-items-center shadow-xs" title="Anda belum absen masuk hari ini. Klik untuk Clock In">
+                            <i class="mdi mdi-clock-in me-1"></i>
+                            <span class="fw-bold d-none d-sm-inline">Clock In</span>
+                        </a>
+                    @elseif ($navTodayAtt && !$navTodayAtt->clock_out)
+                        <a href="{{ route('hr.portal.index') }}" class="btn btn-sm btn-warning rounded-pill px-3 py-1 d-flex align-items-center shadow-xs" title="Presensi Masuk: {{ substr($navTodayAtt->clock_in, 0, 5) }}. Klik untuk Clock Out jika jam pulang">
+                            <i class="mdi mdi-clock-check me-1"></i>
+                            <span class="fw-bold d-none d-sm-inline">Masuk {{ substr($navTodayAtt->clock_in, 0, 5) }}</span>
+                        </a>
+                    @else
+                        <a href="{{ route('hr.portal.index') }}" class="btn btn-sm btn-label-success rounded-pill px-3 py-1 d-flex align-items-center" title="Presensi Hari Ini Selesai: {{ substr($navTodayAtt->clock_in, 0, 5) }} - {{ substr($navTodayAtt->clock_out, 0, 5) }}">
+                            <i class="mdi mdi-check-all me-1 text-success"></i>
+                            <span class="fw-bold d-none d-sm-inline text-success">Hadir</span>
+                        </a>
+                    @endif
+                </li>
+                @endif
+            @endif
+
             <!-- Style Switcher -->
             <li class="nav-item me-1 me-xl-0">
                 <a class="nav-link btn btn-text-secondary rounded-pill btn-icon style-switcher-toggle hide-arrow"
@@ -561,11 +594,13 @@
                                 $prospectNotifications = collect();
                             }
                         }
+                        $unreadKanbanMentionCount = (@$kanbanMentions ? $kanbanMentions->where('is_read', 0)->count() : 0);
                         $hasBadge = false;
                         if (Auth::user()?->role == 'Admin' && @$unreadCommentAdmin && $unreadCommentAdmin->count() >= 1) $hasBadge = true;
                         if ($unreadCommentCount >= 1) $hasBadge = true;
                         if ($unreadProspectNotifCount >= 1) $hasBadge = true;
                         if (@$prMentions && $prMentions->count() >= 1) $hasBadge = true;
+                        if (@$unreadKanbanMentionCount >= 1) $hasBadge = true;
                         if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && @$pendingCancelQuotes && $pendingCancelQuotes->count() >= 1) $hasBadge = true;
                         if (in_array(Auth::user()?->role, ['Accounting', 'Admin', 'Sales']) && @$paymentUnreadCount >= 1) $hasBadge = true;
                         if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && (@$apDueTodayCount >= 1 || @$apDueSoonCount >= 1 || @$apOverdueCount >= 1)) $hasBadge = true;
@@ -589,6 +624,7 @@
                                         if ($unreadCommentCount > 0) $totalBadges += $unreadCommentCount;
                                         if ($unreadProspectNotifCount > 0) $totalBadges += $unreadProspectNotifCount;
                                         if (@$prMentions) $totalBadges += $prMentions->count();
+                                        if (@$unreadKanbanMentionCount > 0) $totalBadges += $unreadKanbanMentionCount;
                                         if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && @$pendingCancelQuotes) $totalBadges += $pendingCancelQuotes->count();
                                         if (in_array(Auth::user()?->role, ['Accounting', 'Admin', 'Sales']) && @$paymentUnreadCount) $totalBadges += $paymentUnreadCount;
                                         if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && @$apDueTodayCount) $totalBadges += $apDueTodayCount;
@@ -633,6 +669,9 @@
                                     @if ($unreadCommentCount > 0)
                                         <span id="commentUnreadCountBadge" class="badge rounded-pill bg-label-primary">{{ $unreadCommentCount }} Komentar Baru</span>
                                     @endif
+                                @endif
+                                @if (@$unreadKanbanMentionCount > 0)
+                                    <span id="kanbanMentionCountBadge" class="badge rounded-pill bg-label-info">{{ $unreadKanbanMentionCount }} Mention Kanban</span>
                                 @endif
                             </div>
                         </div>
@@ -728,6 +767,17 @@
                                         'type' => 'payment',
                                         'time' => \Carbon\Carbon::parse($pn->created_at),
                                         'item' => $pn,
+                                    ]);
+                                }
+                            }
+
+                            // 7. Kanban Mentions
+                            if (@$kanbanMentions && $kanbanMentions->count() > 0) {
+                                foreach ($kanbanMentions as $km) {
+                                    $unifiedNotifications->push([
+                                        'type' => 'kanban_mention',
+                                        'time' => \Carbon\Carbon::parse($km->comment_created_at ?? $km->mention_created_at),
+                                        'item' => $km,
                                     ]);
                                 }
                             }
@@ -1046,6 +1096,37 @@
                                             @endunless
                                         </div>
                                     </a>
+                                @elseif ($notif['type'] === 'kanban_mention')
+                                    @php
+                                        $km = $notif['item'];
+                                        $isUnread = !$km->is_read;
+                                        $date = \Carbon\Carbon::parse($km->comment_created_at ?? $km->mention_created_at);
+                                        $authorPhoto = $km->author_photo ? url($km->author_photo) : asset('assets/img/avatars/1.png');
+                                    @endphp
+                                    <a href="{{ route('notifications.kanban.go', $km->comment_id) }}"
+                                        class="notif-card notif-card-comment kanban-mention-item {{ $isUnread ? 'notif-card-unread' : 'notif-card-read' }}"
+                                        data-comment-id="{{ $km->comment_id }}" data-read="{{ $isUnread ? '0' : '1' }}">
+                                        <div class="notif-card-inner">
+                                            <div class="notif-card-avatar">
+                                                <img src="{{ $authorPhoto }}" alt="{{ $km->author_name }}" class="w-100 h-100 rounded-3" style="object-fit: cover;" onerror="this.src='{{ asset('assets/img/avatars/1.png') }}'" />
+                                            </div>
+                                            <div class="notif-card-content">
+                                                <div class="notif-card-meta">
+                                                    <span class="badge bg-label-primary notif-badge-pill"><i class="mdi mdi-view-column-outline me-1"></i>{{ $km->board_name }}</span>
+                                                    <span class="notif-time-ago">
+                                                        <i class="mdi mdi-clock-outline fs-7"></i> {{ $date->diffInHours(\Carbon\Carbon::now()) > 24 ? $date->format('d M y') : $date->diffForHumans() }}
+                                                    </span>
+                                                </div>
+                                                <h6 class="notif-card-title">{{ $km->task_title }}</h6>
+                                                <p class="notif-card-desc">
+                                                    <span class="fw-semibold text-dark">{{ $km->author_name }}:</span> {{ \Illuminate\Support\Str::limit(strip_tags($km->comment), 65) }}
+                                                </p>
+                                            </div>
+                                            @if ($isUnread)
+                                                <span class="notif-unread-dot dot-primary"></span>
+                                            @endif
+                                        </div>
+                                    </a>
                                 @endif
                             @endforeach
                         </div>
@@ -1106,6 +1187,14 @@
                                 <span class="align-middle">My Profile</span>
                             </a>
                         </li>
+                        @if (Auth::user() && Auth::user()->role !== 'Client')
+                        <li>
+                            <a class="dropdown-item" href="{{ route('hr.portal.index') }}">
+                                <i class="mdi mdi-clock-check-outline text-success me-2"></i>
+                                <span class="align-middle fw-semibold text-success">Presensi & Portal Saya</span>
+                            </a>
+                        </li>
+                        @endif
                         <li>
                             <a class="dropdown-item" href="{{ route('profile.edit', Auth::user()?->id) }}">
                                 <i class="mdi mdi-cog-outline me-2"></i>
@@ -1272,6 +1361,9 @@
 
                     var commentBadge = document.getElementById('commentUnreadCountBadge');
                     if (commentBadge) commentBadge.classList.add('d-none');
+
+                    var kanbanBadge = document.getElementById('kanbanMentionCountBadge');
+                    if (kanbanBadge) kanbanBadge.classList.add('d-none');
 
                     // 3. Ubah semua kartu notifikasi unread menjadi read
                     document.querySelectorAll('.notif-card').forEach(function (card) {

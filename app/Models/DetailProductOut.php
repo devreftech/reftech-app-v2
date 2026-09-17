@@ -17,6 +17,7 @@ class DetailProductOut extends Model
         'id_detail_product',
         'id_serial_product',
         'id_product_out',
+        'id_purchase_order',
         'qty',
         'warehouse',
         'price',
@@ -25,6 +26,10 @@ class DetailProductOut extends Model
     public function productOut()
     {
         return $this->belongsTo('App\Models\ProductOut', 'id_product_out', 'id');
+    }
+    public function purchaseOrder()
+    {
+        return $this->belongsTo('App\Models\PurchaseOrder', 'id_purchase_order', 'id');
     }
     public function detailProduct()
     {

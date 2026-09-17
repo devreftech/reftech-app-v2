@@ -29,6 +29,7 @@ use App\Services\PurchaseRequestService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PurchaseController extends Controller
 {
@@ -71,69 +72,150 @@ class PurchaseController extends Controller
     }
     public function store(Request $request, $id)
     {
-        $pending = PendingPO::find($id);
-        $quotation = Quotation::find($pending->id_quotation);
-
-        $dQuote = DetailQuotation::where('id_quotation', $quotation->id)->get();
-
-        $success = false;
+        $pending = PendingPO::findOrFail($id);
         $header = null;
+        $createdCount = 0;
 
-        foreach ($request->qty as $key => $value) {
-            if ($value != 0) {
-                if (!$header) {
-                    $header = $this->prService->findOrCreateDraftHeader($id, Auth::id());
+        // 1. If explicit array of item rows passed (items[][id_equivalent], items[][qty], etc.)
+        if ($request->has('items') && is_array($request->items)) {
+            foreach ($request->items as $row) {
+                $qty = (float) ($row['qty'] ?? 0);
+                $idEquiv = $row['id_equivalent'] ?? null;
+                if ($qty > 0 && $idEquiv && $idEquiv != '0') {
+                    if (!$header) {
+                        $header = $this->prService->findOrCreateDraftHeader($id, Auth::id());
+                    }
+                    $header->details()->create([
+                        'id_equivalent' => $idEquiv,
+                        'qty' => $qty,
+                        'note' => $row['note'] ?? null,
+                    ]);
+                    $createdCount++;
                 }
+            }
+        }
+        // 2. If parallel arrays passed (qty[], id_equivalent[], note[])
+        elseif ($request->has('qty') && is_array($request->qty)) {
+            $idEquivs = $request->id_equivalent ?? [];
 
+            // Fallback equivalent mapping if not explicitly passed in request
+            if (empty($idEquivs)) {
+                if ($pending->id_quotation) {
+                    $dQuote = DetailQuotation::where('id_quotation', $pending->id_quotation)->get();
+                    $idEquivs = $dQuote->pluck('id_equivalent')->toArray();
+                } elseif ($pending->id_unit_quotation) {
+                    $dPending = DetailPendingPO::where('id_pending', $id)->get();
+                    $idEquivs = $dPending->pluck('id_equivalent')->toArray();
+                }
+            }
+
+            foreach ($request->qty as $key => $value) {
+                $qty = (float) $value;
+                $idEquiv = $idEquivs[$key] ?? null;
+                if ($qty > 0 && $idEquiv && $idEquiv != '0') {
+                    if (!$header) {
+                        $header = $this->prService->findOrCreateDraftHeader($id, Auth::id());
+                    }
+                    $note = is_array($request->note) ? ($request->note[$key] ?? null) : $request->note;
+                    $header->details()->create([
+                        'id_equivalent' => $idEquiv,
+                        'qty' => $qty,
+                        'note' => $note,
+                    ]);
+                    $createdCount++;
+                }
+            }
+        }
+        // 3. If single item passed (id_equivalent, qty, note)
+        elseif ($request->has('id_equivalent') && $request->has('qty')) {
+            $qty = (float) $request->qty;
+            if ($qty > 0 && $request->id_equivalent && $request->id_equivalent != '0') {
+                $header = $this->prService->findOrCreateDraftHeader($id, Auth::id());
                 $header->details()->create([
-                    'id_equivalent' => $dQuote[$key]->id_equivalent,
-                    'qty' => $request->qty[$key],
-                    'note' => $request->note[$key],
+                    'id_equivalent' => $request->id_equivalent,
+                    'qty' => $qty,
+                    'note' => $request->note,
                 ]);
-
-                $success = true;
+                $createdCount++;
             }
         }
 
-        if ($success) {
-            return redirect('pending-po/' . $id)->with('success', 'Purchase Request telah dibuat');
+        // Also check if an extra manual equivalent item was submitted
+        if ($request->has('manual_id_equivalent') && $request->has('manual_qty')) {
+            $manualQty = (float) $request->manual_qty;
+            $manualEquiv = $request->manual_id_equivalent;
+            if ($manualQty > 0 && $manualEquiv && $manualEquiv != '0') {
+                if (!$header) {
+                    $header = $this->prService->findOrCreateDraftHeader($id, Auth::id());
+                }
+                $header->details()->create([
+                    'id_equivalent' => $manualEquiv,
+                    'qty' => $manualQty,
+                    'note' => $request->manual_note ?? null,
+                ]);
+                $createdCount++;
+            }
         }
+
+        if ($createdCount > 0) {
+            return redirect('pending-po/' . $id)->with('success', "Purchase Request berhasil dibuat ({$createdCount} item ditambahkan).");
+        }
+
+        return redirect('pending-po/' . $id)->with('warning', 'Tidak ada item yang dipilih atau Qty bernilai 0.');
     }
+
     public function store_project(Request $request, $id)
     {
-        $header = $this->prService->findOrCreateDraftHeader($id, Auth::id());
-
-        $header->details()->create([
-            'id_equivalent' => $request->id_equivalent,
-            'qty' => $request->qty,
-            'note' => $request->note,
-        ]);
-
-        return redirect('pending-po/' . $id)->with('success', 'Purchase Request telah dibuat');
+        return $this->store($request, $id);
     }
     public function show($id)
     {
-        $pending = PendingPO::find($id);
+        // Cek apakah $id adalah id_pending (PendingPO) atau ID langsung PurchaseRequest
+        $purchase = PurchaseRequest::where('id_pending', $id)
+            ->with(['details.equivalent.product', 'details.allocations.purchaseOrder', 'purchaseOrders.detail', 'rejector'])
+            ->first();
+
+        if ($purchase) {
+            $pending = PendingPO::find($id);
+        } else {
+            $purchase = PurchaseRequest::with(['details.equivalent.product', 'details.allocations.purchaseOrder', 'purchaseOrders.detail', 'rejector'])->find($id);
+            if ($purchase && $purchase->id_pending) {
+                $pending = PendingPO::find($purchase->id_pending);
+            } else {
+                $pending = PendingPO::find($id);
+            }
+        }
+
+        if (!$pending) {
+            abort(404, 'Purchase Request atau Sales Order tidak ditemukan.');
+        }
+
+        $id = $pending->id;
         $isUnitQuotation = (bool) $pending->id_unit_quotation;
 
         if ($isUnitQuotation) {
             // Unit Quotation punya field/relasi setara buat semua yang dibutuhkan view ini
             // (pic.client, sales, type) — cukup di-alias di titik yang beda nama kolomnya,
             // sisanya kompatibel langsung tanpa perlu view terpisah.
-            $quotation = UnitQuotation::with(['sales', 'pic.client'])->findOrFail($pending->id_unit_quotation);
-            $quotation->po_date = $quotation->po_received;
-            $detQuotation = $quotation->details; // UnitQuotationDetail: sudah punya id_equivalent + price
-            $subQuote = collect();
-            $invoice = Invoice::where('id_unit_quotation', $quotation->id)->first();
+            $quotation = UnitQuotation::with(['sales', 'pic.client'])->find($pending->id_unit_quotation);
+            if ($quotation) {
+                $quotation->po_date = $quotation->po_received;
+                $detQuotation = $quotation->details; // UnitQuotationDetail: sudah punya id_equivalent + price
+                $subQuote = collect();
+                $invoice = Invoice::where('id_unit_quotation', $quotation->id)->first();
+            } else {
+                $detQuotation = collect();
+                $subQuote = collect();
+                $invoice = null;
+            }
         } else {
-            $quotation = Quotation::find($pending->id_quotation);
+            $quotation = Quotation::with(['sales', 'pic.client'])->find($pending->id_quotation);
             $detQuotation = DetailQuotation::where('id_quotation', $pending->id_quotation)->get();
             $subQuote = SubtitleQuotation::with('detail')->where('id_quotation', $pending->id_quotation)->get();
-            $invoice = Invoice::where('id_quotation', $quotation->id)->first();
+            $invoice = $quotation ? Invoice::where('id_quotation', $quotation->id)->first() : null;
         }
 
         $activity = ChangeStatus::where('id_pending', $id)->with('comment')->get();
-        $purchase = PurchaseRequest::where('id_pending', $id)->with('details.equivalent.product', 'details.allocations.purchaseOrder', 'purchaseOrders.detail')->first();
 
         // Data diskusi PR
         $discussions = PrDiscussion::where('id_pending', $id)
@@ -199,9 +281,118 @@ class PurchaseController extends Controller
         $noSaleProspect = Prospect::whereNull('id_sales')->whereNull('provide')->count();
         $leveledProspect = Prospect::whereNull('level')->where('id_sales', Auth::id())->count();
 
+        // Fetch last purchase info per product for PR items (Impor/Lokal and previous purchase price)
+        $productIds = $purchase ? $purchase->details->pluck('equivalent.id_product')->filter()->unique()->values() : collect();
+        $lastPurchaseHistory = [];
+
+        if ($productIds->isNotEmpty()) {
+            // 1. Check from DetailPurchaseOrder
+            $poHistory = DB::table('detail_purchase_order as dpo')
+                ->join('purchase_order as po', 'po.id', '=', 'dpo.id_purchase_order')
+                ->leftJoin('supplier as s', 's.id', '=', 'po.id_supplier')
+                ->whereIn('dpo.id_product', $productIds)
+                ->where('dpo.price', '>', 0)
+                ->select([
+                    'dpo.id_product',
+                    'dpo.price',
+                    'po.date as purchase_date',
+                    'po.no_po',
+                    's.supplier as supplier_name',
+                    's.info as supplier_info',
+                    's.area as supplier_area',
+                ])
+                ->orderByDesc('po.date')
+                ->orderByDesc('dpo.id')
+                ->get()
+                ->groupBy('id_product');
+
+            // 2. Check from DetailProductIn (Barang Masuk)
+            $productInHistory = DB::table('detail_product_in as dpi')
+                ->join('detail_product as dp', 'dp.id', '=', 'dpi.id_detail_product')
+                ->join('product_in as pi', 'pi.id', '=', 'dpi.id_product_in')
+                ->leftJoin('supplier as s', 's.id', '=', 'pi.id_supplier')
+                ->whereIn('dp.id_product', $productIds)
+                ->where('dpi.modal', '>', 0)
+                ->select([
+                    'dp.id_product',
+                    'dpi.modal as price',
+                    'pi.date as purchase_date',
+                    'pi.no_product_in as no_po',
+                    's.supplier as supplier_name',
+                    's.info as supplier_info',
+                    's.area as supplier_area',
+                ])
+                ->orderByDesc('pi.date')
+                ->orderByDesc('dpi.id')
+                ->get()
+                ->groupBy('id_product');
+
+            // 3. Check DetailProduct fallback (HPP / modal)
+            $detailProductPrices = DB::table('detail_product')
+                ->whereIn('id_product', $productIds)
+                ->select('id_product', 'modal', 'hpp')
+                ->orderByDesc('id')
+                ->get()
+                ->groupBy('id_product');
+
+            foreach ($productIds as $pId) {
+                $latestPo = $poHistory->get($pId)?->first();
+                $latestIn = $productInHistory->get($pId)?->first();
+                $dpPrice = $detailProductPrices->get($pId)?->first();
+
+                $picked = null;
+                if ($latestPo && $latestIn) {
+                    $picked = ($latestPo->purchase_date >= $latestIn->purchase_date) ? $latestPo : $latestIn;
+                } elseif ($latestPo) {
+                    $picked = $latestPo;
+                } elseif ($latestIn) {
+                    $picked = $latestIn;
+                }
+
+                if ($picked) {
+                    $suppInfo = strtolower((string) ($picked->supplier_info ?? ''));
+                    $suppArea = strtolower((string) ($picked->supplier_area ?? ''));
+                    $isImpor = str_contains($suppInfo, 'import') 
+                            || str_contains($suppInfo, 'impor') 
+                            || str_contains($suppArea, 'china') 
+                            || str_contains($suppArea, 'shanghai') 
+                            || str_contains($suppArea, 'taiwan') 
+                            || str_contains($suppArea, 'japan') 
+                            || str_contains($suppArea, 'overseas');
+
+                    $lastPurchaseHistory[$pId] = [
+                        'has_history' => true,
+                        'price' => (float) $picked->price,
+                        'purchase_type' => $isImpor ? 'Impor' : 'Lokal',
+                        'purchase_date' => $picked->purchase_date,
+                        'supplier_name' => $picked->supplier_name,
+                        'ref_doc' => $picked->no_po,
+                    ];
+                } elseif ($dpPrice && ($dpPrice->modal > 0 || $dpPrice->hpp > 0)) {
+                    $lastPurchaseHistory[$pId] = [
+                        'has_history' => true,
+                        'price' => (float) ($dpPrice->modal ?: $dpPrice->hpp),
+                        'purchase_type' => 'Lokal',
+                        'purchase_date' => null,
+                        'supplier_name' => 'Master HPP',
+                        'ref_doc' => null,
+                    ];
+                } else {
+                    $lastPurchaseHistory[$pId] = [
+                        'has_history' => false,
+                        'price' => 0,
+                        'purchase_type' => null,
+                        'purchase_date' => null,
+                        'supplier_name' => null,
+                        'ref_doc' => null,
+                    ];
+                }
+            }
+        }
+
         return view('pages.warehouse.purchase.detail', compact(
             'purchase', 'activity', 'subQuote', 'pending', 'quotation', 'invoice', 'detQuotation', 'isUnitQuotation',
-            'discussions', 'allUsers',
+            'discussions', 'allUsers', 'lastPurchaseHistory',
             'comment', 'unreadComment', 'commentAdmin', 'unreadCommentAdmin', 'noSaleProspect', 'leveledProspect'
         ));
     }
@@ -1359,6 +1550,7 @@ class PurchaseController extends Controller
                     'total_qty' => $detail->totalQty,
                     'remaining_qty' => $rem,
                     'qty_to_take' => $rem,
+                    'price' => $detail->equivalent->price ?? ($product->price ?? 0),
                     'note' => $detail->note ?: '-',
                 ];
             }

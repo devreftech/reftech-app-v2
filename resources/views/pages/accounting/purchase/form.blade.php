@@ -58,55 +58,200 @@
             padding: 1.15rem 1.25rem;
         }
         
-        /* Category segmented pills */
-        .item-category-pills {
-            display: inline-flex;
-            background: #f1f3f9;
-            padding: 3px;
-            border-radius: 8px;
-            gap: 2px;
-        }
-        .item-category-pills .category-pill-label {
-            cursor: pointer;
-            margin: 0;
-            padding: 4px 10px;
-            font-size: 11.5px;
-            font-weight: 600;
-            color: #697a8d;
-            border-radius: 6px;
-            transition: all 0.15s ease;
-            user-select: none;
+        /* Category bullet radios & aligned column headers */
+        .item-col-label {
+            height: 24px;
             display: flex;
             align-items: center;
-            gap: 4px;
+            margin-bottom: 4px;
         }
-        .item-category-pills .item-category-radio {
-            display: none;
+        .item-category-radios {
+            height: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 4px;
         }
-        .item-category-pills .item-category-radio:checked + .category-pill-label {
-            background: #ffffff;
+        .item-category-radios .form-check {
+            margin-bottom: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding-left: 0;
+        }
+        .item-category-radios .form-check-input {
+            cursor: pointer;
+            margin: 0;
+            float: none;
+        }
+        .item-category-radios .form-check-label {
+            cursor: pointer;
+            user-select: none;
+            font-size: 12px;
+            font-weight: 500;
+            color: #566a7f;
+            line-height: 1;
+            margin-bottom: 0;
+        }
+        .item-category-radios .form-check-input:checked + .form-check-label {
             color: #696cff;
-            box-shadow: 0 1px 4px rgba(67, 89, 113, 0.12);
+            font-weight: 700;
         }
 
-        /* Ship To Card selector */
-        .ship-to-card {
-            cursor: pointer;
-            border: 1.5px solid #e7e7ee;
+        /* Uniform input heights & rounded styling across line item row (standardizing with Satuan Select2) */
+        .repeater-wrapper .form-control:not(textarea),
+        .repeater-wrapper .form-select,
+        .repeater-wrapper .input-group:not(.has-validation) > .form-control,
+        .repeater-wrapper .input-group:not(.has-validation) > .input-group-text,
+        .repeater-wrapper .input-group-sm > .form-control,
+        .repeater-wrapper .input-group-sm > .input-group-text {
+            height: 38px !important;
+            min-height: 38px !important;
+            font-size: 0.85rem !important;
+        }
+        .repeater-wrapper .select2-container .select2-selection--single {
+            height: 38px !important;
+            min-height: 38px !important;
+            border-radius: 6px !important;
+        }
+        .repeater-wrapper .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 36px !important;
+            font-size: 0.85rem !important;
+        }
+        .repeater-wrapper .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px !important;
+        }
+        .repeater-wrapper .amount-label {
+            height: 38px !important;
+            min-height: 38px !important;
+            line-height: 38px !important;
+            font-size: 0.925rem !important;
+        }
+        .repeater-wrapper .btn-del {
+            height: 38px !important;
+            width: 38px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0 !important;
+            border-radius: 6px !important;
+        }
+
+        /* Rounded styling for Harga Satuan input group & line item form controls */
+        .repeater-wrapper .form-control,
+        .repeater-wrapper .form-select {
+            border-radius: 6px !important;
+        }
+        .repeater-wrapper .input-group {
+            border-radius: 6px !important;
+        }
+        .repeater-wrapper .input-group > .input-group-text:first-child {
+            border-top-left-radius: 6px !important;
+            border-bottom-left-radius: 6px !important;
+            border-top-right-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+        }
+        .repeater-wrapper .input-group > .invoice-item-price-label,
+        .repeater-wrapper .input-group > .form-control:not(:first-child) {
+            border-top-right-radius: 6px !important;
+            border-bottom-right-radius: 6px !important;
+            border-top-left-radius: 0 !important;
+            border-bottom-left-radius: 0 !important;
+        }
+
+        /* Sleek Modern Segmented Tab Buttons for Ship To */
+        .ship-to-tabs-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            background: #f5f6fa;
+            padding: 5px;
             border-radius: 10px;
-            padding: 1rem;
+            border: 1px solid #e7e7ee;
+        }
+        @media (max-width: 768px) {
+            .ship-to-tabs-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        .ship-to-tab-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: transparent;
+            border: 1.5px solid transparent;
+            border-radius: 8px;
+            color: #566a7f;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            text-align: left;
+            user-select: none;
+            width: 100%;
+        }
+        .ship-to-tab-btn .tab-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 7px;
+            background: #e9ecef;
+            color: #697a8d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 17px;
             transition: all 0.2s ease;
-            background: #ffffff;
-            height: 100%;
         }
-        .ship-to-card:hover {
-            border-color: #b4b6fc;
-            background: #fdfdff;
+        .ship-to-tab-btn .tab-content {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.25;
+            min-width: 0;
+            flex-grow: 1;
         }
-        .ship-to-card.active {
+        .ship-to-tab-btn .tab-title {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #435971;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .ship-to-tab-btn .tab-desc {
+            font-size: 11px;
+            color: #a1acb8;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .ship-to-tab-btn .tab-check {
+            display: none;
+            color: #696cff;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .ship-to-tab-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.75);
+            border-color: #d9dee3;
+        }
+        .ship-to-tab-btn.active {
+            background: #ffffff !important;
             border-color: #696cff !important;
-            background: #f8f9ff !important;
-            box-shadow: 0 2px 8px rgba(105, 108, 255, 0.12);
+            box-shadow: 0 2px 8px rgba(105, 108, 255, 0.16) !important;
+        }
+        .ship-to-tab-btn.active .tab-icon {
+            background: #ebeefd;
+            color: #696cff;
+        }
+        .ship-to-tab-btn.active .tab-title {
+            color: #696cff;
+            font-weight: 700;
+        }
+        .ship-to-tab-btn.active .tab-desc {
+            color: #697a8d;
+        }
+        .ship-to-tab-btn.active .tab-check {
+            display: block;
         }
         
         /* Financial Summary Box */
@@ -353,12 +498,27 @@
                         </div>
                     </div>
 
-                    {{-- Supplier Address --}}
+                    {{-- Supplier Address Selector & Textarea --}}
                     <div class="col-12">
-                        <div class="form-floating form-floating-outline">
-                            <textarea class="form-control" id="address" name="address" rows="2" style="height: 72px;"
-                                placeholder="Alamat supplier akan terisi otomatis saat supplier dipilih">{{ old('address', @$purchase->address ?? '') }}</textarea>
-                            <label for="address">Alamat Supplier</label>
+                        <div class="card bg-light-soft border border-light-subtle p-3 mb-0" style="border-radius: 10px;">
+                            <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-1">
+                                <label class="form-label fw-bold text-dark font-13 mb-0" for="address-select">
+                                    <i class="mdi mdi-map-marker-outline text-primary me-1"></i>Pilih Alamat Tersimpan
+                                </label>
+                                <button type="button" class="btn btn-outline-primary btn-xs" id="btn-add-supplier-address" title="Tambah Alamat Baru untuk Supplier Ini">
+                                    <i class="mdi mdi-plus me-1"></i>Tambah Alamat Baru
+                                </button>
+                            </div>
+                            <div class="mb-2">
+                                <select id="address-select" class="form-select form-select-sm">
+                                    <option value="">-- Pilih Alamat Operasional / Cabang / Gudang --</option>
+                                </select>
+                            </div>
+                            <div class="form-floating form-floating-outline">
+                                <textarea class="form-control bg-white" id="address" name="address" rows="2" style="height: 68px;"
+                                    placeholder="Alamat supplier akan terisi otomatis saat alamat dipilih">{{ old('address', @$purchase->address ?? '') }}</textarea>
+                                <label for="address">Alamat Supplier Terpilih</label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -482,79 +642,68 @@
                     </div>
                 </div>
 
-                {{-- Ship To Destination Cards --}}
+                {{-- Alamat Pengiriman (Ship To) - Simple & Minimalist --}}
                 @php
                     $addrBdg = 'Taman Kopo Indah V, Ruko Soho Sommerville No. 31 Bandung - Jawabarat 40218';
                     $addrBks = 'Jl. Nancep No.45A, Cibening, Kec. Setu, Kabupaten Bekasi, Jawa Barat 17320';
                     $currentShipTo = old('ship_to', @$purchase->ship_to ?? $addrBdg);
-                    $isBdg = $currentShipTo == $addrBdg;
-                    $isBks = $currentShipTo == $addrBks;
+                    $isBdg = trim($currentShipTo) == trim($addrBdg);
+                    $isBks = trim($currentShipTo) == trim($addrBks);
                     $isCustom = !$isBdg && !$isBks && !empty($currentShipTo);
                     if (!$isBdg && !$isBks && !$isCustom) {
                         $isBdg = true;
                         $currentShipTo = $addrBdg;
                     }
                 @endphp
-                <div class="border-top pt-3">
-                    <label class="form-label fw-bold text-dark small text-uppercase mb-2" style="letter-spacing: .5px;">
-                        <i class="mdi mdi-map-marker-radius-outline me-1 text-primary"></i> Alamat Pengiriman (Ship To)
-                    </label>
-                    <div class="row g-3">
-                        {{-- Option BDG --}}
-                        <div class="col-md-6 col-12">
-                            <div class="ship-to-card {{ $isBdg ? 'active' : '' }}" id="opt-wrapper-bdg">
-                                <div class="form-check d-flex align-items-start gap-2 mb-0">
-                                    <input name="ship_to_preset" class="form-check-input mt-1 ship-to-radio" type="radio" value="BDG" id="shipToBdg" {{ $isBdg ? 'checked' : '' }}>
-                                    <label class="form-check-label w-100 cursor-pointer" for="shipToBdg">
-                                        <div class="fw-bold text-dark mb-1 d-flex align-items-center gap-1">
-                                            <i class="mdi mdi-office-building-marker text-primary fs-5"></i>
-                                            <span>BDG (Bandung)</span>
-                                            <span class="badge bg-label-primary ms-auto" style="font-size: 10px;">Gudang Bandung</span>
-                                        </div>
-                                        <div class="text-muted small" style="line-height:1.4;">
-                                            {{ $addrBdg }}
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Option BKS --}}
-                        <div class="col-md-6 col-12">
-                            <div class="ship-to-card {{ $isBks ? 'active' : '' }}" id="opt-wrapper-bks">
-                                <div class="form-check d-flex align-items-start gap-2 mb-0">
-                                    <input name="ship_to_preset" class="form-check-input mt-1 ship-to-radio" type="radio" value="BKS" id="shipToBks" {{ $isBks ? 'checked' : '' }}>
-                                    <label class="form-check-label w-100 cursor-pointer" for="shipToBks">
-                                        <div class="fw-bold text-dark mb-1 d-flex align-items-center gap-1">
-                                            <i class="mdi mdi-warehouse text-primary fs-5"></i>
-                                            <span>BKS (Bekasi)</span>
-                                            <span class="badge bg-label-primary ms-auto" style="font-size: 10px;">Gudang Bekasi</span>
-                                        </div>
-                                        <div class="text-muted small" style="line-height:1.4;">
-                                            {{ $addrBks }}
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Option Custom / Alamat Lain --}}
-                        <div class="col-12">
-                            <div class="ship-to-card {{ $isCustom ? 'active' : '' }}" id="opt-wrapper-custom">
-                                <div class="form-check d-flex align-items-center gap-2 mb-1">
-                                    <input name="ship_to_preset" class="form-check-input ship-to-radio" type="radio" value="CUSTOM" id="shipToCustom" {{ $isCustom ? 'checked' : '' }}>
-                                    <label class="form-check-label fw-bold text-dark cursor-pointer mb-0 d-flex align-items-center gap-1" for="shipToCustom">
-                                        <i class="mdi mdi-map-marker-plus-outline text-primary fs-5"></i>
-                                        <span>Alamat Pengiriman Lain (Input Manual)</span>
-                                    </label>
-                                </div>
-                                <div id="custom-ship-to-wrapper" class="{{ $isCustom ? '' : 'd-none' }} mt-2 ps-4">
-                                    <textarea class="form-control" id="ship_to_custom_input" rows="2" placeholder="Tuliskan alamat lengkap pengiriman khusus untuk PO ini...">{{ $isCustom ? $currentShipTo : '' }}</textarea>
-                                </div>
-                            </div>
-                        </div>
+                <div class="col-12 mt-2 pt-3 border-top">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <label class="form-label fw-bold text-dark font-13 mb-0">
+                            <i class="mdi mdi-truck-delivery-outline text-primary me-1"></i>Alamat Pengiriman (Ship To)
+                        </label>
+                        <span class="badge bg-label-primary font-11">Pilihan Cepat / Manual</span>
                     </div>
-                    <input type="hidden" name="ship_to" id="ship_to_hidden" value="{{ $currentShipTo }}">
+
+                    {{-- Modern Segmented Tab Buttons --}}
+                    <div class="ship-to-tabs-container mb-2">
+                        <button type="button" class="ship-to-tab-btn {{ $isBdg ? 'active' : '' }}" data-preset="BDG" data-address="{{ $addrBdg }}">
+                            <div class="tab-icon">
+                                <i class="mdi mdi-office-building-marker"></i>
+                            </div>
+                            <div class="tab-content text-start">
+                                <span class="tab-title">Gudang Bandung (BDG)</span>
+                                <span class="tab-desc">Kopo Indah V, Bandung</span>
+                            </div>
+                            <i class="mdi mdi-check-circle tab-check ms-auto"></i>
+                        </button>
+
+                        <button type="button" class="ship-to-tab-btn {{ $isBks ? 'active' : '' }}" data-preset="BKS" data-address="{{ $addrBks }}">
+                            <div class="tab-icon">
+                                <i class="mdi mdi-warehouse"></i>
+                            </div>
+                            <div class="tab-content text-start">
+                                <span class="tab-title">Gudang Bekasi (BKS)</span>
+                                <span class="tab-desc">Setu, Bekasi</span>
+                            </div>
+                            <i class="mdi mdi-check-circle tab-check ms-auto"></i>
+                        </button>
+
+                        <button type="button" class="ship-to-tab-btn {{ $isCustom ? 'active' : '' }}" data-preset="CUSTOM">
+                            <div class="tab-icon">
+                                <i class="mdi mdi-map-marker-plus-outline"></i>
+                            </div>
+                            <div class="tab-content text-start">
+                                <span class="tab-title">Alamat Lain / Custom</span>
+                                <span class="tab-desc">Input manual alamat baru</span>
+                            </div>
+                            <i class="mdi mdi-check-circle tab-check ms-auto"></i>
+                        </button>
+                    </div>
+
+                    <div class="form-floating form-floating-outline">
+                        <textarea class="form-control bg-white" id="ship_to_input" name="ship_to" rows="2" style="height: 68px;"
+                            placeholder="Tuliskan alamat lengkap pengiriman..." required>{{ $currentShipTo }}</textarea>
+                        <label for="ship_to_input">Detail Alamat Pengiriman (Ship To) <span class="text-danger">*</span></label>
+                    </div>
                 </div>
             </div>
         </div>
@@ -568,16 +717,16 @@
                     <span class="badge bg-label-primary" id="items-count-badge">0 Items</span>
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <button type="button" class="btn btn-sm btn-primary shadow-xs btn-add" data-repeater-create="">
+                    <button type="button" class="btn btn-sm btn-primary shadow-xs btn-add-item-action" data-repeater-create="">
                         <i class="mdi mdi-plus me-1"></i> Add Item
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-primary shadow-xs" id="btn-pull-pr-items" data-bs-toggle="modal" data-bs-target="#modalPullPrItems">
+                    <button type="button" class="btn btn-sm btn-outline-primary shadow-xs btn-pull-pr-action" data-bs-toggle="modal" data-bs-target="#modalPullPrItems">
                         <i class="mdi mdi-file-import-outline me-1"></i> Tarik Item dari PR
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-info" id="btn-add-header-title">
+                    <button type="button" class="btn btn-sm btn-outline-info btn-add-header-title-action" id="btn-add-header-title-top">
                         <i class="mdi mdi-format-header-1 me-1"></i> Head Title
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-add-custom-item">
+                    <button type="button" class="btn btn-sm btn-outline-secondary btn-add-custom-item-action" id="btn-add-custom-item-top">
                         <i class="mdi mdi-format-list-bulleted me-1"></i> Custom Item
                     </button>
                 </div>
@@ -639,28 +788,26 @@
 
                                                     {{-- Item Selection & Category Selector --}}
                                                     <div class="col-lg-5 col-12 mb-2 mb-lg-0 item-fields">
-                                                        <div class="d-flex align-items-center justify-content-between mb-1">
-                                                            <div class="item-category-pills">
-                                                                <label class="category-pill-label">
-                                                                    <input class="item-category-radio" type="radio" value="Sparepart"
-                                                                        {{ ($item->category ?? 'Sparepart') != 'Unit' && ($item->category ?? '') != 'Accessories' && ($item->category ?? '') != 'Custom' ? 'checked' : '' }}>
-                                                                    <span>Sparepart</span>
-                                                                </label>
-                                                                <label class="category-pill-label">
-                                                                    <input class="item-category-radio" type="radio" value="Unit"
-                                                                        {{ ($item->category ?? '') == 'Unit' ? 'checked' : '' }}>
-                                                                    <span>Unit Global</span>
-                                                                </label>
-                                                                <label class="category-pill-label">
-                                                                    <input class="item-category-radio" type="radio" value="Accessories"
-                                                                        {{ ($item->category ?? '') == 'Accessories' ? 'checked' : '' }}>
-                                                                    <span>Aksesoris</span>
-                                                                </label>
-                                                                <label class="category-pill-label">
-                                                                    <input class="item-category-radio" type="radio" value="Custom"
-                                                                        {{ ($item->category ?? '') == 'Custom' ? 'checked' : '' }}>
-                                                                    <span>Custom</span>
-                                                                </label>
+                                                        <div class="item-category-radios">
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input item-category-radio" type="radio" value="Sparepart"
+                                                                    {{ ($item->category ?? 'Sparepart') != 'Unit' && ($item->category ?? '') != 'Accessories' && ($item->category ?? '') != 'Custom' ? 'checked' : '' }}>
+                                                                <label class="form-check-label">Sparepart</label>
+                                                            </div>
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input item-category-radio" type="radio" value="Unit"
+                                                                    {{ ($item->category ?? '') == 'Unit' ? 'checked' : '' }}>
+                                                                <label class="form-check-label">Unit Global</label>
+                                                            </div>
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input item-category-radio" type="radio" value="Accessories"
+                                                                    {{ ($item->category ?? '') == 'Accessories' ? 'checked' : '' }}>
+                                                                <label class="form-check-label">Aksesoris</label>
+                                                            </div>
+                                                            <div class="form-check form-check-inline">
+                                                                <input class="form-check-input item-category-radio" type="radio" value="Custom"
+                                                                    {{ ($item->category ?? '') == 'Custom' ? 'checked' : '' }}>
+                                                                <label class="form-check-label">Custom</label>
                                                             </div>
                                                         </div>
                                                         <input type="hidden" class="item-category-value" name="item_category[]"
@@ -721,23 +868,25 @@
 
                                                     {{-- Price & Interactive Tax Calculation --}}
                                                     <div class="col-lg-3 col-md-4 col-12 mb-2 mb-md-0">
-                                                        <label class="form-label text-muted small mb-1">Harga Satuan</label>
+                                                        <div class="item-col-label">
+                                                            <label class="form-label text-muted small mb-0 fw-semibold">Harga Satuan</label>
+                                                        </div>
                                                         <div class="input-group input-group-sm" data-price="{{ $no }}">
                                                             <span class="input-group-text bg-light text-muted fw-semibold">Rp</span>
                                                             <input type="text" class="form-control invoice-item-price-label text-end fw-semibold"
                                                                 id="priceLabel-{{ $no }}" data-id="{{ $no }}" name="harga"
                                                                 placeholder="0" data-type="currency" min="0"
-                                                                value="{{ fmod($item->price, 1) != 0 ? number_format($item->price, 2, ',', '.') : number_format($item->price, 0, ',', '.') }}">
+                                                                value="{{ fmod((float)$item->price, 1) != 0 ? number_format((float)$item->price, 2, ',', '.') : number_format((float)$item->price, 0, ',', '.') }}">
                                                             <input class="form-control invoice-item-price" type="number" step="any"
                                                                 name="price[]" id="price-{{ $no }}"
-                                                                value="{{ old('price[]', $item->price) }}" hidden>
+                                                                value="{{ (float) $item->price }}" hidden>
                                                         </div>
                                                         <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
                                                             <div class="hint-calc-wrapper">
                                                                 <div class="text-secondary mb-1">
-                                                                    <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (12%):<br>
+                                                                    <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
                                                                     DPP (Exc. PPN): <strong class="text-primary exc-ppn-val">Rp 0</strong><br>
-                                                                    <span class="ppn-val text-muted" style="font-size: 10px;">PPN (12%): Rp 0</span>
+                                                                    <span class="ppn-val text-muted" style="font-size: 10px;">PPN (11%): Rp 0</span>
                                                                 </div>
                                                                 <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
                                                                     <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP
@@ -758,7 +907,9 @@
 
                                                     {{-- Qty & Live Stock Hint --}}
                                                     <div class="col-lg-1 col-md-2 col-4">
-                                                        <label class="form-label text-muted small mb-1">Qty</label>
+                                                        <div class="item-col-label">
+                                                            <label class="form-label text-muted small mb-0 fw-semibold">Qty</label>
+                                                        </div>
                                                         <input type="number" class="form-control form-control-sm invoice-item-qty text-center"
                                                             placeholder="1" name="qty[]" id="qty-{{ $no }}"
                                                             data-id="{{ $no }}" min="1" value="{{ $item->qty }}">
@@ -766,7 +917,9 @@
 
                                                     {{-- Info Qty (Unit Satuan) --}}
                                                     <div class="col-lg-1 col-md-2 col-4">
-                                                        <label class="form-label text-muted small mb-1">Satuan</label>
+                                                        <div class="item-col-label">
+                                                            <label class="form-label text-muted small mb-0 fw-semibold">Satuan</label>
+                                                        </div>
                                                         <select class="form-select form-select-sm invoice-item-info select2-info-qty"
                                                             id="info-qty-{{ $no }}" data-id="{{ $no }}" name="info_qty[]">
                                                             <option disabled value="">-Pilih-</option>
@@ -781,7 +934,9 @@
 
                                                     {{-- Disc (%) --}}
                                                     <div class="col-lg-1 col-md-2 col-4">
-                                                        <label class="form-label text-muted small mb-1">Disc (%)</label>
+                                                        <div class="item-col-label">
+                                                            <label class="form-label text-muted small mb-0 fw-semibold">Disc (%)</label>
+                                                        </div>
                                                         <div class="input-group input-group-sm" data-disc="{{ $no }}">
                                                             <input type="text" class="form-control invoice-item-disc text-center"
                                                                 id="disc-{{ $no }}" data-id="{{ $no }}" name="disc[]" placeholder="0"
@@ -790,20 +945,21 @@
                                                     </div>
 
                                                     {{-- Amount & Delete --}}
-                                                    <div class="col-lg-1 col-md-2 col-12 text-md-end d-flex flex-column justify-content-between">
-                                                        <div>
-                                                            <label class="form-label text-muted small mb-1">Amount</label>
-                                                            <div class="amount-label fw-bold text-primary" id="amount-label-{{ $no }}" data-id="{{ $no }}">
-                                                                {{ number_format($item->amount, 0, ',', '.') }}
-                                                            </div>
-                                                            <input type="number" class="form-control invoice-item-amount"
-                                                                name="amount[]" id="amount-{{ $no }}" data-id="{{ $no }}"
-                                                                value="{{ old('amount[]', $item->amount) }}" hidden>
+                                                    <div class="col-lg-1 col-md-2 col-12 text-md-end">
+                                                        <div class="item-col-label justify-content-end">
+                                                            <label class="form-label text-muted small mb-0 fw-semibold">Amount</label>
                                                         </div>
+                                                        <div class="amount-label fw-bold text-primary text-end d-flex align-items-center justify-content-md-end justify-content-start" id="amount-label-{{ $no }}" data-id="{{ $no }}">
+                                                            {{ number_format($item->amount, 0, ',', '.') }}
+                                                        </div>
+                                                        <input type="number" class="form-control invoice-item-amount"
+                                                            name="amount[]" id="amount-{{ $no }}" data-id="{{ $no }}"
+                                                            value="{{ old('amount[]', $item->amount) }}" hidden>
                                                     </div>
                                                 </div>
-                                                <div class="ms-1 flex-shrink-0">
-                                                    <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del mt-4"
+                                                <div class="ms-1 flex-shrink-0 d-flex flex-column align-items-center">
+                                                    <div class="item-col-label d-none d-md-block" style="height: 24px;"></div>
+                                                    <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del"
                                                         data-repeater-delete="" title="Hapus Baris Item">
                                                         <i class="mdi mdi-delete-outline"></i>
                                                     </button>
@@ -831,24 +987,22 @@
 
                                                 {{-- Item Selection & Category Selector --}}
                                                 <div class="col-lg-5 col-12 mb-2 mb-lg-0 item-fields">
-                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                        <div class="item-category-pills">
-                                                            <label class="category-pill-label">
-                                                                <input class="item-category-radio" type="radio" value="Sparepart" checked>
-                                                                <span>Sparepart</span>
-                                                            </label>
-                                                            <label class="category-pill-label">
-                                                                <input class="item-category-radio" type="radio" value="Unit">
-                                                                <span>Unit Global</span>
-                                                            </label>
-                                                            <label class="category-pill-label">
-                                                                <input class="item-category-radio" type="radio" value="Accessories">
-                                                                <span>Aksesoris</span>
-                                                            </label>
-                                                            <label class="category-pill-label">
-                                                                <input class="item-category-radio" type="radio" value="Custom">
-                                                                <span>Custom</span>
-                                                            </label>
+                                                    <div class="item-category-radios">
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="item-category-radio" type="radio" value="Sparepart" checked>
+                                                            <label class="form-check-label">Sparepart</label>
+                                                        </div>
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="item-category-radio" type="radio" value="Unit">
+                                                            <label class="form-check-label">Unit Global</label>
+                                                        </div>
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="item-category-radio" type="radio" value="Accessories">
+                                                            <label class="form-check-label">Aksesoris</label>
+                                                        </div>
+                                                        <div class="form-check form-check-inline">
+                                                            <input class="item-category-radio" type="radio" value="Custom">
+                                                            <label class="form-check-label">Custom</label>
                                                         </div>
                                                     </div>
                                                     <input type="hidden" class="item-category-value" name="item_category[]" value="Sparepart">
@@ -906,7 +1060,9 @@
 
                                                 {{-- Price & Tax Calc --}}
                                                 <div class="col-lg-3 col-md-4 col-12 mb-2 mb-md-0">
-                                                    <label class="form-label text-muted small mb-1">Harga Satuan</label>
+                                                    <div class="item-col-label">
+                                                        <label class="form-label text-muted small mb-0 fw-semibold">Harga Satuan</label>
+                                                    </div>
                                                     <div class="input-group input-group-sm" data-price="{{ $rno }}">
                                                         <span class="input-group-text bg-light text-muted fw-semibold">Rp</span>
                                                         <input type="text" class="form-control invoice-item-price-label text-end fw-semibold"
@@ -918,9 +1074,9 @@
                                                     <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
                                                         <div class="hint-calc-wrapper">
                                                             <div class="text-secondary mb-1">
-                                                                <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (12%):<br>
+                                                                <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
                                                                 DPP (Exc. PPN): <strong class="text-primary exc-ppn-val">Rp 0</strong><br>
-                                                                <span class="ppn-val text-muted" style="font-size: 10px;">PPN (12%): Rp 0</span>
+                                                                <span class="ppn-val text-muted" style="font-size: 10px;">PPN (11%): Rp 0</span>
                                                             </div>
                                                             <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
                                                                 <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP
@@ -941,7 +1097,9 @@
 
                                                 {{-- Qty & Live Stock Hint --}}
                                                 <div class="col-lg-1 col-md-2 col-4">
-                                                    <label class="form-label text-muted small mb-1">Qty</label>
+                                                    <div class="item-col-label">
+                                                        <label class="form-label text-muted small mb-0 fw-semibold">Qty</label>
+                                                    </div>
                                                     <input type="number" class="form-control form-control-sm invoice-item-qty text-center"
                                                         placeholder="1" name="qty[]" id="qty-{{ $rno }}" data-id="{{ $rno }}"
                                                         data-pr-remaining="{{ $pi['qty'] ?? '' }}"
@@ -951,7 +1109,9 @@
 
                                                 {{-- Info Qty (Satuan) --}}
                                                 <div class="col-lg-1 col-md-2 col-4">
-                                                    <label class="form-label text-muted small mb-1">Satuan</label>
+                                                    <div class="item-col-label">
+                                                        <label class="form-label text-muted small mb-0 fw-semibold">Satuan</label>
+                                                    </div>
                                                     <select class="form-select form-select-sm invoice-item-info select2-info-qty" id="info-qty-{{ $rno }}"
                                                         data-id="{{ $rno }}" name="info_qty[]">
                                                         <option disabled value="">-Pilih-</option>
@@ -964,7 +1124,9 @@
 
                                                 {{-- Disc (%) --}}
                                                 <div class="col-lg-1 col-md-2 col-4">
-                                                    <label class="form-label text-muted small mb-1">Disc (%)</label>
+                                                    <div class="item-col-label">
+                                                        <label class="form-label text-muted small mb-0 fw-semibold">Disc (%)</label>
+                                                    </div>
                                                     <div class="input-group input-group-sm" data-disc="{{ $rno }}">
                                                         <input type="text" class="form-control invoice-item-disc text-center"
                                                             id="disc-{{ $rno }}" data-id="{{ $rno }}" name="disc[]" placeholder="0"
@@ -973,18 +1135,19 @@
                                                 </div>
 
                                                 {{-- Amount & Delete --}}
-                                                <div class="col-lg-1 col-md-2 col-12 text-md-end d-flex flex-column justify-content-between">
-                                                    <div>
-                                                        <label class="form-label text-muted small mb-1">Amount</label>
-                                                        <div class="amount-label fw-bold text-primary" id="amount-label-{{ $rno }}" data-id="{{ $rno }}">0</div>
-                                                        <input type="number" class="form-control invoice-item-amount"
-                                                            name="amount[]" id="amount-{{ $rno }}" data-id="{{ $rno }}"
-                                                            value="" hidden>
+                                                <div class="col-lg-1 col-md-2 col-12 text-md-end">
+                                                    <div class="item-col-label justify-content-end">
+                                                        <label class="form-label text-muted small mb-0 fw-semibold">Amount</label>
                                                     </div>
+                                                    <div class="amount-label fw-bold text-primary text-end d-flex align-items-center justify-content-md-end justify-content-start" id="amount-label-{{ $rno }}" data-id="{{ $rno }}">0</div>
+                                                    <input type="number" class="form-control invoice-item-amount"
+                                                        name="amount[]" id="amount-{{ $rno }}" data-id="{{ $rno }}"
+                                                        value="" hidden>
                                                 </div>
                                             </div>
-                                            <div class="ms-1 flex-shrink-0">
-                                                <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del mt-4"
+                                            <div class="ms-1 flex-shrink-0 d-flex flex-column align-items-center">
+                                                <div class="item-col-label d-none d-md-block" style="height: 24px;"></div>
+                                                <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del"
                                                     data-repeater-delete="" title="Hapus Baris Item">
                                                     <i class="mdi mdi-delete-outline"></i>
                                                 </button>
@@ -1008,24 +1171,22 @@
 
                                             {{-- Item Selection & Category Selector --}}
                                             <div class="col-lg-5 col-12 mb-2 mb-lg-0 item-fields">
-                                                <div class="d-flex align-items-center justify-content-between mb-1">
-                                                    <div class="item-category-pills">
-                                                        <label class="category-pill-label">
-                                                            <input class="item-category-radio" type="radio" value="Sparepart" checked>
-                                                            <span>Sparepart</span>
-                                                        </label>
-                                                        <label class="category-pill-label">
-                                                            <input class="item-category-radio" type="radio" value="Unit">
-                                                            <span>Unit Global</span>
-                                                        </label>
-                                                        <label class="category-pill-label">
-                                                            <input class="item-category-radio" type="radio" value="Accessories">
-                                                            <span>Aksesoris</span>
-                                                        </label>
-                                                        <label class="category-pill-label">
-                                                            <input class="item-category-radio" type="radio" value="Custom">
-                                                            <span>Custom</span>
-                                                        </label>
+                                                <div class="item-category-radios">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input item-category-radio" type="radio" value="Sparepart" checked>
+                                                        <label class="form-check-label">Sparepart</label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input item-category-radio" type="radio" value="Unit">
+                                                        <label class="form-check-label">Unit Global</label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input item-category-radio" type="radio" value="Accessories">
+                                                        <label class="form-check-label">Aksesoris</label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input item-category-radio" type="radio" value="Custom">
+                                                        <label class="form-check-label">Custom</label>
                                                     </div>
                                                 </div>
                                                 <input type="hidden" class="item-category-value" name="item_category[]" value="Sparepart">
@@ -1075,7 +1236,9 @@
 
                                             {{-- Price & Tax Calc --}}
                                             <div class="col-lg-3 col-md-4 col-12 mb-2 mb-md-0">
-                                                <label class="form-label text-muted small mb-1">Harga Satuan</label>
+                                                <div class="item-col-label">
+                                                    <label class="form-label text-muted small mb-0 fw-semibold">Harga Satuan</label>
+                                                </div>
                                                 <div class="input-group input-group-sm" data-price="1">
                                                     <span class="input-group-text bg-light text-muted fw-semibold">Rp</span>
                                                     <input type="text" class="form-control invoice-item-price-label text-end fw-semibold"
@@ -1088,9 +1251,9 @@
                                                 <div class="price-tax-hint mt-1 small d-none" style="font-size: 11px; line-height: 1.35; background: #f0f2ff; padding: 5px 8px; border-radius: 6px; border-left: 3px solid #696cff;">
                                                     <div class="hint-calc-wrapper">
                                                         <div class="text-secondary mb-1">
-                                                            <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (12%):<br>
+                                                            <i class="mdi mdi-calculator-variant-outline text-primary me-1"></i>Inc. PPN (11%):<br>
                                                             DPP (Exc. PPN): <strong class="text-primary exc-ppn-val">Rp 0</strong><br>
-                                                            <span class="ppn-val text-muted" style="font-size: 10px;">PPN (12%): Rp 0</span>
+                                                            <span class="ppn-val text-muted" style="font-size: 10px;">PPN (11%): Rp 0</span>
                                                         </div>
                                                         <button type="button" class="btn btn-xs btn-primary py-0 px-2 btn-apply-dpp" style="font-size: 10px; height: 22px;">
                                                             <i class="mdi mdi-check me-1"></i> Gunakan Harga DPP
@@ -1111,7 +1274,9 @@
 
                                             {{-- Qty & Live Stock Hint --}}
                                             <div class="col-lg-1 col-md-2 col-4">
-                                                <label class="form-label text-muted small mb-1">Qty</label>
+                                                <div class="item-col-label">
+                                                    <label class="form-label text-muted small mb-0 fw-semibold">Qty</label>
+                                                </div>
                                                 <input type="number" class="form-control form-control-sm invoice-item-qty text-center"
                                                     placeholder="1" name="qty[]" id="qty-1" data-id="1"
                                                     min="1" value="{{ old('qty[]') }}">
@@ -1119,7 +1284,9 @@
 
                                             {{-- Info Qty (Satuan) --}}
                                             <div class="col-lg-1 col-md-2 col-4">
-                                                <label class="form-label text-muted small mb-1">Satuan</label>
+                                                <div class="item-col-label">
+                                                    <label class="form-label text-muted small mb-0 fw-semibold">Satuan</label>
+                                                </div>
                                                 <select class="form-select form-select-sm invoice-item-info select2-info-qty" id="info-qty-1"
                                                     data-id="1" name="info_qty[]">
                                                     <option disabled value="">-Pilih-</option>
@@ -1131,7 +1298,9 @@
 
                                             {{-- Disc (%) --}}
                                             <div class="col-lg-1 col-md-2 col-4">
-                                                <label class="form-label text-muted small mb-1">Disc (%)</label>
+                                                <div class="item-col-label">
+                                                    <label class="form-label text-muted small mb-0 fw-semibold">Disc (%)</label>
+                                                </div>
                                                 <div class="input-group input-group-sm" data-disc="1">
                                                     <input type="text" class="form-control invoice-item-disc text-center"
                                                         id="disc-1" data-id="1" name="disc[]" placeholder="0"
@@ -1140,20 +1309,21 @@
                                             </div>
 
                                             {{-- Amount & Delete --}}
-                                            <div class="col-lg-1 col-md-2 col-12 text-md-end d-flex flex-column justify-content-between">
-                                                <div>
-                                                    <label class="form-label text-muted small mb-1">Amount</label>
-                                                    <div class="amount-label fw-bold text-primary" id="amount-label-1" data-id="1">
-                                                        {{ old(strval('amount[]')) ?? '0' }}
-                                                    </div>
-                                                    <input type="number" class="form-control invoice-item-amount"
-                                                        name="amount[]" id="amount-1" data-id="1"
-                                                        value="{{ old('amount[]') }}" hidden>
+                                            <div class="col-lg-1 col-md-2 col-12 text-md-end">
+                                                <div class="item-col-label justify-content-end">
+                                                    <label class="form-label text-muted small mb-0 fw-semibold">Amount</label>
                                                 </div>
+                                                <div class="amount-label fw-bold text-primary text-end d-flex align-items-center justify-content-md-end justify-content-start" id="amount-label-1" data-id="1">
+                                                    {{ old(strval('amount[]')) ?? '0' }}
+                                                </div>
+                                                <input type="number" class="form-control invoice-item-amount"
+                                                    name="amount[]" id="amount-1" data-id="1"
+                                                    value="{{ old('amount[]') }}" hidden>
                                             </div>
                                         </div>
-                                        <div class="ms-1 flex-shrink-0">
-                                            <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del mt-4"
+                                        <div class="ms-1 flex-shrink-0 d-flex flex-column align-items-center">
+                                            <div class="item-col-label d-none d-md-block" style="height: 24px;"></div>
+                                            <button type="button" class="btn btn-sm btn-icon btn-label-danger btn-del"
                                                 data-repeater-delete="" title="Hapus Baris Item">
                                                 <i class="mdi mdi-delete-outline"></i>
                                             </button>
@@ -1164,16 +1334,16 @@
                         </div>
                     @endif
                     <div class="d-flex flex-wrap gap-2 p-3 border-top bg-light-subtle align-items-center">
-                        <button type="button" class="btn btn-sm btn-primary shadow-xs btn-add" data-repeater-create="">
+                        <button type="button" class="btn btn-sm btn-primary shadow-xs btn-add-item-action" data-repeater-create="">
                             <i class="mdi mdi-plus me-1"></i> Add Item
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-primary shadow-xs" id="btn-pull-pr-items" data-bs-toggle="modal" data-bs-target="#modalPullPrItems">
+                        <button type="button" class="btn btn-sm btn-outline-primary shadow-xs btn-pull-pr-action" data-bs-toggle="modal" data-bs-target="#modalPullPrItems">
                             <i class="mdi mdi-file-import-outline me-1"></i> Tarik Item dari PR
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-info" id="btn-add-header-title">
+                        <button type="button" class="btn btn-sm btn-outline-info btn-add-header-title-action" id="btn-add-header-title-bottom">
                             <i class="mdi mdi-format-header-1 me-1"></i> Add Head Title
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-add-custom-item">
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-add-custom-item-action" id="btn-add-custom-item-bottom">
                             <i class="mdi mdi-format-list-bulleted me-1"></i> Add Custom Item
                         </button>
                     </div>
@@ -1260,10 +1430,15 @@
                             <span class="fw-bold text-dark" id="subtotalAfterDiscountLabel">RP 0</span>
                         </div>
 
-                        {{-- DPP Nilai Lain (hanya muncul jika Tax PPN 12% aktif) --}}
-                        <div class="d-flex justify-content-between align-items-center mb-3 dpp-nilai-lain-row d-none">
+                        @php
+                            $initHargaSebelumPpn = (@$purchase->subtotal ?? 0) - (@$purchase->diskon ?? 0);
+                            $initVatActive = (@$purchase && ($purchase->vat == '12' || $purchase->vat == '11'));
+                            $initDppNilaiLain = $initVatActive ? round($initHargaSebelumPpn * 11 / 12) : 0;
+                        @endphp
+                        {{-- DPP Nilai Lain (hanya muncul jika Tax PPN aktif) --}}
+                        <div class="d-flex justify-content-between align-items-center mb-3 dpp-nilai-lain-row {{ $initVatActive ? '' : 'd-none' }}">
                             <span class="text-muted fw-semibold">DPP Nilai Lain</span>
-                            <span class="fw-bold text-dark" id="dppNilaiLainLabel">RP 0</span>
+                            <span class="fw-bold text-dark" id="dppNilaiLainLabel">{{ $initVatActive ? 'RP ' . number_format($initDppNilaiLain, 0, '', '.') : 'RP 0' }}</span>
                         </div>
 
                         {{-- Tax (PPN 12%) --}}
@@ -1673,6 +1848,68 @@
         </div>
     </div>
 
+    <!-- Modal: Tambah Alamat Supplier Baru Langsung di Form PO -->
+    <div class="modal fade" id="quickAddAddressModal" tabindex="-1" aria-labelledby="quickAddAddressModalTitle" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+                <div class="modal-header border-bottom py-3 px-4 bg-white d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="avatar avatar-md flex-shrink-0">
+                            <span class="avatar-initial rounded-3 bg-label-primary shadow-xs">
+                                <i class="mdi mdi-map-marker-plus-outline font-22"></i>
+                            </span>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-0" id="quickAddAddressModalTitle">Tambah Alamat Supplier</h5>
+                            <small class="text-muted font-12">Alamat operasional/gudang untuk supplier terpilih</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-white">
+                    <div id="qaError" class="alert alert-danger d-none d-flex align-items-center py-2 px-3 mb-3 font-13" role="alert">
+                        <i class="mdi mdi-alert-circle-outline me-2 font-16 flex-shrink-0"></i>
+                        <span id="qaErrorText"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark font-13" for="qaName">
+                            Label / Nama Alamat
+                        </label>
+                        <div class="input-group input-group-merge">
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                <i class="mdi mdi-tag-outline"></i>
+                            </span>
+                            <input type="text" class="form-control border-start-0 ps-1" id="qaName" placeholder="Contoh: Kantor Pusat / Gudang Bintaro" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark font-13" for="qaAddress">
+                            Alamat Lengkap <span class="text-danger">*</span>
+                        </label>
+                        <textarea class="form-control" id="qaAddress" rows="3" placeholder="Jl. Raya No. 123..." required></textarea>
+                    </div>
+
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="qaIsPrimary" value="1">
+                        <label class="form-check-label fw-semibold text-dark font-13" for="qaIsPrimary">
+                            Jadikan sebagai Alamat Utama
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer border-top py-3 px-4 bg-light d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-label-secondary px-3" data-bs-dismiss="modal">
+                        <i class="mdi mdi-close me-1"></i> Batal
+                    </button>
+                    <button type="button" class="btn btn-primary px-4 shadow-sm" id="saveQuickAddAddress">
+                        <i class="mdi mdi-content-save-outline me-1"></i> Simpan Alamat
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Modal: Tarik Item dari PR Disetujui (Multi-PR Consolidation) --}}
     <div class="modal fade" id="modalPullPrItems" tabindex="-1" aria-labelledby="modalPullPrItemsLabel" aria-hidden="true" data-bs-backdrop="static">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
@@ -1762,7 +1999,7 @@
     <script src="{{ asset('assets') }}/vendor/libs/select2/select2.js"></script>
     <script src="{{ asset('assets') }}/vendor/libs/sortablejs/sortable.js"></script>
     <script src="{{ asset('assets') }}/includes/repeater/jquery-repeater-invoice.js"></script>
-    <script src="{{ asset('assets') }}/js/app-invoice-add.js"></script>
+    {{-- <script src="{{ asset('assets') }}/js/app-invoice-add.js"></script> --}}
 @endpush
 @push('page-script')
     <script src="{{ asset('assets') }}/includes/repeater/repeater-invoice.js"></script>
@@ -1895,6 +2132,46 @@
                 });
             });
 
+            // ── Handler Tab Button Ship To (BDG / BKS / Custom) ──
+            $(document).on('click', '.ship-to-tab-btn', function(e) {
+                e.preventDefault();
+                var $btn = $(this);
+                var preset = $btn.attr('data-preset');
+                var address = $btn.attr('data-address');
+
+                $('.ship-to-tab-btn').removeClass('active');
+                $btn.addClass('active');
+
+                if (preset === 'BDG' || preset === 'BKS') {
+                    if (address) {
+                        $('#ship_to_input').val(address).trigger('change');
+                    }
+                } else if (preset === 'CUSTOM') {
+                    var cur = ($('#ship_to_input').val() || '').trim();
+                    var bdg = ($('.ship-to-tab-btn[data-preset="BDG"]').attr('data-address') || '').trim();
+                    var bks = ($('.ship-to-tab-btn[data-preset="BKS"]').attr('data-address') || '').trim();
+                    if (cur === bdg || cur === bks) {
+                        $('#ship_to_input').val('').trigger('change');
+                    }
+                    $('#ship_to_input').focus();
+                }
+            });
+
+            $(document).on('input', '#ship_to_input', function() {
+                var val = ($(this).val() || '').trim();
+                var bdg = ($('.ship-to-tab-btn[data-preset="BDG"]').attr('data-address') || '').trim();
+                var bks = ($('.ship-to-tab-btn[data-preset="BKS"]').attr('data-address') || '').trim();
+
+                $('.ship-to-tab-btn').removeClass('active');
+                if (val && val === bdg) {
+                    $('.ship-to-tab-btn[data-preset="BDG"]').addClass('active');
+                } else if (val && val === bks) {
+                    $('.ship-to-tab-btn[data-preset="BKS"]').addClass('active');
+                } else {
+                    $('.ship-to-tab-btn[data-preset="CUSTOM"]').addClass('active');
+                }
+            });
+
             var $supplierDropdown = $('#supplier-dropdown');
 
             function initSupplierSelect2() {
@@ -1921,23 +2198,143 @@
             }
             toggleEditSupplierBtn();
 
+            // Address selector helper & event handling
+            var $addressSelect = $('#address-select');
+
+            function populateAddressDropdown(addresses, currentAddress, autoSelectFirst) {
+                $addressSelect.empty();
+                $addressSelect.append(new Option('-- Pilih Alamat Operasional / Cabang / Gudang --', '', false, false));
+
+                if (!addresses || !addresses.length) {
+                    return;
+                }
+
+                var matched = false;
+                var primaryAddr = null;
+
+                addresses.forEach(function(addr) {
+                    var isPrimary = Boolean(addr.is_primary);
+                    if (isPrimary && !primaryAddr) primaryAddr = addr;
+
+                    var cleanAddrText = (addr.address || '').trim();
+                    var label = (addr.name ? addr.name : 'Alamat') + 
+                                (isPrimary ? ' [Utama]' : '') + ' : ' + 
+                                (cleanAddrText.length > 70 ? cleanAddrText.substring(0, 70) + '...' : cleanAddrText);
+
+                    var isSelected = false;
+                    if (currentAddress && (cleanAddrText === currentAddress.trim() || currentAddress.trim().indexOf(cleanAddrText) !== -1)) {
+                        isSelected = true;
+                        matched = true;
+                    }
+
+                    var opt = new Option(label, cleanAddrText, isSelected, isSelected);
+                    $(opt).attr('data-id', addr.id);
+                    $(opt).attr('data-name', addr.name || '');
+                    $(opt).attr('data-address', cleanAddrText);
+                    $(opt).attr('data-primary', isPrimary ? '1' : '0');
+                    $addressSelect.append(opt);
+                });
+
+                if (!matched && autoSelectFirst) {
+                    var pick = primaryAddr || addresses[0];
+                    if (pick && pick.address) {
+                        $addressSelect.val(pick.address.trim());
+                        $('#address').val(pick.address.trim());
+                    }
+                }
+            }
+
+            $addressSelect.on('change', function() {
+                var selectedAddr = $(this).val();
+                if (selectedAddr) {
+                    $('#address').val(selectedAddr);
+                }
+            });
+
+            // Quick Add Address modal trigger & AJAX handler
+            $('#btn-add-supplier-address').on('click', function() {
+                var supplierId = $supplierDropdown.val();
+                if (!supplierId) {
+                    alert('Pilih supplier terlebih dahulu.');
+                    return;
+                }
+                $('#qaError').addClass('d-none');
+                $('#qaErrorText').text('');
+                $('#qaName').val('');
+                $('#qaAddress').val('');
+                $('#qaIsPrimary').prop('checked', false);
+                $('#quickAddAddressModal').modal('show');
+            });
+
+            $('#saveQuickAddAddress').on('click', function() {
+                var supplierId = $supplierDropdown.val();
+                var name = $('#qaName').val().trim();
+                var address = $('#qaAddress').val().trim();
+                var isPrimary = $('#qaIsPrimary').is(':checked');
+
+                if (!address) {
+                    $('#qaError').removeClass('d-none');
+                    $('#qaErrorText').text('Alamat lengkap wajib diisi.');
+                    return;
+                }
+
+                var $btn = $(this);
+                var origText = $btn.html();
+                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...');
+
+                $.ajax({
+                    url: '/supplier/' + supplierId + '/address',
+                    type: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        name: name,
+                        address: address,
+                        is_primary: isPrimary ? 1 : 0
+                    },
+                    success: function(res) {
+                        $btn.prop('disabled', false).html(origText);
+                        if (res.success) {
+                            var newAddr = res.data;
+                            var cleanAddrText = (newAddr.address || '').trim();
+                            var label = (newAddr.name ? newAddr.name : 'Alamat') + 
+                                        (newAddr.is_primary ? ' [Utama]' : '') + ' : ' + 
+                                        (cleanAddrText.length > 70 ? cleanAddrText.substring(0, 70) + '...' : cleanAddrText);
+                            var opt = new Option(label, cleanAddrText, true, true);
+                            $(opt).attr('data-id', newAddr.id);
+                            $(opt).attr('data-name', newAddr.name || '');
+                            $(opt).attr('data-address', cleanAddrText);
+                            $(opt).attr('data-primary', newAddr.is_primary ? '1' : '0');
+
+                            $addressSelect.append(opt);
+                            $addressSelect.val(cleanAddrText).trigger('change');
+                            $('#address').val(cleanAddrText);
+
+                            $('#quickAddAddressModal').modal('hide');
+                        } else {
+                            $('#qaError').removeClass('d-none');
+                            $('#qaErrorText').text('Gagal menyimpan alamat.');
+                        }
+                    },
+                    error: function(xhr) {
+                        $btn.prop('disabled', false).html(origText);
+                        var msg = xhr.responseJSON && xhr.responseJSON.message ?
+                            xhr.responseJSON.message : 'Gagal menyimpan, coba lagi.';
+                        $('#qaError').removeClass('d-none');
+                        $('#qaErrorText').text(msg);
+                    }
+                });
+            });
+
             // Auto-fill Mobile & Address dari data Supplier terpilih
             $supplierDropdown.on('change', function() {
                 var $selected = $(this).find(':selected');
                 var phone = realValue($selected.data('phone'));
                 var address = realValue($selected.data('address'));
-                // Selalu di-set (bukan cuma kalau ada isinya) — sama seperti address di
-                // bawah. Kalau pakai "if (phone)", giliran supplier baru gak punya nomor
-                // telepon tercatat, Mobile-nya nyangkut ke punya supplier sebelumnya.
                 $('#mobile').val(phone);
                 $('#address').val(address);
                 toggleEditSupplierBtn();
-                // keepValue dipaksa kosong ('') di sini — kalau dibiarkan undefined,
-                // loadAttnOptions() bakal balik baca $attnDropdown.val() yang isinya
-                // masih PIC supplier LAMA (belum ke-reset), jadi nyangkut kepilih terus
-                // walau supplier sudah ganti dan PIC itu bukan miliknya. Dengan '' di
-                // sini, PIC pertama supplier BARU yang otomatis kepilih (autoSelectFirst).
-                loadAttnOptions($(this).val(), '', true);
+                loadAttnOptions($(this).val(), '', '', true);
             });
 
             // ATTN (PIC) select2 + tombol Tambah PIC
@@ -1966,12 +2363,14 @@
                 return option;
             }
 
-            function loadAttnOptions(supplierId, keepValue, autoSelectFirst) {
-                var currentValue = keepValue !== undefined ? keepValue : $attnDropdown.val();
+            function loadAttnOptions(supplierId, keepAttnValue, keepAddressValue, autoSelectFirst) {
+                var currentAttn = keepAttnValue !== undefined ? keepAttnValue : $attnDropdown.val();
+                var currentAddr = keepAddressValue !== undefined ? keepAddressValue : $('#address').val();
+
                 $attnDropdown.empty();
-                // Opsi kosong di awal, supaya kalau tidak ada PIC yang cocok dgn currentValue,
-                // browser tidak otomatis memilih PIC pertama di list (yang bisa menimpa Mobile secara tidak sengaja)
                 $attnDropdown.append(new Option('', '', false, false));
+                $addressSelect.empty().append(new Option('-- Pilih Alamat Operasional / Cabang / Gudang --', '', false, false));
+
                 if (!supplierId) {
                     $('#attn-empty-hint').hide();
                     $attnDropdown.trigger('change');
@@ -1981,34 +2380,30 @@
                     url: '/supplier/' + supplierId + '/edit-data',
                     type: 'GET',
                     success: function(res) {
-                        // Kalau supplier sudah diganti lagi sebelum response ini datang (klik cepat
-                        // ganti-ganti supplier), response yang telat ini basi — jangan ditimpakan ke
-                        // dropdown ATTN supplier yang sekarang aktif (race condition, bukan cache).
                         if (String($supplierDropdown.val() || '') !== String(supplierId)) {
                             return;
                         }
+                        // 1. PICs
                         var pics = res.pics || [];
-                        // Kalau belum ada PIC yang dipertahankan (mis. supplier baru dipilih), otomatis
-                        // pilih PIC pertama (terbaru) supaya user tidak perlu pilih manual tiap kali.
-                        var autoPickName = (!currentValue && autoSelectFirst && pics.length) ? pics[0].name_pic : null;
+                        var autoPickName = (!currentAttn && autoSelectFirst && pics.length) ? pics[0].name_pic : null;
                         pics.forEach(function(pic) {
-                            $attnDropdown.append(makePicOption(pic, pic.name_pic === currentValue || pic.name_pic === autoPickName));
+                            $attnDropdown.append(makePicOption(pic, pic.name_pic === currentAttn || pic.name_pic === autoPickName));
                         });
-                        if (currentValue && !pics.some(function(p) { return p.name_pic === currentValue; })) {
-                            var keepOption = new Option(currentValue, currentValue, true, true);
+                        if (currentAttn && !pics.some(function(p) { return p.name_pic === currentAttn; })) {
+                            var keepOption = new Option(currentAttn, currentAttn, true, true);
                             $attnDropdown.append(keepOption);
                         }
                         $('#attn-empty-hint').toggle(!pics.length);
                         $attnDropdown.trigger('change');
+
+                        // 2. Addresses
+                        var addresses = res.addresses || [];
+                        populateAddressDropdown(addresses, currentAddr, autoSelectFirst);
                     }
                 });
             }
 
             // Auto-fill Mobile & toggle tombol Edit PIC saat memilih PIC dari dropdown ATTN.
-            // Cuma timpa Mobile kalau PIC yang kepilih itu punya nomor telepon sendiri yang
-            // beneran keisi — kalau PIC-nya gak punya nomor tercatat (banyak data lama yang
-            // kosong), biarkan nomor telepon umum milik supplier (di-set oleh handler
-            // ganti-supplier barusan) yang tetap tampil, jangan malah ditimpa jadi kosong.
             $attnDropdown.on('change', function() {
                 var $selected = $(this).find(':selected');
                 if ($selected.data('id')) {
@@ -2020,9 +2415,14 @@
                 $('#btn-edit-attn-pic').toggleClass('d-none', !$selected.data('id'));
             });
 
-            // Muat ulang ATTN saat halaman dibuka dengan supplier sudah terpilih (mode Edit PO)
+            // Muat ulang ATTN & Alamat saat halaman dibuka dengan supplier sudah terpilih (mode Edit PO)
             if ($supplierDropdown.val()) {
-                loadAttnOptions($supplierDropdown.val(), '{{ old('attn', @$purchase->attn ?? '') }}');
+                loadAttnOptions(
+                    $supplierDropdown.val(), 
+                    '{{ old('attn', @$purchase->attn ?? '') }}',
+                    '{{ old('address', @$purchase->address ?? '') }}',
+                    {{ @$purchase ? 'false' : 'true' }}
+                );
             }
 
             function resetPicModal() {
@@ -2357,13 +2757,13 @@
                 recalculateTotals();
             });
 
-            // Toggle Tax (PPN 12%) on/off
+            // Toggle Tax (PPN 11%) on/off
             $(document).on('change', '#taxSwitch', function() {
-                $('#tax').val($(this).is(':checked') ? 12 : 0);
+                $('#tax').val($(this).is(':checked') ? 11 : 0);
                 recalculateTotals();
             });
 
-            // Live calculation helper: Hitung Harga DPP (Exc. PPN) dan PPN jika harga yang diinput adalah include PPN (12%)
+            // Live calculation helper: Hitung Harga DPP (Exc. PPN) dan PPN jika harga yang diinput adalah include PPN (11%)
             function updatePriceTaxHint($input) {
                 var $col = $input.closest('.col-lg-3');
                 var $hint = $col.find('.price-tax-hint');
@@ -2378,7 +2778,7 @@
                 var nomorFloat = parseCurrency(inputVal);
 
                 if (nomorFloat > 0) {
-                    var dppPrecise = nomorFloat / 1.12;
+                    var dppPrecise = nomorFloat / 1.11;
                     var ppnPrecise = nomorFloat - dppPrecise;
 
                     var dppFormatted = formatDecimalDisplay(dppPrecise);
@@ -2474,10 +2874,10 @@
                     $hint.find('.hint-applied-wrapper').removeClass('d-none');
                     $hint.removeClass('d-none');
 
-                    // Auto-aktifkan toggle Tax PPN 12% di summary jika belum aktif
+                    // Auto-aktifkan toggle Tax PPN 11% di summary jika belum aktif
                     if (!$('#taxSwitch').is(':checked')) {
                         $('#taxSwitch').prop('checked', true);
-                        $('#tax').val(12);
+                        $('#tax').val(11);
                     }
 
                     recalculateTotals();
@@ -2581,7 +2981,16 @@
                     var isHeader = $row.hasClass('header-row-wrapper') || $row.find('.item-category-value').val() === 'Header';
                     if (isHeader) return;
 
-                    var harga = parseFloat($row.find('.invoice-item-price').val()) || 0;
+                    var $priceLabel = $row.find('.invoice-item-price-label');
+                    var $priceHidden = $row.find('.invoice-item-price');
+                    var harga = 0;
+                    if ($priceLabel.length && $priceLabel.val() !== '') {
+                        harga = parseCurrency($priceLabel.val());
+                        $priceHidden.val(harga);
+                    } else {
+                        harga = parseFloat($priceHidden.val()) || 0;
+                    }
+
                     var qty = parseFloat($row.find('.invoice-item-qty').val()) || 0;
                     var disc = parseFloat($row.find('.invoice-item-disc').val()) || 0;
                     var hasil = harga * qty;
@@ -2607,7 +3016,7 @@
                     $('.subtotal-after-discount-row').addClass('d-none');
                 }
                 var dppNilaiLain = taxPercent > 0 ? Math.round(dTotal * 11 / 12) : 0;
-                var taxAmount = taxPercent > 0 ? Math.round(dppNilaiLain * taxPercent / 100) : 0;
+                var taxAmount = taxPercent > 0 ? Math.round(dTotal * taxPercent / 100) : 0;
                 var hTotal = Math.round(dTotal + taxAmount + deliveryCost);
 
                 if (taxPercent > 0) {
@@ -2824,6 +3233,7 @@
                 if (pendingCustomAdd) {
                     $newFields.find('.item-category-radio[value="Custom"]').prop('checked', true);
                     $newFields.find('.item-category-radio').not('[value="Custom"]').prop('checked', false);
+                    $newFields.find('.item-category-value').val('Custom');
                     pendingCustomAdd = false;
                 }
                 applyRowCategory($newFields);
@@ -2848,44 +3258,61 @@
             });
 
             // Helper membuat baris item baru di repeater secara bersih, andal, dan sinkron
-            function createItemRow() {
+            function createItemRow(isCustom) {
+                if (isCustom) {
+                    pendingCustomAdd = true;
+                }
                 var $repeaterBtn = $('.form-invoice-repeater [data-repeater-create]').first();
                 if (!$repeaterBtn.length) {
                     $repeaterBtn = $('[data-repeater-create]').last();
                 }
-                $repeaterBtn.trigger('click');
+                if ($repeaterBtn.length) {
+                    $repeaterBtn.trigger('click');
+                }
 
-                var $row = $('[data-repeater-list="group-a"] .repeater-wrapper').not('.header-row-wrapper').last();
+                setTimeout(function() {
+                    var $row = $('[data-repeater-list="group-a"] .repeater-wrapper').not('.header-row-wrapper').last();
+                    if ($row.length) {
+                        $row.stop(true, true).show();
 
-                // Pastikan langsung terlihat tanpa menunggu durasi slideDown
-                $row.stop(true, true).show();
+                        // Bersihkan artefak DOM Select2 lama dari hasil clone template repeater
+                        var $fields = $row.find('.item-fields');
+                        $fields.find('.select2-container').remove();
+                        $fields.find('.select2-hidden-accessible')
+                            .removeClass('select2-hidden-accessible')
+                            .removeAttr('data-select2-id')
+                            .removeAttr('aria-hidden')
+                            .removeAttr('tabindex');
 
-                // Bersihkan artefak DOM Select2 lama dari hasil clone template repeater
-                var $fields = $row.find('.item-fields');
-                $fields.find('.select2-container').remove();
-                $fields.find('.select2-hidden-accessible')
-                    .removeClass('select2-hidden-accessible')
-                    .removeAttr('data-select2-id')
-                    .removeAttr('aria-hidden')
-                    .removeAttr('tabindex');
+                        initItemSelect2($fields);
 
-                // Inisialisasi Select2 segar untuk baris baru
-                initItemSelect2($fields);
-                applyRowCategory($fields);
-
-                return $row;
+                        if (isCustom) {
+                            $fields.find('.item-category-radio[value="Custom"]').prop('checked', true);
+                            $fields.find('.item-category-radio').not('[value="Custom"]').prop('checked', false);
+                            $fields.find('.item-category-value').val('Custom');
+                        }
+                        applyRowCategory($fields);
+                        if (isCustom) {
+                            $fields.find('.field-product-custom textarea').focus();
+                        }
+                        updateItemsCountBadge();
+                        recalculateTotals();
+                    }
+                }, 40);
             }
 
-            // Hubungkan tombol Add Item di header card section ke fungsi pembuat baris repeater
-            $(document).on('click', '.po-section-header .btn-add[data-repeater-create]', function(e) {
-                e.preventDefault();
-                createItemRow();
+            // Delegated click listeners untuk tombol Add Item (Header & Bottom)
+            $(document).on('click', '.btn-add-item-action, .po-section-header .btn-add[data-repeater-create]', function(e) {
+                if ($(this).closest('.po-section-header').length) {
+                    e.preventDefault();
+                    createItemRow(false);
+                }
             });
 
-            // Add Custom Item: buat baris baru lalu set ke mode Custom
-            $('#btn-add-custom-item').on('click', function() {
-                var $row = createItemRow();
-                $row.find('.item-category-radio[value="Custom"]').prop('checked', true).trigger('change');
+            // Delegated click listeners untuk tombol Add Custom Item (Header & Bottom)
+            $(document).on('click', '.btn-add-custom-item-action, #btn-add-custom-item, #btn-add-custom-item-top, #btn-add-custom-item-bottom', function(e) {
+                e.preventDefault();
+                createItemRow(true);
             });
 
             // Add Head Title: tambah baris grup header custom
@@ -2927,13 +3354,17 @@
                             </div>
                         </div>
                     </div>`;
-                $('[data-repeater-list="group-a"]').append(html);
+                var $newHead = $(html);
+                $('[data-repeater-list="group-a"]').append($newHead);
+                $newHead.find('.header-title-input').focus();
                 updateItemsCountBadge();
                 recalcHeaderPrefixes();
                 recalculateTotals();
             }
 
-            $('#btn-add-header-title').on('click', function() {
+            // Delegated click listeners untuk tombol Add Head Title (Header & Bottom)
+            $(document).on('click', '.btn-add-header-title-action, #btn-add-header-title, #btn-add-header-title-top, #btn-add-header-title-bottom', function(e) {
+                e.preventDefault();
                 addHeaderTitleRow();
             });
 
@@ -2973,59 +3404,6 @@
                     var fullLabel = data.text || (data.commodity + (data.description && data.description !== '-' ? ' — ' + data.description : ''));
                     $fields.find('.invoice-item-detail-product').val(fullLabel);
                     applyRowCategory($fields);
-                }
-            });
-
-            // Handler Pilihan Ship To (BDG / BKS / Custom)
-            const addrBdg = 'Taman Kopo Indah V, Ruko Soho Sommerville No. 31 Bandung - Jawabarat 40218';
-            const addrBks = 'Jl. Nancep No.45A, Cibening, Kec. Setu, Kabupaten Bekasi, Jawa Barat 17320';
-
-            function syncShipTo() {
-                var selectedPreset = $('input[name="ship_to_preset"]:checked').val();
-                var $wrapperBdg = $('#opt-wrapper-bdg');
-                var $wrapperBks = $('#opt-wrapper-bks');
-                var $wrapperCustom = $('#opt-wrapper-custom');
-                var $customWrapper = $('#custom-ship-to-wrapper');
-                var $hiddenInput = $('#ship_to_hidden');
-
-                $wrapperBdg.removeClass('border-primary bg-label-primary bg-opacity-10').addClass('bg-white');
-                $wrapperBks.removeClass('border-primary bg-label-primary bg-opacity-10').addClass('bg-white');
-                $wrapperCustom.removeClass('border-primary bg-label-primary bg-opacity-10').addClass('bg-white');
-
-                if (selectedPreset === 'BDG') {
-                    $wrapperBdg.addClass('border-primary bg-label-primary bg-opacity-10').removeClass('bg-white');
-                    $customWrapper.addClass('d-none');
-                    $hiddenInput.val(addrBdg);
-                } else if (selectedPreset === 'BKS') {
-                    $wrapperBks.addClass('border-primary bg-label-primary bg-opacity-10').removeClass('bg-white');
-                    $customWrapper.addClass('d-none');
-                    $hiddenInput.val(addrBks);
-                } else if (selectedPreset === 'CUSTOM') {
-                    $wrapperCustom.addClass('border-primary bg-label-primary bg-opacity-10').removeClass('bg-white');
-                    $customWrapper.removeClass('d-none');
-                    $hiddenInput.val($('#ship_to_custom_input').val().trim());
-                }
-            }
-
-            $(document).on('change', 'input[name="ship_to_preset"]', function() {
-                syncShipTo();
-            });
-
-            $('#opt-wrapper-bdg').on('click', function() {
-                $('#shipToBdg').prop('checked', true).trigger('change');
-            });
-            $('#opt-wrapper-bks').on('click', function() {
-                $('#shipToBks').prop('checked', true).trigger('change');
-            });
-            $('#opt-wrapper-custom').on('click', function(e) {
-                if (!$(e.target).is('textarea')) {
-                    $('#shipToCustom').prop('checked', true).trigger('change');
-                }
-            });
-
-            $(document).on('input', '#ship_to_custom_input', function() {
-                if ($('input[name="ship_to_preset"]:checked').val() === 'CUSTOM') {
-                    $('#ship_to_hidden').val($(this).val().trim());
                 }
             });
 
@@ -3305,8 +3683,7 @@
                     top_days: $('#top-days-input').val() || '',
                     due_date_estimate: $('#due-date-estimate-input').val() || '',
                     category: $('#po-type-select').val() || '',
-                    ship_to_preset: $('input[name="ship_to_preset"]:checked').val() || '',
-                    ship_to_custom: $('#ship_to_custom_input').val() || '',
+                    ship_to: $('#ship_to_input').val() || '',
                     note: $('[name="note"]').val() || '',
                     items: []
                 };
@@ -3434,9 +3811,8 @@
                 }
 
                 // ship_to
-                if (draft.ship_to_preset) {
-                    $('input[name="ship_to_preset"][value="' + draft.ship_to_preset + '"]').prop('checked', true).trigger('change');
-                    if (draft.ship_to_preset === 'CUSTOM') $('#ship_to_custom_input').val(draft.ship_to_custom || '').trigger('input');
+                if (draft.ship_to) {
+                    $('#ship_to_input').val(draft.ship_to).trigger('input');
                 }
 
                 // Line items
@@ -3489,8 +3865,18 @@
                 $('#formAuthentication').on('input change', 'input, select, textarea', scheduleSave);
                 $(document).on('repeater:added repeater:deleted', scheduleSave);
 
-                // Bersihkan draft saat submit berhasil
+                // Bersihkan draft saat submit berhasil dan sinkronkan nilai numerik
                 $('#formAuthentication').on('submit', function () {
+                    $('.repeater-wrapper').each(function() {
+                        var $row = $(this);
+                        var isHeader = $row.hasClass('header-row-wrapper') || $row.find('.item-category-value').val() === 'Header';
+                        if (!isHeader) {
+                            var $label = $row.find('.invoice-item-price-label');
+                            if ($label.length && $label.val() !== '') {
+                                $row.find('.invoice-item-price').val(parseCurrency($label.val()));
+                            }
+                        }
+                    });
                     try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
                 });
 

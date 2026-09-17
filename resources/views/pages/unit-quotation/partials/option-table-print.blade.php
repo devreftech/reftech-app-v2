@@ -104,7 +104,7 @@
                                     @foreach ($specs as $field)
                                         @if ($field === 'unit') @continue @endif
                                         @php
-                                            $val = $item->unit->$field ?? null;
+                                            $val = ($field === 'type_unit') ? ($item->unit->formatted_type ?: $item->unit->type_unit) : ($item->unit->$field ?? null);
                                             $label = $catOverride[$field] ?? $specLabels[$field] ?? $field;
                                         @endphp
                                         @if ($val && isset($specLabels[$field]))
@@ -139,11 +139,20 @@
                                         @else
                                             @php
                                                 $hasBullet = preg_match('/^([•\-\*]|\d+[\.\)])\s*(.*)/u', $trimmedDLine, $dMatches);
+                                                $hasColon  = !$hasBullet && str_contains($trimmedDLine, ':');
                                             @endphp
                                             @if ($hasBullet && !empty($dMatches[1]) && !empty($dMatches[2]))
                                                 <div style="display:flex; align-items:flex-start; margin-bottom:2px;">
                                                     <span style="flex-shrink:0; min-width:14px; color:#555; font-weight:600;">{{ $dMatches[1] }}</span>
                                                     <span style="flex:1;">{{ $dMatches[2] }}</span>
+                                                </div>
+                                            @elseif ($hasColon)
+                                                @php
+                                                    [$sKey, $sVal] = explode(':', $trimmedDLine, 2);
+                                                @endphp
+                                                <div style="display:flex; padding:1px 0;">
+                                                    <span style="color:#444; font-weight:600; min-width:110px; flex-shrink:0;">{{ trim($sKey) }}</span>
+                                                    <span style="color:#111; font-weight:500;">: {{ trim($sVal) }}</span>
                                                 </div>
                                             @else
                                                 <div style="margin-bottom:2px; font-weight:600; color:#111;">{{ $dLine }}</div>
@@ -168,10 +177,45 @@
     </tbody>
 </table>
 
+{{-- Trade-In Unit Bekas Customer (Print Box) --}}
+@if (!empty($optTotals->has_trade_in) && floatval($optTotals->trade_in_price ?? 0) > 0)
+    <div style="border:1px solid #70b0e0; background:#f0f8ff; border-radius:6px; padding:8px 12px; margin-bottom:12px; font-size:11px; page-break-inside:avoid;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; border-bottom:1px dashed #b0d4f1; padding-bottom:4px;">
+            <div>
+                <strong style="color:#0056b3; text-transform:uppercase; font-size:11px;">&#9654; Trade-In Unit Customer</strong>
+                <span style="font-weight:600; color:#222; margin-left:6px;">{{ trim(($optTotals->trade_in_brand ?? '') . ' ' . ($optTotals->trade_in_model ?? '')) ?: 'Unit Trade-In' }}</span>
+            </div>
+            <div>
+                <span style="color:#555;">Kompensasi:</span>
+                <strong style="color:#dc3545; font-size:12px; margin-left:4px;">- Rp {{ number_format($optTotals->trade_in_price, 0, '', '.') }}</strong>
+            </div>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:12px; color:#444;">
+            @if (!empty($optTotals->trade_in_brand))
+                <div><strong>Brand:</strong> {{ $optTotals->trade_in_brand }}</div>
+            @endif
+            @if (!empty($optTotals->trade_in_model))
+                <div><strong>Model:</strong> {{ $optTotals->trade_in_model }}</div>
+            @endif
+            @if (!empty($optTotals->trade_in_power))
+                <div><strong>Power:</strong> {{ $optTotals->trade_in_power }}</div>
+            @endif
+            @if (!empty($optTotals->trade_in_sn))
+                <div><strong>SN:</strong> {{ $optTotals->trade_in_sn }}</div>
+            @endif
+            @if (!empty($optTotals->trade_in_notes))
+                <div style="width:100%;"><strong>Catatan:</strong> {{ $optTotals->trade_in_notes }}</div>
+            @endif
+        </div>
+    </div>
+@endif
+
 @php
     $afterDisc = $optTotals->diskon > 0
         ? $optTotals->subtotal - $optTotals->discount_amount
         : $optTotals->subtotal;
+    $tradeInVal = (!empty($optTotals->has_trade_in) && floatval($optTotals->trade_in_price ?? 0) > 0) ? floatval($optTotals->trade_in_price) : 0;
+    $dppVal = max(0, $afterDisc - $tradeInVal);
 @endphp
 <div class="d-flex justify-content-end mb-3" style="page-break-inside: avoid !important; break-inside: avoid !important;">
     <div style="min-width:270px; font-size:12px; border:1px solid #d0d0ff; border-left:4px solid #696cff; border-radius:6px; overflow:hidden; background:#fff;">
@@ -188,6 +232,21 @@
                     <tr style="border-top:1px solid #eeeeff;">
                         <td style="padding:5px 14px 5px 12px; color:#555;">After Discount</td>
                         <td style="padding:5px 12px 5px 0; text-align:right; font-weight:600; color:#222;">Rp {{ number_format($afterDisc, 0, '', '.') }}</td>
+                    </tr>
+                @endif
+                @if ($tradeInVal > 0)
+                    <tr style="border-top:1px solid #eeeeff;">
+                        <td style="padding:5px 14px 5px 12px; color:#555;">
+                            Trade-In Unit
+                            @if (!empty($optTotals->trade_in_brand) || !empty($optTotals->trade_in_model))
+                                <span style="font-size:10px; color:#777;">({{ trim(($optTotals->trade_in_brand ?? '') . ' ' . ($optTotals->trade_in_model ?? '')) }})</span>
+                            @endif
+                        </td>
+                        <td style="padding:5px 12px 5px 0; text-align:right; font-weight:600; color:#dc3545;">- Rp {{ number_format($tradeInVal, 0, '', '.') }}</td>
+                    </tr>
+                    <tr style="border-top:1px solid #eeeeff;">
+                        <td style="padding:5px 14px 5px 12px; color:#555;">DPP</td>
+                        <td style="padding:5px 12px 5px 0; text-align:right; font-weight:600; color:#222;">Rp {{ number_format($dppVal, 0, '', '.') }}</td>
                     </tr>
                 @endif
                 <tr style="border-top:1px solid #eeeeff;">

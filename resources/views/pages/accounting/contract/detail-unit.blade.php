@@ -98,7 +98,12 @@
                     {{-- Quote To --}}
                     <div class="info-card">
                         <div class="info-card-title">Customer / Quote To</div>
-                        <div class="info-card-company">{{ $unitQuote->client?->company ?? '-' }}</div>
+                        <div class="info-card-company">
+                            {{ $unitQuote->client?->company ?? '-' }}
+                            @if ($unitQuote->plant)
+                                <span class="badge bg-label-primary ms-1" style="font-size: 10.5px; vertical-align: middle;">{{ $unitQuote->plant->name }}</span>
+                            @endif
+                        </div>
                         <div class="info-row">
                             <span class="label">Attn:</span>
                             <span class="value">{{ $unitQuote->pic?->name_pic ?? '-' }}</span>
@@ -232,7 +237,9 @@
                                                 <div class="spec-grid">
                                                     @foreach ($specs as $field)
                                                         @if ($field === 'unit') @continue @endif
-                                                        @php $val = $item->unit->$field ?? null; @endphp
+                                                        @php
+                                                            $val = ($field === 'type_unit') ? ($item->unit->formatted_type ?: $item->unit->type_unit) : ($item->unit->$field ?? null);
+                                                        @endphp
                                                         @if ($val && isset($specLabels[$field]))
                                                             <div>
                                                                 <span style="color:#64748b;">{{ $specLabels[$field] }}:</span>
@@ -241,6 +248,25 @@
                                                         @endif
                                                     @endforeach
                                                 </div>
+                                            @endif
+                                        @elseif ($item->type === 'equivalent' || $item->type === 'sparepart' || $item->id_equivalent || $item->equivalent)
+                                            @if ($item->equivalent)
+                                                @php
+                                                    $brandPn = trim(($item->equivalent->brand ?? '') . ($item->equivalent->pn ? ' - ' . $item->equivalent->pn : ''));
+                                                    $subDesc = preg_replace('/^[\s\-\*\•]+/u', '', $item->label ?? '');
+                                                    if (empty($subDesc) || $subDesc === $brandPn) {
+                                                        $subDesc = optional($item->equivalent->product)->description ?? optional($item->equivalent->product)->name;
+                                                    }
+                                                @endphp
+                                                <div class="item-title">{{ $brandPn ?: preg_replace('/^[\s\-\*\•]+/u', '', $item->label ?? '') }}</div>
+                                                @if ($subDesc && $subDesc !== $brandPn)
+                                                    <div class="item-desc">{{ preg_replace('/^[\s\-\*\•]+/u', '', $subDesc) }}</div>
+                                                @endif
+                                            @else
+                                                <div class="item-title">{{ $item->label }}</div>
+                                                @if ($item->description && $item->description !== $item->label)
+                                                    <div class="item-desc">{{ $item->description }}</div>
+                                                @endif
                                             @endif
                                         @else
                                             <div class="item-title">{{ $item->label }}</div>

@@ -25,7 +25,8 @@ try {
     $query = "
     SELECT q.id, q.no_quote, c.company, c.ru, q.subtotal, q.title, q.estimated_date,
            q.status, CONCAT(q.note, ' (', q.status_date, ')') AS tip, q.type,
-           'service' AS row_type, u.name AS sales_name, u.image AS sales_image
+           'service' AS row_type, u.name AS sales_name, u.image AS sales_image,
+           NULL AS plant_name
     FROM quotation q
     LEFT JOIN pic p ON p.id = q.id_pic
     LEFT JOIN client c ON c.id = p.id_client
@@ -50,9 +51,11 @@ try {
            uq.type,
            'unit' AS row_type,
            u2.name AS sales_name,
-           u2.image AS sales_image
+           u2.image AS sales_image,
+           cp.name AS plant_name
     FROM unit_quotation uq
     LEFT JOIN client c2 ON c2.id = NULLIF(uq.id_client,'')
+    LEFT JOIN client_plants cp ON cp.id = NULLIF(uq.id_plant,'')
     INNER JOIN users u2 ON u2.id = uq.id_sales
     WHERE uq.status NOT IN ('hot_prospect','po_received','loss','cancel') AND (uq.is_latest = 1 OR uq.is_latest IS NULL) AND (uq.is_draft = 0 OR uq.is_draft IS NULL)
         AND u2.role IN ('Admin','Sales Manager')$yearFilterU

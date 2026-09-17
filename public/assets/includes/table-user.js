@@ -57,6 +57,15 @@ $(function () {
                             ? "/" + full["image"]
                             : "/assets/img/avatars/1.png";
                         var name = data || "-";
+                        var hrBadge = "";
+                        if (full["employee_id"]) {
+                            var statusText = full["employee_status"] || "Aktif";
+                            var badgeColor = full["employee_status"] === "Tetap" ? "success" : (full["employee_status"] === "Kontrak" ? "info" : "warning");
+                            hrBadge = '<a href="/employees/' + full["employee_id"] + '" class="badge bg-label-' + badgeColor + ' rounded-pill mt-1" style="font-size:0.68rem; width:fit-content; text-decoration:none;" title="Buka Profil Modul HR">' +
+                                '<i class="mdi mdi-card-account-details-outline me-1"></i>HR: ' + statusText + '</a>';
+                        } else if (full["role"] !== "Client") {
+                            hrBadge = '<span class="badge bg-label-secondary rounded-pill mt-1" style="font-size:0.68rem; width:fit-content;" title="Belum terdaftar di data HR">Non-HR</span>';
+                        }
                         return (
                             '<div class="d-flex justify-content-start align-items-center user-name">' +
                             '<div class="avatar avatar-sm me-2">' +
@@ -66,6 +75,7 @@ $(function () {
                             '<a href="' + detailRoute + '" class="text-body text-truncate">' +
                             '<span class="fw-medium">' + name + "</span>" +
                             "</a>" +
+                            hrBadge +
                             "</div>" +
                             "</div>"
                         );

@@ -66,6 +66,21 @@
         </div>
     </div>
 
+    @if ($expense->payroll)
+        <div class="alert alert-primary d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between mb-4 shadow-xs" role="alert">
+            <div class="d-flex align-items-center mb-2 mb-sm-0">
+                <i class="mdi mdi-account-cash fs-3 text-primary me-2"></i>
+                <div>
+                    <strong>Pengeluaran ini terintegrasi dengan HR Payroll Karyawan:</strong>
+                    <span class="ms-1">{{ $expense->payroll->title }} ({{ $expense->payroll->code }})</span>
+                </div>
+            </div>
+            <a href="{{ route('hr.payrolls.show', $expense->payroll->id) }}" class="btn btn-sm btn-primary">
+                <i class="mdi mdi-open-in-new me-1"></i> Buka Batch Payroll
+            </a>
+        </div>
+    @endif
+
     <div class="row">
         <!-- Main Voucher Card -->
         <div class="col-xl-9 col-lg-8 col-12 mb-4">

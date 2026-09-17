@@ -32,9 +32,15 @@
                         </select>
                     </div>
 
+                    <div class="mb-3">
+                        <label for="itemQty" class="form-label fw-semibold text-dark">Qty per Set *</label>
+                        <input type="number" class="form-control" id="itemQty" name="qty" value="1" min="1" step="1" required>
+                        <small class="text-muted" style="font-size: 11px;">Jumlah pcs komponen ini yang dibutuhkan untuk membentuk 1 set/bundle.</small>
+                    </div>
+
                     <div class="alert alert-info py-2 px-3 mb-0" style="font-size: 12px;">
                         <i class="mdi mdi-information-outline me-1"></i>
-                        Stok bundle otomatis dihitung dari jumlah stok terendah di antara seluruh komponen penyusunnya.
+                        Stok bundle otomatis dihitung dari stok komponen dibagi qty per set, diambil yang paling sedikit di antara seluruh komponen penyusunnya.
                     </div>
                 </div>
                 <div class="modal-footer border-top py-3">

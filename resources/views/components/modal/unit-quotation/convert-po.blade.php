@@ -151,17 +151,14 @@
                                     </div>
                                 </div>
 
-                                {{-- CONTAINER ALAMAT GABUNG --}}
+                                 {{-- CONTAINER ALAMAT GABUNG --}}
                                 <div id="uq_combined_address_section">
                                     <div class="mb-3">
                                         <label class="form-label fw-bold text-dark mb-1"
                                             style="font-size: 12.5px;">Alamat Pengiriman (Dokumen & Barang)</label>
                                         <select class="form-select mb-2" id="uq_combined_address_select"
                                             onchange="onAddressSelectChangeUQ('combined')">
-                                            <option value="customer">Main Address: {{ $quote->client->address ?? '-' }}</option>
-                                            @if (!empty($quote->client->subAddress))
-                                                <option value="{{ $quote->client->subAddress }}">Sub Address: {{ $quote->client->subAddress }}</option>
-                                            @endif
+                                            <option value="customer">Office Address: {{ $quote->client->address ?? '-' }}</option>
                                             @foreach ($quote->client->plants ?? [] as $plant)
                                                 <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
                                             @endforeach
@@ -218,10 +215,7 @@
                                             style="font-size: 12.5px;">Alamat Pengiriman Dokumen / Invoice</label>
                                         <select class="form-select mb-2" id="uq_doc_address_select"
                                             onchange="onAddressSelectChangeUQ('doc')">
-                                            <option value="customer">Main Address: {{ $quote->client->address ?? '-' }}</option>
-                                            @if (!empty($quote->client->subAddress))
-                                                <option value="{{ $quote->client->subAddress }}">Sub Address: {{ $quote->client->subAddress }}</option>
-                                            @endif
+                                            <option value="customer">Office Address: {{ $quote->client->address ?? '-' }}</option>
                                             @foreach ($quote->client->plants ?? [] as $plant)
                                                 <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
                                             @endforeach
@@ -275,10 +269,7 @@
                                             style="font-size: 12.5px;">Alamat Pengiriman Barang</label>
                                         <select class="form-select mb-2" id="uq_shipping_address_select"
                                             onchange="onAddressSelectChangeUQ('shipping')">
-                                            <option value="customer">Main Address: {{ $quote->client->address ?? '-' }}</option>
-                                            @if (!empty($quote->client->subAddress))
-                                                <option value="{{ $quote->client->subAddress }}">Sub Address: {{ $quote->client->subAddress }}</option>
-                                            @endif
+                                            <option value="customer">Office Address: {{ $quote->client->address ?? '-' }}</option>
                                             @foreach ($quote->client->plants ?? [] as $plant)
                                                 <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
                                             @endforeach

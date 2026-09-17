@@ -29,7 +29,8 @@ try {
     $query = "
     SELECT q.id, q.no_quote, c.company, c.ru, q.nett, q.title, q.po_date,
            inv.id AS invoice_id, inv.no_po, inv.no_invoice,
-           'quote' AS row_type, q.type, u.name AS sales_name, u.image AS sales_image
+           'quote' AS row_type, q.type, u.name AS sales_name, u.image AS sales_image,
+           NULL AS plant_name
     FROM quotation q
     LEFT JOIN pic p ON p.id = q.id_pic
     LEFT JOIN client c ON c.id = p.id_client
@@ -58,9 +59,11 @@ try {
             WHERE invU.id_unit_quotation = uq.id AND invU.no_invoice IS NOT NULL
             ORDER BY invU.id DESC LIMIT 1) AS no_invoice,
            'unit' AS row_type, uq.type,
-           u2.name AS sales_name, u2.image AS sales_image
+           u2.name AS sales_name, u2.image AS sales_image,
+           cp.name AS plant_name
     FROM unit_quotation uq
     LEFT JOIN client cl ON cl.id = NULLIF(uq.id_client,'')
+    LEFT JOIN client_plants cp ON cp.id = NULLIF(uq.id_plant,'')
     INNER JOIN users u2 ON u2.id = uq.id_sales
     WHERE uq.status = 'po_received' AND (uq.is_latest = 1 OR uq.is_latest IS NULL) AND u2.active = '1' $salesFilter2
     AND NOT EXISTS (SELECT 1 FROM payment pay2 WHERE pay2.id_unit_quotation = uq.id AND pay2.method = 'Escrow')

@@ -217,11 +217,13 @@ Route::middleware(['auth'])->group(function () {
                 'quotation.harga_total', 'client.company', 'users.name', 'users.image as sales_image',
                 'invoice.id', 'invoice.type',
                 \DB::raw("'service' AS row_type"),
+                \DB::raw('NULL AS plant_name'),
             ]);
 
         // Unit quotation requests (escrow payment excluded — those go to Marketplace tab)
         $unit = \App\Models\Invoice::join('unit_quotation as uq', 'uq.id', '=', 'invoice.id_unit_quotation')
             ->join('client', 'client.id', '=', 'uq.id_client')
+            ->leftJoin('client_plants', 'client_plants.id', '=', 'uq.id_plant')
             ->join('users', 'users.id', '=', 'uq.id_sales')
             ->whereNull('invoice.no_invoice')
             ->whereNotNull('invoice.id_unit_quotation')
@@ -233,6 +235,7 @@ Route::middleware(['auth'])->group(function () {
                 'uq.total as harga_total', 'client.company', 'users.name', 'users.image as sales_image',
                 'invoice.id', 'invoice.type',
                 \DB::raw("'unit' AS row_type"),
+                'client_plants.name as plant_name',
             ]);
 
         return response()->json(['data' => $service->merge($unit)->values()]);
@@ -257,6 +260,7 @@ Route::middleware(['auth'])->group(function () {
                 'quotation.harga_total', 'client.company', 'users.name', 'users.image as sales_image',
                 'invoice.id', 'invoice.type',
                 \DB::raw("'service' AS row_type"),
+                \DB::raw('NULL AS plant_name'),
             ])
             ->addSelect(['escrow_channel' => \App\Models\Payment::selectRaw('escrow_channel')
                 ->whereColumn('id_quotation', 'quotation.id')
@@ -272,6 +276,7 @@ Route::middleware(['auth'])->group(function () {
         // Escrow masuk supaya tidak nyangkut di halaman before-accept).
         $unit = \App\Models\Invoice::join('unit_quotation as uq', 'uq.id', '=', 'invoice.id_unit_quotation')
             ->join('client', 'client.id', '=', 'uq.id_client')
+            ->leftJoin('client_plants', 'client_plants.id', '=', 'uq.id_plant')
             ->join('users', 'users.id', '=', 'uq.id_sales')
             ->where('invoice.type', 'Escrow')
             ->whereNotNull('invoice.id_unit_quotation')
@@ -283,6 +288,7 @@ Route::middleware(['auth'])->group(function () {
                 'client.company', 'users.name', 'users.image as sales_image',
                 'invoice.id', 'invoice.type',
                 \DB::raw("'unit' AS row_type"),
+                'client_plants.name as plant_name',
             ])
             ->addSelect(['escrow_channel' => \App\Models\Payment::selectRaw('escrow_channel')
                 ->whereColumn('id_unit_quotation', 'uq.id')

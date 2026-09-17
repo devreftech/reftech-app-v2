@@ -60,158 +60,212 @@
         </div>
 
         {{-- HEADER CLIENT & DETAILS --}}
-        <div class="card mb-4 border-0 shadow-sm">
-            <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center">
-                <h6 class="card-title mb-0 fw-bold text-dark">
-                    <i class="mdi mdi-domain me-2 text-primary fs-5"></i> Customer Information & Quotation Details
-                </h6>
-            </div>
-            <div class="card-body pt-4">
-                <div class="row g-3">
-                    {{-- Sub Header: Customer & Alamat --}}
-                    <div class="col-12">
-                        <div class="d-flex align-items-center text-muted small fw-bold text-uppercase mb-1" style="letter-spacing:.5px;">
-                            <i class="mdi mdi-account-group-outline me-1"></i> Customer & Delivery Address
+        <div class="card mb-4 border shadow-xs" style="border-radius: 12px; border-color: #e6e8ec !important; background: #ffffff;">
+            {{-- Section 1: Customer & Delivery Address --}}
+            <div class="card-header bg-white border-bottom py-3 px-4" style="border-color: #f0f2f5 !important;">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2.5">
+                        <div class="avatar avatar-sm bg-label-primary rounded-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                            <i class="mdi mdi-domain fs-4"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark" style="font-size: 14.5px;">Customer & Delivery Information</h6>
+                            <small class="text-muted" style="font-size: 11.5px;">Pilih perusahaan client, kontak penanggung jawab (PIC), dan alamat tujuan pengiriman</small>
                         </div>
                     </div>
-                    @if ($isManager ?? false)
-                        <div class="col-12">
-                            <div class="p-2.5 rounded-3 border bg-light-subtle shadow-none d-flex flex-wrap align-items-center justify-content-between gap-3">
-                                <div>
-                                    <div class="fw-semibold text-dark small">
-                                        <i class="mdi mdi-briefcase-check-outline text-primary me-1"></i> Atribusi Penjualan (Pemilik Penawaran & Omset PO)
-                                    </div>
-                                    <span class="text-muted" style="font-size: 11px;">Tentukan apakah omset penawaran ini diakui sebagai Sales Project atau didelegasikan ke Sales individu.</span>
+                    <span class="badge bg-label-primary rounded-pill px-3 py-1.5 fw-semibold" style="font-size: 11px;">
+                        <i class="mdi mdi-account-group-outline me-1"></i> Customer Data
+                    </span>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                @if ($isManager ?? false)
+                    <div class="p-3 mb-4 rounded-3 border" style="background: linear-gradient(135deg, #f8faff 0%, #f4f6fb 100%); border-color: #dbe4ff !important;">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                            <div>
+                                <div class="fw-semibold text-dark small">
+                                    <i class="mdi mdi-briefcase-check-outline text-primary me-1"></i> Atribusi Penjualan (Pemilik Penawaran & Omset PO)
                                 </div>
-                                <div style="min-width: 260px;">
-                                    <select class="select2 form-select form-select-sm" name="id_sales" id="edit-sales-select">
-                                        <option value="{{ Auth::id() }}" {{ $quote->id_sales == Auth::id() ? 'selected' : '' }}>
-                                            Sales Project ({{ Auth::user()->name }})
-                                        </option>
-                                        <optgroup label="Delegasikan ke Sales:">
-                                            @foreach ($salesUsers as $s)
-                                                <option value="{{ $s->id }}" {{ $quote->id_sales == $s->id ? 'selected' : '' }}>
-                                                    {{ $s->name }}
-                                                </option>
-                                            @endforeach
-                                        </optgroup>
-                                    </select>
+                                <span class="text-muted" style="font-size: 11px;">Tentukan apakah omset penawaran ini diakui sebagai Sales Project atau didelegasikan ke Sales individu.</span>
+                            </div>
+                            <div style="min-width: 260px;">
+                                <select class="select2 form-select form-select-sm" name="id_sales" id="edit-sales-select">
+                                    <option value="{{ Auth::id() }}" {{ $quote->id_sales == Auth::id() ? 'selected' : '' }}>
+                                        Sales Project ({{ Auth::user()->name }})
+                                    </option>
+                                    <optgroup label="Delegasikan ke Sales:">
+                                        @foreach ($salesUsers as $s)
+                                            <option value="{{ $s->id }}" {{ $quote->id_sales == $s->id ? 'selected' : '' }}>
+                                                {{ $s->name }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                <div class="row g-3">
+                    <div class="col-lg-4 col-md-5 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="client-select">
+                            <i class="mdi mdi-domain text-primary me-1"></i> Perusahaan / Client <span class="text-danger">*</span>
+                        </label>
+                        <select class="select2 form-select" name="id_client" id="client-select">
+                            <option value="">-- Select Client --</option>
+                            @foreach ($clients as $c)
+                                <option value="{{ $c->id }}"
+                                    data-role="{{ $c->role }}"
+                                    {{ $quote->id_client == $c->id ? 'selected' : '' }}>
+                                    {{ $c->company }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="col-lg-3 col-md-3 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="pic-select">
+                            <i class="mdi mdi-account-tie-outline text-primary me-1"></i> PIC / Contact Person <span class="text-danger">*</span>
+                        </label>
+                        <select class="select2 form-select" name="id_pic" id="pic-select">
+                            <option value="">-- Select PIC --</option>
+                            @if ($quote->pic)
+                                <option value="{{ $quote->pic->id }}"
+                                    data-name="{{ $quote->pic->name_pic }}"
+                                    data-position="{{ $quote->pic->position }}"
+                                    data-phone="{{ $quote->pic->phone_pic }}"
+                                    data-email="{{ $quote->pic->email_pic }}"
+                                    selected>
+                                    {{ $quote->pic->name_pic }}{{ $quote->pic->position ? ' (' . $quote->pic->position . ')' : '' }}
+                                </option>
+                            @endif
+                        </select>
+                    </div>
+
+                    <div class="col-lg-5 col-md-4 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="address-select">
+                            <i class="mdi mdi-map-marker-radius-outline text-primary me-1"></i> Address / Plant Destination
+                        </label>
+                        <select class="select2 form-select" id="address-select">
+                            <option value="">-- Select Address --</option>
+                        </select>
+                        <input type="hidden" name="id_plant" id="input-id-plant" value="{{ $quote->id_plant }}">
+                        <input type="hidden" name="address" id="input-address-hidden" value="{{ $quote->address }}">
+                        
+                        <div id="address-preview-card" class="mt-2 p-2 px-3 rounded border d-none" style="background-color: #f8f9fa; border-color: #e5e7eb !important;">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="mdi mdi-map-marker-radius text-primary fs-5 mt-0" style="line-height: 1.2;"></i>
+                                <div class="flex-grow-1" style="min-width: 0;">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="badge bg-label-primary" id="address-preview-badge">Office / Factory</span>
+                                    </div>
+                                    <div class="text-dark small fw-normal" id="address-preview-text" style="font-size: 0.8rem; line-height: 1.35; word-break: break-word;">-</div>
                                 </div>
                             </div>
                         </div>
-                    @endif
-                    <div class="col-md-4">
-                        <div class="form-floating form-floating-outline">
-                            <select class="select2 form-select" name="id_client" id="client-select">
-                                <option value="">-- Select Client --</option>
-                                @foreach ($clients as $c)
-                                    <option value="{{ $c->id }}"
-                                        data-role="{{ $c->role }}"
-                                        {{ $quote->id_client == $c->id ? 'selected' : '' }}>
-                                        {{ $c->company }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <label>Client *</label>
-                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="form-floating form-floating-outline">
-                            <select class="form-select" name="id_pic" id="pic-select">
-                                <option value="">-- Select PIC --</option>
-                                @if ($quote->pic)
-                                    <option value="{{ $quote->pic->id }}" selected>
-                                        {{ $quote->pic->name_pic }}{{ $quote->pic->position ? ' (' . $quote->pic->position . ')' : '' }}
-                                    </option>
-                                @endif
-                            </select>
-                            <label>PIC / Contact *</label>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-floating form-floating-outline">
-                            <select class="form-select" id="address-select">
-                                <option value="">-- Select Address --</option>
-                            </select>
-                            <label>Address / Plant</label>
-                        </div>
-                        <input type="hidden" name="id_plant" id="input-id-plant" value="{{ $quote->id_plant }}">
-                        <input type="hidden" name="address" id="input-address-hidden" value="{{ $quote->address }}">
-                    </div>
+
                     <div class="col-md-12" id="manual-address-wrapper" style="display: none;">
-                        <div class="form-floating form-floating-outline">
-                            <textarea class="form-control" id="input-address-manual" rows="2" style="height: 60px;" placeholder="Enter custom address...">{{ $quote->address }}</textarea>
-                            <label>Custom Address</label>
+                        <div class="p-3 rounded-3 border bg-light-subtle" style="border-style: dashed !important; border-color: #7367f0 !important;">
+                            <label class="form-label fw-semibold text-primary small mb-1" for="input-address-manual">
+                                <i class="mdi mdi-pencil-outline me-1"></i> Alamat Pengiriman Khusus (Custom Address)
+                            </label>
+                            <textarea class="form-control" id="input-address-manual" rows="2" style="height: 65px;" placeholder="Masukkan alamat lengkap pengiriman khusus...">{{ $quote->address }}</textarea>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Section 2: Quotation Parameters & Specifications --}}
+            <div class="card-header bg-light-subtle border-top border-bottom py-3 px-4" style="border-color: #e6e8ec !important;">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2.5">
+                        <div class="avatar avatar-sm bg-label-info rounded-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                            <i class="mdi mdi-file-document-outline fs-4"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark" style="font-size: 14.5px;">Quotation Parameters & Specifications</h6>
+                            <small class="text-muted" style="font-size: 11.5px;">Atur tanggal penawaran, masa berlaku, kategori spesifikasi, dan deskripsi proyek</small>
+                        </div>
+                    </div>
+                    <span class="badge bg-label-info rounded-pill px-3 py-1.5 fw-semibold" style="font-size: 11px;">
+                        <i class="mdi mdi-cog-outline me-1"></i> Parameters
+                    </span>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-lg-3 col-md-6 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="input-date">
+                            <i class="mdi mdi-calendar-range text-primary me-1"></i> Tanggal Penawaran
+                        </label>
+                        <input type="date" class="form-control" id="input-date" name="date"
+                            value="{{ old('date', $quote->date?->format('Y-m-d')) }}">
                     </div>
 
-                    <div class="col-12">
-                        <hr class="my-2">
-                        <div class="d-flex align-items-center text-muted small fw-bold text-uppercase mb-1" style="letter-spacing:.5px;">
-                            <i class="mdi mdi-file-document-outline me-1"></i> Quotation Parameters & Specifications
+                    <div class="col-lg-3 col-md-6 col-12">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <label class="form-label fw-semibold text-dark small mb-0" for="input-expired-date">
+                                <i class="mdi mdi-calendar-clock text-warning me-1"></i> Expired Quotation
+                            </label>
+                            <span class="badge bg-label-warning px-1.5 py-0" style="font-size: 9.5px;">Auto +1 Bulan</span>
                         </div>
+                        <input type="date" class="form-control bg-light-subtle" id="input-expired-date" name="expired_date"
+                            value="{{ old('expired_date', $quote->expired_date ? \Carbon\Carbon::parse($quote->expired_date)->format('Y-m-d') : \Carbon\Carbon::parse($quote->date)->addMonth()->format('Y-m-d')) }}"
+                            readonly title="Auto-calculated: 1 month from quotation date">
                     </div>
 
-                    <div class="col-md-2">
-                        <div class="form-floating form-floating-outline">
-                            <input type="date" class="form-control" id="input-date" name="date"
-                                value="{{ old('date', $quote->date?->format('Y-m-d')) }}">
-                            <label>Date</label>
-                        </div>
+                    <div class="col-lg-3 col-md-6 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="select-type">
+                            <i class="mdi mdi-tag-outline text-primary me-1"></i> Tipe Penawaran
+                        </label>
+                        <select class="form-select" id="select-type" name="type">
+                            <option value="" disabled>-- Type --</option>
+                            @foreach (['Unit', 'Rental', 'Project', 'Parts', 'Service', 'Piping', 'Air Audit', 'General Check / Visit', 'HVAC', 'Fire System'] as $t)
+                                <option value="{{ $t }}" {{ $quote->type === $t ? 'selected' : '' }}>{{ $t }}</option>
+                            @endforeach
+                        </select>
                     </div>
-                    <div class="col-md-2">
-                        <div class="form-floating form-floating-outline">
-                            <input type="date" class="form-control bg-light-subtle" id="input-expired-date" name="expired_date"
-                                value="{{ old('expired_date', $quote->expired_date ? \Carbon\Carbon::parse($quote->expired_date)->format('Y-m-d') : \Carbon\Carbon::parse($quote->date)->addMonth()->format('Y-m-d')) }}"
-                                readonly title="Auto-calculated: 1 month from quotation date">
-                            <label class="text-muted">Expired Quotation</label>
-                        </div>
+
+                    <div class="col-lg-3 col-md-6 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="select-week">
+                            <i class="mdi mdi-calendar-week text-primary me-1"></i> Periode Week
+                        </label>
+                        <select class="form-select" id="select-week" name="week">
+                            <option value="" disabled>-- Week --</option>
+                            @foreach ([1,2,3,4,5] as $w)
+                                <option value="{{ $w }}" {{ $quote->week == $w ? 'selected' : '' }}>Week {{ $w }}</option>
+                            @endforeach
+                        </select>
                     </div>
-                    <div class="col-md-2">
-                        <div class="form-floating form-floating-outline">
-                            <input type="text" class="form-control" name="no_pr" placeholder="No PR (optional)"
-                                value="{{ old('no_pr', $quote->no_pr) }}">
-                            <label>No PR <span class="text-muted small">(optional)</span></label>
-                        </div>
+
+                    <div class="col-lg-3 col-md-6 col-12" id="unit-condition-wrapper" style="display:none;">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="select-unit-condition">
+                            <i class="mdi mdi-certificate-outline text-success me-1"></i> Kondisi Unit
+                        </label>
+                        <select class="form-select" id="select-unit-condition" name="unit_condition">
+                            <option value="" disabled {{ $quote->unit_condition ? '' : 'selected' }}>-- Kondisi --</option>
+                            <option value="Baru" {{ $quote->unit_condition === 'Baru' ? 'selected' : '' }}>Unit Baru</option>
+                            <option value="Second" {{ $quote->unit_condition === 'Second' ? 'selected' : '' }}>Unit Second</option>
+                        </select>
                     </div>
-                    <div class="col-md-4">
-                        <div class="form-floating form-floating-outline">
-                            <input type="text" class="form-control" name="title" placeholder="Title"
-                                value="{{ old('title', $quote->title) }}">
-                            <label>Title / Description</label>
-                        </div>
+
+                    <div class="col-lg-4 col-md-5 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="input-no-pr">
+                            <i class="mdi mdi-pound text-secondary me-1"></i> No PR <span class="text-muted small fw-normal">(Optional)</span>
+                        </label>
+                        <input type="text" class="form-control" id="input-no-pr" name="no_pr" placeholder="mis. PR-2026/09/001"
+                            value="{{ old('no_pr', $quote->no_pr) }}">
                     </div>
-                    <div class="col-md-2">
-                        <div class="form-floating form-floating-outline">
-                            <select class="form-select" id="select-type" name="type">
-                                <option value="" disabled>-- Type --</option>
-                                @foreach (['Unit', 'Rental', 'Project', 'Parts', 'Service', 'Piping', 'Air Audit', 'General Check / Visit', 'HVAC', 'Fire System'] as $t)
-                                    <option value="{{ $t }}" {{ $quote->type === $t ? 'selected' : '' }}>{{ $t }}</option>
-                                @endforeach
-                            </select>
-                            <label>Type</label>
-                        </div>
-                    </div>
-                    <div class="col-md-2" id="unit-condition-wrapper" style="display:none;">
-                        <div class="form-floating form-floating-outline">
-                            <select class="form-select" id="select-unit-condition" name="unit_condition">
-                                <option value="" disabled {{ $quote->unit_condition ? '' : 'selected' }}>-- Kondisi --</option>
-                                <option value="Baru" {{ $quote->unit_condition === 'Baru' ? 'selected' : '' }}>Unit Baru</option>
-                                <option value="Second" {{ $quote->unit_condition === 'Second' ? 'selected' : '' }}>Unit Second</option>
-                            </select>
-                            <label>Kondisi Unit</label>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="form-floating form-floating-outline">
-                            <select class="form-select" id="select-week" name="week">
-                                <option value="" disabled>-- Week --</option>
-                                @foreach ([1,2,3,4,5] as $w)
-                                    <option value="{{ $w }}" {{ $quote->week == $w ? 'selected' : '' }}>Week {{ $w }}</option>
-                                @endforeach
-                            </select>
-                            <label>Week</label>
-                        </div>
+
+                    <div class="col-lg-8 col-md-7 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="input-title">
+                            <i class="mdi mdi-format-title text-primary me-1"></i> Judul / Deskripsi Proyek
+                        </label>
+                        <input type="text" class="form-control" id="input-title" name="title" placeholder="mis. Pengadaan & Instalasi Air Compressor Screw 55kW"
+                            value="{{ old('title', $quote->title) }}">
                     </div>
                 </div>
             </div>
@@ -360,7 +414,19 @@
         </div>
     </form>
 
-    {{-- TEMPLATES (hidden, cloned by JS) --}}
+    <datalist id="common-spec-keys">
+        <option value="Brand">
+        <option value="Model">
+        <option value="Power">
+        <option value="Air Capacity">
+        <option value="Max Pressure">
+        <option value="Voltage">
+        <option value="Cooling Method">
+        <option value="Condition">
+        <option value="Year">
+        <option value="Warranty">
+    </datalist>
+
     <template id="tmpl-unit-row">
         <div class="unit-row border-bottom p-3" data-type="unit">
             <input type="hidden" name="items[__IDX__][type]" value="unit">
@@ -368,6 +434,7 @@
             <input type="hidden" name="items[__IDX__][id_fixed_asset]" class="field-id-fixed-asset">
             <input type="hidden" name="items[__IDX__][id_equivalent]" class="field-id-equivalent">
             <input type="hidden" name="items[__IDX__][spec_visible]" class="field-spec-visible">
+            <textarea name="items[__IDX__][description]" class="field-description" style="display:none;"></textarea>
 
             <div class="d-flex align-items-center mb-2">
                 <div class="btn-drag-handle text-muted me-2" title="Geser (drag & drop) untuk memindahkan posisi">
@@ -393,6 +460,11 @@
                         value="rental">
                     <label class="form-check-label small">Rental</label>
                 </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input unit-source-radio" type="radio" name="unit_source___IDX__"
+                        value="other">
+                    <label class="form-check-label small">Other</label>
+                </div>
             </div>
 
             <div class="row g-2 align-items-start">
@@ -413,6 +485,10 @@
                             <option value="">Search Spare Part / Equivalent (PN / Brand / Name)...</option>
                         </select>
                     </div>
+                    <div class="unit-source-other" style="display:none;">
+                        <input type="text" class="form-control form-control-sm field-other-input"
+                            placeholder="Ketik Nama / Tipe Unit (Vendor Luar)...">
+                    </div>
                 </div>
                 <div class="col-md-1">
                     <input type="number" class="form-control form-control-sm text-center field-qty"
@@ -421,6 +497,10 @@
                 <div class="col-md-1">
                     <input type="text" class="form-control form-control-sm text-center field-info-qty"
                         name="items[__IDX__][info_qty]" value="Unit" readonly>
+                    <select class="form-select form-select-sm text-center field-info-qty-select px-1" style="display: none;">
+                        <option value="Days" selected>Days</option>
+                        <option value="Month">Month</option>
+                    </select>
                 </div>
                 <div class="col-md-2">
                     <input type="text" class="form-control form-control-sm text-end field-price rupiah-input"
@@ -456,12 +536,29 @@
                     placeholder="Item title (auto-filled, editable)">
             </div>
 
+            {{-- Spec Preview (Catalog Unit & Unit Second) --}}
             <div class="spec-preview mt-2 ms-1 ps-3 border-start border-2" style="display:none;">
                 <div class="spec-rows"></div>
                 <p class="text-muted small mb-0 mt-1">
                     <i class="mdi mdi-information-outline me-1"></i>
                     Click <kbd>×</kbd> on a spec to hide it from the quotation.
                 </p>
+            </div>
+
+            {{-- Manual Spec Section for Other --}}
+            <div class="other-spec-section mt-2 ms-1 ps-3 border-start border-2 border-primary" style="display:none;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="fw-semibold text-dark small" style="font-size: 11.5px;">
+                        <i class="mdi mdi-tune-vertical text-primary me-1"></i>Spesifikasi Unit (Manual Input):
+                    </span>
+                    <button type="button" class="btn btn-xs btn-outline-primary btn-add-other-spec py-0 px-2" style="font-size: 10.5px;">
+                        <i class="mdi mdi-plus me-1"></i>Tambah Spesifikasi
+                    </button>
+                </div>
+                <div class="other-spec-rows"></div>
+                <div class="text-muted small mt-1" style="font-size: 10.5px;">
+                    <i class="mdi mdi-information-outline me-1 text-secondary"></i>Spesifikasi akan ditampilkan rapi 2-kolom sejajar pada cetakan penawaran &amp; detail.
+                </div>
             </div>
 
             {{-- Spare Part Stock Preview --}}
@@ -627,10 +724,72 @@
                 </button>
             </div>
 
-            {{-- Summary (subtotal/diskon/tax/shipping/total) khusus opsi ini --}}
+            {{-- Summary (subtotal/diskon/trade-in/tax/shipping/total) khusus opsi ini --}}
             <div class="p-4 bg-light-subtle border-top">
-                <div class="row justify-content-end">
-                    <div class="col-lg-5 col-md-8 col-12">
+                <div class="row g-4 align-items-start">
+                    {{-- Left Column: Trade-In Unit Customer Card --}}
+                    <div class="col-lg-7 col-12">
+                        <div class="card border border-primary-subtle shadow-xs mb-0" style="border-radius: 8px; background: #ffffff;">
+                            <div class="card-header py-2.5 px-3 bg-light border-bottom d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="mdi mdi-swap-horizontal-bold text-primary fs-5"></i>
+                                    <span class="fw-bold text-heading" style="font-size: 13px;">Trade-In Unit Bekas Customer</span>
+                                </div>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input toggle-trade-in cursor-pointer" type="checkbox"
+                                        name="options[__OPT__][has_trade_in]" value="1" id="toggleTradeInEdit___OPT__">
+                                    <label class="form-check-label small fw-semibold text-muted ms-1" for="toggleTradeInEdit___OPT__">Aktifkan Trade-In</label>
+                                </div>
+                            </div>
+                            <div class="card-body p-3 trade-in-body" style="display: none;">
+                                <p class="text-muted small mb-2.5" style="font-size: 11px;">
+                                    <i class="mdi mdi-information-outline text-primary me-1"></i>Masukkan identitas unit bekas customer dan nilai kompensasi potongan harga.
+                                </p>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Brand Unit</label>
+                                        <input type="text" class="form-control form-control-sm trade-in-brand"
+                                            name="options[__OPT__][trade_in_brand]" placeholder="mis. Kaeser, Atlas Copco, Hitachi">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Model / Tipe</label>
+                                        <input type="text" class="form-control form-control-sm trade-in-model"
+                                            name="options[__OPT__][trade_in_model]" placeholder="mis. CS91, GA 22, OSP-15">
+                                    </div>
+                                </div>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Power / Kapasitas</label>
+                                        <input type="text" class="form-control form-control-sm trade-in-power"
+                                            name="options[__OPT__][trade_in_power]" placeholder="mis. 55 kW / 75 HP">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Serial Number (SN)</label>
+                                        <input type="text" class="form-control form-control-sm trade-in-sn"
+                                            name="options[__OPT__][trade_in_sn]" placeholder="mis. SN-982143">
+                                    </div>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1 text-primary" style="font-size: 11.5px;">Nilai Kompensasi / Potongan Trade-In (Rp) *</label>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text fw-bold text-primary">Rp</span>
+                                            <input type="text" class="form-control form-control-sm rupiah-input fw-bold text-end trade-in-price"
+                                                name="options[__OPT__][trade_in_price]" value="0" placeholder="0" autocomplete="off">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Catatan / Kondisi Unit</label>
+                                        <input type="text" class="form-control form-control-sm trade-in-notes"
+                                            name="options[__OPT__][trade_in_notes]" placeholder="mis. Siap rekondisi, unit running">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Right Column: Financial Summary --}}
+                    <div class="col-lg-5 col-12">
                         <div class="d-flex flex-column gap-3 py-2">
                             {{-- Subtotal --}}
                             <div class="d-flex justify-content-between align-items-center py-1">
@@ -656,6 +815,21 @@
                                         <span class="badge bg-label-info diskon-feedback-badge" style="font-size: 10px; font-weight: 500;">Potongan: Rp 0</span>
                                     </div>
                                 </div>
+                            </div>
+
+                            {{-- Potongan Trade-In --}}
+                            <div class="d-flex justify-content-between align-items-center py-1 display-trade-in-row" style="display: none;">
+                                <div>
+                                    <span class="text-danger fw-semibold" style="font-size: 13.5px;"><i class="mdi mdi-swap-horizontal-bold me-1"></i>Potongan Trade-In</span>
+                                    <span class="badge bg-label-secondary trade-in-summary-badge d-block text-start mt-0.5" style="font-size: 10px; font-weight: 500;">-</span>
+                                </div>
+                                <span class="fw-bold text-danger fs-6 display-trade-in">- Rp 0</span>
+                            </div>
+
+                            {{-- Dasar Pengenaan Pajak (DPP) --}}
+                            <div class="d-flex justify-content-between align-items-center py-1 display-dpp-row" style="display: none;">
+                                <span class="text-muted fw-semibold" style="font-size: 13px;">Dasar Pengenaan Pajak (DPP)</span>
+                                <span class="fw-bold text-dark display-dpp" style="font-size: 13px;">Rp 0</span>
                             </div>
 
                             {{-- PPN --}}
@@ -687,7 +861,7 @@
                             <div class="p-3.5 rounded-3 d-flex justify-content-between align-items-center mt-2" style="background: linear-gradient(135deg, #f0f2ff 0%, #e8ebff 100%); border: 1px dashed #696cff;">
                                 <div>
                                     <div class="text-uppercase fw-bold text-primary" style="font-size: 11px; letter-spacing: 0.8px;">Total Amount</div>
-                                    <div class="text-muted" style="font-size: 10.5px;">( Inclusive of Tax &amp; Discount )</div>
+                                    <div class="text-muted" style="font-size: 10.5px;">( Inclusive of Tax, Discount &amp; Trade-In )</div>
                                 </div>
                                 <div class="fw-bolder text-primary fs-3 display-total" style="letter-spacing: -0.5px;">Rp 0</div>
                             </div>

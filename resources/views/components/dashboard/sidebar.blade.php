@@ -1,3 +1,10 @@
+@php
+    $formatSidebarBadge = function ($count) {
+        $num = (int) ($count ?? 0);
+        return $num > 99 ? '99+' : $num;
+    };
+@endphp
+
 <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
     <div class="app-brand demo">
         <a href="{{ url('/') }}" class="app-brand-link">
@@ -120,7 +127,7 @@
                     <i class="menu-icon tf-icons mdi mdi-email-fast-outline"></i>
                     <div data-i18n="Mailbox">Mailbox</div>
                     @if ($unreadInboxCount > 0)
-                        <div class="badge bg-primary rounded-pill ms-auto">{{ $unreadInboxCount }}</div>
+                        <div class="badge bg-primary rounded-pill ms-auto">{{ $formatSidebarBadge($unreadInboxCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -141,7 +148,7 @@
                     <i class="menu-icon tf-icons mdi mdi-account-details-outline"></i>
                     <div data-i18n="Prospect">Prospect</div>
                     @if (@$noSaleProspect >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $noSaleProspect }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($noSaleProspect) }}</div>
                     @endif
                 </a>
                 <ul class="menu-sub">
@@ -150,7 +157,7 @@
                         <a href="{{ route('prospect.index') }}" class="menu-link">
                             <div data-i18n="Prospect">Prospect</div>
                             @if (@$noSaleProspect >= 1)
-                                <div class="badge bg-danger rounded-pill ms-auto">{{ $noSaleProspect }}</div>
+                                <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($noSaleProspect) }}</div>
                             @endif
                         </a>
                     </li>
@@ -277,7 +284,7 @@
                     <i class="menu-icon tf-icons mdi mdi-lightning-bolt-outline"></i>
                     <div data-i18n="Urgent Order">Urgent Order (SUO)</div>
                     @if ($suoAccountingPending >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $suoAccountingPending }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($suoAccountingPending) }}</div>
                     @endif
                 </a>
             </li>
@@ -307,7 +314,7 @@
                         <a href="{{ route('pending-po.list') }}" class="menu-link">
                             <div data-i18n="List">List</div>
                             @if (@$listCount >= 1)
-                                <div class="badge bg-danger rounded-pill ms-auto">{{ $listCount }}</div>
+                                <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($listCount) }}</div>
                             @endif
                         </a>
                     </li>
@@ -478,7 +485,7 @@
                         <i class="menu-icon tf-icons mdi mdi-book-check-outline"></i>
                         <div data-i18n="Selling Contract">Selling Contract</div>
                         @if (@$requestContract >= 1)
-                            <div class="badge bg-danger rounded-pill ms-auto">{{ $requestContract }}</div>
+                            <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($requestContract) }}</div>
                         @endif
                     </a>
                 </li>
@@ -488,7 +495,7 @@
                         <i class="menu-icon tf-icons mdi mdi-file-document-check-outline"></i>
                         <div data-i18n="Invoice">Invoice</div>
                         @if (@$requestInvoice >= 1)
-                            <div class="badge bg-danger rounded-pill ms-auto">{{ $requestInvoice }}</div>
+                            <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($requestInvoice) }}</div>
                         @endif
                     </a>
                 </li>
@@ -521,7 +528,7 @@
                         <i class="menu-icon tf-icons mdi mdi-view-dashboard-outline"></i>
                         <div data-i18n="Monitoring Document">Monitoring Document</div>
                         @if ($monitoringCount >= 1)
-                            <div class="badge bg-danger rounded-pill ms-auto">{{ $monitoringCount }}</div>
+                            <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($monitoringCount) }}</div>
                         @endif
                     </a>
                 </li>
@@ -546,7 +553,7 @@
                         <i class="menu-icon tf-icons mdi mdi-calendar-clock-outline"></i>
                         <div data-i18n="Aging Piutang">Aging Piutang</div>
                         @if (@$nodueCount >= 1)
-                            <div class="badge bg-danger rounded-pill ms-auto">{{ $nodueCount }}</div>
+                            <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($nodueCount) }}</div>
                         @endif
                     </a>
                 </li>
@@ -645,7 +652,7 @@
                         <i class="menu-icon tf-icons mdi mdi-cash-refund"></i>
                         <div data-i18n="Management Fee">Management Fee</div>
                         @if ($pendingFeeCount >= 1)
-                            <div class="badge bg-warning rounded-pill ms-auto">{{ $pendingFeeCount }}</div>
+                            <div class="badge bg-warning rounded-pill ms-auto">{{ $formatSidebarBadge($pendingFeeCount) }}</div>
                         @endif
                     </a>
                 </li>
@@ -784,7 +791,7 @@
             </li>
 
             {{-- Stock Movement --}}
-            <li class="menu-item {{ request()->is('product-in') || request()->is('product-in/*') || request()->is('product-out') || request()->is('product-out/*') || request()->is('change-warehouse') || request()->is('change-warehouse/*') || request()->is('unit-product-in') || request()->is('unit-product-in/*') || request()->is('unit-product-out') || request()->is('unit-product-out/*') ? 'open' : '' }}">
+            <li class="menu-item {{ request()->is('product-in') || request()->is('product-in/*') || request()->is('product-out') || request()->is('product-out/*') || request()->is('change-warehouse') || request()->is('change-warehouse/*') || request()->is('unit-product-in') || request()->is('unit-product-in/*') || request()->is('unit-product-out') || request()->is('unit-product-out/*') || request()->is('warehouse/intercompany*') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-swap-horizontal"></i>
                     <div data-i18n="Stock Movement">Stock Movement</div>
@@ -798,6 +805,11 @@
                     <li class="menu-item {{ request()->is('product-out') || request()->is('product-out/*') ? 'active' : '' }}">
                         <a href="{{ route('product-out.index') }}" class="menu-link">
                             <div data-i18n="Product Out">Product Out</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('warehouse/intercompany*') ? 'active' : '' }}">
+                        <a href="{{ route('intercompany.index') }}" class="menu-link">
+                            <div data-i18n="Rekap BK Kojisha">Rekap BK Kojisha</div>
                         </a>
                     </li>
                     <li class="menu-item {{ request()->is('change-warehouse') || request()->is('change-warehouse/*') ? 'active' : '' }}">
@@ -859,7 +871,7 @@
                     <i class="menu-icon tf-icons mdi mdi-file-document-outline"></i>
                     <div data-i18n="Purchase Request">Purchase Request</div>
                     @if (@$prCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $prCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($prCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -924,7 +936,64 @@
             </li>
             @endif
 
-            @if (auth::user()->role != 'Accounting')
+            <li class="menu-header fw-light mt-4">
+                <span class="menu-header-text">HR Management</span>
+            </li>
+            <li class="menu-item {{ (request()->is('hr') || request()->is('hr/dashboard')) ? 'active' : '' }}">
+                <a href="{{ route('hr.dashboard') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-view-dashboard-outline"></i>
+                    <div data-i18n="Dashboard HR">Dashboard HR</div>
+                </a>
+            </li>
+            <li class="menu-item {{ (request()->is('employees*') || request()->is('hr/employees*')) ? 'active' : '' }}">
+                <a href="{{ route('employees.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-account-group-outline"></i>
+                    <div data-i18n="Hub Karyawan">Hub Karyawan</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('hr/attendances*') ? 'active' : '' }}">
+                <a href="{{ route('hr.attendances.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-calendar-clock-outline"></i>
+                    <div data-i18n="Presensi">Presensi &amp; Waktu</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('hr/leaves*') ? 'active' : '' }}">
+                <a href="{{ route('hr.leaves.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-calendar-remove-outline"></i>
+                    <div data-i18n="Cuti & Izin">Cuti &amp; Izin</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('hr/payrolls*') ? 'active' : '' }}">
+                <a href="{{ route('hr.payrolls.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-cash-multiple"></i>
+                    <div data-i18n="Payroll">Payroll &amp; Slip Gaji</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('hr/reimbursements*') ? 'active' : '' }}">
+                <a href="{{ route('hr.reimbursements.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-receipt-text-outline"></i>
+                    <div data-i18n="Reimbursement">Reimbursement</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('hr/assets*') ? 'active' : '' }}">
+                <a href="{{ route('hr.assets.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-laptop"></i>
+                    <div data-i18n="Alat Kerja">Alat Kerja Karyawan</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('hr/evaluations*') ? 'active' : '' }}">
+                <a href="{{ route('hr.evaluations.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-star-circle-outline"></i>
+                    <div data-i18n="Evaluasi Kinerja">Evaluasi Kinerja</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('hr/my-portal*') ? 'active' : '' }}">
+                <a href="{{ route('hr.portal.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-card-account-details-star-outline"></i>
+                    <div data-i18n="Portal Mandiri">Portal Mandiri (ESS)</div>
+                </a>
+            </li>
+
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Master</span>
             </li>
@@ -976,7 +1045,6 @@
                     <div data-i18n="Notulen">Notulen</div>
                 </a>
             </li>
-            @endif
             @if (auth::user()?->isDeveloper())
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Helpdesk</span>
@@ -986,7 +1054,7 @@
                     <i class="menu-icon tf-icons mdi mdi-lifebuoy"></i>
                     <div data-i18n="Helpdesk">Helpdesk</div>
                     @if (@$openTicketCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $openTicketCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($openTicketCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -1087,7 +1155,7 @@
                     <i class="menu-icon tf-icons mdi mdi-email-fast-outline"></i>
                     <div data-i18n="Mailbox">Mailbox</div>
                     @if ($unreadInboxCountSales > 0)
-                        <div class="badge bg-primary rounded-pill ms-auto">{{ $unreadInboxCountSales }}</div>
+                        <div class="badge bg-primary rounded-pill ms-auto">{{ $formatSidebarBadge($unreadInboxCountSales) }}</div>
                     @endif
                 </a>
             </li>
@@ -1106,7 +1174,7 @@
                     <i class="menu-icon tf-icons mdi mdi-account-details-outline"></i>
                     <div data-i18n="Prospect">Prospect</div>
                     @if (@$leveledProspect >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $leveledProspect }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($leveledProspect) }}</div>
                     @endif
                 </a>
                 <ul class="menu-sub">
@@ -1115,7 +1183,7 @@
                         <a href="{{ route('prospect.index') }}" class="menu-link">
                             <div data-i18n="Prospect">Prospect</div>
                             @if (@$leveledProspect >= 1)
-                                <div class="badge bg-danger rounded-pill ms-auto">{{ $leveledProspect }}</div>
+                                <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($leveledProspect) }}</div>
                             @endif
                         </a>
                     </li>
@@ -1132,7 +1200,7 @@
                     <i class="menu-icon tf-icons mdi mdi-file-chart-outline"></i>
                     <div data-i18n="Service Report">Service Report</div>
                     @if (@$reportsCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $reportsCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($reportsCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -1155,7 +1223,7 @@
                     <i class="menu-icon tf-icons mdi mdi-cash-refund"></i>
                     <div data-i18n="Management Fee">Management Fee</div>
                     @if ($salesPendingFeeCount >= 1)
-                        <div class="badge bg-warning rounded-pill ms-auto">{{ $salesPendingFeeCount }}</div>
+                        <div class="badge bg-warning rounded-pill ms-auto">{{ $formatSidebarBadge($salesPendingFeeCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -1174,7 +1242,7 @@
                     <i class="menu-icon tf-icons mdi mdi-lightning-bolt-outline"></i>
                     <div data-i18n="Urgent Order">Urgent Order (SUO)</div>
                     @if ($suoPending >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $suoPending }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($suoPending) }}</div>
                     @endif
                 </a>
             </li>
@@ -1257,80 +1325,7 @@
                     <div data-i18n="Service Report">Service Report</div>
                 </a>
             </li> --}}
-            @if (auth::user()->id == 3)
-                <li
-                    class="menu-item {{ request()->is('service-manager') || request()->is('service-manager/*') ? 'active' : '' }}">
-                    <a href="{{ route('service-manager.index') }}" class="menu-link">
-                        <i class="menu-icon tf-icons mdi mdi-file-chart-outline"></i>
-                        <div data-i18n="Monitoring Fajar Paper">Monitoring Fajar Paper</div>
-                    </a>
-                </li>
 
-
-                <li class="menu-header fw-light mt-4">
-                    <span class="menu-header-text">Service Contract</span>
-                </li>
-
-                <li class="menu-item {{ request()->is('monitoring-client/*') ? 'open' : '' }}">
-                    <a href="javascript:void(0);" class="menu-link menu-toggle">
-                        <i class="menu-icon tf-icons mdi mdi-factory"></i>
-                        <div data-i18n="Fajar Paper">Fajar Paper</div>
-                    </a>
-                    <ul class="menu-sub">
-                        <li class="menu-item {{ request()->is('monitoring-client/fajarPaper') ? 'active' : '' }}">
-                            <a href="{{ route('monitoring.fajarPaper') }}" class="menu-link">
-                                <div data-i18n="Daily Input">Daily Input</div>
-                            </a>
-                        </li>
-                        <li
-                            class="menu-item {{ request()->is('monitoring-client/fajarPaper-monitoring') ? 'active' : '' }}">
-                            <a href="{{ route('monitoring.fajarPaper-monitoring') }}" class="menu-link">
-                                <div data-i18n="Monitoring">Monitoring</div>
-                            </a>
-                        </li>
-                        <li
-                            class="menu-item {{ request()->is('monitoring-client/fajarPaper-service-report') ? 'active' : '' }}">
-                            <a href="{{ route('monitoring.fajarPaper-service-report') }}" class="menu-link">
-                                <div data-i18n="Service Report">Service Report</div>
-                            </a>
-                        </li>
-                        <li
-                            class="menu-item {{ request()->is('monitoring-client/fajarPaper-reports') ? 'active' : '' }}">
-                            <a href="{{ route('monitoring.fajarPaper-reports') }}" class="menu-link">
-                                <div data-i18n="Report">Report</div>
-                            </a>
-                        </li>
-                        <li
-                            class="menu-item {{ request()->is('po') || request()->is('po/sales/*') ? 'active' : '' }}">
-                            <a href="{{ route('quotation.po') }}" class="menu-link">
-                                <div data-i18n="Summary">Summary</div>
-                            </a>
-                        </li>
-                        <li
-                            class="menu-item {{ request()->is('monitoring-client/fajarPaper-archive') ? 'active' : '' }}">
-                            <a href="{{ route('monitoring-arsip.fajarPaper') }}" class="menu-link">
-                                <div data-i18n="Archived">Archived</div>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-
-                {{-- <li
-                    class="menu-item {{ request()->is('service-manager-prokemas') || request()->is('service-manager-daily-prokemas/*/*') ? 'open' : '' }}">
-                    <a href="javascript:void(0);" class="menu-link menu-toggle">
-                        <i class="menu-icon tf-icons mdi mdi-factory"></i>
-                        <div data-i18n="Prokemas">Prokemas</div>
-                    </a>
-                    <ul class="menu-sub">
-                        <li
-                            class="menu-item {{ request()->is('service-manager-prokemas') || request()->is('service-manager-daily-prokemas/*/*') ? 'active' : '' }}">
-                            <a href="{{ route('service-manager-prokemas.index') }}" class="menu-link">
-                                <div data-i18n="Monitoring">Monitoring</div>
-                            </a>
-                        </li>
-                    </ul>
-                </li> --}}
-            @endif
 
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">E-Stock</span>
@@ -1475,7 +1470,7 @@
                     <i class="menu-icon tf-icons mdi mdi-lifebuoy"></i>
                     <div data-i18n="Helpdesk">Helpdesk</div>
                     @if (@$openTicketCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $openTicketCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($openTicketCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -1654,7 +1649,7 @@
                     <i class="menu-icon tf-icons mdi mdi-lifebuoy"></i>
                     <div data-i18n="Helpdesk">Helpdesk</div>
                     @if (@$openTicketCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $openTicketCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($openTicketCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -1722,7 +1717,7 @@
             </li>
             {{-- Stock Movement Logistic --}}
             <li
-                class="menu-item {{ request()->is('product-in') || request()->is('product-in/*') || request()->is('product-out') || request()->is('product-out/*') || request()->is('change-warehouse') || request()->is('change-warehouse/*') || request()->is('unit-acquisition') || request()->is('unit-acquisition/*') || request()->is('unit-product-in') || request()->is('unit-product-in/*') || request()->is('unit-product-out') || request()->is('unit-product-out/*') || request()->is('return') || request()->is('return/*') ? 'open' : '' }}">
+                class="menu-item {{ request()->is('product-in') || request()->is('product-in/*') || request()->is('product-out') || request()->is('product-out/*') || request()->is('change-warehouse') || request()->is('change-warehouse/*') || request()->is('unit-acquisition') || request()->is('unit-acquisition/*') || request()->is('unit-product-in') || request()->is('unit-product-in/*') || request()->is('unit-product-out') || request()->is('unit-product-out/*') || request()->is('return') || request()->is('return/*') || request()->is('warehouse/intercompany*') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-swap-horizontal"></i>
                     <div data-i18n="Stock Movement">Stock Movement</div>
@@ -1736,6 +1731,11 @@
                     <li class="menu-item {{ request()->is('product-out') || request()->is('product-out/*') ? 'active' : '' }}">
                         <a href="{{ route('product-out.index') }}" class="menu-link">
                             <div data-i18n="Product-Out">Product-Out</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('warehouse/intercompany*') ? 'active' : '' }}">
+                        <a href="{{ route('intercompany.index') }}" class="menu-link">
+                            <div data-i18n="Rekap BK Kojisha">Rekap BK Kojisha</div>
                         </a>
                     </li>
                     <li class="menu-item {{ request()->is('change-warehouse') || request()->is('change-warehouse/*') ? 'active' : '' }}">
@@ -1794,7 +1794,7 @@
                     <i class="menu-icon tf-icons mdi mdi-lightning-bolt-outline"></i>
                     <div data-i18n="Urgent Order">Urgent Order (SUO)</div>
                     @if ($suoLogisticPending >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $suoLogisticPending }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($suoLogisticPending) }}</div>
                     @endif
                 </a>
             </li>
@@ -1814,7 +1814,7 @@
                     <i class="menu-icon tf-icons mdi mdi-format-list-group-plus"></i>
                     <div data-i18n="Purchase Request">Purchase Request</div>
                     @if (@$prCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $prCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($prCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -1910,7 +1910,7 @@
                     <i class="menu-icon tf-icons mdi mdi-lifebuoy"></i>
                     <div data-i18n="Helpdesk">Helpdesk</div>
                     @if (@$openTicketCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $openTicketCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($openTicketCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -1921,7 +1921,7 @@
                     <i class="menu-icon tf-icons mdi mdi-file-chart-outline"></i>
                     <div data-i18n="Service Reports">Service Reports</div>
                     @if (@$srPendingApprovalCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $srPendingApprovalCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($srPendingApprovalCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -2055,7 +2055,7 @@
                     <i class="menu-icon tf-icons mdi mdi-lifebuoy"></i>
                     <div data-i18n="Helpdesk">Helpdesk</div>
                     @if (@$openTicketCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $openTicketCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($openTicketCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -2159,7 +2159,7 @@
                     <i class="menu-icon tf-icons mdi mdi-lifebuoy"></i>
                     <div data-i18n="Helpdesk">Helpdesk</div>
                     @if (@$openTicketCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $openTicketCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($openTicketCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -2225,7 +2225,7 @@
                     <i class="menu-icon tf-icons mdi mdi-lifebuoy"></i>
                     <div data-i18n="Helpdesk">Helpdesk</div>
                     @if (@$openTicketCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $openTicketCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($openTicketCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -2259,7 +2259,7 @@
                     <i class="menu-icon tf-icons mdi mdi-view-dashboard-outline"></i>
                     <div data-i18n="Monitoring Document">Monitoring Document</div>
                     @if ($monitoringCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $monitoringCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($monitoringCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -2273,7 +2273,7 @@
                     <i class="menu-icon tf-icons mdi mdi-lightning-bolt-outline"></i>
                     <div data-i18n="Urgent Order">Urgent Order (SUO)</div>
                     @if ($suoAccountingPending >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $suoAccountingPending }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($suoAccountingPending) }}</div>
                     @endif
                 </a>
             </li>
@@ -2403,7 +2403,7 @@
                     <i class="menu-icon tf-icons mdi mdi-cash-refund"></i>
                     <div data-i18n="Management Fee">Management Fee</div>
                     @if ($pendingFeeCount >= 1)
-                        <div class="badge bg-warning rounded-pill ms-auto">{{ $pendingFeeCount }}</div>
+                        <div class="badge bg-warning rounded-pill ms-auto">{{ $formatSidebarBadge($pendingFeeCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -2419,7 +2419,7 @@
                     <i class="menu-icon tf-icons mdi mdi-storefront-outline"></i>
                     <div data-i18n="Marketplace Management">Marketplace Management</div>
                     @if ($marketplaceHeldCount >= 1)
-                        <div class="badge bg-warning rounded-pill ms-auto">{{ $marketplaceHeldCount }}</div>
+                        <div class="badge bg-warning rounded-pill ms-auto">{{ $formatSidebarBadge($marketplaceHeldCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -2516,7 +2516,7 @@
                     <i class="menu-icon tf-icons mdi mdi-file-document-outline"></i>
                     <div data-i18n="Purchase Request">Purchase Request</div>
                     @if (@$prCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $prCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($prCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -2557,7 +2557,7 @@
                     <i class="menu-icon tf-icons mdi mdi-lifebuoy"></i>
                     <div data-i18n="Helpdesk">Helpdesk</div>
                     @if (@$openTicketCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $openTicketCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($openTicketCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -2733,7 +2733,7 @@
                     <i class="menu-icon tf-icons mdi mdi-lifebuoy"></i>
                     <div data-i18n="Helpdesk">Helpdesk</div>
                     @if (@$openTicketCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $openTicketCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($openTicketCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -2866,7 +2866,7 @@
                     <i class="menu-icon tf-icons mdi mdi-email-fast-outline"></i>
                     <div data-i18n="Mailbox">Mailbox</div>
                     @if ($unreadInboxCount > 0)
-                        <div class="badge bg-primary rounded-pill ms-auto">{{ $unreadInboxCount }}</div>
+                        <div class="badge bg-primary rounded-pill ms-auto">{{ $formatSidebarBadge($unreadInboxCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -2965,7 +2965,7 @@
                     <i class="menu-icon tf-icons mdi mdi-lifebuoy"></i>
                     <div data-i18n="Helpdesk">Helpdesk</div>
                     @if (@$openTicketCount >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $openTicketCount }}</div>
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($openTicketCount) }}</div>
                     @endif
                 </a>
             </li>
@@ -3004,6 +3004,19 @@
                 <a href="{{ route('project-reports.create') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-plus-box-outline"></i>
                     <div data-i18n="Buat Daily Report">Buat Daily Report</div>
+                </a>
+            </li>
+        @endif
+
+        {{-- Akses Universal Portal Karyawan (ESS) untuk seluruh staf / role non-Client --}}
+        @if (Auth::user() && Auth::user()->role !== 'Client')
+            <li class="menu-header fw-light mt-4">
+                <span class="menu-header-text">Portal Karyawan</span>
+            </li>
+            <li class="menu-item {{ request()->is('hr/my-portal*') ? 'active' : '' }}">
+                <a href="{{ route('hr.portal.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-clock-fast text-success"></i>
+                    <div data-i18n="Presensi & Cuti Saya">Presensi &amp; Cuti Saya</div>
                 </a>
             </li>
         @endif

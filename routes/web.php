@@ -22,6 +22,7 @@ use App\Http\Controllers\ToolAuditVerificationController;
 use App\Http\Controllers\ToolFinanceController;
 use App\Http\Controllers\ToolMasterController;
 use App\Http\Controllers\KanbanController;
+use App\Http\Controllers\IntercompanyReportController;
 use App\Http\Controllers\BastController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\OpnameController;
@@ -259,6 +260,7 @@ Route::group(["middleware" => "auth"], function () {
     require base_path('routes/modules/piping.php');
     require base_path('routes/modules/schematics.php');
     require base_path('routes/modules/hvac.php');
+    require base_path('routes/modules/hr.php');
 
     // Route untuk Visit
     Route::get('/visits/leads', function () {
@@ -389,6 +391,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/unit-global/{id}', [UnitController::class, 'showGlobal'])->name('unit-global.show');
     Route::patch('/unit-global/{id}/price', [UnitController::class, 'updatePrice'])->name('unit-global.update-price');
     Route::get('/unit-global/{id}/pm-template', [UnitController::class, 'pmTemplate'])->name('unit-global.pm-template');
+    Route::get('/unit-global/{id}/pm-levels', [UnitController::class, 'pmLevels'])->name('unit-global.pm-levels');
     Route::post('/unit-global/{id}/pm-template', [UnitController::class, 'pmTemplateSave'])->name('unit-global.pm-template.save');
     Route::get('/cor-factor/calculator', [UnitController::class, 'corfac'])->name('calculator.correction');
 
@@ -444,6 +447,10 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/supplier/{id}/pic', [ProductInController::class, 'storeSupplierPic'])->name('supplier.pic.store');
     Route::patch('/supplier/pic/{id}', [ProductInController::class, 'updateSupplierPic'])->name('supplier.pic.update');
     Route::delete('/supplier/pic/{id}', [ProductInController::class, 'destroySupplierPic'])->name('supplier.pic.destroy');
+    Route::post('/supplier/{id}/address', [ProductInController::class, 'storeSupplierAddress'])->name('supplier.address.store');
+    Route::patch('/supplier/address/{id}', [ProductInController::class, 'updateSupplierAddress'])->name('supplier.address.update');
+    Route::delete('/supplier/address/{id}', [ProductInController::class, 'destroySupplierAddress'])->name('supplier.address.destroy');
+    Route::patch('/supplier/address/{id}/set-primary', [ProductInController::class, 'setPrimarySupplierAddress'])->name('supplier.address.set-primary');
     Route::get('/supplier/{id}/edit-data', [ProductInController::class, 'editDataSupplier'])->name('supplier.edit-data');
 
     // Route untuk Product Out
@@ -451,6 +458,14 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/productout/index/invoice', [ProductOutController::class, 'index_invoice'])->name('product-out.index-invoice');
     Route::get('/productout/invoice/{id}', [ProductOutController::class, 'invoice'])->name('product-out.invoice');
     Route::post('/product-out/{id}/change_no', [ProductOutController::class, 'change_no'])->name('product-out.change_no');
+
+    // Route Intercompany Kojisha -> Reftech
+    Route::prefix('warehouse/intercompany')->group(function () {
+        Route::get('/rekap', [IntercompanyReportController::class, 'index'])->name('intercompany.index');
+        Route::get('/print', [IntercompanyReportController::class, 'print'])->name('intercompany.print');
+        Route::post('/draft-po', [IntercompanyReportController::class, 'storeDraftPo'])->name('intercompany.draft-po');
+        Route::post('/po/{id}/cancel', [IntercompanyReportController::class, 'cancelPo'])->name('intercompany.po.cancel');
+    });
     Route::get('/db/invoice/product-out', function () {
         $invoice = Invoice::join('quotation as q', 'q.id', '=', 'invoice.id_quotation')
             ->leftJoin('product_out as p', 'p.invoice', '=', 'invoice.no_invoice')  // Menggunakan left join
@@ -473,7 +488,8 @@ Route::group(["middleware" => "auth"], function () {
                 'invoice.*',
                 'client.company',
                 'q.po_date',
-                \DB::raw("GROUP_CONCAT(s.pn SEPARATOR ', ') as part_numbers")
+                \DB::raw("GROUP_CONCAT(s.pn SEPARATOR ', ') as part_numbers"),
+                \DB::raw('NULL as plant_name')
             ]);
         return response()->json(['data' => $invoice]);
     });
@@ -1842,6 +1858,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/unit-acquisition/{id}/service', [FixedController::class, 'storeService'])->name('unit-acquisition.service.store');
     Route::post('/unit-acquisition/{id}/status', [FixedController::class, 'updateStatusUnit'])->name('unit-acquisition.status');
     Route::post('/unit-acquisition/{id}/harga-jual', [FixedController::class, 'updateHargaJual'])->name('unit-acquisition.harga-jual');
+    Route::post('/unit-acquisition/{id}/pricing', [FixedController::class, 'updatePricing'])->name('unit-acquisition.pricing');
 
     // Rental Accessories CRUD
     Route::post('/rental-accessories', [RentalAccessoryController::class, 'store'])->name('rental-accessories.store');
@@ -1913,12 +1930,15 @@ Route::group(["middleware" => "auth"], function () {
     // Tools — Kelengkapan data Finance (role Finance Manager + Admin), reuse form edit Fixed Asset yang sudah ada
     Route::get('/tool-finance', [ToolFinanceController::class, 'index'])->name('tool-finance.index');
 
-    // Purchase Order
+    // Purchase Order & Direct Purchase
+    Route::get('/purchase/direct/create', [POController::class, 'createDirect'])->name('purchase.direct-create');
+    Route::post('/purchase/direct/store', [POController::class, 'storeDirect'])->name('purchase.direct-store');
     Route::resource('/purchase', POController::class);
     Route::get('/purchase/print/{id}', [POController::class, 'show_print'])->name('purchase.show_print');
     Route::post('/purchase/pph/{id}', [POController::class, 'add_pph'])->name('purchase.add_pph');
     Route::patch('/purchase/delete-pph/{id}', [POController::class, 'delete_pph'])->name('purchase.delete_pph');
     Route::patch('/purchase/{id}/delivery', [POController::class, 'delivery'])->name('purchase.delivery');
+    Route::post('/purchase/{id}/update-delivery', [POController::class, 'updateDeliveryInfo'])->name('purchase.update-delivery');
     Route::patch('/purchase/{id}/delivery-unit', [POController::class, 'deliveryUnit'])->name('purchase.delivery-unit');
     Route::post('/purchase/{id}/invoice', [POController::class, 'uploadInvoice'])->name('purchase.upload-invoice');
     Route::delete('/purchase/{id}/reset-signature', [\App\Http\Controllers\PurchaseOrderSignController::class, 'adminReset'])->name('purchase.reset-signature');
@@ -1935,6 +1955,7 @@ Route::group(["middleware" => "auth"], function () {
     // Product Set
     Route::resource('/product-set', ProductSetController::class);
     Route::post('/product-set/item/{id}', [ProductSetController::class, 'store_item'])->name('product-set.store_item');
+    Route::post('/product-set/item/{id}/qty', [ProductSetController::class, 'update_item_qty'])->name('product-set.update_item_qty');
     Route::delete('/product-set/item/{id}', [ProductSetController::class, 'destroy_item'])->name('product-set.destroy_item');
     Route::post('/product-set/equivalent/{id}', [ProductSetController::class, 'store_equivalent'])->name('product-set.store_equivalent');
     Route::delete('/product-set/equivalent/{id}', [ProductSetController::class, 'destroy_equivalent'])->name('product-set.destroy_equivalent');
@@ -1981,9 +2002,16 @@ Route::group(["middleware" => "auth"], function () {
     Route::delete('/kanban/task-expenses/{id}', [KanbanController::class, 'destroyTaskExpense'])->name('kanban.tasks.expenses.destroy');
 
     // Hubungkan / putuskan kartu ke Unit Quotation
+    Route::get('/kanban/linkable-clients', [KanbanController::class, 'getLinkableClients'])->name('kanban.linkable-clients');
     Route::get('/kanban/linkable-quotations', [KanbanController::class, 'getLinkableQuotations'])->name('kanban.linkable-quotations');
     Route::post('/kanban/tasks/{id}/link-quotation', [KanbanController::class, 'linkQuotation'])->name('kanban.tasks.link-quotation');
     Route::post('/kanban/tasks/{id}/unlink-quotation', [KanbanController::class, 'unlinkQuotation'])->name('kanban.tasks.unlink-quotation');
+
+    // Hubungkan / putuskan kartu ke Service Report (Multiple + Form isian text)
+    Route::get('/kanban/linkable-service-reports', [KanbanController::class, 'getLinkableServiceReports'])->name('kanban.linkable-service-reports');
+    Route::post('/kanban/tasks/{id}/link-service-report', [KanbanController::class, 'linkServiceReport'])->name('kanban.tasks.link-service-report');
+    Route::post('/kanban/tasks/{id}/service-reports/{srId}/update-note', [KanbanController::class, 'updateServiceReportNote'])->name('kanban.tasks.service-reports.update-note');
+    Route::delete('/kanban/tasks/{id}/service-reports/{srId}', [KanbanController::class, 'unlinkServiceReport'])->name('kanban.tasks.unlink-service-report');
 
     // Task Delete Requests
     Route::post('/kanban/tasks/{id}/request-delete', [KanbanController::class, 'requestDeleteTask'])->name('kanban.tasks.request-delete');
@@ -1996,6 +2024,11 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/accounting/monitoring-document/available-pos', [KanbanController::class, 'getAvailablePOs'])->name('kanban.monitoring-document.available-pos');
     Route::get('/accounting/monitoring-document/check-new-cards/{last_task_id}', [KanbanController::class, 'checkNewCards'])->name('kanban.monitoring-document.check-new-cards');
     Route::post('/accounting/monitoring-document/accounting-mapping', [KanbanController::class, 'updateAccountingSalesMapping'])->name('kanban.monitoring-document.accounting-mapping');
+
+    // Kanban Notifications & Mentions
+    Route::get('/notifications/kanban/unread', [KanbanController::class, 'unreadKanbanNotifications'])->name('notifications.kanban.unread');
+    Route::get('/notifications/kanban/{commentId}/go', [KanbanController::class, 'goKanbanMention'])->name('notifications.kanban.go');
+    Route::post('/notifications/kanban/{commentId}/read', [KanbanController::class, 'markKanbanMentionRead'])->name('notifications.kanban.read');
 
     // BAST (Berita Acara Serah Terima)
     Route::get('/bast', [BastController::class, 'index'])->name('bast.index');
@@ -2540,10 +2573,12 @@ Route::group(["middleware" => "auth"], function () {
             ->whereYear('quotation.po_date', $year)
             ->get(['invoice.*', 'client.company', 'users.name', 'users.image as sales_image', 'quotation.harga_total', 'quotation.po_date',
                    DB::raw("'service' AS source"),
-                   DB::raw("IF(quotation.tax = '11', 'PPN', 'Non PPN') AS ppn")]);
+                   DB::raw("IF(quotation.tax = '11', 'PPN', 'Non PPN') AS ppn"),
+                   DB::raw("NULL AS plant_name")]);
 
         $unitInvoices = Invoice::join('unit_quotation', 'unit_quotation.id', '=', 'invoice.id_unit_quotation')
             ->join('client', 'client.id', '=', 'unit_quotation.id_client')
+            ->leftJoin('client_plants', 'client_plants.id', '=', 'unit_quotation.id_plant')
             ->join('users', 'users.id', '=', 'unit_quotation.id_sales')
             ->where(function ($q) {
                 $q->where('invoice.flag', 'Reftech')
@@ -2564,6 +2599,7 @@ Route::group(["middleware" => "auth"], function () {
                 DB::raw('invoice.date AS po_date'),
                 DB::raw("'unit' AS source"),
                 DB::raw("IF(unit_quotation.tax = 1, 'PPN', 'Non PPN') AS ppn"),
+                'client_plants.name as plant_name',
             ]);
 
         $merged = $serviceInvoices->merge($unitInvoices)->sortByDesc('no_invoice')->values();
@@ -2594,10 +2630,12 @@ Route::group(["middleware" => "auth"], function () {
             ->whereYear('quotation.po_date', $year)
             ->get(['invoice.*', 'client.company', 'users.name', 'users.image as sales_image', 'quotation.harga_total', 'quotation.po_date',
                    DB::raw("'service' AS source"),
-                   DB::raw("IF(quotation.tax = '11', 'PPN', 'Non PPN') AS ppn")]);
+                   DB::raw("IF(quotation.tax = '11', 'PPN', 'Non PPN') AS ppn"),
+                   DB::raw("NULL AS plant_name")]);
 
         $unitInvoices = Invoice::join('unit_quotation', 'unit_quotation.id', '=', 'invoice.id_unit_quotation')
             ->join('client', 'client.id', '=', 'unit_quotation.id_client')
+            ->leftJoin('client_plants', 'client_plants.id', '=', 'unit_quotation.id_plant')
             ->join('users', 'users.id', '=', 'unit_quotation.id_sales')
             ->where(function ($q) {
                 $q->where('invoice.flag', 'Kojisha')
@@ -2614,6 +2652,7 @@ Route::group(["middleware" => "auth"], function () {
                 DB::raw('invoice.date AS po_date'),
                 DB::raw("'unit' AS source"),
                 DB::raw("IF(unit_quotation.tax = 1, 'PPN', 'Non PPN') AS ppn"),
+                'client_plants.name as plant_name',
             ]);
 
         $merged = $serviceInvoices->merge($unitInvoices)->sortByDesc('no_invoice')->values();
@@ -2671,6 +2710,7 @@ Route::group(["middleware" => "auth"], function () {
 
             $uqQuery = Invoice::join('unit_quotation', 'unit_quotation.id', '=', 'invoice.id_unit_quotation')
                 ->join('client', 'client.id', '=', 'unit_quotation.id_client')
+                ->leftJoin('client_plants', 'client_plants.id', '=', 'unit_quotation.id_plant')
                 ->join('users', 'users.id', '=', 'unit_quotation.id_sales')
                 ->leftJoinSub($uqPaymentAggSub, 'pay_agg', fn($j) => $j->on('invoice.id_unit_quotation', '=', 'pay_agg.id_unit_quotation'))
                 ->leftJoin('payment as pay', 'pay.id', '=', 'pay_agg.last_payment_id')
@@ -2717,6 +2757,7 @@ Route::group(["middleware" => "auth"], function () {
                 'quotation.harga_total',
                 'quotation.po_date',
                 'quotation.tax',
+                DB::raw('NULL as plant_name'),
                 DB::raw('IFNULL(pay.amount,0) as last_payment_amount'),
                 DB::raw('pay.type as last_payment_type'),
                 DB::raw('pay.level as last_payment_level'),
@@ -2766,6 +2807,7 @@ Route::group(["middleware" => "auth"], function () {
                 DB::raw('unit_quotation.total as harga_total'),
                 DB::raw('unit_quotation.created_at as po_date'),
                 DB::raw('IF(unit_quotation.tax=1,"11","0") as tax'),
+                'client_plants.name as plant_name',
                 DB::raw('IFNULL(pay.amount,0) as last_payment_amount'),
                 DB::raw('pay.type as last_payment_type'),
                 DB::raw('pay.level as last_payment_level'),
@@ -2850,6 +2892,7 @@ Route::group(["middleware" => "auth"], function () {
                 DB::raw('IFNULL(p.cost, 0) as fee'),
                 'q.po_date',
                 'q.tax',
+                DB::raw('NULL as plant_name'),
             ])->get();
         return response()->json(['data' => $invoice]);
     });
@@ -3665,6 +3708,7 @@ Route::group(["middleware" => "auth"], function () {
                 'u.model',
                 'u.unit',
                 'u.type_unit',
+                'u.speed_type',
                 'u.bar',
                 'u.air_cap',
                 'u.power',
@@ -3688,6 +3732,8 @@ Route::group(["middleware" => "auth"], function () {
                 'u.weight',
                 'u.desc',
                 'fixed_asset.harga_jual',
+                'fixed_asset.harga_rental_hari',
+                'fixed_asset.harga_rental_bulan',
                 'cu.price_idr as catalog_price'
             )
             ->orderBy('u.brand')
@@ -3695,6 +3741,8 @@ Route::group(["middleware" => "auth"], function () {
             ->get()
             ->map(function ($row) {
                 $row->price = $row->harga_jual ?? $row->catalog_price;
+                $row->rental_price_day = $row->harga_rental_hari;
+                $row->rental_price_month = $row->harga_rental_bulan;
                 return $row;
             });
 
@@ -4554,6 +4602,8 @@ AND u.id = ' . Auth::user()->id . ') AS price'), DB::raw('(SELECT COALESCE(COUNT
             ->whereNotNull('product_in.invoice')
             ->select(
                 'product_in.*',
+                'pr.description as product_desc',
+                'pr.detail_desc as product_detail_desc',
                 DB::raw("CONCAT(pr.commodity, ' - ', dp.replacement) AS product"),
                 DB::raw("CONCAT(d.qty, ' ', pr.unit) AS qty")
             )
@@ -4937,7 +4987,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                     ->orWhereNull('prospect.provide');
             })
             ->where(function ($query) {
-                $query->where('prospect.level', '1')
+                $query->whereIn('prospect.level', ['1', '9'])
                     ->orWhereNull('prospect.level');
             })
             ->when(request('sales_id'), function ($query) {

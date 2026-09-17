@@ -160,7 +160,7 @@ class UnitQuotationController extends Controller
 
     public function getPics($clientId)
     {
-        $pics   = Pic::where('id_client', $clientId)->get(['id', 'name_pic', 'position']);
+        $pics   = Pic::where('id_client', $clientId)->get(['id', 'name_pic', 'position', 'email_pic', 'phone_pic']);
         $client = Client::with('plants')->find($clientId);
 
         $clientTemplate = \App\Models\SalesPaymentTemplate::where('id_sales', Auth::id())
@@ -234,6 +234,13 @@ class UnitQuotationController extends Controller
             'subtotal'         => $first['subtotal'],
             'diskon'           => $first['diskon'],
             'diskon_type'      => $first['diskon_type'],
+            'has_trade_in'     => $first['has_trade_in'] ?? false,
+            'trade_in_brand'   => $first['trade_in_brand'] ?? null,
+            'trade_in_model'   => $first['trade_in_model'] ?? null,
+            'trade_in_power'   => $first['trade_in_power'] ?? null,
+            'trade_in_sn'      => $first['trade_in_sn'] ?? null,
+            'trade_in_price'   => $first['trade_in_price'] ?? 0,
+            'trade_in_notes'   => $first['trade_in_notes'] ?? null,
             'tax'              => $first['tax'],
             'tax_amount'       => $first['tax_amount'],
             'shipping'         => $first['shipping'],
@@ -476,9 +483,13 @@ class UnitQuotationController extends Controller
                 'id_equivalent' => $d->id_equivalent,
                 'unit'          => $d->unit ? $d->unit->toArray() : null,
                 'fixed_asset'   => $d->fixedAsset ? [
-                    'id'            => $d->fixedAsset->id,
-                    'code'          => $d->fixedAsset->code,
-                    'serial_number' => $d->fixedAsset->serial_number,
+                    'id'                 => $d->fixedAsset->id,
+                    'code'               => $d->fixedAsset->code,
+                    'serial_number'      => $d->fixedAsset->serial_number,
+                    'harga_rental_hari'  => $d->fixedAsset->harga_rental_hari,
+                    'harga_rental_bulan' => $d->fixedAsset->harga_rental_bulan,
+                    'rental_price_day'   => $d->fixedAsset->harga_rental_hari,
+                    'rental_price_month' => $d->fixedAsset->harga_rental_bulan,
                 ] : null,
                 'equivalent'    => $d->equivalent ? [
                     'id'           => $d->equivalent->id,
@@ -501,22 +512,36 @@ class UnitQuotationController extends Controller
             // Quotation lama (dibuat sebelum fitur multi-opsi ada) — bungkus detail
             // yang sudah ada jadi 1 opsi virtual, biar form edit tetap konsisten.
             $editOptions = [[
-                'title'       => 'Opsi 1',
-                'diskon'      => (float) $quote->diskon,
-                'diskon_type' => $quote->diskon_type ?? 'percent',
-                'tax'         => (bool) $quote->tax,
-                'shipping'    => (float) $quote->shipping,
-                'items'       => $quote->details->map($mapItem)->values(),
+                'title'          => 'Opsi 1',
+                'diskon'         => (float) $quote->diskon,
+                'diskon_type'    => $quote->diskon_type ?? 'percent',
+                'has_trade_in'   => (bool) $quote->has_trade_in,
+                'trade_in_brand' => $quote->trade_in_brand,
+                'trade_in_model' => $quote->trade_in_model,
+                'trade_in_power' => $quote->trade_in_power,
+                'trade_in_sn'    => $quote->trade_in_sn,
+                'trade_in_price' => (float) $quote->trade_in_price,
+                'trade_in_notes' => $quote->trade_in_notes,
+                'tax'            => (bool) $quote->tax,
+                'shipping'       => (float) $quote->shipping,
+                'items'          => $quote->details->map($mapItem)->values(),
             ]];
         } else {
             $editOptions = $quote->options->map(function ($opt) use ($mapItem) {
                 return [
-                    'title'       => $opt->title,
-                    'diskon'      => (float) $opt->diskon,
-                    'diskon_type' => $opt->diskon_type,
-                    'tax'         => (bool) $opt->tax,
-                    'shipping'    => (float) $opt->shipping,
-                    'items'       => $opt->details->map($mapItem)->values(),
+                    'title'          => $opt->title,
+                    'diskon'         => (float) $opt->diskon,
+                    'diskon_type'    => $opt->diskon_type,
+                    'has_trade_in'   => (bool) $opt->has_trade_in,
+                    'trade_in_brand' => $opt->trade_in_brand,
+                    'trade_in_model' => $opt->trade_in_model,
+                    'trade_in_power' => $opt->trade_in_power,
+                    'trade_in_sn'    => $opt->trade_in_sn,
+                    'trade_in_price' => (float) $opt->trade_in_price,
+                    'trade_in_notes' => $opt->trade_in_notes,
+                    'tax'            => (bool) $opt->tax,
+                    'shipping'       => (float) $opt->shipping,
+                    'items'          => $opt->details->map($mapItem)->values(),
                 ];
             })->values();
         }
@@ -557,6 +582,13 @@ class UnitQuotationController extends Controller
             'subtotal'         => $first['subtotal'],
             'diskon'           => $first['diskon'],
             'diskon_type'      => $first['diskon_type'],
+            'has_trade_in'     => $first['has_trade_in'] ?? false,
+            'trade_in_brand'   => $first['trade_in_brand'] ?? null,
+            'trade_in_model'   => $first['trade_in_model'] ?? null,
+            'trade_in_power'   => $first['trade_in_power'] ?? null,
+            'trade_in_sn'      => $first['trade_in_sn'] ?? null,
+            'trade_in_price'   => $first['trade_in_price'] ?? 0,
+            'trade_in_notes'   => $first['trade_in_notes'] ?? null,
             'tax'              => $first['tax'],
             'tax_amount'       => $first['tax_amount'],
             'shipping'         => $first['shipping'],
@@ -634,6 +666,13 @@ class UnitQuotationController extends Controller
             'subtotal'         => $source->subtotal,
             'diskon'           => $source->diskon,
             'diskon_type'      => $source->diskon_type,
+            'has_trade_in'     => $source->has_trade_in,
+            'trade_in_brand'   => $source->trade_in_brand,
+            'trade_in_model'   => $source->trade_in_model,
+            'trade_in_power'   => $source->trade_in_power,
+            'trade_in_sn'      => $source->trade_in_sn,
+            'trade_in_price'   => $source->trade_in_price,
+            'trade_in_notes'   => $source->trade_in_notes,
             'tax'              => $source->tax,
             'tax_amount'       => $source->tax_amount,
             'shipping'         => $source->shipping,
@@ -681,6 +720,13 @@ class UnitQuotationController extends Controller
                     'subtotal'          => $opt->subtotal,
                     'diskon'            => $opt->diskon,
                     'diskon_type'       => $opt->diskon_type,
+                    'has_trade_in'      => $opt->has_trade_in,
+                    'trade_in_brand'    => $opt->trade_in_brand,
+                    'trade_in_model'    => $opt->trade_in_model,
+                    'trade_in_power'    => $opt->trade_in_power,
+                    'trade_in_sn'       => $opt->trade_in_sn,
+                    'trade_in_price'    => $opt->trade_in_price,
+                    'trade_in_notes'    => $opt->trade_in_notes,
                     'tax'               => $opt->tax,
                     'tax_amount'        => $opt->tax_amount,
                     'shipping'          => $opt->shipping,
@@ -1843,25 +1889,45 @@ class UnitQuotationController extends Controller
             }
             $diskon      = floatval($rawDiskon);
             $afterDiskon = $diskonType === 'amount' ? ($subtotal - $diskon) : ($subtotal - ($subtotal * $diskon / 100));
+            $hasTradeIn = filter_var($opt['has_trade_in'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $tradeInBrand = $hasTradeIn ? trim($opt['trade_in_brand'] ?? '') : null;
+            $tradeInModel = $hasTradeIn ? trim($opt['trade_in_model'] ?? '') : null;
+            $tradeInPower = $hasTradeIn ? trim($opt['trade_in_power'] ?? '') : null;
+            $tradeInSn    = $hasTradeIn ? trim($opt['trade_in_sn'] ?? '') : null;
+            $rawTradeInPrice = $hasTradeIn ? ($opt['trade_in_price'] ?? 0) : 0;
+            if (is_string($rawTradeInPrice) && str_contains($rawTradeInPrice, '.')) {
+                $rawTradeInPrice = preg_replace('/[^\d]/', '', $rawTradeInPrice);
+            }
+            $tradeInPrice = floatval($rawTradeInPrice);
+            $tradeInNotes = $hasTradeIn ? trim($opt['trade_in_notes'] ?? '') : null;
+
+            $dpp         = max(0, $afterDiskon - $tradeInPrice);
             $tax         = filter_var($opt['tax'] ?? false, FILTER_VALIDATE_BOOLEAN);
-            $taxAmount   = $tax ? round($afterDiskon * 0.11) : 0;
+            $taxAmount   = $tax ? round($dpp * 0.11) : 0;
             $rawShipping = $opt['shipping'] ?? 0;
             if (is_string($rawShipping)) {
                 $rawShipping = preg_replace('/[^\d]/', '', $rawShipping);
             }
             $shipping    = floatval($rawShipping);
-            $total       = $afterDiskon + $taxAmount + $shipping;
+            $total       = $dpp + $taxAmount + $shipping;
 
             $result[] = [
-                'title'       => trim($opt['title'] ?? '') ?: ('Opsi ' . ($i + 1)),
-                'items'       => $items,
-                'subtotal'    => $subtotal,
-                'diskon'      => $diskon,
-                'diskon_type' => $diskonType,
-                'tax'         => $tax,
-                'tax_amount'  => $taxAmount,
-                'shipping'    => $shipping,
-                'total'       => $total,
+                'title'          => trim($opt['title'] ?? '') ?: ('Opsi ' . ($i + 1)),
+                'items'          => $items,
+                'subtotal'       => $subtotal,
+                'diskon'         => $diskon,
+                'diskon_type'    => $diskonType,
+                'has_trade_in'   => $hasTradeIn,
+                'trade_in_brand' => $tradeInBrand,
+                'trade_in_model' => $tradeInModel,
+                'trade_in_power' => $tradeInPower,
+                'trade_in_sn'    => $tradeInSn,
+                'trade_in_price' => $tradeInPrice,
+                'trade_in_notes' => $tradeInNotes,
+                'tax'            => $tax,
+                'tax_amount'     => $taxAmount,
+                'shipping'       => $shipping,
+                'total'          => $total,
             ];
         }
 
@@ -1872,6 +1938,8 @@ class UnitQuotationController extends Controller
     {
         return [
             'subtotal' => 0, 'diskon' => 0, 'diskon_type' => 'percent',
+            'has_trade_in' => false, 'trade_in_brand' => null, 'trade_in_model' => null,
+            'trade_in_power' => null, 'trade_in_sn' => null, 'trade_in_price' => 0, 'trade_in_notes' => null,
             'tax' => false, 'tax_amount' => 0, 'shipping' => 0, 'total' => 0,
         ];
     }
@@ -1894,6 +1962,13 @@ class UnitQuotationController extends Controller
                 'subtotal'          => $opt['subtotal'],
                 'diskon'            => $opt['diskon'],
                 'diskon_type'       => $opt['diskon_type'],
+                'has_trade_in'      => $opt['has_trade_in'] ?? false,
+                'trade_in_brand'    => $opt['trade_in_brand'] ?? null,
+                'trade_in_model'    => $opt['trade_in_model'] ?? null,
+                'trade_in_power'    => $opt['trade_in_power'] ?? null,
+                'trade_in_sn'       => $opt['trade_in_sn'] ?? null,
+                'trade_in_price'    => $opt['trade_in_price'] ?? 0,
+                'trade_in_notes'    => $opt['trade_in_notes'] ?? null,
                 'tax'               => $opt['tax'],
                 'tax_amount'        => $opt['tax_amount'],
                 'shipping'          => $opt['shipping'],

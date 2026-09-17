@@ -23,18 +23,38 @@
                     @if ($product->status)
                         <span class="badge bg-label-success px-2.5 py-1 rounded-pill small fw-semibold">{{ $product->status }}</span>
                     @endif
+                    @if (@$guardData['is_locked'])
+                        <span class="badge bg-label-warning px-2.5 py-1 rounded-pill small fw-semibold" data-bs-toggle="tooltip" title="Dilindungi Guard: Digunakan pada {{ $guardData['machine_count'] }} Machine Client & {{ $guardData['report_count'] }} Service Report">
+                            <i class="mdi mdi-shield-lock-outline me-1"></i>Protected Data
+                        </span>
+                    @endif
                 </div>
                 <h4 class="fw-bold mb-0 text-dark">{{ $product->sku }}</h4>
             </div>
         </div>
         @if ($canEditUnit)
-            <div class="d-flex gap-2">
+            <div class="d-flex align-items-center gap-2">
                 <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#updateProduct-{{ $product->id }}">
                     <i class="mdi mdi-pencil-outline me-1"></i> Edit Unit
                 </button>
-                <button type="button" data-id="{{ $product->id }}" class="btn btn-label-danger delete-product">
-                    <i class="mdi mdi-delete-outline me-1"></i> Delete
-                </button>
+                @if (@$guardData['is_locked'])
+                    <button type="button" class="btn btn-label-secondary delete-product-locked"
+                        data-id="{{ $product->id }}"
+                        data-sku="{{ $product->sku }}"
+                        data-machines="{{ $guardData['machine_count'] }}"
+                        data-reports="{{ $guardData['report_count'] }}"
+                        data-quotations="{{ $guardData['quotation_count'] }}"
+                        data-inventory="{{ $guardData['inventory_count'] }}"
+                        data-catalog="{{ $guardData['catalog_count'] }}"
+                        data-bs-toggle="tooltip"
+                        title="Unit Dilindungi Guard: Terhubung ke {{ $guardData['machine_count'] }} Machine Client & {{ $guardData['report_count'] }} Service Report">
+                        <i class="mdi mdi-shield-lock-outline text-warning me-1"></i> Terkunci
+                    </button>
+                @else
+                    <button type="button" data-id="{{ $product->id }}" data-sku="{{ $product->sku }}" class="btn btn-label-danger delete-product">
+                        <i class="mdi mdi-delete-outline me-1"></i> Delete
+                    </button>
+                @endif
             </div>
         @endif
     </div>
@@ -780,58 +800,134 @@
             $('#price-raw').val(raw);
         });
 
+        // GUARD: Unit Global Terkunci (Dilindungi dari penghapusan)
+        $(document).on('click', '.delete-product-locked', function() {
+            var machines = parseInt($(this).data('machines')) || 0;
+            var reports = parseInt($(this).data('reports')) || 0;
+            var quotations = parseInt($(this).data('quotations')) || 0;
+            var inventory = parseInt($(this).data('inventory')) || 0;
+            var catalog = parseInt($(this).data('catalog')) || 0;
+            var sku = $(this).data('sku') || 'Unit ini';
+
+            var listHtml = `
+                <div class="text-start p-3 bg-light rounded-3 mb-3 border">
+                    <div class="d-flex justify-content-between py-1.5 border-bottom">
+                        <span class="text-muted"><i class="mdi mdi-desktop-classic me-1 text-primary"></i> Machine Client:</span>
+                        <strong class="text-dark">${machines} unit terpasang</strong>
+                    </div>
+                    <div class="d-flex justify-content-between py-1.5 border-bottom">
+                        <span class="text-muted"><i class="mdi mdi-file-document-outline me-1 text-info"></i> Service Report:</span>
+                        <strong class="text-dark">${reports} riwayat laporan</strong>
+                    </div>
+                    ${quotations > 0 ? `
+                    <div class="d-flex justify-content-between py-1.5 border-bottom">
+                        <span class="text-muted"><i class="mdi mdi-cash-multiple me-1 text-success"></i> Unit Quotation:</span>
+                        <strong class="text-dark">${quotations} penawaran</strong>
+                    </div>` : ''}
+                    ${inventory > 0 ? `
+                    <div class="d-flex justify-content-between py-1.5 border-bottom">
+                        <span class="text-muted"><i class="mdi mdi-warehouse me-1 text-warning"></i> Unit Inventory:</span>
+                        <strong class="text-dark">${inventory} unit stok</strong>
+                    </div>` : ''}
+                    ${catalog > 0 ? `
+                    <div class="d-flex justify-content-between py-1.5">
+                        <span class="text-muted"><i class="mdi mdi-book-open-outline me-1 text-secondary"></i> Catalog Unit:</span>
+                        <strong class="text-dark">Terpublikasi</strong>
+                    </div>` : ''}
+                </div>
+                <div class="alert alert-warning border-0 p-2.5 small text-start d-flex align-items-center mb-0 rounded-3">
+                    <i class="mdi mdi-shield-alert-outline fs-4 me-2 text-warning"></i>
+                    <div>
+                        <strong>Unit Dilindungi Guard:</strong> Unit <strong>${sku}</strong> tidak dapat dihapus karena menjadi master acuan spesifikasi dan riwayat operasional klien. Hal ini untuk mencegah data corrupt dan menjaga historis servis tetap utuh.
+                    </div>
+                </div>
+            `;
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Penghapusan Dicegah (Guard Aktif)',
+                html: listHtml,
+                confirmButtonText: 'Saya Mengerti',
+                customClass: {
+                    confirmButton: 'btn btn-primary px-4 waves-effect',
+                },
+                buttonsStyling: false
+            });
+        });
+
         $(document).on('click', '.delete-product', function() {
             var id = $(this).data('id');
+            var sku = $(this).data('sku') || '';
             Swal.fire({
-                title: "Are you sure?",
-                text: "You won't be able to revert this!",
+                title: "Hapus Unit Global?",
+                text: "Unit " + sku + " akan dihapus permanen dari sistem. Anda yakin?",
                 icon: "warning",
                 showCancelButton: true,
-                confirmButtonText: "Yes, delete it!",
+                confirmButtonText: "Ya, Hapus!",
+                cancelButtonText: "Batal",
                 customClass: {
-                    confirmButton: "btn btn-primary me-3 waves-effect waves-light",
+                    confirmButton: "btn btn-danger me-3 waves-effect waves-light",
                     cancelButton: "btn btn-label-secondary waves-effect",
                 },
                 buttonsStyling: false,
             }).then(function(result) {
                 if (result.value) {
                     $.ajax({
-                        'url': '{{ url('unit') }}/' + id,
-                        'type': 'POST',
-                        'data': {
+                        url: '{{ url('unit') }}/' + id,
+                        type: 'POST',
+                        data: {
                             '_method': 'DELETE',
                             '_token': '{{ csrf_token() }}'
                         },
                         success: function(response) {
-                            if (response == 1) {
+                            if (response == 1 || (response && response.status === 'success')) {
                                 Swal.fire({
                                     icon: "success",
-                                    title: "Deleted!",
-                                    text: "Your file has been deleted.",
+                                    title: "Berhasil Dihapus!",
+                                    text: "Unit Global telah berhasil dihapus.",
                                     customClass: {
                                         confirmButton: "btn btn-success waves-effect",
                                     },
-                                })
+                                });
                                 window.setTimeout(function() {
                                     window.location.href = '/unit-global';
-                                }, 2000);
+                                }, 1800);
+                            } else if (response && response.status === 'locked') {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Penghapusan Ditolak (Guard Aktif)',
+                                    text: response.message,
+                                    customClass: {
+                                        confirmButton: 'btn btn-primary waves-effect',
+                                    }
+                                });
                             } else {
                                 Swal.fire({
                                     icon: 'error',
                                     title: 'Oops...',
-                                    text: 'Data Failed to Delete!'
+                                    text: (response && response.message) ? response.message : 'Gagal menghapus unit!'
+                                });
+                            }
+                        },
+                        error: function(xhr) {
+                            var res = xhr.responseJSON;
+                            if (res && res.status === 'locked') {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Penghapusan Ditolak (Guard Aktif)',
+                                    text: res.message,
+                                    customClass: {
+                                        confirmButton: 'btn btn-primary waves-effect',
+                                    }
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error ' + xhr.status,
+                                    text: (res && res.message) ? res.message : 'Terjadi kesalahan sistem saat menghapus unit.'
                                 });
                             }
                         }
-                    });
-                } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    Swal.fire({
-                        title: "Cancelled",
-                        text: "Your imaginary file is safe :)",
-                        icon: "error",
-                        customClass: {
-                            confirmButton: "btn btn-success waves-effect",
-                        },
                     });
                 }
             });

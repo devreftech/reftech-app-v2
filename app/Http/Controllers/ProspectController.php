@@ -34,6 +34,12 @@ class ProspectController extends Controller
     public const PROSPECT_NOTIF_RECIPIENT_IDS = [5, 7, 38];
 
     /**
+     * User id admin yang berhak melakukan pendelegasian / penugasan prospect ke sales.
+     * Dibatasi khusus untuk Angel Irene (ID: 5).
+     */
+    public const ASSIGN_PROSPECT_ADMIN_ID = 5;
+
+    /**
      * Display a listing of the resource.
      *
      * @return \Illuminate\Http\Response
@@ -485,8 +491,11 @@ class ProspectController extends Controller
     private function notifyProspectCreated(Prospect $prospect): void
     {
         try {
-            $adminIds = User::where('role', 'Admin')->where('active', '1')->pluck('id')->toArray();
-            $recipientIds = array_unique(array_merge(self::PROSPECT_NOTIF_RECIPIENT_IDS, $adminIds));
+            $adminAndDevIds = User::whereIn('role', ['Admin', 'Developer', 'Super Admin'])
+                ->where('active', '1')
+                ->pluck('id')
+                ->toArray();
+            $recipientIds = array_unique(array_merge(self::PROSPECT_NOTIF_RECIPIENT_IDS, $adminAndDevIds));
             foreach ($recipientIds as $uid) {
                 ProspectNotification::firstOrCreate(
                     ['id_prospect' => $prospect->id, 'id_user' => $uid, 'type' => 'prospect_created'],
@@ -517,10 +526,10 @@ class ProspectController extends Controller
     }
 
     /**
-     * Endpoint polling alert darurat "Prospect Baru Belum Ditugaskan" untuk Admin & Manajemen
-     * Mirip sistem Urgent Alert SUO pada Accounting:
-     * Selama ada data prospect baru dari Support yang belum ditugaskan ke Sales (id_sales null),
-     * modal pop-up alert akan muncul di layar Admin untuk mengingatkan agar segera mendelegasikan.
+     * Endpoint polling alert darurat "Prospect Baru Belum Ditugaskan / Belum Ditindaklanjuti":
+     * 1. Untuk Admin & Developer: Muncul modal alert selama ada prospect baru yang belum ditugaskan ke Sales.
+     * 2. Untuk Sales: Muncul modal alert 1 halaman penuh saat ditugaskan prospek baru, dan akan TETAP muncul
+     *    selama Sales belum melakukan tindakan/action (level masih null dan belum dibuatkan quotation).
      */
     public function urgentCheck()
     {
@@ -531,56 +540,100 @@ class ProspectController extends Controller
         $user = Auth::user();
         $role = $user->role;
 
-        // Hanya untuk akun Admin / Developer / Super Admin yang bertugas menugaskan prospek
-        if (!in_array($role, ['Admin', 'Developer', 'Super Admin'])) {
-            return response()->json(['has_urgent' => false]);
-        }
-
-        // Cari prospect yang belum ditugaskan ke Sales
-        $prospect = Prospect::with(['pic.client', 'support'])
-            ->where(function ($q) {
-                $q->whereNull('id_sales')->orWhere('id_sales', 0);
-            })
-            ->where(function ($q) {
-                $q->whereNull('provide')->orWhere('provide', '!=', '1');
-            })
+        // 1. Alert untuk Sales (atau user yang ditugaskan prospek):
+        // Jika ada prospek yang sudah ditugaskan ke sales ini, tapi BELUM ada tindakan/action apapun
+        // (level null dan id_quotation null)
+        $assignedProspect = Prospect::with(['pic.client', 'support'])
+            ->where('id_sales', $user->id)
+            ->where('provide', '1')
+            ->whereNull('level')
+            ->whereNull('id_quotation')
             ->latest('id')
             ->first();
 
-        if (!$prospect) {
-            return response()->json(['has_urgent' => false]);
+        if ($assignedProspect) {
+            $pic = $assignedProspect->pic;
+            $client = $pic ? $pic->client : null;
+            $timeAgo = 'Baru saja';
+            if ($assignedProspect->created_at instanceof \Carbon\Carbon) {
+                $timeAgo = $assignedProspect->created_at->diffForHumans();
+            }
+
+            return response()->json([
+                'has_urgent' => true,
+                'prospect'   => [
+                    'id'              => (string) $assignedProspect->id,
+                    'type'            => 'prospect_assigned',
+                    'company'         => $client->company ?? ($assignedProspect->company_name ?? '-'),
+                    'pic_name'        => $pic->name_pic ?? '-',
+                    'pic_phone'       => $pic->phone_pic ?? null,
+                    'pic_position'    => $pic->position ?? null,
+                    'support_name'    => $assignedProspect->support->name ?? 'Support',
+                    'support_image'   => $assignedProspect->support && $assignedProspect->support->image ? asset($assignedProspect->support->image) : null,
+                    'category'        => $assignedProspect->category ?? '-',
+                    'kebutuhan'       => Str::limit((string) ($assignedProspect->kebutuhan ?? ''), 150),
+                    'stage'           => 'assigned_pending_action',
+                    'stage_badge'     => 'Sales • Perlu Tindak Lanjut Segera',
+                    'stage_title'     => 'Anda Mendapat Penugasan Prospect Baru!',
+                    'stage_desc'      => 'Prospek baru telah didelegasikan kepada Anda oleh manajemen. Segera lakukan follow-up pelanggan (WA/Call) atau buatkan penawaran Smart Quote.',
+                    'action_url'      => route('prospect.show', $assignedProspect->id),
+                    'action_label'    => 'Tindak Lanjuti Sekarang',
+                    'created_at'      => $timeAgo,
+                    'created_at_time' => optional($assignedProspect->created_at)->format('H:i, d M Y'),
+                ],
+            ]);
         }
 
-        $pic = $prospect->pic;
-        $client = $pic ? $pic->client : null;
+        // 2. Alert untuk Admin / Developer / Super Admin:
+        // Jika ada prospek baru yang BELUM ditugaskan ke Sales (id_sales null dan provide null)
+        if (in_array($role, ['Admin', 'Developer', 'Super Admin']) || $user->id == self::ASSIGN_PROSPECT_ADMIN_ID) {
+            $unassignedProspect = Prospect::with(['pic.client', 'support'])
+                ->where(function ($q) {
+                    $q->whereNull('id_sales')->orWhere('id_sales', 0);
+                })
+                ->whereNull('provide')
+                ->latest('id')
+                ->first();
 
-        $timeAgo = 'Baru saja';
-        if ($prospect->created_at instanceof \Carbon\Carbon) {
-            $timeAgo = $prospect->created_at->diffForHumans();
+            if ($unassignedProspect) {
+                $pic = $unassignedProspect->pic;
+                $client = $pic ? $pic->client : null;
+                $timeAgo = 'Baru saja';
+                if ($unassignedProspect->created_at instanceof \Carbon\Carbon) {
+                    $timeAgo = $unassignedProspect->created_at->diffForHumans();
+                }
+
+                $canAssign = ($user->id == self::ASSIGN_PROSPECT_ADMIN_ID || (method_exists($user, 'isDeveloper') && $user->isDeveloper()) || $user->getRawOriginal('role') === 'Developer');
+
+                return response()->json([
+                    'has_urgent' => true,
+                    'prospect'   => [
+                        'id'              => (string) $unassignedProspect->id,
+                        'type'            => 'prospect_created',
+                        'company'         => $client->company ?? ($unassignedProspect->company_name ?? '-'),
+                        'pic_name'        => $pic->name_pic ?? '-',
+                        'pic_phone'       => $pic->phone_pic ?? null,
+                        'pic_position'    => $pic->position ?? null,
+                        'support_name'    => $unassignedProspect->support->name ?? 'Support',
+                        'support_image'   => $unassignedProspect->support && $unassignedProspect->support->image ? asset($unassignedProspect->support->image) : null,
+                        'category'        => $unassignedProspect->category ?? '-',
+                        'kebutuhan'       => Str::limit((string) ($unassignedProspect->kebutuhan ?? ''), 150),
+                        'stage'           => 'unassigned_prospect',
+                        'stage_badge'     => $canAssign ? 'Admin • Butuh Penugasan Sales' : 'Admin • Menunggu Penugasan Sales',
+                        'stage_title'     => 'Ada Prospect Baru Masuk!',
+                        'stage_desc'      => $canAssign
+                            ? 'Tim Support baru saja menginput data prospek baru yang belum ditugaskan ke Sales. Segera tentukan dan tugaskan Sales penanggung jawab.'
+                            : 'Tim Support baru saja menginput data prospek baru yang belum ditugaskan ke Sales (Menunggu penugasan oleh Angel Irene).',
+                        'action_url'      => route('prospect.show', $unassignedProspect->id),
+                        'action_label'    => $canAssign ? 'Tugaskan ke Sales' : 'Lihat Detail Prospek',
+                        'created_at'      => $timeAgo,
+                        'created_at_time' => optional($unassignedProspect->created_at)->format('H:i, d M Y'),
+                    ],
+                ]);
+            }
         }
 
-        return response()->json([
-            'has_urgent' => true,
-            'prospect'   => [
-                'id'              => (string) $prospect->id,
-                'company'         => $client->company ?? ($prospect->company_name ?? '-'),
-                'pic_name'        => $pic->name_pic ?? '-',
-                'pic_phone'       => $pic->phone_pic ?? null,
-                'pic_position'    => $pic->position ?? null,
-                'support_name'    => $prospect->support->name ?? 'Support',
-                'support_image'   => $prospect->support && $prospect->support->image ? asset($prospect->support->image) : null,
-                'category'        => $prospect->category ?? '-',
-                'kebutuhan'       => Str::limit((string) ($prospect->kebutuhan ?? ''), 150),
-                'stage'           => 'unassigned_prospect',
-                'stage_badge'     => 'Admin • Butuh Penugasan Sales',
-                'stage_title'     => 'Ada Prospect Baru Masuk!',
-                'stage_desc'      => 'Tim Support baru saja menginput data prospek baru yang belum ditugaskan ke Sales. Segera tentukan dan tugaskan Sales penanggung jawab.',
-                'action_url'      => route('prospect.show', $prospect->id),
-                'action_label'    => 'Tugaskan ke Sales',
-                'created_at'      => $timeAgo,
-                'created_at_time' => optional($prospect->created_at)->format('H:i, d M Y'),
-            ],
-        ]);
+        return response()->json(['has_urgent' => false]);
     }
 
     /**
@@ -810,6 +863,17 @@ class ProspectController extends Controller
                     ->update(['level' => '2']);
             }
 
+            // 6. Kanban Task Comment Mentions
+            if (\Illuminate\Support\Facades\Schema::hasTable('kanban_task_comment_mentions')) {
+                \Illuminate\Support\Facades\DB::table('kanban_task_comment_mentions')
+                    ->where('user_id', $userId)
+                    ->where('is_read', false)
+                    ->update([
+                        'is_read' => true,
+                        'read_at' => now(),
+                    ]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Semua notifikasi berhasil ditandai sebagai sudah dibaca'
@@ -1023,14 +1087,22 @@ class ProspectController extends Controller
 
     public function add_sales(Request $request, $id)
     {
-        // dd($request->all());
-        $prospect = Prospect::find($id);
+        $user = Auth::user();
+        $canAssign = ($user && ($user->id == self::ASSIGN_PROSPECT_ADMIN_ID || (method_exists($user, 'isDeveloper') && $user->isDeveloper()) || $user->getRawOriginal('role') === 'Developer'));
+
+        if (!$canAssign) {
+            return redirect()->back()->with('error', 'Otorisasi ditolak: Hak penugasan prospek ke sales hanya dapat dilakukan oleh Admin Angel Irene (ID: 5) atau Developer.');
+        }
+
+        $prospect = Prospect::findOrFail($id);
         $pic = Pic::find($prospect->id_pic);
-        $client = Client::find($pic->id_client);
+        $client = $pic ? Client::find($pic->id_client) : null;
         if ($request->provideCheck == 1) {
             $prospect->provide = '1';
             $prospect->id_sales = $request->sales;
-            $client->id_sales = $request->sales;
+            if ($client) {
+                $client->id_sales = $request->sales;
+            }
         } else {
             $prospect->provide = '0';
             $prospect->id_sales = null;
@@ -1044,8 +1116,10 @@ class ProspectController extends Controller
                 $this->notifyProspectAssigned($prospect, (int) $request->sales);
             }
 
-            return redirect('prospect')->with('message', 'data telah ditambahkan');
+            return redirect('prospect')->with('message', 'Penugasan prospek berhasil disimpan');
         }
+
+        return redirect()->back()->with('error', 'Gagal menyimpan penugasan prospek.');
     }
 
     public function onProcessFU($id)

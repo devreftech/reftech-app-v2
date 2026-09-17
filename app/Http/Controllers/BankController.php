@@ -352,7 +352,7 @@ class BankController extends Controller
     {
         $bank = Bank::findOrFail($id);
         $startDate = $request->get('start_date', Carbon::now()->subMonths(3)->startOfMonth()->toDateString());
-        $endDate = $request->get('end_date', Carbon::now()->toDateString());
+        $endDate = $request->get('end_date', Carbon::now()->endOfMonth()->toDateString());
 
         // Previous transactions before start_date
         $prevAr = (float) Payment::where('id_bank', $id)
@@ -758,7 +758,7 @@ class BankController extends Controller
     {
         $bank = Bank::findOrFail($id);
         $startDate = $request->get('start_date', Carbon::now()->subMonths(3)->startOfMonth()->toDateString());
-        $endDate = $request->get('end_date', Carbon::now()->toDateString());
+        $endDate = $request->get('end_date', Carbon::now()->endOfMonth()->toDateString());
 
         // Previous transactions before start_date
         $prevAr = (float) Payment::where('id_bank', $id)

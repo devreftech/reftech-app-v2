@@ -15,6 +15,7 @@ class Supplier extends Model
     ];
     protected $fillable = [
         'supplier',
+        'type',
         'email',
         'phone',
         'address',
@@ -33,5 +34,9 @@ class Supplier extends Model
     public function pics()
     {
         return $this->hasMany('App\Models\SupplierPic', 'id_supplier');
+    }
+    public function addresses()
+    {
+        return $this->hasMany('App\Models\SupplierAddress', 'id_supplier')->orderByDesc('is_primary')->orderBy('id');
     }
 }

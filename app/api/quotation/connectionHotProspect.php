@@ -22,7 +22,8 @@ if (Auth::check()) {
 
         $query = "
         SELECT q.id, q.no_quote, c.company, c.ru, q.subtotal, q.title, q.estimated_date,
-               q.status, CONCAT(q.note, ' (', q.status_date, ')') AS tip, q.type, 'service' AS row_type
+               q.status, CONCAT(q.note, ' (', q.status_date, ')') AS tip, q.type, 'service' AS row_type,
+               NULL AS plant_name
         FROM quotation q
         LEFT JOIN pic p ON p.id = q.id_pic
         LEFT JOIN client c ON c.id = p.id_client
@@ -44,9 +45,11 @@ if (Auth::check()) {
                 WHERE sh.id_unit_quotation = uq.id
                 ORDER BY sh.created_at DESC LIMIT 1) AS tip,
                uq.type,
-               'unit' AS row_type
+               'unit' AS row_type,
+               cp.name AS plant_name
         FROM unit_quotation uq
         LEFT JOIN client c2 ON c2.id = NULLIF(uq.id_client,'')
+        LEFT JOIN client_plants cp ON cp.id = NULLIF(uq.id_plant,'')
         WHERE uq.id_sales = $userId AND uq.status = 'hot_prospect' AND uq.is_latest = 1$yearFilterU
 
         ORDER BY estimated_date ASC";

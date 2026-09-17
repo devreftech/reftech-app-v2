@@ -125,8 +125,26 @@ class EmployeeController extends Controller
         $detail->area = $request->area;
         $detail->date = Carbon::today();
         $dSave = $detail->save();
+
+        // Integrasi opsional ke Modul HR: hanya dibuat bila opsi dicentang dan bukan role Client
+        if ($request->boolean('create_employee') && $request->role !== 'Client') {
+            \App\Models\Employee::firstOrCreate(
+                ['user_id' => $users->id],
+                [
+                    'id_department' => null,
+                    'id_position' => null,
+                    'nik' => $users->nip,
+                    'join_date' => $users->date_in,
+                    'birthday' => $users->birthday,
+                    'address' => $users->address,
+                    'phone' => $users->phone,
+                    'employment_status' => 'Tetap',
+                ]
+            );
+        }
+
         if ($status && $dSave) {
-            return redirect('/employee')->with('success', 'Data Has been created');
+            return redirect('/employee')->with('success', 'Data User berhasil dibuat' . ($request->boolean('create_employee') ? ' dan didaftarkan ke Modul HR' : ''));
         }
     }
 
@@ -138,7 +156,7 @@ class EmployeeController extends Controller
      */
     public function show($id)
     {
-        $users = User::findOrFail($id);
+        $users = User::with(['employee.department', 'employee.position'])->findOrFail($id);
         $detail = DetailUser::where('id_users', $id)->orderByDesc('id')->get();
         $target = $users->role === 'Sales' ? Target::where('id_sales', $id)->first() : null;
 

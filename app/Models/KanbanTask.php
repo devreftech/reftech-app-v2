@@ -12,6 +12,7 @@ class KanbanTask extends Model
     protected $fillable = [
         'board_id',
         'column_id',
+        'client_id',
         'title',
         'description',
         'due_date',
@@ -27,6 +28,11 @@ class KanbanTask extends Model
     protected $casts = [
         'labels' => 'array',
     ];
+
+    public function client()
+    {
+        return $this->belongsTo(Client::class, 'client_id');
+    }
 
     public function board()
     {
@@ -91,5 +97,10 @@ class KanbanTask extends Model
     public function projectReports()
     {
         return $this->hasMany(ProjectReport::class, 'kanban_task_id')->orderBy('report_date', 'asc')->orderBy('day_number', 'asc');
+    }
+
+    public function kanbanServiceReports()
+    {
+        return $this->hasMany(KanbanTaskServiceReport::class, 'kanban_task_id')->latest();
     }
 }

@@ -21,7 +21,7 @@ if (Auth::check()) {
         $pdo->exec("SET SESSION sql_mode = ''");
 
         // Query database for data
-        $query = "SELECT q.*,CONCAT(q.note, ' (', q.status_date, ')') AS tip, c.company, c.ru, u.name FROM quotation q 
+        $query = "SELECT q.*,CONCAT(q.note, ' (', q.status_date, ')') AS tip, c.company, c.ru, u.name, NULL AS plant_name FROM quotation q 
         LEFT JOIN pic p on p.id = q.id_pic
         LEFT JOIN client c on c.id = p.id_client
         INNER JOIN users u on u.id = q.id_sales

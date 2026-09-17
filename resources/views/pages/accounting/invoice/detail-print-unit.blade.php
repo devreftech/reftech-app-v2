@@ -110,27 +110,36 @@
 
                 <p class="mb-2 fw-bold text-dark" style="font-size:14px; line-height:1.3;">
                     {{ $quote->client?->company ?? '-' }}
+                    @if ($quote->plant)
+                        <span class="badge bg-label-primary ms-1" style="font-size: 10.5px; vertical-align: middle;">{{ $quote->plant->name }}</span>
+                    @endif
                 </p>
 
                 @php
                     $picName = $quote->pic?->name_pic ?? $quote->attn;
-                    $targetAddress = $invoice->invoiceTo == '1' ? ($quote->client?->address ?? '-') : ($quote->client?->subAddress ?? '-');
+                    $targetAddress = $quote->plant ? ($quote->address ?: ($quote->plant?->address ?? '-')) : ($invoice->invoiceTo == '1' ? ($quote->client?->address ?? '-') : ($quote->client?->subAddress ?? '-'));
                 @endphp
 
                 <div style="display:grid; grid-template-columns: auto 1fr; gap:4px 12px; font-size:11.5px; color:#000000;">
                     @if ($picName)
                         <span style="white-space:nowrap; color:#111; font-weight:600;"><i class="mdi mdi-account-outline me-1 icon-accent-blue"></i>Attn / PIC</span>
-                        <span class="fw-semibold text-dark">
-                            : {{ $picName }}
-                            @if ($quote->pic?->phone_pic)
-                                <span class="ms-1" style="color:#111; font-weight:500;">({{ $quote->pic->phone_pic }})</span>
-                            @endif
-                        </span>
+                        <div class="fw-semibold text-dark" style="display:flex; align-items:flex-start;">
+                            <span style="flex-shrink:0; margin-right:4px;">:</span>
+                            <span style="flex:1;">
+                                {{ $picName }}
+                                @if ($quote->pic?->phone_pic)
+                                    <span class="ms-1" style="color:#111; font-weight:500;">({{ $quote->pic->phone_pic }})</span>
+                                @endif
+                            </span>
+                        </div>
                     @endif
 
                     @if ($quote->client?->phone)
                         <span style="white-space:nowrap; color:#111; font-weight:600;"><i class="mdi mdi-phone-in-talk-outline me-1 icon-accent-blue"></i>Office Phone</span>
-                        <span class="fw-semibold text-dark">: {{ $quote->client->phone }}</span>
+                        <div class="fw-semibold text-dark" style="display:flex; align-items:flex-start;">
+                            <span style="flex-shrink:0; margin-right:4px;">:</span>
+                            <span style="flex:1;">{{ $quote->client->phone }}</span>
+                        </div>
                     @endif
 
                     @if ($targetAddress && $targetAddress !== '-')
@@ -171,6 +180,8 @@
         {{-- Items --}}
         @php
             $afterDisc  = $quote->subtotal - $quote->discount_amount;
+            $tradeInVal = (!empty($quote->has_trade_in) && floatval($quote->trade_in_price ?? 0) > 0) ? floatval($quote->trade_in_price) : 0;
+            $dppVal     = max(0, $afterDisc - $tradeInVal);
             $bgColor    = 'rgb(224, 248, 248)';
             $hasDisc    = $quote->details->where('disc', '>', 0)->count() > 0;
             $labelSpan  = $quote->tax ? ($hasDisc ? 3 : 2) : 3;
@@ -194,6 +205,40 @@
             // baris BP: Sub Total + DP% + BP% + TOTAL (4) + Discount/AfterDisc + DPP/PPN + Shipping + PPH
             $bpRowspan = 4 + ($quote->diskon > 0 ? 2 : 0) + ($quote->tax ? 2 : 0) + ($bpShip > 0 ? 1 : 0) + ($totalPph > 0 ? 1 : 0);
         @endphp
+
+        {{-- Trade-In Unit Bekas Customer (Print Box) --}}
+        @if ($tradeInVal > 0)
+            <div style="border:1px solid #70b0e0; background:#f0f8ff; border-radius:6px; padding:7px 12px; margin-bottom:10px; font-size:11px; page-break-inside:avoid;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px; border-bottom:1px dashed #b0d4f1; padding-bottom:3px;">
+                    <div>
+                        <strong style="color:#0056b3; text-transform:uppercase; font-size:10.5px;">&#9654; Trade-In Unit Customer</strong>
+                        <span style="font-weight:600; color:#222; margin-left:6px;">{{ trim(($quote->trade_in_brand ?? '') . ' ' . ($quote->trade_in_model ?? '')) ?: 'Unit Trade-In' }}</span>
+                    </div>
+                    <div>
+                        <span style="color:#555;">Kompensasi:</span>
+                        <strong style="color:#dc3545; font-size:11.5px; margin-left:4px;">- Rp {{ number_format($quote->trade_in_price, 0, '', '.') }}</strong>
+                    </div>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:12px; color:#444;">
+                    @if (!empty($quote->trade_in_brand))
+                        <div><strong>Brand:</strong> {{ $quote->trade_in_brand }}</div>
+                    @endif
+                    @if (!empty($quote->trade_in_model))
+                        <div><strong>Model:</strong> {{ $quote->trade_in_model }}</div>
+                    @endif
+                    @if (!empty($quote->trade_in_power))
+                        <div><strong>Power:</strong> {{ $quote->trade_in_power }}</div>
+                    @endif
+                    @if (!empty($quote->trade_in_sn))
+                        <div><strong>SN:</strong> {{ $quote->trade_in_sn }}</div>
+                    @endif
+                    @if (!empty($quote->trade_in_notes))
+                        <div style="width:100%;"><strong>Catatan:</strong> {{ $quote->trade_in_notes }}</div>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         <div>
             <table class="table table-bordered items-top-align-table m-0" style="border: 1px solid rgb(60,60,60); width: 100%;">
                 <thead class="table-light">
@@ -271,7 +316,9 @@
                                             <div style="font-size:10.5px; color:#000000; font-weight:500; margin-top:3px;">
                                                 @foreach ($specs as $field)
                                                     @if ($field === 'unit') @continue @endif
-                                                    @php $val = $detail->unit->$field ?? null; @endphp
+                                                    @php
+                                                        $val = ($field === 'type_unit') ? ($detail->unit->formatted_type ?: $detail->unit->type_unit) : ($detail->unit->$field ?? null);
+                                                    @endphp
                                                     @if ($val && isset($specLabels[$field]))
                                                         <div style="display:flex; padding:1px 0;">
                                                             <span style="color:#000000; min-width:110px; flex-shrink:0; font-weight:600;">{{ $catOverride[$field] ?? $specLabels[$field] }}</span>
@@ -521,7 +568,24 @@
                             </td>
                         </tr>
                     @endif
-                    @if ($quote->tax)
+                    @if ($tradeInVal > 0)
+                        <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
+                                <p class="m-0"><span class="i18n" data-en="Trade-In Unit">Trade-In Unit</span>{{ (!empty($quote->trade_in_brand) || !empty($quote->trade_in_model)) ? ' (' . trim(($quote->trade_in_brand ?? '') . ' ' . ($quote->trade_in_model ?? '')) . ')' : '' }}</p>
+                            </td>
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end" style="padding-right: 10px !important; color:#dc3545;">
+                                <p class="m-0">- Rp {{ number_format($tradeInVal, 0, '', '.') }}</p>
+                            </td>
+                        </tr>
+                        <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
+                            <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
+                                <p class="m-0"><span class="i18n" data-en="DPP (Tax Base)">DPP (Dasar Pengenaan Pajak)</span></p>
+                            </td>
+                            <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
+                                <p class="m-0">Rp {{ number_format($dppVal, 0, '', '.') }}</p>
+                            </td>
+                        </tr>
+                    @elseif ($quote->tax)
                         <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
                             <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0"><span class="i18n" data-en="DPP on PPN">DPP Atas PPN</span></p>
@@ -530,9 +594,11 @@
                                 <p class="m-0">Rp {{ number_format($afterDisc * 11 / 12, 0, '', '.') }}</p>
                             </td>
                         </tr>
+                    @endif
+                    @if ($quote->tax)
                         <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
                             <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
-                                <p class="m-0">PPN 12%</p>
+                                <p class="m-0">PPN 11%</p>
                             </td>
                             <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">Rp {{ number_format($quote->tax_amount, 0, '', '.') }}</p>

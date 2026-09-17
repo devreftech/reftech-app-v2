@@ -652,8 +652,18 @@ class PendingController extends Controller
         if (!$hasApprovedInvoice) {
             return redirect()->back()->with('error', 'Proses logistik dikunci karena invoice belum di-approve oleh Accounting.');
         }
+        $isKojisha = ($pending->quote && (method_exists($pending->quote, 'isKojisha') ? $pending->quote->isKojisha() : ($pending->quote->flag === 'Kojisha')))
+            || ($pending->unitQuotation && (method_exists($pending->unitQuotation, 'isKojisha') ? $pending->unitQuotation->isKojisha() : false))
+            || ($request->flag === 'Kojisha')
+            || (is_string($request->invoice) && str_contains($request->invoice, '/KII/'))
+            || (is_string($request->po) && str_contains($request->po, 'KII'));
+            
+        $flag = $isKojisha ? 'Kojisha' : 'Reftech';
+
         // Masukan Data ke Tabel Product Out
         $productOut = new ProductOut();
+        $productOut->flag = $flag;
+        $productOut->no_product_out = (new \App\Http\Controllers\ProductOutController())->generateNoProductOut($request->warehouse[0] ?? 'BDG', $flag);
         $productOut->id_user = Auth::user()->id;
         $productOut->invoice = $request->invoice;
         $productOut->po = $request->po;

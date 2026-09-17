@@ -631,8 +631,9 @@ class ForecastController extends Controller
         $defaultTemplate = PowerServicePrice::where('power', 'STANDARD_TEMPLATE')->first()
             ?? PowerServicePrice::whereNotNull('desc_pm1')->latest()->first();
 
-        // Get unique powers currently available in unit table (AIR COMPRESSOR SCREW only) to make adding simple
+        // Get unique powers currently available in Unit Global data (AIR COMPRESSOR SCREW only) to make adding simple
         $rawPowers = Unit::where('unit', 'AIR COMPRESSOR SCREW')
+            ->where('type', 'global')
             ->whereNotNull('power')
             ->where('power', '!=', '')
             ->where('power', '!=', '-')
