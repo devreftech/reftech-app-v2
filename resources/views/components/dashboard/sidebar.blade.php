@@ -30,7 +30,7 @@
     <div class="menu-inner-shadow"></div>
 
     <ul class="menu-inner py-1">
-        @if (in_array(auth::user()?->role, ['Admin', 'Developer', 'Accounting']))
+        @if (in_array(Auth::user()?->role, ['Admin', 'Developer', 'Accounting']))
             <!-- Dashboards -->
             <li class="menu-item {{ request()->is('/') ? 'active' : '' }}">
                 <a href="{{ url('/') }}" class="menu-link">
@@ -70,7 +70,7 @@
                 </a>
             </li>
             <!-- Layouts -->
-            @if (auth::user()->role != 'Accounting')
+            @if (Auth::user()->role != 'Accounting')
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Sales & Marketing</span>
             </li>
@@ -118,8 +118,8 @@
             </li>
 
             @php
-                $isMailboxConfigured = auth::user()?->isDeveloper() || (!empty(auth::user()?->mailSetting?->smtp_username));
-                $unreadInboxCount = $isMailboxConfigured ? (auth::user()?->mailboxMessages()->where('folder', 'inbox')->where('is_read', false)->count() ?? 0) : 0;
+                $isMailboxConfigured = Auth::user()?->isDeveloper() || (!empty(Auth::user()?->mailSetting?->smtp_username));
+                $unreadInboxCount = $isMailboxConfigured ? (Auth::user()?->mailboxMessages()->where('folder', 'inbox')->where('is_read', false)->count() ?? 0) : 0;
             @endphp
             @if ($isMailboxConfigured)
             <li class="menu-item {{ request()->is('sales/mailbox*') ? 'active' : '' }}">
@@ -193,7 +193,7 @@
                 </ul>
             </li>
 
-            @if (in_array(auth::user()->role, ['Admin', 'developer', 'Developer']) || (method_exists(auth::user(), 'isDeveloper') && auth::user()->isDeveloper()))
+            @if (in_array(Auth::user()->role, ['Admin', 'developer', 'Developer']) || (method_exists(Auth::user(), 'isDeveloper') && Auth::user()->isDeveloper()))
             <li class="menu-item {{ request()->is('piping-rab*') ? 'active' : '' }}">
                 <a href="{{ route('piping-rab.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-calculator-variant-outline"></i>
@@ -231,7 +231,7 @@
             </li>
             @endif
 
-            @if (auth::user()->role == 'Admin')
+            @if (Auth::user()->role == 'Admin')
             <li class="menu-item {{ request()->is('sales-target') ? 'active' : '' }}">
                 <a href="{{ route('sales-target.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-bullseye-arrow"></i>
@@ -361,7 +361,7 @@
                 </ul>
             </li> --}}
 
-            @if (auth::user()->role != 'Accounting')
+            @if (Auth::user()->role != 'Accounting')
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Service Departement</span>
             </li>
@@ -470,7 +470,7 @@
                 <span class="menu-header-text">Marketting</span>
             </li> --}}
 
-            @if (auth::user()->id != 38)
+            @if (Auth::user()->id != 38)
                 <li class="menu-header fw-light mt-4">
                     <span class="menu-header-text">Accounting</span>
                 </li>
@@ -499,7 +499,7 @@
                         @endif
                     </a>
                 </li>
-                @if (auth::user()->role != 'Accounting')
+                @if (Auth::user()->role != 'Accounting')
                     <li class="menu-item {{ request()->is('bast') || request()->is('bast/*') ? 'active' : '' }}">
                         <a href="{{ route('bast.index') }}" class="menu-link">
                             <i class="menu-icon tf-icons mdi mdi-file-sign"></i>
@@ -631,7 +631,7 @@
                                 <div data-i18n="Petty Cash">Petty Cash (Kas Kecil)</div>
                             </a>
                         </li>
-                        @if(in_array(auth::user()?->role, ['Finance Manager', 'Finance', 'Developer']) || auth::user()?->isDeveloper())
+                        @if(in_array(Auth::user()?->role, ['Finance Manager', 'Finance', 'Developer']) || Auth::user()?->isDeveloper())
                             <li class="menu-item {{ request()->is('finance/security*') ? 'active' : '' }}">
                                 <a href="{{ route('finance.security.manage') }}" class="menu-link">
                                     <div data-i18n="Security">Security</div>
@@ -902,7 +902,7 @@
                 </ul>
             </li>
 
-            @if (auth::user()->role != 'Accounting')
+            @if (Auth::user()->role != 'Accounting')
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Library</span>
             </li>
@@ -1045,7 +1045,7 @@
                     <div data-i18n="Notulen">Notulen</div>
                 </a>
             </li>
-            @if (auth::user()?->isDeveloper())
+            @if (Auth::user()?->isDeveloper())
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Helpdesk</span>
             </li>
@@ -1065,7 +1065,7 @@
                 </a>
             </li>
             @endif
-        @elseif (auth::user()?->role == 'Sales')
+        @elseif (Auth::user()?->role == 'Sales')
             <!-- Dashboards -->
             <li class="menu-item {{ request()->is('/') ? 'active' : '' }}">
                 <a href="{{ url('/') }}" class="menu-link">
@@ -1146,8 +1146,8 @@
             </li>
 
             @php
-                $isMailboxConfiguredSales = auth::user()?->isDeveloper() || (!empty(auth::user()?->mailSetting?->smtp_username));
-                $unreadInboxCountSales = $isMailboxConfiguredSales ? (auth::user()?->mailboxMessages()->where('folder', 'inbox')->where('is_read', false)->count() ?? 0) : 0;
+                $isMailboxConfiguredSales = Auth::user()?->isDeveloper() || (!empty(Auth::user()?->mailSetting?->smtp_username));
+                $unreadInboxCountSales = $isMailboxConfiguredSales ? (Auth::user()?->mailboxMessages()->where('folder', 'inbox')->where('is_read', false)->count() ?? 0) : 0;
             @endphp
             @if ($isMailboxConfiguredSales)
             <li class="menu-item {{ request()->is('sales/mailbox*') ? 'active' : '' }}">
@@ -1474,7 +1474,7 @@
                     @endif
                 </a>
             </li>
-        @elseif (auth::user()?->role == 'Support')
+        @elseif (Auth::user()?->role == 'Support')
             <!-- Dashboards -->
             <li class="menu-item {{ request()->is('/') ? 'active' : '' }}">
                 <a href="{{ url('/') }}" class="menu-link">
@@ -1655,7 +1655,7 @@
             </li>
 
 
-        @elseif(auth::user()?->role == 'Logistic')
+        @elseif(Auth::user()?->role == 'Logistic')
             <li class="menu-item {{ request()->is('/') ? 'active' : '' }}">
                 <a href="{{ url('/') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-home-outline"></i>
@@ -1914,7 +1914,7 @@
                     @endif
                 </a>
             </li>
-        @elseif(auth::user()?->role == 'ServiceM')
+        @elseif(Auth::user()?->role == 'ServiceM')
             <!-- Dashboards -->
             <li class="menu-item {{ request()->is('service-reports-servicem*') || request()->is('/') ? 'active' : '' }}">
                 <a href="{{ route('service-reports.manager') }}" class="menu-link">
@@ -2059,7 +2059,7 @@
                     @endif
                 </a>
             </li>
-        @elseif(auth::user()?->role == 'Technician' || auth::user()?->role == 'Coordinator')
+        @elseif(Auth::user()?->role == 'Technician' || Auth::user()?->role == 'Coordinator')
             <!-- Dashboards -->
             <li class="menu-item {{ request()->is('/') ? 'active' : '' }}">
                 <a href="{{ url('/') }}" class="menu-link">
@@ -2163,8 +2163,8 @@
                     @endif
                 </a>
             </li>
-        @elseif(auth::user()?->role == 'Client')
-            @if (auth::user()?->level == 1)
+        @elseif(Auth::user()?->role == 'Client')
+            @if (Auth::user()?->level == 1)
                 <li class="menu-item {{ request()->is('/') ? 'active' : '' }}">
                     <a href="{{ url('/') }}" class="menu-link">
                         <i class="menu-icon tf-icons mdi mdi-home-outline"></i>
@@ -2229,7 +2229,7 @@
                     @endif
                 </a>
             </li>
-        @elseif (in_array(auth::user()?->role, ['Finance Manager', 'Finance']))
+        @elseif (in_array(Auth::user()?->role, ['Finance Manager', 'Finance']))
             <!-- Dashboard -->
             <li class="menu-item {{ request()->is('/') ? 'active' : '' }}">
                 <a href="{{ url('/') }}" class="menu-link">
@@ -2383,7 +2383,7 @@
                             <div data-i18n="Petty Cash">Petty Cash (Kas Kecil)</div>
                         </a>
                     </li>
-                    @if(in_array(auth::user()?->role, ['Finance Manager', 'Finance', 'Developer']) || auth::user()?->isDeveloper())
+                    @if(in_array(Auth::user()?->role, ['Finance Manager', 'Finance', 'Developer']) || Auth::user()?->isDeveloper())
                         <li class="menu-item {{ request()->is('finance/security*') ? 'active' : '' }}">
                             <a href="{{ route('finance.security.manage') }}" class="menu-link">
                                 <div data-i18n="Security">Security</div>
@@ -2561,7 +2561,7 @@
                     @endif
                 </a>
             </li>
-        @elseif (auth::user()?->role == 'Sales Manager')
+        @elseif (Auth::user()?->role == 'Sales Manager')
             <!-- Dashboards -->
             <li class="menu-item {{ request()->is('/') ? 'active' : '' }}">
                 <a href="{{ url('/') }}" class="menu-link">
@@ -2737,7 +2737,7 @@
                     @endif
                 </a>
             </li>
-        @elseif (auth::user()?->role == 'Project Manager')
+        @elseif (Auth::user()?->role == 'Project Manager')
             <!-- Dashboards -->
             <li class="menu-item {{ request()->is('/') ? 'active' : '' }}">
                 <a href="{{ url('/') }}" class="menu-link">
@@ -2857,8 +2857,8 @@
             </li>
 
             @php
-                $isMailboxConfigured = auth::user()?->isDeveloper() || (!empty(auth::user()?->mailSetting?->smtp_username));
-                $unreadInboxCount = $isMailboxConfigured ? (auth::user()?->mailboxMessages()->where('folder', 'inbox')->where('is_read', false)->count() ?? 0) : 0;
+                $isMailboxConfigured = Auth::user()?->isDeveloper() || (!empty(Auth::user()?->mailSetting?->smtp_username));
+                $unreadInboxCount = $isMailboxConfigured ? (Auth::user()?->mailboxMessages()->where('folder', 'inbox')->where('is_read', false)->count() ?? 0) : 0;
             @endphp
             @if ($isMailboxConfigured)
             <li class="menu-item {{ request()->is('sales/mailbox*') ? 'active' : '' }}">
@@ -2971,7 +2971,7 @@
             </li>
         @endif
 
-        @if (auth::user()?->isDeveloper())
+        @if (Auth::user()?->isDeveloper())
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Developer Tools</span>
             </li>
@@ -2990,7 +2990,7 @@
             </li>
         @endif
 
-        @if (auth::user()?->role == 'Guest')
+        @if (Auth::user()?->role == 'Guest')
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Daily Project Reports</span>
             </li>
