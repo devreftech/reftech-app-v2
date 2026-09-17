@@ -60,16 +60,17 @@ class ProductOutController extends Controller
         return view('pages.warehouse.product-out.form', compact('product'));
     }
 
-    // Format: 001-P/BK/VIII/2026 — sama polanya dengan No. Product In (BM), cuma
-    // BM diganti BK (Barang Keluar) biar sekilas kebaca beda dokumen masuk/keluar.
-    // Nomor urut per bulan, gak lagi dibedain per gudang (BDG/BKS).
-    private function generateNoProductOut(string $warehouse = 'BDG'): string
+    // Format: 001-P/BK/VIII/2026 (Reftech) atau 001-P/BK-KII/VIII/2026 (Kojisha)
+    public function generateNoProductOut(string $warehouse = 'BDG', string $flag = 'Reftech'): string
     {
         $now = now();
         $year = $now->format('Y');
         $romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
         $roman = $romanMonths[(int) $now->format('n') - 1];
-        $suffix = "-P/BK/{$roman}/{$year}";
+        
+        $isKojisha = strtolower($flag) === 'kojisha';
+        $prefixCode = $isKojisha ? 'BK-KII' : 'BK';
+        $suffix = "-P/{$prefixCode}/{$roman}/{$year}";
 
         $last = ProductOut::where('no_product_out', 'like', '%' . $suffix)
             ->orderByDesc('no_product_out')
@@ -107,9 +108,12 @@ class ProductOutController extends Controller
         ];
         // dd($request->all());
         $this->validate($request, $rule, $message);
+        
+        $flag = $request->flag ?? 'Reftech';
         // Masukan Data ke Tabel Product Out
         $productOut = new ProductOut();
-        $productOut->no_product_out = $this->generateNoProductOut($request->warehouse[0] ?? 'BDG');
+        $productOut->flag = $flag;
+        $productOut->no_product_out = $this->generateNoProductOut($request->warehouse[0] ?? 'BDG', $flag);
         $productOut->id_user = Auth::user()->id;
         $productOut->invoice = $request->invoice;
         $productOut->po = $request->po;
@@ -273,8 +277,12 @@ class ProductOutController extends Controller
         // dd($request->all());
         $this->validate($request, $rule, $message);
         // Masukan Data ke Tabel Product Out
+        $invoiceObj = Invoice::where('no_invoice', $request->invoice)->orWhere('id', $request->invoice)->first();
+        $flag = $request->flag ?? ($invoiceObj?->flag ?? 'Reftech');
+
         $productOut = new ProductOut();
-        $productOut->no_product_out = $this->generateNoProductOut($request->warehouse[0] ?? 'BDG');
+        $productOut->flag = $flag;
+        $productOut->no_product_out = $this->generateNoProductOut($request->warehouse[0] ?? 'BDG', $flag);
         $productOut->id_user = Auth::user()->id;
         $productOut->invoice = $request->invoice;
         $productOut->po = $request->po;

@@ -547,7 +547,6 @@ class OverviewService
             $legacyItems = $legacyQuery->select([
                 'quotation.id',
                 'quotation.no_quote',
-                'quotation.no_po',
                 'client.company',
                 'quotation.po_date as date',
                 'quotation.nett as nominal',
@@ -557,7 +556,9 @@ class OverviewService
                 return [
                     'id' => $q->id,
                     'no_quote' => $q->no_quote ?? '-',
-                    'no_po' => $q->no_po ?? '-',
+                    // Legacy (sparepart) quotations never had a separate PO number field —
+                    // the quote number itself is what's referenced as the PO.
+                    'no_po' => $q->no_quote ?? '-',
                     'company' => $q->company ?? '-',
                     'date' => $q->date ? Carbon::parse($q->date)->format('d/m/Y') : '-',
                     'nominal' => (float) ($q->nominal ?? 0),
@@ -572,7 +573,7 @@ class OverviewService
             $smartItems = $uqQuery->select([
                 'unit_quotation.id',
                 'unit_quotation.no_quote',
-                'unit_quotation.no_po',
+                'unit_quotation.po_number',
                 'unit_quotation.type',
                 'client.company',
                 'unit_quotation.po_received as date',
@@ -584,7 +585,7 @@ class OverviewService
                 return [
                     'id' => $uq->id,
                     'no_quote' => $uq->no_quote ?? '-',
-                    'no_po' => $uq->no_po ?? '-',
+                    'no_po' => $uq->po_number ?? ($uq->no_quote ?? '-'),
                     'company' => $uq->company ?? '-',
                     'date' => $uq->date ? Carbon::parse($uq->date)->format('d/m/Y') : '-',
                     'nominal' => (float) ($uq->nominal ?? 0),

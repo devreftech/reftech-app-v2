@@ -39,9 +39,11 @@ if (Auth::check()) {
                 ORDER BY sh.created_at DESC LIMIT 1) AS tip,
                uq.type,
                'unit' AS row_type,
-               1 AS is_draft
+               1 AS is_draft,
+               cp.name AS plant_name
         FROM unit_quotation uq
         LEFT JOIN client c2 ON c2.id = NULLIF(uq.id_client,'')
+        LEFT JOIN client_plants cp ON cp.id = NULLIF(uq.id_plant,'')
         WHERE uq.id_sales = $userId AND uq.is_draft = 1 AND (uq.is_latest = 1 OR uq.is_latest IS NULL)$yearFilterU
         ORDER BY uq.updated_at DESC, uq.date DESC";
 

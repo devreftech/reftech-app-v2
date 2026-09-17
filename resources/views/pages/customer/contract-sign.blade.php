@@ -987,7 +987,9 @@
                                                 <div class="spec-grid">
                                                     @foreach ($specs as $field)
                                                         @if ($field === 'unit') @continue @endif
-                                                        @php $val = $item->unit->$field ?? null; @endphp
+                                                        @php
+                                                            $val = ($field === 'type_unit') ? ($item->unit->formatted_type ?: $item->unit->type_unit) : ($item->unit->$field ?? null);
+                                                        @endphp
                                                         @if ($val && isset($specLabels[$field]))
                                                             <div>
                                                                 <span style="color:#64748b;">{{ $specLabels[$field] }}:</span>

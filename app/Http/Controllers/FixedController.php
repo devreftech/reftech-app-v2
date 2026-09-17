@@ -447,19 +447,18 @@ class FixedController extends Controller
     }
 
     /**
-     * Set/ubah harga jual unit second — khusus Admin. Harga ini yang dipakai
-     * sebagai sumber utama harga saat unit ditawarkan di /unit maupun dipilih
-     * di form Quotation Unit (lihat /db/fixed-asset/search), menggantikan
-     * fallback ke Catalog Unit yang sifatnya per-spek (bukan per-unit fisik).
+     * Set/ubah harga unit (harga jual, rental per hari, rental per bulan) — khusus Admin.
      */
-    public function updateHargaJual(Request $request, $id)
+    public function updatePricing(Request $request, $id)
     {
         if (Auth::user()->role != 'Admin') {
-            abort(403, 'Hanya Admin yang bisa mengubah harga jual unit ini.');
+            abort(403, 'Hanya Admin yang bisa mengubah pengaturan harga unit ini.');
         }
 
         $request->validate([
-            'harga_jual' => 'required|numeric|min:0',
+            'harga_jual'         => 'nullable|numeric|min:0',
+            'harga_rental_hari'  => 'nullable|numeric|min:0',
+            'harga_rental_bulan' => 'nullable|numeric|min:0',
         ]);
 
         $fixed = FixedAsset::find($id);
@@ -467,10 +466,24 @@ class FixedController extends Controller
             return response()->json(['error' => 'Unit tidak ditemukan'], 404);
         }
 
-        $fixed->harga_jual = $request->harga_jual;
+        if ($request->has('harga_jual')) {
+            $fixed->harga_jual = $request->harga_jual ?: null;
+        }
+        if ($request->has('harga_rental_hari')) {
+            $fixed->harga_rental_hari = $request->harga_rental_hari ?: null;
+        }
+        if ($request->has('harga_rental_bulan')) {
+            $fixed->harga_rental_bulan = $request->harga_rental_bulan ?: null;
+        }
+
         $fixed->save();
 
-        return redirect('/unit-acquisition/' . $id)->with('success', 'Harga jual unit berhasil diperbarui');
+        return redirect('/unit-acquisition/' . $id)->with('success', 'Pengaturan harga jual & rental unit berhasil diperbarui.');
+    }
+
+    public function updateHargaJual(Request $request, $id)
+    {
+        return $this->updatePricing($request, $id);
     }
 
     /**

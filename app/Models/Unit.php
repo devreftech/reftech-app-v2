@@ -15,6 +15,10 @@ class Unit extends Model
         'created_at',
         'updated_at'
     ];
+
+    protected $appends = [
+        'formatted_type',
+    ];
     protected $fillable = [
         'sku',
         'brand',
@@ -74,5 +78,28 @@ class Unit extends Model
     public function catalogUnit()
     {
         return $this->hasOne(CatalogUnit::class, 'id_unit');
+    }
+
+    public function getFormattedTypeAttribute()
+    {
+        $type = trim($this->type_unit ?? '');
+        $speed = trim($this->speed_type ?? '');
+
+        if (preg_match('/^fix(ed)?\s*speed$/i', $speed)) {
+            $speed = 'Fixed Speed';
+        } elseif (preg_match('/^variable\s*speed$/i', $speed)) {
+            $speed = 'Variable Speed';
+        }
+
+        if (stripos($type, 'oil-injected') !== false) {
+            $type = 'Oil-Injected';
+        } elseif (stripos($type, 'oil-free') !== false) {
+            $type = 'Oil-Free';
+        }
+
+        if ($type !== '' && $speed !== '') {
+            return "{$type} {$speed}";
+        }
+        return $type !== '' ? $type : $speed;
     }
 }

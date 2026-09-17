@@ -427,52 +427,97 @@
                     </h6>
                 </div>
                 <div class="card-body p-4">
-                    @if (in_array(Auth::user()->role, ['Admin', 'Support']))
-                        {{-- Admin / Support Provide & Assign Form --}}
-                        <form action="{{ route('add_sales.prospect', $prospect->id) }}" method="POST">
-                            @csrf
-                            <label class="form-label fw-bold text-dark small mb-2 text-uppercase" style="letter-spacing: 0.5px;">Status Penugasan Prospek</label>
-                            <div class="row g-2 mb-3">
-                                <div class="col-6">
-                                    <div class="form-check custom-option custom-option-icon {{ @$prospect->provide == '1' ? 'checked' : '' }} {{ @$prospect->quotation ? 'disabled' : '' }} p-2 rounded border">
-                                        <label class="form-check-label custom-option-content" for="provideCheck1">
-                                            <span class="custom-option-body text-center">
-                                                <i class="mdi mdi-file-check-outline fs-4 text-success mb-1"></i>
-                                                <span class="custom-option-title d-block small fw-bold">Provided</span>
-                                            </span>
-                                            <input name="provideCheck" class="form-check-input check-provide" type="radio" value="1" id="provideCheck1" {{ @$prospect->provide == '1' ? 'checked' : '' }} {{ @$prospect->quotation ? 'disabled' : '' }}>
-                                        </label>
+                    @php
+                        $canAssignProspect = (Auth::id() == 5 || (Auth::user() && method_exists(Auth::user(), 'isDeveloper') && Auth::user()->isDeveloper()) || (Auth::user() && Auth::user()->getRawOriginal('role') === 'Developer'));
+                    @endphp
+                    @if (in_array(Auth::user()->role, ['Admin', 'Support', 'Developer']) || (Auth::user() && method_exists(Auth::user(), 'isDeveloper') && Auth::user()->isDeveloper()))
+                        @if ($canAssignProspect)
+                            {{-- Admin Angel Irene (ID: 5) & Developer Provide & Assign Form --}}
+                            <form action="{{ route('add_sales.prospect', $prospect->id) }}" method="POST">
+                                @csrf
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <label class="form-label fw-bold text-dark small mb-0 text-uppercase" style="letter-spacing: 0.5px;">Status Penugasan Prospek</label>
+                                    <span class="badge bg-label-primary rounded-pill small" style="font-size: 0.7rem;">{{ (Auth::user() && method_exists(Auth::user(), 'isDeveloper') && Auth::user()->isDeveloper()) ? 'Otoritas Developer' : 'Otoritas Admin' }}</span>
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <div class="form-check custom-option custom-option-icon {{ @$prospect->provide == '1' ? 'checked' : '' }} {{ @$prospect->quotation ? 'disabled' : '' }} p-2 rounded border">
+                                            <label class="form-check-label custom-option-content" for="provideCheck1">
+                                                <span class="custom-option-body text-center">
+                                                    <i class="mdi mdi-file-check-outline fs-4 text-success mb-1"></i>
+                                                    <span class="custom-option-title d-block small fw-bold">Provided</span>
+                                                </span>
+                                                <input name="provideCheck" class="form-check-input check-provide" type="radio" value="1" id="provideCheck1" {{ @$prospect->provide == '1' ? 'checked' : '' }} {{ @$prospect->quotation ? 'disabled' : '' }}>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="form-check custom-option custom-option-icon {{ @$prospect->provide == '0' ? 'checked' : '' }} {{ @$prospect->quotation ? 'disabled' : '' }} p-2 rounded border">
+                                            <label class="form-check-label custom-option-content" for="provideCheck2">
+                                                <span class="custom-option-body text-center">
+                                                    <i class="mdi mdi-file-alert-outline fs-4 text-danger mb-1"></i>
+                                                    <span class="custom-option-title d-block small fw-bold">No Provide</span>
+                                                </span>
+                                                <input name="provideCheck" class="form-check-input check-no-provide" type="radio" value="0" id="provideCheck2" {{ @$prospect->provide == '0' ? 'checked' : '' }} {{ @$prospect->quotation ? 'disabled' : '' }}>
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-6">
-                                    <div class="form-check custom-option custom-option-icon {{ @$prospect->provide == '0' ? 'checked' : '' }} {{ @$prospect->quotation ? 'disabled' : '' }} p-2 rounded border">
-                                        <label class="form-check-label custom-option-content" for="provideCheck2">
-                                            <span class="custom-option-body text-center">
-                                                <i class="mdi mdi-file-alert-outline fs-4 text-danger mb-1"></i>
-                                                <span class="custom-option-title d-block small fw-bold">No Provide</span>
-                                            </span>
-                                            <input name="provideCheck" class="form-check-input check-no-provide" type="radio" value="0" id="provideCheck2" {{ @$prospect->provide == '0' ? 'checked' : '' }} {{ @$prospect->quotation ? 'disabled' : '' }}>
-                                        </label>
-                                    </div>
+
+                                <div class="form-floating form-floating-outline form-sales mb-3" {{ @$prospect->provide == '1' ? '' : 'hidden' }}>
+                                    <select class="form-select" id="selectSales" name="sales" {{ @$prospect->quotation ? 'disabled' : '' }}>
+                                        <option value="" disabled>-- Pilih Sales --</option>
+                                        @foreach ($sales as $user)
+                                            <option value="{{ $user->id }}" {{ @$prospect->id_sales == $user->id ? 'selected' : '' }}>
+                                                {{ $user->id == 38 ? 'Regita ( Sales Project )' : $user->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <label for="selectSales">Tugaskan ke Sales</label>
                                 </div>
-                            </div>
 
-                            <div class="form-floating form-floating-outline form-sales mb-3" {{ @$prospect->provide == '1' ? '' : 'hidden' }}>
-                                <select class="form-select" id="selectSales" name="sales" {{ @$prospect->quotation ? 'disabled' : '' }}>
-                                    <option value="" disabled>-- Pilih Sales --</option>
-                                    @foreach ($sales as $user)
-                                        <option value="{{ $user->id }}" {{ @$prospect->id_sales == $user->id ? 'selected' : '' }}>
-                                            {{ $user->id == 38 ? 'Regita ( Sales Project )' : $user->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <label for="selectSales">Tugaskan ke Sales</label>
-                            </div>
+                                <button type="submit" class="btn btn-primary w-100 waves-effect waves-light shadow-sm">
+                                    <i class="mdi mdi-content-save-outline me-1"></i> Simpan Penugasan
+                                </button>
+                            </form>
+                        @else
+                            {{-- Read-Only Assignment Status for other Admins & Support --}}
+                            <div class="p-3 bg-light rounded-3 mb-3 border">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="text-muted small text-uppercase fw-semibold" style="font-size: 0.72rem; letter-spacing: 0.5px;">Status Penugasan:</span>
+                                    @if (@$prospect->provide == '1' && @$prospect->id_sales)
+                                        <span class="badge bg-label-success rounded-pill px-2 py-1 small">
+                                            <i class="mdi mdi-check-circle-outline me-1"></i>Provided
+                                        </span>
+                                    @elseif (@$prospect->provide == '0')
+                                        <span class="badge bg-label-danger rounded-pill px-2 py-1 small">
+                                            <i class="mdi mdi-close-circle-outline me-1"></i>No Provide
+                                        </span>
+                                    @else
+                                        <span class="badge bg-label-warning rounded-pill px-2 py-1 small">
+                                            <i class="mdi mdi-clock-outline me-1"></i>Belum Ditugaskan
+                                        </span>
+                                    @endif
+                                </div>
 
-                            <button type="submit" class="btn btn-primary w-100 waves-effect waves-light shadow-sm">
-                                <i class="mdi mdi-content-save-outline me-1"></i> Simpan Penugasan
-                            </button>
-                        </form>
+                                <div class="mb-2">
+                                    <span class="text-muted small d-block">Sales In Charge:</span>
+                                    <span class="fw-bold text-heading fs-6">
+                                        <i class="mdi mdi-account-tie-outline text-primary me-1"></i>
+                                        {{ (@$client->sales->id == 38 || @$prospect->sales->id == 38) ? 'Regita ( Sales Project )' : ($client->sales->name ?? ($prospect->sales->name ?? 'Belum Ditugaskan')) }}
+                                    </span>
+                                </div>
+
+                                @if (!@$prospect->id_sales && @$prospect->provide != '0')
+                                    <div class="alert alert-warning mb-0 p-2 mt-3 d-flex align-items-start gap-2 border-0 rounded-2" style="font-size: 0.8rem;">
+                                        <i class="mdi mdi-lock-outline fs-5 text-warning flex-shrink-0 mt-0"></i>
+                                        <div>
+                                            Penugasan prospek baru ke sales dikelola khusus oleh <strong>Admin (Angel Irene)</strong>.
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
 
                         @if (Auth::user()->role == 'Support')
                             <div class="pt-3 mt-3 border-top">

@@ -110,7 +110,7 @@
                                             <tr>
                                                 <th>Company</th>
                                                 <th>R/U</th>
-                                                <th>Status</th>
+                                                <th class="text-nowrap">Status</th>
                                                 <th>Area</th>
                                                 <th>Note</th>
                                                 <th>Last Contact</th>
@@ -130,7 +130,7 @@
                                             <tr>
                                                 <th>Company</th>
                                                 <th>R/U</th>
-                                                <th>Status</th>
+                                                <th class="text-nowrap">Status</th>
                                                 <th>Area</th>
                                                 <th>Note</th>
                                                 <th>Last Contact</th>
@@ -150,7 +150,7 @@
                                             <tr>
                                                 <th>Company</th>
                                                 <th>R/U</th>
-                                                <th>Status</th>
+                                                <th class="text-nowrap">Status</th>
                                                 <th>Area</th>
                                                 <th>Note</th>
                                                 <th>Last Contact</th>

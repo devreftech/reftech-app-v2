@@ -51,39 +51,46 @@
         </div>
 
         {{-- HEADER CLIENT & DETAILS --}}
-        <div class="card mb-4 border-0 shadow-sm">
-            <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center">
-                <h6 class="card-title mb-0 fw-bold text-dark">
-                    <i class="mdi mdi-domain me-2 text-primary fs-5"></i> Customer Information & Quotation Details
-                </h6>
-            </div>
-            <div class="card-body pt-4">
-                <div class="row g-3">
-                    {{-- Sub Header: Customer & Alamat --}}
-                    <div class="col-12">
-                        <div class="d-flex align-items-center text-muted small fw-bold text-uppercase mb-1" style="letter-spacing:.5px;">
-                            <i class="mdi mdi-account-group-outline me-1"></i> Customer & Delivery Address
+        <div class="card mb-4 border shadow-xs" style="border-radius: 12px; border-color: #e6e8ec !important; background: #ffffff;">
+            {{-- Section 1: Customer & Delivery Address --}}
+            <div class="card-header bg-white border-bottom py-3 px-4" style="border-color: #f0f2f5 !important;">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2.5">
+                        <div class="avatar avatar-sm bg-label-primary rounded-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                            <i class="mdi mdi-domain fs-4"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark" style="font-size: 14.5px;">Customer & Delivery Information</h6>
+                            <small class="text-muted" style="font-size: 11.5px;">Pilih perusahaan client, kontak penanggung jawab (PIC), dan alamat tujuan pengiriman</small>
                         </div>
                     </div>
-                    @if ($isManager ?? false)
-                        <div class="col-md-4">
-                            <!-- Mode Atribusi Penjualan (Sales Project vs Delegated) -->
-                            <div class="p-2.5 mb-2 rounded-3 border bg-white shadow-none">
+                    <span class="badge bg-label-primary rounded-pill px-3 py-1.5 fw-semibold" style="font-size: 11px;">
+                        <i class="mdi mdi-account-group-outline me-1"></i> Customer Data
+                    </span>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                @if ($isManager ?? false)
+                    {{-- Atribusi Penjualan & Filter Client Toolbar --}}
+                    <div class="p-3 mb-4 rounded-3 border" style="background: linear-gradient(135deg, #f8faff 0%, #f4f6fb 100%); border-color: #dbe4ff !important;">
+                        <div class="row g-3 align-items-center">
+                            <div class="col-lg-6 col-12 border-end-lg" style="border-color: #dbe4ff !important;">
                                 <div class="d-flex align-items-center justify-content-between mb-1.5">
-                                    <span class="text-muted small fw-bold text-uppercase" style="font-size: 10.5px; letter-spacing: 0.5px;">
+                                    <span class="text-muted small fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">
                                         <i class="mdi mdi-briefcase-check-outline text-primary me-1"></i> Atribusi Penjualan (Omset PO)
                                     </span>
                                 </div>
                                 <div class="d-flex flex-wrap align-items-center gap-3">
                                     <div class="form-check form-check-inline mb-0">
                                         <input class="form-check-input" type="radio" name="quote_owner_type" id="owner_project" value="project" checked>
-                                        <label class="form-check-label fw-semibold text-dark" for="owner_project" style="font-size: 12px; cursor: pointer;">
+                                        <label class="form-check-label fw-semibold text-dark" for="owner_project" style="font-size: 12.5px; cursor: pointer;">
                                             <i class="mdi mdi-domain text-primary me-0.5"></i> Sales Project
                                         </label>
                                     </div>
                                     <div class="form-check form-check-inline mb-0">
                                         <input class="form-check-input" type="radio" name="quote_owner_type" id="owner_sales" value="sales">
-                                        <label class="form-check-label fw-semibold text-dark" for="owner_sales" style="font-size: 12px; cursor: pointer;">
+                                        <label class="form-check-label fw-semibold text-dark" for="owner_sales" style="font-size: 12.5px; cursor: pointer;">
                                             <i class="mdi mdi-account-arrow-right text-warning me-0.5"></i> Delegasikan ke Sales
                                         </label>
                                     </div>
@@ -94,20 +101,19 @@
                                 </div>
                             </div>
 
-                            <!-- Mode Filter Sumber Client -->
-                            <div class="p-2 mb-2 rounded-3 border bg-light-subtle shadow-none">
-                                <div class="d-flex align-items-center justify-content-between mb-1">
-                                    <span class="text-muted small fw-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px;">
+                            <div class="col-lg-6 col-12">
+                                <div class="d-flex align-items-center justify-content-between mb-1.5">
+                                    <span class="text-muted small fw-bold text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">
                                         <i class="mdi mdi-filter-variant text-secondary me-1"></i> Filter Pencarian Client
                                     </span>
                                     <div class="d-flex align-items-center gap-2">
                                         <div class="form-check form-check-inline mb-0">
                                             <input class="form-check-input" type="radio" name="client_source_type" id="src_by_sales" value="sales" checked>
-                                            <label class="form-check-label small text-dark" for="src_by_sales" style="font-size: 11px; cursor: pointer;">By Sales</label>
+                                            <label class="form-check-label small text-dark fw-medium" for="src_by_sales" style="font-size: 11.5px; cursor: pointer;">By Sales</label>
                                         </div>
                                         <div class="form-check form-check-inline mb-0">
                                             <input class="form-check-input" type="radio" name="client_source_type" id="src_self_leads" value="self_leads">
-                                            <label class="form-check-label small text-dark" for="src_self_leads" style="font-size: 11px; cursor: pointer;">Leads Sendiri</label>
+                                            <label class="form-check-label small text-dark fw-medium" for="src_self_leads" style="font-size: 11.5px; cursor: pointer;">Leads Sendiri</label>
                                         </div>
                                     </div>
                                 </div>
@@ -120,132 +126,176 @@
                                         @endforeach
                                     </select>
                                 </div>
-                            </div>
 
-                            <div id="self-leads-banner" class="alert alert-subtle-success py-2 px-3 mb-0 rounded-3 d-none align-items-center gap-2" style="font-size: 12px; background-color: #e8fadf; border: 1px solid #71dd37; color: #2e6815;">
-                                <i class="mdi mdi-check-circle-outline fs-5 text-success"></i>
-                                <div>
-                                    <strong class="d-block" style="font-size: 12px;">Mode Leads Sendiri Aktif</strong>
-                                    <span style="font-size: 11px; color: #43762b;">Memuat data leads yang diinput sendiri oleh Anda.</span>
+                                <div id="self-leads-banner" class="alert alert-subtle-success py-1.5 px-2.5 mb-0 rounded-2 d-none align-items-center gap-2 mt-1" style="font-size: 11.5px; background-color: #e8fadf; border: 1px solid #71dd37; color: #2e6815;">
+                                    <i class="mdi mdi-check-circle-outline fs-6 text-success"></i>
+                                    <div>
+                                        <strong style="font-size: 11.5px;">Mode Leads Sendiri Aktif</strong>
+                                        <span class="d-block" style="font-size: 10.5px; color: #43762b;">Memuat data leads yang diinput sendiri oleh Anda.</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    @endif
-                    <div class="col-md-4">
-                        <div class="form-floating form-floating-outline">
-                            <select class="select2 form-select" name="id_client" id="client-select">
-                                @if (isset($selectedClientModel) && $selectedClientModel)
-                                    <option value="{{ $selectedClientModel->id }}" data-role="{{ $selectedClientModel->role }}" selected>
-                                        {{ $selectedClientModel->company }}
-                                    </option>
-                                @else
-                                    <option value="">-- Ketik minimal 2 huruf nama client --</option>
-                                    @foreach ($clients as $c)
-                                        <option value="{{ $c->id }}" data-role="{{ $c->role }}" {{ (old('id_client', $selectedClient ?? '') == $c->id) ? 'selected' : '' }}>{{ $c->company }}</option>
-                                    @endforeach
-                                @endif
-                            </select>
-                            <label>Client *</label>
-                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="form-floating form-floating-outline">
-                            <select class="form-select" name="id_pic" id="pic-select" disabled>
-                                <option value="">-- Select Client first --</option>
-                            </select>
-                            <label>PIC / Contact *</label>
-                        </div>
+                @endif
+
+                <div class="row g-3">
+                    <div class="col-lg-4 col-md-5 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="client-select">
+                            <i class="mdi mdi-domain text-primary me-1"></i> Perusahaan / Client <span class="text-danger">*</span>
+                        </label>
+                        <select class="select2 form-select" name="id_client" id="client-select">
+                            @if (isset($selectedClientModel) && $selectedClientModel)
+                                <option value="{{ $selectedClientModel->id }}" data-role="{{ $selectedClientModel->role }}" selected>
+                                    {{ $selectedClientModel->company }}
+                                </option>
+                            @else
+                                <option value="">-- Ketik minimal 2 huruf nama client --</option>
+                                @foreach ($clients as $c)
+                                    <option value="{{ $c->id }}" data-role="{{ $c->role }}" {{ (old('id_client', $selectedClient ?? '') == $c->id) ? 'selected' : '' }}>{{ $c->company }}</option>
+                                @endforeach
+                            @endif
+                        </select>
                     </div>
-                    <div class="col-md-4">
-                        <div class="form-floating form-floating-outline">
-                            <select class="form-select" id="address-select" disabled>
-                                <option value="">-- Select Client first --</option>
-                            </select>
-                            <label>Address / Plant</label>
-                        </div>
+
+                    <div class="col-lg-3 col-md-3 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="pic-select">
+                            <i class="mdi mdi-account-tie-outline text-primary me-1"></i> PIC / Contact Person <span class="text-danger">*</span>
+                        </label>
+                        <select class="select2 form-select" name="id_pic" id="pic-select" disabled>
+                            <option value="">-- Select Client first --</option>
+                        </select>
+                    </div>
+
+                    <div class="col-lg-5 col-md-4 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="address-select">
+                            <i class="mdi mdi-map-marker-radius-outline text-primary me-1"></i> Address / Plant Destination
+                        </label>
+                        <select class="select2 form-select" id="address-select" disabled>
+                            <option value="">-- Select Client first --</option>
+                        </select>
                         <input type="hidden" name="id_plant" id="input-id-plant" value="">
                         <input type="hidden" name="address" id="input-address-hidden" value="">
+                        
+                        <div id="address-preview-card" class="mt-2 p-2 px-3 rounded border d-none" style="background-color: #f8f9fa; border-color: #e5e7eb !important;">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="mdi mdi-map-marker-radius text-primary fs-5 mt-0" style="line-height: 1.2;"></i>
+                                <div class="flex-grow-1" style="min-width: 0;">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="badge bg-label-primary" id="address-preview-badge">Office / Factory</span>
+                                    </div>
+                                    <div class="text-dark small fw-normal" id="address-preview-text" style="font-size: 0.8rem; line-height: 1.35; word-break: break-word;">-</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
                     <div class="col-md-12" id="manual-address-wrapper" style="display: none;">
-                        <div class="form-floating form-floating-outline">
-                            <textarea class="form-control" id="input-address-manual" rows="2" style="height: 60px;" placeholder="Enter custom address..."></textarea>
-                            <label>Custom Address</label>
+                        <div class="p-3 rounded-3 border bg-light-subtle" style="border-style: dashed !important; border-color: #7367f0 !important;">
+                            <label class="form-label fw-semibold text-primary small mb-1" for="input-address-manual">
+                                <i class="mdi mdi-pencil-outline me-1"></i> Alamat Pengiriman Khusus (Custom Address)
+                            </label>
+                            <textarea class="form-control" id="input-address-manual" rows="2" style="height: 65px;" placeholder="Masukkan alamat lengkap pengiriman khusus..."></textarea>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Section 2: Quotation Parameters & Specifications --}}
+            <div class="card-header bg-light-subtle border-top border-bottom py-3 px-4" style="border-color: #e6e8ec !important;">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2.5">
+                        <div class="avatar avatar-sm bg-label-info rounded-3 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                            <i class="mdi mdi-file-document-outline fs-4"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-dark" style="font-size: 14.5px;">Quotation Parameters & Specifications</h6>
+                            <small class="text-muted" style="font-size: 11.5px;">Atur tanggal penawaran, masa berlaku, kategori spesifikasi, dan deskripsi proyek</small>
+                        </div>
+                    </div>
+                    <span class="badge bg-label-info rounded-pill px-3 py-1.5 fw-semibold" style="font-size: 11px;">
+                        <i class="mdi mdi-cog-outline me-1"></i> Parameters
+                    </span>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-lg-3 col-md-6 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="input-date">
+                            <i class="mdi mdi-calendar-range text-primary me-1"></i> Tanggal Penawaran
+                        </label>
+                        <input type="date" class="form-control" id="input-date" name="date" value="{{ date('Y-m-d') }}">
                     </div>
 
-                    <div class="col-12">
-                        <hr class="my-2">
-                        <div class="d-flex align-items-center text-muted small fw-bold text-uppercase mb-1" style="letter-spacing:.5px;">
-                            <i class="mdi mdi-file-document-outline me-1"></i> Quotation Parameters & Specifications
+                    <div class="col-lg-3 col-md-6 col-12">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <label class="form-label fw-semibold text-dark small mb-0" for="input-expired-date">
+                                <i class="mdi mdi-calendar-clock text-warning me-1"></i> Expired Quotation
+                            </label>
+                            <span class="badge bg-label-warning px-1.5 py-0" style="font-size: 9.5px;">Auto +1 Bulan</span>
                         </div>
+                        <input type="date" class="form-control bg-light-subtle" id="input-expired-date" name="expired_date"
+                            value="{{ date('Y-m-d', strtotime('+1 month')) }}" readonly
+                            title="Auto-calculated: 1 month from quotation date">
                     </div>
 
-                    <div class="col-md-2">
-                        <div class="form-floating form-floating-outline">
-                            <input type="date" class="form-control" id="input-date" name="date" value="{{ date('Y-m-d') }}">
-                            <label>Date</label>
-                        </div>
+                    <div class="col-lg-3 col-md-6 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="select-type">
+                            <i class="mdi mdi-tag-outline text-primary me-1"></i> Tipe Penawaran
+                        </label>
+                        <select class="form-select" id="select-type" name="type">
+                            <option value="" disabled>-- Type --</option>
+                            <option value="Unit">Unit</option>
+                            <option value="Rental">Rental</option>
+                            <option value="Project" selected>Project</option>
+                            <option value="Parts">Parts</option>
+                            <option value="Service">Service</option>
+                            <option value="Piping">Piping</option>
+                            <option value="Air Audit">Air Audit</option>
+                            <option value="General Check / Visit">General Check / Visit</option>
+                            <option value="HVAC">HVAC</option>
+                            <option value="Fire System">Fire System</option>
+                        </select>
                     </div>
-                    <div class="col-md-2">
-                        <div class="form-floating form-floating-outline">
-                            <input type="date" class="form-control bg-light-subtle" id="input-expired-date" name="expired_date"
-                                value="{{ date('Y-m-d', strtotime('+1 month')) }}" readonly
-                                title="Auto-calculated: 1 month from quotation date">
-                            <label class="text-muted">Expired Quotation</label>
-                        </div>
+
+                    <div class="col-lg-3 col-md-6 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="select-week">
+                            <i class="mdi mdi-calendar-week text-primary me-1"></i> Periode Week
+                        </label>
+                        <select class="form-select" id="select-week" name="week">
+                            <option value="" disabled selected>-- Week --</option>
+                            <option value="1">Week 1</option>
+                            <option value="2">Week 2</option>
+                            <option value="3">Week 3</option>
+                            <option value="4">Week 4</option>
+                            <option value="5">Week 5</option>
+                        </select>
                     </div>
-                    <div class="col-md-2">
-                        <div class="form-floating form-floating-outline">
-                            <input type="text" class="form-control" name="no_pr" placeholder="No PR (optional)">
-                            <label>No PR <span class="text-muted small">(optional)</span></label>
-                        </div>
+
+                    <div class="col-lg-3 col-md-6 col-12" id="unit-condition-wrapper" style="display:none;">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="select-unit-condition">
+                            <i class="mdi mdi-certificate-outline text-success me-1"></i> Kondisi Unit
+                        </label>
+                        <select class="form-select" id="select-unit-condition" name="unit_condition">
+                            <option value="" disabled selected>-- Kondisi --</option>
+                            <option value="Baru">Unit Baru</option>
+                            <option value="Second">Unit Second</option>
+                        </select>
                     </div>
-                    <div class="col-md-4">
-                        <div class="form-floating form-floating-outline">
-                            <input type="text" class="form-control" name="title" placeholder="Title">
-                            <label>Title / Description</label>
-                        </div>
+
+                    <div class="col-lg-4 col-md-5 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="input-no-pr">
+                            <i class="mdi mdi-pound text-secondary me-1"></i> No PR <span class="text-muted small fw-normal">(Optional)</span>
+                        </label>
+                        <input type="text" class="form-control" id="input-no-pr" name="no_pr" placeholder="mis. PR-2026/09/001">
                     </div>
-                    <div class="col-md-2">
-                        <div class="form-floating form-floating-outline">
-                            <select class="form-select" id="select-type" name="type">
-                                <option value="" disabled>-- Type --</option>
-                                <option value="Unit">Unit</option>
-                                <option value="Rental">Rental</option>
-                                <option value="Project" selected>Project</option>
-                                <option value="Parts">Parts</option>
-                                <option value="Service">Service</option>
-                                <option value="Piping">Piping</option>
-                                <option value="Air Audit">Air Audit</option>
-                                <option value="General Check / Visit">General Check / Visit</option>
-                                <option value="HVAC">HVAC</option>
-                                <option value="Fire System">Fire System</option>
-                            </select>
-                            <label>Type</label>
-                        </div>
-                    </div>
-                    <div class="col-md-2" id="unit-condition-wrapper" style="display:none;">
-                        <div class="form-floating form-floating-outline">
-                            <select class="form-select" id="select-unit-condition" name="unit_condition">
-                                <option value="" disabled selected>-- Kondisi --</option>
-                                <option value="Baru">Unit Baru</option>
-                                <option value="Second">Unit Second</option>
-                            </select>
-                            <label>Kondisi Unit</label>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="form-floating form-floating-outline">
-                            <select class="form-select" id="select-week" name="week">
-                                <option value="" disabled selected>-- Week --</option>
-                                <option value="1">Week 1</option>
-                                <option value="2">Week 2</option>
-                                <option value="3">Week 3</option>
-                                <option value="4">Week 4</option>
-                                <option value="5">Week 5</option>
-                            </select>
-                            <label>Week</label>
-                        </div>
+
+                    <div class="col-lg-8 col-md-7 col-12">
+                        <label class="form-label fw-semibold text-dark small mb-1" for="input-title">
+                            <i class="mdi mdi-format-title text-primary me-1"></i> Judul / Deskripsi Proyek
+                        </label>
+                        <input type="text" class="form-control" id="input-title" name="title" placeholder="mis. Pengadaan & Instalasi Air Compressor Screw 55kW">
                     </div>
                 </div>
             </div>
@@ -265,6 +315,23 @@
         </div>
 
         {{-- MODAL: Load Template PM (Unit Global) --}}
+        <style>
+            .pm-load-level-btn {
+                font-weight: 600;
+                transition: all 0.2s ease;
+            }
+            .pm-load-level-btn.disabled, .pm-load-level-btn:disabled {
+                cursor: not-allowed !important;
+                pointer-events: none !important;
+                opacity: 0.45 !important;
+            }
+            .pm-load-level-btn.active {
+                background-color: #696cff !important;
+                border-color: #696cff !important;
+                color: #fff !important;
+                box-shadow: 0 3px 10px rgba(105, 108, 255, 0.35);
+            }
+        </style>
         <div class="modal fade" id="modal-load-pm-template" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
@@ -283,10 +350,13 @@
                         <div class="mb-2">
                             <label class="form-label small fw-semibold">Level PM</label>
                             <div class="d-flex flex-wrap gap-2" id="pm-load-level-group">
-                                <button type="button" class="btn btn-sm rounded-pill px-3 pm-load-level-btn" data-level="PM1">PM1</button>
-                                <button type="button" class="btn btn-sm rounded-pill px-3 pm-load-level-btn" data-level="PM2">PM2</button>
-                                <button type="button" class="btn btn-sm rounded-pill px-3 pm-load-level-btn" data-level="PM3">PM3</button>
-                                <button type="button" class="btn btn-sm rounded-pill px-3 pm-load-level-btn" data-level="PM4">PM4</button>
+                                <button type="button" class="btn btn-sm rounded-pill px-3 pm-load-level-btn btn-outline-secondary disabled opacity-50" data-level="PM1" disabled>PM1</button>
+                                <button type="button" class="btn btn-sm rounded-pill px-3 pm-load-level-btn btn-outline-secondary disabled opacity-50" data-level="PM2" disabled>PM2</button>
+                                <button type="button" class="btn btn-sm rounded-pill px-3 pm-load-level-btn btn-outline-secondary disabled opacity-50" data-level="PM3" disabled>PM3</button>
+                                <button type="button" class="btn btn-sm rounded-pill px-3 pm-load-level-btn btn-outline-secondary disabled opacity-50" data-level="PM4" disabled>PM4</button>
+                            </div>
+                            <div class="form-text text-muted mt-1" id="pm-load-level-helper" style="font-size: 11px;">
+                                <i class="mdi mdi-information-outline me-1"></i>Pilih unit di atas untuk mengaktifkan pilihan level PM yang tersedia.
                             </div>
                         </div>
                         <div id="pm-load-preview" class="small text-muted mt-3" style="display:none;"></div>
@@ -462,6 +532,19 @@
         </div>
     </div>
     {{-- TEMPLATES (hidden, cloned by JS) --}}
+    <datalist id="common-spec-keys">
+        <option value="Brand">
+        <option value="Model">
+        <option value="Power">
+        <option value="Air Capacity">
+        <option value="Max Pressure">
+        <option value="Voltage">
+        <option value="Cooling Method">
+        <option value="Condition">
+        <option value="Year">
+        <option value="Warranty">
+    </datalist>
+
     <template id="tmpl-unit-row">
         <div class="unit-row border-bottom p-3" data-type="unit">
             <input type="hidden" name="items[__IDX__][type]" value="unit">
@@ -469,6 +552,7 @@
             <input type="hidden" name="items[__IDX__][id_fixed_asset]" class="field-id-fixed-asset">
             <input type="hidden" name="items[__IDX__][id_equivalent]" class="field-id-equivalent">
             <input type="hidden" name="items[__IDX__][spec_visible]" class="field-spec-visible">
+            <textarea name="items[__IDX__][description]" class="field-description" style="display:none;"></textarea>
 
             <div class="d-flex align-items-center mb-2">
                 <div class="btn-drag-handle text-muted me-2" title="Geser (drag & drop) untuk memindahkan posisi">
@@ -494,6 +578,11 @@
                         value="rental">
                     <label class="form-check-label small">Rental</label>
                 </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input unit-source-radio" type="radio" name="unit_source___IDX__"
+                        value="other">
+                    <label class="form-check-label small">Other</label>
+                </div>
             </div>
 
             <div class="row g-2 align-items-start">
@@ -514,6 +603,10 @@
                             <option value="">Search Spare Part / Equivalent (PN / Brand / Name)...</option>
                         </select>
                     </div>
+                    <div class="unit-source-other" style="display:none;">
+                        <input type="text" class="form-control form-control-sm field-other-input"
+                            placeholder="Ketik Nama / Tipe Unit (Vendor Luar)...">
+                    </div>
                 </div>
                 <div class="col-md-1">
                     <input type="number" class="form-control form-control-sm text-center field-qty"
@@ -522,6 +615,10 @@
                 <div class="col-md-1">
                     <input type="text" class="form-control form-control-sm text-center field-info-qty"
                         name="items[__IDX__][info_qty]" value="Unit" readonly>
+                    <select class="form-select form-select-sm text-center field-info-qty-select px-1" style="display: none;">
+                        <option value="Days" selected>Days</option>
+                        <option value="Month">Month</option>
+                    </select>
                 </div>
                 <div class="col-md-2">
                     <input type="text" class="form-control form-control-sm text-end field-price rupiah-input"
@@ -557,13 +654,29 @@
                     placeholder="Item title (auto-filled, editable)">
             </div>
 
-            {{-- Spec Preview --}}
+            {{-- Spec Preview (Catalog Unit & Unit Second) --}}
             <div class="spec-preview mt-2 ms-1 ps-3 border-start border-2" style="display:none;">
                 <div class="spec-rows"></div>
                 <p class="text-muted small mb-0 mt-1">
                     <i class="mdi mdi-information-outline me-1"></i>
                     Click <kbd>×</kbd> on a spec to hide it from the quotation.
                 </p>
+            </div>
+
+            {{-- Manual Spec Section for Other --}}
+            <div class="other-spec-section mt-2 ms-1 ps-3 border-start border-2 border-primary" style="display:none;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="fw-semibold text-dark small" style="font-size: 11.5px;">
+                        <i class="mdi mdi-tune-vertical text-primary me-1"></i>Spesifikasi Unit (Manual Input):
+                    </span>
+                    <button type="button" class="btn btn-xs btn-outline-primary btn-add-other-spec py-0 px-2" style="font-size: 10.5px;">
+                        <i class="mdi mdi-plus me-1"></i>Tambah Spesifikasi
+                    </button>
+                </div>
+                <div class="other-spec-rows"></div>
+                <div class="text-muted small mt-1" style="font-size: 10.5px;">
+                    <i class="mdi mdi-information-outline me-1 text-secondary"></i>Spesifikasi akan ditampilkan rapi 2-kolom sejajar pada cetakan penawaran &amp; detail.
+                </div>
             </div>
 
             {{-- Spare Part Stock Preview --}}
@@ -732,10 +845,72 @@
                 </button>
             </div>
 
-            {{-- Summary (subtotal/diskon/tax/shipping/total) khusus opsi ini --}}
+            {{-- Summary (subtotal/diskon/trade-in/tax/shipping/total) khusus opsi ini --}}
             <div class="p-4 bg-light-subtle border-top">
-                <div class="row justify-content-end">
-                    <div class="col-lg-5 col-md-8 col-12">
+                <div class="row g-4 align-items-start">
+                    {{-- Left Column: Trade-In Unit Customer Card --}}
+                    <div class="col-lg-7 col-12">
+                        <div class="card border border-primary-subtle shadow-xs mb-0" style="border-radius: 8px; background: #ffffff;">
+                            <div class="card-header py-2.5 px-3 bg-light border-bottom d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="mdi mdi-swap-horizontal-bold text-primary fs-5"></i>
+                                    <span class="fw-bold text-heading" style="font-size: 13px;">Trade-In Unit Bekas Customer</span>
+                                </div>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input toggle-trade-in cursor-pointer" type="checkbox"
+                                        name="options[__OPT__][has_trade_in]" value="1" id="toggleTradeIn___OPT__">
+                                    <label class="form-check-label small fw-semibold text-muted ms-1" for="toggleTradeIn___OPT__">Aktifkan Trade-In</label>
+                                </div>
+                            </div>
+                            <div class="card-body p-3 trade-in-body" style="display: none;">
+                                <p class="text-muted small mb-2.5" style="font-size: 11px;">
+                                    <i class="mdi mdi-information-outline text-primary me-1"></i>Masukkan identitas unit bekas customer dan nilai kompensasi potongan harga.
+                                </p>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Brand Unit</label>
+                                        <input type="text" class="form-control form-control-sm trade-in-brand"
+                                            name="options[__OPT__][trade_in_brand]" placeholder="mis. Kaeser, Atlas Copco, Hitachi">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Model / Tipe</label>
+                                        <input type="text" class="form-control form-control-sm trade-in-model"
+                                            name="options[__OPT__][trade_in_model]" placeholder="mis. CS91, GA 22, OSP-15">
+                                    </div>
+                                </div>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Power / Kapasitas</label>
+                                        <input type="text" class="form-control form-control-sm trade-in-power"
+                                            name="options[__OPT__][trade_in_power]" placeholder="mis. 55 kW / 75 HP">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Serial Number (SN)</label>
+                                        <input type="text" class="form-control form-control-sm trade-in-sn"
+                                            name="options[__OPT__][trade_in_sn]" placeholder="mis. SN-982143">
+                                    </div>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1 text-primary" style="font-size: 11.5px;">Nilai Kompensasi / Potongan Trade-In (Rp) *</label>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text fw-bold text-primary">Rp</span>
+                                            <input type="text" class="form-control form-control-sm rupiah-input fw-bold text-end trade-in-price"
+                                                name="options[__OPT__][trade_in_price]" value="0" placeholder="0" autocomplete="off">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1" style="font-size: 11px;">Catatan / Kondisi Unit</label>
+                                        <input type="text" class="form-control form-control-sm trade-in-notes"
+                                            name="options[__OPT__][trade_in_notes]" placeholder="mis. Siap rekondisi, unit running">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Right Column: Financial Summary --}}
+                    <div class="col-lg-5 col-12">
                         <div class="d-flex flex-column gap-3 py-2">
                             {{-- Subtotal --}}
                             <div class="d-flex justify-content-between align-items-center py-1">
@@ -761,6 +936,21 @@
                                         <span class="badge bg-label-info diskon-feedback-badge" style="font-size: 10px; font-weight: 500;">Potongan: Rp 0</span>
                                     </div>
                                 </div>
+                            </div>
+
+                            {{-- Potongan Trade-In --}}
+                            <div class="d-flex justify-content-between align-items-center py-1 display-trade-in-row" style="display: none;">
+                                <div>
+                                    <span class="text-danger fw-semibold" style="font-size: 13.5px;"><i class="mdi mdi-swap-horizontal-bold me-1"></i>Potongan Trade-In</span>
+                                    <span class="badge bg-label-secondary trade-in-summary-badge d-block text-start mt-0.5" style="font-size: 10px; font-weight: 500;">-</span>
+                                </div>
+                                <span class="fw-bold text-danger fs-6 display-trade-in">- Rp 0</span>
+                            </div>
+
+                            {{-- Dasar Pengenaan Pajak (DPP) --}}
+                            <div class="d-flex justify-content-between align-items-center py-1 display-dpp-row" style="display: none;">
+                                <span class="text-muted fw-semibold" style="font-size: 13px;">Dasar Pengenaan Pajak (DPP)</span>
+                                <span class="fw-bold text-dark display-dpp" style="font-size: 13px;">Rp 0</span>
                             </div>
 
                             {{-- PPN --}}
@@ -792,7 +982,7 @@
                             <div class="p-3 rounded-3 d-flex justify-content-between align-items-center mt-2" style="background: linear-gradient(135deg, #f0f2ff 0%, #e8ebff 100%); border: 1px dashed #696cff;">
                                 <div>
                                     <div class="text-uppercase fw-bold text-primary" style="font-size: 11px; letter-spacing: 0.8px;">Total Amount</div>
-                                    <div class="text-muted" style="font-size: 10.5px;">( Inclusive of Tax &amp; Discount )</div>
+                                    <div class="text-muted" style="font-size: 10.5px;">( Inclusive of Tax, Discount &amp; Trade-In )</div>
                                 </div>
                                 <div class="fw-bolder text-primary fs-3 display-total" style="letter-spacing: -0.5px;">Rp 0</div>
                             </div>
@@ -973,12 +1163,22 @@
                     const tax = $pane.find('.toggle-tax').is(':checked') ? 1 : 0;
                     const shipping = $pane.find('.input-shipping').val() || '0';
 
+                    const hasTradeIn = $pane.find('.toggle-trade-in').is(':checked') ? 1 : 0;
+                    const tradeInPrice = parseFloat(String($pane.find('.trade-in-price').val() || '0').replace(/\D/g, '')) || 0;
+
                     const optData = {
                         title: optTitle,
                         diskon_type: diskonType,
                         diskon: diskonType === 'amount' ? (parseFloat(diskon.replace(/\D/g, '')) || 0) : (parseFloat(diskon) || 0),
                         tax: tax,
                         shipping: parseFloat(shipping.replace(/\D/g, '')) || 0,
+                        has_trade_in: hasTradeIn,
+                        trade_in_brand: $pane.find('.trade-in-brand').val() || '',
+                        trade_in_model: $pane.find('.trade-in-model').val() || '',
+                        trade_in_power: $pane.find('.trade-in-power').val() || '',
+                        trade_in_sn: $pane.find('.trade-in-sn').val() || '',
+                        trade_in_price: tradeInPrice,
+                        trade_in_notes: $pane.find('.trade-in-notes').val() || '',
                         items: []
                     };
 

@@ -359,34 +359,72 @@ class ProductSetController extends Controller
         $productSetId = $item->id_product_set;
         $item->delete();
 
-        // Recalculate stock
-        $productSet = ProductSet::find($productSetId);
-        if ($productSet) {
-            $product = Product::find($productSet->id_product);
-            $dProduct = DetailProduct::where('id_product', $product->id)->first();
-            $itemProduct = ItemProductSet::with('replacement')->where('id_product_set', $productSetId)->get();
-            $allReplacements = $itemProduct->map(fn($it) => $it->replacement)->filter();
-            $minStock = $allReplacements->count() > 0 
-                ? (int) $allReplacements->min(fn($rep) => ($rep->stock ?? 0) + ($rep->warehouse_stock ?? 0))
-                : 0;
-            if ($product) {
-                $product->stock = $minStock;
-                $product->save();
-            }
-            if ($dProduct) {
-                $dProduct->stock = $minStock;
-                $dProduct->save();
-            }
-        }
+        $this->recalculateSetStock($productSetId);
 
         return response()->json(1);
     }
 
+    /**
+     * Update the qty (pcs per set) of an already-added component.
+     */
+    public function update_item_qty(Request $request, $id)
+    {
+        $request->validate([
+            'qty' => 'required|integer|min:1',
+        ]);
+
+        $item = ItemProductSet::findOrFail($id);
+        $item->qty = $request->qty;
+        $item->save();
+
+        $this->recalculateSetStock($item->id_product_set);
+
+        return redirect('product-set/' . $item->id_product_set)->with('success', 'Qty komponen berhasil diperbarui.');
+    }
+
+    /**
+     * Recompute the bundle's available stock: how many complete sets can be
+     * assembled, given each component may need more than 1 pcs per set
+     * (`qty`). Limited by whichever component runs out first.
+     */
+    private function recalculateSetStock($productSetId): void
+    {
+        $productSet = ProductSet::find($productSetId);
+        if (!$productSet) {
+            return;
+        }
+
+        $product = Product::find($productSet->id_product);
+        $dProduct = $product ? DetailProduct::where('id_product', $product->id)->first() : null;
+
+        $itemProduct = ItemProductSet::with('replacement')->where('id_product_set', $productSetId)->get();
+        $available = $itemProduct->filter(fn($it) => $it->replacement)->map(function ($it) {
+            $rep = $it->replacement;
+            $qty = max(1, (int) ($it->qty ?? 1));
+            $available = ($rep->stock ?? 0) + ($rep->warehouse_stock ?? 0);
+            return (int) floor($available / $qty);
+        });
+
+        $minStock = $available->isNotEmpty() ? (int) $available->min() : 0;
+
+        if ($product) {
+            $product->stock = $minStock;
+            $product->save();
+        }
+        if ($dProduct) {
+            $dProduct->stock = $minStock;
+            $dProduct->save();
+        }
+    }
+
     public function store_item(Request $request, $id)
     {
-        $productSet = ProductSet::findOrFail($id);
-        $product = Product::findOrFail($productSet->id_product);
-        $dProduct = DetailProduct::where('id_product', $product->id)->first();
+        $request->validate([
+            'replacement' => 'required|exists:detail_product,id',
+            'qty' => 'nullable|integer|min:1',
+        ]);
+
+        ProductSet::findOrFail($id);
 
         // Check if item already exists in this set
         $existing = ItemProductSet::where('id_product_set', $id)
@@ -399,20 +437,10 @@ class ProductSetController extends Controller
         $item = new ItemProductSet();
         $item->id_product_set = $id;
         $item->id_replacement = $request->replacement;
+        $item->qty = $request->qty ?: 1;
         $item->save();
 
-        $itemProduct = ItemProductSet::with('replacement')->where('id_product_set', $id)->get();
-        $allReplacements = $itemProduct->map(fn($it) => $it->replacement)->filter();
-        $minStock = $allReplacements->count() > 0 
-            ? (int) $allReplacements->min(fn($rep) => ($rep->stock ?? 0) + ($rep->warehouse_stock ?? 0))
-            : 0;
-
-        $product->stock = $minStock;
-        $product->save();
-        if ($dProduct) {
-            $dProduct->stock = $minStock;
-            $dProduct->save();
-        }
+        $this->recalculateSetStock($id);
 
         return redirect('product-set/' . $id)->with('success', 'Komponen berhasil ditambahkan ke dalam bundle.');
     }

@@ -700,32 +700,100 @@ class ProductController extends Controller
     }
 
     /**
-     * Data catalog produk untuk DataTables role Sales.
-     * Menggunakan selective columns dan cache untuk performa tinggi.
+     * Data catalog produk untuk DataTables.
+     * Menggunakan selective columns, relasi transaksi, dan cache untuk performa tinggi.
      */
     public function getSalesData(Request $request)
     {
-        $cacheKey = 'catalog_products_sales_v3';
+        $user = Auth::user();
+        $isSales = ($user && strtolower($user->role) === 'sales');
+        $cacheKey = 'catalog_products_' . ($isSales ? 'sales_v1' : 'all_v1');
 
         if ($request->has('refresh')) {
             Cache::forget($cacheKey);
         }
 
-        $data = Cache::remember($cacheKey, 180, function () {
-            return DB::table('serial_product as s')
-                ->join('product as p', 'p.id', '=', 's.id_product')
-                ->whereIn('p.category', [
-                    'Consumable Part',
-                    'Non Consumable Part',
-                    'NON-CONSUMABLE PART',
-                    'consumable part',
-                    'non consumable part',
-                    'consumable-part',
-                    'non-consumable-part'
-                ])
-                ->select([
+        $data = Cache::remember($cacheKey, 180, function () use ($isSales) {
+            // Count Product In per id_product
+            $productInCounts = DB::table('detail_product_in as dpi')
+                ->join('detail_product as dp', 'dp.id', '=', 'dpi.id_detail_product')
+                ->select('dp.id_product', DB::raw('COUNT(dpi.id) as total_in'))
+                ->groupBy('dp.id_product')
+                ->pluck('total_in', 'dp.id_product');
+
+            // Count Product Out per id_product
+            $productOutCounts = DB::table('detail_product_out as dpo')
+                ->join('detail_product as dp', 'dp.id', '=', 'dpo.id_detail_product')
+                ->select('dp.id_product', DB::raw('COUNT(dpo.id) as total_out'))
+                ->groupBy('dp.id_product')
+                ->pluck('total_out', 'dp.id_product');
+
+            // Count Quotation per id_product (level 1 & is_primary 1)
+            $quotationCounts = DB::table('detail_quotation as dq')
+                ->join('serial_product as sp', 'sp.id', '=', 'dq.id_equivalent')
+                ->join('quotation as q', 'q.id', '=', 'dq.id_quotation')
+                ->where('q.level', '1')
+                ->where('q.is_primary', '1')
+                ->select('sp.id_product', DB::raw('COUNT(dq.id) as total_quote'))
+                ->groupBy('sp.id_product')
+                ->pluck('total_quote', 'sp.id_product');
+
+            // Count Product Set: cek apakah produk masuk ke dalam Product Set (sebagai item kit)
+            $productSetItems = DB::table('item_product_set as ips')
+                ->join('detail_product as dp', 'dp.id', '=', 'ips.id_replacement')
+                ->join('product_set as ps', 'ps.id', '=', 'ips.id_product_set')
+                ->join('product as p_parent', 'p_parent.id', '=', 'ps.id_product')
+                ->select('dp.id_product', 'p_parent.commodity as parent_name')
+                ->get()
+                ->groupBy('id_product');
+
+            // Cek juga produk yang merupakan master/header Product Set
+            $productSetParents = DB::table('product_set as ps')
+                ->pluck('id', 'id_product');
+
+            // Latest purchase price (LAST HPP) per id_product from detail_product_in
+            $lastHppRecords = DB::table('detail_product_in as dpi')
+                ->join('detail_product as dp', 'dp.id', '=', 'dpi.id_detail_product')
+                ->select('dp.id_product', 'dpi.modal', 'dpi.hpp')
+                ->where(function ($q) {
+                    $q->where('dpi.modal', '>', 0)
+                      ->orWhere('dpi.hpp', '>', 0);
+                })
+                ->orderByDesc('dpi.id')
+                ->get()
+                ->unique('id_product')
+                ->keyBy('id_product');
+
+            // Average purchase price (AVG HPP) and replacement from detail_product per id_product
+            $avgHppRecords = DB::table('detail_product')
+                ->select('id_product', 'replacement', 'modal', 'hpp')
+                ->where(function ($q) {
+                    $q->where('modal', '>', 0)
+                      ->orWhere('hpp', '>', 0);
+                })
+                ->orderByDesc('id')
+                ->get()
+                ->groupBy('id_product');
+
+            $productsQuery = DB::table('serial_product as s')
+                ->join('product as p', 'p.id', '=', 's.id_product');
+
+            if ($isSales) {
+                $productsQuery->where(function ($q) {
+                    $q->whereIn(DB::raw('LOWER(REPLACE(p.category, "-", " "))'), ['consumable part', 'non consumable part']);
+                });
+            } else {
+                $productsQuery->where(function ($q) {
+                    $q->whereNull('p.category')
+                        ->orWhereNotIn('p.category', ['Unit', 'unit']);
+                });
+            }
+
+            $products = $productsQuery->select([
                     's.id',
                     'p.id as product_id',
+                    'p.commodity',
+                    'p.category',
                     's.image',
                     's.brand',
                     's.pn',
@@ -736,9 +804,49 @@ class ProductController extends Controller
                     'p.pending_stock',
                     's.price',
                     's.price_updated_at',
+                    's.updated_at',
                 ])
                 ->orderByDesc('s.id')
                 ->get();
+
+            foreach ($products as $row) {
+                $pid = $row->product_id;
+                $in = (int) ($productInCounts[$pid] ?? 0);
+                $out = (int) ($productOutCounts[$pid] ?? 0);
+                $quote = (int) ($quotationCounts[$pid] ?? 0);
+
+                $setRows = $productSetItems[$pid] ?? null;
+                $itemSetCount = $setRows ? count($setRows) : 0;
+                $isParentSet = isset($productSetParents[$pid]);
+                $totalSet = $itemSetCount + ($isParentSet ? 1 : 0);
+
+                $setNames = $setRows ? $setRows->pluck('parent_name')->unique()->implode(', ') : '';
+                if ($isParentSet) {
+                    $setNames = $setNames ? ($setNames . ', Master Set') : 'Master Set';
+                }
+
+                $lastRec = $lastHppRecords->get($pid);
+                $lastVal = $lastRec ? (float) ($lastRec->modal ?: $lastRec->hpp) : null;
+
+                $avgList = $avgHppRecords[$pid] ?? null;
+                $avgRec = $avgList ? $avgList->first() : null;
+                $avgVal = $avgRec ? (float) ($avgRec->modal ?: $avgRec->hpp) : null;
+                $replacementName = $avgRec ? $avgRec->replacement : null;
+
+                $row->total_in = $in;
+                $row->total_out = $out;
+                $row->total_quotation = $quote;
+                $row->total_set = $totalSet;
+                $row->in_product_set = $totalSet > 0;
+                $row->product_set_names = $setNames;
+                $row->total_transaksi = $in + $out + $quote + $totalSet;
+
+                $row->avg_hpp = $avgVal;
+                $row->last_hpp = $lastVal;
+                $row->replacement_name = $replacementName;
+            }
+
+            return $products;
         });
 
         return response()->json(['data' => $data]);

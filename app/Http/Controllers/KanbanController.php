@@ -209,21 +209,22 @@ class KanbanController extends Controller
     {
         $user = Auth::user();
         $board = KanbanBoard::with([
-            'columns.tasks.assignees',
-            'columns.tasks.checklists.items',
-            'columns.tasks.attachments',
-            'columns.tasks.comments',
-            'columns.tasks.taskExpenses',
-            'columns.tasks.projectReports',
-            'columns.tasks.pendingPo.quote.sales',
-            'columns.tasks.pendingPo.quote.invoice',
-            'columns.tasks.pendingPo.quote.pic.client',
-            'columns.tasks.pendingPo.unitQuotation.sales',
-            'columns.tasks.pendingPo.unitQuotation.invoices',
-            'columns.tasks.pendingPo.unitQuotation.client',
-            'columns.tasks.unitQuotation.sales',
-            'columns.tasks.unitQuotation.invoices',
-            'columns.tasks.unitQuotation.client',
+            'columns.tasks' => function ($query) {
+                $query->withCount(['attachments', 'comments', 'taskExpenses', 'projectReports'])
+                      ->with([
+                          'assignees',
+                          'checklists.items',
+                          'pendingPo.quote.sales',
+                          'pendingPo.quote.invoice',
+                          'pendingPo.quote.pic.client',
+                          'pendingPo.unitQuotation.sales',
+                          'pendingPo.unitQuotation.invoices',
+                          'pendingPo.unitQuotation.client',
+                          'unitQuotation.sales',
+                          'unitQuotation.invoices',
+                          'unitQuotation.client',
+                      ]);
+            }
         ])->findOrFail($id);
 
         if ($user->role !== 'Admin' && !$board->members->contains($user->id)) {
@@ -358,10 +359,10 @@ class KanbanController extends Controller
                     'labels' => $task->labels ?? [],
                     'total_checklists' => $totalChecklistItems,
                     'completed_checklists' => $completedChecklistItems,
-                    'total_attachments' => $task->attachments->count(),
-                    'total_comments' => $task->comments->count(),
-                    'total_expenses' => $task->taskExpenses ? $task->taskExpenses->count() : 0,
-                    'total_reports' => $task->projectReports ? $task->projectReports->count() : 0,
+                    'total_attachments' => $task->attachments_count ?? ($task->attachments ? $task->attachments->count() : 0),
+                    'total_comments' => $task->comments_count ?? ($task->comments ? $task->comments->count() : 0),
+                    'total_expenses' => $task->task_expenses_count ?? ($task->taskExpenses ? $task->taskExpenses->count() : 0),
+                    'total_reports' => $task->project_reports_count ?? ($task->projectReports ? $task->projectReports->count() : 0),
                     'priority' => $task->priority ?? 'medium',
                     'nett' => $nettValue,
                     'id_sales' => $idSales,
@@ -557,6 +558,7 @@ class KanbanController extends Controller
             'due_date' => 'nullable|date',
             'column_id' => 'nullable|string',
             'priority' => 'nullable|string|in:high,medium,low',
+            'client_id' => 'nullable',
             'service_report_id' => 'nullable|integer',
         ]);
 
@@ -617,6 +619,7 @@ class KanbanController extends Controller
                 'assigned_to' => !empty($newAssigneesIds) ? $newAssigneesIds[0] : null,
                 'due_date' => $request->due_date,
                 'priority' => $request->priority ?? $task->priority,
+                'client_id' => array_key_exists('client_id', $request->all()) ? $request->client_id : $task->client_id,
                 'service_report_id' => array_key_exists('service_report_id', $request->all()) ? $request->service_report_id : $task->service_report_id,
             ]);
 
@@ -677,6 +680,7 @@ class KanbanController extends Controller
             'board',
             'board.members',
             'column',
+            'client',
             'assignees',
             'comments.user',
             'activities.user',
@@ -690,6 +694,22 @@ class KanbanController extends Controller
             'unitQuotation.sales',
             'bast'
         ])->findOrFail($id);
+
+        // Automatically mark unread mentions on this task for current user as read
+        if (Auth::check()) {
+            try {
+                DB::table('kanban_task_comment_mentions as m')
+                    ->join('kanban_task_comments as c', 'm.comment_id', '=', 'c.id')
+                    ->where('c.task_id', $task->id)
+                    ->where('m.user_id', Auth::id())
+                    ->where('m.is_read', false)
+                    ->update([
+                        'm.is_read' => true,
+                        'm.read_at' => now(),
+                        'm.updated_at' => now(),
+                    ]);
+            } catch (\Throwable $e) {}
+        }
 
         // Format comments
         $comments = $task->comments->map(function ($comment) {
@@ -772,6 +792,14 @@ class KanbanController extends Controller
                     $no = isset($data['no_quote']) ? $data['no_quote'] : 'quotation';
                     $text = "memutuskan hubungan tugas ini dari quotation \"{$no}\"";
                     break;
+                case 'link_service_report':
+                    $no = isset($data['no_service']) ? $data['no_service'] : 'Service Report';
+                    $text = "menghubungkan tugas ini ke Service Report \"{$no}\"";
+                    break;
+                case 'unlink_service_report':
+                    $no = isset($data['no_service']) ? $data['no_service'] : 'Service Report';
+                    $text = "memutuskan hubungan tugas ini dari Service Report \"{$no}\"";
+                    break;
                 default:
                     $text = 'memperbarui tugas ini';
                     break;
@@ -829,21 +857,19 @@ class KanbanController extends Controller
             ];
         });
 
-        // Ringkasan Kesehatan Keuangan — sama persis rumusnya kayak
-        // ProjectMonitoringController::show(), cuma dipanggil di sini biar kartu
-        // ringkasannya kelihatan langsung dari task Kanban tanpa pindah halaman.
+        // Ringkasan Kesehatan Keuangan — direct SQL join aggregate untuk performa cepat
         $computeFinancialHealth = function ($pendingId, $revenue) {
             if (!$pendingId) {
                 return null;
             }
-            $materialCost = PurchaseRequest::where('id_pending', $pendingId)
-                ->where('status', '3')
-                ->with('details')
-                ->get()
-                ->flatMap->details
-                ->sum('amount');
-            $generalCost = ProjectExpense::where('id_pending', $pendingId)->sum('amount');
-            $shippingCost = Expanse::where('id_pending', $pendingId)->where('type', 'Resi')->sum('cost');
+            $materialCost = (float) DB::table('purchase_request as pr')
+                ->join('purchase_request_detail as prd', 'pr.id', '=', 'prd.id_purchase_request')
+                ->where('pr.id_pending', $pendingId)
+                ->where('pr.status', '3')
+                ->sum('prd.amount');
+
+            $generalCost = (float) ProjectExpense::where('id_pending', $pendingId)->sum('amount');
+            $shippingCost = (float) Expanse::where('id_pending', $pendingId)->where('type', 'Resi')->sum('cost');
             $totalCost = $materialCost + $generalCost + $shippingCost;
             $profit = $revenue - $totalCost;
             $margin = $revenue > 0 ? ($profit / $revenue) * 100 : 0;
@@ -936,18 +962,20 @@ class KanbanController extends Controller
                     ];
                 });
 
-                // Get available service reports for this client
+                // Get available service reports for this client (limited and selected fields for optimal memory)
                 $availableReports = [];
                 if ($clientId) {
                     $availableReports = \App\Models\Reports::whereHas('pic', function($q) use ($clientId) {
                         $q->where('id_client', $clientId);
                     })
+                    ->select(['id', 'no_service', 'jobdesc', 'created_at'])
                     ->orderBy('created_at', 'desc')
+                    ->limit(35)
                     ->get()
                     ->map(function($r) {
                         return [
                             'id' => $r->id,
-                            'jobdesc' => ($r->no_service ?: 'No SR') . ' - ' . ($r->jobdesc ?: 'Service Report #' . $r->id) . ' (' . $r->created_at->format('d-m-Y') . ')',
+                            'jobdesc' => ($r->no_service ?: 'No SR') . ' - ' . ($r->jobdesc ?: 'Service Report #' . $r->id) . ' (' . ($r->created_at ? $r->created_at->format('d-m-Y') : '') . ')',
                         ];
                     });
                 }
@@ -1162,6 +1190,52 @@ class KanbanController extends Controller
             ];
         });
 
+        // Service Reports terhubung (bisa multiple + catatan / form isian teks)
+        $linkedServiceReports = $task->kanbanServiceReports()
+            ->with(['serviceReport.pic.client'])
+            ->get()
+            ->map(function ($item) {
+                $sr = $item->serviceReport;
+                $company = ($sr && $sr->pic && $sr->pic->client) ? $sr->pic->client->company : '-';
+                return [
+                    'id' => $item->id,
+                    'service_report_id' => $item->service_report_id,
+                    'no_service' => $sr ? ($sr->no_service ?: 'No SR #' . $sr->id) : ('Service Report #' . $item->service_report_id),
+                    'jobdesc' => $sr ? ($sr->jobdesc ?: '-') : '-',
+                    'company' => $company,
+                    'date' => ($sr && $sr->created_at) ? $sr->created_at->format('d/m/Y') : '-',
+                    'note' => $item->note ?? '',
+                    'link' => $sr ? route('service-reports.show', $sr->id) : '#',
+                ];
+            });
+
+        $clientObj = null;
+        $activeClientId = $task->client_id;
+        if ($task->client) {
+            $clientObj = [
+                'id' => $task->client->id,
+                'company' => $task->client->company,
+                'text' => $task->client->company,
+            ];
+        } elseif ($task->unitQuotation && $task->unitQuotation->client) {
+            $clientObj = [
+                'id' => $task->unitQuotation->client->id,
+                'company' => $task->unitQuotation->client->company,
+                'text' => $task->unitQuotation->client->company,
+            ];
+            $activeClientId = $task->unitQuotation->client->id;
+        } elseif ($task->pendingPo) {
+            $poClient = $task->pendingPo->unitQuotation?->client ?? $task->pendingPo->quote?->pic?->client;
+            if ($poClient) {
+                $clientObj = [
+                    'id' => $poClient->id,
+                    'company' => $poClient->company,
+                    'text' => $poClient->company,
+                ];
+                $activeClientId = $poClient->id;
+            }
+        }
+
         return response()->json([
             'success' => true,
             'task' => [
@@ -1177,6 +1251,8 @@ class KanbanController extends Controller
                 'pending_po_id' => $task->pending_po_id,
                 'id_unit_quotation' => $task->id_unit_quotation,
                 'service_report_id' => $task->service_report_id,
+                'client_id' => $activeClientId,
+                'client' => $clientObj,
             ],
             'feed' => $feed,
             'checklists' => $checklists,
@@ -1187,6 +1263,7 @@ class KanbanController extends Controller
             'can_manage_expense' => $canManageExpense,
             'linked_quotation' => $linkedQuotation,
             'can_link_quotation' => $canLinkQuotation,
+            'linked_service_reports' => $linkedServiceReports,
             'project_reports' => $projectReports,
             'create_project_report_url' => route('project-reports.create', ['kanban_task_id' => $task->id]),
         ]);
@@ -1287,17 +1364,51 @@ class KanbanController extends Controller
     }
 
     /**
+     * Cari Client khusus Customer (bukan Leads) untuk filter di task Kanban
+     */
+    public function getLinkableClients(Request $request)
+    {
+        $q = trim((string) $request->input('q', ''));
+        if (mb_strlen($q) < 2) {
+            return response()->json(['success' => true, 'clients' => []]);
+        }
+
+        $clients = \App\Models\Client::whereIn('role', ['Customers', 'Customer'])
+            ->where(function ($query) use ($q) {
+                $query->where('company', 'like', "%{$q}%")
+                    ->orWhere('address', 'like', "%{$q}%");
+            })
+            ->select(['id', 'company'])
+            ->orderBy('company')
+            ->limit(30)
+            ->get()
+            ->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'company' => $c->company,
+                    'text' => $c->company,
+                ];
+            });
+
+        return response()->json(['success' => true, 'clients' => $clients]);
+    }
+
+    /**
      * Cari Unit Quotation yang belum ter-link ke kartu manapun — buat picker
      * "Hubungkan ke Quotation" di modal kartu.
      */
     public function getLinkableQuotations(Request $request)
     {
         $q = trim((string) $request->get('q', ''));
+        $clientId = $request->input('client_id');
 
         $linkedIds = KanbanTask::whereNotNull('id_unit_quotation')->pluck('id_unit_quotation')->all();
 
         $rows = \App\Models\UnitQuotation::with('client')
             ->whereNotIn('id', $linkedIds)
+            ->when($clientId, function ($query) use ($clientId) {
+                $query->where('id_client', $clientId);
+            })
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
                     $sub->where('no_quote', 'like', "%{$q}%")
@@ -1352,6 +1463,9 @@ class KanbanController extends Controller
         $pendingPo = \App\Models\PendingPO::where('id_unit_quotation', $uq->id)->first();
 
         $task->id_unit_quotation = $uq->id;
+        if ($uq->id_client && !$task->client_id) {
+            $task->client_id = $uq->id_client;
+        }
         if ($pendingPo) {
             $task->pending_po_id = $pendingPo->id;
         }
@@ -1393,6 +1507,133 @@ class KanbanController extends Controller
         $this->logActivity($task->id, 'unlink_quotation', ['no_quote' => $noQuote]);
 
         return response()->json(['success' => true]);
+    }
+
+    public function getLinkableServiceReports(Request $request)
+    {
+        $q = trim((string) $request->input('q', ''));
+        $clientId = $request->input('client_id');
+
+        $rows = \App\Models\Reports::with(['pic.client'])
+            ->when($clientId, function ($query) use ($clientId) {
+                $query->whereHas('pic', function ($p) use ($clientId) {
+                    $p->where('id_client', $clientId);
+                });
+            })
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($sub) use ($q) {
+                    $sub->where('no_service', 'like', "%{$q}%")
+                        ->orWhere('jobdesc', 'like', "%{$q}%")
+                        ->orWhere('desc', 'like', "%{$q}%")
+                        ->orWhereHas('pic.client', function ($c) use ($q) {
+                            $c->where('company', 'like', "%{$q}%");
+                        });
+                });
+            })
+            ->orderByDesc('id')
+            ->limit(30)
+            ->get()
+            ->map(function ($r) {
+                $company = ($r->pic && $r->pic->client) ? $r->pic->client->company : '-';
+                $dateStr = $r->created_at ? $r->created_at->format('d/m/Y') : '-';
+                $noService = $r->no_service ?: ('No SR #' . $r->id);
+                return [
+                    'id' => $r->id,
+                    'no_service' => $noService,
+                    'jobdesc' => $r->jobdesc ?: '-',
+                    'company' => $company,
+                    'date' => $dateStr,
+                    'text' => "{$noService} — {$company} (" . ($r->jobdesc ?: 'Service Report') . ")",
+                ];
+            });
+
+        return response()->json(['success' => true, 'service_reports' => $rows]);
+    }
+
+    public function linkServiceReport(Request $request, $id)
+    {
+        $task = KanbanTask::with('board.members')->findOrFail($id);
+        $user = Auth::user();
+
+        if ($user->role !== 'Admin' && !$task->board->members->contains($user->id)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'service_report_id' => 'required|exists:reports,id',
+            'note' => 'nullable|string',
+        ]);
+
+        $exists = \App\Models\KanbanTaskServiceReport::where('kanban_task_id', $task->id)
+            ->where('service_report_id', $request->service_report_id)
+            ->exists();
+
+        if ($exists) {
+            return response()->json(['error' => 'Service Report ini sudah terhubung ke kartu ini.'], 422);
+        }
+
+        $link = \App\Models\KanbanTaskServiceReport::create([
+            'kanban_task_id' => $task->id,
+            'service_report_id' => $request->service_report_id,
+            'note' => $request->note,
+        ]);
+
+        $report = \App\Models\Reports::find($request->service_report_id);
+        $noService = $report ? ($report->no_service ?: '#' . $report->id) : ('#' . $request->service_report_id);
+
+        $this->logActivity($task->id, 'link_service_report', [
+            'no_service' => $noService,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Service Report berhasil dihubungkan.',
+            'link' => $link,
+        ]);
+    }
+
+    public function updateServiceReportNote(Request $request, $id, $srId)
+    {
+        $task = KanbanTask::with('board.members')->findOrFail($id);
+        $user = Auth::user();
+
+        if ($user->role !== 'Admin' && !$task->board->members->contains($user->id)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $link = \App\Models\KanbanTaskServiceReport::where('kanban_task_id', $task->id)
+            ->where('id', $srId)
+            ->firstOrFail();
+
+        $link->note = $request->note;
+        $link->save();
+
+        return response()->json(['success' => true, 'message' => 'Catatan berhasil diperbarui.']);
+    }
+
+    public function unlinkServiceReport(Request $request, $id, $srId)
+    {
+        $task = KanbanTask::with('board.members')->findOrFail($id);
+        $user = Auth::user();
+
+        if ($user->role !== 'Admin' && !$task->board->members->contains($user->id)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $link = \App\Models\KanbanTaskServiceReport::where('kanban_task_id', $task->id)
+            ->where('id', $srId)
+            ->firstOrFail();
+
+        $report = $link->serviceReport;
+        $noService = $report ? ($report->no_service ?: '#' . $report->id) : ('#' . $link->service_report_id);
+
+        $link->delete();
+
+        $this->logActivity($task->id, 'unlink_service_report', [
+            'no_service' => $noService,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Hubungan Service Report berhasil diputuskan.']);
     }
 
     public function storeComment(Request $request, $id)
@@ -2023,6 +2264,127 @@ class KanbanController extends Controller
             'success' => true,
             'new_cards' => $newCardsCount,
         ]);
+    }
+
+    /**
+     * Polling endpoint untuk notifikasi mention komentar Kanban realtime
+     */
+    public function unreadKanbanNotifications()
+    {
+        if (!Auth::check()) {
+            return response()->json(['count' => 0, 'items' => []]);
+        }
+
+        $userId = Auth::id();
+        try {
+            $mentions = DB::table('kanban_task_comment_mentions as m')
+                ->join('kanban_task_comments as c', 'm.comment_id', '=', 'c.id')
+                ->join('kanban_tasks as t', 'c.task_id', '=', 't.id')
+                ->join('kanban_boards as b', 't.board_id', '=', 'b.id')
+                ->join('users as u', 'c.user_id', '=', 'u.id')
+                ->where('m.user_id', $userId)
+                ->where('m.is_read', false)
+                ->where('c.user_id', '!=', $userId)
+                ->select([
+                    'm.comment_id',
+                    'm.created_at',
+                    'c.comment',
+                    'u.name as author_name',
+                    'u.image as author_image',
+                    't.id as task_id',
+                    't.title as task_title',
+                    'b.id as board_id',
+                    'b.title as board_title'
+                ])
+                ->orderByDesc('m.created_at')
+                ->take(15)
+                ->get();
+
+            $items = $mentions->map(function ($m) {
+                return [
+                    'id' => 'kanban_mention_' . $m->comment_id,
+                    'comment_id' => $m->comment_id,
+                    'task_id' => $m->task_id,
+                    'board_id' => $m->board_id,
+                    'task_title' => $m->task_title,
+                    'board_name' => $m->board_title,
+                    'author_name' => $m->author_name,
+                    'author_photo' => $m->author_image ? url($m->author_image) : null,
+                    'comment' => \Illuminate\Support\Str::limit($m->comment, 90),
+                    'go_url' => route('notifications.kanban.go', $m->comment_id),
+                    'url' => route('notifications.kanban.go', $m->comment_id),
+                    'created_at' => \Carbon\Carbon::parse($m->created_at)->diffForHumans(),
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'unread_count' => $items->count(),
+                'count' => $items->count(),
+                'mentions' => $items,
+                'items' => $items,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'unread_count' => 0,
+                'count' => 0,
+                'mentions' => [],
+                'items' => [],
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Tandai notifikasi mention Kanban sebagai dibaca dan redirect langsung ke board & task
+     */
+    public function goKanbanMention($commentId)
+    {
+        $userId = Auth::id();
+
+        try {
+            DB::table('kanban_task_comment_mentions')
+                ->where('comment_id', $commentId)
+                ->where('user_id', $userId)
+                ->update([
+                    'is_read' => true,
+                    'read_at' => now(),
+                    'updated_at' => now(),
+                ]);
+        } catch (\Throwable $e) {}
+
+        $mention = DB::table('kanban_task_comments as c')
+            ->join('kanban_tasks as t', 'c.task_id', '=', 't.id')
+            ->where('c.id', $commentId)
+            ->select('t.board_id', 't.id as task_id')
+            ->first();
+
+        if ($mention) {
+            return redirect()->route('kanban.boards.show', ['id' => $mention->board_id, 'task' => $mention->task_id]);
+        }
+
+        return redirect()->route('kanban.index');
+    }
+
+    /**
+     * Tandai notifikasi mention Kanban sebagai dibaca via AJAX
+     */
+    public function markKanbanMentionRead($commentId)
+    {
+        $userId = Auth::id();
+        try {
+            DB::table('kanban_task_comment_mentions')
+                ->where('comment_id', $commentId)
+                ->where('user_id', $userId)
+                ->update([
+                    'is_read' => true,
+                    'read_at' => now(),
+                    'updated_at' => now(),
+                ]);
+        } catch (\Throwable $e) {}
+
+        return response()->json(['success' => true]);
     }
 
     private function logActivity($taskId, $type, $data = null)

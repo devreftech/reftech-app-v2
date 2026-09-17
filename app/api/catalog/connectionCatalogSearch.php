@@ -29,6 +29,7 @@ try {
         u.model,
         u.unit,
         u.type_unit,
+        u.speed_type,
         u.bar,
         u.air_cap,
         u.power,

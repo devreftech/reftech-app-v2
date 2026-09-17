@@ -82,7 +82,10 @@ $(function () {
                             Reseller: '<span class="badge rounded-pill bg-label-dark me-1">R</span>',
                         };
                         var badge = ruMap[ru] || "";
-                        return badge + (data || "-");
+                        var plantBadge = full["plant_name"]
+                            ? ' <span class="badge bg-label-success ms-1" style="font-size: 10.5px;">' + $('<div>').text(full["plant_name"]).html() + '</span>'
+                            : '';
+                        return badge + (data || "-") + plantBadge;
                     },
                 },
                 {

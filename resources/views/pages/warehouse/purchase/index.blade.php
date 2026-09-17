@@ -468,7 +468,7 @@
                     <button type="button" class="nav-link" role="tab" data-bs-toggle="tab"
                         data-bs-target="#navs-pills-top-po" aria-controls="navs-pills-top-po" aria-selected="false">
                         <i class="mdi mdi-file-document-outline"></i>
-                        <span>Purchase Order</span>
+                        <span>Process</span>
                         <span class="badge bg-dark rounded-pill tab-badge-po font-11" style="{{ @$poCount >= 1 ? '' : 'display:none;' }}">{{ $poCount }}</span>
                     </button>
 

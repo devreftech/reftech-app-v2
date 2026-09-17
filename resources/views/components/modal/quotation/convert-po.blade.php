@@ -134,10 +134,7 @@
                                     <div class="mb-3">
                                         <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Alamat Pengiriman (Dokumen & Barang)</label>
                                         <select class="form-select mb-2" id="convert_combined_address_select" onchange="onAddressSelectChange('convert', 'combined')">
-                                            <option value="customer">Main Address: {{ $quote->pic->client->address }}</option>
-                                            @if (!empty($quote->pic->client->subAddress))
-                                                <option value="{{ $quote->pic->client->subAddress }}">Sub Address: {{ $quote->pic->client->subAddress }}</option>
-                                            @endif
+                                            <option value="customer">Office Address: {{ $quote->pic->client->address }}</option>
                                             @foreach ($quote->pic->client->plants as $plant)
                                                 <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
                                             @endforeach
@@ -181,10 +178,7 @@
                                     <div class="mb-3 pb-3 border-bottom">
                                         <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Alamat Pengiriman Dokumen / Invoice</label>
                                         <select class="form-select mb-2" id="convert_doc_address_select" onchange="onAddressSelectChange('convert', 'doc')">
-                                            <option value="customer">Main Address: {{ $quote->pic->client->address }}</option>
-                                            @if (!empty($quote->pic->client->subAddress))
-                                                <option value="{{ $quote->pic->client->subAddress }}">Sub Address: {{ $quote->pic->client->subAddress }}</option>
-                                            @endif
+                                            <option value="customer">Office Address: {{ $quote->pic->client->address }}</option>
                                             @foreach ($quote->pic->client->plants as $plant)
                                                 <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
                                             @endforeach
@@ -225,10 +219,7 @@
                                     <div class="mb-3">
                                         <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Alamat Pengiriman Barang</label>
                                         <select class="form-select mb-2" id="convert_shipping_address_select" onchange="onAddressSelectChange('convert', 'shipping')">
-                                            <option value="customer">Main Address: {{ $quote->pic->client->address }}</option>
-                                            @if (!empty($quote->pic->client->subAddress))
-                                                <option value="{{ $quote->pic->client->subAddress }}">Sub Address: {{ $quote->pic->client->subAddress }}</option>
-                                            @endif
+                                            <option value="customer">Office Address: {{ $quote->pic->client->address }}</option>
                                             @foreach ($quote->pic->client->plants as $plant)
                                                 <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
                                             @endforeach

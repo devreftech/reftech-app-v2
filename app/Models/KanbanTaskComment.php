@@ -29,6 +29,8 @@ class KanbanTaskComment extends Model
 
     public function mentions()
     {
-        return $this->belongsToMany(User::class, 'kanban_task_comment_mentions', 'comment_id', 'user_id')->withTimestamps();
+        return $this->belongsToMany(User::class, 'kanban_task_comment_mentions', 'comment_id', 'user_id')
+            ->withPivot(['is_read', 'read_at'])
+            ->withTimestamps();
     }
 }

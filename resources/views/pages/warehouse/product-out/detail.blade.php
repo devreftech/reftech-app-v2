@@ -9,6 +9,10 @@
     $grandTotal = (float) ($product->total ?? ($subtotalCalculated + $shippingCost));
     $activeDocNo = $product->no_type == '1' ? $product->invoice : $product->po;
     $isOnline = strtolower($product->vers) === 'online';
+    $isKojisha = $product->isKojisha();
+    $companyName = $isKojisha ? 'PT. KOJISHA INNOTIV INDONESIA' : 'PT. REFTECH JAYA OPTIMA';
+    $companyLogo = $isKojisha ? asset('/asset/logo/Kojisha-Log.png') : asset('/asset/logo/Reftech-Log.png');
+    $entityBadge = $isKojisha ? 'bg-danger text-white' : 'bg-label-primary';
 @endphp
 
 @section('content')
@@ -28,6 +32,10 @@
                     <h4 class="fw-bold mb-0 text-dark">
                         {{ $product->no_product_out ?: 'Product Out #' . $product->id }}
                     </h4>
+                    <span class="badge {{ $entityBadge }} px-3 py-2 fw-bold">
+                        <i class="mdi mdi-domain me-1 align-middle"></i>
+                        {{ $isKojisha ? 'Kojisha' : 'Reftech' }}
+                    </span>
                     <span class="badge rounded-pill {{ $isOnline ? 'bg-label-info' : 'bg-label-success' }} px-3 py-2">
                         <i class="mdi {{ $isOnline ? 'mdi-web' : 'mdi-store-outline' }} me-1 align-middle"></i>
                         {{ $product->vers }}
@@ -146,10 +154,10 @@
                     <div class="d-flex justify-content-between flex-sm-row flex-column gap-3">
                         <div class="mb-sm-0 mb-3">
                             <div class="d-flex align-items-center gap-2 mb-3">
-                                <img src="{{ asset('/asset/logo/Reftech-Log.png') }}" alt="Reftech Logo"
+                                <img src="{{ $companyLogo }}" alt="{{ $companyName }}"
                                      style="max-height: 48px; width: auto; object-fit: contain;">
                             </div>
-                            <p class="mb-1 fw-bold text-dark fs-6">PT. REFTECH JAYA OPTIMA</p>
+                            <p class="mb-1 fw-bold text-dark fs-6">{{ $companyName }}</p>
                             <p class="mb-0 text-muted small lh-sm">
                                 Warehouse &amp; Logistics Department<br>
                                 Sistem Informasi Manajemen Barang Keluar

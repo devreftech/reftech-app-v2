@@ -36,7 +36,8 @@ if (Auth::check()) {
                 WHERE s.id_quotation = q.id
             )
         ) AS description,
-        'service' AS row_type
+        'service' AS row_type,
+        NULL AS plant_name
         FROM quotation q
         LEFT JOIN pic p on p.id = q.id_pic
         LEFT JOIN client c on c.id = p.id_client
@@ -49,9 +50,11 @@ if (Auth::check()) {
 
         SELECT uq.id, uq.no_quote, uq.total AS harga_total, COALESCE(NULLIF(uq.title,''),'-') AS title, uq.date AS estimated_date, uq.status,
         (SELECT COALESCE(NULLIF(sh.note,''),'Belum di update') FROM unit_quotation_status_history sh WHERE sh.id_unit_quotation = uq.id ORDER BY sh.created_at DESC LIMIT 1) AS note,
-        uq.type, COALESCE(NULLIF(c2.company,''),'-') AS company, NULL AS ru, u2.name, COALESCE(NULLIF(uq.title,''),'-') AS description, 'unit' AS row_type
+        uq.type, COALESCE(NULLIF(c2.company,''),'-') AS company, NULL AS ru, u2.name, COALESCE(NULLIF(uq.title,''),'-') AS description, 'unit' AS row_type,
+        cp.name AS plant_name
         FROM unit_quotation uq
         LEFT JOIN client c2 ON c2.id = NULLIF(uq.id_client,'')
+        LEFT JOIN client_plants cp ON cp.id = NULLIF(uq.id_plant,'')
         INNER JOIN users u2 ON u2.id = uq.id_sales
         WHERE uq.id_sales = $user->id AND uq.status IN ('loss','cancel') AND uq.is_latest = 1$yearFilterU
         AND NOT EXISTS (SELECT 1 FROM payment pay2 WHERE pay2.id_unit_quotation = uq.id AND pay2.method = 'Escrow')

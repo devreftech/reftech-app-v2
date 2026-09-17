@@ -26,7 +26,8 @@ if (Auth::check()) {
         $yearFilterU = ($year && $year !== 'all') ? " AND YEAR(sh.created_at) = " . intval($year) : "";
         $query = "SELECT q.id, q.no_quote, c.company, c.ru, q.nett, q.title, q.po_date,
                          inv.id AS invoice_id, inv.no_po, inv.no_invoice,
-                         'service' AS row_type, q.type
+                         'service' AS row_type, q.type,
+                         NULL AS plant_name
                   FROM quotation q
                   LEFT JOIN pic p ON p.id = q.id_pic
                   LEFT JOIN client c ON c.id = p.id_client
@@ -54,9 +55,11 @@ if (Auth::check()) {
                          (SELECT invU.no_invoice FROM invoice invU
                           WHERE invU.id_unit_quotation = uq.id AND invU.no_invoice IS NOT NULL
                           ORDER BY invU.id DESC LIMIT 1) AS no_invoice,
-                         'unit' AS row_type, uq.type
+                         'unit' AS row_type, uq.type,
+                         cp.name AS plant_name
                   FROM unit_quotation uq
                   LEFT JOIN client cl ON cl.id = NULLIF(uq.id_client,'')
+                  LEFT JOIN client_plants cp ON cp.id = NULLIF(uq.id_plant,'')
                   WHERE uq.id_sales = $user->id AND uq.status = 'po_received' AND uq.is_latest = 1
                   AND NOT EXISTS (SELECT 1 FROM payment pay2 WHERE pay2.id_unit_quotation = uq.id AND pay2.method = 'Escrow')
                   AND EXISTS (

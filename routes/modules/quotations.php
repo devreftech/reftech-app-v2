@@ -46,14 +46,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/quotation/edit-sparepart/{id}', [QuotationController::class, 'edit_parts'])->name('edit-sparepart.quotation');
     Route::get('/quotation/edit-service/{id}', [QuotationController::class, 'edit_service'])->name('edit-service.quotation');
     Route::patch('/quotation/edit-sparepart/{id}', [QuotationController::class, 'update_part'])->name('update-sparepart.quotation');
-    Route::patch('/quotation/edit-service/{id}', [QuotationController::class, 'update_service'])->name('edit-service.quotation');
+    Route::patch('/quotation/edit-service/{id}', [QuotationController::class, 'update_service'])->name('update-edit-service.quotation');
     Route::get('/quotation/revision-overhaul/{id}', [QuotationController::class, 'revisionService'])->name('revisi-overhaul.quotation');
     Route::get('/quotation/print/{id}', [QuotationController::class, 'print_quote'])->name('print.quotation');
     Route::get('/quotation/pdf/{id}', [QuotationController::class, 'pdf_quote'])->name('pdf.quotation');
     Route::get('/quotation/sales/{id}', [QuotationController::class, 'sales_quotation'])->name('sales.quotation');
     Route::get('/po/sales/{id}', [QuotationController::class, 'sales_po'])->name('sales.po');
-    Route::get('/quotation/sparepart/{id}', [QuotationController::class, 'replacementDetailSparepart'])->name('detail.replacement');
-    Route::get('/quotation/unit/{id}', [QuotationController::class, 'replacementDetailUnit'])->name('detail.replacement');
+    Route::get('/quotation/sparepart/{id}', [QuotationController::class, 'replacementDetailSparepart'])->name('detail-sparepart.replacement');
+    Route::get('/quotation/unit/{id}', [QuotationController::class, 'replacementDetailUnit'])->name('detail-unit.replacement');
     Route::get('/quotation/client/{id}', function ($id) {
         $client = Client::find($id);
         return response()->json($client);
@@ -82,7 +82,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/quote/overhaul-revision/{id}', [QuotationController::class, 'revisionOverhaul'])->name('overhaul-revision.quotation');
     Route::post('/quote/overhaul-update/{id}', [QuotationController::class, 'updateOverhaul'])->name('overhaul-update.quotation');
     Route::get('/quotation/edit-overhaul/{id}', [QuotationController::class, 'editOverhaul'])->name('edit-overhaul.quotation');
-    Route::patch('/quotation/edit-overhaul/{id}', [QuotationController::class, 'updateOverhaulDirect'])->name('edit-overhaul.quotation');
+    Route::patch('/quotation/edit-overhaul/{id}', [QuotationController::class, 'updateOverhaulDirect'])->name('update-overhaul.quotation');
 
     // Unit Quotation — URI publik "smart-quote" (rebrand tampilan), nama route tetap
     // "unit-quotation.*" biar semua route()/pemanggilan lain di app gak perlu diubah.
@@ -217,11 +217,13 @@ Route::middleware(['auth'])->group(function () {
                 'quotation.harga_total', 'client.company', 'users.name', 'users.image as sales_image',
                 'invoice.id', 'invoice.type',
                 \DB::raw("'service' AS row_type"),
+                \DB::raw('NULL AS plant_name'),
             ]);
 
         // Unit quotation requests (escrow payment excluded — those go to Marketplace tab)
         $unit = \App\Models\Invoice::join('unit_quotation as uq', 'uq.id', '=', 'invoice.id_unit_quotation')
             ->join('client', 'client.id', '=', 'uq.id_client')
+            ->leftJoin('client_plants', 'client_plants.id', '=', 'uq.id_plant')
             ->join('users', 'users.id', '=', 'uq.id_sales')
             ->whereNull('invoice.no_invoice')
             ->whereNotNull('invoice.id_unit_quotation')
@@ -233,6 +235,7 @@ Route::middleware(['auth'])->group(function () {
                 'uq.total as harga_total', 'client.company', 'users.name', 'users.image as sales_image',
                 'invoice.id', 'invoice.type',
                 \DB::raw("'unit' AS row_type"),
+                'client_plants.name as plant_name',
             ]);
 
         return response()->json(['data' => $service->merge($unit)->values()]);
@@ -257,6 +260,7 @@ Route::middleware(['auth'])->group(function () {
                 'quotation.harga_total', 'client.company', 'users.name', 'users.image as sales_image',
                 'invoice.id', 'invoice.type',
                 \DB::raw("'service' AS row_type"),
+                \DB::raw('NULL AS plant_name'),
             ])
             ->addSelect(['escrow_channel' => \App\Models\Payment::selectRaw('escrow_channel')
                 ->whereColumn('id_quotation', 'quotation.id')
@@ -272,6 +276,7 @@ Route::middleware(['auth'])->group(function () {
         // Escrow masuk supaya tidak nyangkut di halaman before-accept).
         $unit = \App\Models\Invoice::join('unit_quotation as uq', 'uq.id', '=', 'invoice.id_unit_quotation')
             ->join('client', 'client.id', '=', 'uq.id_client')
+            ->leftJoin('client_plants', 'client_plants.id', '=', 'uq.id_plant')
             ->join('users', 'users.id', '=', 'uq.id_sales')
             ->where('invoice.type', 'Escrow')
             ->whereNotNull('invoice.id_unit_quotation')
@@ -283,6 +288,7 @@ Route::middleware(['auth'])->group(function () {
                 'client.company', 'users.name', 'users.image as sales_image',
                 'invoice.id', 'invoice.type',
                 \DB::raw("'unit' AS row_type"),
+                'client_plants.name as plant_name',
             ])
             ->addSelect(['escrow_channel' => \App\Models\Payment::selectRaw('escrow_channel')
                 ->whereColumn('id_unit_quotation', 'uq.id')

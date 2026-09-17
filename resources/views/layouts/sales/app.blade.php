@@ -215,6 +215,14 @@
         <script src="{{ asset('assets') }}/includes/suo-urgent-alert.js?v={{ file_exists(public_path('assets/includes/suo-urgent-alert.js')) ? filemtime(public_path('assets/includes/suo-urgent-alert.js')) : time() }}"></script>
     @endif
 
+    @if (Auth::check())
+        {{-- Polling notifikasi realtime Kanban mention dengan audio chime & floating toast alert --}}
+        <script>
+            window.kanbanNotifUnreadUrl = '{{ route('notifications.kanban.unread') }}';
+        </script>
+        <script src="{{ asset('assets') }}/includes/navbar-kanban-notif.js?v={{ file_exists(public_path('assets/includes/navbar-kanban-notif.js')) ? filemtime(public_path('assets/includes/navbar-kanban-notif.js')) : time() }}"></script>
+    @endif
+
     {{-- Patch setStyle so icon updates on click without page reload --}}
     <script>
     (function () {

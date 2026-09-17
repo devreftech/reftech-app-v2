@@ -138,7 +138,7 @@ class ContractController extends Controller
 
         // Unit quotation contract — separate view
         if ($contract->id_unit_quotation) {
-            $unitQuote = UnitQuotation::with(['client', 'pic', 'details.unit', 'sales'])->find($contract->id_unit_quotation);
+            $unitQuote = UnitQuotation::with(['client', 'pic', 'details.unit', 'details.equivalent.product', 'sales'])->find($contract->id_unit_quotation);
             return view('pages.accounting.contract.detail-unit', compact(
                 'requestContract', 'requestInvoice', 'noSaleProspect',
                 'contract', 'unitQuote', 'thisYear',
@@ -264,7 +264,7 @@ class ContractController extends Controller
         $sellcon = Contract::find($id);
 
         if ($sellcon->id_unit_quotation) {
-            $unitQuote = UnitQuotation::with(['client', 'pic', 'details.unit', 'sales'])->find($sellcon->id_unit_quotation);
+            $unitQuote = UnitQuotation::with(['client', 'pic', 'details.unit', 'details.equivalent.product', 'sales'])->find($sellcon->id_unit_quotation);
             return view('pages.accounting.contract.detail-print-unit', compact('sellcon', 'unitQuote'));
         }
 

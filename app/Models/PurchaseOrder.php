@@ -31,6 +31,7 @@ class PurchaseOrder extends Model
         'receipt_status',
         'gr_sent_at',
         'id_purchase_request',
+        'is_direct_purchase',
         'attn',
         'mobile',
         'company',
@@ -52,6 +53,17 @@ class PurchaseOrder extends Model
         'vendor_signed_at',
         'vendor_ip',
     ];
+
+    /**
+     * Check if this purchase order is an intercompany order from Kojisha to Reftech.
+     */
+    public function isKojisha()
+    {
+        return str_contains($this->no_po ?? '', 'KII')
+            || str_contains($this->no_po ?? '', 'KOJISHA')
+            || (isset($this->supplier) && str_contains($this->supplier->category ?? '', 'Intercompany'))
+            || stripos($this->note ?? '', 'Kojisha') !== false;
+    }
 
     /**
      * Get or auto-generate a secure token for vendor online signature.
@@ -85,6 +97,14 @@ class PurchaseOrder extends Model
         return !empty($this->vendor_signature) && !empty($this->vendor_signed_at);
     }
     public function detail()
+    {
+        return $this->hasMany('App\Models\DetailPurchaseOrder', 'id_purchase_order');
+    }
+    public function detailPurchaseOrder()
+    {
+        return $this->hasMany('App\Models\DetailPurchaseOrder', 'id_purchase_order');
+    }
+    public function details()
     {
         return $this->hasMany('App\Models\DetailPurchaseOrder', 'id_purchase_order');
     }
@@ -123,6 +143,14 @@ class PurchaseOrder extends Model
         }
 
         return PurchaseRequest::whereIn('id', $prIds)->get();
+    }
+
+    /**
+     * Cek apakah ini transaksi Direct Purchase (pembelian langsung non-PO formal).
+     */
+    public function isDirectPurchase(): bool
+    {
+        return (bool) $this->is_direct_purchase;
     }
 
     /**

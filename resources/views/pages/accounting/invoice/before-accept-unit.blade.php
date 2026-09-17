@@ -68,7 +68,12 @@
                     <div style="display:flex !important; align-items:stretch !important; gap:12px; margin-bottom:16px; font-size:12px;">
                         <div style="flex:1; display:flex; flex-direction:column; align-self:stretch; border:1px solid #dcdcdc; border-radius:6px; padding:10px 14px; background:#fafafa;">
                             <p class="mb-1 fw-bold text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#555;">Quote To</p>
-                            <p class="mb-1 fw-bold" style="font-size:13.5px; color:#111;">{{ $quote->client?->company ?? '-' }}</p>
+                            <p class="mb-1 fw-bold" style="font-size:13.5px; color:#111;">
+                                {{ $quote->client?->company ?? '-' }}
+                                @if ($quote->plant)
+                                    <span class="badge bg-label-primary ms-1" style="font-size: 10.5px; vertical-align: middle;">{{ $quote->plant->name }}</span>
+                                @endif
+                            </p>
                             @php
                                 $contactParts = [];
                                 if ($quote->pic?->name_pic) {
@@ -177,10 +182,12 @@
                                                     @php $specs = $item->getSpecVisibleArray(); @endphp
                                                     @if (!empty($specs))
                                                         <div style="font-size:11px; color:#777; margin-top:4px;">
-                                                            @foreach ($specs as $field)
-                                                                @if ($field === 'unit') @continue @endif
-                                                                @php $val = $item->unit->$field ?? null; @endphp
-                                                                @if ($val && isset($specLabels[$field]))
+                                                             @foreach ($specs as $field)
+                                                                 @if ($field === 'unit') @continue @endif
+                                                                 @php
+                                                                     $val = ($field === 'type_unit') ? ($item->unit->formatted_type ?: $item->unit->type_unit) : ($item->unit->$field ?? null);
+                                                                 @endphp
+                                                                 @if ($val && isset($specLabels[$field]))
                                                                     <div style="display:flex; padding:1px 0;">
                                                                         <span style="min-width:110px; flex-shrink:0;">{{ $specLabels[$field] }}</span>
                                                                         <span>: {{ $val }}{{ $specUnits[$field] ?? '' }}</span>

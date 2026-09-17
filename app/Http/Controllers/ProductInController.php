@@ -10,9 +10,11 @@ use App\Models\Product;
 use App\Models\ProductIn;
 use App\Models\ProductInCost;
 use App\Models\Prospect;
+use App\Models\PurchaseOrder;
 use App\Models\Retur;
 use App\Models\Supplier;
 use App\Models\SupplierPic;
+use App\Models\SupplierAddress;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -789,7 +791,26 @@ class ProductInController extends Controller
     public function detailSupplier($id)
     {
         $supplier = Supplier::find($id);
+        if (!$supplier) {
+            return redirect()->route('supplier.index')->with('error', 'Supplier tidak ditemukan');
+        }
+
         $pics = SupplierPic::where('id_supplier', $id)->orderByDesc('id')->get();
+        $addresses = SupplierAddress::where('id_supplier', $id)->orderByDesc('is_primary')->orderBy('id')->get();
+
+        // Rekap Purchase Orders (PO) terkait supplier ini (berdasarkan id_supplier atau nama perusahaan supplier)
+        $purchaseOrders = PurchaseOrder::with(['detail.product', 'detail.unit', 'purchaseRequest'])
+            ->where(function ($q) use ($id, $supplier) {
+                $q->where('id_supplier', $id);
+                if (!empty($supplier->supplier)) {
+                    $q->orWhere('company', $supplier->supplier);
+                }
+            })
+            ->orderByDesc('id')
+            ->get();
+
+        $poTotalCount = $purchaseOrders->count();
+        $poTotalAmount = (float) $purchaseOrders->sum('total');
 
         $currentYear = now()->year;
         $startYear = $currentYear - 4;
@@ -811,6 +832,10 @@ class ProductInController extends Controller
         return view('pages.warehouse.supplier.detail', compact(
             'supplier',
             'pics',
+            'addresses',
+            'purchaseOrders',
+            'poTotalCount',
+            'poTotalAmount',
             'yearlyLabels',
             'yearlyTotals',
             'currentYearTotal',
@@ -868,24 +893,137 @@ class ProductInController extends Controller
     public function destroySupplierPic($id)
     {
         $pic = SupplierPic::find($id);
-        $deleted = $pic->delete();
+        $deleted = $pic ? $pic->delete() : false;
 
         return $deleted ? 1 : 0;
+    }
+
+    public function storeSupplierAddress(Request $request, $id)
+    {
+        $request->validate([
+            'address' => 'required|string',
+            'name'    => 'nullable|string',
+        ]);
+
+        $isFirst = !SupplierAddress::where('id_supplier', $id)->exists();
+        $isPrimary = $request->boolean('is_primary') || $isFirst;
+
+        if ($isPrimary) {
+            SupplierAddress::where('id_supplier', $id)->update(['is_primary' => false]);
+        }
+
+        $address = SupplierAddress::create([
+            'id_supplier' => $id,
+            'name'        => $request->name ?: 'Alamat Operasional',
+            'address'     => $request->address,
+            'is_primary'  => $isPrimary,
+        ]);
+
+        if ($isPrimary) {
+            Supplier::where('id', $id)->update(['address' => $request->address]);
+        }
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'data' => $address]);
+        }
+
+        return redirect('/supplier/' . $id)->with('success', 'Alamat berhasil ditambahkan');
+    }
+
+    public function updateSupplierAddress(Request $request, $id)
+    {
+        $request->validate([
+            'address' => 'required|string',
+            'name'    => 'nullable|string',
+        ]);
+
+        $address = SupplierAddress::findOrFail($id);
+        $address->name = $request->name ?: $address->name;
+        $address->address = $request->address;
+
+        if ($request->has('is_primary')) {
+            $isPrimary = $request->boolean('is_primary');
+            if ($isPrimary) {
+                SupplierAddress::where('id_supplier', $address->id_supplier)->update(['is_primary' => false]);
+                $address->is_primary = true;
+                Supplier::where('id', $address->id_supplier)->update(['address' => $request->address]);
+            }
+        } elseif ($address->is_primary) {
+            Supplier::where('id', $address->id_supplier)->update(['address' => $request->address]);
+        }
+
+        $address->save();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'data' => $address]);
+        }
+
+        return redirect('/supplier/' . $address->id_supplier)->with('success', 'Alamat berhasil diubah');
+    }
+
+    public function destroySupplierAddress($id)
+    {
+        $address = SupplierAddress::findOrFail($id);
+        $idSupplier = $address->id_supplier;
+        $wasPrimary = $address->is_primary;
+        $deleted = $address->delete();
+
+        if ($wasPrimary) {
+            $next = SupplierAddress::where('id_supplier', $idSupplier)->first();
+            if ($next) {
+                $next->update(['is_primary' => true]);
+                Supplier::where('id', $idSupplier)->update(['address' => $next->address]);
+            }
+        }
+
+        return response()->json(['success' => (bool)$deleted]);
+    }
+
+    public function setPrimarySupplierAddress($id)
+    {
+        $address = SupplierAddress::findOrFail($id);
+        SupplierAddress::where('id_supplier', $address->id_supplier)->update(['is_primary' => false]);
+        $address->update(['is_primary' => true]);
+        Supplier::where('id', $address->id_supplier)->update(['address' => $address->address]);
+
+        return response()->json(['success' => true, 'data' => $address]);
     }
 
     public function storeSupplier(Request $request)
     {
         $supplier = new Supplier();
         $supplier->supplier = $request->supplier;
+        $supplier->type = $request->type ?? 'Company';
         $supplier->phone = $request->phone;
-        $supplier->email = $request->email;
+        $supplier->email = ($request->type === 'Individual') ? null : $request->email;
         $supplier->code = $request->code;
         $supplier->area = $request->area;
         $supplier->address = $request->address;
-        $supplier->npwp = $request->npwp;
+        $supplier->npwp = ($request->type === 'Individual') ? null : $request->npwp;
         $supplier->info = $request->info;
         $supplierSave = $supplier->save();
         if ($supplierSave) {
+            // Simpan PIC utama jika diisi saat create
+            if ($request->filled('name_pic') || $request->filled('namePic')) {
+                SupplierPic::create([
+                    'id_supplier' => $supplier->id,
+                    'name_pic'    => $request->name_pic ?? $request->namePic,
+                    'position'    => $request->position_pic ?? $request->position ?? 'PIC Utama',
+                    'phone_pic'   => $request->phone_pic ?? $request->phonePic,
+                    'email_pic'   => $request->email_pic ?? $request->emailPic,
+                ]);
+            }
+
+            // Simpan Alamat jika diisi saat create
+            if ($request->filled('address')) {
+                SupplierAddress::create([
+                    'id_supplier' => $supplier->id,
+                    'name'        => 'Alamat Utama',
+                    'address'     => $request->address,
+                    'is_primary'  => true,
+                ]);
+            }
+
             return redirect()->back()->with('success', 'Supplier berhasil ditambahkan!');
         }
     }
@@ -903,10 +1041,11 @@ class ProductInController extends Controller
         $supplier->code = $request->code;
         $supplier->supplier = $request->supplier;
         $supplier->info = $request->info;
+        $supplier->type = $request->type ?? 'Company';
         if ($request->filled('phone')) {
             $supplier->phone = $request->phone;
         }
-        if ($request->filled('email')) {
+        if ($request->filled('email') && $request->type !== 'Individual') {
             $supplier->email = $request->email;
         }
         $supplier->save();
@@ -942,12 +1081,13 @@ class ProductInController extends Controller
     {
         $supplier = Supplier::find($id);
         $supplier->supplier = $request->supplier;
+        $supplier->type = $request->type ?? $supplier->type ?? 'Company';
         $supplier->phone = $request->phone;
-        $supplier->email = $request->email;
+        $supplier->email = ($supplier->type === 'Individual') ? null : $request->email;
         $supplier->code = $request->code;
         $supplier->area = $request->area;
         $supplier->address = $request->address;
-        $supplier->npwp = $request->npwp;
+        $supplier->npwp = ($supplier->type === 'Individual') ? null : $request->npwp;
         $supplier->info = $request->info;
         $supplierSave = $supplier->save();
 
@@ -956,16 +1096,29 @@ class ProductInController extends Controller
         }
 
         if ($supplierSave) {
-            return redirect()->back()->with('success', 'Supplier berhasil ditambahkan!');
+            return redirect()->back()->with('success', 'Supplier berhasil diperbarui!');
         }
     }
 
-    public function editDataSupplier($id)
+    public function editDataSupplier(Request $request, $id)
     {
         $supplier = Supplier::find($id);
-        $pics = SupplierPic::where('id_supplier', $id)->orderByDesc('id')->get();
+        if (!$supplier) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['error' => 'Supplier tidak ditemukan'], 404);
+            }
+            return redirect()->route('supplier.index')->with('error', 'Supplier tidak ditemukan');
+        }
 
-        return response()->json(['supplier' => $supplier, 'pics' => $pics]);
+        $pics = SupplierPic::where('id_supplier', $id)->orderByDesc('id')->get();
+        $addresses = SupplierAddress::where('id_supplier', $id)->orderByDesc('is_primary')->orderBy('id')->get();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['supplier' => $supplier, 'pics' => $pics, 'addresses' => $addresses]);
+        }
+
+        // Jika dibuka langsung lewat URL browser biasa, arahkan ke detail supplier
+        return redirect()->route('supplier.detail', $id);
     }
     public function acceptIn($id)
     {

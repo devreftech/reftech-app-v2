@@ -31,4 +31,8 @@ class Expense extends Model
     {
         return $this->hasMany('App\Models\DetailExpense', 'id_expense');
     }
+    public function payroll()
+    {
+        return $this->hasOne(\App\Models\Hr\HrPayroll::class, 'expense_id');
+    }
 }

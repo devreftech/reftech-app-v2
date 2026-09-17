@@ -2,6 +2,8 @@
     $isSigned = $purchase->isSignedByVendor();
     $totalPph = $totalPph ?? 0;
     $hasDisc  = $dPurchase->contains(fn($item) => $item->disc > 0);
+    $isCompanySupplier = ($purchase->supplier->type ?? 'Company') === 'Company';
+    $isKojisha = method_exists($purchase, 'isKojisha') ? $purchase->isKojisha() : (str_contains($purchase->no_po ?? '', 'KII') || stripos($purchase->note ?? '', 'Kojisha') !== false);
 @endphp
 <!DOCTYPE html>
 <html lang="id">
@@ -446,21 +448,34 @@
                 <div class="mb-xl-0 pb-1">
                     <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
                         <span class="app-brand-logo demo">
-                            <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="PT Reftech Jaya Optima" width="160">
+                            @if ($isKojisha)
+                                <img src="{{ asset('/asset') }}/logo/Kojisha-Log.png" alt="PT Kojisha Innotiv Indonesia" width="150">
+                            @else
+                                <img src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="PT Reftech Jaya Optima" width="160">
+                            @endif
                         </span>
                     </div>
-                    <p class="mb-1 fw-bolder" style="font-size: 15px; color:#111;">PT Reftech Jaya Optima</p>
-                    <div style="font-size: 12px; color: #555;">
-                        <p class="mb-0">Taman Kopo Indah V, Soho Sommerville No. 31</p>
-                        <p class="mb-0">Bandung – Jawa Barat 40218</p>
-                        <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>info@reftech.id &nbsp;|&nbsp; <i class="mdi mdi-web me-1" style="font-size:11px;"></i>www.reftech.id</p>
-                        <p class="mb-0 mt-1" style="font-size:10.5px; color:#444; font-weight:500;">
-                            <i class="mdi mdi-certificate-outline me-1 text-primary"></i><span class="fw-bold" style="color:#696cff;">ISO Certified:</span> ISO 9001:2015 &nbsp;|&nbsp; ISO 14001:2015 &nbsp;|&nbsp; ISO 45001:2018
-                        </p>
-                    </div>
+                    @if ($isKojisha)
+                        <p class="mb-1 fw-bolder" style="font-size: 15px; color:#111;">PT Kojisha Innotiv Indonesia</p>
+                        <div style="font-size: 12px; color: #555;">
+                            <p class="mb-0">Jl. Nancep No. 45A, Setu</p>
+                            <p class="mb-0">Cibitung - Kab. Bekasi 17320</p>
+                            <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>+62 812-1000-0997 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>admin@kojisha.com</p>
+                        </div>
+                    @else
+                        <p class="mb-1 fw-bolder" style="font-size: 15px; color:#111;">PT Reftech Jaya Optima</p>
+                        <div style="font-size: 12px; color: #555;">
+                            <p class="mb-0">Taman Kopo Indah V, Soho Sommerville No. 31</p>
+                            <p class="mb-0">Bandung – Jawa Barat 40218</p>
+                            <p class="mb-0"><i class="mdi mdi-phone-outline me-1" style="font-size:11px;"></i>022 54417653 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="font-size:11px;"></i>info@reftech.id &nbsp;|&nbsp; <i class="mdi mdi-web me-1" style="font-size:11px;"></i>www.reftech.id</p>
+                            <p class="mb-0 mt-1" style="font-size:10.5px; color:#444; font-weight:500;">
+                                <i class="mdi mdi-certificate-outline me-1 text-primary"></i><span class="fw-bold" style="color:#696cff;">ISO Certified:</span> ISO 9001:2015 &nbsp;|&nbsp; ISO 14001:2015 &nbsp;|&nbsp; ISO 45001:2018
+                            </p>
+                        </div>
+                    @endif
                 </div>
                 <div class="text-end">
-                    <h3 class="fw-bold mb-1" style="letter-spacing:2px; color:#696cff;">PURCHASE ORDER</h3>
+                    <h3 class="fw-bold mb-1" style="letter-spacing:2px; color: {{ $isKojisha ? '#e11d48' : '#696cff' }};">PURCHASE ORDER</h3>
                     <p class="mb-1 fw-bold text-dark" style="font-size:16px;">#{{ $purchase->no_po }}</p>
                     @if ($purchase->no_reference)
                         <p class="mb-1 text-muted" style="font-size:12px;">
@@ -573,9 +588,7 @@
                                 <tr style="font-size: 12px">
                                     <td class="text-center align-top py-2">{{ $itemNo++ }}</td>
                                     <td class="align-top py-2">
-                                        <p class="mb-0 fw-semibold" style="font-size: 12px; color:#111;">
-                                            {{ $product->product }}
-                                        </p>
+                                        <p class="mb-0 fw-semibold" style="font-size: 12px; color:#111; white-space: pre-line; word-break: break-word;">{!! nl2br(e($product->product)) !!}</p>
                                     </td>
                                     <td class="text-center align-top py-2">
                                         <span class="fw-bold" style="color:#222;">{{ $product->qty }}</span> {{ $product->info_qty }}
@@ -718,10 +731,21 @@
             <div class="row pt-3 text-center" style="font-size:12px;">
                 <div class="col-6">
                     <p class="fw-bold mb-1" style="color:#333;">Authorized By.</p>
-                    <div class="my-1 d-flex justify-content-center align-items-center" style="height:75px;">
-                        <img src="{{ url('') . '/asset/sign/ttdAngel.jpg' }}" alt="TTD Angel" height="70" style="max-height:70px; object-fit:contain;">
-                    </div>
-                    <p class="fw-bold mb-0" style="color:#111;">PT Reftech Jaya Optima</p>
+                    @if ($isKojisha)
+                        <div class="my-1 d-flex justify-content-center align-items-center" style="height:75px;">
+                            {{-- TTD Kosong sementara untuk Kojisha --}}
+                        </div>
+                        <p class="fw-bold mb-0" style="color:#111;">PT Kojisha Innotiv Indonesia</p>
+                        <div style="border-top: 1px solid #333; width: 200px; margin: 4px auto 3px auto;"></div>
+                        <p class="text-muted mb-0" style="font-size:11px;">Dedeh Sulastri</p>
+                    @else
+                        <div class="my-1 d-flex justify-content-center align-items-center" style="height:75px;">
+                            <img src="{{ url('') . '/asset/sign/ttdAngel.jpg' }}" alt="TTD Angel" height="70" style="max-height:70px; object-fit:contain;">
+                        </div>
+                        <p class="fw-bold mb-0" style="color:#111;">PT Reftech Jaya Optima</p>
+                        <div style="border-top: 1px solid #333; width: 200px; margin: 4px auto 3px auto;"></div>
+                        <p class="text-muted mb-0" style="font-size:11px;">Angel Irene</p>
+                    @endif
                 </div>
                 <div class="col-6">
                     <p class="fw-bold mb-1" style="color:#333;">Accepted By Vendor.</p>
@@ -739,13 +763,27 @@
                             </div>
                         @endif
                     </div>
-                    <p class="fw-bold mb-0" style="color:#111;">
-                        {{ $isSigned ? $purchase->vendor_signer_name : ($purchase->attn ?: '-') }}
+                    @php
+                        $isIndividual = ($purchase->supplier?->type === 'Individual') || ($purchase->type === 'Individual');
+                        $hasAttn = !empty($purchase->attn) && trim($purchase->attn) !== '-';
+                        if ($isSigned) {
+                            $picName = $purchase->vendor_signer_name;
+                        } elseif ($isIndividual) {
+                            $picName = $hasAttn ? $purchase->attn : ($purchase->company ?: ($purchase->supplier?->supplier ?: '-'));
+                        } else {
+                            $picName = $hasAttn ? $purchase->attn : '-';
+                        }
+                    @endphp
+                    @if (!$isIndividual && !empty($purchase->company))
+                        <p class="fw-bold mb-0" style="color:#111;">{{ $purchase->company }}</p>
+                    @endif
+                    <div style="border-top: 1px solid #333; width: 200px; margin: 4px auto 3px auto;"></div>
+                    <p class="text-muted mb-0" style="font-size:11px;">
+                        {{ $picName }}
                         @if ($isSigned && $purchase->vendor_signer_position)
-                            <span class="text-muted fw-normal">({{ $purchase->vendor_signer_position }})</span>
+                            <span>({{ $purchase->vendor_signer_position }})</span>
                         @endif
                     </p>
-                    <p class="text-muted mb-0" style="font-size:11px;">{{ $purchase->company }}</p>
                 </div>
             </div>
         </div>
@@ -804,17 +842,21 @@
                                 <label for="signer_name">Nama Lengkap Penandatangan <span style="color: #dc2626;">*</span></label>
                                 <input type="text" id="signer_name" name="signer_name" value="{{ $purchase->attn }}" placeholder="Contoh: Bpk. Budi Santoso" required>
                             </div>
-                            <div class="form-group">
-                                <label for="signer_position">Jabatan / Posisi <span style="color: #64748b; font-weight: normal;">(Opsional)</span></label>
-                                <input type="text" id="signer_position" name="signer_position" placeholder="Contoh: Direktur / Sales Manager">
-                            </div>
+                            @if ($isCompanySupplier)
+                                <div class="form-group">
+                                    <label for="signer_position">Jabatan / Posisi <span style="color: #64748b; font-weight: normal;">(Opsional)</span></label>
+                                    <input type="text" id="signer_position" name="signer_position" placeholder="Contoh: Direktur / Sales Manager">
+                                </div>
+                            @endif
                         </div>
 
-                        <div class="form-group" style="margin-bottom: 16px;">
-                            <label for="stamp">Upload Stempel Perusahaan (Opsional)</label>
-                            <input type="file" id="stamp" name="stamp" accept="image/png, image/jpeg, image/jpg">
-                            <small class="text-muted d-block mt-1" style="font-size: 11.5px;">Format JPG / PNG transparan, maks 3 MB.</small>
-                        </div>
+                        @if ($isCompanySupplier)
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label for="stamp">Upload Stempel Perusahaan (Opsional)</label>
+                                <input type="file" id="stamp" name="stamp" accept="image/png, image/jpeg, image/jpg">
+                                <small class="text-muted d-block mt-1" style="font-size: 11.5px;">Format JPG / PNG transparan, maks 3 MB.</small>
+                            </div>
+                        @endif
 
                         <div class="agreement-box">
                             <input type="checkbox" id="agreement" name="agreement" value="1" required>

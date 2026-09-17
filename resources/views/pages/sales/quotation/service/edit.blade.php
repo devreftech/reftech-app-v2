@@ -1,3 +1,4 @@
+
 @extends('layouts.sales.app')
 @section('title', 'Create Service Quotation')
 @section('content')
@@ -11,7 +12,7 @@
         </div>
     @endif
     <form id="formAuthentication" class="mb-3 fv-plugins-bootstrap5 fv-plugins-framework"
-        action="{{ route('edit-service.quotation', $quotation->id) }}" method="post" enctype="multipart/form-data">
+        action="{{ route('update-edit-service.quotation', $quotation->id) }}" method="post" enctype="multipart/form-data">
         @method('PATCH')
         @csrf
         <div class="form-floating mb-3">

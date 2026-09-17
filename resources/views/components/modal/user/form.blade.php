@@ -421,6 +421,23 @@
                                     </div>
                                 </div>
                             </div>
+
+                            @if (empty($users))
+                                <!-- Section HR Integration Toggle -->
+                                <div class="card border border-primary border-opacity-25 bg-label-primary p-3 mt-3" id="hrEmployeeIntegrationBox">
+                                    <div class="form-check form-switch mb-0 d-flex align-items-start gap-2">
+                                        <input class="form-check-input mt-1" type="checkbox" name="create_employee" id="create_employee_check" value="1" checked>
+                                        <div>
+                                            <label class="form-check-label fw-bold text-heading" for="create_employee_check">
+                                                <i class="mdi mdi-account-badge-outline me-1"></i> Daftarkan juga sebagai Karyawan (Modul HR)
+                                            </label>
+                                            <div class="small text-muted mt-1" style="line-height: 1.4;">
+                                                Otomatis membuat profil kepegawaian di modul HR. <strong>Hilangkan centang</strong> jika akun ini hanya untuk user luar, mitra, atau client non-karyawan.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>

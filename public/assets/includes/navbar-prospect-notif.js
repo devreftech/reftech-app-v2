@@ -73,19 +73,33 @@ $(function () {
         }
     }
 
-    function isDismissed(notifId) {
+    // Bersihkan dismissal permanen lama dari sessionStorage jika ada
+    try {
+        for (var k in sessionStorage) {
+            if (k && k.indexOf('dismissed_prospect_urgent_') === 0) {
+                sessionStorage.removeItem(k);
+            }
+        }
+    } catch (e) {}
+
+    function isDismissed(notifId, stage) {
         try {
-            var key = 'dismissed_prospect_urgent_' + notifId;
-            return sessionStorage.getItem(key) === '1';
+            var key = 'snoozed_prospect_urgent_' + notifId + (stage ? '_' + stage : '');
+            var until = parseInt(sessionStorage.getItem(key), 10);
+            if (until && Date.now() < until) {
+                return true; // Masih dalam masa tunda (snooze)
+            }
+            return false;
         } catch (e) {
             return false;
         }
     }
 
-    function setDismissed(notifId) {
+    function setDismissed(notifId, stage, snoozeMs) {
         try {
-            var key = 'dismissed_prospect_urgent_' + notifId;
-            sessionStorage.setItem(key, '1');
+            var key = 'snoozed_prospect_urgent_' + notifId + (stage ? '_' + stage : '');
+            var duration = snoozeMs || 60000; // default snooze 60 detik
+            sessionStorage.setItem(key, Date.now() + duration);
         } catch (e) {}
     }
 
@@ -103,96 +117,107 @@ $(function () {
         if ($('#prospectUrgentModalStyles').length) return;
         var css = `
             @keyframes prospectPingDot {
-                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(105, 108, 255, 0.7); }
-                70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(105, 108, 255, 0); }
-                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(105, 108, 255, 0); }
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
+                70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
             }
             @keyframes prospectPingDotSuccess {
-                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7); }
-                70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(40, 199, 111, 0); }
-                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(40, 199, 111, 0); }
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+                70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
             }
             @keyframes prospectShimmer {
                 0% { background-position: -200% 0; }
                 100% { background-position: 200% 0; }
             }
+            #prospectUrgentModal {
+                z-index: 1095 !important;
+            }
             #prospectUrgentModal .modal-dialog {
-                max-width: 540px;
+                max-width: 550px;
+                margin: 1.75rem auto;
             }
             #prospectUrgentModal .modal-content {
-                border-radius: 18px !important;
-                border: 1px solid rgba(105, 108, 255, 0.25) !important;
-                box-shadow: 0 24px 48px -12px rgba(105, 108, 255, 0.28), 0 4px 16px rgba(0, 0, 0, 0.06) !important;
+                border-radius: 20px !important;
+                border: 0 !important;
+                box-shadow: 0 25px 60px rgba(0, 0, 0, 0.28) !important;
                 overflow: hidden;
                 background: #ffffff;
             }
             html.dark-style #prospectUrgentModal .modal-content {
                 background: #2b2c40 !important;
-                border-color: rgba(105, 108, 255, 0.4) !important;
-                box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.6) !important;
+                border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7) !important;
                 color: #e4e6f0;
             }
             #prospectUrgentModal .prospect-top-stripe {
                 height: 5px;
-                background: linear-gradient(90deg, #696cff, #8a8dff, #38bdf8, #696cff);
+                background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #38bdf8 100%);
                 background-size: 200% 100%;
                 animation: prospectShimmer 3s ease-in-out infinite;
+                width: 100%;
             }
             #prospectUrgentModal.modal-assigned .prospect-top-stripe {
-                background: linear-gradient(90deg, #28c76f, #48da89, #71dd37, #28c76f);
+                background: linear-gradient(90deg, #10b981 0%, #06b6d4 50%, #3b82f6 100%);
                 background-size: 200% 100%;
                 animation: prospectShimmer 3s ease-in-out infinite;
+                width: 100%;
             }
-            #prospectUrgentModal .prospect-badge-alert {
-                background: #eef2ff;
-                color: #696cff;
-                font-weight: 700;
-                font-size: 0.76rem;
-                letter-spacing: 0.5px;
-                padding: 4px 11px;
-                border-radius: 20px;
-                display: inline-flex;
+            .prospect-hero-halo {
+                width: 76px;
+                height: 76px;
+                border-radius: 50%;
+                background: radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, rgba(99, 102, 241, 0.04) 70%, transparent 100%);
+                display: flex;
                 align-items: center;
-                gap: 6px;
-                border: 1px solid rgba(105, 108, 255, 0.25);
+                justify-content: center;
             }
-            #prospectUrgentModal .prospect-badge-alert.prospect-badge-assigned {
-                background: #e8fadf;
-                color: #28c76f;
-                border-color: rgba(40, 199, 111, 0.25);
+            #prospectUrgentModal.modal-assigned .prospect-hero-halo {
+                background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, rgba(16, 185, 129, 0.04) 70%, transparent 100%);
             }
-            #prospectUrgentModal .prospect-pulse-dot {
-                width: 8px;
-                height: 8px;
-                background-color: #696cff;
+            .prospect-hero-inner {
+                width: 52px;
+                height: 52px;
                 border-radius: 50%;
-                display: inline-block;
-                animation: prospectPingDot 1.4s infinite;
+                background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+                color: #ffffff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 6px 18px rgba(99, 102, 241, 0.4);
             }
-            #prospectUrgentModal .prospect-pulse-dot-success {
-                width: 8px;
-                height: 8px;
-                background-color: #28c76f;
-                border-radius: 50%;
-                display: inline-block;
-                animation: prospectPingDotSuccess 1.4s infinite;
+            #prospectUrgentModal.modal-assigned .prospect-hero-inner {
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4);
             }
-            #prospectUrgentModal .prospect-info-card {
-                background: #f8f9fc;
-                border: 1px solid #edf0f5;
-                border-radius: 12px;
-                padding: 14px 16px;
+            #prospectUrgentModal .prospect-detail-card {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 14px;
+                overflow: hidden;
             }
-            html.dark-style #prospectUrgentModal .prospect-info-card {
+            html.dark-style #prospectUrgentModal .prospect-detail-card {
                 background: #32344d;
-                border-color: #3b3e5b;
+                border-color: #3f4262;
+            }
+            #prospectUrgentModal .prospect-card-header {
+                background: #ffffff;
+                border-bottom: 1px solid #edf0f5;
+                padding: 11px 16px;
+            }
+            html.dark-style #prospectUrgentModal .prospect-card-header {
+                background: #2b2c40;
+                border-bottom-color: #3f4262;
+            }
+            #prospectUrgentModal .prospect-card-body {
+                padding: 12px 16px;
             }
             #prospectUrgentModal .prospect-info-row {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                padding: 8px 0;
-                border-bottom: 1px dashed #e4e7ed;
+                padding: 7px 0;
+                border-bottom: 1px dashed #e2e8f0;
             }
             html.dark-style #prospectUrgentModal .prospect-info-row {
                 border-bottom-color: #434665;
@@ -203,7 +228,7 @@ $(function () {
             }
             #prospectUrgentModal .prospect-info-label {
                 font-size: 0.815rem;
-                color: #6c757d;
+                color: #64748b;
                 font-weight: 500;
                 display: flex;
                 align-items: center;
@@ -215,84 +240,77 @@ $(function () {
             #prospectUrgentModal .prospect-info-val {
                 font-size: 0.865rem;
                 font-weight: 600;
-                color: #2b303a;
+                color: #1e293b;
                 text-align: right;
                 max-width: 65%;
             }
             html.dark-style #prospectUrgentModal .prospect-info-val {
-                color: #e4e6f0;
+                color: #f1f5f9;
             }
-            #prospectUrgentModal .prospect-notice-bar {
-                background: #f0f4ff;
-                border: 1px solid #d5e0ff;
-                border-radius: 10px;
-                padding: 10px 12px;
-                font-size: 0.81rem;
-                color: #3b4cb8;
-                display: flex;
-                align-items: flex-start;
-                gap: 8px;
+            #prospectUrgentModal .prospect-guide-card {
+                background: #eff6ff;
+                border: 1px solid #dbeafe;
+                border-radius: 12px;
+                padding: 10px 14px;
             }
-            html.dark-style #prospectUrgentModal .prospect-notice-bar {
-                background: #2a2e4e;
-                border-color: #3d4576;
-                color: #a8b6ff;
+            html.dark-style #prospectUrgentModal .prospect-guide-card {
+                background: #1e293b;
+                border-color: #334155;
             }
-            #prospectUrgentModal.modal-assigned .prospect-notice-bar {
-                background: #eefaf2;
-                border-color: #c7eed5;
-                color: #1a7842;
+            #prospectUrgentModal.modal-assigned .prospect-guide-card {
+                background: #ecfdf5;
+                border-color: #d1fae5;
             }
-            html.dark-style #prospectUrgentModal.modal-assigned .prospect-notice-bar {
-                background: #1e3a2b;
-                border-color: #2a583e;
-                color: #8be0ab;
+            html.dark-style #prospectUrgentModal.modal-assigned .prospect-guide-card {
+                background: #064e3b;
+                border-color: #047857;
             }
             #prospectUrgentModal .btn-action-prospect {
-                background: linear-gradient(135deg, #696cff, #5053e6);
+                background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
                 border: none;
                 color: #ffffff;
                 font-weight: 600;
-                font-size: 0.88rem;
-                padding: 9px 18px;
-                border-radius: 10px;
-                box-shadow: 0 4px 12px rgba(105, 108, 255, 0.35);
+                font-size: 0.9rem;
+                padding: 10px 20px;
+                border-radius: 12px;
+                box-shadow: 0 4px 14px rgba(99, 102, 241, 0.38);
                 transition: all 0.2s ease;
             }
             #prospectUrgentModal .btn-action-prospect:hover {
-                background: linear-gradient(135deg, #5b5ee6, #4346d8);
+                background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
                 color: #ffffff;
-                box-shadow: 0 6px 16px rgba(105, 108, 255, 0.45);
+                box-shadow: 0 6px 18px rgba(99, 102, 241, 0.48);
                 transform: translateY(-1px);
             }
             #prospectUrgentModal.modal-assigned .btn-action-prospect {
-                background: linear-gradient(135deg, #28c76f, #1f9d57);
-                box-shadow: 0 4px 12px rgba(40, 199, 111, 0.35);
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                box-shadow: 0 4px 14px rgba(16, 185, 129, 0.38);
             }
             #prospectUrgentModal.modal-assigned .btn-action-prospect:hover {
-                background: linear-gradient(135deg, #22b663, #198649);
-                box-shadow: 0 6px 16px rgba(40, 199, 111, 0.45);
+                background: linear-gradient(135deg, #059669 0%, #047857 100%);
+                box-shadow: 0 6px 18px rgba(16, 185, 129, 0.48);
             }
             #prospectUrgentModal .btn-dismiss-prospect {
-                background: #f1f3f6;
-                color: #5c6370;
-                border: none;
-                font-weight: 500;
+                background: #f1f5f9;
+                color: #475569;
+                border: 1px solid #e2e8f0;
+                font-weight: 600;
                 font-size: 0.88rem;
-                padding: 9px 16px;
-                border-radius: 10px;
+                padding: 10px 18px;
+                border-radius: 12px;
                 transition: all 0.15s ease;
             }
             #prospectUrgentModal .btn-dismiss-prospect:hover {
-                background: #e4e7ed;
-                color: #2b303a;
+                background: #e2e8f0;
+                color: #1e293b;
             }
             html.dark-style #prospectUrgentModal .btn-dismiss-prospect {
-                background: #3b3e5b;
-                color: #c7c9d9;
+                background: #334155;
+                color: #e2e8f0;
+                border-color: #475569;
             }
             html.dark-style #prospectUrgentModal .btn-dismiss-prospect:hover {
-                background: #464a6e;
+                background: #475569;
                 color: #ffffff;
             }
         `;
@@ -302,24 +320,29 @@ $(function () {
     function showProspectModal(item) {
         injectStyles();
 
+        // Jangan buka jika user sudah berada di halaman detail prospek tersebut
+        if (item.id && window.location.pathname.indexOf('/prospect/' + item.id) !== -1) {
+            return;
+        }
+
         // Jangan buka modal baru jika modal SUO atau modal Prospect sedang tampil
-        if ($('#suoUrgentModal.show').length || $('#prospectUrgentModal.show').length) {
+        if ($('#suoUrgentModal.show').length || $('#prospectUrgentModal.show').length || isModalOpen) {
             return;
         }
 
         $('#prospectUrgentModal').remove();
+        $('.modal-backdrop').remove();
 
         var isAssigned = (item.type === 'prospect_assigned');
         var modalThemeClass = isAssigned ? 'modal-assigned' : '';
-        var badgeText = isAssigned ? 'PROSPECT DITUGASKAN' : 'PROSPECT BARU';
-        var badgeClass = isAssigned ? 'prospect-badge-assigned' : '';
-        var pulseDotHtml = isAssigned ? '<span class="prospect-pulse-dot-success"></span>' : '<span class="prospect-pulse-dot"></span>';
+        var badgeText = isAssigned ? 'PROSPEK DITUGASKAN' : 'PROSPEK BARU';
         var stageBadge = item.stage_badge || (isAssigned ? 'Ditugaskan ke Anda' : 'Baru Dibuat');
         var stageTitle = item.stage_title || (isAssigned ? 'Anda Mendapat Penugasan Prospect Baru!' : 'Ada Prospect Baru Masuk!');
         var stageDesc = item.stage_desc || (isAssigned
             ? 'Prospek baru telah didelegasikan kepada Anda. Segera lakukan follow-up ke pelanggan untuk proses penawaran.'
             : 'Tim Support baru saja menginput data prospek baru yang belum ditugaskan ke Sales. Segera tentukan dan tugaskan Sales penanggung jawab.');
         var actionLabel = item.action_label || (isAssigned ? 'Buka Prospek' : 'Tugaskan ke Sales');
+        var heroIcon = isAssigned ? 'mdi-account-arrow-right-outline' : 'mdi-account-star-outline';
 
         var avatarHtml = '';
         if (item.support_image) {
@@ -338,82 +361,93 @@ $(function () {
         var modalHtml = `
             <div class="modal fade ${modalThemeClass}" id="prospectUrgentModal" tabindex="-1" aria-labelledby="prospectUrgentModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
                 <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <!-- Top Accent Line -->
+                    <div class="modal-content border-0">
+                        <!-- Top Accent Gradient Line -->
                         <div class="prospect-top-stripe"></div>
 
-                        <!-- Modal Header -->
-                        <div class="p-4 pb-2 d-flex align-items-start justify-content-between border-0">
-                            <div class="d-flex align-items-center gap-2">
-                                <div class="prospect-badge-alert ${badgeClass}">
-                                    ${pulseDotHtml}
-                                    <span>${badgeText}</span>
-                                </div>
-                                <span class="badge ${isAssigned ? 'bg-label-success' : 'bg-label-primary'} rounded-pill fw-semibold" style="font-size: 0.74rem;">
-                                    ${stageBadge}
+                        <div class="modal-body p-4 pt-3">
+                            <!-- Top Status Badge & Close Button -->
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="badge rounded-pill px-3 py-1 text-uppercase fw-bold" style="background: ${isAssigned ? 'rgba(16, 185, 129, 0.12)' : 'rgba(99, 102, 241, 0.12)'}; color: ${isAssigned ? '#059669' : '#4f46e5'}; font-size: 0.75rem; letter-spacing: 0.5px;">
+                                    <i class="mdi ${isAssigned ? 'mdi-account-check-outline' : 'mdi-fire'} me-1"></i> ${badgeText} &bull; ${stageBadge}
                                 </span>
-                            </div>
-                            <span class="text-muted" style="font-size: 0.78rem;">
-                                <i class="mdi mdi-clock-outline me-1"></i>${escapeHtml(item.created_at_time || item.created_at)}
-                            </span>
-                        </div>
-
-                        <!-- Modal Body -->
-                        <div class="modal-body px-4 pt-1 pb-3">
-                            <div class="mb-3">
-                                <h5 class="fw-bold text-dark mb-1" id="prospectUrgentModalLabel">${stageTitle}</h5>
-                                <p class="text-muted small mb-0" style="line-height: 1.45;">${stageDesc}</p>
+                                <button type="button" class="btn-close btn-prospect-dismiss" data-notif-id="${item.id}" data-stage="${item.stage || ''}" aria-label="Close"></button>
                             </div>
 
-                            <!-- Structured Info Card -->
-                            <div class="prospect-info-card mb-3">
-                                <div class="prospect-info-row">
-                                    <span class="prospect-info-label">
-                                        <i class="mdi mdi-domain ${isAssigned ? 'text-success' : 'text-primary'} fs-6"></i> Perusahaan / Customer
-                                    </span>
-                                    <span class="prospect-info-val text-truncate fw-bold ${isAssigned ? 'text-success' : 'text-primary'}" title="${escapeHtml(item.company)}">
-                                        ${escapeHtml(item.company)}
+                            <!-- Hero Icon Halo & Centered Titles -->
+                            <div class="text-center mb-3">
+                                <div class="prospect-hero-halo mx-auto mb-2">
+                                    <div class="prospect-hero-inner">
+                                        <i class="mdi ${heroIcon} fs-2"></i>
+                                    </div>
+                                </div>
+
+                                <h4 class="modal-title fw-bold text-dark mb-1" id="prospectUrgentModalLabel" style="letter-spacing: -0.3px;">
+                                    ${stageTitle}
+                                </h4>
+                                <p class="text-muted small mb-0 px-2" style="line-height: 1.55;">
+                                    ${stageDesc}
+                                </p>
+                            </div>
+
+                            <!-- Card 1: Structured Detail Card -->
+                            <div class="prospect-detail-card mb-3">
+                                <div class="prospect-card-header d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-2 text-truncate pe-2">
+                                        <span class="badge rounded-circle p-2 ${isAssigned ? 'bg-label-success' : 'bg-label-primary'} flex-shrink-0" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">
+                                            <i class="mdi mdi-domain fs-6"></i>
+                                        </span>
+                                        <span class="fw-bold text-dark text-truncate" style="font-size: 0.9rem;" title="${escapeHtml(item.company)}">
+                                            ${escapeHtml(item.company)}
+                                        </span>
+                                    </div>
+                                    <span class="text-muted flex-shrink-0" style="font-size: 0.76rem;">
+                                        <i class="mdi mdi-clock-outline me-1"></i>${escapeHtml(item.created_at_time || item.created_at)}
                                     </span>
                                 </div>
-                                <div class="prospect-info-row">
-                                    <span class="prospect-info-label">
-                                        <i class="mdi mdi-account-outline text-secondary fs-6"></i> PIC Customer
-                                    </span>
-                                    <span class="prospect-info-val">${picContactHtml}</span>
-                                </div>
-                                <div class="prospect-info-row">
-                                    <span class="prospect-info-label">
-                                        <i class="mdi mdi-headset text-info fs-6"></i> Diinput Oleh
-                                    </span>
-                                    <span class="prospect-info-val d-inline-flex align-items-center justify-content-end">
-                                        ${avatarHtml}
-                                        <span class="text-truncate">${escapeHtml(item.support_name || 'Support')}</span>
-                                    </span>
-                                </div>
-                                <div class="prospect-info-row">
-                                    <span class="prospect-info-label">
-                                        <i class="mdi mdi-clipboard-text-outline text-warning fs-6"></i> Kebutuhan
-                                    </span>
-                                    <span class="prospect-info-val text-truncate" title="${kebutuhanHtml}">${kebutuhanHtml}</span>
+                                <div class="prospect-card-body">
+                                    <div class="prospect-info-row">
+                                        <span class="prospect-info-label">
+                                            <i class="mdi mdi-account-outline text-secondary fs-6"></i> PIC Customer
+                                        </span>
+                                        <span class="prospect-info-val">${picContactHtml}</span>
+                                    </div>
+                                    <div class="prospect-info-row">
+                                        <span class="prospect-info-label">
+                                            <i class="mdi mdi-headset text-info fs-6"></i> Diinput Oleh
+                                        </span>
+                                        <span class="prospect-info-val d-inline-flex align-items-center justify-content-end">
+                                            ${avatarHtml}
+                                            <span class="text-truncate">${escapeHtml(item.support_name || 'Support')}</span>
+                                        </span>
+                                    </div>
+                                    <div class="prospect-info-row">
+                                        <span class="prospect-info-label">
+                                            <i class="mdi mdi-clipboard-text-outline text-warning fs-6"></i> Kebutuhan
+                                        </span>
+                                        <span class="prospect-info-val text-truncate" title="${kebutuhanHtml}">${kebutuhanHtml}</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Notice Alert -->
-                            <div class="prospect-notice-bar">
-                                <i class="mdi mdi-information-outline fs-5 flex-shrink-0" style="margin-top: -1px;"></i>
-                                <div>Segera respon dan tindak lanjuti prospek ini untuk meningkatkan peluang dealing & kepuasan pelanggan.</div>
+                            <!-- Card 2: Guidance Notice -->
+                            <div class="prospect-guide-card d-flex align-items-center gap-2 mb-3">
+                                <i class="mdi ${isAssigned ? 'mdi-check-decagram text-success' : 'mdi-information text-primary'} fs-5 flex-shrink-0"></i>
+                                <div class="small ${isAssigned ? 'text-success' : 'text-primary'}" style="font-size: 0.8rem; line-height: 1.45;">
+                                    ${isAssigned ? 'Segera lakukan kontak awal dan tindak lanjut penawaran untuk meningkatkan peluang dealing.' : 'Segera tentukan Sales penanggung jawab agar prospek pelanggan dapat segera dihubungi.'}
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Modal Footer -->
-                        <div class="p-3 px-4 bg-light border-top d-flex align-items-center justify-content-between">
-                            <button type="button" class="btn-dismiss-prospect btn-prospect-dismiss" data-notif-id="${item.id}">
-                                Nanti Dulu
-                            </button>
-                            <a href="${item.url}" class="btn-action-prospect d-inline-flex align-items-center gap-1 btn-prospect-action" data-notif-id="${item.id}">
-                                <span>${actionLabel}</span>
-                                <i class="mdi mdi-arrow-right fs-5"></i>
-                            </a>
+                            <!-- Action Buttons -->
+                            <div class="d-flex align-items-center gap-2 pt-1">
+                                <button type="button" class="btn btn-dismiss-prospect btn-prospect-dismiss flex-shrink-0" data-notif-id="${item.id}" data-stage="${item.stage || ''}">
+                                    Nanti Dulu
+                                </button>
+                                <a href="${item.url}" class="btn btn-action-prospect btn-prospect-action flex-grow-1 text-center d-inline-flex align-items-center justify-content-center gap-1" data-notif-id="${item.id}" data-stage="${item.stage || ''}">
+                                    <span>${actionLabel}</span>
+                                    <i class="mdi mdi-arrow-right fs-5"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -427,7 +461,7 @@ $(function () {
 
         if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
             try {
-                var bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
+                var bsModal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
                 bsModal.show();
                 opened = true;
             } catch (e) {
@@ -457,21 +491,23 @@ $(function () {
         $('body').removeClass('modal-open').css('overflow', '');
     });
 
-    // Klik tombol Buka Prospek -> tandai dibaca & simpan dismissal
+    // Klik tombol Buka Prospek -> snooze & tandai dibaca
     $(document).on('click', '.btn-prospect-action', function () {
         var notifId = $(this).data('notif-id');
+        var stage = $(this).data('stage');
         if (notifId) {
-            setDismissed(notifId);
+            setDismissed(notifId, stage, 120000); // Tunda 2 menit saat navigasi
             markRead(notifId);
         }
         isModalOpen = false;
     });
 
-    // Klik tombol Nanti Dulu -> tutup modal & simpan dismissal agar tidak pop-up berulang kali di sesi ini
+    // Klik tombol Nanti Dulu -> tutup modal & snooze sementara
     $(document).on('click', '.btn-prospect-dismiss', function () {
         var notifId = $(this).data('notif-id');
+        var stage = $(this).data('stage');
         if (notifId) {
-            setDismissed(notifId);
+            setDismissed(notifId, stage, 60000); // Tunda 60 detik
         }
 
         var modalEl = document.getElementById('prospectUrgentModal');
@@ -584,7 +620,7 @@ $(function () {
                                     '<span class="notif-time-ago">' +
                                         '<i class="mdi mdi-clock-outline fs-7"></i> ' + escapeHtml(item.created_at) +
                                     '</span>' +
-                                </div>' +
+                                '</div>' +
                                 '<h6 class="notif-card-title">' + escapeHtml(item.company) + '</h6>' +
                                 '<p class="notif-card-desc">' + descHtml + '</p>' +
                             '</div>' +
@@ -602,22 +638,6 @@ $(function () {
         });
     }
 
-    function checkAndShowProspectModal(items) {
-        if (isModalOpen) return;
-
-        // Cari notifikasi prospect belum dibaca dan belum di-dismiss
-        for (var i = 0; i < items.length; i++) {
-            var item = items[i];
-            if (item.is_read) continue;
-            if (item.type !== 'prospect_created' && item.type !== 'prospect_assigned') continue;
-            if (isDismissed(item.id)) continue;
-
-            // Tampilkan modal untuk prospect pertama yang ditemukan
-            showProspectModal(item);
-            break;
-        }
-    }
-
     function poll() {
         $.getJSON(pollUrl).done(function (res) {
             var items = res.items || [];
@@ -625,7 +645,6 @@ $(function () {
             if (unreadCount > 0) {
                 $('#navbarBellDot').removeClass('d-none');
             }
-            checkAndShowProspectModal(items);
             updateNavbarDropdown(items);
         }).fail(function (xhr, status, err) {
             console.warn('[ProspectNotif] Poll failed:', status, err);
@@ -643,10 +662,12 @@ $(function () {
         $.getJSON(urgentCheckUrl).done(function (res) {
             if (res && res.has_urgent && res.prospect) {
                 var p = res.prospect;
-                if (!isDismissed(p.id)) {
+                var stageKey = p.stage || 'urgent';
+                if (!isDismissed(p.id, stageKey)) {
                     showProspectModal({
                         id: p.id,
-                        type: 'prospect_created',
+                        type: p.type || 'prospect_created',
+                        stage: stageKey,
                         company: p.company,
                         pic_name: p.pic_name,
                         pic_phone: p.pic_phone,

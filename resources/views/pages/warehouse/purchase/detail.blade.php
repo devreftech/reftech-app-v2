@@ -40,8 +40,8 @@
                     </span>
                     @if ($purchase->purchaseOrders && $purchase->purchaseOrders->count())
                         @foreach ($purchase->purchaseOrders as $linkedPo)
-                            <a href="{{ route('purchase.show', $linkedPo->id) }}" class="badge bg-label-success fs-6 px-3 py-2 text-decoration-none" title="Lihat Purchase Order {{ $linkedPo->no_po }}">
-                                <i class="mdi mdi-file-document-outline me-1"></i>PO: {{ $linkedPo->no_po }}
+                            <a href="{{ route('purchase.show', $linkedPo->id) }}" class="badge {{ $linkedPo->is_direct_purchase ? 'bg-label-info' : 'bg-label-success' }} fs-6 px-3 py-2 text-decoration-none" title="Lihat {{ $linkedPo->is_direct_purchase ? 'Direct Purchase' : 'Purchase Order' }} {{ $linkedPo->no_po }}">
+                                <i class="mdi {{ $linkedPo->is_direct_purchase ? 'mdi-cart-arrow-down' : 'mdi-file-document-outline' }} me-1"></i>{{ $linkedPo->is_direct_purchase ? 'DP: ' : 'PO: ' }}{{ $linkedPo->no_po }}
                             </a>
                         @endforeach
                     @endif
@@ -235,8 +235,14 @@
                             @elseif ($purchase && $purchase->status == 1)
                                 <div class="alert alert-warning py-2 px-3 mb-2 small">
                                     <div class="fw-bold mb-1"><i class="mdi mdi-check-decagram-outline me-1 text-success"></i>PR Telah Disetujui</div>
-                                    Hubungkan PR ini ke dokumen Purchase Order (PO) yang sudah terbit di sistem.
+                                    Pilih opsi pengadaan barang di bawah atau centang item pada tabel di samping.
                                 </div>
+                                <a href="{{ route('purchase.create', ['from_pr' => $purchase->id]) }}" class="btn btn-primary d-flex align-items-center justify-content-center w-100 mb-2 waves-effect shadow-xs">
+                                    <i class="mdi mdi-file-document-edit-outline me-2 fs-5"></i> + Buat Purchase Order (PO)
+                                </a>
+                                <a href="{{ route('purchase.direct-create', ['from_pr' => $purchase->id]) }}" class="btn btn-primary d-flex align-items-center justify-content-center w-100 mb-2 waves-effect shadow-xs" style="background-color: #0d9488; border-color: #0d9488;">
+                                    <i class="mdi mdi-cart-arrow-down me-2 fs-5"></i> + Direct Purchase
+                                </a>
                                 <button type="button" class="btn btn-outline-primary d-flex align-items-center justify-content-center w-100 mb-2 waves-effect shadow-xs" data-bs-toggle="modal" data-bs-target="#modalLinkPo">
                                     <i class="mdi mdi-link-variant me-2 fs-5"></i> Hubungkan ke PO
                                 </button>
@@ -308,30 +314,55 @@
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card modern-card mb-0">
-                    <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
-                        <h5 class="card-title m-0 fw-bold text-dark d-flex align-items-center">
-                            <i class="mdi mdi-clipboard-text-outline me-2 text-primary fs-4"></i> Daftar Item Purchase Request
-                            @if ($purchase)
-                                <span class="badge bg-label-primary ms-2">{{ $purchase->no_pr ?? '-' }}</span>
+                    @php
+                        $canCreatePo = ($purchase && (int) $purchase->status >= 1);
+                        $canEditPrQty = in_array(Auth::user()->role, ['Logistic', 'Admin']);
+                        $prColspan = 7 + ($canCreatePo ? 1 : 0) + ($canEditPrQty ? 1 : 0);
+                    @endphp
+                    <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="card-title m-0 fw-bold text-dark d-flex align-items-center">
+                                <i class="mdi mdi-clipboard-text-outline me-2 text-primary fs-4"></i> Daftar Item Purchase Request
+                                @if ($purchase)
+                                    <span class="badge bg-label-primary ms-2">{{ $purchase->no_pr ?? '-' }}</span>
+                                @endif
+                            </h5>
+                            @if ($canCreatePo)
+                                <span class="badge bg-label-info font-11 d-none d-sm-inline-flex" id="selectedPrItemsBadge">
+                                    <span id="countSelectedPrItems">0</span> item dipilih
+                                </span>
                             @endif
-                        </h5>
+                        </div>
+                        @if ($canCreatePo)
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <button type="button" class="btn btn-sm btn-primary shadow-xs" id="btnCreatePoFromSelected">
+                                    <i class="mdi mdi-file-document-edit-outline me-1"></i> + Buat PO
+                                </button>
+                                <button type="button" class="btn btn-sm btn-success shadow-xs" id="btnCreateDirectFromSelected" style="background-color: #0d9488; border-color: #0d9488;">
+                                    <i class="mdi mdi-cart-arrow-down me-1"></i> + Direct Purchase
+                                </button>
+                            </div>
+                        @endif
                     </div>
                     <div class="card-body p-0">
-                        @php
-                            $canEditPrQty = in_array(Auth::user()->role, ['Logistic', 'Admin']);
-                            $prColspan = 5 + ($canEditPrQty ? 1 : 0);
-                        @endphp
                         <div class="table-responsive text-nowrap">
                             <table class="table table-bordered align-middle mb-0" id="prItemsTable">
                                 <thead>
                                     <tr>
-                                        <th style="width: 50px;" class="text-center">No</th>
-                                        <th>No PR</th>
-                                        <th>Item / Equivalent</th>
-                                        <th class="text-center">Qty</th>
+                                        @if ($canCreatePo)
+                                            <th style="width: 40px;" class="text-center">
+                                                <input type="checkbox" class="form-check-input" id="checkAllPrItems" title="Pilih Semua Item">
+                                            </th>
+                                        @endif
+                                        <th style="width: 45px;" class="text-center">No</th>
+                                        <th style="width: 140px;">No PR</th>
+                                        <th>Nama Item / Deskripsi</th>
+                                        <th>Equivalent</th>
+                                        <th>Pembelian Terakhir</th>
+                                        <th class="text-center" style="width: 160px;">Qty &amp; Alokasi</th>
                                         <th>Catatan / Note</th>
                                         @if ($canEditPrQty)
-                                            <th class="text-center" style="width: 60px;"></th>
+                                            <th class="text-center" style="width: 50px;"></th>
                                         @endif
                                     </tr>
                                 </thead>
@@ -340,33 +371,103 @@
                                     @forelse (($purchase->details ?? collect()) as $pr)
                                         @php $remaining = $pr->remainingQty; @endphp
                                         <tr>
+                                            @if ($canCreatePo)
+                                                <td class="text-center">
+                                                    @if ($remaining > 0)
+                                                        <input type="checkbox" class="form-check-input check-pr-item" value="{{ $pr->id }}" data-remaining="{{ $remaining }}" checked>
+                                                    @else
+                                                        <span class="badge bg-label-success p-1" data-bs-toggle="tooltip" title="Sudah teralokasi penuh ke PO"><i class="mdi mdi-check font-12"></i></span>
+                                                    @endif
+                                                </td>
+                                            @endif
                                             <td class="text-center fw-medium">{{ $no }}</td>
                                             <td class="fw-bold text-dark">{{ $purchase->no_pr ?? '-' }}</td>
+                                            <td style="max-width: 250px; white-space: normal;">
+                                                <div class="fw-semibold text-dark">
+                                                    {{ $pr->equivalent->product->description ?? ($pr->equivalent->pn ?? '-') }}
+                                                </div>
+                                                @if ($pr->equivalent->product && $pr->equivalent->product->commodity)
+                                                    <div class="text-muted font-11 mt-1">
+                                                        <i class="mdi mdi-tag-outline me-1"></i>{{ $pr->equivalent->product->commodity }}
+                                                    </div>
+                                                @endif
+                                            </td>
                                             <td>
-                                                @if ($pr->id_equivalent == '0')
-                                                    -
+                                                @if ($pr->id_equivalent == '0' || !$pr->equivalent)
+                                                    <span class="text-muted">-</span>
                                                 @else
                                                     @php
                                                         $detPrice = $detQuotation->firstWhere('id_equivalent', $pr->id_equivalent);
                                                     @endphp
-                                                    <span class="fw-semibold text-dark">{{ $pr->equivalent->brand }} {{ $pr->equivalent->pn }}</span>
-                                                    @if ($pr->equivalent->product)
-                                                        <span class="badge {{ $pr->equivalent->product->go == 'Genuine' ? 'bg-label-success' : 'bg-label-warning' }} ms-1">
-                                                            {{ $pr->equivalent->product->go }}
-                                                        </span>
-                                                    @endif
+                                                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                                                        <span class="fw-bold text-dark">{{ $pr->equivalent->brand }} {{ $pr->equivalent->pn }}</span>
+                                                        @if ($pr->equivalent->product && $pr->equivalent->product->go)
+                                                            <span class="badge {{ $pr->equivalent->product->go == 'Genuine' ? 'bg-label-success' : 'bg-label-warning' }} font-10">
+                                                                {{ $pr->equivalent->product->go }}
+                                                            </span>
+                                                        @endif
+                                                    </div>
                                                     <div class="mt-1">
-                                                        <span class="badge bg-label-success">
+                                                        <span class="badge bg-label-success font-11" title="Harga Jual Penawaran">
                                                             <i class="mdi mdi-cash-multiple me-1"></i>{{ $detPrice ? 'Rp ' . number_format($detPrice->price, 0, '', '.') : '-' }}
                                                         </span>
                                                     </div>
                                                 @endif
                                             </td>
+                                            <td>
+                                                @php
+                                                    $pId = $pr->equivalent->id_product ?? null;
+                                                    $hist = ($pId && isset($lastPurchaseHistory[$pId])) ? $lastPurchaseHistory[$pId] : null;
+                                                @endphp
+                                                @if ($hist && $hist['has_history'] && $hist['price'] > 0)
+                                                    <div class="d-flex flex-column gap-1">
+                                                        <div class="d-flex align-items-center gap-1">
+                                                            @if ($hist['purchase_type'] == 'Impor')
+                                                                <span class="badge bg-label-danger font-11"><i class="mdi mdi-airplane-landing me-1"></i>Impor</span>
+                                                            @else
+                                                                <span class="badge bg-label-primary font-11"><i class="mdi mdi-store-outline me-1"></i>Lokal</span>
+                                                            @endif
+                                                            <span class="fw-bold text-dark font-12">
+                                                                @if (Auth::user()->role == 'Admin')
+                                                                    Rp {{ number_format($hist['price'], 0, '', '.') }}
+                                                                @else
+                                                                    Rp ***
+                                                                @endif
+                                                            </span>
+                                                        </div>
+                                                        @if ($hist['supplier_name'])
+                                                            <div class="text-muted font-11 text-truncate" style="max-width: 190px;" title="{{ $hist['supplier_name'] }}">
+                                                                <i class="mdi mdi-domain me-1"></i>{{ $hist['supplier_name'] }}
+                                                            </div>
+                                                        @endif
+                                                        @if ($hist['purchase_date'])
+                                                            <div class="text-muted font-10">
+                                                                <i class="mdi mdi-calendar-blank-outline me-1"></i>{{ \Carbon\Carbon::parse($hist['purchase_date'])->format('d M Y') }}
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                @else
+                                                    <span class="text-muted font-11"><em>Belum ada riwayat</em></span>
+                                                @endif
+                                            </td>
                                             <td class="text-center">
                                                 <span class="fw-bold text-dark fs-6">{{ $pr->totalQty }} {{ $pr->equivalent->product->unit ?? '' }}</span>
+                                                @if ($remaining > 0)
+                                                    <div>
+                                                        <span class="badge bg-label-warning font-11" data-bs-toggle="tooltip" title="Sisa kebutuhan belum terbit PO: {{ $remaining }} {{ $pr->equivalent->product->unit ?? '' }}">
+                                                            Sisa belum PO: {{ $remaining }}
+                                                        </span>
+                                                    </div>
+                                                @else
+                                                    <div>
+                                                        <span class="badge bg-label-success font-11">
+                                                            <i class="mdi mdi-check-circle me-1"></i>Semua sudah PO
+                                                        </span>
+                                                    </div>
+                                                @endif
                                                 @if ($pr->qty_stock > 0)
                                                     <div>
-                                                        <span class="badge bg-label-info" data-bs-toggle="tooltip" title="Kebutuhan SO: {{ $pr->qty }}, tambahan stok: {{ $pr->qty_stock }}">
+                                                        <span class="badge bg-label-info font-10" data-bs-toggle="tooltip" title="Kebutuhan SO: {{ $pr->qty }}, tambahan stok: {{ $pr->qty_stock }}">
                                                             {{ $pr->qty }} SO + {{ $pr->qty_stock }} stok
                                                         </span>
                                                     </div>
@@ -375,7 +476,7 @@
                                                     <div class="mt-1 d-flex flex-column gap-1 align-items-center">
                                                         @foreach ($pr->allocations as $alloc)
                                                             <a href="{{ route('purchase.show', $alloc->id_purchase_order) }}"
-                                                                class="badge bg-label-dark text-decoration-none" data-bs-toggle="tooltip"
+                                                                class="badge bg-label-dark text-decoration-none font-11" data-bs-toggle="tooltip"
                                                                 title="{{ $alloc->purchaseOrder->no_po ?? '-' }}">
                                                                 {{ $alloc->qty }} pcs → {{ $alloc->purchaseOrder->no_po ?? '-' }}
                                                             </a>
@@ -472,9 +573,14 @@
                                             <tr>
                                                 <td class="text-center">{{ $loop->iteration }}</td>
                                                 <td>
-                                                    <a href="{{ route('purchase.show', $po->id) }}" class="fw-bold text-primary">
-                                                        {{ $po->no_po }}
-                                                    </a>
+                                                    <div class="d-flex align-items-center gap-1 mb-1">
+                                                        <a href="{{ route('purchase.show', $po->id) }}" class="fw-bold text-primary">
+                                                            {{ $po->no_po }}
+                                                        </a>
+                                                        @if ($po->is_direct_purchase)
+                                                            <span class="badge bg-label-info font-10">Direct Purchase</span>
+                                                        @endif
+                                                    </div>
                                                     <div class="text-muted small">
                                                         {{ \Carbon\Carbon::parse($po->created_at)->format('d-m-Y H:i') }}
                                                     </div>
@@ -812,7 +918,7 @@
                             <div>
                                 <h5 class="modal-title fw-bold text-dark mb-0" id="modalLinkPoLabel">Hubungkan ke Purchase Order (PO)</h5>
                                 <small class="text-muted font-12">
-                                    PR: <span class="fw-semibold text-primary font-monospace">{{ $purchase->no_pr ?? ('#' . $purchase->id) }}</span>
+                                    PR: <span class="fw-semibold text-primary font-monospace">{{ $purchase ? ($purchase->no_pr ?? ('#' . $purchase->id)) : '-' }}</span>
                                 </small>
                             </div>
                         </div>
@@ -1467,6 +1573,85 @@
                     });
                 }
             });
+        });
+
+        // ── Selection PR Items for PO / Direct Purchase Creation ──
+        function updateSelectedPrCount() {
+            var totalChecked = $('.check-pr-item:checked').length;
+            $('#countSelectedPrItems').text(totalChecked);
+            var totalAvailable = $('.check-pr-item').length;
+            if (totalAvailable > 0) {
+                $('#checkAllPrItems').prop('checked', totalChecked === totalAvailable);
+            }
+        }
+
+        $(document).on('change', '#checkAllPrItems', function() {
+            var isChecked = $(this).is(':checked');
+            $('.check-pr-item').prop('checked', isChecked);
+            updateSelectedPrCount();
+        });
+
+        $(document).on('change', '.check-pr-item', function() {
+            updateSelectedPrCount();
+        });
+
+        // Initialize count on page load
+        updateSelectedPrCount();
+
+        // Create PO from selected items
+        $('#btnCreatePoFromSelected').on('click', function() {
+            var selectedIds = [];
+            $('.check-pr-item:checked').each(function() {
+                selectedIds.push($(this).val());
+            });
+
+            if (!selectedIds.length) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Pilih Item Terlebih Dahulu',
+                    text: 'Silakan centang minimal 1 item Purchase Request untuk dibuatkan Purchase Order.',
+                    customClass: {
+                        confirmButton: 'btn btn-primary waves-effect'
+                    }
+                });
+                return;
+            }
+
+            var prId = '{{ $purchase ? $purchase->id : "" }}';
+            var queryParams = $.param({
+                from_pr: prId,
+                items: selectedIds
+            });
+
+            window.location.href = '{{ route("purchase.create") }}?' + queryParams;
+        });
+
+        // Create Direct Purchase from selected items
+        $('#btnCreateDirectFromSelected').on('click', function() {
+            var selectedIds = [];
+            $('.check-pr-item:checked').each(function() {
+                selectedIds.push($(this).val());
+            });
+
+            if (!selectedIds.length) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Pilih Item Terlebih Dahulu',
+                    text: 'Silakan centang minimal 1 item Purchase Request untuk dibuatkan Direct Purchase.',
+                    customClass: {
+                        confirmButton: 'btn btn-primary waves-effect'
+                    }
+                });
+                return;
+            }
+
+            var prId = '{{ $purchase ? $purchase->id : "" }}';
+            var queryParams = $.param({
+                from_pr: prId,
+                items: selectedIds
+            });
+
+            window.location.href = '{{ route("purchase.direct-create") }}?' + queryParams;
         });
     </script>
 @endpush

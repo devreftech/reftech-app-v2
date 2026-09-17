@@ -20,10 +20,18 @@ class UnitQuotationOption extends Model
         'shipping',
         'total',
         'fee',
+        'has_trade_in',
+        'trade_in_brand',
+        'trade_in_model',
+        'trade_in_power',
+        'trade_in_sn',
+        'trade_in_price',
+        'trade_in_notes',
     ];
 
     protected $casts = [
-        'tax' => 'boolean',
+        'tax'          => 'boolean',
+        'has_trade_in' => 'boolean',
     ];
 
     public function quotation()

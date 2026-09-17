@@ -29,7 +29,13 @@ $(function () {
         return !!(row.invoice_file || row.no_invoice_supplier);
     }
 
+    function isDirectPurchase(row) {
+        return Number(row.is_direct_purchase) === 1 || String(row.no_po || "").indexOf("-DP/") !== -1;
+    }
+
     function rowMatchesFilter(row) {
+        if (poFilter === "direct") return isDirectPurchase(row);
+        if (poFilter === "po_formal") return !isDirectPurchase(row);
         if (poFilter === "pending") return !isReceived(row);
         if (poFilter === "received") return isReceived(row);
         if (poFilter === "noinvoice") return !hasInvoice(row);
@@ -48,9 +54,16 @@ $(function () {
     }
 
     function sourceBadge(row) {
-        return row.id_purchase_request
-            ? '<span class="badge bg-label-dark">Dari PR</span>'
-            : '<span class="badge bg-label-warning">Langsung</span>';
+        var badges = [];
+        if (isDirectPurchase(row)) {
+            badges.push('<span class="badge bg-label-info font-11"><i class="mdi mdi-cart-arrow-down me-1"></i>Direct</span>');
+        } else {
+            badges.push('<span class="badge bg-label-primary font-11">PO Resmi</span>');
+        }
+        if (row.id_purchase_request) {
+            badges.push('<span class="badge bg-label-dark font-11">PR</span>');
+        }
+        return '<div class="d-flex flex-wrap gap-1">' + badges.join("") + "</div>";
     }
 
     function statusCell(row) {
@@ -80,10 +93,15 @@ $(function () {
         var monthValue = 0;
         var pending = 0;
         var noInvoice = 0;
-        var counts = { all: rows.length, pending: 0, received: 0, noinvoice: 0 };
+        var counts = { all: rows.length, po_formal: 0, direct: 0, pending: 0, received: 0, noinvoice: 0 };
 
         rows.forEach(function (row) {
             totalValue += Number(row.total) || 0;
+            if (isDirectPurchase(row)) {
+                counts.direct++;
+            } else {
+                counts.po_formal++;
+            }
             if (isReceived(row)) counts.received++;
             else {
                 counts.pending++;

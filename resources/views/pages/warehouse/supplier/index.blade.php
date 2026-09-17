@@ -2,7 +2,7 @@
 @section('title', 'Direktori Vendor & Supplier')
 
 @section('content')
-<div class="container-xxl flex-grow-1 container-p-y">
+<div class="container-fluid flex-grow-1 container-p-y px-4">
     {{-- Breadcrumb & Header --}}
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
         <div>
@@ -252,6 +252,16 @@
                                                     </span>
                                                 @endif
 
+                                                @if (($s->type ?? 'Company') === 'Individual')
+                                                    <span class="badge bg-label-warning rounded-pill px-2 py-0 small">
+                                                        <i class="mdi mdi-account-outline me-1"></i>Perorangan
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-label-dark rounded-pill px-2 py-0 small">
+                                                        <i class="mdi mdi-domain me-1"></i>Company
+                                                    </span>
+                                                @endif
+
                                                 @if (!empty($s->code))
                                                     <span class="badge bg-label-secondary rounded-pill px-2 py-0 small">
                                                         {{ $s->code }}
@@ -340,13 +350,14 @@
                                         </a>
 
                                         {{-- Edit Data --}}
-                                        <a href="{{ route('supplier.edit-data', $s->id) }}" 
-                                           class="btn btn-sm btn-icon btn-outline-warning waves-effect" 
-                                           data-bs-toggle="tooltip" 
-                                           data-bs-placement="top" 
-                                           title="Edit Supplier">
+                                        <button type="button" 
+                                                class="btn btn-sm btn-icon btn-outline-warning waves-effect" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#updateSupplier-{{ $s->id }}" 
+                                                data-bs-placement="top" 
+                                                title="Edit Supplier">
                                             <i class="mdi mdi-pencil-outline"></i>
-                                        </a>
+                                        </button>
 
                                         {{-- Delete Button --}}
                                         <button type="button" 
@@ -386,12 +397,18 @@
     </div>
 </div>
 
-{{-- Include Existing Create Supplier Modal --}}
+{{-- Create Supplier Modal --}}
 @include('components.modal.warehouse.supplier.form')
+
+{{-- Update Supplier Modals --}}
+@foreach ($suppliers as $s)
+    @include('components.modal.warehouse.supplier.form', ['supplier' => $s])
+@endforeach
 
 @endsection
 
 @push('after-style')
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/select2/select2.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css" />
@@ -420,6 +437,7 @@
 @endpush
 
 @push('after-script')
+    <script src="{{ asset('assets') }}/vendor/libs/select2/select2.js"></script>
     <script src="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
     <script src="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.js"></script>
     <script>

@@ -34,6 +34,8 @@ class FixedAsset extends Model
         'qc_status',
         'status_unit',
         'harga_jual',
+        'harga_rental_hari',
+        'harga_rental_bulan',
         'id_machine',
         'confirmed_by',
         'confirmed_at',

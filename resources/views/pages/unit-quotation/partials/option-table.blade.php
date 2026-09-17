@@ -87,7 +87,9 @@
                                     <div style="font-size:11px; color:#777; margin-top:4px;">
                                         @foreach ($specs as $field)
                                             @if ($field === 'unit') @continue @endif
-                                            @php $val = $item->unit->$field ?? null; @endphp
+                                            @php
+                                                $val = ($field === 'type_unit') ? ($item->unit->formatted_type ?: $item->unit->type_unit) : ($item->unit->$field ?? null);
+                                            @endphp
                                             @if ($val && isset($specLabels[$field]))
                                                 <div style="display:flex; padding:1px 0;">
                                                     <span style="min-width:110px; flex-shrink:0;">{{ $specLabels[$field] }}</span>
@@ -148,11 +150,20 @@
                                              @else
                                                  @php
                                                      $hasBullet = preg_match('/^([•\-\*]|\d+[\.\)])\s*(.*)/u', $trimmedDLine, $dMatches);
+                                                     $hasColon  = !$hasBullet && str_contains($trimmedDLine, ':');
                                                  @endphp
                                                  @if ($hasBullet && !empty($dMatches[1]) && !empty($dMatches[2]))
                                                      <div style="display:flex; align-items:flex-start; margin-bottom:2px;">
                                                          <span style="flex-shrink:0; min-width:14px; color:#696cff; font-weight:600;">{{ $dMatches[1] }}</span>
                                                          <span style="flex:1;">{{ $dMatches[2] }}</span>
+                                                     </div>
+                                                 @elseif ($hasColon)
+                                                     @php
+                                                         [$sKey, $sVal] = explode(':', $trimmedDLine, 2);
+                                                     @endphp
+                                                     <div style="display:flex; padding:1px 0;">
+                                                         <span style="min-width:110px; flex-shrink:0; font-weight:600; color:#555;">{{ trim($sKey) }}</span>
+                                                         <span style="color:#222;">: {{ trim($sVal) }}</span>
                                                      </div>
                                                  @else
                                                      <div style="margin-bottom:2px; font-weight:600; color:#222;">{{ $dLine }}</div>
@@ -178,6 +189,41 @@
     </table>
 </div>
 
+{{-- Trade-In Unit Customer Card (jika aktif & ada nilai kompensasi) --}}
+@if (!empty($optTotals->has_trade_in) && floatval($optTotals->trade_in_price ?? 0) > 0)
+    <div class="card border border-info-subtle bg-info-subtle mb-3" style="border-radius: 6px;">
+        <div class="card-body p-3">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom border-info-subtle">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-info text-white"><i class="mdi mdi-swap-horizontal me-1"></i>Trade-In Unit Customer</span>
+                    <strong class="text-heading" style="font-size: 13px;">{{ trim(($optTotals->trade_in_brand ?? '') . ' ' . ($optTotals->trade_in_model ?? '')) ?: 'Unit Trade-In' }}</strong>
+                </div>
+                <div>
+                    <span class="text-muted small">Nilai Potongan Kompensasi:</span>
+                    <strong class="text-danger ms-1" style="font-size: 13.5px;">- Rp {{ number_format($optTotals->trade_in_price, 0, '', '.') }}</strong>
+                </div>
+            </div>
+            <div class="row g-2 text-muted" style="font-size: 11.5px;">
+                @if (!empty($optTotals->trade_in_brand))
+                    <div class="col-sm-3 col-6"><strong>Brand:</strong> {{ $optTotals->trade_in_brand }}</div>
+                @endif
+                @if (!empty($optTotals->trade_in_model))
+                    <div class="col-sm-3 col-6"><strong>Model:</strong> {{ $optTotals->trade_in_model }}</div>
+                @endif
+                @if (!empty($optTotals->trade_in_power))
+                    <div class="col-sm-3 col-6"><strong>Power:</strong> {{ $optTotals->trade_in_power }}</div>
+                @endif
+                @if (!empty($optTotals->trade_in_sn))
+                    <div class="col-sm-3 col-6"><strong>Serial No:</strong> {{ $optTotals->trade_in_sn }}</div>
+                @endif
+                @if (!empty($optTotals->trade_in_notes))
+                    <div class="col-12 mt-1"><strong>Catatan / Kondisi:</strong> {{ $optTotals->trade_in_notes }}</div>
+                @endif
+            </div>
+        </div>
+    </div>
+@endif
+
 {{-- Financial Summary (Right Aligned Box) --}}
 @php
     $sumItemsAmount = $items->whereNotIn('type', ['header', 'heading'])->sum('amount');
@@ -198,16 +244,19 @@
     }
 
     $afterDisc = max(0, $optSubtotal - $optDiscountAmount);
+    $tradeInVal = (!empty($optTotals->has_trade_in) && floatval($optTotals->trade_in_price ?? 0) > 0) ? floatval($optTotals->trade_in_price) : 0;
+    $dppVal = max(0, $afterDisc - $tradeInVal);
+
     $optTax = (bool) ($optTotals->tax ?? false);
     $optTaxAmount = floatval($optTotals->tax_amount ?? 0);
     if ($optTax && $optTaxAmount <= 0) {
-        $optTaxAmount = round($afterDisc * 0.11);
+        $optTaxAmount = round($dppVal * 0.11);
     }
 
     $optShipping = floatval($optTotals->shipping ?? 0);
     $optTotal = floatval($optTotals->total ?? 0);
     if ($optTotal <= 0) {
-        $optTotal = $afterDisc + $optTaxAmount + $optShipping;
+        $optTotal = $dppVal + $optTaxAmount + $optShipping;
     }
 @endphp
 <div class="d-flex justify-content-end mb-3">
@@ -225,6 +274,21 @@
                 <tr style="border-top:1px solid #eeeeff;">
                     <td style="padding:6px 16px 6px 14px; color:#555;">After Discount</td>
                     <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($afterDisc, 0, '', '.') }}</td>
+                </tr>
+            @endif
+            @if ($tradeInVal > 0)
+                <tr style="border-top:1px solid #eeeeff;">
+                    <td style="padding:6px 16px 6px 14px; color:#555;">
+                        Trade-In Unit
+                        @if (!empty($optTotals->trade_in_brand) || !empty($optTotals->trade_in_model))
+                            <span class="text-muted small">({{ trim(($optTotals->trade_in_brand ?? '') . ' ' . ($optTotals->trade_in_model ?? '')) }})</span>
+                        @endif
+                    </td>
+                    <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#dc3545;">- Rp {{ number_format($tradeInVal, 0, '', '.') }}</td>
+                </tr>
+                <tr style="border-top:1px solid #eeeeff;">
+                    <td style="padding:6px 16px 6px 14px; color:#555;">DPP</td>
+                    <td style="padding:6px 14px 6px 0; text-align:right; font-weight:500; color:#333;">Rp {{ number_format($dppVal, 0, '', '.') }}</td>
                 </tr>
             @endif
             <tr style="border-top:1px solid #eeeeff;">

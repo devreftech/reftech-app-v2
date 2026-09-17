@@ -3,13 +3,30 @@
 @php
     $totalPph = $totalPph ?? 0;
     $hasDisc = $dPurchase->contains(fn($item) => $item->disc > 0);
+    $isKojisha = method_exists($purchase, 'isKojisha') ? $purchase->isKojisha() : (str_contains($purchase->no_po ?? '', 'KII') || stripos($purchase->note ?? '', 'Kojisha') !== false);
+    $themeColor = $isKojisha ? '#e11d48' : '#2529fa';
+    $themeGradient = $isKojisha ? 'linear-gradient(90deg,#e11d48 0%,#fb7185 60%,#e0e0e0 100%)' : 'linear-gradient(90deg,#696cff 0%,#9c9eff 60%,#e0e0e0 100%)';
+    $themeBorder = $isKojisha ? '#e11d48' : '#696cff';
 @endphp
 <div class="invoice-print p-4">
     <div class="container-fluid flex-grow-1">
 
         {{-- Header --}}
         <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column gap-3 mb-0">
-            @if ($purchase->vat > 0)
+            @if ($isKojisha)
+                <div class="mb-xl-0 pb-1">
+                    <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
+                        <span class="app-brand-logo demo">
+                            <img src="{{ asset('/asset') }}/logo/Kojisha-Log.png" alt="Kojisha Logo" width="160">
+                        </span>
+                    </div>
+                    <p class="mb-1 fw-bold text-dark" style="font-size:14px;">PT Kojisha Innotiv Indonesia</p>
+                    <p class="mb-1 text-muted" style="font-size:11.5px; line-height:1.4;">Jl. Nancep No. 45A, Setu, Cibitung - Kab. Bekasi 17320</p>
+                    <p class="mb-0 text-muted" style="font-size:11.5px;">
+                        <i class="mdi mdi-phone-outline me-1" style="color:#e11d48;"></i>+62 812-1000-0997 &nbsp;|&nbsp; <i class="mdi mdi-email-outline me-1" style="color:#e11d48;"></i>admin@kojisha.com
+                    </p>
+                </div>
+            @elseif ($purchase->vat > 0)
                 <div class="mb-xl-0 pb-1">
                     <div class="d-flex svg-illustration align-items-center gap-2 mb-3">
                         <span class="app-brand-logo demo">
@@ -53,7 +70,7 @@
             @endif
 
             <div class="text-end" style="white-space: nowrap; flex-shrink: 0;">
-                <h1 class="fw-bold invoice-title-heading text-nowrap" style="color: #2529fa; letter-spacing: 1.5px; white-space: nowrap; font-size: 22px; margin-bottom: 4px;">PURCHASE ORDER</h1>
+                <h1 class="fw-bold invoice-title-heading text-nowrap" style="color: {{ $themeColor }}; letter-spacing: 1.5px; white-space: nowrap; font-size: 22px; margin-bottom: 4px;">PURCHASE ORDER</h1>
                 <p class="mb-1 fw-bold text-dark text-nowrap" style="font-size:14px; white-space: nowrap;">#{{ $purchase->no_po }}</p>
                 @if ($purchase->no_reference)
                     <p class="mb-1 text-muted small text-nowrap" style="white-space: nowrap; font-size:11.5px;">
@@ -61,13 +78,13 @@
                     </p>
                 @endif
                 <p class="mb-1 text-muted small text-nowrap" style="white-space: nowrap;">
-                    <i class="mdi mdi-calendar-blank-outline me-1 text-primary"></i>{{ $purchase->date ? Carbon\Carbon::parse($purchase->date)->format('d-m-Y') : '-' }}
+                    <i class="mdi mdi-calendar-blank-outline me-1" style="color: {{ $themeColor }};"></i>{{ $purchase->date ? Carbon\Carbon::parse($purchase->date)->format('d-m-Y') : '-' }}
                 </p>
             </div>
         </div>
 
         {{-- Accent Divider --}}
-        <div style="height:2px; background:linear-gradient(90deg,#696cff 0%,#9c9eff 60%,#e0e0e0 100%); border-radius:2px; margin:16px 0 18px;"></div>
+        <div style="height:2px; background: {{ $themeGradient }}; border-radius:2px; margin:16px 0 18px;"></div>
 
         {{-- Vendor / Supplier + Ship To Boxes --}}
         <div style="display:flex !important; align-items:stretch !important; gap:14px; margin-bottom:18px; font-size:12px;">
@@ -105,33 +122,22 @@
             </div>
 
             {{-- Card 2: Term & Info --}}
-            <div style="min-width:260px; max-width:400px; flex:1; display:flex; flex-direction:column; align-self:stretch; border:1px solid #e0e0e0; border-left:4px solid #8592a3; border-radius:4px; padding:12px 16px; background:#fcfcfc;">
-                <div class="mb-2 pb-1" style="border-bottom: 1px dashed #e4e4e4;">
-                    <span class="fw-bold text-uppercase" style="font-size:10.5px; letter-spacing:0.6px; color:#566a7f;">
+            <div style="min-width:260px; max-width:400px; flex:1; display:flex; flex-direction:column; align-self:stretch; border:1px solid #e0e0e0; border-left:4px solid #696cff; border-radius:4px; padding:12px 16px; background:#fcfcfc;">
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-1" style="border-bottom: 1px dashed #e4e4e4;">
+                    <span class="fw-bold text-uppercase" style="font-size:10.5px; letter-spacing:0.6px; color:#696cff;">
                         <i class="mdi mdi-information-outline me-1"></i>Term & Info
                     </span>
                 </div>
 
-                <div style="font-size:11.5px; color:#333;" class="my-auto">
-                    <table style="width:100%; border-collapse:collapse; font-size:11.5px;">
-                        <tbody>
-                            <tr style="border-bottom:1px dashed #f0f0f0;">
-                                <td class="text-muted py-1" style="width:105px; white-space:nowrap; vertical-align:middle;"><i class="mdi mdi-pound me-1 text-primary"></i>No. Reference</td>
-                                <td class="py-1 text-muted" style="width:10px; text-align:center; vertical-align:middle;">:</td>
-                                <td class="fw-medium text-dark py-1 ps-1" style="vertical-align:middle;">{{ $purchase->no_reference ?: '-' }}</td>
-                            </tr>
-                            <tr style="border-bottom:1px dashed #f0f0f0;">
-                                <td class="text-muted py-1" style="white-space:nowrap; vertical-align:middle;"><i class="mdi mdi-truck-outline me-1 text-primary"></i>Delivery</td>
-                                <td class="py-1 text-muted" style="text-align:center; vertical-align:middle;">:</td>
-                                <td class="fw-medium text-dark py-1 ps-1" style="vertical-align:middle;">{{ $purchase->delivery ?: '-' }}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted py-1" style="white-space:nowrap; vertical-align:middle;"><i class="mdi mdi-credit-card-outline me-1 text-primary"></i>Payment</td>
-                                <td class="py-1 text-muted" style="text-align:center; vertical-align:middle;">:</td>
-                                <td class="fw-medium text-dark py-1 ps-1" style="vertical-align:middle;">{{ $purchase->payment ?: '-' }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div style="display:grid; grid-template-columns: auto 1fr; gap:4px 12px; font-size:11.5px; color:#333;">
+                    <span class="text-muted" style="white-space:nowrap;"><i class="mdi mdi-pound me-1 text-primary"></i>No. Reference</span>
+                    <span class="fw-medium text-dark">: {{ $purchase->no_reference ?: '-' }}</span>
+
+                    <span class="text-muted" style="white-space:nowrap;"><i class="mdi mdi-truck-outline me-1 text-primary"></i>Delivery</span>
+                    <span class="fw-medium text-dark">: {{ $purchase->delivery ?: '-' }}</span>
+
+                    <span class="text-muted" style="white-space:nowrap;"><i class="mdi mdi-credit-card-outline me-1 text-primary"></i>Payment</span>
+                    <span class="fw-medium text-dark">: {{ $purchase->payment ?: '-' }}</span>
                 </div>
             </div>
         </div>
@@ -178,7 +184,7 @@
                             <tr class="compact-item-row">
                                 <td class="text-center align-top px-2">{{ $itemNo++ }}</td>
                                 <td class="align-top px-2">
-                                    <p class="mb-0 fw-semibold text-dark">{{ $product->product }}</p>
+                                    <p class="mb-0 fw-semibold text-dark" style="word-break: break-word; line-height: 1.35;">{!! nl2br(e($product->product)) !!}</p>
                                 </td>
                                 <td class="text-center align-top px-2 text-dark"><span class="fw-bold">{{ $product->qty }}</span> {{ $product->info_qty }}</td>
                                 <td class="text-end align-top px-2 text-nowrap text-dark" style="white-space:nowrap;">{{ fmod($product->price, 1) != 0 ? number_format($product->price, 2, ',', '.') : number_format($product->price, 0, '', '.') }}</td>
@@ -312,10 +318,21 @@
         <div class="row pt-3 text-center" style="font-size:12px;">
             <div class="col-6">
                 <p class="fw-bold mb-1" style="color:#333;">Authorized By,</p>
-                <div class="my-1 d-flex justify-content-center align-items-center" style="height:70px;">
-                    <img src="{{ url('') . '/asset/sign/ttdAngel.jpg' }}" alt="TTD Angel" height="70" style="width:auto !important;height:70px;">
-                </div>
-                <p class="fw-bold mb-0" style="color:#111; border-bottom:1px solid #ddd; display:inline-block; padding-bottom:2px;">PT Reftech Jaya Optima</p>
+                @if ($isKojisha)
+                    <div class="my-1 d-flex justify-content-center align-items-center" style="height:70px;">
+                        {{-- TTD Kosong sementara untuk Kojisha --}}
+                    </div>
+                    <p class="fw-bold mb-0" style="color:#111;">PT Kojisha Innotiv Indonesia</p>
+                    <div style="border-top: 1px solid #333; width: 200px; margin: 4px auto 3px auto;"></div>
+                    <p class="text-muted mb-0" style="font-size:11px;">Dedeh Sulastri</p>
+                @else
+                    <div class="my-1 d-flex justify-content-center align-items-center" style="height:70px;">
+                        <img src="{{ url('') . '/asset/sign/ttdAngel.jpg' }}" alt="TTD Angel" height="70" style="width:auto !important;height:70px;">
+                    </div>
+                    <p class="fw-bold mb-0" style="color:#111;">PT Reftech Jaya Optima</p>
+                    <div style="border-top: 1px solid #333; width: 200px; margin: 4px auto 3px auto;"></div>
+                    <p class="text-muted mb-0" style="font-size:11px;">Angel Irene</p>
+                @endif
             </div>
             <div class="col-6">
                 <p class="fw-bold mb-1" style="color:#333;">Accepted By Vendor,</p>
@@ -331,7 +348,27 @@
                         <div style="height:70px;"></div>
                     @endif
                 </div>
-                <p class="text-muted mb-0" style="font-size:11px;">{{ $purchase->company }}</p>
+                @php
+                    $isIndividual = ($purchase->supplier?->type === 'Individual') || ($purchase->type === 'Individual');
+                    $hasAttn = !empty($purchase->attn) && trim($purchase->attn) !== '-';
+                    if ($purchase->isSignedByVendor()) {
+                        $picName = $purchase->vendor_signer_name;
+                    } elseif ($isIndividual) {
+                        $picName = $hasAttn ? $purchase->attn : ($purchase->company ?: ($purchase->supplier?->supplier ?: '-'));
+                    } else {
+                        $picName = $hasAttn ? $purchase->attn : '-';
+                    }
+                @endphp
+                @if (!$isIndividual && !empty($purchase->company))
+                    <p class="fw-bold mb-0" style="color:#111;">{{ $purchase->company }}</p>
+                @endif
+                <div style="border-top: 1px solid #333; width: 200px; margin: 4px auto 3px auto;"></div>
+                <p class="text-muted mb-0" style="font-size:11px;">
+                    {{ $picName }}
+                    @if ($purchase->isSignedByVendor() && $purchase->vendor_signer_position)
+                        <span>({{ $purchase->vendor_signer_position }})</span>
+                    @endif
+                </p>
             </div>
         </div>
     </div>

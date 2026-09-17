@@ -80,6 +80,16 @@ $(function () {
                         return data;
                     },
                 },
+                {
+                    targets: 5,
+                    render: function (data, type, full) {
+                        if (type !== "display") return data;
+                        var plantBadge = full["plant_name"]
+                            ? ' <span class="badge bg-label-success ms-1" style="font-size: 10.5px;">' + $('<div>').text(full["plant_name"]).html() + '</span>'
+                            : '';
+                        return (data || "-") + plantBadge;
+                    },
+                },
             ],
             drawCallback: function (settings) {
                 console.log("drawCallback");

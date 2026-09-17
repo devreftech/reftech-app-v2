@@ -21,6 +21,13 @@ $(function () {
             { targets: 0, render: function (d, t, row) {
                 return '<a href="/smart-quote/' + row.id + '">' + d + '</a>';
             }},
+            { targets: 1, render: function (d, t, row) {
+                if (t !== 'display') return d;
+                var plantBadge = row.plant_name
+                    ? ' <span class="badge bg-label-success ms-1" style="font-size: 10.5px;">' + $('<div>').text(row.plant_name).html() + '</span>'
+                    : '';
+                return (d || '-') + plantBadge;
+            }},
             { targets: 4, className: 'text-center', render: function (d, t) {
                 if (t !== 'display') return d;
                 return '<div class="d-flex justify-content-between px-2"><span>Rp.</span><span>' + parseInt(d).toLocaleString('id-ID') + '</span></div>';

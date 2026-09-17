@@ -15,6 +15,7 @@ use App\Models\BearingKitPrice;
 use App\Models\Product;
 use App\Models\Prospect;
 use App\Models\Quotation;
+use App\Models\Reports;
 use App\Models\SerialProduct;
 use App\Models\Unit;
 use App\Models\UnitPmTemplateItem;
@@ -267,20 +268,57 @@ class UnitController extends Controller
         $unit = Unit::find($id);
 
         if (!$unit) {
-            return redirect('/unit-global/' . $id)->with('error', 'Produk tidak ditemukan');
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unit Global tidak ditemukan.'
+            ], 404);
         }
 
-        // $replacement = DetailProduct::where('id_product', $id)->get();
-        // $equivalents = SerialProduct::where('id_product', $id)->get();
+        // GUARD: Cek apakah unit terhubung ke data operasional aktif
+        $serialIds = SerialProduct::where('id_product', $id)->pluck('id');
+        $connectedMachines = Machine::whereIn('id_unit', $serialIds)->orWhere('id_unit', $id)->get();
+        $machineCount = $connectedMachines->count();
+        $machineIds = $connectedMachines->pluck('id');
+        $serviceReportCount = Reports::whereIn('id_machine', $machineIds)->count();
+        $quotationCount = DB::table('unit_quotation_detail')->where('id_unit', $id)->count();
+        $inventoryCount = DB::table('unit_inventory')->where('id_unit', $id)->count();
+        $catalogCount = DB::table('catalog_unit')->where('id_unit', $id)->count();
+        $pmTemplateCount = DB::table('unit_pm_template_items')->where('id_unit', $id)->count();
 
-        SerialProduct::where('id_product', $id)->delete();
-        $delUnit = $unit->delete();
+        if ($machineCount > 0 || $serviceReportCount > 0 || $quotationCount > 0 || $inventoryCount > 0 || $catalogCount > 0) {
+            $reasons = [];
+            if ($machineCount > 0) $reasons[] = "$machineCount Machine Client";
+            if ($serviceReportCount > 0) $reasons[] = "$serviceReportCount Service Report";
+            if ($quotationCount > 0) $reasons[] = "$quotationCount Unit Quotation";
+            if ($inventoryCount > 0) $reasons[] = "$inventoryCount Unit Inventory";
+            if ($catalogCount > 0) $reasons[] = "Katalog Unit";
 
-        if ($delUnit) {
-            return 1;
-        } else {
-            return 0;
+            return response()->json([
+                'status' => 'locked',
+                'message' => 'Unit Global ini tidak dapat dihapus karena masih digunakan oleh data operasional: ' . implode(', ', $reasons) . '. Guard aktif untuk menjaga integritas data riwayat servis dan mesin klien.',
+                'details' => [
+                    'machines' => $machineCount,
+                    'reports' => $serviceReportCount,
+                    'quotations' => $quotationCount,
+                    'inventory' => $inventoryCount,
+                    'catalog' => $catalogCount,
+                    'pm_templates' => $pmTemplateCount,
+                ]
+            ], 422);
         }
+
+        // Jika bersih / tidak terikat data apapun, hapus data referensi tambahan
+        DB::transaction(function () use ($unit, $id) {
+            UnitPmTemplateItem::where('id_unit', $id)->delete();
+            SerialProduct::where('id_product', $id)->delete();
+            DetailProduct::where('id_product', $id)->delete();
+            $unit->delete();
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Unit Global berhasil dihapus.'
+        ], 200);
     }
     public function quotationDetail($id)
     {
@@ -503,7 +541,42 @@ class UnitController extends Controller
             ->limit(30)
             ->get(['id', 'sku', 'brand', 'model', 'unit', 'power']);
 
+        $unitIds = $units->pluck('id');
+        $pmLevels = DB::table('unit_pm_template_items')
+            ->whereIn('id_unit', $unitIds)
+            ->select('id_unit', 'level')
+            ->distinct()
+            ->get()
+            ->groupBy('id_unit')
+            ->map(function ($items) {
+                return $items->pluck('level')->values()->toArray();
+            });
+
+        $units->transform(function ($u) use ($pmLevels) {
+            $u->pm_levels = $pmLevels->get($u->id, []);
+            return $u;
+        });
+
         return response()->json($units);
+    }
+
+    /**
+     * Ambil daftar level PM yang sudah punya item template di Unit Global untuk unit tertentu.
+     */
+    public function pmLevels($id)
+    {
+        $levels = DB::table('unit_pm_template_items')
+            ->where('id_unit', $id)
+            ->select('level')
+            ->distinct()
+            ->pluck('level')
+            ->values()
+            ->toArray();
+
+        return response()->json([
+            'id_unit' => (int) $id,
+            'pm_levels' => $levels,
+        ]);
     }
 
     public function showGlobal($id)
@@ -580,7 +653,29 @@ class UnitController extends Controller
             ->where('o.level', '1')
             ->take(5)
             ->get();
-        return view('pages.warehouse.unit.detail-global', compact('equivalent', 'product', 'comment', 'unreadComment', 'commentAdmin', 'unreadCommentAdmin', 'details', 'leveledProspect', 'noSaleProspect', 'serials', 'allStock'));
+
+        // GUARD: Cek relasi data aktif unit global ini
+        $serialIds = SerialProduct::where('id_product', $id)->pluck('id');
+        $connectedMachines = Machine::whereIn('id_unit', $serialIds)->orWhere('id_unit', $id)->get();
+        $machineCount = $connectedMachines->count();
+        $machineIds = $connectedMachines->pluck('id');
+        $serviceReportCount = Reports::whereIn('id_machine', $machineIds)->count();
+        $quotationCount = DB::table('unit_quotation_detail')->where('id_unit', $id)->count();
+        $inventoryCount = DB::table('unit_inventory')->where('id_unit', $id)->count();
+        $catalogCount = DB::table('catalog_unit')->where('id_unit', $id)->count();
+        $pmTemplateCount = DB::table('unit_pm_template_items')->where('id_unit', $id)->count();
+
+        $guardData = [
+            'is_locked' => ($machineCount > 0 || $serviceReportCount > 0 || $quotationCount > 0 || $inventoryCount > 0 || $catalogCount > 0),
+            'machine_count' => $machineCount,
+            'report_count' => $serviceReportCount,
+            'quotation_count' => $quotationCount,
+            'inventory_count' => $inventoryCount,
+            'catalog_count' => $catalogCount,
+            'pm_template_count' => $pmTemplateCount,
+        ];
+
+        return view('pages.warehouse.unit.detail-global', compact('equivalent', 'product', 'comment', 'unreadComment', 'commentAdmin', 'unreadCommentAdmin', 'details', 'leveledProspect', 'noSaleProspect', 'serials', 'allStock', 'guardData'));
     }
 
     /**

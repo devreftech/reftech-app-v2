@@ -16,6 +16,7 @@ class ItemProductSet extends Model
     protected $fillable = [
         'id_product_set',
         'id_replacement',
+        'qty',
     ];
 
     public function product_set()

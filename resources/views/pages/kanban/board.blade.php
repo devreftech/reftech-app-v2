@@ -140,10 +140,12 @@
                                 @endforeach
                             </select>
                         </div>
+                        @if ($board->id != 3)
                         <div class="mb-3">
                             <label for="createTaskDueDate" class="form-label">Due Date</label>
                             <input type="text" class="form-control flatpickr" id="createTaskDueDate" placeholder="YYYY-MM-DD">
                         </div>
+                        @endif
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
@@ -188,9 +190,11 @@
                                 <i class="mdi mdi-account-multiple-plus-outline" style="font-size: 14px;"></i>+ Members
                             </button>
                         @endif
+                        @if ($board->id != 3)
                         <button type="button" class="btn btn-xs task-quick-btn btn-quick-date d-inline-flex align-items-center gap-1" id="btnQuickDate">
                             <i class="mdi mdi-calendar-blank-outline" style="font-size: 14px;"></i>+ Dates
                         </button>
+                        @endif
                         <button type="button" class="btn btn-xs task-quick-btn btn-quick-checklist d-inline-flex align-items-center gap-1" id="btnQuickChecklist">
                             <i class="mdi mdi-checkbox-marked-outline" style="font-size: 14px;"></i>+ Checklist
                         </button>
@@ -398,7 +402,21 @@
                                 </div>
                             </div>
 
-                            @if ($board->type !== 'monitoring')
+                            @if ($board->type !== 'monitoring' && $board->id != 2)
+                            <!-- Select Client (Customer) -->
+                            <div class="mb-4" id="taskClientContainer">
+                                <label class="form-label text-muted fw-bold mb-1.5" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Client / Customer</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="flex-grow-1">
+                                        <select class="form-select form-select-sm select2-client" id="taskClientSelect" style="width: 100%;" data-placeholder="Ketik min. 2 huruf untuk cari Customer..."></select>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-2 flex-shrink-0" id="btnClearClient" title="Hapus Pilihan Client" style="display: none;">
+                                        <i class="mdi mdi-close"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted mt-1 d-block" style="font-size: 11px;">Pilih Customer untuk memfilter pilihan Quotation & Service Report terkait.</small>
+                            </div>
+
                             <!-- Quotation terhubung -->
                             <div class="mb-4" id="quotationLinkContainer">
                                 <label class="form-label text-muted fw-bold mb-1.5" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Quotation Terhubung</label>
@@ -425,6 +443,49 @@
                                 </div>
                             </div>
 
+                            <!-- Service Report Terhubung (Bisa Multiple) -->
+                            <div class="mb-4" id="serviceReportLinkContainer">
+                                <div class="card task-card-elevated">
+                                    <div class="card-body p-3.5">
+                                        <div class="d-flex align-items-center justify-content-between pb-3 mb-3" style="border-bottom: 1px solid #edf0f2;">
+                                            <div class="d-flex align-items-center gap-2.5">
+                                                <div class="avatar avatar-sm bg-label-info rounded-3 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                                    <i class="mdi mdi-file-check-outline" style="font-size: 18px;"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="fw-bold mb-0 text-heading" style="font-size: 14.5px;">Service Report Terhubung</h6>
+                                                    <small class="text-muted" style="font-size: 11px;">Laporan teknis servis & pekerjaan terkait tugas ini</small>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-label-info fw-bold rounded-pill px-3 py-1.5" id="serviceReportLinkedCount" style="font-size: 12px;">0 Terhubung</span>
+                                        </div>
+
+                                        <!-- List item Service Report terhubung -->
+                                        <div id="serviceReportLinkedList" class="d-flex flex-column gap-2 mb-3"></div>
+
+                                        <!-- Form tambah / hubungkan Service Report baru -->
+                                        <div class="pt-2 border-top">
+                                            <div class="d-flex flex-column gap-2">
+                                                <div>
+                                                    <label class="form-label text-muted fw-bold mb-1" style="font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px;">Tambah Service Report</label>
+                                                    <select class="form-select form-select-sm select2-link-sr" id="linkServiceReportSelect" style="width: 100%;" data-placeholder="Cari no. service report / perusahaan / jobdesc..."></select>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="input-group input-group-sm flex-grow-1">
+                                                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="mdi mdi-note-text-outline" style="font-size: 14px;"></i></span>
+                                                        <input type="text" class="form-control form-control-sm border-start-0 ps-1" id="linkServiceReportNote" placeholder="Catatan / keterangan (opsional)...">
+                                                    </div>
+                                                    <button type="button" class="btn btn-sm btn-primary rounded-pill px-3.5 flex-shrink-0 d-inline-flex align-items-center gap-1" id="btnLinkServiceReport">
+                                                        <i class="mdi mdi-link-variant"></i> Hubungkan
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if ($board->id != 3)
                             <!-- Pengeluaran Project (manajemen biaya per kartu) -->
                             <div class="mb-4" id="taskExpenseContainer">
                                 <div class="card task-card-elevated">
@@ -480,6 +541,7 @@
                                     </div>
                                 </div>
                             </div>
+                            @endif
                             @endif
 
                             <!-- Daily Project Reports Section (Laporan Harian Proyek) -->
@@ -538,7 +600,7 @@
 
                             <!-- Metadata row (Assignee, Due Date) -->
                             <div class="row g-3 mb-4">
-                                <div class="col-sm-6 {{ $board->type === 'monitoring' ? 'd-none' : '' }}">
+                                <div class="{{ $board->id == 3 ? 'col-12' : ($board->type === 'monitoring' ? 'd-none' : 'col-sm-6') }}">
                                     <label for="editTaskAssignee" class="form-label text-muted fw-bold mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Ditugaskan Kepada</label>
                                     <div class="w-100">
                                         <select class="form-select select2-edit" id="editTaskAssignee" name="assignees[]" multiple="multiple" data-placeholder="Pilih Penerima" style="width: 100%;">
@@ -548,6 +610,7 @@
                                         </select>
                                     </div>
                                 </div>
+                                @if ($board->id != 3)
                                 <div class="{{ $board->type === 'monitoring' ? 'col-sm-12' : 'col-sm-6' }}">
                                     <label for="editTaskDueDate" class="form-label text-muted fw-bold mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Tanggal Batas Waktu</label>
                                     <div class="input-group input-group-merge">
@@ -555,6 +618,7 @@
                                         <input type="text" class="form-control flatpickr" id="editTaskDueDate" placeholder="YYYY-MM-DD">
                                     </div>
                                 </div>
+                                @endif
                             </div>
 
                             <!-- Description area with inline editing -->
@@ -1550,6 +1614,43 @@
                 allowInput: true
             });
 
+            // Select2 pencari Client / Customer (min 2 huruf)
+            if (boardType !== 'monitoring' && $('#taskClientSelect').length) {
+                $('#taskClientSelect').select2({
+                    dropdownParent: $('#taskClientSelect').closest('.modal'),
+                    placeholder: $('#taskClientSelect').data('placeholder'),
+                    width: '100%',
+                    minimumInputLength: 2,
+                    allowClear: true,
+                    language: {
+                        inputTooShort: function () {
+                            return "Ketik minimal 2 huruf untuk mencari...";
+                        },
+                        noResults: function () {
+                            return "Customer tidak ditemukan";
+                        },
+                        searching: function () {
+                            return "Mencari customer...";
+                        }
+                    },
+                    ajax: {
+                        url: '{{ route("kanban.linkable-clients") }}',
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return { q: params.term || '' };
+                        },
+                        processResults: function (data) {
+                            return {
+                                results: (data.clients || []).map(function (c) {
+                                    return { id: c.id, text: c.text };
+                                })
+                            };
+                        }
+                    }
+                });
+            }
+
             // Select2 pencari Unit Quotation untuk fitur "Hubungkan ke Quotation"
             if (boardType !== 'monitoring' && $('#linkQuotationSelect').length) {
                 $('#linkQuotationSelect').select2({
@@ -1560,11 +1661,43 @@
                         url: '{{ route("kanban.linkable-quotations") }}',
                         dataType: 'json',
                         delay: 250,
-                        data: function (params) { return { q: params.term || '' }; },
+                        data: function (params) {
+                            return {
+                                q: params.term || '',
+                                client_id: $('#taskClientSelect').val() || ''
+                            };
+                        },
                         processResults: function (data) {
                             return {
                                 results: (data.quotations || []).map(function (q) {
                                     return { id: q.id, text: `${q.no_quote} — ${q.company}` };
+                                })
+                            };
+                        }
+                    }
+                });
+            }
+
+            // Select2 pencari Service Report untuk fitur "Hubungkan ke Service Report"
+            if (boardType !== 'monitoring' && $('#linkServiceReportSelect').length) {
+                $('#linkServiceReportSelect').select2({
+                    dropdownParent: $('#linkServiceReportSelect').closest('.modal'),
+                    placeholder: $('#linkServiceReportSelect').data('placeholder'),
+                    width: '100%',
+                    ajax: {
+                        url: '{{ route("kanban.linkable-service-reports") }}',
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return {
+                                q: params.term || '',
+                                client_id: $('#taskClientSelect').val() || ''
+                            };
+                        },
+                        processResults: function (data) {
+                            return {
+                                results: (data.service_reports || []).map(function (sr) {
+                                    return { id: sr.id, text: sr.text };
                                 })
                             };
                         }
@@ -1817,7 +1950,7 @@
 
                                     // 6. Footer (Due Date, Attachments, Comments, Reports, Expenses, Avatars)
                                     let dueDateHtml = '';
-                                    if (task.due_date) {
+                                    if (task.due_date && boardId != '3') {
                                         dueDateHtml = `
                                             <span class="badge ${getDateUrgencyClass(task.due_date)} d-inline-flex align-items-center gap-1" style="font-size: 10px; padding: 2.5px 6px; border-radius: 4px;" title="Tenggat Waktu: ${formatDateDisplay(task.due_date)}">
                                                 <i class="mdi mdi-calendar-clock-outline" style="font-size: 11px;"></i>${formatDateDisplay(task.due_date)}
@@ -1847,7 +1980,7 @@
                                             </span>
                                         `;
                                     }
-                                    if (task.total_expenses > 0) {
+                                    if (task.total_expenses > 0 && boardId != '3') {
                                         metaCountersHtml += `
                                             <span class="badge bg-label-warning d-inline-flex align-items-center gap-1" style="font-size: 10px; padding: 2.5px 5px; border-radius: 4px;" title="${task.total_expenses} Pengeluaran Proyek">
                                                 <i class="mdi mdi-receipt-text-outline" style="font-size: 11px;"></i>${task.total_expenses}
@@ -2100,10 +2233,22 @@
             let isProgrammaticChange = false;
             let lastBoardDataHash = '';
             let taskDetailsInterval = null;
+            let isTaskModalOpen = false;
+            let lastFeedHash = '';
+            let lastChecklistsHash = '';
+            let lastAttachmentsHash = '';
+            let lastSrHash = '';
 
             // Open Task Details Modal and load all details
             function openTaskSidebar(task) {
-                const taskId = task.id;
+                const taskId = (typeof task === 'object' && task !== null) ? task.id : task;
+                if (!taskId) return;
+
+                isTaskModalOpen = true;
+                lastFeedHash = '';
+                lastChecklistsHash = '';
+                lastAttachmentsHash = '';
+                lastSrHash = '';
                 
                 // Clear any existing polling interval
                 if (taskDetailsInterval) {
@@ -2116,10 +2261,11 @@
                 $('#taskDetailsModalLabel').text('Loading...');
                 $('#currentStatusText').text('Status');
                 $('#editTaskAssignee').val([]).trigger('change', { programmatic: true });
-                const fpInit = document.querySelector("#editTaskDueDate")._flatpickr;
+                const dueEl = document.querySelector("#editTaskDueDate");
+                const fpInit = dueEl ? dueEl._flatpickr : null;
                 if (fpInit) {
                     fpInit.clear(false);
-                } else {
+                } else if ($('#editTaskDueDate').length) {
                     $('#editTaskDueDate').val('');
                 }
                 $('#taskAttachmentInput').val('');
@@ -2131,9 +2277,15 @@
                     if (document.getElementById('taskExpenseForm')) $('#taskExpenseForm')[0].reset();
                     $('#taskExpenseForm').hide();
                     $('#btnShowExpenseForm').show();
+                    $('#taskClientSelect').val(null).trigger('change');
+                    $('#btnClearClient').hide();
                     $('#linkQuotationSelect').val(null).trigger('change');
                     $('#quotationLinkedView').css('display', 'none');
                     $('#quotationLinkForm').hide();
+                    $('#linkServiceReportSelect').val(null).trigger('change');
+                    $('#linkServiceReportNote').val('');
+                    $('#serviceReportLinkedList').html('');
+                    $('#serviceReportLinkedCount').text('0 Terhubung');
                 }
 
                 $('#descriptionStaticView').html('<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div></div>');
@@ -2154,18 +2306,22 @@
                 // Fetch details via AJAX
                 loadTaskDetails(taskId);
 
-                // Start polling every 5 seconds
+                // Polling task details setiap 10 detik saat modal terbuka
                 taskDetailsInterval = setInterval(function() {
                     loadTaskDetails(taskId);
-                }, 5000);
+                }, 10000);
             }
 
-            // Stop polling when modal is closed
+            window.openTaskSidebar = openTaskSidebar;
+
+            // Stop polling when modal is closed and refresh board
             $(document).on('hide.bs.modal', '#taskDetailsModal', function () {
+                isTaskModalOpen = false;
                 if (taskDetailsInterval) {
                     clearInterval(taskDetailsInterval);
                     taskDetailsInterval = null;
                 }
+                loadKanbanBoard();
             });
 
             function loadTaskDetails(taskId) {
@@ -2332,8 +2488,9 @@
                             if (currentSelStr !== serverSelStr) {
                                 $('#editTaskAssignee').val(serverSel).trigger('change', { programmatic: true });
                             }
-                            if ($('#editTaskDueDate').val() != (currentTaskData.due_date || '')) {
-                                const fpSet = document.querySelector("#editTaskDueDate")._flatpickr;
+                            if ($('#editTaskDueDate').length && $('#editTaskDueDate').val() != (currentTaskData.due_date || '')) {
+                                const dueEl = document.querySelector("#editTaskDueDate");
+                                const fpSet = dueEl ? dueEl._flatpickr : null;
                                 if (fpSet) {
                                     fpSet.setDate(currentTaskData.due_date || '', false);
                                 } else {
@@ -2367,18 +2524,45 @@
                             // Render Unified Chronological Feed
                             renderTimelineFeed(response.feed);
 
-                            // Render biaya kartu & status hubungan quotation
+                            // Render biaya kartu, status hubungan quotation & service reports
                             if (boardType !== 'monitoring') {
+                                // Render client selection
+                                isProgrammaticChange = true;
+                                if ($('#taskClientSelect').length) {
+                                    if (response.task && response.task.client) {
+                                        const c = response.task.client;
+                                        if ($('#taskClientSelect').find("option[value='" + c.id + "']").length) {
+                                            $('#taskClientSelect').val(c.id).trigger('change');
+                                        } else {
+                                            const newOption = new Option(c.text || c.company, c.id, true, true);
+                                            $('#taskClientSelect').append(newOption).trigger('change');
+                                        }
+                                        $('#btnClearClient').show();
+                                    } else {
+                                        $('#taskClientSelect').val(null).trigger('change');
+                                        $('#btnClearClient').hide();
+                                    }
+                                }
+                                isProgrammaticChange = false;
+
                                 renderTaskExpenses(response);
                                 renderQuotationLink(response);
+
+                                const isEditingSrNote = $('#serviceReportLinkedList').find('[class*="sr-note-edit-"]:visible, input:focus').length > 0;
+                                if (!isEditingSrNote) {
+                                    renderLinkedServiceReports(response.linked_service_reports || []);
+                                }
                             }
 
                             // Render Laporan Harian Proyek (Daily Project Reports)
                             renderProjectReports(response);
                         }
                     },
-                    error: function() {
-                        // Silent fail on background polling
+                    error: function(xhr) {
+                        if (!currentTaskData) {
+                            $('#descriptionStaticView').html('<div class="alert alert-danger py-2 mb-0" style="font-size: 13px;"><i class="mdi mdi-alert-circle-outline me-1"></i>Gagal memuat detail tugas. Silakan muat ulang halaman.</div>');
+                            $('#timelineFeedContainer').html('<div class="text-center py-3 text-danger" style="font-size: 13px;"><i class="mdi mdi-alert-circle-outline me-1"></i>Gagal memuat feed aktivitas.</div>');
+                        }
                     }
                 });
             }
@@ -2568,6 +2752,41 @@
                 });
             });
 
+            // --- Client / Customer selector change and clear ---
+            $(document).on('change', '#taskClientSelect', function () {
+                if (isProgrammaticChange) return;
+                const taskId = $('#editTaskId').val();
+                if (!taskId || !currentTaskData) return;
+                const newClientId = $(this).val() || null;
+
+                $('#btnClearClient').toggle(!!newClientId);
+
+                $.ajax({
+                    url: `/kanban/tasks/${taskId}/update`,
+                    method: 'POST',
+                    data: {
+                        title: currentTaskData.title,
+                        description: $('#editTaskDescription').val(),
+                        assignees: $('#editTaskAssignee').val(),
+                        due_date: $('#editTaskDueDate').val(),
+                        priority: currentTaskData.priority || 'medium',
+                        column_id: 'column_' + currentTaskData.column_id,
+                        client_id: newClientId,
+                        _token: csrfToken
+                    },
+                    success: function () {
+                        // Reset quotation and SR selectors when client changes
+                        $('#linkQuotationSelect').val(null).trigger('change');
+                        $('#linkServiceReportSelect').val(null).trigger('change');
+                        loadTaskDetails(taskId);
+                    }
+                });
+            });
+
+            $('#btnClearClient').click(function () {
+                $('#taskClientSelect').val(null).trigger('change');
+            });
+
             // --- Hubungkan / putuskan kartu ke Unit Quotation ---
             $('#btnLinkQuotation').click(function () {
                 const taskId = $('#editTaskId').val();
@@ -2606,6 +2825,208 @@
                 });
             });
 
+            // --- Hubungkan / Putuskan kartu ke Service Report (Bisa Multiple) ---
+            function renderLinkedServiceReports(reports, force = false) {
+                if (!force) {
+                    const isEditingSrNote = $('#serviceReportLinkedList').find('[class*="sr-note-edit-"]:visible, input:focus').length > 0;
+                    if (isEditingSrNote) {
+                        return;
+                    }
+                    const currentSrHash = JSON.stringify(reports || []);
+                    if (currentSrHash === lastSrHash) return;
+                    lastSrHash = currentSrHash;
+                }
+
+                const count = reports.length;
+                $('#serviceReportLinkedCount').text(`${count} Terhubung`);
+
+                if (count === 0) {
+                    $('#serviceReportLinkedList').html(`
+                        <div class="text-muted text-center py-3 px-3 rounded-3 bg-light border" style="font-size: 12px;">
+                            <i class="mdi mdi-information-outline me-1"></i>Belum ada Service Report yang terhubung ke tugas ini.
+                        </div>
+                    `);
+                    return;
+                }
+
+                let html = '';
+                reports.forEach(function (sr) {
+                    html += `
+                        <div class="p-2.5 rounded-3 border bg-white dynamic-subcard shadow-xs" data-sr-link-id="${sr.id}" style="font-size: 12.5px; border-color: #edf0f2 !important;">
+                            <div class="d-flex align-items-start justify-content-between gap-2">
+                                <div class="d-flex align-items-start gap-2.5 min-width-0 flex-grow-1">
+                                    <div class="avatar avatar-xs bg-label-info rounded-2 d-flex align-items-center justify-content-center flex-shrink-0 mt-0.5" style="width: 28px; height: 28px;">
+                                        <i class="mdi mdi-file-document-check-outline" style="font-size: 16px;"></i>
+                                    </div>
+                                    <div class="min-width-0 flex-grow-1">
+                                        <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                                            <a href="${sr.link}" target="_blank" class="fw-bold text-info text-decoration-none d-inline-flex align-items-center gap-1" style="font-size: 13px;" title="Buka Service Report">
+                                                ${escapeHtml(sr.no_service)}
+                                                <i class="mdi mdi-open-in-new" style="font-size: 11px;"></i>
+                                            </a>
+                                            <span class="badge bg-label-secondary text-muted rounded-pill px-2 py-0.5" style="font-size: 10.5px;">
+                                                <i class="mdi mdi-calendar-blank-outline me-0.5"></i>${escapeHtml(sr.date)}
+                                            </span>
+                                        </div>
+                                        <div class="text-muted d-block text-truncate mt-0.5" style="font-size: 11.5px;">
+                                            <strong class="text-heading">${escapeHtml(sr.company)}</strong>${sr.jobdesc ? ` &bull; <span title="${escapeHtml(sr.jobdesc)}">${escapeHtml(sr.jobdesc)}</span>` : ''}
+                                        </div>
+                                        
+                                        <!-- Inline Note Display & Edit -->
+                                        <div class="sr-note-view-${sr.id} mt-1.5 d-flex align-items-center gap-1.5 flex-wrap">
+                                            ${sr.note 
+                                                ? `<span class="badge bg-light text-secondary border fw-normal text-start text-wrap px-2 py-1 rounded-2" style="font-size: 11.5px; line-height: 1.3;"><i class="mdi mdi-comment-text-outline text-info me-1"></i>${escapeHtml(sr.note)}</span>` 
+                                                : '<span class="text-muted fst-italic" style="font-size: 11px;">Tanpa catatan</span>'}
+                                            <button type="button" class="btn btn-link btn-xs p-0 text-primary btn-toggle-edit-sr-note" data-sr-link-id="${sr.id}" title="Ubah Catatan" style="font-size: 11px; text-decoration: none;">
+                                                <i class="mdi mdi-pencil-outline me-0.5"></i>${sr.note ? 'Ubah' : '+ Catatan'}
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- Inline Note Edit Form -->
+                                        <div class="sr-note-edit-${sr.id} mt-1.5" style="display: none;">
+                                            <div class="input-group input-group-sm" style="max-width: 360px;">
+                                                <input type="text" class="form-control form-control-sm sr-note-input-${sr.id}" placeholder="Tulis catatan... (Enter untuk simpan)" value="${escapeHtml(sr.note || '')}" style="font-size: 12px;">
+                                                <button type="button" class="btn btn-xs btn-primary btn-save-sr-note px-2.5" data-sr-link-id="${sr.id}">Simpan</button>
+                                                <button type="button" class="btn btn-xs btn-outline-secondary btn-cancel-sr-note px-2" data-sr-link-id="${sr.id}">Batal</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2.5 flex-shrink-0 btn-unlink-sr" data-sr-link-id="${sr.id}" title="Putuskan Service Report" style="font-size: 11px; padding: 3px 8px;">
+                                    <i class="mdi mdi-link-off me-0.5"></i>Putuskan
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                $('#serviceReportLinkedList').html(html);
+            }
+
+            // Hubungkan Service Report
+            $('#btnLinkServiceReport').click(function () {
+                const taskId = $('#editTaskId').val();
+                const srId = $('#linkServiceReportSelect').val();
+                const note = $('#linkServiceReportNote').val();
+
+                if (!srId) {
+                    alert('Silakan pilih Service Report terlebih dahulu.');
+                    return;
+                }
+
+                const $btn = $(this);
+                $btn.prop('disabled', true).html('<i class="mdi mdi-loading mdi-spin me-1"></i>Menghubungkan...');
+
+                $.ajax({
+                    url: `/kanban/tasks/${taskId}/link-service-report`,
+                    method: 'POST',
+                    data: {
+                        service_report_id: srId,
+                        note: note,
+                        _token: csrfToken
+                    },
+                    success: function (res) {
+                        $btn.prop('disabled', false).html('<i class="mdi mdi-link-variant me-1"></i>Hubungkan');
+                        $('#linkServiceReportSelect').val(null).trigger('change');
+                        $('#linkServiceReportNote').val('');
+                        loadTaskDetails(taskId);
+                    },
+                    error: function (xhr) {
+                        $btn.prop('disabled', false).html('<i class="mdi mdi-link-variant me-1"></i>Hubungkan');
+                        const msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Gagal menghubungkan Service Report.';
+                        alert(msg);
+                    }
+                });
+            });
+
+            $('#linkServiceReportNote').on('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    $('#btnLinkServiceReport').click();
+                }
+            });
+
+            // Toggle Edit Note Form
+            $(document).on('click', '.btn-toggle-edit-sr-note', function () {
+                const id = $(this).data('sr-link-id');
+                $(`.sr-note-view-${id}`).hide();
+                $(`.sr-note-edit-${id}`).show();
+                $(`.sr-note-input-${id}`).focus().select();
+            });
+
+            // Cancel Edit Note Form
+            $(document).on('click', '.btn-cancel-sr-note', function () {
+                const id = $(this).data('sr-link-id');
+                $(`.sr-note-edit-${id}`).hide();
+                $(`.sr-note-view-${id}`).show();
+            });
+
+            // Enter / Escape key for inline note edit
+            $(document).on('keydown', '[class*="sr-note-input-"]', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const srLinkId = $(this).closest('.dynamic-subcard').data('sr-link-id');
+                    $(`.btn-save-sr-note[data-sr-link-id="${srLinkId}"]`).click();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    const srLinkId = $(this).closest('.dynamic-subcard').data('sr-link-id');
+                    $(`.btn-cancel-sr-note[data-sr-link-id="${srLinkId}"]`).click();
+                }
+            });
+
+            // Save Edit Note
+            $(document).on('click', '.btn-save-sr-note', function () {
+                const taskId = $('#editTaskId').val();
+                const srLinkId = $(this).data('sr-link-id');
+                const note = $(`.sr-note-input-${srLinkId}`).val();
+                const $btn = $(this);
+
+                $btn.prop('disabled', true).text('Menyimpan...');
+
+                $.ajax({
+                    url: `/kanban/tasks/${taskId}/service-reports/${srLinkId}/update-note`,
+                    method: 'POST',
+                    data: {
+                        note: note,
+                        _token: csrfToken
+                    },
+                    success: function () {
+                        $btn.prop('disabled', false).text('Simpan');
+                        $(`.sr-note-edit-${srLinkId}`).hide();
+                        $(`.sr-note-view-${srLinkId}`).show();
+                        loadTaskDetails(taskId);
+                    },
+                    error: function () {
+                        $btn.prop('disabled', false).text('Simpan');
+                        alert('Gagal menyimpan catatan.');
+                    }
+                });
+            });
+
+            // Putuskan Service Report
+            $(document).on('click', '.btn-unlink-sr', function () {
+                const taskId = $('#editTaskId').val();
+                const srLinkId = $(this).data('sr-link-id');
+
+                if (!confirm('Apakah Anda yakin ingin memutuskan hubungan dengan Service Report ini?')) {
+                    return;
+                }
+
+                $.ajax({
+                    url: `/kanban/tasks/${taskId}/service-reports/${srLinkId}`,
+                    method: 'DELETE',
+                    data: {
+                        _token: csrfToken
+                    },
+                    success: function () {
+                        loadTaskDetails(taskId);
+                    },
+                    error: function () {
+                        alert('Gagal memutuskan Service Report.');
+                    }
+                });
+            });
+
             // Labels Rendering
             function renderLabels(labels) {
                 let html = '';
@@ -2627,6 +3048,10 @@
 
             // Attachments Rendering
             function renderAttachments(attachments) {
+                const currentAttHash = JSON.stringify(attachments || []);
+                if (currentAttHash === lastAttachmentsHash) return;
+                lastAttachmentsHash = currentAttHash;
+
                 let html = '';
                 if (attachments && attachments.length > 0) {
                     attachments.forEach(function(att) {
@@ -2662,6 +3087,10 @@
 
             // Checklists Rendering
             function renderChecklists(checklists) {
+                const currentClHash = JSON.stringify(checklists || []);
+                if (currentClHash === lastChecklistsHash) return;
+                lastChecklistsHash = currentClHash;
+
                 let html = '';
                 if (checklists && checklists.length > 0) {
                     checklists.forEach(function(c) {
@@ -2714,6 +3143,10 @@
 
             // Timeline Feed Rendering (Comments & Activities)
             function renderTimelineFeed(feed) {
+                const currentFeedHash = JSON.stringify(feed || []);
+                if (currentFeedHash === lastFeedHash) return;
+                lastFeedHash = currentFeedHash;
+
                 let html = '';
                 if (!feed || feed.length === 0) {
                     html = '<p class="text-muted small text-center py-3">Belum ada aktivitas atau komentar.</p>';
@@ -3524,10 +3957,27 @@
             // Load board initial
             loadKanbanBoard();
 
-            // Poll Kanban board data every 5 seconds in the background
+            // Auto-open task if specified in URL query (?task=123)
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const targetTaskId = urlParams.get('task');
+                if (targetTaskId) {
+                    setTimeout(function() {
+                        openTaskSidebar(targetTaskId);
+                        const cleanUrl = window.location.pathname;
+                        window.history.replaceState({}, document.title, cleanUrl);
+                    }, 400);
+                }
+            } catch (e) {
+                console.warn('Auto open task error:', e);
+            }
+
+            // Poll Kanban board data every 45 seconds in the background (paused when modal is open)
             setInterval(function() {
-                loadKanbanBoard();
-            }, 5000);
+                if (!isTaskModalOpen) {
+                    loadKanbanBoard();
+                }
+            }, 45000);
 
             // Custom Add Task click handler
             $(document).on('click', '.btn-add-task-custom', function(e) {
@@ -3876,7 +4326,7 @@
 
                 // Initial load and set interval
                 loadDeleteRequests();
-                setInterval(loadDeleteRequests, 5000);
+                setInterval(loadDeleteRequests, 30000);
 
                 // Handle approve delete request click
                 $(document).on('click', '.btn-approve-delete', function(e) {
@@ -4127,6 +4577,9 @@
                 });
             }
 
+            setInterval(pollNewCards, 15000);
+            @endif
+
             // Fullscreen Toggle Handler
             $('#btnToggleFullscreen').click(function(e) {
                 e.preventDefault();
@@ -4170,9 +4623,6 @@
                     window.dispatchEvent(new Event('resize'));
                 }
             });
-
-            setInterval(pollNewCards, 10000);
-            @endif
         });
     </script>
 @endpush

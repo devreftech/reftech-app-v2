@@ -37,6 +37,34 @@ class AppServiceProvider extends ServiceProvider
                     ->get();
                 $view->with('prMentions', $prMentions);
 
+                $kanbanMentions = collect();
+                if (\Illuminate\Support\Facades\Schema::hasTable('kanban_task_comment_mentions')) {
+                    $kanbanMentions = \Illuminate\Support\Facades\DB::table('kanban_task_comment_mentions as m')
+                        ->join('kanban_task_comments as c', 'm.comment_id', '=', 'c.id')
+                        ->join('kanban_tasks as t', 'c.task_id', '=', 't.id')
+                        ->join('kanban_boards as b', 't.board_id', '=', 'b.id')
+                        ->join('users as u', 'c.user_id', '=', 'u.id')
+                        ->where('m.user_id', Auth::id())
+                        ->where('c.user_id', '!=', Auth::id())
+                        ->select(
+                            'm.comment_id',
+                            'm.is_read',
+                            'm.created_at as mention_created_at',
+                            'c.comment',
+                            'c.created_at as comment_created_at',
+                            'u.name as author_name',
+                            'u.image as author_photo',
+                            't.id as task_id',
+                            't.title as task_title',
+                            'b.id as board_id',
+                            'b.title as board_name'
+                        )
+                        ->orderByDesc('c.created_at')
+                        ->take(15)
+                        ->get();
+                }
+                $view->with('kanbanMentions', $kanbanMentions);
+
                 if (in_array(Auth::user()->role, ['Admin', 'Accounting', 'Finance'])) {
                     $pendingCancelQuotes = UnitQuotation::with(['client', 'sales'])
                         ->where('cancel_request', 1)

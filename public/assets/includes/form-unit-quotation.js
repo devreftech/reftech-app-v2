@@ -109,12 +109,34 @@ $(function () {
             }
 
             var afterDiskon = Math.max(0, subtotal - discountNominal);
+
+            // Trade-in Unit deduction
+            var hasTradeIn = $pane.find('.toggle-trade-in').is(':checked');
+            var tradeInPrice = hasTradeIn ? parseRupiah($pane.find('.trade-in-price').val()) : 0;
+            var tradeInBrand = $pane.find('.trade-in-brand').val() || '';
+            var tradeInModel = $pane.find('.trade-in-model').val() || '';
+
+            var dpp = Math.max(0, afterDiskon - tradeInPrice);
             var tax         = $pane.find('.toggle-tax').is(':checked');
-            var taxAmount   = tax ? Math.round(afterDiskon * 0.11) : 0;
+            var taxAmount   = tax ? Math.round(dpp * 0.11) : 0;
             var shipping    = parseRupiah($pane.find('.input-shipping').val());
-            var total       = afterDiskon + taxAmount + shipping;
+            var total       = dpp + taxAmount + shipping;
 
             $pane.find('.display-subtotal').text('Rp ' + formatRupiah(Math.round(subtotal)));
+
+            // Update display baris Trade-In & DPP
+            if (hasTradeIn && tradeInPrice > 0) {
+                $pane.find('.display-trade-in-row').show();
+                $pane.find('.display-trade-in').text('- Rp ' + formatRupiah(Math.round(tradeInPrice)));
+                var tradeInLabel = (tradeInBrand + ' ' + tradeInModel).trim();
+                $pane.find('.trade-in-summary-badge').text(tradeInLabel ? '(' + tradeInLabel + ')' : '');
+                $pane.find('.display-dpp-row').show();
+                $pane.find('.display-dpp').text('Rp ' + formatRupiah(Math.round(dpp)));
+            } else {
+                $pane.find('.display-trade-in-row').hide();
+                $pane.find('.display-dpp-row').hide();
+            }
+
             $pane.find('.display-tax').text('Rp ' + formatRupiah(taxAmount));
             $pane.find('.display-total').text('Rp ' + formatRupiah(Math.round(total)));
         });
@@ -194,6 +216,29 @@ $(function () {
         'FILTRATION SYSTEM': ['brand', 'model', 'grade', 'air_cap', 'bar', 'filtration', 'oil_content', 'material', 'exhaust', 'connect'],
     };
 
+    // ── Helper: Format Type Unit dengan Speed Type ────────────────────────
+    function formatTypeUnit(typeUnit, speedType) {
+        var type = (typeUnit || '').trim();
+        var speed = (speedType || '').trim();
+
+        if (/^fix(ed)?\s*speed$/i.test(speed)) {
+            speed = 'Fixed Speed';
+        } else if (/^variable\s*speed$/i.test(speed)) {
+            speed = 'Variable Speed';
+        }
+
+        if (/oil-injected/i.test(type)) {
+            type = 'Oil-Injected';
+        } else if (/oil-free/i.test(type)) {
+            type = 'Oil-Free';
+        }
+
+        if (type && speed) {
+            return type + ' ' + speed;
+        }
+        return type || speed;
+    }
+
     // ── Build spec preview rows (all specs) ───────────────────────────────
     function buildSpecPreview($row, unit) {
         var $specRows = $row.find('.spec-rows').empty();
@@ -203,7 +248,9 @@ $(function () {
         var fieldList    = SPEC_ORDER[unit.unit] || Object.keys(SPEC_LABELS);
 
         $.each(fieldList, function (i, field) {
-            var val = unit[field];
+            var val = (field === 'type_unit')
+                ? (unit.formatted_type || formatTypeUnit(unit.type_unit, unit.speed_type))
+                : unit[field];
             if (!val || val === '' || val === '0' || val === 0) return;
 
             var displayLabel = catOverrides[field] || SPEC_LABELS[field] || field;
@@ -231,7 +278,9 @@ $(function () {
         var catOverrides = SPEC_LABELS_OVERRIDE[unit.unit] || {};
 
         $.each(visibleFields, function (i, field) {
-            var val = unit[field];
+            var val = (field === 'type_unit')
+                ? (unit.formatted_type || formatTypeUnit(unit.type_unit, unit.speed_type))
+                : unit[field];
             if (!val) return;
             var label      = catOverrides[field] || SPEC_LABELS[field] || field;
             var displayVal = val + (SPEC_UNITS[field] || '');
@@ -247,6 +296,52 @@ $(function () {
         });
 
         $row.find('.field-spec-visible').val(JSON.stringify(visibleFields));
+    }
+
+    // ── Helper: Manual Spec Row for Other (Vendor Luar) ───────────────────
+    function addOtherSpecRow($row, key, val) {
+        var k = key || '';
+        var v = val || '';
+        var $specLine = $(
+            '<div class="d-flex align-items-center gap-2 mb-1 other-spec-row">' +
+                '<div style="width: 140px; flex-shrink: 0;">' +
+                    '<input type="text" class="form-control form-control-sm spec-key-input py-0 px-2" ' +
+                        'list="common-spec-keys" placeholder="Nama Spek (mis. Brand)" value="' + $('<div>').text(k).html() + '" ' +
+                        'style="font-size: 11px; height: 26px;">' +
+                '</div>' +
+                '<span class="text-muted fw-bold" style="font-size: 11px;">:</span>' +
+                '<div class="flex-grow-1">' +
+                    '<input type="text" class="form-control form-control-sm spec-val-input py-0 px-2" ' +
+                        'placeholder="Nilai (mis. Hitachi 15 kW / 7.5 Bar)" value="' + $('<div>').text(v).html() + '" ' +
+                        'style="font-size: 11px; height: 26px;">' +
+                '</div>' +
+                '<button type="button" class="btn btn-xs btn-icon btn-outline-danger btn-remove-other-spec" ' +
+                    'style="width: 22px; height: 22px; padding: 0; line-height: 1;" title="Hapus spesifikasi">' +
+                    '<i class="mdi mdi-close" style="font-size: 12px;"></i>' +
+                '</button>' +
+            '</div>'
+        );
+        $row.find('.other-spec-rows').append($specLine);
+        syncOtherSpecsToDescription($row);
+    }
+
+    function syncOtherSpecsToDescription($row) {
+        var lines = [];
+        $row.find('.other-spec-rows .other-spec-row').each(function () {
+            var k = $(this).find('.spec-key-input').val().trim();
+            var v = $(this).find('.spec-val-input').val().trim();
+            if (k && v) {
+                lines.push(k + ': ' + v);
+            } else if (k) {
+                lines.push(k + ':');
+            } else if (v) {
+                lines.push(v);
+            }
+        });
+        $row.find('.field-description').val(lines.join('\n'));
+        if (typeof window.triggerAutoSaveSmartQuote === 'function') {
+            window.triggerAutoSaveSmartQuote();
+        }
     }
 
     // ── Add unit row ──────────────────────────────────────────────────────
@@ -292,11 +387,22 @@ $(function () {
             $row.find('.field-id-equivalent').val(item.id_equivalent);
         } else if (item.id_fixed_asset && item.fixed_asset) {
             // Sumbernya Unit Second (Fixed Asset) atau Rental — tampilkan blok pencarian itu
-            var isRental = (item.info_qty === 'Days' || item.info_qty === 'Hari');
+            var isRental = (item.info_qty === 'Days' || item.info_qty === 'Hari' || item.info_qty === 'Month' || item.info_qty === 'Bulan');
             var sourceVal = isRental ? 'rental' : 'fixed_asset';
             $row.find('.unit-source-radio[value="' + sourceVal + '"]').prop('checked', true);
             $row.find('.unit-source-catalog').hide();
             $row.find('.unit-source-fixed-asset').show();
+
+            if (isRental) {
+                $row.find('.field-info-qty').hide();
+                $row.find('.field-info-qty-select').show();
+                var selVal = (item.info_qty === 'Month' || item.info_qty === 'Bulan') ? 'Month' : 'Days';
+                $row.find('.field-info-qty-select').val(selVal);
+                $row.find('.field-info-qty').val(selVal);
+            } else {
+                $row.find('.field-info-qty-select').hide();
+                $row.find('.field-info-qty').show();
+            }
 
             var fa = item.fixed_asset;
             var sn = fa.serial_number ? (' — SN: ' + fa.serial_number) : '';
@@ -304,6 +410,9 @@ $(function () {
                 sn + ' (' + fa.code + ')';
             var faOption = new Option(faText, item.id_fixed_asset, true, true);
             $selFixedAsset.empty().append(faOption).trigger('change.select2');
+
+            var unitObj = $.extend({}, item.unit || {}, item.fixed_asset || {});
+            $row.data('selectedUnit', unitObj);
 
             $row.find('.field-id-unit').val(item.id_unit);
             $row.find('.field-id-fixed-asset').val(item.id_fixed_asset);
@@ -316,6 +425,42 @@ $(function () {
 
             $row.find('.field-id-unit').val(item.id_unit);
             buildSpecPreviewFiltered($row, item.unit, item.spec_visible);
+        } else {
+            // Sumbernya Other (Vendor Luar / Manual Input)
+            $row.find('.unit-source-radio[value="other"]').prop('checked', true);
+            $row.find('.unit-source-catalog').hide();
+            $row.find('.unit-source-fixed-asset').hide();
+            $row.find('.unit-source-equivalent').hide();
+            $row.find('.unit-source-other').show();
+            $row.find('.field-other-input').val(item.label || '');
+            $row.find('.field-info-qty').prop('readonly', false);
+            $row.find('.field-info-qty-select').hide();
+            $row.find('.field-info-qty').show();
+            $row.find('.other-spec-section').show();
+
+            var desc = item.description || '';
+            $row.find('.field-description').val(desc);
+            $row.find('.other-spec-rows').empty();
+            if (desc) {
+                var lines = desc.split(/\r\n|\r|\n/);
+                $.each(lines, function (idx, line) {
+                    var trimmed = line.trim();
+                    if (!trimmed) return;
+                    if (trimmed.indexOf(':') !== -1) {
+                        var parts = trimmed.split(':');
+                        var k = parts.shift().trim();
+                        var v = parts.join(':').trim();
+                        addOtherSpecRow($row, k, v);
+                    } else {
+                        addOtherSpecRow($row, '', trimmed);
+                    }
+                });
+            }
+            if ($row.find('.other-spec-rows .other-spec-row').length === 0) {
+                addOtherSpecRow($row, 'Brand', '');
+                addOtherSpecRow($row, 'Model', '');
+                addOtherSpecRow($row, 'Power', '');
+            }
         }
 
         $row.find('.field-label').val(item.label || '');
@@ -556,6 +701,22 @@ $(function () {
 
         $pane.find('.toggle-tax').prop('checked', optData.tax !== undefined ? !!optData.tax : true);
         $pane.find('.input-shipping').val(formatRupiah(Math.round(optData.shipping || 0)));
+
+        // Prefill Trade-In Unit data jika ada
+        if (optData.has_trade_in) {
+            $pane.find('.toggle-trade-in').prop('checked', true);
+            $pane.find('.trade-in-body').show();
+            $pane.find('.trade-in-brand').val(optData.trade_in_brand || '');
+            $pane.find('.trade-in-model').val(optData.trade_in_model || '');
+            $pane.find('.trade-in-power').val(optData.trade_in_power || '');
+            $pane.find('.trade-in-sn').val(optData.trade_in_sn || '');
+            $pane.find('.trade-in-price').val(optData.trade_in_price ? formatRupiah(Math.round(optData.trade_in_price)) : '');
+            $pane.find('.trade-in-notes').val(optData.trade_in_notes || '');
+        } else {
+            $pane.find('.toggle-trade-in').prop('checked', false);
+            $pane.find('.trade-in-body').hide();
+        }
+
         $('#options-tab-content').append($pane);
 
         initSortableForContainer($pane.find('.line-items-container')[0]);
@@ -662,12 +823,29 @@ $(function () {
         }
         recalcSummary();
     });
-    $(document).on('input', '.input-shipping', function () {
+    $(document).on('change', '.toggle-tax', recalcSummary);
+
+    // ── Trade-In event handlers ──────────────────────────────────────────────
+    $(document).on('change', '.toggle-trade-in', function () {
+        var $pane = $(this).closest('.option-pane');
+        var isChecked = $(this).is(':checked');
+        if (isChecked) {
+            $pane.find('.trade-in-body').slideDown(180);
+        } else {
+            $pane.find('.trade-in-body').slideUp(180);
+        }
+        recalcSummary();
+    });
+
+    $(document).on('input', '.trade-in-price', function () {
         var raw = $(this).val().replace(/\D/g, '');
         $(this).val(formatRupiah(raw));
         recalcSummary();
     });
-    $(document).on('change', '.toggle-tax', recalcSummary);
+
+    $(document).on('input', '.trade-in-brand, .trade-in-model', function () {
+        recalcSummary();
+    });
 
     // ── Init Select2 AJAX for unit row ────────────────────────────────────
     function initUnitRowSelect2($row) {
@@ -756,19 +934,61 @@ $(function () {
         return $sel;
     }
 
-    // ── Init Select2 AJAX for unit row — sumber Fixed Asset (Unit Second) ──
+    // ── Helper: Apply harga rental berdasarkan mode Days / Month & data unit ──
+    function applyRentalPrice($row, unit) {
+        if (!unit) {
+            unit = $row.data('selectedUnit');
+        }
+        if (!unit) return;
+
+        var mode = $row.find('.field-info-qty-select').val() || 'Days';
+        var priceDay = parseFloat(unit.rental_price_day || unit.harga_rental_hari || 0);
+        var priceMonth = parseFloat(unit.rental_price_month || unit.harga_rental_bulan || 0);
+
+        var rentalPrice = 0;
+        if (mode === 'Month') {
+            rentalPrice = priceMonth > 0 ? priceMonth : (priceDay > 0 ? priceDay * 30 : 0);
+        } else {
+            rentalPrice = priceDay > 0 ? priceDay : (priceMonth > 0 ? Math.round(priceMonth / 30) : 0);
+        }
+
+        if (rentalPrice > 0) {
+            $row.find('.field-price').val(formatRupiah(Math.round(rentalPrice)));
+        } else if (unit.price && parseFloat(unit.price) > 0) {
+            $row.find('.field-price').val(formatRupiah(Math.round(unit.price)));
+        }
+
+        updateRowAmount($row);
+    }
+
+    // ── Init Select2 AJAX for unit row — sumber Fixed Asset (Unit Second / Rental) ──
     function initFixedAssetRowSelect2($row) {
         var $sel = $row.find('.select2-fixed-asset-search');
         $sel.select2({
-            placeholder: 'Search Unit Second (SKU / Brand / Serial Number)...',
+            placeholder: 'Search Unit (SKU / Brand / Serial Number / Code)...',
             minimumInputLength: 1,
             templateResult: function (item) {
                 if (!item.id) return item.text;
-                var u     = item.unit;
-                var price = u && u.price && parseFloat(u.price) > 0
-                    ? ' <span style="color:#696cff;font-size:10px;">Rp ' + formatRupiah(Math.round(u.price)) + '</span>'
-                    : '';
-                return $('<span>' + (item.label || item.text) + price + '</span>');
+                var u      = item.unit;
+                var source = $row.find('.unit-source-radio:checked').val();
+                var priceText = '';
+                if (source === 'rental') {
+                    var prices = [];
+                    if (u && u.rental_price_day && parseFloat(u.rental_price_day) > 0) {
+                        prices.push('Rp ' + formatRupiah(Math.round(u.rental_price_day)) + ' / hari');
+                    }
+                    if (u && u.rental_price_month && parseFloat(u.rental_price_month) > 0) {
+                        prices.push('Rp ' + formatRupiah(Math.round(u.rental_price_month)) + ' / bln');
+                    }
+                    if (prices.length > 0) {
+                        priceText = ' <span style="color:#696cff;font-size:10px;">(' + prices.join(' | ') + ')</span>';
+                    }
+                } else {
+                    if (u && u.price && parseFloat(u.price) > 0) {
+                        priceText = ' <span style="color:#696cff;font-size:10px;">Rp ' + formatRupiah(Math.round(u.price)) + '</span>';
+                    }
+                }
+                return $('<span>' + (item.label || item.text) + priceText + '</span>');
             },
             templateSelection: function (item) {
                 return item.text;
@@ -798,6 +1018,7 @@ $(function () {
         $sel.on('select2:select', function (e) {
             var unit   = e.params.data.unit;
             var source = $row.find('.unit-source-radio:checked').val();
+            $row.data('selectedUnit', unit);
             $row.find('.field-id-unit').val(unit.id);
             $row.find('.field-id-fixed-asset').val(unit.id_fixed_asset);
 
@@ -808,13 +1029,19 @@ $(function () {
                 : 'SCREW AIR COMPRESSOR ' + brand + ' ' + model + ' SECOND';
             $row.find('.field-label').val(label);
 
-            // Auto-fill price from catalog kalau spek-nya sudah punya harga (bisa diedit manual)
-            if (unit.price && parseFloat(unit.price) > 0) {
-                $row.find('.field-price').val(formatRupiah(Math.round(unit.price)));
+            // Auto-fill price:
+            // Jika mode rental: sesuaikan harga rental (Days vs Month)
+            // Jika mode unit second: gunakan harga jual unit (atau catalog price)
+            if (source === 'rental') {
+                applyRentalPrice($row, unit);
+            } else {
+                if (unit.price && parseFloat(unit.price) > 0) {
+                    $row.find('.field-price').val(formatRupiah(Math.round(unit.price)));
+                }
+                updateRowAmount($row);
             }
 
             buildSpecPreview($row, unit);
-            updateRowAmount($row);
         });
 
         return $sel;
@@ -911,13 +1138,24 @@ $(function () {
             $row.find('.unit-source-catalog').hide();
             $row.find('.unit-source-fixed-asset').hide();
             $row.find('.unit-source-equivalent').hide();
+            $row.find('.unit-source-other').hide();
             $row.find('.equivalent-stock-preview').hide();
             $row.find('.unit-inventory-stock-feedback').hide();
+            $row.find('.spec-preview').hide();
+            $row.find('.other-spec-section').hide();
 
             if (source === 'fixed_asset' || source === 'rental') {
                 $row.find('.unit-source-fixed-asset').show();
             } else if (source === 'sparepart') {
                 $row.find('.unit-source-equivalent').show();
+            } else if (source === 'other') {
+                $row.find('.unit-source-other').show();
+                $row.find('.other-spec-section').show();
+                if ($row.find('.other-spec-rows .other-spec-row').length === 0) {
+                    addOtherSpecRow($row, 'Brand', '');
+                    addOtherSpecRow($row, 'Model', '');
+                    addOtherSpecRow($row, 'Power', '');
+                }
             } else {
                 $row.find('.unit-source-catalog').show();
             }
@@ -927,6 +1165,10 @@ $(function () {
             $row.find('.field-id-fixed-asset').val('');
             $row.find('.field-id-equivalent').val('');
             $row.find('.field-label').val('');
+            $row.find('.field-other-input').val('');
+            if (source !== 'other') {
+                $row.find('.field-description').val('');
+            }
 
             // Sync type select berdasarkan source yang dipilih
             if (source === 'rental') {
@@ -937,14 +1179,24 @@ $(function () {
                 $('#select-type').val('Unit');
             }
 
-            // Penyesuaian satuan Qty — untuk Spare Part, satuan menyesuaikan
-            // produk yang dipilih (diisi saat select2:select), jadi dikosongkan dulu
+            // Penyesuaian satuan Qty
             if (source === 'rental') {
-                $row.find('.field-info-qty').val('Days');
-            } else if (source === 'sparepart') {
-                $row.find('.field-info-qty').val('');
+                $row.find('.field-info-qty').hide();
+                $row.find('.field-info-qty-select').show();
+                var currentMode = $row.find('.field-info-qty-select').val() || 'Days';
+                $row.find('.field-info-qty').prop('readonly', true).val(currentMode);
+                applyRentalPrice($row);
+            } else if (source === 'other') {
+                $row.find('.field-info-qty-select').hide();
+                $row.find('.field-info-qty').show().prop('readonly', false).val('Unit');
             } else {
-                $row.find('.field-info-qty').val('Unit');
+                $row.find('.field-info-qty-select').hide();
+                $row.find('.field-info-qty').show().prop('readonly', true);
+                if (source === 'sparepart') {
+                    $row.find('.field-info-qty').val('');
+                } else {
+                    $row.find('.field-info-qty').val('Unit');
+                }
             }
         });
     }
@@ -953,6 +1205,40 @@ $(function () {
     function bindRowEvents($row) {
         $row.find('.field-qty, .field-disc').on('input', function () {
             updateRowAmount($row);
+        });
+
+        $row.find('.field-info-qty-select').on('change', function () {
+            var mode = $(this).val();
+            $row.find('.field-info-qty').val(mode);
+            applyRentalPrice($row);
+        });
+
+        // Event listener untuk baris spesifikasi manual (source: other)
+        $row.on('input', '.spec-key-input, .spec-val-input', function () {
+            syncOtherSpecsToDescription($row);
+        });
+
+        $row.on('click', '.btn-add-other-spec', function () {
+            addOtherSpecRow($row, '', '');
+            $row.find('.other-spec-rows .other-spec-row:last .spec-key-input').focus();
+        });
+
+        $row.on('click', '.btn-remove-other-spec', function () {
+            $(this).closest('.other-spec-row').remove();
+            syncOtherSpecsToDescription($row);
+        });
+
+        $row.find('.field-other-input').on('input', function () {
+            $row.find('.field-label').val($(this).val());
+            if (typeof window.triggerAutoSaveSmartQuote === 'function') {
+                window.triggerAutoSaveSmartQuote();
+            }
+        });
+
+        $row.find('.field-label').on('input', function () {
+            if ($row.find('.unit-source-radio:checked').val() === 'other') {
+                $row.find('.field-other-input').val($(this).val());
+            }
         });
 
         $row.find('.field-description').on('input', function () {
@@ -1087,6 +1373,184 @@ $(function () {
         });
     }
 
+    // ── Address formatting for Select2 ──
+    function formatAddressOption(state) {
+        if (!state.id) {
+            return state.text;
+        }
+
+        var $el = $(state.element);
+        var type = $el.data('type') || '';
+        var address = $el.data('address') || '';
+        var plantName = $el.data('plant-name') || '';
+
+        var badgeClass = 'bg-label-primary';
+        var icon = 'mdi-office-building-outline';
+        var label = 'Office Address';
+
+        if (type === 'main') {
+            badgeClass = 'bg-label-primary';
+            icon = 'mdi-office-building-outline';
+            label = 'Office Address';
+        } else if (type === 'plant') {
+            badgeClass = 'bg-label-success';
+            icon = 'mdi-factory';
+            label = plantName ? ('Plant: ' + plantName) : 'Plant';
+        } else if (type === 'manual') {
+            badgeClass = 'bg-label-secondary';
+            icon = 'mdi-pencil-outline';
+            label = 'Custom Address (Manual)';
+        }
+
+        var subTextHtml = '';
+        if (type === 'manual') {
+            subTextHtml = '<div class="text-muted small mt-1" style="font-size: 0.78rem; line-height: 1.3;"><i class="mdi mdi-information-outline me-1"></i>Ketik alamat pengiriman khusus secara manual di bawah</div>';
+        } else if (address) {
+            subTextHtml = '<div class="text-dark small text-wrap mt-1" style="font-size: 0.8rem; line-height: 1.35;"><i class="mdi mdi-map-marker text-danger me-1"></i>' + $('<div>').text(address).html() + '</div>';
+        }
+
+        return $(
+            '<div class="py-1">' +
+                '<div class="d-flex align-items-center justify-content-between">' +
+                    '<span class="badge ' + badgeClass + ' px-2 py-1"><i class="mdi ' + icon + ' me-1"></i>' + $('<div>').text(label).html() + '</span>' +
+                '</div>' +
+                subTextHtml +
+            '</div>'
+        );
+    }
+
+    function formatAddressSelection(state) {
+        if (!state.id) {
+            return state.text;
+        }
+        var $el = $(state.element);
+        var type = $el.data('type') || '';
+        var address = $el.data('address') || '';
+        var plantName = $el.data('plant-name') || '';
+
+        var badgeClass = 'bg-label-primary';
+        var icon = 'mdi-office-building-outline';
+        var label = 'Office Address';
+
+        if (type === 'main') {
+            badgeClass = 'bg-label-primary';
+            icon = 'mdi-office-building-outline';
+            label = 'Office Address';
+        } else if (type === 'plant') {
+            badgeClass = 'bg-label-success';
+            icon = 'mdi-factory';
+            label = plantName ? ('Plant: ' + plantName) : 'Plant';
+        } else if (type === 'manual') {
+            badgeClass = 'bg-label-secondary';
+            icon = 'mdi-pencil-outline';
+            label = 'Custom (Manual)';
+        }
+
+        var preview = address || (type === 'manual' ? 'Isi Manual' : state.text);
+        if (preview.length > 35) {
+            preview = preview.substring(0, 35) + '...';
+        }
+
+        return $(
+            '<span class="d-inline-flex align-items-center gap-1 text-truncate" style="max-width: 100%;">' +
+                '<span class="badge ' + badgeClass + ' px-2 py-0 me-1" style="font-size: 0.72rem;"><i class="mdi ' + icon + ' me-1"></i>' + $('<div>').text(label).html() + '</span>' +
+                '<span class="text-dark text-truncate" style="font-size: 0.83rem;">' + $('<div>').text(preview).html() + '</span>' +
+            '</span>'
+        );
+    }
+
+    function formatPicOption(state) {
+        if (!state.id) {
+            return state.text;
+        }
+
+        var $el = $(state.element);
+        var name = $el.data('name') || state.text;
+        var position = $el.data('position') || '';
+        var phone = $el.data('phone') || '';
+        var email = $el.data('email') || '';
+
+        var $container = $(
+            '<div class="d-flex align-items-center justify-content-between py-1 px-1">' +
+                '<div class="d-flex align-items-center gap-2" style="min-width: 0;">' +
+                    '<div class="avatar avatar-xs bg-label-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 28px; height: 28px; font-size: 13px;">' +
+                        '<i class="mdi mdi-account-outline"></i>' +
+                    '</div>' +
+                    '<div class="d-flex flex-column text-truncate">' +
+                        '<div class="d-flex align-items-center gap-1.5 flex-wrap">' +
+                            '<span class="fw-semibold text-dark" style="font-size: 0.84rem;">' + $('<div>').text(name).html() + '</span>' +
+                            (position ? '<span class="badge bg-label-info px-1.5 py-0" style="font-size: 0.68rem; font-weight: 500;">' + $('<div>').text(position).html() + '</span>' : '') +
+                        '</div>' +
+                        (phone || email ? 
+                            '<div class="text-muted d-flex align-items-center gap-2 mt-0.5" style="font-size: 0.72rem;">' +
+                                (phone ? '<span><i class="mdi mdi-phone-outline text-success me-0.5"></i>' + $('<div>').text(phone).html() + '</span>' : '') +
+                                (email ? '<span><i class="mdi mdi-email-outline text-info me-0.5"></i>' + $('<div>').text(email).html() + '</span>' : '') +
+                            '</div>' : '') +
+                    '</div>' +
+                '</div>' +
+            '</div>'
+        );
+
+        return $container;
+    }
+
+    function formatPicSelection(state) {
+        if (!state.id) {
+            return state.text;
+        }
+
+        var $el = $(state.element);
+        var name = $el.data('name') || state.text;
+        var position = $el.data('position') || '';
+
+        return $(
+            '<span class="d-inline-flex align-items-center gap-1.5 text-truncate" style="max-width: 100%;">' +
+                '<i class="mdi mdi-account-tie text-primary" style="font-size: 14px;"></i>' +
+                '<span class="fw-semibold text-dark text-truncate" style="font-size: 0.83rem;">' + $('<div>').text(name).html() + '</span>' +
+                (position ? '<span class="text-muted small" style="font-size: 0.75rem;">(' + $('<div>').text(position).html() + ')</span>' : '') +
+            '</span>'
+        );
+    }
+
+    function initPicSelect2() {
+        var $picSelect = $('#pic-select');
+        if (!$picSelect.length) return;
+
+        if ($picSelect.data('select2')) {
+            $picSelect.select2('destroy');
+        }
+
+        $picSelect.select2({
+            placeholder: '-- Select PIC --',
+            allowClear: false,
+            width: '100%',
+            templateResult: formatPicOption,
+            templateSelection: formatPicSelection,
+            escapeMarkup: function (m) { return m; }
+        });
+    }
+
+    function initAddressSelect2() {
+        var $addrSelect = $('#address-select');
+        if (!$addrSelect.length) return;
+
+        if ($addrSelect.data('select2')) {
+            $addrSelect.select2('destroy');
+        }
+
+        $addrSelect.select2({
+            placeholder: '-- Select Address / Plant --',
+            allowClear: false,
+            width: '100%',
+            templateResult: formatAddressOption,
+            templateSelection: formatAddressSelection,
+            escapeMarkup: function (m) { return m; }
+        });
+    }
+
+    initPicSelect2();
+    initAddressSelect2();
+
     // ── PIC & Address dropdowns — load by client ─────────────────────────
     $('#client-select').on('change', function () {
         var clientId    = $(this).val();
@@ -1097,8 +1561,11 @@ $(function () {
         var editAddress = window.EDIT_ADDRESS || null;
 
         $pic.empty().append('<option value="">-- Select PIC --</option>').prop('disabled', true);
-        $addrSelect.empty().append('<option value="">-- Select Address --</option>').prop('disabled', true);
+        initPicSelect2();
+        $addrSelect.empty().append('<option value="">-- Select Address / Plant --</option>').prop('disabled', true);
+        initAddressSelect2();
         $('#manual-address-wrapper').hide();
+        $('#address-preview-card').addClass('d-none');
 
         if (!clientId) return;
 
@@ -1109,12 +1576,25 @@ $(function () {
             var plants   = !Array.isArray(data) ? (data.plants || []) : [];
 
             // Populate PIC
+            $pic.empty().append('<option value="">-- Select PIC --</option>');
             $.each(pics, function (i, p) {
-                var label    = p.name_pic + (p.position ? ' (' + p.position + ')' : '');
-                var selected = (editPicId && p.id == editPicId) ? ' selected' : '';
-                $pic.append('<option value="' + p.id + '"' + selected + '>' + label + '</option>');
+                var label = p.name_pic + (p.position ? ' (' + p.position + ')' : '');
+                var isSelected = (editPicId && p.id == editPicId);
+                $pic.append($('<option>', {
+                    value: p.id,
+                    'data-name': p.name_pic,
+                    'data-position': p.position || '',
+                    'data-phone': p.phone_pic || '',
+                    'data-email': p.email_pic || '',
+                    selected: isSelected,
+                    text: label
+                }));
             });
             $pic.prop('disabled', pics.length === 0);
+            initPicSelect2();
+            if (editPicId) {
+                $pic.val(editPicId).trigger('change');
+            }
 
             // Populate Address
             $addrSelect.empty().append('<option value="">-- Select Address / Plant --</option>');
@@ -1123,17 +1603,9 @@ $(function () {
                 $addrSelect.append($('<option>', {
                     value: 'main',
                     'data-type': 'main',
+                    'data-title': 'Office Address',
                     'data-address': mainAddr,
-                    text: 'Office / Factory: ' + mainAddr
-                }));
-            }
-
-            if (subAddr) {
-                $addrSelect.append($('<option>', {
-                    value: 'sub',
-                    'data-type': 'sub',
-                    'data-address': subAddr,
-                    text: 'Sub Address: ' + subAddr
+                    text: 'Office Address: ' + mainAddr
                 }));
             }
 
@@ -1143,6 +1615,8 @@ $(function () {
                         value: 'plant_' + plant.id,
                         'data-type': 'plant',
                         'data-plant-id': plant.id,
+                        'data-plant-name': plant.name,
+                        'data-title': 'Plant: ' + plant.name,
                         'data-address': plant.address,
                         text: 'Plant: ' + plant.name + (plant.address ? ' (' + plant.address + ')' : '')
                     }));
@@ -1152,10 +1626,13 @@ $(function () {
             $addrSelect.append($('<option>', {
                 value: 'manual',
                 'data-type': 'manual',
+                'data-title': 'Custom Address (Manual)',
+                'data-address': '',
                 text: '-- Custom Address (Manual) --'
             }));
 
             $addrSelect.prop('disabled', false);
+            initAddressSelect2();
 
             // Pre-select address in Edit mode
             var selectedVal = '';
@@ -1164,8 +1641,6 @@ $(function () {
             } else if (editAddress) {
                 if (mainAddr && editAddress.trim() === mainAddr.trim()) {
                     selectedVal = 'main';
-                } else if (subAddr && editAddress.trim() === subAddr.trim()) {
-                    selectedVal = 'sub';
                 } else {
                     var matchPlant = plants.find(function(p) { return p.address && p.address.trim() === editAddress.trim(); });
                     if (matchPlant) {
@@ -1212,27 +1687,60 @@ $(function () {
     });
 
     $('#address-select').on('change', function () {
-        var $opt     = $(this).find('option:selected');
-        var type     = $opt.data('type');
-        var plantId  = $opt.data('plant-id') || '';
-        var addrText = $opt.data('address') || '';
+        var $opt      = $(this).find('option:selected');
+        var type      = $opt.data('type');
+        var plantId   = $opt.data('plant-id') || '';
+        var plantName = $opt.data('plant-name') || '';
+        var addrText  = $opt.data('address') || '';
+
+        var $previewCard  = $('#address-preview-card');
+        var $previewBadge = $('#address-preview-badge');
+        var $previewText  = $('#address-preview-text');
 
         if (type === 'plant') {
             $('#input-id-plant').val(plantId);
             $('#input-address-hidden').val(addrText);
             $('#manual-address-wrapper').hide();
-        } else if (type === 'main' || type === 'sub') {
+
+            if ($previewCard.length) {
+                $previewBadge.attr('class', 'badge bg-label-success').text('Plant: ' + (plantName || 'Plant'));
+                $previewText.text(addrText || '-');
+                $previewCard.removeClass('d-none');
+            }
+        } else if (type === 'main') {
             $('#input-id-plant').val('');
             $('#input-address-hidden').val(addrText);
             $('#manual-address-wrapper').hide();
+
+            if ($previewCard.length) {
+                $previewBadge.attr('class', 'badge bg-label-primary').html('<i class="mdi mdi-office-building-outline me-1"></i>Office / Factory');
+                $previewText.text(addrText || '-');
+                $previewCard.removeClass('d-none');
+            }
+        } else if (type === 'sub') {
+            $('#input-id-plant').val('');
+            $('#input-address-hidden').val(addrText);
+            $('#manual-address-wrapper').hide();
+
+            if ($previewCard.length) {
+                $previewBadge.attr('class', 'badge bg-label-info').html('<i class="mdi mdi-card-account-details-outline me-1"></i>NPWP Address');
+                $previewText.text(addrText || '-');
+                $previewCard.removeClass('d-none');
+            }
         } else if (type === 'manual') {
             $('#input-id-plant').val('');
             $('#manual-address-wrapper').show();
             $('#input-address-hidden').val($('#input-address-manual').val());
+            if ($previewCard.length) {
+                $previewCard.addClass('d-none');
+            }
         } else {
             $('#input-id-plant').val('');
             $('#input-address-hidden').val('');
             $('#manual-address-wrapper').hide();
+            if ($previewCard.length) {
+                $previewCard.addClass('d-none');
+            }
         }
     });
 
@@ -1329,6 +1837,11 @@ $(function () {
             var $shipping = $pane.find('.input-shipping');
             if ($shipping.length) {
                 $shipping.val(parseRupiah($shipping.val()));
+            }
+
+            var $tradeInPrice = $pane.find('.trade-in-price');
+            if ($tradeInPrice.length) {
+                $tradeInPrice.val(parseRupiah($tradeInPrice.val()));
             }
         });
 
@@ -1573,10 +2086,87 @@ $(function () {
         var pmLoadSelectedLevel = null;
         var pmLoadPreviewData = null;
 
+        function updatePmLevelButtons(availableLevels) {
+            availableLevels = availableLevels || [];
+            var hasAny = availableLevels.length > 0;
+            var currentlySelectedValid = false;
+
+            $('.pm-load-level-btn').each(function () {
+                var lvl = $(this).data('level');
+                var isAvailable = availableLevels.indexOf(lvl) !== -1;
+
+                if (isAvailable) {
+                    $(this)
+                        .prop('disabled', false)
+                        .removeClass('disabled btn-outline-secondary opacity-50')
+                        .addClass('btn-outline-primary')
+                        .attr('title', 'Template ' + lvl + ' tersedia')
+                        .css({ 'cursor': 'pointer', 'pointer-events': 'auto' });
+
+                    if (pmLoadSelectedLevel === lvl) {
+                        currentlySelectedValid = true;
+                        $(this).addClass('active btn-primary').removeClass('btn-outline-primary');
+                    }
+                } else {
+                    $(this)
+                        .prop('disabled', true)
+                        .addClass('disabled btn-outline-secondary opacity-50')
+                        .removeClass('active btn-primary btn-outline-primary')
+                        .attr('title', 'Template ' + lvl + ' belum ada di Unit Global')
+                        .css({ 'cursor': 'not-allowed', 'pointer-events': 'none' });
+                }
+            });
+
+            if (hasAny) {
+                $('#pm-load-level-helper').html(
+                    '<span class="text-success fw-semibold"><i class="mdi mdi-check-circle-outline me-1"></i>Template tersedia: ' + availableLevels.join(', ') + '</span>'
+                );
+            } else {
+                $('#pm-load-level-helper').html(
+                    '<span class="text-danger fw-semibold"><i class="mdi mdi-alert-circle-outline me-1"></i>Unit ini belum memiliki template PM sama sekali di Unit Global.</span>'
+                );
+            }
+
+            if (!currentlySelectedValid) {
+                $('.pm-load-level-btn').removeClass('active btn-primary');
+                if (hasAny) {
+                    var firstAvailable = availableLevels[0];
+                    var $firstBtn = $('.pm-load-level-btn[data-level="' + firstAvailable + '"]');
+                    $firstBtn.addClass('active btn-primary').removeClass('btn-outline-primary');
+                    pmLoadSelectedLevel = firstAvailable;
+                    pmLoadTryFetch();
+                } else {
+                    pmLoadSelectedLevel = null;
+                    $('#pm-load-preview').html(
+                        '<div class="alert alert-warning py-2 px-3 mb-0 rounded-2" style="font-size:11.5px;">' +
+                        '<i class="mdi mdi-alert-circle-outline me-1"></i>Unit ini belum memiliki template service PM di Unit Global. Buat template terlebih dahulu di halaman Detail Unit Global.' +
+                        '</div>'
+                    ).show();
+                    $('#btn-pm-load-confirm').prop('disabled', true);
+                }
+            } else {
+                pmLoadTryFetch();
+            }
+        }
+
         $('#pm-load-unit-select').select2({
             dropdownParent: $pmLoadModal,
             placeholder: 'Cari unit (SKU / Brand / Model)...',
             minimumInputLength: 1,
+            templateResult: function (item) {
+                if (!item.id) return item.text;
+                var levels = item.pm_levels || [];
+                var badge = '';
+                if (levels.length > 0) {
+                    badge = ' <span class="badge bg-label-success ms-1" style="font-size:9.5px;padding:2px 6px;">PM: ' + levels.join(', ') + '</span>';
+                } else {
+                    badge = ' <span class="badge bg-label-secondary ms-1" style="font-size:9.5px;padding:2px 6px;">Belum Ada PM</span>';
+                }
+                return $('<span>' + (item.label || item.text) + badge + '</span>');
+            },
+            templateSelection: function (item) {
+                return item.text;
+            },
             ajax: {
                 url: '/unit-global/search',
                 dataType: 'json',
@@ -1587,7 +2177,9 @@ $(function () {
                         results: $.map(data, function (u) {
                             return {
                                 id: u.id,
-                                text: (u.brand || '') + ' — ' + (u.model || u.sku || '') + ' (' + (u.sku || '') + ')'
+                                text: (u.brand || '') + ' — ' + (u.model || u.sku || '') + ' (' + (u.sku || '') + ')',
+                                label: (u.brand || '') + ' — ' + (u.model || u.sku || '') + ' (' + (u.sku || '') + ')',
+                                pm_levels: u.pm_levels || []
                             };
                         })
                     };
@@ -1623,9 +2215,9 @@ $(function () {
                 success: function (data) {
                     pmLoadPreviewData = data;
                     var count = data.items.length;
-                    $('#pm-load-preview').text(count === 0
-                        ? 'Template level ini masih kosong — susun dulu di halaman Unit Global.'
-                        : count + ' item tersimpan di template ini.'
+                    $('#pm-load-preview').html(count === 0
+                        ? '<span class="text-warning"><i class="mdi mdi-alert-circle-outline me-1"></i>Template level ini masih kosong — susun dulu di halaman Unit Global.</span>'
+                        : '<span class="text-success"><i class="mdi mdi-check-circle-outline me-1"></i><strong>' + count + ' item</strong> tersimpan di template level ' + data.level + '.</span>'
                     ).show();
                     $('#btn-pm-load-confirm').prop('disabled', count === 0);
                 },
@@ -1637,14 +2229,74 @@ $(function () {
 
         $('#pm-load-unit-select').on('select2:select', function (e) {
             pmLoadSelectedUnitId = e.params.data.id;
+            var levels = e.params.data.pm_levels;
+            if (Array.isArray(levels)) {
+                updatePmLevelButtons(levels);
+            } else {
+                $.getJSON('/unit-global/' + pmLoadSelectedUnitId + '/pm-levels', function (res) {
+                    updatePmLevelButtons(res.pm_levels || []);
+                }).fail(function () {
+                    updatePmLevelButtons([]);
+                });
+            }
+        });
+
+        $('#pm-load-unit-select').on('change', function () {
+            if (!$(this).val()) {
+                pmLoadSelectedUnitId = null;
+                pmLoadSelectedLevel = null;
+                pmLoadPreviewData = null;
+                $('.pm-load-level-btn')
+                    .prop('disabled', true)
+                    .addClass('disabled btn-outline-secondary opacity-50')
+                    .removeClass('active btn-primary btn-outline-primary')
+                    .css({ 'cursor': 'not-allowed', 'pointer-events': 'none' });
+                $('#pm-load-level-helper').html(
+                    '<i class="mdi mdi-information-outline me-1"></i>Pilih unit di atas untuk mengaktifkan pilihan level PM yang tersedia.'
+                );
+                $('#pm-load-preview').hide();
+                $('#btn-pm-load-confirm').prop('disabled', true);
+            }
+        });
+
+        $(document).on('click', '.pm-load-level-btn', function (e) {
+            if ($(this).prop('disabled') || $(this).hasClass('disabled')) {
+                e.preventDefault();
+                return false;
+            }
+            $('.pm-load-level-btn').removeClass('active btn-primary').addClass('btn-outline-primary');
+            $(this).addClass('active btn-primary').removeClass('btn-outline-primary');
+            pmLoadSelectedLevel = $(this).data('level');
             pmLoadTryFetch();
         });
 
-        $(document).on('click', '.pm-load-level-btn', function () {
-            $('.pm-load-level-btn').removeClass('active');
-            $(this).addClass('active');
-            pmLoadSelectedLevel = $(this).data('level');
-            pmLoadTryFetch();
+        $pmLoadModal.on('show.bs.modal', function () {
+            if (!pmLoadSelectedUnitId) {
+                $('.pm-load-level-btn')
+                    .prop('disabled', true)
+                    .addClass('disabled btn-outline-secondary opacity-50')
+                    .removeClass('active btn-primary btn-outline-primary')
+                    .css({ 'cursor': 'not-allowed', 'pointer-events': 'none' });
+                $('#pm-load-level-helper').html(
+                    '<i class="mdi mdi-information-outline me-1"></i>Pilih unit di atas untuk mengaktifkan pilihan level PM yang tersedia.'
+                );
+                $('#pm-load-preview').hide();
+                $('#btn-pm-load-confirm').prop('disabled', true);
+            }
+        });
+
+        $pmLoadModal.on('hidden.bs.modal', function () {
+            $('#pm-load-unit-select').val(null).trigger('change');
+            $('.pm-load-level-btn')
+                .prop('disabled', true)
+                .addClass('disabled btn-outline-secondary opacity-50')
+                .removeClass('active btn-primary btn-outline-primary')
+                .css({ 'cursor': 'not-allowed', 'pointer-events': 'none' });
+            $('#pm-load-preview').hide();
+            $('#btn-pm-load-confirm').prop('disabled', true);
+            pmLoadSelectedUnitId = null;
+            pmLoadSelectedLevel = null;
+            pmLoadPreviewData = null;
         });
 
         $('#btn-pm-load-confirm').on('click', function () {

@@ -62,6 +62,13 @@ class UnitQuotation extends Model
         'po_received',
         'payment_method',
         'is_draft',
+        'has_trade_in',
+        'trade_in_brand',
+        'trade_in_model',
+        'trade_in_power',
+        'trade_in_sn',
+        'trade_in_price',
+        'trade_in_notes',
     ];
 
     protected $casts = [
@@ -69,6 +76,7 @@ class UnitQuotation extends Model
         'expired_date'          => 'date',
         'fee_transfer_date'     => 'datetime',
         'tax'                   => 'boolean',
+        'has_trade_in'          => 'boolean',
         'hide_title'            => 'boolean',
         'is_draft'              => 'boolean',
         'fee_bank_destinations' => 'array',

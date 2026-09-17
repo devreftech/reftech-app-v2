@@ -122,7 +122,7 @@
                         <p class="mb-1 fw-bold" style="font-size:13.5px; color:#111;">
                             {{ $quote->client?->company ?? '-' }}
                             @if ($quote->plant)
-                                <span class="badge bg-label-primary ms-1" style="font-size:9.5px; vertical-align:middle;">{{ strtoupper($quote->plant->name) }}</span>
+                                <span class="badge bg-label-success ms-1" style="font-size: 10.5px; vertical-align: middle;">{{ $quote->plant->name }}</span>
                             @endif
                         </p>
                         @php

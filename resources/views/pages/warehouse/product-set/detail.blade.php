@@ -14,7 +14,8 @@
     foreach ($itemProduct as $it) {
         $r = $it->replacement;
         if ($r) {
-            $tot = ($r->stock ?? 0) + ($r->warehouse_stock ?? 0);
+            $itQty = max(1, (int) ($it->qty ?? 1));
+            $tot = (int) floor((($r->stock ?? 0) + ($r->warehouse_stock ?? 0)) / $itQty);
             if ($minStockVal === null || $tot < $minStockVal) {
                 $minStockVal = $tot;
             }
@@ -22,8 +23,8 @@
             // Latest incoming goods price
             $lastIn = $r->detailProductIn ? $r->detailProductIn->sortByDesc('id')->first() : null;
             $lastInPrice = ($lastIn && $lastIn->modal > 0) ? floatval($lastIn->modal) : null;
-            $totalHppLastIn += ($lastInPrice ?: floatval($r->modal ?? 0));
-            $totalModalBase += floatval($r->modal ?? 0);
+            $totalHppLastIn += ($lastInPrice ?: floatval($r->modal ?? 0)) * $itQty;
+            $totalModalBase += floatval($r->modal ?? 0) * $itQty;
 
             // Candidate prices to find the lowest price across vendors & incoming
             $candidates = collect();
@@ -46,7 +47,7 @@
             }
 
             $minItemPrice = $candidates->isNotEmpty() ? $candidates->min() : floatval($r->modal ?? 0);
-            $totalHppLowest += $minItemPrice;
+            $totalHppLowest += $minItemPrice * $itQty;
         }
     }
 
@@ -245,6 +246,7 @@
                                     <th class="text-center text-muted fw-bold text-uppercase py-3" style="width: 35px; font-size: 11px;">#</th>
                                     <th class="text-muted fw-bold text-uppercase py-3" style="font-size: 11px; min-width: 240px;">Komponen & Merk Kompatibel</th>
                                     <th class="text-center text-muted fw-bold text-uppercase py-3" style="font-size: 11px; width: 120px;">Stok</th>
+                                    <th class="text-center text-muted fw-bold text-uppercase py-3" style="font-size: 11px; width: 90px;">Qty / Set</th>
                                     @if (Auth::user()->role == 'Admin')
                                         <th class="text-muted fw-bold text-uppercase py-3" style="font-size: 11px; min-width: 190px;">HPP Terendah (Best Cost)</th>
                                         <th class="text-muted fw-bold text-uppercase py-3" style="font-size: 11px; min-width: 240px;">Daftar Harga Vendor & Masuk</th>
@@ -260,7 +262,9 @@
                                         $repWh = $rep->warehouse_stock ?? 0;
                                         $repTotal = $repOffice + $repWh;
                                         $repUnit = $rep->product->unit ?? 'Pcs';
-                                        $isBottleneck = ($minStockVal !== null && $repTotal == $minStockVal);
+                                        $itemQty = max(1, (int) ($detail->qty ?? 1));
+                                        $availableSets = (int) floor($repTotal / $itemQty);
+                                        $isBottleneck = ($minStockVal !== null && $availableSets == $minStockVal);
 
                                         // Latest incoming goods (Barang Masuk Terakhir)
                                         $lastIn = $rep->detailProductIn ? $rep->detailProductIn->sortByDesc('id')->first() : null;
@@ -407,6 +411,20 @@
                                                 Off: {{ $repOffice }} | Gdg: {{ $repWh }}
                                             </div>
                                         </td>
+                                        <td class="text-center align-top py-3">
+                                            <form action="{{ route('product-set.update_item_qty', $detail->id) }}" method="post" class="d-inline-flex align-items-center gap-1 justify-content-center form-update-item-qty">
+                                                @csrf
+                                                <input type="number" name="qty" value="{{ $itemQty }}" min="1" step="1"
+                                                    class="form-control form-control-sm text-center input-item-qty" style="width: 55px;"
+                                                    title="Jumlah pcs komponen ini per 1 set bundle">
+                                                <button type="submit" class="btn btn-icon btn-xs btn-label-primary btn-save-item-qty" title="Simpan Qty">
+                                                    <i class="mdi mdi-check fs-6"></i>
+                                                </button>
+                                            </form>
+                                            <div class="text-muted small mt-1" style="font-size: 11px;">
+                                                = {{ $availableSets }} {{ $unit }}
+                                            </div>
+                                        </td>
                                         @if (Auth::user()->role == 'Admin')
                                             {{-- Kolom HPP Terendah (Auto Pick Lowest Price) --}}
                                             <td class="align-top py-3">
@@ -502,7 +520,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="{{ Auth::user()->role == 'Admin' ? '7' : '5' }}" class="text-center py-5 text-muted">
+                                        <td colspan="{{ Auth::user()->role == 'Admin' ? '8' : '6' }}" class="text-center py-5 text-muted">
                                             <div class="avatar avatar-md bg-label-secondary rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center">
                                                 <i class="mdi mdi-layers-off-outline fs-4"></i>
                                             </div>

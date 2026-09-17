@@ -38,7 +38,8 @@ try {
                    WHERE s.id_quotation = q.id
                )
            ) AS description,
-           'service' AS row_type
+           'service' AS row_type,
+           NULL AS plant_name
     FROM quotation q
     LEFT JOIN pic p ON p.id = q.id_pic
     LEFT JOIN client c ON c.id = p.id_client
@@ -54,9 +55,11 @@ try {
            (SELECT COALESCE(NULLIF(sh.note,''),'Belum di update') FROM unit_quotation_status_history sh WHERE sh.id_unit_quotation = uq.id ORDER BY sh.created_at DESC LIMIT 1) AS note,
            u2.name AS sales_name, u2.image AS sales_image,
            COALESCE(NULLIF(uq.title,''),'-') AS description,
-           'unit' AS row_type
+           'unit' AS row_type,
+           cp.name AS plant_name
     FROM unit_quotation uq
     LEFT JOIN client c2 ON c2.id = NULLIF(uq.id_client,'')
+    LEFT JOIN client_plants cp ON cp.id = NULLIF(uq.id_plant,'')
     INNER JOIN users u2 ON u2.id = uq.id_sales
     WHERE uq.status IN ('loss','cancel') AND uq.is_latest = 1 AND u2.active = '1' $salesFilterU $yearFilterU
     AND NOT EXISTS (SELECT 1 FROM payment pay2 WHERE pay2.id_unit_quotation = uq.id AND pay2.method = 'Escrow')
