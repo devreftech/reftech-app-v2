@@ -37,12 +37,15 @@ Route::middleware(['auth'])->group(function () {
     // ── 2. Attendance & Leave Management (Fase 2) ────────────────────
     // Presensi Kehadiran & Jaringan WiFi Kantor
     Route::get('/hr/attendances', [AttendanceController::class, 'index'])->name('hr.attendances.index');
+    Route::get('/hr/attendances/penalties', [AttendanceController::class, 'penalties'])->name('hr.attendances.penalties');
     Route::post('/hr/attendances', [AttendanceController::class, 'store'])->name('hr.attendances.store');
     Route::delete('/hr/attendances/{attendance}', [AttendanceController::class, 'destroy'])->name('hr.attendances.destroy');
     Route::post('/hr/attendances/wifis', [AttendanceController::class, 'storeWifi'])->name('hr.attendances.wifis.store');
     Route::put('/hr/attendances/wifis/{wifi}', [AttendanceController::class, 'updateWifi'])->name('hr.attendances.wifis.update');
     Route::delete('/hr/attendances/wifis/{wifi}', [AttendanceController::class, 'destroyWifi'])->name('hr.attendances.wifis.destroy');
     Route::post('/hr/attendances/wifis/toggle-restriction', [AttendanceController::class, 'toggleWifiRestriction'])->name('hr.attendances.wifis.toggle-restriction');
+    Route::post('/hr/attendances/settings/update', [AttendanceController::class, 'updateSecuritySettings'])->name('hr.attendances.settings.update');
+    Route::post('/hr/attendances/auto-clockout-now', [AttendanceController::class, 'runAutoClockOutNow'])->name('hr.attendances.auto-clockout-now');
 
     // Cuti & Perizinan
     Route::get('/hr/leaves', [LeaveController::class, 'index'])->name('hr.leaves.index');
@@ -82,6 +85,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Portal Mandiri Karyawan (Employee Self-Service)
     Route::get('/hr/my-portal', [PortalController::class, 'index'])->name('hr.portal.index');
+    Route::get('/hr/my-portal/verify-pre-clockin', [PortalController::class, 'verifyPreClockIn'])->name('hr.portal.verify-pre-clockin');
     Route::post('/hr/my-portal/clock-in', [PortalController::class, 'clockIn'])->name('hr.portal.clockin');
     Route::post('/hr/my-portal/clock-out', [PortalController::class, 'clockOut'])->name('hr.portal.clockout');
 });

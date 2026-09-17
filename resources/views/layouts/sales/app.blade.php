@@ -136,13 +136,13 @@
             <!-- Layout Page -->
             <div class="layout-page">
 
-                <!--  Maintenance Warning Banner & Modal  -->
-                @include('components.maintenance-warning')
-                @include('components.maintenance-resumed-modal')
-
                 <!--  Navbar  -->
                 @include('layouts.sales.navbar')
                 <!--  END: Navbar  -->
+
+                <!--  Maintenance Warning Banner & Modal (under navbar)  -->
+                @include('components.maintenance-warning')
+                @include('components.maintenance-resumed-modal')
 
                 <!-- Content wrapper -->
                 <div class="content-wrapper">

@@ -57,9 +57,11 @@
                     <p class="mb-0 text-white-50">Sentralisasi manajemen data karyawan, absensi real-time, cuti, payroll terotomatisasi, dan portal mandiri.</p>
                 </div>
                 <div class="mt-3 mt-md-0 d-flex gap-2">
+                    @if (Auth::user()?->employee)
                     <a href="{{ route('hr.portal.index') }}" class="btn btn-light text-primary fw-semibold">
                         <i class="bx bx-user-circle me-1"></i> Portal Mandiri Saya
                     </a>
+                    @endif
                     <a href="{{ route('employees.create') }}" class="btn btn-warning text-dark fw-semibold">
                         <i class="bx bx-user-plus me-1"></i> Tambah Karyawan
                     </a>

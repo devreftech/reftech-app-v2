@@ -19,10 +19,15 @@ class HrAttendance extends Model
         'work_type',
         'status',
         'late_minutes',
+        'penalty_amount',
         'overtime_minutes',
         'ip_address',
+        'device_id',
+        'device_info',
         'location_in',
         'location_out',
+        'selfie_in',
+        'selfie_out',
         'notes',
     ];
 

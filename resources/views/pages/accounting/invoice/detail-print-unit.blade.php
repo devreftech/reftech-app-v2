@@ -351,7 +351,40 @@
                                     @endif
 
                                      @if ($detail->description)
-                                         <div style="font-size: 11.5px; color: #000000; font-weight: 500; white-space: pre-line; margin-top: 3px; line-height: 1.4;">{{ $detail->description }}</div>
+                                         @php
+                                             $descLines = explode("\n", str_replace("\r", "", $detail->description));
+                                         @endphp
+                                         <div style="font-size: 10.5px; color: #000000; margin-top: 3px; line-height: 1.4;">
+                                             @foreach ($descLines as $dLine)
+                                                 @php
+                                                     $trimmedDLine = trim($dLine);
+                                                 @endphp
+                                                 @if (empty($trimmedDLine))
+                                                     <div style="height:2px;"></div>
+                                                 @else
+                                                     @php
+                                                         $hasBullet = preg_match('/^([•\-\*]|\d+[\.\)])\s*(.*)/u', $trimmedDLine, $dMatches);
+                                                         $hasColon  = !$hasBullet && str_contains($trimmedDLine, ':');
+                                                     @endphp
+                                                     @if ($hasBullet && !empty($dMatches[1]) && !empty($dMatches[2]))
+                                                         <div style="display:flex; align-items:flex-start; margin-bottom:2px;">
+                                                             <span style="flex-shrink:0; min-width:14px; color:#000; font-weight:600;">{{ $dMatches[1] }}</span>
+                                                             <span style="flex:1;">{{ $dMatches[2] }}</span>
+                                                         </div>
+                                                     @elseif ($hasColon)
+                                                         @php
+                                                             [$sKey, $sVal] = explode(':', $trimmedDLine, 2);
+                                                         @endphp
+                                                         <div style="display:flex; padding:1px 0;">
+                                                             <span style="color:#000000; font-weight:600; min-width:110px; flex-shrink:0;">{{ trim($sKey) }}</span>
+                                                             <span style="color:#000000; font-weight:500;">: {{ trim($sVal) }}</span>
+                                                         </div>
+                                                     @else
+                                                         <div style="margin-bottom:2px; font-weight:600; color:#000000;">{{ $dLine }}</div>
+                                                     @endif
+                                                 @endif
+                                             @endforeach
+                                         </div>
                                      @endif
                                 </td>
                                 <td class="align-top text-end" style="color:#000000 !important; font-weight:600;">{{ number_format($detail->price, 0, '', '.') }}</td>
@@ -598,7 +631,7 @@
                     @if ($quote->tax)
                         <tr class="fw-bold finance-summary-row text-dark" style="font-size: 13px">
                             <td colspan="{{ $labelSpan }}" class="text-end py-0 text-dark" style="padding-right: 10px !important;">
-                                <p class="m-0">PPN 11%</p>
+                                <p class="m-0">PPN 12%</p>
                             </td>
                             <td colspan="{{ $amountSpan }}" class="py-0 text-end text-dark" style="padding-right: 10px !important;">
                                 <p class="m-0">Rp {{ number_format($quote->tax_amount, 0, '', '.') }}</p>

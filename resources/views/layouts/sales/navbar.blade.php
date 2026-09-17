@@ -52,15 +52,15 @@
                 @if ($navEmp && $navEmp->can_online_attendance)
                 <li class="nav-item me-2">
                     @if (!$navTodayAtt || !$navTodayAtt->clock_in)
-                        <a href="{{ route('hr.portal.index') }}" class="btn btn-sm btn-success rounded-pill px-3 py-1 d-flex align-items-center shadow-xs" title="Anda belum absen masuk hari ini. Klik untuk Clock In">
+                        <button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-1 d-flex align-items-center shadow-xs" data-bs-toggle="modal" data-bs-target="#navClockInModal" title="Klik untuk Presensi Masuk (Clock In)">
                             <i class="mdi mdi-clock-in me-1"></i>
                             <span class="fw-bold d-none d-sm-inline">Clock In</span>
-                        </a>
+                        </button>
                     @elseif ($navTodayAtt && !$navTodayAtt->clock_out)
-                        <a href="{{ route('hr.portal.index') }}" class="btn btn-sm btn-warning rounded-pill px-3 py-1 d-flex align-items-center shadow-xs" title="Presensi Masuk: {{ substr($navTodayAtt->clock_in, 0, 5) }}. Klik untuk Clock Out jika jam pulang">
+                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-3 py-1 d-flex align-items-center shadow-xs" data-bs-toggle="modal" data-bs-target="#navClockOutModal" title="Presensi Masuk: {{ substr($navTodayAtt->clock_in, 0, 5) }}. Klik untuk Presensi Pulang (Clock Out)">
                             <i class="mdi mdi-clock-check me-1"></i>
                             <span class="fw-bold d-none d-sm-inline">Masuk {{ substr($navTodayAtt->clock_in, 0, 5) }}</span>
-                        </a>
+                        </button>
                     @else
                         <a href="{{ route('hr.portal.index') }}" class="btn btn-sm btn-label-success rounded-pill px-3 py-1 d-flex align-items-center" title="Presensi Hari Ini Selesai: {{ substr($navTodayAtt->clock_in, 0, 5) }} - {{ substr($navTodayAtt->clock_out, 0, 5) }}">
                             <i class="mdi mdi-check-all me-1 text-success"></i>
@@ -1187,7 +1187,7 @@
                                 <span class="align-middle">My Profile</span>
                             </a>
                         </li>
-                        @if (Auth::user() && Auth::user()->role !== 'Client')
+                        @if (Auth::user() && Auth::user()->role !== 'Client' && Auth::user()->employee)
                         <li>
                             <a class="dropdown-item" href="{{ route('hr.portal.index') }}">
                                 <i class="mdi mdi-clock-check-outline text-success me-2"></i>
@@ -1399,3 +1399,472 @@
         }
     });
 </script>
+
+{{-- Modal Presensi Cepat (Clock In & Clock Out) dari Navbar --}}
+@if (Auth::user() && Auth::user()->employee && Auth::user()->employee->can_online_attendance)
+    @php
+        $navModalEmp = Auth::user()->employee;
+        $navModalAtt = \App\Models\Hr\HrAttendance::where('employee_id', $navModalEmp->id)
+            ->whereDate('date', \Carbon\Carbon::today())
+            ->first();
+        
+        $navSelfieSetting = \Illuminate\Support\Facades\DB::table('hr_attendance_settings')->where('key', 'is_selfie_required')->first();
+        $navIsSelfieRequired = $navSelfieSetting && $navSelfieSetting->value === '1';
+
+        $navWifiSetting = \Illuminate\Support\Facades\DB::table('hr_attendance_settings')->where('key', 'is_wifi_restriction_enabled')->first();
+        $navIsWifiRestrictionEnabled = $navWifiSetting && $navWifiSetting->value === '1';
+        $navActiveWifis = \App\Models\Hr\HrOfficeWifi::where('is_active', true)->get();
+        $navAllowedIps = $navActiveWifis->pluck('ip_address')->toArray();
+        $navClientIp = request()->ip();
+
+        $navIsWifiVerified = !$navIsWifiRestrictionEnabled
+            || in_array($navClientIp, $navAllowedIps)
+            || (app()->isLocal() && in_array($navClientIp, ['127.0.0.1', '::1']));
+    @endphp
+
+    <!-- Modal Clock In -->
+    <div class="modal fade" id="navClockInModal" tabindex="-1" aria-labelledby="navClockInModalLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+                <div style="height: 4px; background: linear-gradient(90deg, #10b981 0%, #059669 100%); width: 100%;"></div>
+                <form action="{{ route('hr.portal.clockin') }}" method="POST" id="navClockInForm">
+                    @csrf
+                    <input type="hidden" name="device_id" id="navClockInDeviceId">
+                    <input type="hidden" name="device_info" id="navClockInDeviceInfo">
+                    <input type="hidden" name="selfie_image" id="navClockInSelfieImage">
+
+                    <div class="modal-header border-bottom py-3 bg-light">
+                        <h5 class="modal-title fw-bold text-success d-flex align-items-center mb-0" id="navClockInModalLabel">
+                            <i class="mdi mdi-clock-in me-2 fs-4"></i> Presensi Masuk (Clock In)
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4 text-center">
+                        
+                        {{-- Alert Banner Validasi Keamanan (WiFi & Device Lock) --}}
+                        <div id="navClockInAlertsContainer">
+                            {{-- WiFi Alert --}}
+                            @if ($navIsWifiRestrictionEnabled && !$navIsWifiVerified)
+                                <div class="alert alert-danger d-flex align-items-start text-start font-12 py-2 px-3 mb-3 shadow-xs" id="navClockInWifiAlert">
+                                    <i class="mdi mdi-wifi-alert fs-4 me-2 text-danger flex-shrink-0 mt-n1"></i>
+                                    <div>
+                                        <div class="fw-bold text-danger">Presensi Tidak Diizinkan (WiFi Tidak Sesuai)</div>
+                                        <div class="text-danger small mt-1">
+                                            IP Anda terdeteksi: <span class="font-monospace fw-bold bg-white text-dark px-1.5 py-0.5 rounded border border-danger-subtle">{{ $navClientIp }}</span>. Anda belum terhubung ke jaringan WiFi Kantor yang diizinkan.
+                                        </div>
+                                        <div class="text-muted font-11 mt-1">
+                                            <i class="mdi mdi-information-outline me-1"></i>Silakan sambungkan perangkat ke WiFi kantor untuk mengaktifkan tombol Clock In.
+                                        </div>
+                                    </div>
+                                </div>
+                            @else
+                                <div class="alert alert-danger d-flex align-items-start text-start font-12 py-2 px-3 mb-3 shadow-xs d-none" id="navClockInWifiAlert">
+                                    <i class="mdi mdi-wifi-alert fs-4 me-2 text-danger flex-shrink-0 mt-n1"></i>
+                                    <div>
+                                        <div class="fw-bold text-danger">Presensi Tidak Diizinkan (WiFi Tidak Sesuai)</div>
+                                        <div class="text-danger small mt-1" id="navClockInWifiAlertText">
+                                            Anda tidak terhubung ke jaringan WiFi Kantor yang diizinkan.
+                                        </div>
+                                        <div class="text-muted font-11 mt-1">
+                                            <i class="mdi mdi-information-outline me-1"></i>Silakan sambungkan perangkat ke WiFi kantor.
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+
+                            {{-- Device Lock Alert --}}
+                            <div class="alert alert-danger d-flex align-items-start text-start font-12 py-2 px-3 mb-3 shadow-xs d-none" id="navClockInDeviceAlert">
+                                <i class="mdi mdi-cellphone-lock fs-4 me-2 text-danger flex-shrink-0 mt-n1"></i>
+                                <div>
+                                    <div class="fw-bold text-danger">Presensi Tidak Diizinkan (Perangkat Terkunci)</div>
+                                    <div class="text-danger small mt-1" id="navClockInDeviceAlertText"></div>
+                                    <div class="text-muted font-11 mt-1">
+                                        <i class="mdi mdi-shield-alert-outline me-1"></i>Kebijakan Anti-Titip Absen: 1 HP/Laptop hanya dapat digunakan 1 akun per hari.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if ($navIsSelfieRequired)
+                            {{-- Live Selfie Camera Container --}}
+                            <div class="position-relative rounded-3 overflow-hidden mb-3 bg-dark shadow-sm border border-success" style="height: 220px;">
+                                <video id="navCameraVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
+                                <canvas id="navCameraCanvas" style="display: none;"></canvas>
+                                
+                                <div class="position-absolute top-0 start-0 m-2">
+                                    <span class="badge bg-success shadow-xs d-flex align-items-center gap-1">
+                                        <span class="spinner-grow spinner-grow-sm text-white" role="status" style="width: 8px; height: 8px;"></span>
+                                        <i class="mdi mdi-camera-iris"></i> Kamera Live
+                                    </span>
+                                </div>
+
+                                <div id="navCameraLoadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-dark bg-opacity-75 text-white">
+                                    <div class="spinner-border text-success mb-2" role="status"></div>
+                                    <span class="small">Mengaktifkan kamera selfie...</span>
+                                </div>
+
+                                <div id="navCameraErrorAlert" class="position-absolute bottom-0 start-0 w-100 p-2 bg-danger bg-opacity-90 text-white font-11 d-none text-center">
+                                    <i class="mdi mdi-alert-circle me-1"></i> Izin kamera diperlukan untuk presensi!
+                                </div>
+                            </div>
+                        @else
+                            <!-- Live Time & Date Display Standard -->
+                            <div class="avatar avatar-xl mx-auto mb-3" style="width: 60px; height: 60px;">
+                                <span class="avatar-initial rounded-circle bg-label-success">
+                                    <i class="mdi mdi-clock-outline fs-1 text-success"></i>
+                                </span>
+                            </div>
+                        @endif
+
+                        <div class="font-monospace text-dark fw-bold fs-3 mb-1" id="navLiveClockTimeIn">
+                            {{ \Carbon\Carbon::now()->format('H:i:s') }}
+                        </div>
+                        <div class="text-muted font-12 mb-3">
+                            <i class="mdi mdi-calendar-blank-outline me-1"></i>{{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}
+                        </div>
+
+                        <!-- Employee Details Card -->
+                        <div class="card bg-label-secondary border-0 p-3 text-start mb-3">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="font-11 text-muted text-uppercase fw-semibold">Karyawan</span>
+                                <span class="badge bg-label-success font-10">Aktif WFO</span>
+                            </div>
+                            <div class="fw-bold text-dark font-14">{{ Auth::user()->name }}</div>
+                            <div class="text-muted font-11">
+                                NIK: {{ $navModalEmp->nik ?? '-' }} &bull; {{ $navModalEmp->position->name ?? ($navModalEmp->department->name ?? 'Staff') }}
+                            </div>
+                        </div>
+
+                        <!-- Work Type selection (Segmented Button Switcher) -->
+                        <div class="text-start mb-3">
+                            <label class="form-label font-11 text-muted text-uppercase fw-semibold mb-1">Tipe Kehadiran</label>
+                            <div class="btn-group w-100 shadow-xs" role="group" aria-label="Tipe Kehadiran">
+                                <input type="radio" class="btn-check" name="work_type" id="navWorkTypeWfo" value="WFO" checked autocomplete="off">
+                                <label class="btn btn-outline-primary py-2 d-flex align-items-center justify-content-center gap-1.5 fw-semibold" for="navWorkTypeWfo">
+                                    <i class="mdi mdi-office-building fs-5"></i>
+                                    <span>WFO</span>
+                                </label>
+
+                                <input type="radio" class="btn-check" name="work_type" id="navWorkTypeWfh" value="WFH" autocomplete="off">
+                                <label class="btn btn-outline-primary py-2 d-flex align-items-center justify-content-center gap-1.5 fw-semibold" for="navWorkTypeWfh">
+                                    <i class="mdi mdi-home-outline fs-5"></i>
+                                    <span>WFH</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-success d-flex align-items-center text-start font-11 py-2 px-3 mb-0">
+                            <i class="mdi mdi-shield-check-outline fs-5 me-2 text-success flex-shrink-0"></i>
+                            <span>
+                                @if ($navIsSelfieRequired)
+                                    Posisikan wajah Anda tepat di depan kamera. Foto akan diambil otomatis saat Anda menekan konfirmasi.
+                                @else
+                                    Presensi terproteksi keamanan IP &amp; Device Lock. Anda akan dialihkan ke <strong>Portal Mandiri</strong>.
+                                @endif
+                            </span>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light py-2 border-top">
+                        <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-success waves-effect waves-light" id="btnSubmitNavClockIn"
+                                {{ ($navIsWifiRestrictionEnabled && !$navIsWifiVerified) ? 'disabled title="Jaringan WiFi kantor tidak sesuai"' : '' }}>
+                            <i class="mdi mdi-clock-in me-1"></i> Clock In
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Clock Out -->
+    <div class="modal fade" id="navClockOutModal" tabindex="-1" aria-labelledby="navClockOutModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+                <div style="height: 4px; background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%); width: 100%;"></div>
+                <form action="{{ route('hr.portal.clockout') }}" method="POST" id="navClockOutForm">
+                    @csrf
+                    <input type="hidden" name="device_id" id="navClockOutDeviceId">
+                    <input type="hidden" name="device_info" id="navClockOutDeviceInfo">
+
+                    <div class="modal-header border-bottom py-3 bg-light">
+                        <h5 class="modal-title fw-bold text-warning d-flex align-items-center mb-0" id="navClockOutModalLabel">
+                            <i class="mdi mdi-clock-out me-2 fs-4"></i> Presensi Pulang (Clock Out)
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4 text-center">
+                        <div class="avatar avatar-xl mx-auto mb-3" style="width: 60px; height: 60px;">
+                            <span class="avatar-initial rounded-circle bg-label-warning">
+                                <i class="mdi mdi-clock-check-outline fs-1 text-warning"></i>
+                            </span>
+                        </div>
+
+                        <div class="font-monospace text-dark fw-bold fs-3 mb-1" id="navLiveClockTimeOut">
+                            {{ \Carbon\Carbon::now()->format('H:i:s') }}
+                        </div>
+                        <div class="text-muted font-12 mb-3">
+                            <i class="mdi mdi-calendar-blank-outline me-1"></i>{{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}
+                        </div>
+
+                        <!-- Attendance Info Card -->
+                        <div class="card bg-label-secondary border-0 p-3 text-start mb-3">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="font-11 text-muted text-uppercase fw-semibold">Presensi Masuk Hari Ini</span>
+                                <span class="badge bg-label-success font-10">Tercatat</span>
+                            </div>
+                            <div class="fw-bold text-dark font-14">
+                                <i class="mdi mdi-clock-in me-1 text-success"></i>Masuk: {{ $navModalAtt ? substr($navModalAtt->clock_in, 0, 5) : '-' }} WIB
+                            </div>
+                            <div class="text-muted font-11 mt-1">
+                                {{ Auth::user()->name }} &bull; {{ $navModalEmp->position->name ?? 'Staff' }}
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning d-flex align-items-center text-start font-11 py-2 px-3 mb-0">
+                            <i class="mdi mdi-information-outline fs-5 me-2 text-warning flex-shrink-0"></i>
+                            <span>Pastikan pekerjaan hari ini telah selesai. Anda akan dialihkan ke <strong>Portal Mandiri</strong> setelah Clock Out.</span>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light py-2 border-top">
+                        <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-warning waves-effect waves-light" id="btnSubmitNavClockOut">
+                            <i class="mdi mdi-clock-out me-1"></i> Konfirmasi Clock Out
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 1. Device Token (UUID) Management
+            function getOrCreateDeviceId() {
+                var key = 'reftech_attendance_device_uuid';
+                var devId = localStorage.getItem(key);
+                if (!devId) {
+                    try {
+                        if (window.crypto && window.crypto.randomUUID) {
+                            devId = 'DEV-' + window.crypto.randomUUID();
+                        } else {
+                            devId = 'DEV-' + 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                                return v.toString(16);
+                            });
+                        }
+                    } catch (e) {
+                        devId = 'DEV-' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
+                    }
+                    localStorage.setItem(key, devId);
+                }
+                return devId;
+            }
+
+            var deviceId = getOrCreateDeviceId();
+            var deviceInfo = navigator.userAgent;
+
+            var inDev = document.getElementById('navClockInDeviceId');
+            var inInfo = document.getElementById('navClockInDeviceInfo');
+            var outDev = document.getElementById('navClockOutDeviceId');
+            var outInfo = document.getElementById('navClockOutDeviceInfo');
+
+            if (inDev) inDev.value = deviceId;
+            if (inInfo) inInfo.value = deviceInfo;
+            if (outDev) outDev.value = deviceId;
+            if (outInfo) outInfo.value = deviceInfo;
+
+            // 1.5 Validasi Keamanan Pra-Clock In (WiFi & Device Lock)
+            var isWifiBlockedInitially = {{ ($navIsWifiRestrictionEnabled && !$navIsWifiVerified) ? 'true' : 'false' }};
+            function verifyClockInEligibility() {
+                var btn = document.getElementById('btnSubmitNavClockIn');
+                var deviceAlert = document.getElementById('navClockInDeviceAlert');
+                var deviceAlertText = document.getElementById('navClockInDeviceAlertText');
+                var wifiAlert = document.getElementById('navClockInWifiAlert');
+
+                if (isWifiBlockedInitially) {
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.classList.add('disabled');
+                        btn.setAttribute('title', 'Jaringan WiFi kantor tidak sesuai');
+                    }
+                    if (wifiAlert) wifiAlert.classList.remove('d-none');
+                }
+
+                var checkUrl = "{{ route('hr.portal.verify-pre-clockin') }}";
+                fetch(checkUrl + '?device_id=' + encodeURIComponent(deviceId), {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (!data.allowed) {
+                        if (btn) {
+                            btn.disabled = true;
+                            btn.classList.add('disabled');
+                            btn.setAttribute('title', data.message || 'Presensi tidak dapat dilakukan.');
+                        }
+                        if (data.type === 'device_error') {
+                            if (deviceAlert && deviceAlertText) {
+                                deviceAlertText.textContent = data.message;
+                                deviceAlert.classList.remove('d-none');
+                            }
+                        } else if (data.type === 'wifi_error') {
+                            if (wifiAlert) {
+                                wifiAlert.classList.remove('d-none');
+                                var wifiText = document.getElementById('navClockInWifiAlertText');
+                                if (wifiText) wifiText.textContent = data.message;
+                            }
+                        } else {
+                            if (deviceAlert && deviceAlertText) {
+                                deviceAlertText.textContent = data.message;
+                                deviceAlert.classList.remove('d-none');
+                            }
+                        }
+                    } else {
+                        if (deviceAlert) deviceAlert.classList.add('d-none');
+                        if (wifiAlert) wifiAlert.classList.add('d-none');
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.classList.remove('disabled');
+                            btn.removeAttribute('title');
+                        }
+                    }
+                })
+                .catch(function(err) {
+                    console.warn('Verifikasi Pra-Clock In gagal:', err);
+                });
+            }
+
+            var clockInModalEl = document.getElementById('navClockInModal');
+            if (clockInModalEl) {
+                clockInModalEl.addEventListener('show.bs.modal', function() {
+                    verifyClockInEligibility();
+                });
+            }
+
+            // 2. Live clock updater for nav modals
+            function updateNavLiveTime() {
+                var now = new Date();
+                var timeStr = String(now.getHours()).padStart(2, '0') + ':' +
+                              String(now.getMinutes()).padStart(2, '0') + ':' +
+                              String(now.getSeconds()).padStart(2, '0');
+                var inEl = document.getElementById('navLiveClockTimeIn');
+                var outEl = document.getElementById('navLiveClockTimeOut');
+                if (inEl) inEl.textContent = timeStr;
+                if (outEl) outEl.textContent = timeStr;
+            }
+            setInterval(updateNavLiveTime, 1000);
+
+            // 3. Live Selfie Camera Stream Lifecycle
+            var cameraStream = null;
+            var isSelfieRequired = {{ $navIsSelfieRequired ? 'true' : 'false' }};
+            var clockInModal = document.getElementById('navClockInModal');
+
+            if (clockInModal && isSelfieRequired) {
+                clockInModal.addEventListener('shown.bs.modal', function () {
+                    var videoEl = document.getElementById('navCameraVideo');
+                    var loaderEl = document.getElementById('navCameraLoadingOverlay');
+                    var errEl = document.getElementById('navCameraErrorAlert');
+
+                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                        navigator.mediaDevices.getUserMedia({
+                            video: {
+                                facingMode: 'user',
+                                width: { ideal: 640 },
+                                height: { ideal: 480 }
+                            },
+                            audio: false
+                        }).then(function(stream) {
+                            cameraStream = stream;
+                            if (videoEl) {
+                                videoEl.srcObject = stream;
+                                videoEl.play();
+                            }
+                            if (loaderEl) loaderEl.classList.add('d-none');
+                            if (errEl) errEl.classList.add('d-none');
+                        }).catch(function(err) {
+                            console.error('Kamera gagal diakses:', err);
+                            if (loaderEl) loaderEl.classList.add('d-none');
+                            if (errEl) {
+                                errEl.classList.remove('d-none');
+                                errEl.textContent = 'Gagal mengakses kamera: ' + (err.message || 'Izinkan akses kamera browser.');
+                            }
+                        });
+                    } else {
+                        if (loaderEl) loaderEl.classList.add('d-none');
+                        if (errEl) {
+                            errEl.classList.remove('d-none');
+                            errEl.textContent = 'Browser Anda tidak mendukung akses kamera live.';
+                        }
+                    }
+                });
+
+                clockInModal.addEventListener('hidden.bs.modal', function () {
+                    if (cameraStream) {
+                        cameraStream.getTracks().forEach(function(track) {
+                            track.stop();
+                        });
+                        cameraStream = null;
+                    }
+                });
+            }
+
+            // 4. Loading state & Snapshot capture on submit
+            var formIn = document.getElementById('navClockInForm');
+            if (formIn) {
+                formIn.addEventListener('submit', function(e) {
+                    var btn = document.getElementById('btnSubmitNavClockIn');
+                    if (btn && btn.disabled) {
+                        e.preventDefault();
+                        return false;
+                    }
+                    
+                    if (isSelfieRequired) {
+                        var video = document.getElementById('navCameraVideo');
+                        var canvas = document.getElementById('navCameraCanvas');
+                        var selfieInput = document.getElementById('navClockInSelfieImage');
+
+                        if (video && canvas && selfieInput) {
+                            var vWidth = video.videoWidth || 640;
+                            var vHeight = video.videoHeight || 480;
+
+                            canvas.width = vWidth;
+                            canvas.height = vHeight;
+                            var ctx = canvas.getContext('2d');
+                            
+                            // Flip horizontal mirror
+                            ctx.translate(vWidth, 0);
+                            ctx.scale(-1, 1);
+                            ctx.drawImage(video, 0, 0, vWidth, vHeight);
+                            
+                            try {
+                                var base64 = canvas.toDataURL('image/jpeg', 0.85);
+                                selfieInput.value = base64;
+                            } catch (err) {
+                                console.error('Snapshot error:', err);
+                            }
+                        }
+                    }
+
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Mencatat Presensi &amp; Membuka Portal...';
+                    }
+                });
+            }
+
+            var formOut = document.getElementById('navClockOutForm');
+            if (formOut) {
+                formOut.addEventListener('submit', function() {
+                    var btn = document.getElementById('btnSubmitNavClockOut');
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Mencatat Clock Out &amp; Membuka Portal...';
+                    }
+                });
+            }
+        });
+    </script>
+@endif

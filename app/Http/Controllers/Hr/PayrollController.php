@@ -118,7 +118,10 @@ class PayrollController extends Controller
                 // Absence deduction: e.g. Rp 100.000 per unexcused absence
                 $deductionAbsence = $absenceDays * 100000;
                 $deductionBpjs = (float) ($salary->bpjs_kesehatan + $salary->bpjs_ketenagakerjaan);
-                $deductionOther = 0;
+                
+                // Akumulasi denda keterlambatan presensi
+                $totalLatePenalty = (float) $attendanceRecords->sum('penalty_amount');
+                $deductionOther = $totalLatePenalty;
 
                 $totalItemDeductions = $deductionAbsence + $deductionBpjs + $deductionOther;
                 $itemAllowances = $salary->total_allowance;
@@ -148,6 +151,8 @@ class PayrollController extends Controller
                         'bank_name' => $salary->bank_name,
                         'bank_account_number' => $salary->bank_account_number,
                         'bank_account_holder' => $salary->bank_account_holder,
+                        'late_penalty_total' => $totalLatePenalty,
+                        'late_count' => $attendanceRecords->where('late_minutes', '>', 0)->count(),
                     ],
                 ]);
 

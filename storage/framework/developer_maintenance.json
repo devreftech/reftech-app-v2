@@ -5,17 +5,17 @@
     "started_at": null,
     "started_by": null,
     "is_planned": false,
-    "plan_start_time": "12:00 WIB",
-    "plan_end_time": "12:15 WIB",
+    "plan_start_time": "11:42 WIB",
+    "plan_end_time": "12:12 WIB",
     "plan_warn_minutes": 30,
     "plan_message": "Pemberitahuan: Sistem akan memasuki masa pemeliharaan (Maintenance). Mohon segera selesaikan dan simpan pekerjaan atau transaksi Anda.",
     "auto_activate": true,
     "planned_by": "Lukiy (lukiy@reftech.id)",
-    "planned_at": "2026-09-10 11:53:11",
+    "planned_at": "2026-09-17 11:12:35",
     "template": "animated",
     "bgm_enabled": true,
     "bgm_url": "\/assets\/audio\/bgm_1786708131_I_Miss_You_Every_Brand_New_Day__Fro.mp3",
     "bgm_title": "I Miss You Every Brand New Day (From Spider-Man- Brand New Day Movie) (Official Music Video)",
-    "last_deactivated_at": "2026-09-13 17:26:38",
-    "last_deactivated_timestamp": 1789320398
+    "last_deactivated_at": "2026-09-17 11:13:02",
+    "last_deactivated_timestamp": 1789618382
 }

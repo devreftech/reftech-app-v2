@@ -19,6 +19,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('tools:generate-audit-period')->daily();
         $schedule->command('forecast:generate-next-year')->yearlyOn(12, 25, '00:00');
         $schedule->command('unit-quotation:expire')->dailyAt('00:01');
+        $schedule->command('hr:auto-clock-out')->dailyAt('17:05');
+        $schedule->command('hr:auto-clock-out')->dailyAt('23:55');
     }
 
     /**
