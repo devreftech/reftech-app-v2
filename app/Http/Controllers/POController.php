@@ -214,17 +214,45 @@ class POController extends Controller
         if (is_null($val) || $val === '') {
             return 0.0;
         }
-        if (is_numeric($val)) {
+        if (is_int($val) || is_float($val)) {
             return (float) $val;
         }
         $str = trim((string) $val);
-        $str = preg_replace('/[^\d.,]/', '', $str);
-        if (strpos($str, ',') !== false) {
+        $str = preg_replace('/[^\d.,\-]/', '', $str);
+        if ($str === '' || $str === '-') {
+            return 0.0;
+        }
+
+        $hasComma = strpos($str, ',') !== false;
+        $hasDot = strpos($str, '.') !== false;
+
+        if ($hasComma && $hasDot) {
+            if (strrpos($str, ',') > strrpos($str, '.')) {
+                // Format: 4.311.880,18 -> dot = thousands, comma = decimal
+                $str = str_replace('.', '', $str);
+                $str = str_replace(',', '.', $str);
+            } else {
+                // Format: 4,311,880.18 -> comma = thousands, dot = decimal
+                $str = str_replace(',', '', $str);
+            }
+        } elseif ($hasComma) {
+            // Only comma e.g. 4311880,18
             $str = str_replace('.', '', $str);
             $str = str_replace(',', '.', $str);
-        } else {
+        } elseif ($hasDot) {
             if (substr_count($str, '.') > 1) {
+                // Multiple thousands dots: 4.311.880
                 $str = str_replace('.', '', $str);
+            } else {
+                // Exactly one dot: e.g. 500.000 vs 4311880.18
+                $parts = explode('.', $str);
+                $beforeDot = $parts[0];
+                $afterDot = $parts[1] ?? '';
+                if (strlen($afterDot) === 3 && strlen($beforeDot) >= 1 && strlen($beforeDot) <= 3) {
+                    $str = $beforeDot . $afterDot;
+                } else {
+                    $str = $beforeDot . '.' . $afterDot;
+                }
             }
         }
         return (float) $str;

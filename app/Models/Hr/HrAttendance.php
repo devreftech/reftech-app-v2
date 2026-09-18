@@ -39,4 +39,13 @@ class HrAttendance extends Model
     {
         return $this->belongsTo(Employee::class, 'employee_id');
     }
+
+    /**
+     * Proses otomatis Clock Out untuk seluruh karyawan yang telah Clock In pada jam masuk
+     * namun belum Clock Out saat jam pulang default (Asia/Jakarta GMT+7) telah tercapai.
+     */
+    public static function processAutoClockOutIfDue(?string $targetDate = null): int
+    {
+        return \App\Models\HrAttendance::processAutoClockOutIfDue($targetDate);
+    }
 }

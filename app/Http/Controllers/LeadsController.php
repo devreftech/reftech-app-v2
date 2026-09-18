@@ -593,6 +593,7 @@ class LeadsController extends Controller
         // dd($request->all());
         $leads = Client::where("id", $id)->first();
         $leads->id_issues = $request->issues;
+        $statSave = false;
         if ($request->issues == '5') {
             $leads->role = 'Customers';
             $status = new CrmStatus;
@@ -616,7 +617,7 @@ class LeadsController extends Controller
         $action->date = \Carbon\Carbon::today();
         $action->follow_up = $request->follow_up;
         $activitiesSave = $action->save();
-        if ($isuSave && $activitiesSave || $statSave) {
+        if (($isuSave && $activitiesSave) || $statSave) {
             if ($request->issues == '5') {
                 return redirect("/existing/" . $id)->with("success", "Data telah ditambahkan");
             } else {
@@ -628,6 +629,7 @@ class LeadsController extends Controller
     {
         $leads = Client::where("id", $id)->first();
         $leads->id_issues = $request->issues;
+        $statSave = false;
         if ($request->issues == '5') {
             $leads->role = 'Customers';
             $status = new CrmStatus;
@@ -646,7 +648,7 @@ class LeadsController extends Controller
         $action->date = \Carbon\Carbon::today();
         $action->follow_up = $request->follow_up;
         $activitiesSave = $action->save();
-        if ($isuSave && $activitiesSave || $statSave) {
+        if (($isuSave && $activitiesSave) || $statSave) {
             if ($request->issues == '5') {
                 return redirect("/existing/" . $id)->with("success", "Data telah ditambahkan");
             } else {

@@ -1454,7 +1454,9 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/customer-statement-print/{id}', [\App\Http\Controllers\CustomerStatementController::class, 'print'])->name('customer.statement_print');
     Route::get('/payment-detail/kwitansi/{id}', [PaymentController::class, 'showKwitansi'])->name('payment.kwitansi');
 
+    Route::get('/delivery/search-clients', [DeliveryController::class, 'searchClients'])->name('delivery.search-clients');
     Route::resource('/delivery', DeliveryController::class);
+    Route::post('/delivery/store-manual-custom', [DeliveryController::class, 'storeManualCustom'])->name('delivery.store-manual-custom');
     Route::get('/delivery/print/{id}', [DeliveryController::class, 'print_delivery'])->name('print.delivery');
     Route::post('/delivery/change_date/{id}', [DeliveryController::class, 'change_date'])->name('change_date.delivery');
     Route::post('/delivery/change_desc/{id}', [DeliveryController::class, 'change_desc'])->name('delivery.change_desc');
@@ -1730,12 +1732,14 @@ Route::group(["middleware" => "auth"], function () {
 
     // purchase request
     Route::get('/purchase-request', [PurchaseController::class, 'index'])->name('purchase-request.index');
+    Route::post('/purchase-request/manual/store', [PurchaseController::class, 'storeManual'])->name('purchase-request.store-manual');
     Route::post('/purchase-request/{id}', [PurchaseController::class, 'store'])->name('purchase-request.store');
     Route::post('/purchase-request-project/{id}', [PurchaseController::class, 'store_project'])->name('purchase-request.store-project');
     Route::get('/purchase-request/{id}', [PurchaseController::class, 'show'])->name('purchase-request.show');
     Route::delete('/purchase-request/delete/{id}', [PurchaseController::class, 'delete'])->name('purchase-request.delete');
     Route::patch('/purchase-request/acc/{id}', [PurchaseController::class, 'acc'])->name('purchase-request.acc');
     Route::patch('/purchase-request/reject/{id}', [PurchaseController::class, 'reject'])->name('purchase-request.reject');
+    Route::match(['post', 'patch'], '/purchase-request/rollback-new/{id}', [PurchaseController::class, 'rollbackToNew'])->name('purchase-request.rollback-new');
     Route::patch('/purchase-request/delivery/{id}', [PurchaseController::class, 'delivery'])->name('purchase-request.delivery');
     Route::patch('/purchase-request/delivery-info/{id}', [PurchaseController::class, 'updateDeliveryInfo'])->name('purchase-request.update-delivery-info');
     Route::get('/purchase-request/done-all/{id}', [PurchaseController::class, 'done_all'])->name('purchase-request.done-all');
@@ -1749,6 +1753,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/purchase-request/{id}/link-po', [PurchaseController::class, 'linkPurchaseOrder'])->name('purchase-request.link-po');
     Route::post('/purchase-request/{id}/unlink-po', [PurchaseController::class, 'unlinkPurchaseOrder'])->name('purchase-request.unlink-po');
     Route::get('/db/purchase-order/search-to-link', [PurchaseController::class, 'searchPoToLink'])->name('purchase-order.search-to-link');
+    Route::get('/db/sales-order/search-to-link', [PurchaseController::class, 'searchSalesOrder'])->name('sales-order.search-to-link');
     Route::get('/db/purchase-request/available-items', [PurchaseController::class, 'getAvailablePrItems'])->name('purchase-request.available-items');
     
 
@@ -1901,13 +1906,23 @@ Route::group(["middleware" => "auth"], function () {
 
     // Tools — Management per Teknisi (instance fixed_asset type=Tools)
     Route::get('/tool-assignment', [ToolAssignmentController::class, 'index'])->name('tool-assignment.index');
+    Route::get('/tool-assignment/period', function () {
+        return redirect()->route('tool-assignment.index', ['tab' => 'periods']);
+    })->name('tool-assignment.period.index');
     Route::post('/tool-assignment/technician', [ToolAssignmentController::class, 'addTechnician'])->name('tool-assignment.add-technician');
     Route::delete('/tool-assignment/technician/{userId}', [ToolAssignmentController::class, 'removeTechnician'])->name('tool-assignment.remove-technician');
-    Route::get('/tool-assignment/{technicianId}', [ToolAssignmentController::class, 'show'])->name('tool-assignment.show');
-    Route::post('/tool-assignment/{technicianId}', [ToolAssignmentController::class, 'store'])->name('tool-assignment.store');
-    Route::patch('/tool-assignment/item/{id}', [ToolAssignmentController::class, 'update'])->name('tool-assignment.update');
-    Route::post('/tool-assignment/item/{id}/transfer', [ToolAssignmentController::class, 'transfer'])->name('tool-assignment.transfer');
-    Route::post('/tool-assignment/item/{id}/retire', [ToolAssignmentController::class, 'retire'])->name('tool-assignment.retire');
+    Route::get('/tool-assignment/{technicianId}', [ToolAssignmentController::class, 'show'])->whereNumber('technicianId')->name('tool-assignment.show');
+    Route::post('/tool-assignment/{technicianId}', [ToolAssignmentController::class, 'store'])->whereNumber('technicianId')->name('tool-assignment.store');
+    Route::patch('/tool-assignment/item/{id}', [ToolAssignmentController::class, 'update'])->whereNumber('id')->name('tool-assignment.update');
+    Route::post('/tool-assignment/item/{id}/transfer', [ToolAssignmentController::class, 'transfer'])->whereNumber('id')->name('tool-assignment.transfer');
+    Route::post('/tool-assignment/item/{id}/retire', [ToolAssignmentController::class, 'retire'])->whereNumber('id')->name('tool-assignment.retire');
+
+    // Tools — Pengaturan Jadwal Periode Audit & Trigger Audit
+    Route::post('/tool-assignment/period', [ToolAssignmentController::class, 'storePeriod'])->name('tool-assignment.period.store');
+    Route::patch('/tool-assignment/period/{id}', [ToolAssignmentController::class, 'updatePeriod'])->whereNumber('id')->name('tool-assignment.period.update');
+    Route::post('/tool-assignment/period/{id}/trigger', [ToolAssignmentController::class, 'triggerPeriod'])->whereNumber('id')->name('tool-assignment.period.trigger');
+    Route::post('/tool-assignment/period/{id}/toggle-status', [ToolAssignmentController::class, 'togglePeriodStatus'])->whereNumber('id')->name('tool-assignment.period.toggle-status');
+    Route::delete('/tool-assignment/period/{id}', [ToolAssignmentController::class, 'deletePeriod'])->whereNumber('id')->name('tool-assignment.period.delete');
 
     // Tools — Self Audit (role Technician)
     Route::get('/tool-audit', [ToolAuditController::class, 'index'])->name('tool-audit.index');
@@ -1916,6 +1931,10 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/tool-audit/{id}/save-draft', [ToolAuditController::class, 'saveDraft'])->name('tool-audit.save-draft');
     Route::post('/tool-audit/item/{itemId}/upload-photo', [ToolAuditController::class, 'uploadPhotoAjax'])->name('tool-audit.upload-photo');
     Route::post('/tool-audit/item/{itemId}/auto-save', [ToolAuditController::class, 'autoSaveItemAjax'])->name('tool-audit.auto-save');
+    Route::post('/tool-audit/transfer', [ToolAuditController::class, 'storeTransfer'])->name('tool-audit.transfer.store');
+    Route::post('/tool-audit/transfer/{id}/accept', [ToolAuditController::class, 'acceptTransfer'])->whereNumber('id')->name('tool-audit.transfer.accept');
+    Route::post('/tool-audit/transfer/{id}/reject', [ToolAuditController::class, 'rejectTransfer'])->whereNumber('id')->name('tool-audit.transfer.reject');
+    Route::post('/tool-audit/transfer/{id}/cancel', [ToolAuditController::class, 'cancelTransfer'])->whereNumber('id')->name('tool-audit.transfer.cancel');
 
     // Tools — Verifikasi Audit (role Admin)
     Route::get('/tool-audit-verification', [ToolAuditVerificationController::class, 'index'])->name('tool-audit-verification.index');
@@ -6824,7 +6843,8 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         // di level alokasi (purchase_request_detail_allocation), bukan di baris item PR
         // langsung — satu item bisa split ke beberapa PO dengan info pengiriman beda-beda.
         $baseColumns = [
-            'p.id',
+            'purchase_request.id as id',
+            'p.id as id_pending',
             'purchase_request.no_pr',
             'purchase_request.date',
             'p.no_pending',
@@ -6909,7 +6929,44 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                 ) AS payment_status"),
             ]));
 
-        return $fromQuotation->unionAll($fromUnitQuotation)->orderByDesc('date');
+        // PR yang dibuat manual (pending_po.type = 'Manual' atau non-quotation)
+        $fromManual = PurchaseRequest::join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
+            ->join('purchase_request_detail as d', 'd.id_purchase_request', '=', 'purchase_request.id')
+            ->leftJoin('serial_product as s', 'd.id_equivalent', '=', 's.id')
+            ->leftJoin('product as pr', 'pr.id', '=', 's.id_product')
+            ->leftJoin('purchase_request_detail_allocation as pda', 'pda.id_purchase_request_detail', '=', 'd.id')
+            ->leftJoin('users as u', 'u.id', '=', 'purchase_request.id_user')
+            ->leftJoin('purchase_order as po', 'po.id_purchase_request', '=', 'purchase_request.id')
+            ->whereNull('p.id_quotation')
+            ->whereNull('p.id_unit_quotation')
+            ->where('purchase_request.status', $status)
+            ->groupBy(['purchase_request.id', 'p.id', 'purchase_request.no_pr', 'purchase_request.date', 'p.no_pending', 'p.title', 'u.image', 'u.name'])
+            ->select(array_merge([
+                'purchase_request.id as id',
+                'p.id as id_pending',
+                'purchase_request.no_pr',
+                'purchase_request.date',
+                'p.no_pending',
+                DB::raw("COALESCE(NULLIF(p.title, ''), 'Pengadaan Internal') as company"),
+                'u.image as user_image',
+                'u.name as user_name',
+                DB::raw('COUNT(DISTINCT d.id) as item_count'),
+                DB::raw("CASE WHEN COUNT(DISTINCT d.id) = 1 THEN MAX(CONCAT(d.qty, ' ', COALESCE(pr.unit, 'item'))) ELSE CONCAT(COUNT(DISTINCT d.id), ' item') END as qty_full"),
+                DB::raw("CASE WHEN COUNT(DISTINCT d.id) = 1 THEN MAX(CONCAT(COALESCE(s.brand, ''), ' ', COALESCE(s.pn, ''), ' (', SUBSTRING(COALESCE(pr.go, '-'), 1, 1) , ')')) ELSE CONCAT(COUNT(DISTINCT d.id), ' item') END as item"),
+                DB::raw("GROUP_CONCAT(DISTINCT CONCAT(COALESCE(s.brand, ''), ' ', COALESCE(s.pn, ''), ' (', COALESCE(pr.go, '-'), ') x', d.qty, ' ', COALESCE(pr.unit, '')) SEPARATOR '||') as items_detail"),
+                DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(pda.purchase_type, '')) <= 1 THEN MAX(pda.purchase_type) ELSE 'Campuran' END as purchase_type"),
+                DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(pda.cargo, '')) <= 1 THEN MAX(pda.cargo) ELSE 'Campuran' END as cargo"),
+                DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(pda.no_resi, '')) <= 1 THEN MAX(pda.no_resi) ELSE 'Campuran' END as no_resi"),
+                DB::raw("CASE WHEN COUNT(DISTINCT COALESCE(pda.purchase_date, '')) <= 1 THEN MAX(pda.purchase_date) ELSE NULL END as purchase_date"),
+                DB::raw("CASE WHEN COUNT(DISTINCT po.id) = 0 THEN NULL WHEN COUNT(DISTINCT po.id) = 1 THEN MAX(po.no_po) ELSE CONCAT(COUNT(DISTINCT po.id), ' PO') END as no_po"),
+                DB::raw("CASE WHEN COUNT(DISTINCT po.id) = 1 THEN MAX(po.id) ELSE NULL END as id_po"),
+                DB::raw("CASE WHEN COUNT(DISTINCT po.id) = 0 THEN NULL WHEN COUNT(DISTINCT po.id) = 1 THEN MAX(po.no_gr) ELSE CONCAT(COUNT(DISTINCT po.id), ' PO') END as no_gr"),
+                DB::raw("CASE WHEN COUNT(DISTINCT po.id) = 1 THEN (SELECT pi.id FROM product_in pi WHERE pi.id_purchase_order = MAX(po.id) ORDER BY pi.id ASC LIMIT 1) ELSE NULL END as id_gr"),
+            ], [
+                DB::raw("'confirmed' AS payment_status"),
+            ]));
+
+        return $fromQuotation->unionAll($fromUnitQuotation)->unionAll($fromManual)->orderByDesc('date');
     };
 
     Route::get('/db/purchase-request/new', function () use ($purchaseRequestListQuery) {
@@ -6973,8 +7030,9 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             'purchase_order.id as id_po',
             'purchase_order.no_po',
             'purchase_order.no_gr',
+            'purchase_request.id as id',
+            'p.id as id_pending',
             'purchase_request.no_pr',
-            'p.id',
             'p.no_pending',
             'c.company',
             'u.image as user_image',
@@ -6989,7 +7047,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         ];
         $doneGroupBy = [
             'purchase_order.id', 'purchase_order.no_po', 'purchase_order.no_gr',
-            'purchase_request.no_pr', 'p.id', 'p.no_pending', 'c.company',
+            'purchase_request.id', 'purchase_request.no_pr', 'p.id', 'p.no_pending', 'c.company',
             'u.image', 'u.name', 'purchase_request.date',
         ];
 
@@ -7017,7 +7075,39 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             ->groupBy($doneGroupBy)
             ->select($doneColumns);
 
-        $data = $doneFromQuotation->unionAll($doneFromUnitQuotation)->orderByDesc('date')->get();
+        $doneFromManual = PurchaseOrder::whereNotNull('purchase_order.id_purchase_request')
+            ->join('purchase_request', 'purchase_request.id', '=', 'purchase_order.id_purchase_request')
+            ->where('purchase_request.status', '3')
+            ->join('pending_po as p', 'purchase_request.id_pending', '=', 'p.id')
+            ->leftJoin('users as u', 'u.id', '=', 'purchase_request.id_user')
+            ->leftJoin('detail_purchase_order as dpo', 'dpo.id_purchase_order', '=', 'purchase_order.id')
+            ->whereNull('p.id_quotation')
+            ->whereNull('p.id_unit_quotation')
+            ->groupBy([
+                'purchase_order.id', 'purchase_order.no_po', 'purchase_order.no_gr',
+                'purchase_request.id', 'purchase_request.no_pr', 'p.id', 'p.no_pending', 'p.title',
+                'u.image', 'u.name', 'purchase_request.date',
+            ])
+            ->select([
+                'purchase_order.id as id_po',
+                'purchase_order.no_po',
+                'purchase_order.no_gr',
+                'purchase_request.id as id',
+                'p.id as id_pending',
+                'purchase_request.no_pr',
+                'p.no_pending',
+                DB::raw("COALESCE(NULLIF(p.title, ''), 'Pengadaan Internal') as company"),
+                'u.image as user_image',
+                'u.name as user_name',
+                'purchase_request.date',
+                DB::raw('COUNT(dpo.id) as item_count'),
+                DB::raw("CASE WHEN COUNT(dpo.id) = 1 THEN MAX(CONCAT(dpo.product, ' (', dpo.info_qty, ')')) ELSE CONCAT(COUNT(dpo.id), ' item') END as item"),
+                DB::raw("CASE WHEN COUNT(dpo.id) = 1 THEN MAX(CONCAT(dpo.qty, ' ', dpo.info_qty)) ELSE CONCAT(COUNT(dpo.id), ' item') END as qty_full"),
+                DB::raw("GROUP_CONCAT(DISTINCT CONCAT(dpo.product, ' x', dpo.qty, ' ', dpo.info_qty) SEPARATOR '||') as items_detail"),
+                DB::raw('(SELECT pi.id FROM product_in pi WHERE pi.id_purchase_order = purchase_order.id ORDER BY pi.id ASC LIMIT 1) as id_gr'),
+            ]);
+
+        $data = $doneFromQuotation->unionAll($doneFromUnitQuotation)->unionAll($doneFromManual)->orderByDesc('date')->get();
         return response()->json(['data' => $data]);
     });
     // Dua endpoint terpisah buat sub-tab "Menunggu Penerimaan": PO yang lahir dari

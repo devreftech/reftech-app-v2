@@ -15,7 +15,11 @@ class AttendanceController extends Controller
 {
     public function index(Request $request)
     {
-        $selectedDate = $request->input('date', Carbon::today()->toDateString());
+        $selectedDate = $request->input('date', Carbon::today('Asia/Jakarta')->toDateString());
+        
+        // Evaluasi Auto Clock-Out otomatis (Asia/Jakarta GMT+7)
+        HrAttendance::processAutoClockOutIfDue($selectedDate);
+
         $departmentId = $request->input('department_id');
         $status = $request->input('status');
         $search = $request->input('search');

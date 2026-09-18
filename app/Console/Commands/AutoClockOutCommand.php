@@ -45,7 +45,7 @@ class AutoClockOutCommand extends Command
             $clockOutTime .= ':00';
         }
 
-        $targetDate = $this->option('date') ?: Carbon::today()->toDateString();
+        $targetDate = $this->option('date') ?: Carbon::today('Asia/Jakarta')->toDateString();
 
         $attendances = HrAttendance::whereDate('date', $targetDate)
             ->whereNotNull('clock_in')
@@ -64,7 +64,7 @@ class AutoClockOutCommand extends Command
             $count++;
         }
 
-        $this->info("Berhasil melakukan Auto Clock-Out untuk {$count} karyawan pada tanggal {$targetDate} pukul {$clockOutTime}.");
+        $this->info("Berhasil melakukan Auto Clock-Out untuk {$count} karyawan pada tanggal {$targetDate} pukul {$clockOutTime} (WIB / GMT+7).");
         return 0;
     }
 }

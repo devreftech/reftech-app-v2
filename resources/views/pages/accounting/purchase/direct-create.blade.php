@@ -174,8 +174,18 @@
                                     <select name="supplier" id="supplierSelect" class="form-select select2-supplier">
                                         <option value="">-- Toko / Marketplace Manual (Ketik di bawah) --</option>
                                         @foreach ($suppliers as $sup)
-                                            <option value="{{ $sup->id }}" {{ old('supplier') == $sup->id ? 'selected' : '' }}>
-                                                {{ $sup->supplier }} {{ $sup->address ? "({$sup->address})" : '' }}
+                                            @php
+                                                $infoLower = strtolower($sup->info ?? '');
+                                                $areaLower = strtolower($sup->area ?? '');
+                                                $isImpor = str_contains($infoLower, 'import') || str_contains($infoLower, 'impor') || str_contains($areaLower, 'china') || str_contains($areaLower, 'shanghai');
+                                                $supplierType = $isImpor ? 'Impor' : 'Lokal';
+                                            @endphp
+                                            <option value="{{ $sup->id }}"
+                                                data-type="{{ $supplierType }}"
+                                                data-supplier-name="{{ $sup->supplier }}"
+                                                data-address="{{ $sup->address }}"
+                                                {{ old('supplier') == $sup->id ? 'selected' : '' }}>
+                                                [{{ $supplierType }}] {{ $sup->supplier }} {{ $sup->address ? "({$sup->address})" : '' }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -221,7 +231,7 @@
                             <div class="row g-3">
                                 <div class="col-sm-6">
                                     <label class="form-label fw-semibold small text-dark">Tipe Pembelian</label>
-                                    <select name="purchase_type" class="form-select">
+                                    <select name="purchase_type" id="purchaseTypeSelect" class="form-select">
                                         <option value="Lokal" {{ old('purchase_type', 'Lokal') == 'Lokal' ? 'selected' : '' }}>Lokal</option>
                                         <option value="Impor" {{ old('purchase_type') == 'Impor' ? 'selected' : '' }}>Impor</option>
                                     </select>
@@ -497,19 +507,83 @@
 
     <script>
         $(document).ready(function() {
-            // Select2 Init
-            $('.select2-supplier').select2({
+            // Select2 Custom Template with Badge Lokal / Impor
+            function formatSupplierOption(state) {
+                if (!state.id) {
+                    return state.text;
+                }
+                var $el = $(state.element);
+                var type = $el.data('type') || (state.text.indexOf('[Impor]') !== -1 ? 'Impor' : 'Lokal');
+                var isImpor = (type === 'Impor');
+                var badgeClass = isImpor ? 'bg-label-info text-info' : 'bg-label-success text-success';
+                var badgeIcon = isImpor ? 'mdi-earth' : 'mdi-map-marker-outline';
+                var supplierName = $el.data('supplier-name') || state.text.replace(/^\[(Lokal|Impor)\]\s*/, '').replace(/\s*\(.*\)$/, '');
+                var address = $el.data('address') ? '<span class="text-muted font-11 ms-1">(' + $el.data('address') + ')</span>' : '';
+
+                return $(
+                    '<div class="d-flex align-items-center justify-content-between py-1">' +
+                        '<div class="d-flex align-items-center gap-2 text-truncate">' +
+                            '<span class="badge ' + badgeClass + ' rounded-pill px-2 py-0 font-10 fw-bold flex-shrink-0 d-inline-flex align-items-center gap-1">' +
+                                '<i class="mdi ' + badgeIcon + '"></i> ' + type +
+                            '</span>' +
+                            '<span class="fw-semibold text-dark text-truncate">' + supplierName + '</span>' +
+                            address +
+                        '</div>' +
+                    '</div>'
+                );
+            }
+
+            function formatSupplierSelection(state) {
+                if (!state.id) {
+                    return state.text;
+                }
+                var $el = $(state.element);
+                var type = $el.data('type') || (state.text.indexOf('[Impor]') !== -1 ? 'Impor' : 'Lokal');
+                var isImpor = (type === 'Impor');
+                var badgeClass = isImpor ? 'bg-label-info text-info' : 'bg-label-success text-success';
+                var badgeIcon = isImpor ? 'mdi-earth' : 'mdi-map-marker-outline';
+                var supplierName = $el.data('supplier-name') || state.text.replace(/^\[(Lokal|Impor)\]\s*/, '').replace(/\s*\(.*\)$/, '');
+
+                return $(
+                    '<div class="d-inline-flex align-items-center gap-2">' +
+                        '<span class="badge ' + badgeClass + ' rounded-pill px-2 py-0 font-10 fw-bold d-inline-flex align-items-center gap-1">' +
+                            '<i class="mdi ' + badgeIcon + '"></i> ' + type +
+                        '</span>' +
+                        '<span class="fw-semibold text-dark">' + supplierName + '</span>' +
+                    '</div>'
+                );
+            }
+
+            var $supplierSelect = $('.select2-supplier').select2({
                 placeholder: 'Pilih Supplier Terdaftar atau ketik toko manual',
                 allowClear: true,
-                width: '100%'
+                width: '100%',
+                templateResult: formatSupplierOption,
+                templateSelection: formatSupplierSelection,
+                escapeMarkup: function(m) { return m; }
             }).on('change', function() {
-                var selectedText = $(this).find('option:selected').text().trim();
+                var $selected = $(this).find('option:selected');
                 var selectedVal = $(this).val();
                 if (selectedVal) {
-                    var cleanSupplier = selectedText.replace(/\s*\(.*\)$/, '');
-                    $('#supplierNameInput').val(cleanSupplier);
+                    var supplierName = $selected.data('supplier-name') || $selected.text().replace(/^\[(Lokal|Impor)\]\s*/, '').replace(/\s*\(.*\)$/, '');
+                    $('#supplierNameInput').val(supplierName);
+
+                    // Otomatis sinkronkan Tipe Pembelian di Card 2 (Info Pengiriman)
+                    var purchaseType = $selected.data('type');
+                    if (purchaseType) {
+                        $('#purchaseTypeSelect').val(purchaseType).trigger('change');
+                    }
                 }
             });
+
+            // Sinkronkan tipe pembelian saat pertama kali load jika supplier sudah terpilih
+            if ($supplierSelect.val()) {
+                var $initSelected = $supplierSelect.find('option:selected');
+                var initType = $initSelected.data('type');
+                if (initType) {
+                    $('#purchaseTypeSelect').val(initType);
+                }
+            }
 
             // Format number to IDR Rupiah
             function formatRupiah(num) {

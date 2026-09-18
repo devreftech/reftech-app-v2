@@ -499,14 +499,18 @@
                         @endif
                     </a>
                 </li>
-                @if (Auth::user()->role != 'Accounting')
-                    <li class="menu-item {{ request()->is('bast') || request()->is('bast/*') ? 'active' : '' }}">
-                        <a href="{{ route('bast.index') }}" class="menu-link">
-                            <i class="menu-icon tf-icons mdi mdi-file-sign"></i>
-                            <div data-i18n="BAST">BAST</div>
-                        </a>
-                    </li>
-                @endif
+                <li class="menu-item {{ request()->is('delivery') || request()->is('delivery/*') ? 'active' : '' }}">
+                    <a href="{{ route('delivery.index') }}" class="menu-link">
+                        <i class="menu-icon tf-icons mdi mdi-truck-delivery-outline"></i>
+                        <div data-i18n="Delivery Order">Delivery Order</div>
+                    </a>
+                </li>
+                <li class="menu-item {{ request()->is('bast') || request()->is('bast/*') ? 'active' : '' }}">
+                    <a href="{{ route('bast.index') }}" class="menu-link">
+                        <i class="menu-icon tf-icons mdi mdi-file-sign"></i>
+                        <div data-i18n="BAST">BAST</div>
+                    </a>
+                </li>
                 @php
                     if (!isset($monitoringCount)) {
                         $monitoringBoard = \App\Models\KanbanBoard::where('type', 'monitoring')->first();
@@ -991,7 +995,7 @@
             <li class="menu-item {{ request()->is('hr/my-portal*') ? 'active' : '' }}">
                 <a href="{{ route('hr.portal.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-card-account-details-star-outline"></i>
-                    <div data-i18n="Portal Mandiri">Portal Mandiri (ESS)</div>
+                    <div data-i18n="My Portal">My Portal</div>
                 </a>
             </li>
             @endif
@@ -2104,6 +2108,15 @@
                 <a href="{{ route('tool-audit.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-tools"></i>
                     <div data-i18n="Audit Tools">Audit Tools</div>
+                    @php
+                        $hasPendingToolAudit = Auth::check() && \App\Models\ToolAudit::where('id_technician', Auth::id())
+                            ->whereIn('status_submit', ['Draft', 'Rejected'])
+                            ->whereHas('period', fn($q) => $q->where('status', 'Open'))
+                            ->exists();
+                    @endphp
+                    @if ($hasPendingToolAudit)
+                        <div class="badge bg-danger rounded-pill ms-auto px-2 py-1 font-10">Wajib</div>
+                    @endif
                 </a>
             </li>
 
@@ -2548,6 +2561,58 @@
                 <a href="{{ route('change-warehouse.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-swap-horizontal"></i>
                     <div data-i18n="Warehouse Transfer">Warehouse Transfer</div>
+                </a>
+            </li>
+
+            <li class="menu-header fw-light mt-4">
+                <span class="menu-header-text">HR Management</span>
+            </li>
+            <li class="menu-item {{ (request()->is('hr') || request()->is('hr/dashboard')) ? 'active' : '' }}">
+                <a href="{{ route('hr.dashboard') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-view-dashboard-outline"></i>
+                    <div data-i18n="Dashboard HR">Dashboard HR</div>
+                </a>
+            </li>
+            <li class="menu-item {{ (request()->is('employees*') || request()->is('hr/employees*')) ? 'active' : '' }}">
+                <a href="{{ route('employees.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-account-group-outline"></i>
+                    <div data-i18n="Hub Karyawan">Hub Karyawan</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('hr/attendances*') ? 'active' : '' }}">
+                <a href="{{ route('hr.attendances.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-calendar-clock-outline"></i>
+                    <div data-i18n="Presensi">Presensi &amp; Waktu</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('hr/leaves*') ? 'active' : '' }}">
+                <a href="{{ route('hr.leaves.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-calendar-remove-outline"></i>
+                    <div data-i18n="Cuti & Izin">Cuti &amp; Izin</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('hr/payrolls*') ? 'active' : '' }}">
+                <a href="{{ route('hr.payrolls.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-cash-multiple"></i>
+                    <div data-i18n="Payroll">Payroll &amp; Slip Gaji</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('hr/reimbursements*') ? 'active' : '' }}">
+                <a href="{{ route('hr.reimbursements.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-receipt-text-outline"></i>
+                    <div data-i18n="Reimbursement">Reimbursement</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('hr/assets*') ? 'active' : '' }}">
+                <a href="{{ route('hr.assets.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-laptop"></i>
+                    <div data-i18n="Alat Kerja">Alat Kerja Karyawan</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('hr/evaluations*') ? 'active' : '' }}">
+                <a href="{{ route('hr.evaluations.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-star-circle-outline"></i>
+                    <div data-i18n="Evaluasi Kinerja">Evaluasi Kinerja</div>
                 </a>
             </li>
 
@@ -3013,12 +3078,12 @@
         {{-- Akses Universal Portal Karyawan (ESS) untuk seluruh staf yang sudah terhubung dengan data Employee --}}
         @if (Auth::user() && Auth::user()->role !== 'Client' && Auth::user()->employee)
             <li class="menu-header fw-light mt-4">
-                <span class="menu-header-text">Portal Karyawan</span>
+                <span class="menu-header-text">My Portal</span>
             </li>
             <li class="menu-item {{ request()->is('hr/my-portal*') ? 'active' : '' }}">
                 <a href="{{ route('hr.portal.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-clock-fast text-success"></i>
-                    <div data-i18n="Presensi & Cuti Saya">Presensi &amp; Cuti Saya</div>
+                    <div data-i18n="My Portal">My Portal</div>
                 </a>
             </li>
         @endif

@@ -44,10 +44,8 @@
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h5 class="fw-bold mb-0">Details</h5>
                                     <div class="d-flex gap-2">
-                                        <a type="button" data-bs-toggle="modal"
-                                            data-bs-target="#updateLeads{{ $existing->id }}">
-                                            <button type="button" class="btn btn-sm btn-label-primary">Edit</button>
-                                        </a>
+                                        <button type="button" class="btn btn-sm btn-label-primary" data-bs-toggle="modal"
+                                            data-bs-target="#updateLeads{{ $existing->id }}">Edit</button>
                                         <a href="#" data-id="{{ $existing->id }}"
                                             class="btn btn-sm btn-label-danger delete-leads">Delete</a>
                                         <a href="#" data-id="{{ $existing->id }}"
@@ -129,9 +127,8 @@
                                     <h6 class="fw-bold mb-0 text-primary">
                                         <i class="mdi mdi-file-certificate-outline me-1"></i>NPWP & Tax Details
                                     </h6>
-                                    <a type="button" data-bs-toggle="modal" data-bs-target="#editNpwpDetails">
-                                        <button type="button" class="btn btn-sm btn-label-primary">Edit</button>
-                                    </a>
+                                    <button type="button" class="btn btn-sm btn-label-primary" data-bs-toggle="modal"
+                                        data-bs-target="#editNpwpDetails">Edit</button>
                                 </div>
                                 <div class="card-body py-3">
                                     <div class="row mb-2">
@@ -163,10 +160,8 @@
                                             <p class="text-muted mb-0">{{ $plant->address }}</p>
                                         </div>
                                         <div class="d-flex gap-2 flex-shrink-0 ms-2">
-                                            <a type="button" data-bs-toggle="modal"
-                                                data-bs-target="#updatePlant-{{ $plant->id }}">
-                                                <button type="button" class="btn btn-sm btn-label-primary">Edit</button>
-                                            </a>
+                                            <button type="button" class="btn btn-sm btn-label-primary" data-bs-toggle="modal"
+                                                data-bs-target="#updatePlant-{{ $plant->id }}">Edit</button>
                                             <a href="#" data-id="{{ $plant->id }}"
                                                 class="btn btn-sm btn-label-danger delete-plant">Delete</a>
                                         </div>
@@ -573,7 +568,7 @@
                                     <input type="text" id="npwpInput" class="form-control npwp-number-only" name="npwp"
                                         placeholder="16 Digit No. NPWP" value="{{ old('npwp', $existing->npwp) }}" 
                                         inputmode="numeric" pattern="\d{16}" minlength="16" maxlength="16"
-                                        title="No. NPWP harus persis 16 digit angka" required>
+                                        title="No. NPWP harus persis 16 digit angka">
                                     <label for="npwpInput">No. NPWP (16 Digit)</label>
                                 </div>
                             </div>

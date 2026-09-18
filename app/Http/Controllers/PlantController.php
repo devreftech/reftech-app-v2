@@ -28,7 +28,7 @@ class PlantController extends Controller
         $plantsave = $plant->save();
 
         if ($plantsave) {
-            return redirect('/existing/' . $id)->with('message', 'Plant telah ditambahkan');
+            return redirect()->back()->with('message', 'Plant telah ditambahkan');
         }
     }
 
@@ -52,7 +52,7 @@ class PlantController extends Controller
         $plantsave = $plant->save();
 
         if ($plantsave) {
-            return redirect('/existing/' . $client->id)->with('message', 'Plant telah diubah');
+            return redirect()->back()->with('message', 'Plant telah diubah');
         }
     }
 

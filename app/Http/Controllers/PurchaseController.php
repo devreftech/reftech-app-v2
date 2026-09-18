@@ -46,13 +46,8 @@ class PurchaseController extends Controller
         // $purchaseRequestListQuery di routes/web.php) nge-INNER JOIN ke
         // purchase_request_detail, jadi PR yang cuma header kosong tanpa item
         // (mis. draft yang semua detailnya sudah dihapus) tidak pernah muncul di
-        // tabel. Selain itu id_pending harus masih ada. Dua syarat itu dipakai di
-        // sini juga supaya angka badge = jumlah baris yang benar-benar tampil.
-        $validPendingIds = PendingPO::where(function ($q) {
-            $q->whereNotNull('id_quotation')->orWhereNotNull('id_unit_quotation');
-        })->pluck('id');
-
-        $badgeBase = fn () => PurchaseRequest::whereIn('id_pending', $validPendingIds)->has('details');
+        // tabel.
+        $badgeBase = fn () => PurchaseRequest::whereNotNull('id_pending')->has('details');
 
         $newCount = $badgeBase()->where('status', '0')->count();
         $accCount = $badgeBase()->where('status', '1')->count();
@@ -70,6 +65,130 @@ class PurchaseController extends Controller
 
         return view('pages.warehouse.purchase.index', compact('newCount', 'accCount', 'deliveryCount', 'doneCount', 'poCount'));
     }
+
+    public function storeManual(Request $request)
+    {
+        if (!in_array(Auth::user()->role, ['Developer', 'Admin', 'Super Admin', 'Logistic'])) {
+            abort(403, 'Akses tidak diizinkan.');
+        }
+
+        $request->validate([
+            'id_pending' => 'nullable|exists:pending_po,id',
+            'date' => 'required|date',
+            'title' => 'nullable|string|max:255',
+            'items' => 'required|array|min:1',
+            'items.*.id_equivalent' => 'required',
+            'items.*.qty' => 'required|numeric|min:0.01',
+            'items.*.note' => 'nullable|string|max:255',
+            'status' => 'nullable|in:0,1',
+        ]);
+
+        return DB::transaction(function () use ($request) {
+            if ($request->filled('id_pending')) {
+                $pending = PendingPO::findOrFail($request->id_pending);
+            } else {
+                $year = now()->format('Y');
+                $month = now()->format('m');
+                $prefixSo = "SO-MANUAL/{$year}/{$month}/";
+                $lastSo = PendingPO::where('no_pending', 'like', $prefixSo . '%')->orderByDesc('id')->value('no_pending');
+                $lastSeq = $lastSo ? (int) substr($lastSo, -3) : 0;
+                $noPending = $prefixSo . str_pad($lastSeq + 1, 3, '0', STR_PAD_LEFT);
+
+                $pending = new PendingPO();
+                $pending->no_pending = $noPending;
+                $pending->title = $request->title ?: 'Pengadaan Internal / Manual';
+                $pending->type = 'Manual';
+                $pending->status = '1';
+                $pending->date = $request->date;
+                $pending->save();
+            }
+
+            $pr = new PurchaseRequest();
+            $pr->no_pr = $this->prService->generateNoPr();
+            $pr->id_pending = $pending->id;
+            $pr->id_user = Auth::id();
+            $pr->status = $request->status !== null ? $request->status : '1'; // Default: langsung status ACC (1) siap PO
+            $pr->date = $request->date;
+            $pr->save();
+
+            $createdCount = 0;
+            foreach ($request->items as $item) {
+                $qty = (float) ($item['qty'] ?? 0);
+                $idEquiv = $item['id_equivalent'] ?? null;
+                if ($qty > 0 && $idEquiv) {
+                    $pr->details()->create([
+                        'id_equivalent' => $idEquiv,
+                        'qty' => $qty,
+                        'note' => $item['note'] ?? null,
+                    ]);
+                    $createdCount++;
+                }
+            }
+
+            if ($createdCount === 0) {
+                throw new \Exception('Minimal 1 item sparepart dengan Qty > 0 harus dipilih.');
+            }
+
+            $targetSoMsg = $pending->no_pending ? " untuk SO {$pending->no_pending}" : "";
+            return redirect()->route('purchase-request.index')
+                ->with('success', "Purchase Request {$pr->no_pr} ({$createdCount} item){$targetSoMsg} berhasil dibuat.");
+        });
+    }
+
+    /**
+     * Cari Sales Order (PendingPO) yang terdaftar untuk dipilih pada pembuatan PR Manual.
+     */
+    public function searchSalesOrder(Request $request)
+    {
+        $q = trim($request->get('q', ''));
+
+        $query = PendingPO::with([
+            'quote.pic.client',
+            'unitQuotation.pic.client',
+        ])->whereNotNull('no_pending');
+
+        if (!empty($q)) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('no_pending', 'like', "%{$q}%")
+                    ->orWhere('title', 'like', "%{$q}%")
+                    ->orWhereHas('quote.pic.client', function ($cq) use ($q) {
+                        $cq->where('company', 'like', "%{$q}%")
+                           ->orWhere('name', 'like', "%{$q}%");
+                    })
+                    ->orWhereHas('unitQuotation.pic.client', function ($uq) use ($q) {
+                        $uq->where('company', 'like', "%{$q}%")
+                           ->orWhere('name', 'like', "%{$q}%");
+                    });
+            });
+        }
+
+        $results = $query->orderByDesc('id')->take(35)->get();
+
+        $data = $results->map(function ($so) {
+            $company = $so->quote?->pic?->client?->company 
+                ?: $so->unitQuotation?->pic?->client?->company 
+                ?: $so->quote?->pic?->client?->name 
+                ?: $so->unitQuotation?->pic?->client?->name 
+                ?: ($so->title ?: 'Customer Non-Quotation');
+
+            $dateStr = $so->date ? Carbon::parse($so->date)->format('d/m/Y') : ($so->created_at ? $so->created_at->format('d/m/Y') : '-');
+            $typeStr = $so->type ?: ($so->id_unit_quotation ? 'Unit' : 'Part');
+            $text = "{$so->no_pending} — {$company} [{$typeStr}, {$dateStr}]";
+
+            return [
+                'id' => $so->id,
+                'no_pending' => $so->no_pending,
+                'company' => $company,
+                'type' => $typeStr,
+                'date' => $dateStr,
+                'title' => $so->title,
+                'text' => $text,
+            ];
+        });
+
+        return response()->json(['data' => $data]);
+    }
+
     public function store(Request $request, $id)
     {
         $pending = PendingPO::findOrFail($id);
@@ -140,20 +259,25 @@ class PurchaseController extends Controller
             }
         }
 
-        // Also check if an extra manual equivalent item was submitted
-        if ($request->has('manual_id_equivalent') && $request->has('manual_qty')) {
-            $manualQty = (float) $request->manual_qty;
-            $manualEquiv = $request->manual_id_equivalent;
-            if ($manualQty > 0 && $manualEquiv && $manualEquiv != '0') {
-                if (!$header) {
-                    $header = $this->prService->findOrCreateDraftHeader($id, Auth::id());
+        // Also check if extra manual equivalent items were submitted (array or scalar)
+        if ($request->has('manual_id_equivalent')) {
+            $manualEquivs = is_array($request->manual_id_equivalent) ? $request->manual_id_equivalent : [$request->manual_id_equivalent];
+            $manualQtys = is_array($request->manual_qty) ? $request->manual_qty : [$request->manual_qty];
+            $manualNotes = is_array($request->manual_note) ? $request->manual_note : [$request->manual_note];
+
+            foreach ($manualEquivs as $k => $manualEquiv) {
+                $manualQty = (float) ($manualQtys[$k] ?? 0);
+                if ($manualQty > 0 && $manualEquiv && $manualEquiv != '0') {
+                    if (!$header) {
+                        $header = $this->prService->findOrCreateDraftHeader($id, Auth::id());
+                    }
+                    $header->details()->create([
+                        'id_equivalent' => $manualEquiv,
+                        'qty' => $manualQty,
+                        'note' => $manualNotes[$k] ?? null,
+                    ]);
+                    $createdCount++;
                 }
-                $header->details()->create([
-                    'id_equivalent' => $manualEquiv,
-                    'qty' => $manualQty,
-                    'note' => $request->manual_note ?? null,
-                ]);
-                $createdCount++;
             }
         }
 
@@ -170,28 +294,26 @@ class PurchaseController extends Controller
     }
     public function show($id)
     {
-        // Cek apakah $id adalah id_pending (PendingPO) atau ID langsung PurchaseRequest
-        $purchase = PurchaseRequest::where('id_pending', $id)
-            ->with(['details.equivalent.product', 'details.allocations.purchaseOrder', 'purchaseOrders.detail', 'rejector'])
-            ->first();
+        // 1. Prioritaskan pencarian langsung berdasarkan ID PurchaseRequest
+        $purchase = PurchaseRequest::with(['details.equivalent.product', 'details.allocations.purchaseOrder', 'purchaseOrders.detail', 'rejector'])->find($id);
 
         if ($purchase) {
-            $pending = PendingPO::find($id);
+            $pending = PendingPO::find($purchase->id_pending);
         } else {
-            $purchase = PurchaseRequest::with(['details.equivalent.product', 'details.allocations.purchaseOrder', 'purchaseOrders.detail', 'rejector'])->find($id);
-            if ($purchase && $purchase->id_pending) {
-                $pending = PendingPO::find($purchase->id_pending);
-            } else {
-                $pending = PendingPO::find($id);
-            }
+            // 2. Fallback jika parameter $id adalah id_pending (PendingPO)
+            $purchase = PurchaseRequest::where('id_pending', $id)
+                ->with(['details.equivalent.product', 'details.allocations.purchaseOrder', 'purchaseOrders.detail', 'rejector'])
+                ->orderByDesc('id')
+                ->first();
+            $pending = PendingPO::find($id);
         }
 
-        if (!$pending) {
+        if (!$pending && !$purchase) {
             abort(404, 'Purchase Request atau Sales Order tidak ditemukan.');
         }
 
-        $id = $pending->id;
-        $isUnitQuotation = (bool) $pending->id_unit_quotation;
+        $id = $pending ? $pending->id : ($purchase ? $purchase->id_pending : null);
+        $isUnitQuotation = $pending && (bool) $pending->id_unit_quotation;
 
         if ($isUnitQuotation) {
             // Unit Quotation punya field/relasi setara buat semua yang dibutuhkan view ini
@@ -1340,9 +1462,63 @@ class PurchaseController extends Controller
                 'success' => true,
                 'message' => 'Developer Action: PR ' . ($purchase->no_pr ?: '#' . $purchase->id) . ' berhasil di-rollback ke Approved (status 1).'
             ]);
+        } elseif ($action === 'rollback_new') {
+            // Putuskan relasi PO jika ada
+            foreach ($purchase->purchaseOrders as $po) {
+                $po->id_purchase_request = null;
+                $po->save();
+            }
+
+            $purchase->status = '0';
+            $purchase->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Developer Action: PR ' . ($purchase->no_pr ?: '#' . $purchase->id) . ' berhasil dikembalikan ke New PR (status 0).'
+            ]);
         }
 
         return response()->json(['message' => 'Aksi developer tidak valid.'], 422);
+    }
+
+    /**
+     * Kembalikan Purchase Request dari status Approved (1) ke New PR (0).
+     */
+    public function rollbackToNew(Request $request, $id)
+    {
+        $user = Auth::user();
+        $userRole = $user ? $user->getRawOriginal('role') : '';
+
+        if (!in_array($userRole, ['Developer', 'Admin', 'Super Admin', 'Logistic']) && !$user?->isDeveloper()) {
+            return response()->json(['message' => 'Akses tidak diizinkan.'], 403);
+        }
+
+        $purchase = PurchaseRequest::find($id);
+        if (!$purchase) {
+            return response()->json(['message' => 'Data Purchase Request tidak ditemukan.'], 404);
+        }
+
+        if ($purchase->status != '1') {
+            return response()->json(['message' => 'Hanya PR berstatus Approved (Telah Disetujui) yang dapat dikembalikan ke New PR.'], 422);
+        }
+
+        // Jika ada PO terkait, lepaskan tautan PR dari PO
+        $poCount = $purchase->purchaseOrders()->count();
+        if ($poCount > 0) {
+            foreach ($purchase->purchaseOrders as $po) {
+                $po->id_purchase_request = null;
+                $po->save();
+            }
+        }
+
+        $purchase->status = '0';
+        $purchase->save();
+
+        $poMsg = $poCount > 0 ? " ({$poCount} PO terkait berhasil dilepas)" : "";
+        return response()->json([
+            'success' => true,
+            'message' => 'Purchase Request ' . ($purchase->no_pr ?: '#' . $purchase->id) . " berhasil dikembalikan ke New PR (Draft){$poMsg}."
+        ]);
     }
 
     /**

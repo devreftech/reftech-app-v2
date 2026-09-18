@@ -154,7 +154,8 @@ class PendingController extends Controller
             $activity = ChangeStatus::where('id_pending', $id)->with('comment')->get();
             $resis = Expanse::where('id_pending', $id)->where('type', 'Resi')->get();
             $dPending = DetailPendingPO::with('equivalent.product')->where('id_pending', $id)->get();
-            $purchase = PurchaseRequest::where('id_pending', $id)->with('details')->first();
+            $purchases = PurchaseRequest::where('id_pending', $id)->with(['details.equivalent.product', 'purchaseOrders'])->get();
+            $purchase = $purchases->first();
             $return = Retur::where('id_pending', $id)->get();
             $allproductOut = ProductOut::leftJoin('pending_po', 'product_out.id', '=', 'pending_po.id_product_out')
                 ->whereNull('pending_po.id_product_out')
@@ -166,7 +167,7 @@ class PendingController extends Controller
 
             return view('pages.pending.detail-unit', compact(
                 'pending', 'quote', 'invoices', 'activity', 'resis',
-                'dPending', 'purchase', 'return', 'allproductOut', 'product', 'detProduct'
+                'dPending', 'purchases', 'purchase', 'return', 'allproductOut', 'product', 'detProduct'
             ));
         }
 
@@ -187,10 +188,11 @@ class PendingController extends Controller
             ->get();
         // $allEquiv = SerialProduct::all();
         // $detProduct = DetailProductOut::where('id_product_out', $allproductOut[0]->id)->get();
-        $purchase = PurchaseRequest::where('id_pending', $id)->with('details.equivalent.product')->first();
+        $purchases = PurchaseRequest::where('id_pending', $id)->with(['details.equivalent.product', 'purchaseOrders'])->get();
+        $purchase = $purchases->first();
         $serial = collect();
 
-        return view('pages.pending.detail', compact('purchase', 'return', 'detProduct', 'activity', 'allproductOut', 'subQuote', 'pending', 'quotation', 'invoice', 'detQuotation', 'resi', 'product', 'resis', 'serial'));
+        return view('pages.pending.detail', compact('purchases', 'purchase', 'return', 'detProduct', 'activity', 'allproductOut', 'subQuote', 'pending', 'quotation', 'invoice', 'detQuotation', 'resi', 'product', 'resis', 'serial'));
     }
 
     /**

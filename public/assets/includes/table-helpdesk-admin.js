@@ -1,17 +1,42 @@
 $(function () {
     function statusBadge(status) {
-        var cls = {
-            Open: "bg-label-danger",
-            "In Progress": "bg-label-warning",
-            Resolved: "bg-label-success",
-        }[status] || "bg-label-secondary";
-        return '<span class="badge ' + cls + '">' + status + "</span>";
+        var map = {
+            Open: {
+                cls: "bg-label-danger",
+                dot: "bg-danger",
+            },
+            "In Progress": {
+                cls: "bg-label-warning",
+                dot: "bg-warning",
+            },
+            Resolved: {
+                cls: "bg-label-success",
+                dot: "bg-success",
+            },
+        };
+        var item = map[status] || {
+            cls: "bg-label-secondary",
+            dot: "bg-secondary",
+        };
+        return (
+            '<span class="badge ' +
+            item.cls +
+            ' rounded-pill py-1 px-2 d-inline-flex align-items-center gap-1 fw-semibold" style="font-size:0.75rem;"><span class="helpdesk-stat-dot ' +
+            item.dot +
+            '"></span>' +
+            status +
+            "</span>"
+        );
     }
 
     function dateCol(data) {
         if (!data) return "-";
         var m = moment(data);
-        return m.isValid() ? m.format("DD-MM-YYYY HH:mm") : data;
+        return m.isValid()
+            ? '<span class="text-nowrap small text-muted"><i class="mdi mdi-clock-outline me-1"></i>' +
+                  m.format("DD-MM-YYYY HH:mm") +
+                  "</span>"
+            : data;
     }
 
     function initHelpdeskTable(selector, ajaxUrl) {
@@ -36,34 +61,88 @@ $(function () {
                 {
                     targets: 0,
                     render: function (data) {
-                        return '<a href="javascript:;" class="fw-semibold text-primary button-helpdesk-view">' + data + "</a>";
+                        return (
+                            '<a href="javascript:;" class="fw-bold font-monospace text-primary button-helpdesk-view d-inline-flex align-items-center gap-1">' +
+                            '<i class="mdi mdi-ticket-outline fs-6"></i>' +
+                            data +
+                            "</a>"
+                        );
                     },
                 },
                 {
                     targets: 1,
-                    className: "text-center",
                     orderable: false,
                     render: function (data, type, full) {
-                        if (type !== "display") return full.name || "System/Guest";
                         var name = full.name || "System/Guest";
-                        var initials = name.split(" ").map(function (w) { return w.charAt(0); }).slice(0, 2).join("").toUpperCase();
-                        var colors = ["bg-label-primary", "bg-label-success", "bg-label-warning", "bg-label-danger", "bg-label-info", "bg-label-secondary"];
+                        if (type !== "display") return name;
+                        var initials = name
+                            .split(" ")
+                            .map(function (w) {
+                                return w.charAt(0);
+                            })
+                            .slice(0, 2)
+                            .join("")
+                            .toUpperCase();
+                        var colors = [
+                            "bg-label-primary",
+                            "bg-label-success",
+                            "bg-label-warning",
+                            "bg-label-danger",
+                            "bg-label-info",
+                            "bg-label-secondary",
+                        ];
                         var colorClass = colors[name.charCodeAt(0) % colors.length];
                         var av = data
-                            ? '<img src="/' + data + '" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;" alt="' + name + '">'
-                            : '<div class="avatar-initial rounded-circle ' + colorClass + '" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;font-size:11px;font-weight:700;">' + initials + '</div>';
-                        return '<span data-bs-toggle="tooltip" data-bs-placement="top" title="' + name + '">' + av + '</span>';
+                            ? '<img src="/' +
+                              data +
+                              '" class="rounded-circle flex-shrink-0" style="width:28px;height:28px;object-fit:cover;" alt="' +
+                              name +
+                              '">'
+                            : '<div class="avatar-initial rounded-circle flex-shrink-0 ' +
+                              colorClass +
+                              '" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;font-size:10px;font-weight:700;">' +
+                              initials +
+                              "</div>";
+                        return (
+                            '<div class="d-flex align-items-center gap-2">' +
+                            av +
+                            '<span class="fw-medium text-dark text-truncate" style="max-width:130px;" title="' +
+                            name +
+                            '">' +
+                            name +
+                            "</span></div>"
+                        );
                     },
                 },
-                { targets: 3, render: function (data) { return statusBadge(data); } },
-                { targets: 4, render: function (data) { return dateCol(data); } },
+                {
+                    targets: 2,
+                    render: function (data) {
+                        return '<span class="fw-semibold text-dark">' + (data || "-") + "</span>";
+                    },
+                },
+                {
+                    targets: 3,
+                    render: function (data) {
+                        return statusBadge(data);
+                    },
+                },
+                {
+                    targets: 4,
+                    render: function (data, type) {
+                        if (type === "sort" || type === "type") return data;
+                        return dateCol(data);
+                    },
+                },
                 {
                     targets: 5,
                     orderable: false,
                     searchable: false,
+                    className: "text-center",
                     render: function () {
-                        return '<a href="javascript:;" class="btn btn-sm btn-icon btn-text-secondary waves-effect waves-light rounded-pill button-helpdesk-view">' +
-                            '<i class="menu-icon tf-icons mdi mdi-text-box-outline mdi-20px"></i></a>';
+                        return (
+                            '<button type="button" class="btn btn-sm btn-label-primary waves-effect button-helpdesk-view px-2 py-1">' +
+                            '<i class="mdi mdi-eye-outline me-1"></i>Detail</button>'
+                        );
                     },
                 },
             ],
@@ -71,10 +150,22 @@ $(function () {
             displayLength: 10,
             lengthMenu: [10, 25, 50, 75, 100],
             dom:
-                '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-end"f>>' +
+                '<"d-flex flex-column flex-md-row justify-content-between align-items-center mb-3 gap-2"<"d-flex align-items-center"l><"d-flex align-items-center"f>>' +
                 '<"table-responsive"t>' +
-                '<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
-            language: { emptyTable: "Belum ada tiket." },
+                '<"d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 gap-2"<"small text-muted"i><"d-flex"p>>',
+            language: {
+                emptyTable: "Belum ada tiket.",
+                search: "",
+                searchPlaceholder: "Cari nomor tiket, judul...",
+                lengthMenu: "Tampilkan _MENU_ data",
+                info: "Menampilkan _START_ - _END_ dari _TOTAL_ tiket",
+                paginate: {
+                    first: "«",
+                    previous: "‹",
+                    next: "›",
+                    last: "»",
+                },
+            },
             drawCallback: function () {
                 $('[data-bs-toggle="tooltip"]').tooltip();
             },
@@ -82,16 +173,22 @@ $(function () {
 
         $table.on("click", "tbody tr .button-helpdesk-view", function () {
             var data = dt.row($(this).closest("tr")).data();
+            if (!data) return;
             $("#detailHelpdesk").attr("data-id", data.id);
             $("#detailHelpdeskNoTicket").text(data.no_ticket);
             $("#detailHelpdeskRequester").text(data.name || "System/Guest");
             $("#detailHelpdeskTitle").text(data.title);
             $("#detailHelpdeskStatus").html(statusBadge(data.status));
-            $("#detailHelpdeskDate").text(dateCol(data.created_at));
+            $("#detailHelpdeskDate").html(dateCol(data.created_at));
             $("#detailHelpdeskDescription").text(data.description);
             if (data.url_accessed) {
                 var u = data.url_accessed.trim();
-                var href = (u.indexOf('http://') === 0 || u.indexOf('https://') === 0) ? u : (u.indexOf('/') === 0 ? u : '/' + u);
+                var href =
+                    u.indexOf("http://") === 0 || u.indexOf("https://") === 0
+                        ? u
+                        : u.indexOf("/") === 0
+                        ? u
+                        : "/" + u;
                 $("#detailHelpdeskUrl").attr("href", href);
                 $("#detailHelpdeskUrlText").text(u);
                 $("#detailHelpdeskUrlWrapper").removeClass("d-none");

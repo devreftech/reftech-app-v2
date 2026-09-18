@@ -68,5 +68,6 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'check.expired' => \App\Http\Middleware\CheckExpiredQuotations::class,
         'finance.pin' => \App\Http\Middleware\EnsureFinancePinVerified::class,
+        'hr.access' => \App\Http\Middleware\EnsureHrAccess::class,
     ];
 }

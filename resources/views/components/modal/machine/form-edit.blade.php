@@ -43,10 +43,10 @@
                                 </select> --}}
                                 <select class="select2 form-select" data-allow-clear="true" name="unit"
                                     data-id="1">
-                                    <option> ---- Choose Uniit Here ---- </option>
+                                    <option value=""> ---- Choose Unit Here ---- </option>
                                     @foreach ($unit as $item)
                                         <option value="{{ $item->id }}" {{ $machine->id_unit == $item->id ? 'selected' : '' }}>
-                                            {{ $item->brand }} - {{ $item->unit->sku ?? '-' }} ||
+                                            {{ $item->brand }} - {{ $item->pn ?? ($item->unit->sku ?? '-') }} ||
                                             {{ $item->bar ?? '-' }} - {{ $item->air_cap ?? '-' }}
                                         </option>
                                     @endforeach
@@ -96,6 +96,5 @@
                 </div>
             </div>
         </div>
-    </div>
     </div>
 </form>

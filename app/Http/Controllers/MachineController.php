@@ -128,7 +128,7 @@ class MachineController extends Controller
         $machine->location = $request->location;
         $machineSave = $machine->save();
         if ($machineSave) {
-            return redirect('/existing/' . $request->id_client)->with('message', 'data telah ditambahkan');
+            return redirect()->back()->with('message', 'data telah diubah');
         }
     }
 

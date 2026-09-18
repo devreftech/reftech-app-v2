@@ -86,30 +86,26 @@ class ToolAuditPeriodGenerator
     }
 
     /**
-     * Idempotent — aman dipanggil berkali-kali (dari cron ataupun lazy trigger
-     * saat teknisi/admin buka halaman Audit Tools). Bikin tool_audit_period +
-     * tool_audit (Draft) + tool_audit_item kalau belum ada, untuk tiap teknisi
-     * yang punya minimal 1 tools Aktif.
+     * Generate tool_audit (Draft) + tool_audit_item untuk semua teknisi yang memegang tools aktif
+     * pada periode tertentu. Idempotent.
      */
-    public function generateIfNeeded(?Carbon $date = null): ?ToolAuditPeriod
+    public function generateForPeriod(ToolAuditPeriod $period): array
     {
-        $window = $this->activeWindow($date);
-        if (!$window) {
-            return null;
-        }
-
-        $period = ToolAuditPeriod::firstOrCreate(
-            ['tahun' => $window['tahun'], 'semester' => $window['semester']],
-            [
-                'tanggal_mulai' => $window['tanggal_mulai'],
-                'tanggal_selesai' => $window['tanggal_selesai'],
-                'status' => 'Open',
-            ]
-        );
-
         $romawiMap = [1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV'];
-        $romawi = $romawiMap[$window['semester']] ?? 'I';
-        $technicians = User::where('role', 'Technician')->get();
+        $romawi = $romawiMap[$period->semester] ?? (string) $period->semester;
+
+        // Ambil semua user/teknisi yang memegang tools aktif
+        $picIds = FixedAsset::where('type', 'Tools')
+            ->where('status_tools', 'Aktif')
+            ->whereNotNull('id_pic')
+            ->pluck('id_pic')
+            ->unique()
+            ->toArray();
+
+        $technicians = User::whereIn('id', $picIds)->get();
+
+        $countTechnicians = 0;
+        $countTools = 0;
 
         foreach ($technicians as $technician) {
             $activeTools = FixedAsset::where('type', 'Tools')
@@ -124,19 +120,73 @@ class ToolAuditPeriodGenerator
             $audit = ToolAudit::firstOrCreate(
                 ['id_audit_period' => $period->id, 'id_technician' => $technician->id],
                 [
-                    'no_audit' => ($technician->code ?? $technician->id) . '/' . $romawi . '/' . $window['tahun'],
+                    'no_audit' => ($technician->code ?? $technician->id) . '/' . $romawi . '/' . $period->tahun,
                     'status_submit' => 'Draft',
                     'total_tools' => $activeTools->count(),
                 ]
             );
+
+            // Update total_tools jika ada penambahan tools baru
+            if ($audit->status_submit == 'Draft') {
+                $audit->total_tools = $activeTools->count();
+                $audit->save();
+            }
 
             foreach ($activeTools as $tool) {
                 ToolAuditItem::firstOrCreate(
                     ['id_tool_audit' => $audit->id, 'id_fixed_asset' => $tool->id],
                     ['qty_actual' => $tool->qty]
                 );
+                $countTools++;
             }
+
+            $countTechnicians++;
         }
+
+        return [
+            'technicians' => $countTechnicians,
+            'tools' => $countTools,
+            'period' => $period,
+        ];
+    }
+
+    /**
+     * Idempotent — aman dipanggil berkali-kali (dari cron ataupun lazy trigger
+     * saat teknisi/admin buka halaman Audit Tools).
+     */
+    public function generateIfNeeded(?Carbon $date = null): ?ToolAuditPeriod
+    {
+        $targetDate = $date ?? Carbon::today();
+        $dateStr = $targetDate->toDateString();
+
+        // 1. Prioritaskan periode aktif yang berstatus 'Open' di database
+        $openPeriod = ToolAuditPeriod::where('status', 'Open')
+            ->where('tanggal_mulai', '<=', $dateStr)
+            ->where('tanggal_selesai', '>=', $dateStr)
+            ->latest('id')
+            ->first();
+
+        if ($openPeriod) {
+            $this->generateForPeriod($openPeriod);
+            return $openPeriod;
+        }
+
+        // 2. Jika tidak ada periode custom aktif, cek window otomatis (Q1-Q4 / Catch-up)
+        $window = $this->activeWindow($targetDate);
+        if (!$window) {
+            return null;
+        }
+
+        $period = ToolAuditPeriod::firstOrCreate(
+            ['tahun' => $window['tahun'], 'semester' => $window['semester']],
+            [
+                'tanggal_mulai' => $window['tanggal_mulai'],
+                'tanggal_selesai' => $window['tanggal_selesai'],
+                'status' => 'Open',
+            ]
+        );
+
+        $this->generateForPeriod($period);
 
         return $period;
     }

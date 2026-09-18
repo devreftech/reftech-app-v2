@@ -93,6 +93,43 @@
                             </table>
                         </div>
                     </div>
+
+                    {{-- Section Optional: Tambah Item Manual / Di Luar SO --}}
+                    <div class="card border border-dashed shadow-none mt-3">
+                        <div class="card-header bg-transparent py-2 px-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <span class="fw-bold text-secondary font-12"><i class="mdi mdi-plus-circle-outline me-1"></i> Tambah Item Manual / Di Luar List SO (Opsional)</span>
+                            <button type="button" class="btn btn-xs btn-outline-primary btn-add-manual-pr-row">
+                                <i class="mdi mdi-plus me-1"></i> Tambah Baris Manual
+                            </button>
+                        </div>
+                        <div class="card-body p-3">
+                            <div id="manualPrItemsContainer" class="d-flex flex-column gap-2">
+                                <div class="manual-pr-row border rounded-3 p-2 bg-light bg-opacity-50">
+                                    <div class="row g-2 align-items-center">
+                                        <div class="col-md-5">
+                                            <label class="form-label font-11 mb-1">Cari Equivalent Master</label>
+                                            <select class="form-select select2-equivalent-ajax" data-allow-clear="true" name="manual_id_equivalent[]" style="width:100%">
+                                                <option value="0"> ---- Cari Part Number / Brand ---- </option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label font-11 mb-1">Qty</label>
+                                            <input type="number" class="form-control form-control-sm" name="manual_qty[]" min="0" step="any" placeholder="0">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label font-11 mb-1">Catatan</label>
+                                            <input type="text" class="form-control form-control-sm" name="manual_note[]" placeholder="Catatan item manual...">
+                                        </div>
+                                        <div class="col-md-1 text-center pt-3">
+                                            <button type="button" class="btn btn-sm btn-icon btn-outline-danger btn-remove-manual-pr-row" title="Hapus Baris" style="display: none;">
+                                                <i class="mdi mdi-trash-can-outline"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer bg-light py-2 border-top">
                     <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">Batal</button>
