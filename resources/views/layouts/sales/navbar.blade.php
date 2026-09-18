@@ -44,8 +44,9 @@
                     $navEmp = Auth::user()->employee;
                     $navTodayAtt = null;
                     if ($navEmp && $navEmp->can_online_attendance) {
+                        \App\Models\HrAttendance::processAutoClockOutIfDue();
                         $navTodayAtt = \App\Models\Hr\HrAttendance::where('employee_id', $navEmp->id)
-                            ->whereDate('date', \Carbon\Carbon::today())
+                            ->whereDate('date', \Carbon\Carbon::today('Asia/Jakarta'))
                             ->first();
                     }
                 @endphp
@@ -569,8 +570,11 @@
                     aria-expanded="false">
                     <i class="mdi mdi-bell-outline mdi-24px" id="navbarBellIcon"></i>
                     @php
+                        $userRole = Auth::user()?->role;
+                        $isProspectRole = in_array($userRole, ['Admin', 'Developer', 'Super Admin', 'Sales', 'Support']) || in_array(Auth::id(), \App\Http\Controllers\ProspectController::PROSPECT_NOTIF_RECIPIENT_IDS);
+
                         $unreadCommentCount = 0;
-                        if (Auth::user()?->role != 'Admin' && @$unreadComment) {
+                        if (Auth::user()?->role != 'Admin' && @$unreadComment && $isProspectRole) {
                             $unreadCommentCount = $unreadComment->count();
                         }
                         $unreadProspectCount = $unreadCommentCount;
@@ -578,7 +582,7 @@
                         $unreadProspectNotifCount = 0;
                         $unreadProspectCreatedCount = 0;
                         $unreadProspectAssignedCount = 0;
-                        if (Auth::check()) {
+                        if (Auth::check() && $isProspectRole) {
                             try {
                                 $prospectNotifications = \App\Models\ProspectNotification::where('id_user', Auth::id())
                                     ->whereIn('type', ['prospect_created', 'prospect_assigned'])
@@ -595,6 +599,31 @@
                             }
                         }
                         $unreadKanbanMentionCount = (@$kanbanMentions ? $kanbanMentions->where('is_read', 0)->count() : 0);
+                        
+                        $myActiveToolAudit = null;
+                        $incomingToolTransfers = collect();
+                        if (Auth::check()) {
+                            try {
+                                $myActiveToolAudit = \App\Models\ToolAudit::with('period')
+                                    ->where('id_technician', Auth::id())
+                                    ->whereIn('status_submit', ['Draft', 'Rejected'])
+                                    ->whereHas('period', function ($q) {
+                                        $q->where('status', 'Open');
+                                    })
+                                    ->latest('id')
+                                    ->first();
+
+                                $incomingToolTransfers = \App\Models\ToolTransfer::with(['fixedAsset.toolsMaster', 'fromUser'])
+                                    ->where('id_to_user', Auth::id())
+                                    ->where('status', 'Pending')
+                                    ->latest('id')
+                                    ->get();
+                            } catch (\Throwable $e) {
+                                $myActiveToolAudit = null;
+                                $incomingToolTransfers = collect();
+                            }
+                        }
+
                         $hasBadge = false;
                         if (Auth::user()?->role == 'Admin' && @$unreadCommentAdmin && $unreadCommentAdmin->count() >= 1) $hasBadge = true;
                         if ($unreadCommentCount >= 1) $hasBadge = true;
@@ -604,6 +633,8 @@
                         if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && @$pendingCancelQuotes && $pendingCancelQuotes->count() >= 1) $hasBadge = true;
                         if (in_array(Auth::user()?->role, ['Accounting', 'Admin', 'Sales']) && @$paymentUnreadCount >= 1) $hasBadge = true;
                         if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && (@$apDueTodayCount >= 1 || @$apDueSoonCount >= 1 || @$apOverdueCount >= 1)) $hasBadge = true;
+                        if ($myActiveToolAudit) $hasBadge = true;
+                        if ($incomingToolTransfers->count() >= 1) $hasBadge = true;
                     @endphp
                     <span id="navbarBellDot" class="position-absolute top-0 start-50 translate-middle-y badge badge-dot bg-danger mt-2 border {{ $hasBadge ? '' : 'd-none' }}"></span>
                 </a>
@@ -628,6 +659,8 @@
                                         if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && @$pendingCancelQuotes) $totalBadges += $pendingCancelQuotes->count();
                                         if (in_array(Auth::user()?->role, ['Accounting', 'Admin', 'Sales']) && @$paymentUnreadCount) $totalBadges += $paymentUnreadCount;
                                         if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && @$apDueTodayCount) $totalBadges += $apDueTodayCount;
+                                        if ($myActiveToolAudit) $totalBadges += 1;
+                                        if ($incomingToolTransfers->count() > 0) $totalBadges += $incomingToolTransfers->count();
                                     @endphp
                                     <span id="notifTotalBadge" class="badge rounded-pill bg-danger py-1 px-2 fw-bold {{ $totalBadges > 0 ? '' : 'd-none' }}" style="font-size: 11px;">
                                         {{ $totalBadges }} Baru
@@ -640,6 +673,16 @@
                             </div>
                             {{-- Category Badges --}}
                             <div class="d-flex flex-wrap gap-1 mt-2 align-items-center">
+                                @if ($incomingToolTransfers->count() > 0)
+                                    <span class="badge rounded-pill bg-warning text-dark">
+                                        <i class="mdi mdi-account-arrow-right me-1"></i> {{ $incomingToolTransfers->count() }} Transfer Tools Masuk
+                                    </span>
+                                @endif
+                                @if ($myActiveToolAudit)
+                                    <span class="badge rounded-pill bg-warning text-dark">
+                                        <i class="mdi mdi-tools me-1"></i> 1 Audit Tools Wajib
+                                    </span>
+                                @endif
                                 @if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']))
                                     @if (@$apDueTodayCount > 0)
                                         <span class="badge rounded-pill bg-danger">{{ $apDueTodayCount }} Hutang Hari Ini</span>
@@ -650,7 +693,7 @@
                                 @if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && @$pendingCancelQuotes && $pendingCancelQuotes->count() > 0)
                                     <span class="badge rounded-pill bg-danger">{{ $pendingCancelQuotes->count() }} Cancel PO</span>
                                 @endif
-                                @if ($unreadProspectNotifCount > 0)
+                                @if ($unreadProspectNotifCount > 0 && $isProspectRole)
                                     @if ($unreadProspectCreatedCount > 0)
                                         <span id="prospectCreatedCountBadge" class="badge rounded-pill bg-primary">{{ $unreadProspectCreatedCount }} Prospect Baru</span>
                                     @endif
@@ -665,7 +708,7 @@
                                     @if (@$unreadCommentAdmin && $unreadCommentAdmin->count() > 0)
                                         <span class="badge rounded-pill bg-label-primary">{{ $unreadCommentAdmin->count() }} New Comment</span>
                                     @endif
-                                @else
+                                @elseif ($isProspectRole)
                                     @if ($unreadCommentCount > 0)
                                         <span id="commentUnreadCountBadge" class="badge rounded-pill bg-label-primary">{{ $unreadCommentCount }} Komentar Baru</span>
                                     @endif
@@ -714,7 +757,7 @@
                             }
 
                             // 4. Prospect Notifications (Baru & Ditugaskan)
-                            if ($prospectNotifications && $prospectNotifications->count() > 0) {
+                            if ($isProspectRole && $prospectNotifications && $prospectNotifications->count() > 0) {
                                 foreach ($prospectNotifications as $pn) {
                                     $unifiedNotifications->push([
                                         'type' => 'prospect',
@@ -726,7 +769,7 @@
 
                             // 5. Comments on Prospects
                             $renderedCommentIds = [];
-                            if (Auth::user()?->role != 'Admin' && @$comment) {
+                            if ($isProspectRole && Auth::user()?->role != 'Admin' && @$comment) {
                                 foreach ($comment as $item) {
                                     if ($item->type == 'prospect') {
                                         $renderedCommentIds[] = $item->idC;
@@ -740,7 +783,7 @@
                             }
 
                             // 5b. Mention comments for current user
-                            if (Auth::check()) {
+                            if (Auth::check() && $isProspectRole) {
                                 try {
                                     $userMentions = \App\Models\MentionComment::where('id_mention', Auth::id())
                                         ->whereNotIn('id_comment', $renderedCommentIds)
@@ -778,6 +821,26 @@
                                         'type' => 'kanban_mention',
                                         'time' => \Carbon\Carbon::parse($km->comment_created_at ?? $km->mention_created_at),
                                         'item' => $km,
+                                    ]);
+                                }
+                            }
+
+                            // 8. Tool Audit Notification for Technician
+                            if ($myActiveToolAudit) {
+                                $unifiedNotifications->push([
+                                    'type' => 'tool_audit',
+                                    'time' => \Carbon\Carbon::parse($myActiveToolAudit->updated_at ?? ($myActiveToolAudit->period?->tanggal_mulai ?? now())),
+                                    'item' => $myActiveToolAudit,
+                                ]);
+                            }
+
+                            // 9. Incoming Tool Transfer Requests for Technician
+                            if ($incomingToolTransfers && $incomingToolTransfers->count() > 0) {
+                                foreach ($incomingToolTransfers as $trf) {
+                                    $unifiedNotifications->push([
+                                        'type' => 'tool_transfer_incoming',
+                                        'time' => \Carbon\Carbon::parse($trf->requested_at),
+                                        'item' => $trf,
                                     ]);
                                 }
                             }
@@ -1125,6 +1188,87 @@
                                             @if ($isUnread)
                                                 <span class="notif-unread-dot dot-primary"></span>
                                             @endif
+                                        </div>
+                                    </a>
+                                @elseif ($notif['type'] === 'tool_audit')
+                                    @php
+                                        $auditItem = $notif['item'];
+                                        $periodItem = $auditItem->period;
+                                        $isRejected = $auditItem->status_submit === 'Rejected';
+                                        $dueDate = $periodItem ? \Carbon\Carbon::parse($periodItem->tanggal_selesai) : null;
+                                        $daysLeft = $dueDate ? ceil(now()->floatDiffInDays($dueDate, false)) : 0;
+                                    @endphp
+                                    <a href="{{ route('tool-audit.show', $auditItem->id) }}"
+                                        class="notif-card notif-card-comment notif-card-unread"
+                                        style="border-left: 3px solid #ff9f43 !important; background: rgba(255, 159, 67, 0.06) !important;">
+                                        <div class="notif-card-inner">
+                                            <div class="notif-card-avatar d-flex align-items-center justify-content-center bg-label-warning rounded-3" style="width: 40px; height: 40px; min-width: 40px;">
+                                                <i class="mdi mdi-tools fs-4 text-warning"></i>
+                                            </div>
+                                            <div class="notif-card-content">
+                                                <div class="notif-card-meta">
+                                                    <span class="badge {{ $isRejected ? 'bg-label-danger' : 'bg-label-warning' }} notif-badge-pill">
+                                                        <i class="mdi {{ $isRejected ? 'mdi-alert-circle' : 'mdi-clock-alert-outline' }} me-1"></i>
+                                                        {{ $isRejected ? 'Perlu Revisi Audit' : 'Self-Audit Tools' }}
+                                                    </span>
+                                                    @if ($periodItem)
+                                                        <span class="notif-time-ago text-danger fw-semibold">
+                                                            <i class="mdi mdi-calendar-alert fs-7"></i>
+                                                            @if ($daysLeft > 0)
+                                                                Sisa {{ $daysLeft }} hari
+                                                            @elseif ($daysLeft === 0)
+                                                                Batas Hari Ini!
+                                                            @else
+                                                                Terlewat {{ abs($daysLeft) }} hari
+                                                            @endif
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                                <h6 class="notif-card-title text-dark fw-bold">
+                                                    Periode {{ $periodItem ? $periodItem->period_title : 'Audit Tools Berkala' }}
+                                                </h6>
+                                                <p class="notif-card-desc mb-0">
+                                                    @if ($isRejected)
+                                                        <span class="text-danger fw-semibold">Audit ditolak:</span> {{ \Illuminate\Support\Str::limit($auditItem->catatan_admin ?? 'Silakan periksa catatan dan perbaiki data audit.', 60) }}
+                                                    @else
+                                                        Audit tools wajib diisi sebelum {{ $dueDate ? $dueDate->translatedFormat('d M Y') : 'batas waktu' }}. Klik untuk mulai.
+                                                    @endif
+                                                </p>
+                                            </div>
+                                            <span class="notif-unread-dot dot-warning"></span>
+                                        </div>
+                                    </a>
+                                @elseif ($notif['type'] === 'tool_transfer_incoming')
+                                    @php
+                                        $trfItem = $notif['item'];
+                                        $trfAsset = $trfItem->fixedAsset;
+                                        $trfMaster = $trfAsset?->toolsMaster;
+                                        $trfDate = \Carbon\Carbon::parse($trfItem->requested_at);
+                                    @endphp
+                                    <a href="{{ route('tool-audit.index') }}#tab-tools"
+                                        class="notif-card notif-card-comment notif-card-unread"
+                                        style="border-left: 3px solid #ffab00 !important; background: rgba(255, 171, 0, 0.08) !important;">
+                                        <div class="notif-card-inner">
+                                            <div class="notif-card-avatar d-flex align-items-center justify-content-center bg-label-warning rounded-3" style="width: 40px; height: 40px; min-width: 40px;">
+                                                <i class="mdi mdi-account-switch fs-4 text-warning"></i>
+                                            </div>
+                                            <div class="notif-card-content">
+                                                <div class="notif-card-meta">
+                                                    <span class="badge bg-label-warning notif-badge-pill">
+                                                        <i class="mdi mdi-account-arrow-right me-1"></i> Transfer Masuk
+                                                    </span>
+                                                    <span class="notif-time-ago">
+                                                        <i class="mdi mdi-clock-outline fs-7"></i> {{ $trfDate->diffForHumans() }}
+                                                    </span>
+                                                </div>
+                                                <h6 class="notif-card-title text-dark fw-bold">
+                                                    {{ $trfMaster?->nama_tools ?? ($trfAsset?->desc ?? 'Alat Kerja') }}
+                                                </h6>
+                                                <p class="notif-card-desc mb-0">
+                                                    <span class="fw-semibold text-primary">{{ $trfItem->fromUser?->name }}</span> ingin mentransfer alat ini kepada Anda. Klik untuk meninjau.
+                                                </p>
+                                            </div>
+                                            <span class="notif-unread-dot dot-warning"></span>
                                         </div>
                                     </a>
                                 @endif

@@ -191,6 +191,7 @@ class ServiceReportsController extends Controller
         $rule = [
             'id_client' => 'required|exists:client,id',
             'name_pic' => 'required|string|max:255',
+            'position' => 'nullable|string|max:25',
             'phone_pic' => 'nullable|string|max:50',
             'email_pic' => 'nullable|email|max:255',
         ];
@@ -198,9 +199,10 @@ class ServiceReportsController extends Controller
 
         $pic = Pic::create([
             'id_client' => $request->id_client,
-            'name_pic' => $request->name_pic,
-            'phone_pic' => $request->phone_pic,
-            'email_pic' => $request->email_pic,
+            'name_pic' => trim($request->name_pic),
+            'position' => substr(trim($request->position ?: 'PIC'), 0, 25),
+            'phone_pic' => substr(trim($request->phone_pic ?: '-'), 0, 15),
+            'email_pic' => trim($request->email_pic ?: '-'),
         ]);
 
         return response()->json([
@@ -274,43 +276,58 @@ class ServiceReportsController extends Controller
     public function store(Request $request)
     {
         $rule = [
-            'no_service' => 'required',
-            'running' => 'required',
-            'load' => 'required',
-            'jobdesc' => 'required',
-            'desc' => 'required',
+            'no_service'    => 'required|string|max:255',
+            'type'          => 'required|in:Visit,Service,General,Rental,Cleaning,Commissioning',
+            'id_pic'        => 'required|exists:pic,id',
+            'machine'       => 'required|exists:machine,id',
+            'date'          => 'required|date',
+            'running'       => 'required|integer|min:0',
+            'load'          => 'required|integer|min:0',
+            'jobdesc'       => 'required|string|max:255',
+            'desc'          => 'required|string',
+            'pm_level'      => 'nullable|string|max:255',
+            'recomendation' => 'nullable|string',
         ];
         $customMessages = [
-            'no_service.required' => 'Field No Service Wajib Diisi!',
-            'running.required' => 'Field Running Wajib Diisi!',
-            'load.required' => 'Field Load Wajib Diisi!',
-            'jobdesc.required' => 'Field Jobdesc Wajib Diisi!',
-            'desc.required' => 'Field desc Wajib Diisi!',
+            'no_service.required' => 'Nomor Service wajib diisi.',
+            'type.required'       => 'Pilih Jenis Layanan (Service Type).',
+            'type.in'             => 'Jenis Layanan tidak valid.',
+            'id_pic.required'     => 'PIC Klien wajib dipilih.',
+            'id_pic.exists'       => 'PIC Klien tidak valid.',
+            'machine.required'    => 'Unit Mesin wajib dipilih.',
+            'machine.exists'      => 'Unit Mesin tidak valid.',
+            'date.required'       => 'Tanggal pengerjaan wajib diisi.',
+            'running.required'    => 'Running hours wajib diisi.',
+            'running.integer'     => 'Running hours harus berupa angka bulat.',
+            'load.required'       => 'Load hours wajib diisi.',
+            'load.integer'        => 'Load hours harus berupa angka bulat.',
+            'jobdesc.required'    => 'Job description (ringkasan tugas) wajib diisi.',
+            'desc.required'       => 'Detail temuan & keterangan servis wajib diisi.',
         ];
 
         $this->validate($request, $rule, $customMessages);
-        // dd($request);
+
         // Masukan Data ke Service Reports
         $reports = new Reports();
-        $reports->id_technician = $request->technician;
+        $reports->id_technician = Auth::id() ?: $request->technician;
         $reports->id_pic = $request->id_pic;
         $reports->id_machine = $request->machine;
         $reports->no_service = $request->no_service;
         $reports->type = $request->type;
-        $reports->pm_level = $request->pm_level;
-        $reports->running = $request->running;
-        $reports->load = $request->load;
+        $reports->pm_level = ($request->type === 'Service') ? $request->pm_level : null;
+        $reports->running = (int) $request->running;
+        $reports->load = (int) $request->load;
         $reports->date = $request->date;
         $reports->jobdesc = $request->jobdesc;
         $reports->desc = $request->desc;
-        $reports->recomendation = $request->recomendation;
-        $reports->sign_client = NULL;
+        $reports->recomendation = trim($request->recomendation ?: '-');
+        $reports->sign_client = null;
         // Alur approval: report baru selalu masuk antrian ServiceM dulu.
         $reports->approval_status = 'pending';
         $status = $reports->save();
-        // dd($reports);
+
         if ($status) {
-            return redirect('service-reports/' . $reports->id)->with('success', 'Data Has been created');
+            return redirect('service-reports/' . $reports->id)->with('success', 'Service report berhasil dibuat.');
         }
     }
 
@@ -359,40 +376,53 @@ class ServiceReportsController extends Controller
     public function update(Request $request, $id)
     {
         $rule = [
-            'running' => 'required',
-            'load' => 'required',
-            'jobdesc' => 'required',
-            'desc' => 'required',
+            'type'          => 'required|in:Visit,Service,General,Rental,Cleaning,Commissioning',
+            'id_pic'        => 'required|exists:pic,id',
+            'machine'       => 'required|exists:machine,id',
+            'date'          => 'required|date',
+            'running'       => 'required|integer|min:0',
+            'load'          => 'required|integer|min:0',
+            'jobdesc'       => 'required|string|max:255',
+            'desc'          => 'required|string',
+            'pm_level'      => 'nullable|string|max:255',
+            'recomendation' => 'nullable|string',
         ];
         $customMessages = [
-            'running.required' => 'Field Running Wajib Diisi!',
-            'load.required' => 'Field Load Wajib Diisi!',
-            'jobdesc.required' => 'Field Jobdesc Wajib Diisi!',
-            'desc.required' => 'Field desc Wajib Diisi!',
+            'type.required'       => 'Pilih Jenis Layanan (Service Type).',
+            'type.in'             => 'Jenis Layanan tidak valid.',
+            'id_pic.required'     => 'PIC Klien wajib dipilih.',
+            'id_pic.exists'       => 'PIC Klien tidak valid.',
+            'machine.required'    => 'Unit Mesin wajib dipilih.',
+            'machine.exists'      => 'Unit Mesin tidak valid.',
+            'date.required'       => 'Tanggal pengerjaan wajib diisi.',
+            'running.required'    => 'Running hours wajib diisi.',
+            'running.integer'     => 'Running hours harus berupa angka bulat.',
+            'load.required'       => 'Load hours wajib diisi.',
+            'load.integer'        => 'Load hours harus berupa angka bulat.',
+            'jobdesc.required'    => 'Job description (ringkasan tugas) wajib diisi.',
+            'desc.required'       => 'Detail temuan & keterangan servis wajib diisi.',
         ];
 
         $this->validate($request, $rule, $customMessages);
-        // dd($request);
+
         // Masukan Data ke Service Reports
-        $reports = Reports::find($id);
-        // $reports->id_technician = $request->technician;
+        $reports = Reports::findOrFail($id);
         $reports->id_pic = $request->id_pic;
         $reports->type = $request->type;
-        $reports->pm_level = $request->pm_level;
+        $reports->pm_level = ($request->type === 'Service') ? $request->pm_level : null;
         $reports->id_machine = $request->machine;
-        // $reports->no_service = $request->no_service;
-        $reports->running = $request->running;
-        $reports->load = $request->load;
+        $reports->running = (int) $request->running;
+        $reports->load = (int) $request->load;
         $reports->jobdesc = $request->jobdesc;
         $reports->date = $request->date;
         $reports->desc = $request->desc;
-        $reports->recomendation = $request->recomendation;
+        $reports->recomendation = trim($request->recomendation ?: '-');
         // Isi report berubah => wajib di-approve ulang ServiceM.
         $this->resetApproval($reports);
         $status = $reports->save();
-        // dd($reports);
+
         if ($status) {
-            return redirect('service-reports/' . $reports->id)->with('success', 'Data Has been updated');
+            return redirect('service-reports/' . $reports->id)->with('success', 'Service report berhasil diperbarui.');
         }
     }
 

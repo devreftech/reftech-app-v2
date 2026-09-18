@@ -119,20 +119,29 @@
                     <input type="text" name="technician" value="{{ Auth::user()->id }}" hidden>
                 @endif
 
+                @php
+                    $effectiveSalesId = old('id_sales', $selectedSalesId ?? (isset($report->pic->client) ? $report->pic->client->id_sales : null));
+                    $effectiveClientId = old('client', $selectedClientId ?? (isset($report->pic) ? $report->pic->id_client : null));
+                    $effectivePicId = old('id_pic', $selectedPICId ?? $report->id_pic ?? null);
+                    $effectiveMachineId = old('machine', $selectedMachineId ?? $report->id_machine ?? null);
+                    $effectiveType = old('type', @$report->type ?? '');
+                    $effectivePmLevel = old('pm_level', @$report->pm_level ?? '');
+                @endphp
+
                 <div class="row g-3">
                     @if (!isset($isInternalStock) || !$isInternalStock)
                         <div class="col-12 col-md-3">
                             <div class="form-floating form-floating-outline">
                                 <select class="select2 form-select invoice-item-sales" data-allow-clear="true"
-                                    name="id_sales" id="selectSales" {{ @$reports ? 'disabled' : '' }}>
+                                    name="id_sales" id="selectSales" {{ @$report ? 'disabled' : '' }}>
                                     <option selected disabled>----- Select Sales -----</option>
                                     @foreach ($sales as $sale)
                                         <option data-id="{{ $sale->id }}" value="{{ $sale->id }}"
-                                            {{ (isset($selectedSalesId) && $selectedSalesId == $sale->id) || (@$report && isset($report->pic->client->sales) && $report->pic->client->sales->id == $sale->id) ? 'selected' : '' }}>
+                                            {{ (string)$effectiveSalesId === (string)$sale->id ? 'selected' : '' }}>
                                             {{ $sale->name }}</option>
                                     @endforeach
                                 </select>
-                                <label for="selectSales">Sales Representative</label>
+                                <label for="selectSales">Sales Representative <span class="text-danger">*</span></label>
                             </div>
                             <input type="text" name="technician" value="{{ Auth::user()->id }}" hidden>
                         </div>
@@ -147,7 +156,7 @@
                                             {{ $report->pic->client->company }}</option>
                                     @endif
                                 </select>
-                                <label for="client-dropdown">Client / Company</label>
+                                <label for="client-dropdown">Client / Company <span class="text-danger">*</span></label>
                             </div>
                         </div>
                         <div class="col-12 col-md-3">
@@ -161,7 +170,7 @@
                                                 {{ $report->pic->name_pic }}</option>
                                         @endif
                                     </select>
-                                    <label for="pic-dropdown">PIC Klien</label>
+                                    <label for="pic-dropdown">PIC Klien <span class="text-danger">*</span></label>
                                 </div>
                                 <button type="button" class="btn btn-icon btn-label-primary mt-1" id="btnQuickPic" title="Tambah PIC Baru">
                                     <i class="mdi mdi-plus"></i>
@@ -174,14 +183,14 @@
                         <div class="form-floating form-floating-outline">
                             <select class="form-select" id="service-type-select" aria-label="Service Type" name="type">
                                 <option selected="" disabled>---- Choose Service Type ----</option>
-                                <option value="Visit" {{ @$report->type == 'Visit' ? 'Selected' : '' }}>Visit</option>
-                                <option value="Service" {{ @$report->type == 'Service' ? 'Selected' : '' }}>Service</option>
-                                <option value="General" {{ @$report->type == 'General' ? 'Selected' : '' }}>General Check</option>
-                                <option value="Rental" {{ @$report->type == 'Rental' ? 'Selected' : '' }}>Rental</option>
-                                <option value="Cleaning" {{ @$report->type == 'Cleaning' ? 'Selected' : '' }}>Cleaning</option>
-                                <option value="Commissioning" {{ @$report->type == 'Commissioning' ? 'Selected' : '' }}>Commissioning</option>
+                                <option value="Visit" {{ $effectiveType === 'Visit' ? 'selected' : '' }}>Visit</option>
+                                <option value="Service" {{ $effectiveType === 'Service' ? 'selected' : '' }}>Service</option>
+                                <option value="General" {{ $effectiveType === 'General' ? 'selected' : '' }}>General Check</option>
+                                <option value="Rental" {{ $effectiveType === 'Rental' ? 'selected' : '' }}>Rental</option>
+                                <option value="Cleaning" {{ $effectiveType === 'Cleaning' ? 'selected' : '' }}>Cleaning</option>
+                                <option value="Commissioning" {{ $effectiveType === 'Commissioning' ? 'selected' : '' }}>Commissioning</option>
                             </select>
-                            <label for="service-type-select">Service Type</label>
+                            <label for="service-type-select">Service Type <span class="text-danger">*</span></label>
                         </div>
                     </div>
                 </div>
@@ -238,11 +247,11 @@
                         <div class="form-floating form-floating-outline">
                             <select class="form-select" id="pm-level-select" name="pm_level">
                                 <option value="" selected>---- Select PM Level ----</option>
-                                <option value="PM1" {{ @$report->pm_level == 'PM1' ? 'Selected' : '' }}>PM1 (Minor Service)</option>
-                                <option value="PM2" {{ @$report->pm_level == 'PM2' ? 'Selected' : '' }}>PM2 (Major Service)</option>
-                                <option value="PM3" {{ @$report->pm_level == 'PM3' ? 'Selected' : '' }}>PM3</option>
-                                <option value="PM4" {{ @$report->pm_level == 'PM4' ? 'Selected' : '' }}>PM4</option>
-                                <option value="Troubleshooting" {{ @$report->pm_level == 'Troubleshooting' ? 'Selected' : '' }}>Troubleshooting / Repair</option>
+                                <option value="PM1" {{ $effectivePmLevel === 'PM1' ? 'selected' : '' }}>PM1 (Minor Service)</option>
+                                <option value="PM2" {{ $effectivePmLevel === 'PM2' ? 'selected' : '' }}>PM2 (Major Service)</option>
+                                <option value="PM3" {{ $effectivePmLevel === 'PM3' ? 'selected' : '' }}>PM3</option>
+                                <option value="PM4" {{ $effectivePmLevel === 'PM4' ? 'selected' : '' }}>PM4</option>
+                                <option value="Troubleshooting" {{ $effectivePmLevel === 'Troubleshooting' ? 'selected' : '' }}>Troubleshooting / Repair</option>
                             </select>
                             <label for="pm-level-select">PM Level (Air Compressor Screw)</label>
                         </div>
@@ -251,8 +260,8 @@
                     <div class="col-12 col-md-4">
                         <div class="form-floating form-floating-outline">
                             <input class="form-control" type="date" name="date" id="date"
-                                value="{{ $report->date ?? now()->format('Y-m-d') }}">
-                            <label for="date">Tanggal Pengerjaan</label>
+                                value="{{ old('date', $report->date ?? now()->format('Y-m-d')) }}">
+                            <label for="date">Tanggal Pengerjaan <span class="text-danger">*</span></label>
                         </div>
                     </div>
 
@@ -312,6 +321,10 @@
                                 style="min-height: 110px;">{{ old('recomendation', @$report->recomendation ?? '') }}</textarea>
                             <label for="recomendation">Rekomendasi Perbaikan / Part Replacement</label>
                         </div>
+                        <div class="d-flex align-items-center mt-2 ps-1 text-danger fw-semibold" style="font-size: 0.85rem;">
+                            <i class="mdi mdi-alert-circle-outline me-1 mdi-18px"></i>
+                            <span>* Cantumkan Qty dari spare part yg di rekomendasikan</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -340,17 +353,21 @@
                 <div class="modal-body">
                     <div class="alert alert-danger d-none" id="quickPicError"></div>
                     <div class="mb-3">
-                        <label class="form-label small text-muted mb-1">Nama PIC</label>
+                        <label class="form-label small text-muted mb-1">Nama PIC <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="quickPicName" placeholder="Nama penanggung jawab">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted mb-1">Jabatan / Posisi (opsional)</label>
+                        <input type="text" class="form-control" id="quickPicPosition" placeholder="Contoh: PIC / Staff / SPV" maxlength="25">
                     </div>
                     <div class="row g-2">
                         <div class="col-6">
                             <label class="form-label small text-muted mb-1">No. HP (opsional)</label>
-                            <input type="text" class="form-control" id="quickPicPhone">
+                            <input type="text" class="form-control" id="quickPicPhone" placeholder="08..." maxlength="15">
                         </div>
                         <div class="col-6">
                             <label class="form-label small text-muted mb-1">Email (opsional)</label>
-                            <input type="email" class="form-control" id="quickPicEmail">
+                            <input type="email" class="form-control" id="quickPicEmail" placeholder="email@perusahaan.com">
                         </div>
                     </div>
                 </div>
@@ -408,18 +425,11 @@
         </div>
     </div>
 
-    @include('components.modal.machine.form-technician')
 </div>
 @endsection
 @push('after-style')
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/select2/select2.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css" />
-    <style>
-        #image-preview img {
-            max-width: 150px;
-            margin-left: 16px;
-        }
-    </style>
 @endpush
 @push('after-script')
     <script src="{{ asset('assets') }}/vendor/libs/select2/select2.js"></script>
@@ -441,10 +451,10 @@
             }
         }
         $(document).ready(function() {
-            var selectedMachineId = '{{ $selectedMachineId ?? $report->id_machine ?? '' }}';
-            var selectedSalesId = '{{ $selectedSalesId ?? (isset($report->pic->client) ? $report->pic->client->id_sales : '') }}';
-            var selectedClientId = '{{ $selectedClientId ?? (isset($report->pic) ? $report->pic->id_client : '') }}';
-            var selectedPICId = '{{ $selectedPICId ?? $report->id_pic ?? '' }}';
+            var selectedSalesId = '{{ $effectiveSalesId ?? '' }}';
+            var selectedClientId = '{{ $effectiveClientId ?? '' }}';
+            var selectedPICId = '{{ $effectivePicId ?? '' }}';
+            var selectedMachineId = '{{ $effectiveMachineId ?? '' }}';
             var isInternalStock = {{ isset($isInternalStock) && $isInternalStock ? 'true' : 'false' }};
             var csrfToken = '{{ csrf_token() }}';
             initNumericInput();
@@ -488,6 +498,7 @@
                 var payload = {
                     id_client: $('#client-dropdown').val(),
                     name_pic: $('#quickPicName').val(),
+                    position: $('#quickPicPosition').val(),
                     phone_pic: $('#quickPicPhone').val(),
                     email_pic: $('#quickPicEmail').val(),
                     _token: csrfToken,
@@ -506,13 +517,14 @@
                         $('#pic-dropdown').append(opt).prop('disabled', false)
                             .val(res.id).trigger('change');
 
-                        $('#quickPicName, #quickPicPhone, #quickPicEmail').val('');
+                        selectedPICId = res.id;
+                        $('#quickPicName, #quickPicPosition, #quickPicPhone, #quickPicEmail').val('');
                         modalQuickPic.hide();
                     },
                     error: function(xhr) {
                         var msg = (xhr.responseJSON && xhr.responseJSON.errors)
                             ? Object.values(xhr.responseJSON.errors).flat().join(' ')
-                            : 'Gagal menyimpan PIC baru.';
+                            : (xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Gagal menyimpan PIC baru.');
                         $('#quickPicError').removeClass('d-none').text(msg);
                     },
                     complete: function() {
@@ -560,6 +572,7 @@
                         refreshMachineSelect2();
                         $('#machine-dropdown').val(res.id).trigger('change');
 
+                        selectedMachineId = res.id;
                         $('#quickMachineBrand, #quickMachineModel, #quickMachineSerial, #quickMachineLocation, #quickMachineTag').val('');
                         modalQuickMachine.hide();
                     },
@@ -574,58 +587,32 @@
                     }
                 });
             });
-            $('#formFileMultiple').on('change', function() {
-                var files = this.files;
-                var dynamicInputsContainer = $('#dynamicInputsContainer');
-                console.log(dynamicInputsContainer);
 
-                dynamicInputsContainer.empty();
+            function resetDropdown($el, placeholder) {
+                $el.empty().append('<option selected disabled>' + placeholder + '</option>').prop('disabled', true);
+                if ($el.hasClass('select2-hidden-accessible')) {
+                    $el.trigger('change.select2');
+                }
+            }
 
-                for (var i = 0; i < files.length; i++) {
-                    var dynamicInput =
-                        '<input class="form-control mb-2" type="text" name="description[]" placeholder="Deskripsi untuk File ' +
-                        (i +
-                            1) + '">';
-                    dynamicInputsContainer.append(dynamicInput);
+            $('#selectSales').on('change', function(e, isInit) {
+                var salesId = $(this).find(':selected').data('id') || $(this).val();
+                if (!salesId) {
+                    resetDropdown($('#client-dropdown'), '---- Choose Client ----');
+                    resetDropdown($('#pic-dropdown'), '---- Choose PIC ----');
+                    resetMachineDropdown('---- Pilih Service Type & PIC dulu ----');
+                    return;
                 }
 
-                if (files.length !== 3 && files.length !== 6 && files.length !== 9) {
-                    alert('Gambar Wajib Kelipatan 3! 3/6/9 Maksimal 9');
-                    this.value = ''; // Menghapus file yang tidak memenuhi syarat
-                    dynamicInputsContainer.empty();
+                if (!isInit) {
+                    selectedClientId = '';
+                    selectedPICId = '';
+                    selectedMachineId = '';
+                    resetDropdown($('#pic-dropdown'), '---- Choose PIC ----');
+                    resetMachineDropdown('---- Pilih Service Type & PIC dulu ----');
                 }
 
-                console.log(files);
-                const previewContainer = document.getElementById('image-preview');
-                previewContainer.innerHTML = '';
-
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    const reader = new FileReader();
-
-                    reader.onload = function(e) {
-                        const imageContainer = document.createElement('div');
-                        const imageElement = document.createElement('img');
-                        const description = document.createElement('p');
-
-                        imageContainer.className =
-                            'image-container'; // Tambahkan kelas sesuai kebutuhan
-                        imageElement.src = e.target.result;
-                        description.textContent = 'Photo ' + (i + 1);
-
-                        imageContainer.appendChild(imageElement);
-                        imageContainer.appendChild(description);
-                        previewContainer.appendChild(imageContainer);
-
-                    };
-
-                    reader.readAsDataURL(file);
-                }
-            });
-            $('#selectSales').on('change', function() {
-                var salesId = $(this).find(':selected').data('id');
                 var Url = '/client/dropdown/' + salesId;
-
                 $.ajax({
                     url: Url,
                     type: 'GET',
@@ -633,7 +620,7 @@
                         var clientDropdown = $('#client-dropdown');
                         clientDropdown.empty();
                         clientDropdown.append(
-                            '<option selected="" disabled> ---- Choose Client Here ---- </option>'
+                            '<option selected disabled> ---- Choose Client ---- </option>'
                         );
 
                         $.each(response, function(key, value) {
@@ -645,16 +632,27 @@
                         clientDropdown.prop('disabled', false);
 
                         if (selectedClientId) {
-                            clientDropdown.val(selectedClientId).trigger('change');
+                            clientDropdown.val(selectedClientId).trigger('change', [true]);
                         }
                     }
                 });
             });
 
-            $('#client-dropdown').on('change', function() {
+            $('#client-dropdown').on('change', function(e, isInit) {
                 var clientId = $(this).find(':selected').val();
-                var Url = '/pic/dropdown/' + clientId;
+                if (!clientId) {
+                    resetDropdown($('#pic-dropdown'), '---- Choose PIC ----');
+                    resetMachineDropdown('---- Pilih Service Type & PIC dulu ----');
+                    return;
+                }
 
+                if (!isInit) {
+                    selectedPICId = '';
+                    selectedMachineId = '';
+                    resetMachineDropdown('---- Pilih Service Type & PIC dulu ----');
+                }
+
+                var Url = '/pic/dropdown/' + clientId;
                 $.ajax({
                     url: Url,
                     type: 'GET',
@@ -662,7 +660,7 @@
                         var picDropdown = $('#pic-dropdown');
                         picDropdown.empty();
                         picDropdown.append(
-                            '<option selected="" disabled> ---- Choose PIC Here ---- </option>'
+                            '<option selected disabled> ---- Choose PIC ---- </option>'
                         );
 
                         $.each(response, function(key, value) {
@@ -674,7 +672,7 @@
                         picDropdown.prop('disabled', false);
 
                         if (selectedPICId) {
-                            picDropdown.val(selectedPICId).trigger('change');
+                            picDropdown.val(selectedPICId).trigger('change', [true]);
                         }
                     }
                 });
@@ -700,7 +698,7 @@
                         var machineDropdown = $('#machine-dropdown');
                         machineDropdown.empty();
                         machineDropdown.append(
-                            '<option selected="" disabled> ---- Choose Machine Here ---- </option>'
+                            '<option selected disabled> ---- Choose Machine ---- </option>'
                         );
 
                         $.each(response, function(key, value) {
@@ -714,8 +712,8 @@
                                 .attr('data-unit-category', value.unit_category || '')
                                 .attr('data-dummy', value.is_dummy || 0)
                                 .text(label +
-                                    " || " + value.location + " - " + value.tag +
-                                    " - " + value.serial);
+                                    " || " + (value.location || '-') + " - " + (value.tag || '-') +
+                                    " - " + (value.serial || '-'));
                             machineDropdown.append(option);
                         });
 
@@ -757,6 +755,7 @@
 
             $('#service-type-select').on('change', function() {
                 loadMachineDropdown();
+                checkPmLevelVisibility();
             });
 
             function checkPmLevelVisibility() {
@@ -772,7 +771,7 @@
                 }
             }
 
-            $('#service-type-select, #machine-dropdown').on('change', function() {
+            $('#machine-dropdown').on('change', function() {
                 checkPmLevelVisibility();
             });
 
@@ -784,15 +783,33 @@
             // Trigger change event to pre-select dependent dropdowns in order
             // (dilewati untuk unit internal Reftech — Machine sudah langsung dipilih dari server)
             if (selectedSalesId && !isInternalStock) {
-                $('#selectSales').trigger('change');
+                $('#selectSales').trigger('change', [true]);
             }
 
             $('#serviceReports').on('submit', function(e) {
                 e.preventDefault();
                 var form = this;
 
+                // Client-side quick check
+                var picVal = $('#pic-dropdown').val();
+                var machineVal = $('#machine-dropdown').val();
+                var typeVal = $('#service-type-select').val();
+
+                if (!isInternalStock && !picVal) {
+                    Swal.fire('Data Belum Lengkap', 'Silakan pilih Sales, Client, dan PIC Klien terlebih dahulu.', 'warning');
+                    return;
+                }
+                if (!machineVal) {
+                    Swal.fire('Data Belum Lengkap', 'Silakan pilih Unit Mesin terlebih dahulu.', 'warning');
+                    return;
+                }
+                if (!typeVal) {
+                    Swal.fire('Data Belum Lengkap', 'Silakan pilih Jenis Layanan (Service Type) terlebih dahulu.', 'warning');
+                    return;
+                }
+
                 Swal.fire({
-                    title: 'Apakah kamu sudah benar dalam pembuatan service report ini?',
+                    title: 'Apakah data service report sudah benar?',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: 'Ya, Simpan',

@@ -77,12 +77,12 @@ $(function () {
                                 "service-reports.show",
                                 $dataId
                             );
-                            var dataSub = data.substring(0, 5);
+                            var displayNo = data ? data : "-";
                             return (
                                 '<a class="text-dark" href="' +
                                 detailRoute +
                                 '">' +
-                                dataSub +
+                                displayNo +
                                 "</a>"
                             );
                         }

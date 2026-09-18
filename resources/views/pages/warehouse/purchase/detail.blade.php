@@ -67,26 +67,45 @@
                                     Pihak Terkait
                                 </h6>
                                 <table class="table table-borderless table-sm mb-0">
-                                    <tr>
-                                        <td class="fw-semibold text-muted ps-0" style="width: 140px;">Sales</td>
-                                        <td>: <span class="fw-medium text-dark">{{ $quotation->sales->name }}</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="fw-semibold text-muted ps-0">Flag / Info</td>
-                                        <td>: <span class="fw-medium text-dark">{{ $quotation->pic->client->info ?: '-' }}</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="fw-semibold text-muted ps-0">Perusahaan / Client</td>
-                                        <td>: <span class="fw-bold text-primary">{{ $quotation->pic->client->company }}</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="fw-semibold text-muted ps-0">PIC Client</td>
-                                        <td>: <span class="fw-medium text-dark">{{ $quotation->pic->name_pic }}</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="fw-semibold text-muted ps-0">Alamat Kirim</td>
-                                        <td>: <span class="fw-medium text-dark text-wrap">{{ $quotation->pic->client->address }}</span></td>
-                                    </tr>
+                                    @if ($quotation)
+                                        <tr>
+                                            <td class="fw-semibold text-muted ps-0" style="width: 140px;">Sales</td>
+                                            <td>: <span class="fw-medium text-dark">{{ $quotation->sales->name ?? '-' }}</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-semibold text-muted ps-0">Flag / Info</td>
+                                            <td>: <span class="fw-medium text-dark">{{ $quotation->pic->client->info ?? '-' }}</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-semibold text-muted ps-0">Perusahaan / Client</td>
+                                            <td>: <span class="fw-bold text-primary">{{ $quotation->pic->client->company ?? '-' }}</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-semibold text-muted ps-0">PIC Client</td>
+                                            <td>: <span class="fw-medium text-dark">{{ $quotation->pic->name_pic ?? '-' }}</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-semibold text-muted ps-0">Alamat Kirim</td>
+                                            <td>: <span class="fw-medium text-dark text-wrap">{{ $quotation->pic->client->address ?? '-' }}</span></td>
+                                        </tr>
+                                    @else
+                                        <tr>
+                                            <td class="fw-semibold text-muted ps-0" style="width: 140px;">Pembuat PR</td>
+                                            <td>: <span class="fw-medium text-dark">{{ $purchase->user->name ?? ($pending->user->name ?? Auth::user()->name) }}</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-semibold text-muted ps-0">Jenis Pengadaan</td>
+                                            <td>: <span class="badge bg-label-info">Pengadaan Manual / Internal</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-semibold text-muted ps-0">Keperluan / Judul</td>
+                                            <td>: <span class="fw-bold text-primary">{{ $pending->title ?: 'Pengadaan Internal' }}</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-semibold text-muted ps-0">Tujuan</td>
+                                            <td>: <span class="fw-medium text-dark">Gudang / Workshop Reftech</span></td>
+                                        </tr>
+                                    @endif
                                 </table>
                             </div>
 
@@ -99,20 +118,24 @@
                                     <tr>
                                         <td class="fw-semibold text-muted ps-0" style="width: 140px;">No Quotation</td>
                                         <td>:
-                                            @php
-                                                if ($isUnitQuotation) {
-                                                    $link = 'unit-quotation.show';
-                                                } elseif ($quotation->type == 'Sparepart') {
-                                                    $link = 'quotation.show';
-                                                } elseif ($quotation->type == 'Overhaul') {
-                                                    $link = 'show-overhaul.quotation';
-                                                } else {
-                                                    $link = 'show-service.quotation';
-                                                }
-                                            @endphp
-                                            <a class="text-primary fw-bold" href="{{ route($link, $quotation->id) }}">
-                                                {{ $quotation->no_quote }}
-                                            </a>
+                                            @if ($quotation)
+                                                @php
+                                                    if ($isUnitQuotation) {
+                                                        $link = 'unit-quotation.show';
+                                                    } elseif ($quotation->type == 'Sparepart') {
+                                                        $link = 'quotation.show';
+                                                    } elseif ($quotation->type == 'Overhaul') {
+                                                        $link = 'show-overhaul.quotation';
+                                                    } else {
+                                                        $link = 'show-service.quotation';
+                                                    }
+                                                @endphp
+                                                <a class="text-primary fw-bold" href="{{ route($link, $quotation->id) }}">
+                                                    {{ $quotation->no_quote }}
+                                                </a>
+                                            @else
+                                                <span class="text-muted fst-italic">- (Manual Non-Quotation)</span>
+                                            @endif
                                         </td>
                                     </tr>
                                     <tr>
@@ -246,6 +269,11 @@
                                 <button type="button" class="btn btn-outline-primary d-flex align-items-center justify-content-center w-100 mb-2 waves-effect shadow-xs" data-bs-toggle="modal" data-bs-target="#modalLinkPo">
                                     <i class="mdi mdi-link-variant me-2 fs-5"></i> Hubungkan ke PO
                                 </button>
+                                @if(Auth::check() && in_array(Auth::user()->role, ['Developer', 'Admin', 'Super Admin', 'Logistic']))
+                                    <button type="button" class="btn btn-outline-warning d-flex align-items-center justify-content-center w-100 mb-2 waves-effect shadow-xs btn-rollback-approved-to-new" data-id="{{ $purchase->id }}" data-no-pr="{{ $purchase->no_pr }}">
+                                        <i class="mdi mdi-undo-variant me-2 fs-5"></i> Rollback ke New PR
+                                    </button>
+                                @endif
                             @endif
 
                             @php
@@ -1652,6 +1680,60 @@
             });
 
             window.location.href = '{{ route("purchase.direct-create") }}?' + queryParams;
+        });
+
+        // Rollback Approved to New PR Handler
+        $('.btn-rollback-approved-to-new').on('click', function(e) {
+            e.preventDefault();
+            var prId = $(this).data('id');
+            var noPr = $(this).data('no-pr') || ('PR #' + prId);
+
+            Swal.fire({
+                title: 'Kembalikan ke New PR?',
+                html: '<p class="text-muted font-13 mb-2">Purchase Request <strong class="text-primary">' + noPr + '</strong> akan dikembalikan dari status <strong>Approved</strong> ke <strong>New PR (Draft)</strong>.</p>' +
+                    '<p class="text-muted font-12 mb-0"><i class="mdi mdi-information-outline text-warning me-1"></i> Tautan PO terkait (jika ada) akan otomatis dilepas.</p>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '<i class="mdi mdi-undo-variant me-1"></i> Ya, Rollback ke New PR',
+                cancelButtonText: 'Batal',
+                customClass: {
+                    confirmButton: 'btn btn-warning me-2 shadow-xs',
+                    cancelButton: 'btn btn-label-secondary'
+                },
+                buttonsStyling: false,
+                showLoaderOnConfirm: true,
+                preConfirm: function () {
+                    return $.ajax({
+                        url: '/purchase-request/rollback-new/' + prId,
+                        type: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}',
+                            _method: 'PATCH'
+                        }
+                    }).then(function (response) {
+                        return response;
+                    }).catch(function (error) {
+                        var msg = 'Terjadi kesalahan sistem.';
+                        if (error.responseJSON && error.responseJSON.message) {
+                            msg = error.responseJSON.message;
+                        }
+                        Swal.showValidationMessage(msg);
+                    });
+                },
+                allowOutsideClick: function () { return !Swal.isLoading(); }
+            }).then(function (result) {
+                if (result.isConfirmed && result.value) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: result.value.message || 'Purchase Request berhasil dikembalikan ke status New PR.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(function() {
+                        window.location.reload();
+                    });
+                }
+            });
         });
     </script>
 @endpush

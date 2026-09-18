@@ -873,9 +873,9 @@
                                                         </div>
                                                         <div class="input-group input-group-sm" data-price="{{ $no }}">
                                                             <span class="input-group-text bg-light text-muted fw-semibold">Rp</span>
-                                                            <input type="text" class="form-control invoice-item-price-label text-end fw-semibold"
+                                                            <input type="text" class="form-control invoice-item-price-label text-end fw-semibold no-rupiah-mask"
                                                                 id="priceLabel-{{ $no }}" data-id="{{ $no }}" name="harga"
-                                                                placeholder="0" data-type="currency" min="0"
+                                                                placeholder="0" min="0"
                                                                 value="{{ fmod((float)$item->price, 1) != 0 ? number_format((float)$item->price, 2, ',', '.') : number_format((float)$item->price, 0, ',', '.') }}">
                                                             <input class="form-control invoice-item-price" type="number" step="any"
                                                                 name="price[]" id="price-{{ $no }}"
@@ -1065,9 +1065,9 @@
                                                     </div>
                                                     <div class="input-group input-group-sm" data-price="{{ $rno }}">
                                                         <span class="input-group-text bg-light text-muted fw-semibold">Rp</span>
-                                                        <input type="text" class="form-control invoice-item-price-label text-end fw-semibold"
+                                                        <input type="text" class="form-control invoice-item-price-label text-end fw-semibold no-rupiah-mask"
                                                             id="priceLabel-{{ $rno }}" data-id="{{ $rno }}" name="harga"
-                                                            placeholder="0" data-type="currency" min="0" value="">
+                                                            placeholder="0" min="0" value="">
                                                         <input class="form-control invoice-item-price" type="number" step="any"
                                                             name="price[]" id="price-{{ $rno }}" value="" hidden>
                                                     </div>
@@ -1241,9 +1241,9 @@
                                                 </div>
                                                 <div class="input-group input-group-sm" data-price="1">
                                                     <span class="input-group-text bg-light text-muted fw-semibold">Rp</span>
-                                                    <input type="text" class="form-control invoice-item-price-label text-end fw-semibold"
+                                                    <input type="text" class="form-control invoice-item-price-label text-end fw-semibold no-rupiah-mask"
                                                         id="priceLabel-1" data-id="1" name="harga"
-                                                        placeholder="0" data-type="currency" min="0"
+                                                        placeholder="0" min="0"
                                                         value="{{ old('price[]') }}">
                                                     <input class="form-control invoice-item-price" type="number" step="any"
                                                         name="price[]" id="price-1" value="{{ old('price[]') }}" hidden>
@@ -2693,27 +2693,109 @@
 
             function formatCurrencyInput(val) {
                 if (val === null || val === undefined || val === '') return '';
-                var str = String(val);
+                var str = String(val).trim();
+
                 var hasComma = str.indexOf(',') !== -1;
+                var hasDot = str.indexOf('.') !== -1;
+
+                if (hasComma && hasDot) {
+                    if (str.lastIndexOf(',') > str.lastIndexOf('.')) {
+                        var parts = str.split(',');
+                        var intPart = parts[0].replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                        var decPart = parts.slice(1).join('').replace(/\D/g, "").slice(0, 2);
+                        return intPart + (parts.length > 1 ? ',' + decPart : '');
+                    } else {
+                        var parts = str.split('.');
+                        var intPart = parts[0].replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                        var decPart = parts.slice(1).join('').replace(/\D/g, "").slice(0, 2);
+                        return intPart + (parts.length > 1 ? ',' + decPart : '');
+                    }
+                }
+
                 if (hasComma) {
                     var parts = str.split(',');
                     var intPart = parts[0].replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
                     var decPart = parts.slice(1).join('').replace(/\D/g, "").slice(0, 2);
-                    return intPart + ',' + decPart;
+                    return intPart + (parts.length > 1 ? ',' + decPart : '');
                 }
+
+                if (hasDot) {
+                    var parts = str.split('.');
+                    if (parts.length === 2) {
+                        var beforeDot = parts[0];
+                        var afterDot = parts[1];
+                        if (afterDot.length === 3 && beforeDot.length >= 1 && beforeDot.length <= 3) {
+                            return str.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                        }
+                        if (afterDot.length <= 2 && (beforeDot.length > 3 || afterDot.length > 0)) {
+                            var intPart = beforeDot.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                            var decPart = afterDot.replace(/\D/g, "").slice(0, 2);
+                            return intPart + ',' + decPart;
+                        }
+                    }
+                }
+
                 return str.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
             }
 
             function parseCurrency(val) {
-                if (!val) return 0;
+                if (val === null || val === undefined || val === '') return 0;
+                if (typeof val === 'number') return val;
                 var str = String(val).trim();
-                if (str.indexOf(',') !== -1) {
+                str = str.replace(/[^\d.,\-]/g, '');
+                if (str === '' || str === '-') return 0;
+
+                var hasComma = str.indexOf(',') !== -1;
+                var hasDot = str.indexOf('.') !== -1;
+
+                if (hasComma && hasDot) {
+                    if (str.lastIndexOf(',') > str.lastIndexOf('.')) {
+                        var clean = str.replace(/\./g, '').replace(',', '.');
+                        return parseFloat(clean) || 0;
+                    } else {
+                        var clean = str.replace(/,/g, '');
+                        return parseFloat(clean) || 0;
+                    }
+                }
+
+                if (hasComma) {
                     var clean = str.replace(/\./g, '').replace(',', '.');
                     return parseFloat(clean) || 0;
                 }
-                var clean = str.replace(/\./g, '');
-                return parseFloat(clean) || 0;
+
+                if (hasDot) {
+                    if ((str.match(/\./g) || []).length > 1) {
+                        var clean = str.replace(/\./g, '');
+                        return parseFloat(clean) || 0;
+                    } else {
+                        var parts = str.split('.');
+                        var beforeDot = parts[0];
+                        var afterDot = parts[1] || '';
+                        if (afterDot.length === 3 && beforeDot.length >= 1 && beforeDot.length <= 3) {
+                            return parseFloat(beforeDot + afterDot) || 0;
+                        } else {
+                            return parseFloat(beforeDot + '.' + afterDot) || 0;
+                        }
+                    }
+                }
+
+                return parseFloat(str) || 0;
             }
+
+            $(document).on('keydown', '.invoice-item-price-label', function(e) {
+                if (e.key === '.' || e.key === 'Decimal') {
+                    e.preventDefault();
+                    var input = this;
+                    var val = input.value;
+                    var start = input.selectionStart;
+                    var end = input.selectionEnd;
+                    if (val.indexOf(',') === -1) {
+                        input.value = val.substring(0, start) + ',' + val.substring(end);
+                        input.setSelectionRange(start + 1, start + 1);
+                        $(input).trigger('input');
+                    }
+                }
+            });
 
             function formatCurrencyDiscount(input) {
                 var input_val = input.val();

@@ -29,7 +29,7 @@
                                     value="{{ $existing->id }}" hidden>
                                 <select class="select2 form-select" data-allow-clear="true" name="unit"
                                     data-id="1">
-                                    <option> ---- Choose Uniit Here ---- </option>
+                                    <option value=""> ---- Choose Unit Here ---- </option>
                                     @foreach ($unit as $machine)
                                         <option value="{{ $machine->id }}">
                                             {{ $machine->brand }} - {{ $machine->pn ?? '-' }} ||

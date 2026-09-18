@@ -394,7 +394,7 @@
             </div>
 
             <!-- Purchase Requests -->
-            @if (!$purchase && $dPending->where('status', 3)->count() > 0)
+            @if ((isset($purchases) ? $purchases->isEmpty() : !$purchase) && $dPending->where('status', 3)->count() > 0)
                 <div class="alert alert-warning d-flex align-items-center mb-3">
                     <i class="mdi mdi-clock-alert-outline me-2 fs-5"></i>
                     Ada item yang stoknya kurang, tapi Purchase Request belum dibuat — menunggu konfirmasi payment DP dari Accounting.
@@ -425,36 +425,48 @@
                         <tbody>
                             @php
                                 $no = 1;
-                                // Samakan label & warna dengan tab status di halaman /purchase-request.
-                                // Status 1 (Approved) yang PO-nya sudah terbit dianggap sudah masuk
-                                // tahap "Purchase Order" (lihat poCount di PurchaseController::index),
-                                // jadi labelnya diganti biar jelas tinggal nunggu barang dari supplier.
-                                if (($purchase->status ?? null) == '1' && ($purchase->purchaseOrders->count() ?? 0) > 0) {
-                                    $status_pr = 'Menunggu Pengiriman Supplier';
-                                    $color_pr = 'bg-label-dark';
-                                } else {
-                                    switch ($purchase->status ?? null) {
-                                        case '1': $status_pr = 'Approved'; $color_pr = 'bg-label-warning'; break;
-                                        case '2': $status_pr = 'Delivery'; $color_pr = 'bg-label-info'; break;
-                                        case '3': $status_pr = 'Good Receipt'; $color_pr = 'bg-label-success'; break;
-                                        default: $status_pr = 'New Purchase'; $color_pr = 'bg-label-primary'; break;
+                                $allPrDetails = collect();
+                                $prList = (isset($purchases) && $purchases->isNotEmpty()) ? $purchases : ($purchase ? collect([$purchase]) : collect());
+                                foreach ($prList as $prDoc) {
+                                    if (($prDoc->status ?? null) == '1' && ($prDoc->purchaseOrders->count() ?? 0) > 0) {
+                                        $status_pr = 'Menunggu Pengiriman Supplier';
+                                        $color_pr = 'bg-label-dark';
+                                    } else {
+                                        switch ($prDoc->status ?? null) {
+                                            case '1': $status_pr = 'Approved'; $color_pr = 'bg-label-warning'; break;
+                                            case '2': $status_pr = 'Delivery'; $color_pr = 'bg-label-info'; break;
+                                            case '3': $status_pr = 'Good Receipt'; $color_pr = 'bg-label-success'; break;
+                                            default: $status_pr = 'New Purchase'; $color_pr = 'bg-label-primary'; break;
+                                        }
+                                    }
+                                    foreach (($prDoc->details ?? collect()) as $det) {
+                                        $allPrDetails->push([
+                                            'pr' => $prDoc,
+                                            'detail' => $det,
+                                            'status_pr' => $status_pr,
+                                            'color_pr' => $color_pr,
+                                        ]);
                                     }
                                 }
                             @endphp
-                            @forelse (($purchase->details ?? collect()) as $pr)
+                            @forelse ($allPrDetails as $row)
+                                @php
+                                    $prDoc = $row['pr'];
+                                    $det = $row['detail'];
+                                @endphp
                                 <tr>
                                     <td class="text-center">{{ $no }}</td>
-                                    <td class="fw-bold"><a href="{{ route('purchase-request.show', $pending->id) }}" class="text-primary">{{ $purchase->no_pr ?? '-' }}</a></td>
+                                    <td class="fw-bold"><a href="{{ route('purchase-request.show', $prDoc->id) }}" class="text-primary">{{ $prDoc->no_pr ?? '-' }}</a></td>
                                     <td>
-                                        @if ($pr->id_equivalent == '0')
+                                        @if ($det->id_equivalent == '0' || empty($det->id_equivalent))
                                             -
                                         @else
-                                            {{ $pr->equivalent->brand ?? '' }} {{ $pr->equivalent->pn ?? '' }}
+                                            {{ $det->equivalent->brand ?? '' }} {{ $det->equivalent->pn ?? '' }}
                                         @endif
                                     </td>
-                                    <td>{{ $pr->qty }} {{ $pr->equivalent->product->unit ?? '' }}</td>
-                                    <td class="text-wrap" style="max-width: 250px;">{{ $pr->note ?? '-' }}</td>
-                                    <td><span class="badge {{ $color_pr }}">{{ $status_pr }}</span></td>
+                                    <td>{{ $det->qty }} {{ $det->equivalent->product->unit ?? '' }}</td>
+                                    <td class="text-wrap" style="max-width: 250px;">{{ $det->note ?? '-' }}</td>
+                                    <td><span class="badge {{ $row['color_pr'] }}">{{ $row['status_pr'] }}</span></td>
                                 </tr>
                                 @php $no++; @endphp
                             @empty
@@ -922,24 +934,36 @@
 
                         {{-- Section Optional: Tambah Item Manual / Di Luar SO --}}
                         <div class="card border border-dashed shadow-none">
-                            <div class="card-header bg-transparent py-2 px-3 border-bottom">
+                            <div class="card-header bg-transparent py-2 px-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
                                 <span class="fw-bold text-secondary font-12"><i class="mdi mdi-plus-circle-outline me-1"></i> Tambah Item Manual / Di Luar List SO (Opsional)</span>
+                                <button type="button" class="btn btn-xs btn-outline-primary btn-add-manual-pr-row">
+                                    <i class="mdi mdi-plus me-1"></i> Tambah Baris Manual
+                                </button>
                             </div>
                             <div class="card-body p-3">
-                                <div class="row g-2 align-items-center">
-                                    <div class="col-md-6">
-                                        <label class="form-label font-11 mb-1">Cari Equivalent Master</label>
-                                        <select class="form-select select2-equivalent-ajax" data-allow-clear="true" name="manual_id_equivalent" style="width:100%">
-                                            <option value="0"> ---- Cari Part Number / Brand ---- </option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label font-11 mb-1">Qty</label>
-                                        <input type="number" class="form-control" name="manual_qty" min="0" step="any" placeholder="0">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label font-11 mb-1">Catatan</label>
-                                        <input type="text" class="form-control" name="manual_note" placeholder="Catatan item manual...">
+                                <div id="manualPrItemsContainer" class="d-flex flex-column gap-2">
+                                    <div class="manual-pr-row border rounded-3 p-2 bg-light bg-opacity-50">
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-md-5">
+                                                <label class="form-label font-11 mb-1">Cari Equivalent Master</label>
+                                                <select class="form-select select2-equivalent-ajax" data-allow-clear="true" name="manual_id_equivalent[]" style="width:100%">
+                                                    <option value="0"> ---- Cari Part Number / Brand ---- </option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label font-11 mb-1">Qty</label>
+                                                <input type="number" class="form-control form-control-sm" name="manual_qty[]" min="0" step="any" placeholder="0">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label font-11 mb-1">Catatan</label>
+                                                <input type="text" class="form-control form-control-sm" name="manual_note[]" placeholder="Catatan item manual...">
+                                            </div>
+                                            <div class="col-md-1 text-center pt-3">
+                                                <button type="button" class="btn btn-sm btn-icon btn-outline-danger btn-remove-manual-pr-row" title="Hapus Baris" style="display: none;">
+                                                    <i class="mdi mdi-trash-can-outline"></i>
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1210,11 +1234,10 @@
         // Dropdown Equivalent (Update Status Barang & Purchase Request) — search AJAX ke master
         // product, bukan embed ribuan <option> statis (dulu bikin memory exhausted karena
         // di-render ulang per baris item).
-        $('.select2-equivalent-ajax').each(function () {
-            var $sel = $(this);
-            $sel.select2({
-                dropdownParent: $sel.closest('.modal'),
-                placeholder: '---- Choose Equivalent Here ----',
+        function initEquivalentSelect2($elem) {
+            $elem.select2({
+                dropdownParent: $elem.closest('.modal'),
+                placeholder: '---- Cari Part Number / Brand ----',
                 allowClear: true,
                 width: '100%',
                 minimumInputLength: 1,
@@ -1235,6 +1258,54 @@
                     }
                 }
             });
+        }
+
+        $('.select2-equivalent-ajax').each(function () {
+            initEquivalentSelect2($(this));
+        });
+
+        // Dynamic Manual PR Item Rows
+        $(document).on('click', '.btn-add-manual-pr-row', function (e) {
+            e.preventDefault();
+            var $container = $('#manualPrItemsContainer');
+            var newRowHtml = `
+                <div class="manual-pr-row border rounded-3 p-2 bg-light bg-opacity-50">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-5">
+                            <label class="form-label font-11 mb-1">Cari Equivalent Master</label>
+                            <select class="form-select select2-equivalent-ajax" data-allow-clear="true" name="manual_id_equivalent[]" style="width:100%">
+                                <option value="0"> ---- Cari Part Number / Brand ---- </option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label font-11 mb-1">Qty</label>
+                            <input type="number" class="form-control form-control-sm" name="manual_qty[]" min="0" step="any" placeholder="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label font-11 mb-1">Catatan</label>
+                            <input type="text" class="form-control form-control-sm" name="manual_note[]" placeholder="Catatan item manual...">
+                        </div>
+                        <div class="col-md-1 text-center pt-3">
+                            <button type="button" class="btn btn-sm btn-icon btn-outline-danger btn-remove-manual-pr-row" title="Hapus Baris">
+                                <i class="mdi mdi-trash-can-outline"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            var $newRow = $(newRowHtml);
+            $container.append($newRow);
+            initEquivalentSelect2($newRow.find('.select2-equivalent-ajax'));
+            $container.find('.btn-remove-manual-pr-row').show();
+        });
+
+        $(document).on('click', '.btn-remove-manual-pr-row', function (e) {
+            e.preventDefault();
+            var $container = $('#manualPrItemsContainer');
+            $(this).closest('.manual-pr-row').remove();
+            var rows = $container.find('.manual-pr-row');
+            if (rows.length <= 1) {
+                rows.find('.btn-remove-manual-pr-row').hide();
+            }
         });
 
         $(document).on('click', '.clear-return-unit', function (e) {

@@ -95,6 +95,20 @@ $(function () {
             $('#prDrawerDeliveryBox').hide();
         }
 
+        // Approved Action options in Drawer (Rollback to New PR)
+        if (badgeKey === 'acc') {
+            var prId = full ? full.id : "";
+            var noPr = (full && full.no_pr) ? full.no_pr : ("PR #" + prId);
+            var accBtnHtml = '<button type="button" class="btn btn-sm btn-outline-warning d-flex align-items-center gap-1 btn-rollback-new-pr" data-id="' + prId + '" data-no-pr="' + noPr + '" title="Kembalikan status ke Draft (New PR)">' +
+                '<i class="mdi mdi-undo-variant me-1"></i> Rollback ke New PR' +
+                '</button>';
+
+            $('#prDrawerApprovedActionButtons').html(accBtnHtml);
+            $('#prDrawerApprovedActionsBox').show();
+        } else {
+            $('#prDrawerApprovedActionsBox').hide();
+        }
+
         // Delivery Manual GR & Dev Action options in Drawer
         if (badgeKey === 'delivery') {
             var prId = full ? full.id : "";
@@ -200,8 +214,9 @@ $(function () {
         if (full.id_po) {
             extraHtml += '<a href="/purchase/' + full.id_po + '" class="btn btn-outline-secondary d-flex align-items-center gap-1 shadow-xs"><i class="mdi mdi-file-document-outline me-1"></i> Buka PO</a>';
         }
-        if (full.id) {
-            extraHtml += '<a href="/pending-po/' + full.id + '" class="btn btn-outline-secondary d-flex align-items-center gap-1 shadow-xs"><i class="mdi mdi-cart-outline me-1"></i> Buka SO</a>';
+        var soId = full.id_pending || full.id;
+        if (soId) {
+            extraHtml += '<a href="/pending-po/' + soId + '" class="btn btn-outline-secondary d-flex align-items-center gap-1 shadow-xs"><i class="mdi mdi-cart-outline me-1"></i> Buka SO</a>';
         }
         $('#prDrawerAdditionalLinks').html(extraHtml);
 
@@ -324,9 +339,11 @@ $(function () {
                 targets: offset + 2,
                 render: function (data, type, full) {
                     if (type !== "display") return data || "-";
+                    if (!data) return "-";
                     var code = shortCode(data);
-                    if (!full || !full.id) return '<span class="text-nowrap" data-bs-toggle="tooltip" title="' + code.full + '">' + code.short + "</span>";
-                    return '<a href="/purchase-request/' + full.id + '" class="text-nowrap" data-bs-toggle="tooltip" title="' + code.full + '">' + code.short + "</a>";
+                    var soId = (full && (full.id_pending || full.id));
+                    if (!soId) return '<span class="text-nowrap" data-bs-toggle="tooltip" title="' + code.full + '">' + code.short + "</span>";
+                    return '<a href="/pending-po/' + soId + '" class="text-nowrap" data-bs-toggle="tooltip" title="' + code.full + '">' + code.short + "</a>";
                 },
             },
             { targets: offset + 3, render: function (data) { return data || "-"; } },
@@ -397,6 +414,7 @@ $(function () {
                                 '<li><h6 class="dropdown-header font-10 text-uppercase py-1 text-primary"><i class="mdi mdi-code-tags me-1"></i>Dev Actions</h6></li>' +
                                 '<li><button type="button" class="dropdown-item py-1 font-12 text-success btn-dev-action" data-id="' + prId + '" data-no-pr="' + noPr + '" data-action="force_done"><i class="mdi mdi-flash me-2"></i>Force Selesai (Done)</button></li>' +
                                 '<li><button type="button" class="dropdown-item py-1 font-12 text-warning btn-dev-action" data-id="' + prId + '" data-no-pr="' + noPr + '" data-action="rollback_approved"><i class="mdi mdi-undo-variant me-2"></i>Rollback Approved</button></li>' +
+                                '<li><button type="button" class="dropdown-item py-1 font-12 text-secondary btn-dev-action" data-id="' + prId + '" data-no-pr="' + noPr + '" data-action="rollback_new"><i class="mdi mdi-arrow-u-left-top me-2"></i>Rollback New PR</button></li>' +
                                 '</ul>' +
                                 '</div>';
                         }
@@ -585,6 +603,9 @@ $(function () {
     });
 
     function reloadPurchaseRequestTables() {
+        if ($.fn.DataTable.isDataTable('.datatable-purchase-request-new')) {
+            $('.datatable-purchase-request-new').DataTable().ajax.reload(null, false);
+        }
         if ($.fn.DataTable.isDataTable('.datatable-purchase-request-delivery')) {
             $('.datatable-purchase-request-delivery').DataTable().ajax.reload(null, false);
         }
@@ -701,19 +722,18 @@ $(function () {
 
         var prId = $('#manualGrPrId').val();
         var idProductIn = $('#manualGrSelectProductIn').val();
-        var noGr = $.trim($('#manualGrNoGr').val());
+        var noGr = $('#manualGrNoGr').val();
         var grDate = $('#manualGrDate').val();
-        var note = $.trim($('#manualGrNote').val());
+        var note = $('#manualGrNote').val();
 
         if (!noGr) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Data Belum Lengkap',
-                text: 'Harap masukkan Nomor Goods Receipt (GR) atau Nomor Surat Jalan terlebih dahulu.',
+                text: 'Nomor Goods Receipt (GR) atau Nomor Surat Jalan wajib diisi.',
                 customClass: { confirmButton: 'btn btn-primary' },
                 buttonsStyling: false
             });
-            $('#manualGrNoGr').focus();
             return;
         }
 
@@ -766,6 +786,63 @@ $(function () {
         });
     });
 
+    // Rollback Approved ke New PR Handler
+    $(document).on('click', '.btn-rollback-new-pr', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        var prId = $(this).data('id');
+        var noPr = $(this).data('no-pr') || ('PR #' + prId);
+
+        Swal.fire({
+            title: 'Kembalikan ke New PR?',
+            html: '<p class="text-muted font-13 mb-2">Purchase Request <strong class="text-primary">' + noPr + '</strong> akan dikembalikan dari status <strong>Approved</strong> ke <strong>New PR (Draft)</strong>.</p>' +
+                '<p class="text-muted font-12 mb-0"><i class="mdi mdi-information-outline text-warning me-1"></i> Tautan PO terkait (jika ada) akan otomatis dilepas.</p>',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '<i class="mdi mdi-undo-variant me-1"></i> Ya, Rollback ke New PR',
+            cancelButtonText: 'Batal',
+            customClass: {
+                confirmButton: 'btn btn-warning me-2 shadow-xs',
+                cancelButton: 'btn btn-label-secondary'
+            },
+            buttonsStyling: false,
+            showLoaderOnConfirm: true,
+            preConfirm: function () {
+                return $.ajax({
+                    url: '/purchase-request/rollback-new/' + prId,
+                    type: 'POST',
+                    data: {
+                        _token: window.csrfToken,
+                        _method: 'PATCH'
+                    }
+                }).then(function (response) {
+                    return response;
+                }).catch(function (error) {
+                    var msg = 'Terjadi kesalahan sistem.';
+                    if (error.responseJSON && error.responseJSON.message) {
+                        msg = error.responseJSON.message;
+                    }
+                    Swal.showValidationMessage(msg);
+                });
+            },
+            allowOutsideClick: function () { return !Swal.isLoading(); }
+        }).then(function (result) {
+            if (result.isConfirmed && result.value) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: result.value.message || 'Purchase Request berhasil dikembalikan ke status New PR.',
+                    customClass: { confirmButton: 'btn btn-primary' },
+                    buttonsStyling: false
+                });
+
+                reloadPurchaseRequestTables();
+                closePurchaseRequestDrawer();
+            }
+        });
+    });
+
     // Developer Actions Handler (Solusi 1)
     $(document).on('click', '.btn-dev-action', function (e) {
         e.preventDefault();
@@ -790,6 +867,11 @@ $(function () {
             title = 'Rollback ke Approved?';
             text = 'PR ' + noPr + ' akan dikembalikan ke tab Telah Disetujui (status=1) dan alokasi pengiriman/resi akan di-reset.';
             confirmBtnText = '<i class="mdi mdi-undo-variant me-1"></i> Ya, Rollback';
+            confirmBtnClass = 'btn btn-warning me-2';
+        } else if (action === 'rollback_new') {
+            title = 'Rollback ke New PR?';
+            text = 'PR ' + noPr + ' akan dikembalikan ke tab New PR (Draft, status=0) dan tautan PO akan dilepas.';
+            confirmBtnText = '<i class="mdi mdi-arrow-u-left-top me-1"></i> Ya, Rollback ke New';
             confirmBtnClass = 'btn btn-warning me-2';
         } else {
             return;

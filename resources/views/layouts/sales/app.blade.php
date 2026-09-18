@@ -143,6 +143,7 @@
                 <!--  Maintenance Warning Banner & Modal (under navbar)  -->
                 @include('components.maintenance-warning')
                 @include('components.maintenance-resumed-modal')
+                @include('components.tool-audit-alert')
 
                 <!-- Content wrapper -->
                 <div class="content-wrapper">
@@ -195,7 +196,7 @@
         <script src="{{ asset('assets') }}/includes/navbar-payment-notif.js?v={{ file_exists(public_path('assets/includes/navbar-payment-notif.js')) ? filemtime(public_path('assets/includes/navbar-payment-notif.js')) : time() }}"></script>
     @endif
 
-    @if (Auth::check())
+    @if (Auth::check() && (in_array(Auth::user()->role, ['Admin', 'Developer', 'Super Admin', 'Sales', 'Support']) || in_array(Auth::id(), \App\Http\Controllers\ProspectController::PROSPECT_NOTIF_RECIPIENT_IDS)))
         {{-- Polling notifikasi Prospect baru (Alert Darurat Penugasan Sales untuk Admin, lonceng & modal untuk Sales) --}}
         <script>
             window.prospectNotifUnreadUrl = '{{ route('notifications.prospect.unread') }}';
@@ -213,6 +214,16 @@
             window.suoUrgentCheckUrl = '{{ route('notifications.suo.urgent_check') }}';
         </script>
         <script src="{{ asset('assets') }}/includes/suo-urgent-alert.js?v={{ file_exists(public_path('assets/includes/suo-urgent-alert.js')) ? filemtime(public_path('assets/includes/suo-urgent-alert.js')) : time() }}"></script>
+    @endif
+
+    @if (Auth::check() && in_array(Auth::user()->role, ['Developer', 'Admin', 'Super Admin']))
+        {{-- Polling Alert Modal Tiket Helpdesk Baru dari User khusus Developer & Admin --}}
+        <script>
+            window.helpdeskUrgentCheckUrl = '{{ route('notifications.helpdesk.urgent_check') }}';
+            window.csrfToken = window.csrfToken || '{{ csrf_token() }}';
+            window.currentUserRole = '{{ Auth::user()->role }}';
+        </script>
+        <script src="{{ asset('assets') }}/includes/helpdesk-urgent-alert.js?v={{ file_exists(public_path('assets/includes/helpdesk-urgent-alert.js')) ? filemtime(public_path('assets/includes/helpdesk-urgent-alert.js')) : time() }}"></script>
     @endif
 
     @if (Auth::check())
@@ -375,8 +386,8 @@
         </div>
     </div>
 
-    {{-- Floating Chat Bubble Component (Disabled on Print, Piping RAB, Piping Materials, and Smart Quote Create Views) --}}
-    @unless(request()->routeIs('unit-quotation.print') || request()->is('smart-quote/*/print') || request()->is('*print*') || request()->is('piping-rab*') || request()->is('piping-materials*') || request()->is('smart-quote/create*') || request()->routeIs('unit-quotation.create') || View::hasSection('hide-chat'))
+    {{-- Floating Chat Bubble Component (Disabled on Print, Piping RAB, Piping Materials, Smart Quote, and Tool Audit Views) --}}
+    @unless(request()->routeIs('unit-quotation.print') || request()->is('smart-quote/*/print') || request()->is('*print*') || request()->is('piping-rab*') || request()->is('piping-materials*') || request()->is('smart-quote/create*') || request()->routeIs('unit-quotation.create') || request()->is('tool-audit*') || View::hasSection('hide-chat'))
         @include('includes.sales.chat-bubble')
     @endunless
 

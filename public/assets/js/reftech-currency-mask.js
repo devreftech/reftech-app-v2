@@ -8,7 +8,7 @@
 
     /**
      * Format a raw string or number into Indonesian thousand dot-separated format:
-     * Example: "1500000" -> "1.500.000"
+     * Example: "1500000" -> "1.500.000", "4311880,18" -> "4.311.880,18"
      */
     function formatRupiah(val) {
         if (val === null || val === undefined) return '';
@@ -17,6 +17,17 @@
 
         // Check if negative
         var isNegative = str.indexOf('-') === 0;
+
+        // Check for decimal comma
+        var hasComma = str.indexOf(',') !== -1;
+        if (hasComma) {
+            var parts = str.split(',');
+            var intDigits = parts[0].replace(/\D/g, '').replace(/^0+/, '') || '0';
+            var decDigits = parts.slice(1).join('').replace(/\D/g, '').slice(0, 2);
+            var formattedInt = intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            var result = formattedInt + (parts.length > 1 ? ',' + decDigits : '');
+            return isNegative ? '-' + result : result;
+        }
 
         // Strip non-digits
         var digits = str.replace(/\D/g, '');
@@ -33,12 +44,20 @@
 
     /**
      * Unmask a dot-separated string into pure numeric digits:
-     * Example: "1.500.000" -> "1500000"
+     * Example: "1.500.000" -> "1500000", "4.311.880,18" -> "4311880.18"
      */
     function unmaskRupiah(val) {
         if (val === null || val === undefined) return '';
         var str = String(val).trim();
         var isNegative = str.indexOf('-') === 0;
+        var hasComma = str.indexOf(',') !== -1;
+        if (hasComma) {
+            var parts = str.split(',');
+            var intDigits = parts[0].replace(/\D/g, '');
+            var decDigits = parts.slice(1).join('').replace(/\D/g, '').slice(0, 2);
+            var result = (intDigits || '0') + '.' + decDigits;
+            return isNegative ? '-' + result : result;
+        }
         var digits = str.replace(/\D/g, '');
         return isNegative ? '-' + digits : digits;
     }
@@ -46,7 +65,7 @@
     /**
      * Target selectors for rupiah masked inputs
      */
-    var SELECTOR = '.rupiah-mask, .input-rupiah, .format-rupiah, .rupiah-input, [data-type="currency"], [data-rupiah], input[name="harga_jual"], input[name="harga_jual[]"], input[name="selling_price"]';
+    var SELECTOR = '.rupiah-mask, .input-rupiah, .format-rupiah, .rupiah-input, [data-type="currency"]:not(.invoice-item-price-label):not(.no-rupiah-mask), [data-rupiah], input[name="harga_jual"], input[name="harga_jual[]"], input[name="selling_price"]';
 
     /**
      * Apply masking on a single input element with caret preservation

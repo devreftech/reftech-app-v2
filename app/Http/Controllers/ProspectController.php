@@ -496,7 +496,14 @@ class ProspectController extends Controller
                 ->pluck('id')
                 ->toArray();
             $recipientIds = array_unique(array_merge(self::PROSPECT_NOTIF_RECIPIENT_IDS, $adminAndDevIds));
-            foreach ($recipientIds as $uid) {
+
+            // Only insert for users with valid roles (Admin, Sales, Support, Developer, Super Admin)
+            $validRecipientIds = User::whereIn('id', $recipientIds)
+                ->whereIn('role', ['Admin', 'Developer', 'Super Admin', 'Sales', 'Support'])
+                ->pluck('id')
+                ->toArray();
+
+            foreach ($validRecipientIds as $uid) {
                 ProspectNotification::firstOrCreate(
                     ['id_prospect' => $prospect->id, 'id_user' => $uid, 'type' => 'prospect_created'],
                     ['is_read' => false]
@@ -648,6 +655,11 @@ class ProspectController extends Controller
         }
 
         $userId = Auth::id();
+        $userRole = Auth::user()->role;
+        $isProspectRole = in_array($userRole, ['Admin', 'Developer', 'Super Admin', 'Sales', 'Support']) || in_array($userId, self::PROSPECT_NOTIF_RECIPIENT_IDS);
+        if (!$isProspectRole) {
+            return response()->json(['count' => 0, 'items' => []]);
+        }
 
         // 1. Notifikasi Prospect (Baru & Ditugaskan)
         $notifs = ProspectNotification::where('id_user', $userId)

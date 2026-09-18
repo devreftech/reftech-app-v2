@@ -40,6 +40,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Helpdesk
+    Route::get('/notifications/helpdesk/urgent-check', [HelpdeskController::class, 'urgentCheck'])->name('notifications.helpdesk.urgent_check');
     Route::get('/helpdesk', [HelpdeskController::class, 'index'])->name('helpdesk.index');
     Route::post('/helpdesk', [HelpdeskController::class, 'store'])->name('helpdesk.store');
     Route::patch('/helpdesk/status/{id}', [HelpdeskController::class, 'updateStatus'])->name('helpdesk.update-status');

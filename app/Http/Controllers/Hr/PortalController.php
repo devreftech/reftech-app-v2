@@ -29,9 +29,12 @@ class PortalController extends Controller
 
         $employee->loadMissing(['department', 'position']);
 
-        $today = Carbon::today()->toDateString();
-        $currentMonth = Carbon::now()->month;
-        $currentYear = Carbon::now()->year;
+        $today = Carbon::today('Asia/Jakarta')->toDateString();
+        $currentMonth = Carbon::now('Asia/Jakarta')->month;
+        $currentYear = Carbon::now('Asia/Jakarta')->year;
+
+        // Evaluasi Auto Clock-Out otomatis (Asia/Jakarta GMT+7)
+        HrAttendance::processAutoClockOutIfDue();
 
         // Today's attendance
         $todayAttendance = HrAttendance::where('employee_id', $employee->id)

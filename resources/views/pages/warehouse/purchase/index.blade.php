@@ -448,7 +448,7 @@
             {{-- Top Navigation Pill Tabs --}}
             <div class="card-header border-bottom py-3 px-4 bg-white d-flex flex-wrap justify-content-between align-items-center gap-3">
                 @php
-                    $isServiceM = (auth()->user()->role == 'ServiceM');
+                    $isServiceM = (Auth::check() && auth()->user()->role == 'ServiceM');
                 @endphp
                 <div class="pr-nav-pills" id="purchaseRequestTabs" role="tablist">
                     <button type="button" class="nav-link {{ !$isServiceM ? 'active' : '' }}" role="tab" data-bs-toggle="tab"
@@ -487,9 +487,17 @@
                     </button>
                 </div>
 
-                <div class="text-muted font-12 d-flex align-items-center gap-1">
-                    <i class="mdi mdi-information-outline text-primary"></i>
-                    <span>Klik tombol <strong class="text-primary">"N item"</strong> untuk melihat rincian barang seketika.</span>
+                <div class="d-flex align-items-center gap-2">
+                    @if(Auth::check() && in_array(Auth::user()->role, ['Developer', 'Admin', 'Super Admin', 'Logistic']))
+                        <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1 shadow-xs fw-semibold px-3" data-bs-toggle="modal" data-bs-target="#modalCreateManualPr">
+                            <i class="mdi mdi-plus-circle-outline fs-5"></i>
+                            <span>Buat PR Manual</span>
+                        </button>
+                    @endif
+                    <div class="text-muted font-12 d-none d-lg-flex align-items-center gap-1 ms-2">
+                        <i class="mdi mdi-information-outline text-primary"></i>
+                        <span>Klik tombol <strong class="text-primary">"N item"</strong> untuk rincian barang.</span>
+                    </div>
                 </div>
             </div>
 
@@ -672,6 +680,23 @@
                     </div>
                 </div>
 
+                {{-- Approved Action Box in Drawer (Rollback to New PR) --}}
+                <div class="card border mb-3 border-warning bg-label-warning bg-opacity-10" id="prDrawerApprovedActionsBox" style="display: none;">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="font-11 fw-bold text-uppercase text-dark">
+                                <i class="mdi mdi-undo-variant me-1 text-warning"></i> Tindakan Status PR
+                            </span>
+                        </div>
+                        <p class="font-12 text-muted mb-2">
+                            Kembalikan status Purchase Request ini dari <strong>Approved</strong> ke <strong>New PR (Draft)</strong> jika perlu revisi barang / alokasi.
+                        </p>
+                        <div class="d-flex flex-wrap align-items-center gap-2" id="prDrawerApprovedActionButtons">
+                            {{-- Dynamically populated: Rollback to New PR --}}
+                        </div>
+                    </div>
+                </div>
+
                 {{-- Delivery Manual GR & Dev Action Box in Drawer --}}
                 <div class="card border mb-3 border-warning bg-label-warning bg-opacity-10" id="prDrawerDeliveryActionsBox" style="display: none;">
                     <div class="card-body p-3">
@@ -848,6 +873,134 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal Buat Purchase Request Manual --}}
+    @if(Auth::check() && in_array(Auth::user()->role, ['Developer', 'Admin', 'Super Admin', 'Logistic']))
+    <div class="modal fade" id="modalCreateManualPr" tabindex="-1" aria-labelledby="modalCreateManualPrLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+                <div class="modal-header py-3 px-4 text-white" style="background: linear-gradient(135deg, #1e2640 0%, #2a3558 100%);">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar avatar-sm bg-white rounded-circle p-1 d-flex align-items-center justify-content-center">
+                            <i class="mdi mdi-file-document-plus-outline fs-5 text-primary"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-white mb-0" id="modalCreateManualPrLabel">Buat Purchase Request Manual</h5>
+                            <span class="font-11 text-white-50">Pengadaan sparepart internal / restock stok gudang tanpa Quotation</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form action="{{ route('purchase-request.store-manual') }}" method="POST" id="formCreateManualPr">
+                    @csrf
+                    <div class="modal-body p-4">
+                        {{-- Section 1: Info Dasar --}}
+                        <div class="card border mb-4 shadow-none bg-light">
+                            <div class="card-body p-3">
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6 col-sm-12">
+                                        <label class="form-label fw-semibold small text-dark d-flex align-items-center justify-content-between">
+                                            <span>Pilih No. Sales Order (SO) Terdaftar</span>
+                                            <span class="badge bg-label-primary font-10">Opsional / Terdaftar</span>
+                                        </label>
+                                        <select name="id_pending" id="manualPrSelectSo" class="form-select select2-manual-so" style="width: 100%;">
+                                            <option value="">-- Non-SO (Pengadaan Internal / Restock Gudang) --</option>
+                                        </select>
+                                        <div class="form-text font-11 text-muted">
+                                            Ketik No. SO atau nama customer. Kosongkan jika pengadaan internal umum tanpa SO.
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 col-sm-12">
+                                        <label class="form-label fw-semibold small text-dark">Judul / Keperluan Pengadaan <span class="text-danger">*</span></label>
+                                        <input type="text" name="title" id="manualPrTitle" class="form-control" placeholder="Contoh: Restock Stok Gudang / Sparepart Mesin Workshop" required value="Pengadaan Internal / Restock Gudang">
+                                        <div class="form-text font-11 text-muted">
+                                            Keterangan tujuan pengadaan barang / kebutuhan proyek.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-6 col-sm-6">
+                                        <label class="form-label fw-semibold small text-dark">Tanggal Pengajuan <span class="text-danger">*</span></label>
+                                        <input type="date" name="date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                                    </div>
+                                    <div class="col-md-6 col-sm-6">
+                                        <label class="form-label fw-semibold small text-dark">Status Awal PR</label>
+                                        <select name="status" class="form-select">
+                                            <option value="1" selected>Langsung Approved (Siap PO)</option>
+                                            <option value="0">Draft (New PR)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Section 2: Daftar Item Barang --}}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-1">
+                                    <i class="mdi mdi-format-list-bulleted text-primary"></i>
+                                    <span>Daftar Sparepart / Barang yang Diajukan</span>
+                                </h6>
+                                <span class="text-muted font-11">Pilih sparepart dari master data menggunakan pencarian part number / nama barang</span>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" id="btnAddManualPrItem">
+                                <i class="mdi mdi-plus me-1"></i> Tambah Baris Item
+                            </button>
+                        </div>
+
+                        <div class="table-responsive border rounded-3 mb-2">
+                            <table class="table table-bordered table-sm align-middle mb-0" id="tableManualPrItems">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 40px;" class="text-center">No</th>
+                                        <th style="min-width: 320px;">Pilih Sparepart / Equivalent <span class="text-danger">*</span></th>
+                                        <th style="width: 110px;" class="text-center">Qty <span class="text-danger">*</span></th>
+                                        <th style="min-width: 180px;">Keterangan / Note Item</th>
+                                        <th style="width: 50px;" class="text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyManualPrItems">
+                                    <tr class="manual-pr-row">
+                                        <td class="text-center fw-bold row-no">1</td>
+                                        <td>
+                                            <select name="items[0][id_equivalent]" class="form-select select2-manual-equiv" required style="width: 100%;">
+                                                <option value="">-- Ketik Part Number / Nama Barang --</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" name="items[0][qty]" class="form-control text-center item-qty" min="0.1" step="any" value="1" required>
+                                        </td>
+                                        <td>
+                                            <input type="text" name="items[0][note]" class="form-control" placeholder="Catatan item (opsional)">
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-icon btn-sm btn-outline-danger btn-remove-manual-row" disabled>
+                                                <i class="mdi mdi-trash-can-outline"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <small class="text-muted font-11">
+                            <i class="mdi mdi-information-outline text-info me-1"></i>
+                            Anda dapat menambahkan beberapa item sparepart sekaligus dalam satu nomor PR.
+                        </small>
+                    </div>
+
+                    <div class="modal-footer bg-light py-2 px-4 d-flex justify-content-between">
+                        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary d-flex align-items-center gap-1 shadow-xs fw-semibold px-4" id="btnSubmitManualPr">
+                            <i class="mdi mdi-check-circle-outline fs-5"></i>
+                            <span>Simpan Purchase Request</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
 @endsection
 
 @push('after-script')
@@ -872,6 +1025,152 @@
     <script>
         $(document).ready(function() {
             $('[data-bs-toggle="tooltip"]').tooltip();
+
+            // ── Inisialisasi Select2 Autocomplete untuk Pencarian Sales Order (SO) ──
+            function initManualSoSelect2() {
+                var $soSelect = $('#manualPrSelectSo');
+                if ($soSelect.hasClass('select2-hidden-accessible')) {
+                    return;
+                }
+
+                $soSelect.select2({
+                    dropdownParent: $('#modalCreateManualPr'),
+                    placeholder: '-- Cari No. SO / Customer (Kosongkan jika Non-SO) --',
+                    allowClear: true,
+                    width: '100%',
+                    ajax: {
+                        url: '/db/sales-order/search-to-link',
+                        dataType: 'json',
+                        delay: 300,
+                        data: function (params) {
+                            return { q: params.term };
+                        },
+                        processResults: function (data) {
+                            var items = data && data.data ? data.data : [];
+                            return {
+                                results: $.map(items, function (so) {
+                                    return {
+                                        id: so.id,
+                                        text: so.text,
+                                        no_pending: so.no_pending,
+                                        company: so.company
+                                    };
+                                })
+                            };
+                        }
+                    }
+                });
+
+                $soSelect.on('select2:select', function(e) {
+                    var data = e.params.data;
+                    if (data && data.no_pending) {
+                        var defaultTitle = 'Pengadaan Internal / Restock Gudang';
+                        var currentTitle = $('#manualPrTitle').val().trim();
+                        if (!currentTitle || currentTitle === defaultTitle || currentTitle.indexOf('Pengadaan PR untuk SO:') === 0) {
+                            var comp = data.company ? ' (' + data.company + ')' : '';
+                            $('#manualPrTitle').val('Pengadaan PR untuk SO: ' + data.no_pending + comp);
+                        }
+                    }
+                });
+
+                $soSelect.on('select2:clear', function() {
+                    var currentTitle = $('#manualPrTitle').val().trim();
+                    if (currentTitle.indexOf('Pengadaan PR untuk SO:') === 0) {
+                        $('#manualPrTitle').val('Pengadaan Internal / Restock Gudang');
+                    }
+                });
+            }
+
+            // ── Inisialisasi Select2 Autocomplete untuk PR Manual ──
+            function initManualPrSelect2($element) {
+                $element.select2({
+                    dropdownParent: $('#modalCreateManualPr'),
+                    placeholder: '-- Ketik Part Number / Nama Barang --',
+                    allowClear: true,
+                    width: '100%',
+                    minimumInputLength: 1,
+                    ajax: {
+                        url: '/db/equivalent/search',
+                        dataType: 'json',
+                        delay: 300,
+                        data: function (params) {
+                            return { q: params.term };
+                        },
+                        processResults: function (data) {
+                            var items = Array.isArray(data) ? data : (data.data || []);
+                            return {
+                                results: $.map(items, function (eq) {
+                                    var id = eq.id_equivalent || eq.id;
+                                    var pnBrand = (eq.brand ? eq.brand + ' ' : '') + (eq.pn ? eq.pn : '');
+                                    var name = eq.product_name ? ' — ' + eq.product_name : '';
+                                    var gen = eq.genuine_status === 'Replacement' ? ' (R)' : ' (G)';
+                                    var text = pnBrand + name + gen;
+                                    return {
+                                        id: id,
+                                        text: text.trim() || ('Item #' + id)
+                                    };
+                                })
+                            };
+                        }
+                    }
+                });
+            }
+
+            var manualRowIdx = 1;
+            $('#btnAddManualPrItem').on('click', function() {
+                var rowCount = $('#tbodyManualPrItems tr').length;
+                var newRow = `
+                    <tr class="manual-pr-row">
+                        <td class="text-center fw-bold row-no">${rowCount + 1}</td>
+                        <td>
+                            <select name="items[${manualRowIdx}][id_equivalent]" class="form-select select2-manual-equiv" required style="width: 100%;">
+                                <option value="">-- Ketik Part Number / Nama Barang --</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" name="items[${manualRowIdx}][qty]" class="form-control text-center item-qty" min="0.1" step="any" value="1" required>
+                        </td>
+                        <td>
+                            <input type="text" name="items[${manualRowIdx}][note]" class="form-control" placeholder="Catatan item (opsional)">
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-icon btn-sm btn-outline-danger btn-remove-manual-row">
+                                <i class="mdi mdi-trash-can-outline"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                var $newRowEl = $(newRow);
+                $('#tbodyManualPrItems').append($newRowEl);
+                initManualPrSelect2($newRowEl.find('.select2-manual-equiv'));
+                manualRowIdx++;
+                updateManualPrRowNumbers();
+            });
+
+            $(document).on('click', '.btn-remove-manual-row', function() {
+                if ($('#tbodyManualPrItems tr').length > 1) {
+                    $(this).closest('tr').remove();
+                    updateManualPrRowNumbers();
+                }
+            });
+
+            function updateManualPrRowNumbers() {
+                $('#tbodyManualPrItems tr').each(function(index) {
+                    $(this).find('.row-no').text(index + 1);
+                    if ($('#tbodyManualPrItems tr').length === 1) {
+                        $(this).find('.btn-remove-manual-row').prop('disabled', true);
+                    } else {
+                        $(this).find('.btn-remove-manual-row').prop('disabled', false);
+                    }
+                });
+            }
+
+            $('#modalCreateManualPr').on('shown.bs.modal', function () {
+                initManualSoSelect2();
+                if (!$('#tbodyManualPrItems .select2-manual-equiv').hasClass('select2-hidden-accessible')) {
+                    initManualPrSelect2($('#tbodyManualPrItems .select2-manual-equiv'));
+                }
+            });
         });
     </script>
 @endpush
