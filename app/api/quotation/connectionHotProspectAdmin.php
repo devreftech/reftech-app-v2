@@ -42,7 +42,7 @@ try {
            NULL AS ru,
            uq.subtotal,
            COALESCE(NULLIF(uq.title,''),'-') AS title,
-           uq.date AS estimated_date,
+           NULLIF(uq.date, '') AS estimated_date,
            uq.status,
            COALESCE(
                (SELECT CONCAT(DATE_FORMAT(sh.created_at,'%d-%m-%y'),' | ',COALESCE(NULLIF(sh.note,''),'Belum di update'))
