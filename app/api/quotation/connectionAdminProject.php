@@ -1,22 +1,17 @@
 <?php
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 header('Content-Type: application/json');
 
 if (!Auth::check()) {
-    echo json_encode(['error' => 'Pengguna tidak terotentikasi']);
+    echo json_encode(['data' => [], 'error' => 'Pengguna tidak terotentikasi']);
     exit;
 }
 
-$host = config('database.connections.mysql.host');
-$users = config('database.connections.mysql.username');
-$pass = config('database.connections.mysql.password');
-$databaseName = config('database.connections.mysql.database');
-
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->exec("SET SESSION sql_mode = ''");
+    $pdo = DB::connection()->getPdo();
+    $pdo->exec("SET SESSION sql_mode = ''");
 
     $year = request()->get('year');
     $yearFilterQ = ($year && $year !== 'all') ? " AND YEAR(q.estimated_date) = " . intval($year) : "";
@@ -35,7 +30,7 @@ try {
     INNER JOIN users u ON u.id = q.id_sales
     WHERE q.status IN (20,30,40,60,80) AND q.level = '1' AND q.is_primary = '1'
         AND u.role IN ('Admin','Sales Manager')$yearFilterQ
-    GROUP BY q.primary_id
+    GROUP BY q.id
 
     UNION ALL
 
@@ -72,9 +67,7 @@ try {
     $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(['data' => $result], JSON_PRETTY_PRINT);
-} catch (PDOException $e) {
-    echo json_encode(['error' => 'Kesalahan Database: ' . $e->getMessage()], JSON_PRETTY_PRINT);
-} finally {
-    $pdo = null;
+} catch (\Throwable $e) {
+    echo json_encode(['data' => [], 'error' => 'Kesalahan Database: ' . $e->getMessage()], JSON_PRETTY_PRINT);
 }
 ?>

@@ -1,22 +1,17 @@
 <?php
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 header('Content-Type: application/json');
 
 if (!Auth::check()) {
-    echo json_encode(['error' => 'Pengguna tidak terotentikasi']);
+    echo json_encode(['data' => [], 'error' => 'Pengguna tidak terotentikasi']);
     exit;
 }
 
-$host = config('database.connections.mysql.host');
-$users = config('database.connections.mysql.username');
-$pass = config('database.connections.mysql.password');
-$databaseName = config('database.connections.mysql.database');
-
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->exec("SET SESSION sql_mode = ''");
+    $pdo = DB::connection()->getPdo();
+    $pdo->exec("SET SESSION sql_mode = ''");
 
     $salesId = request()->get('sales_id');
     $salesFilter = $salesId ? "AND u.id = " . intval($salesId) : "";
@@ -38,7 +33,7 @@ try {
     LEFT JOIN client c ON c.id = p.id_client
     INNER JOIN users u ON u.id = q.id_sales
     WHERE q.status = 80 AND q.level = '1' AND q.is_primary = '1' AND q.type != 'Unit' AND u.active = '1' $salesFilter $yearFilterQ
-    GROUP BY q.primary_id
+    GROUP BY q.id
 
     UNION ALL
 
@@ -58,7 +53,8 @@ try {
            ) AS tip,
            uq.type,
            'unit' AS row_type,
-           u2.name AS sales_name, u2.image AS sales_image,
+           u2.name AS sales_name,
+           u2.image AS sales_image,
            cp.name AS plant_name
     FROM unit_quotation uq
     LEFT JOIN client c2 ON c2.id = NULLIF(uq.id_client,'')
@@ -73,9 +69,7 @@ try {
     $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(['data' => $result], JSON_PRETTY_PRINT);
-} catch (PDOException $e) {
-    echo json_encode(['error' => 'Kesalahan Database: ' . $e->getMessage()], JSON_PRETTY_PRINT);
-} finally {
-    $pdo = null;
+} catch (\Throwable $e) {
+    echo json_encode(['data' => [], 'error' => 'Kesalahan Database: ' . $e->getMessage()], JSON_PRETTY_PRINT);
 }
 ?>

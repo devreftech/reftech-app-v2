@@ -33,7 +33,7 @@ try {
     LEFT JOIN client c ON c.id = p.id_client
     INNER JOIN users u ON u.id = q.id_sales
     WHERE q.status IN (20,30,40,60,80) AND q.level = '1' AND q.is_primary = '1' AND u.active = '1'$salesFilterQ $yearFilterQ
-    GROUP BY q.primary_id
+    GROUP BY q.id
 
     UNION ALL
 
