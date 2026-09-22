@@ -82,13 +82,13 @@ if (Auth::check()) {
         echo $hasil;
     } catch (PDOException $e) {
         // Kesalahan koneksi atau eksekusi kueri
-        echo json_encode(['error' => 'Kesalahan Database: ' . $e->getMessage()], JSON_PRETTY_PRINT);
+        echo json_encode(['data' => [], 'error' => 'Kesalahan Database: ' . $e->getMessage()], JSON_PRETTY_PRINT);
     } finally {
         // Menutup koneksi PDO
         $pdo = null;
     }
 } else {
     // Pengguna tidak terotentikasi
-    echo json_encode(['error' => 'Pengguna tidak terotentikasi'], JSON_PRETTY_PRINT);
+    echo json_encode(['data' => [], 'error' => 'Pengguna tidak terotentikasi'], JSON_PRETTY_PRINT);
 }
 ?>

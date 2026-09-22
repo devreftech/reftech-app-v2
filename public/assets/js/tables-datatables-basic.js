@@ -30,7 +30,8 @@ document.addEventListener('DOMContentLoaded', function (e) {
     }, 200);
 
     // Form validation for Add new record
-    fv = FormValidation.formValidation(formAddNewRecord, {
+    if (formAddNewRecord && typeof FormValidation !== 'undefined') {
+      fv = FormValidation.formValidation(formAddNewRecord, {
       fields: {
         basicFullname: {
           validators: {
@@ -448,31 +449,35 @@ $(function () {
   // ? Remove/Update this code as per your requirements
   var count = 101;
   // On form submit, if form is valid
-  fv.on('core.form.valid', function () {
-    var $new_name = $('.add-new-record .dt-full-name').val(),
-      $new_post = $('.add-new-record .dt-post').val(),
-      $new_email = $('.add-new-record .dt-email').val(),
-      $new_date = $('.add-new-record .dt-date').val(),
-      $new_salary = $('.add-new-record .dt-salary').val();
+  if (fv) {
+    fv.on('core.form.valid', function () {
+      var $new_name = $('.add-new-record .dt-full-name').val(),
+        $new_post = $('.add-new-record .dt-post').val(),
+        $new_email = $('.add-new-record .dt-email').val(),
+        $new_date = $('.add-new-record .dt-date').val(),
+        $new_salary = $('.add-new-record .dt-salary').val();
 
-    if ($new_name != '') {
-      dt_basic.row
-        .add({
-          id: count,
-          full_name: $new_name,
-          post: $new_post,
-          email: $new_email,
-          start_date: $new_date,
-          salary: '$' + $new_salary,
-          status: 5
-        })
-        .draw();
-      count++;
+      if ($new_name != '') {
+        dt_basic.row
+          .add({
+            id: count,
+            full_name: $new_name,
+            post: $new_post,
+            email: $new_email,
+            start_date: $new_date,
+            salary: '$' + $new_salary,
+            status: 5
+          })
+          .draw();
+        count++;
 
-      // Hide offcanvas using javascript method
-      offCanvasEl.hide();
-    }
-  });
+        // Hide offcanvas using javascript method
+        if (offCanvasEl) {
+          offCanvasEl.hide();
+        }
+      }
+    });
+  }
 
   // Delete Record
   $('.datatables-basic tbody').on('click', '.delete-record', function () {

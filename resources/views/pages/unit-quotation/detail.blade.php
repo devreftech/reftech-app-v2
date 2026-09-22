@@ -285,8 +285,18 @@
                 <div style="display:flex !important; align-items:stretch !important; gap:12px; margin-bottom:16px; font-size:12px;">
                     <div style="flex:1; display:flex; flex-direction:column; align-self:stretch; border:1px solid #dcdcdc; border-radius:6px; padding:10px 14px; background:#fafafa;">
                         <p class="mb-1 fw-bold text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#555;">Quote To</p>
+                        @php
+                            $clientUrl = $quote->client ? ($quote->client->role === 'Leads' ? route('detail.leads', $quote->client->id) : route('existing.show', $quote->client->id)) : null;
+                        @endphp
                         <p class="mb-1 fw-bold" style="font-size:13.5px; color:#111;">
-                            {{ $quote->client?->company ?? '-' }}
+                            @if ($clientUrl)
+                                <a href="{{ $clientUrl }}" class="text-primary text-decoration-none fw-bold" target="_blank" title="Buka halaman client">
+                                    {{ $quote->client->company }}
+                                    <i class="mdi mdi-open-in-new ms-1" style="font-size: 12px; vertical-align: middle;"></i>
+                                </a>
+                            @else
+                                {{ $quote->client?->company ?? '-' }}
+                            @endif
                             @if ($quote->plant)
                                 <span class="badge bg-label-success ms-1" style="font-size: 10.5px; vertical-align: middle;">{{ $quote->plant->name }}</span>
                             @endif

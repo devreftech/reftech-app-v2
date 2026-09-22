@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Auth;
 header('Content-Type: application/json');
 
 if (!Auth::check()) {
-    echo json_encode(['error' => 'Pengguna tidak terotentikasi']);
+    echo json_encode(['data' => [], 'error' => 'Pengguna tidak terotentikasi']);
     exit;
 }
 
@@ -75,7 +75,7 @@ try {
 
     echo json_encode(['data' => $result], JSON_PRETTY_PRINT);
 } catch (PDOException $e) {
-    echo json_encode(['error' => 'Kesalahan Database: ' . $e->getMessage()], JSON_PRETTY_PRINT);
+    echo json_encode(['data' => [], 'error' => 'Kesalahan Database: ' . $e->getMessage()], JSON_PRETTY_PRINT);
 } finally {
     $pdo = null;
 }

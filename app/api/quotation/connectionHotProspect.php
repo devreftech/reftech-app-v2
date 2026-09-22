@@ -65,11 +65,11 @@ if (Auth::check()) {
 
         echo json_encode(['data' => $result], JSON_PRETTY_PRINT);
     } catch (PDOException $e) {
-        echo json_encode(['error' => 'Kesalahan Database: ' . $e->getMessage()], JSON_PRETTY_PRINT);
+        echo json_encode(['data' => [], 'error' => 'Kesalahan Database: ' . $e->getMessage()], JSON_PRETTY_PRINT);
     } finally {
         $pdo = null;
     }
 } else {
-    echo json_encode(['error' => 'Pengguna tidak terotentikasi'], JSON_PRETTY_PRINT);
+    echo json_encode(['data' => [], 'error' => 'Pengguna tidak terotentikasi'], JSON_PRETTY_PRINT);
 }
 ?>

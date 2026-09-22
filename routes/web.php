@@ -103,6 +103,7 @@ use App\Models\UnitQuotation;
 use App\Models\User;
 use Carbon\Carbon;
 use FontLib\Table\Type\post;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;

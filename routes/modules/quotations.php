@@ -9,6 +9,8 @@ use App\Models\Client;
 use App\Models\Pic;
 use App\Models\Quotation;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
