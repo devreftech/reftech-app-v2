@@ -22,7 +22,7 @@ if (Auth::check()) {
         $query = "
         SELECT q.id, q.no_quote, c.company, c.ru, q.subtotal, q.title, q.estimated_date,
                q.status,
-               COALESCE(NULLIF(TRIM(CONCAT_WS(' ', q.note, CASE WHEN q.status_date IS NOT NULL AND q.status_date != '' THEN CONCAT('(', q.status_date, ')') ELSE '' END)), ''), 'Belum di update') AS tip,
+               COALESCE(NULLIF(TRIM(CONCAT_WS(' ', q.note, CASE WHEN q.status_date IS NOT NULL AND q.status_date != '0000-00-00' THEN CONCAT('(', q.status_date, ')') ELSE '' END)), ''), 'Belum di update') AS tip,
                q.type, 'service' AS row_type,
                NULL AS plant_name
         FROM quotation q
@@ -39,7 +39,7 @@ if (Auth::check()) {
                c2.ru AS ru,
                uq.total AS subtotal,
                COALESCE(NULLIF(uq.title,''),'-') AS title,
-               NULLIF(uq.date, '') AS estimated_date,
+               uq.date AS estimated_date,
                uq.status,
                COALESCE(
                    (SELECT CONCAT(DATE_FORMAT(sh.created_at,'%d-%m-%y'),' | ',COALESCE(NULLIF(sh.note,''),'Belum di update'))

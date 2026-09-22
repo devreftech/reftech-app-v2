@@ -27,7 +27,7 @@ if (Auth::check()) {
                c2.ru AS ru,
                uq.total AS subtotal,
                COALESCE(NULLIF(uq.title,''),'-') AS title,
-               NULLIF(uq.date, '') AS estimated_date,
+               uq.date AS estimated_date,
                'Draft' AS status,
                (SELECT CONCAT(DATE_FORMAT(sh.created_at,'%d-%m-%y'),' | ',COALESCE(NULLIF(sh.note,''),'Draft tersimpan'))
                 FROM unit_quotation_status_history sh
