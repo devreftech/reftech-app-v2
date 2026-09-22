@@ -1,7 +1,7 @@
 <form action="{{ route('tool-master.store') }}" method="post" enctype="multipart/form-data" id="formToolMaster">
     @csrf
     <input type="hidden" name="_method" id="toolMasterMethod" value="post">
-    <div class="modal animate__animated animate__fadeIn" id="toolMasterModal" tabindex="-1" style="display: none;"
+    <div class="modal fade" id="toolMasterModal" tabindex="-1" style="display: none;"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">

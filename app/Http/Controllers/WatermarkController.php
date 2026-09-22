@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Intervention\Image\Facades\Image;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use ZipArchive;
@@ -18,16 +19,23 @@ class WatermarkController extends Controller
     public function upload(Request $request)
     {
         $request->validate([
-            'photos.*' => 'required|image|mimes:jpeg,jpg,png|max:4096',
+            'photos'   => 'required|array|min:1',
+            'photos.*' => 'required|image|mimes:jpeg,jpg,png,webp|max:8192',
         ], [
-            'photos.*.mimes' => 'Format gambar hanya boleh JPG, JPEG, atau PNG.',
-            'photos.*.max' => 'Ukuran gambar maksimal 4MB.',
+            'photos.required' => 'Silakan pilih minimal 1 foto.',
+            'photos.*.mimes'  => 'Format gambar hanya boleh JPG, JPEG, PNG, atau WEBP.',
+            'photos.*.max'    => 'Ukuran gambar maksimal 8MB per file.',
         ]);
 
         $sessionId = session()->getId();
         $tempDir = storage_path("app/temp-watermarked/{$sessionId}/");
         if (!file_exists($tempDir)) {
             mkdir($tempDir, 0777, true);
+        }
+
+        $wmPath = public_path('asset/WM-REFTECH.png');
+        if (!file_exists($wmPath) && file_exists('/home/u877155683/public_html/asset/WM-REFTECH.png')) {
+            $wmPath = '/home/u877155683/public_html/asset/WM-REFTECH.png';
         }
 
         foreach ($request->file('photos') as $photo) {
@@ -37,14 +45,13 @@ class WatermarkController extends Controller
                 $constraint->upsize();
             });
 
-            $watermark = Image::make('/home/u877155683/public_html/asset/WM-REFTECH.png')->opacity(60);
-            // $resizedWatermark = $watermark->resize($image->width() * 1, null, function ($constraint) {
-            //     $constraint->aspectRatio();
-            // });
+            if (file_exists($wmPath)) {
+                $watermark = Image::make($wmPath)->opacity(60);
+                $image->insert($watermark, 'center');
+            }
 
-            $image->insert($watermark, 'center');
-
-            $filename = time() . '_' . $photo->getClientOriginalName();
+            $cleanName = preg_replace('/[^a-zA-Z0-9._-]/', '', $photo->getClientOriginalName());
+            $filename = time() . '_' . Str::random(6) . '_' . $cleanName;
             $image->save($tempDir . $filename, 75);
         }
 

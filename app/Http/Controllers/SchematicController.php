@@ -153,6 +153,11 @@ class SchematicController extends Controller
             ->with('success', 'Skematik diagram berhasil dihapus.');
     }
 
+    public function show($id)
+    {
+        return redirect()->route('schematics.edit', $id);
+    }
+
     public function duplicate($id)
     {
         $original = Schematic::findOrFail($id);

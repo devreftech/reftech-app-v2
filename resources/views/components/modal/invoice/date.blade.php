@@ -1,7 +1,7 @@
 <form action="{{ route('invoice.date', $invoice->id) }}" method="post" enctype="multipart/form-data">
     {{-- {{ csrf_token() }} --}}
     @csrf
-    <div class="modal animate__animated animate__fadeIn" id="changeDate" tabindex="-1"
+    <div class="modal fade" id="changeDate" tabindex="-1"
         style="display: none;" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">

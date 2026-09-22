@@ -2,7 +2,7 @@
     {{-- {{ csrf_token() }} --}}
     @method('PATCH')
     @csrf
-    <div class="modal animate__animated animate__fadeIn" id="acceptVisit{{$visit->id}}" tabindex="-1" style="display: none;"
+    <div class="modal fade" id="acceptVisit{{$visit->id}}" tabindex="-1" style="display: none;"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">

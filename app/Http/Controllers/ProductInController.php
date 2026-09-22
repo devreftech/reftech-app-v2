@@ -17,6 +17,7 @@ use App\Models\SupplierPic;
 use App\Models\SupplierAddress;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProductInController extends Controller
 {
@@ -124,27 +125,28 @@ class ProductInController extends Controller
             'note.required' => 'Field Note Wajib Diisi',
         ];
         $this->validate($request, $rule, $message);
-        // dd($request->all());
-        $supplier = Supplier::find($request->supplier);
-        // Masukan Data ke Tabel Quotataion
-        $productIn = new ProductIn();
-        $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
-        $productIn->created_by = Auth::id();
-        $productIn->no_do = NULL;
-        $productIn->invoice = $request->invoice;
-        $productIn->id_supplier = $request->supplier;
-        // $productIn->supplier = $request->suplier;
-        $productIn->info = $supplier->info;
-        $productIn->date = $request->date;
-        $productIn->date_invoice = $request->date_invoice;
-        $productIn->subtotal = $request->subtotal;
-        $productIn->total_no_tax = $request->total_no_tax;
-        $productIn->tax = $request->tax;
-        $productIn->note = $request->note;
-        $productIn->shipping = $request->shipping;
-        $productIn->total = $request->total;
-        $productInSave = $productIn->save();
-        if ($productInSave) {
+
+        return DB::transaction(function () use ($request) {
+            $supplier = Supplier::find($request->supplier);
+            // Masukan Data ke Tabel Quotataion
+            $productIn = new ProductIn();
+            $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
+            $productIn->created_by = Auth::id();
+            $productIn->no_do = NULL;
+            $productIn->invoice = $request->invoice;
+            $productIn->id_supplier = $request->supplier;
+            // $productIn->supplier = $request->suplier;
+            $productIn->info = $supplier ? $supplier->info : null;
+            $productIn->date = $request->date;
+            $productIn->date_invoice = $request->date_invoice;
+            $productIn->subtotal = $request->subtotal;
+            $productIn->total_no_tax = $request->total_no_tax;
+            $productIn->tax = $request->tax;
+            $productIn->note = $request->note;
+            $productIn->shipping = $request->shipping;
+            $productIn->total = $request->total;
+            $productIn->save();
+
             // Masukan Data Ke Tabel Detail Quotataion
             foreach ($request->replacement as $item => $value) {
                 $dProductIn = new DetailProductIn;
@@ -156,28 +158,32 @@ class ProductInController extends Controller
                 $dProductIn->amount = $request->amount[$item];
                 $dProductIn->warehouse = $request->warehouse[$item];
                 $productD = DetailProduct::where('id', $request->replacement[$item])->first();
-                // dd($productD);
-                $productD->modal = ((($productD->stock + $productD->warehouse_stock) * $productD->modal) + ($request->qty[$item] * $request->price[$item])) / (($productD->stock + $productD->warehouse_stock) + $request->qty[$item]);
-                if ($request->warehouse[$item] == 'BDG') {
-                    $productD->stock = $productD->stock + $request->qty[$item];
-                } else {
-                    $productD->warehouse_stock = $productD->warehouse_stock + $request->qty[$item];
+                if ($productD) {
+                    $denom = ($productD->stock + $productD->warehouse_stock) + $request->qty[$item];
+                    if ($denom > 0) {
+                        $productD->modal = ((($productD->stock + $productD->warehouse_stock) * $productD->modal) + ($request->qty[$item] * $request->price[$item])) / $denom;
+                    }
+                    if ($request->warehouse[$item] == 'BDG') {
+                        $productD->stock = $productD->stock + $request->qty[$item];
+                    } else {
+                        $productD->warehouse_stock = $productD->warehouse_stock + $request->qty[$item];
+                    }
+                    $productD->save();
+                    $product = Product::where('id', $productD->id_product)->first();
+                    if ($product) {
+                        if ($request->warehouse[$item] == 'BDG') {
+                            $product->stock = $product->stock + $request->qty[$item];
+                        } else {
+                            $product->warehouse_stock = $product->warehouse_stock + $request->qty[$item];
+                        }
+                        $product->save();
+                    }
                 }
-                $productD->save();
-                $product = Product::where('id', $productD->id_product)->first();
-                if ($request->warehouse[$item] == 'BDG') {
-                    $product->stock = $product->stock + $request->qty[$item];
-                } else {
-                    $product->warehouse_stock = $product->warehouse_stock + $request->qty[$item];
-                }
-                // dd($product);
-                $product->save();
-                $dProductSave = $dProductIn->save();
+                $dProductIn->save();
             }
-        }
-        if ($dProductSave) {
+
             return redirect('/product-in')->with('message', 'data telah di tambahkan');
-        }
+        });
     }
 
     /**
@@ -479,12 +485,9 @@ class ProductInController extends Controller
 
     public function logistic_store(Request $request)
     {
-
         $rule = [
             'no_do' => 'required',
             'date' => 'required',
-            // GR Manual (barang masuk tanpa PO) — wajib ada alasan/catatan biar ada jejak
-            // audit kenapa stok ini muncul tanpa Purchase Order.
             'note' => 'required|string|max:1000',
         ];
         $message = [
@@ -493,30 +496,27 @@ class ProductInController extends Controller
             'note.required' => 'Catatan/Alasan Wajib Diisi',
         ];
         $this->validate($request, $rule, $message);
-        // dd($request->all());
-        $supplier = Supplier::find($request->supplier);
-        // Masukan Data ke Tabel Quotataion
-        $productIn = new ProductIn();
-        $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
-        $productIn->created_by = Auth::id();
-        $productIn->no_do = $request->no_do;
-        $productIn->invoice = null;
-        // $productIn->id_supplier = null;
-        $productIn->id_supplier = $request->supplier;
-        $productIn->supplier = null;
-        // $productIn->info = $supplier->info;
-        $productIn->info = $request->info;
-        $productIn->date = $request->date;
-        $productIn->date_invoice = null;
-        $productIn->subtotal = null;
-        $productIn->total_no_tax = null;
-        $productIn->tax = null;
-        $productIn->note = $request->note;
-        $productIn->shipping = null;
-        $productIn->total = null;
-        $productInSave = $productIn->save();
-        if ($productInSave) {
-            // Masukan Data Ke Tabel Detail Quotataion
+
+        return DB::transaction(function () use ($request) {
+            $supplier = Supplier::find($request->supplier);
+            $productIn = new ProductIn();
+            $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
+            $productIn->created_by = Auth::id();
+            $productIn->no_do = $request->no_do;
+            $productIn->invoice = null;
+            $productIn->id_supplier = $request->supplier;
+            $productIn->supplier = null;
+            $productIn->info = $request->info;
+            $productIn->date = $request->date;
+            $productIn->date_invoice = null;
+            $productIn->subtotal = null;
+            $productIn->total_no_tax = null;
+            $productIn->tax = null;
+            $productIn->note = $request->note;
+            $productIn->shipping = null;
+            $productIn->total = null;
+            $productIn->save();
+
             foreach ($request->replacement as $item => $value) {
                 $dProductIn = new DetailProductIn;
                 $dProductIn->id_product_in = $productIn->id;
@@ -526,107 +526,95 @@ class ProductInController extends Controller
                 $dProductIn->amount = null;
                 $dProductIn->warehouse = $request->warehouse[$item];
                 $productD = DetailProduct::where('id', $request->replacement[$item])->first();
-                // $productD->modal = ((($productD->stock + $productD->warehouse_stock) * $productD->modal) + ($request->qty[$item] * $request->price[$item])) / (($productD->stock + $productD->warehouse_stock) + $request->qty[$item]);
-                if ($request->warehouse[$item] == 'BDG') {
-                    $productD->stock = $productD->stock + $request->qty[$item];
-                } else {
-                    $productD->warehouse_stock = $productD->warehouse_stock + $request->qty[$item];
+                if ($productD) {
+                    if ($request->warehouse[$item] == 'BDG') {
+                        $productD->stock = $productD->stock + $request->qty[$item];
+                    } else {
+                        $productD->warehouse_stock = $productD->warehouse_stock + $request->qty[$item];
+                    }
+                    $productD->save();
+                    $product = Product::where('id', $productD->id_product)->first();
+                    if ($product) {
+                        if ($request->warehouse[$item] == 'BDG') {
+                            $product->stock = $product->stock + $request->qty[$item];
+                        } else {
+                            $product->warehouse_stock = $product->warehouse_stock + $request->qty[$item];
+                        }
+                        $product->save();
+                    }
                 }
-                $productD->save();
-                $product = Product::where('id', $productD->id_product)->first();
-                if ($request->warehouse[$item] == 'BDG') {
-                    $product->stock = $product->stock + $request->qty[$item];
-                } else {
-                    $product->warehouse_stock = $product->warehouse_stock + $request->qty[$item];
-                }
-                // dd($product);
-                $product->save();
-                $dProductSave = $dProductIn->save();
+                $dProductIn->save();
             }
-        }
-        if ($dProductSave) {
+
             return redirect('/product-in')->with('message', 'data telah di tambahkan');
-        }
+        });
     }
     public function invoicing(Request $request, $id)
     {
-        $productIn = ProductIn::find($id);
-        $dProductIn = DetailProductIn::where('id_product_in', $id)->get();
-        // dd($request->all());
         $rule = [
             'invoice' => 'required',
-            // 'suplier' => 'required',
-            // 'date_invoice' => 'required',
             'note' => 'required',
         ];
         $message = [
             'invoice.required' => 'Field No Invoice Wajib Diisi',
-            // 'suplier.required' => 'Field Suplier Wajib Diisi',
-            // 'date_invoice.required' => 'Field Date Wajib Diisi',
             'note.required' => 'Field Note Wajib Diisi',
         ];
         $this->validate($request, $rule, $message);
-        // dd($request->all());
-        // Masukan Data ke Tabel Quotataion
-        $productIn->invoice = $request->invoice;
-        $productIn->id_supplier = $request->supplier;
-        // $productIn->supplier = $request->suplier;
-        $productIn->date_invoice = $request->date_invoice;
-        $productIn->subtotal = $request->subtotal;
-        $productIn->total_no_tax = $request->total_no_tax;
-        $productIn->tax = $request->tax;
-        $productIn->note = $request->note;
-        $productIn->shipping = $request->shipping;
-        $productIn->total = $request->total;
-        $productInSave = $productIn->save();
-        if ($productInSave) {
-            // Masukan Data Ke Tabel Detail Quotataion
+
+        return DB::transaction(function () use ($request, $id) {
+            $productIn = ProductIn::find($id);
+            $dProductIn = DetailProductIn::where('id_product_in', $id)->get();
+            $productIn->invoice = $request->invoice;
+            $productIn->id_supplier = $request->supplier;
+            $productIn->date_invoice = $request->date_invoice;
+            $productIn->subtotal = $request->subtotal;
+            $productIn->total_no_tax = $request->total_no_tax;
+            $productIn->tax = $request->tax;
+            $productIn->note = $request->note;
+            $productIn->shipping = $request->shipping;
+            $productIn->total = $request->total;
+            $productIn->save();
+
             foreach ($dProductIn as $item => $value) {
                 $value->modal = $request->price[$item];
                 $value->amount = $request->amount[$item];
                 $value->disc = $request->disc[$item];
-                $dProductSave = $value->save();
+                $value->save();
             }
-        }
-        if ($dProductSave) {
+
             return redirect('/product-in')->with('message', 'data telah di tambahkan');
-        }
+        });
     }
+
     public function return_in(Request $request, $id)
     {
-        $return = Retur::find($id);
-        $dReturn = DetailReturn::where('id_retur', $id)->where('status', 1)->get();
-        // dd($request->all());
         $rule = [
             'invoice' => 'required',
-            // 'suplier' => 'required',
-            // 'date_invoice' => 'required',
             'note' => 'required',
         ];
         $message = [
             'invoice.required' => 'Field No Invoice Wajib Diisi',
-            // 'suplier.required' => 'Field Suplier Wajib Diisi',
-            // 'date_invoice.required' => 'Field Date Wajib Diisi',
             'note.required' => 'Field Note Wajib Diisi',
         ];
         $this->validate($request, $rule, $message);
-        // dd($request->all());
-        // Masukan Data ke Tabel Quotataiona
-        $productIn = new ProductIn();
-        $productIn->invoice = $request->invoice;
-        $productIn->id_supplier = $request->supplier;
-        // $productIn->supplier = $request->suplier;
-        $productIn->date_invoice = $request->date_invoice;
-        $productIn->date = Carbon::now();
-        $productIn->subtotal = $request->subtotal;
-        $productIn->total_no_tax = $request->total_no_tax;
-        $productIn->tax = $request->tax;
-        $productIn->note = $request->note;
-        $productIn->shipping = $request->shipping;
-        $productIn->total = $request->total;
-        $productInSave = $productIn->save();
-        if ($productInSave) {
-            // Masukan Data Ke Tabel Detail Quotataion
+
+        return DB::transaction(function () use ($request, $id) {
+            $return = Retur::find($id);
+            $dReturn = DetailReturn::where('id_retur', $id)->where('status', 1)->get();
+
+            $productIn = new ProductIn();
+            $productIn->invoice = $request->invoice;
+            $productIn->id_supplier = $request->supplier;
+            $productIn->date_invoice = $request->date_invoice;
+            $productIn->date = Carbon::now();
+            $productIn->subtotal = $request->subtotal;
+            $productIn->total_no_tax = $request->total_no_tax;
+            $productIn->tax = $request->tax;
+            $productIn->note = $request->note;
+            $productIn->shipping = $request->shipping;
+            $productIn->total = $request->total;
+            $productIn->save();
+
             foreach ($dReturn as $item => $value) {
                 $dproductIn = new DetailProductIn();
                 $dproductIn->id_product_in = $productIn->id;
@@ -636,102 +624,107 @@ class ProductInController extends Controller
                 $dproductIn->modal = $request->price[$item];
                 $dproductIn->amount = $request->amount[$item];
                 $dproductIn->disc = !empty($request->disc[$item]) ? $request->disc[$item] : 0;
-                $dProductSave = $dproductIn->save();
+                $dproductIn->save();
             }
-        }
-        $return->status = 1;
-        $return->save();
-        if ($dProductSave) {
-            return redirect('/return/'. $id)->with('message', 'data telah di tambahkan');
-        }
-    }
 
+            if ($return) {
+                $return->status = 1;
+                $return->save();
+            }
+
+            return redirect('/return/'. $id)->with('message', 'data telah di tambahkan');
+        });
+    }
 
     public function logistic_update(Request $request, $id)
     {
-        $productIn = ProductIn::find($id);
-        $productIn->no_do       = $request->no_do;
-        $productIn->date        = $request->date;
-        $productIn->id_supplier = $request->id_supplier ?: $productIn->id_supplier;
-        $productIn->info        = $request->info;
-        $productIn->save();
-
-        foreach ($request->items ?? [] as $detailId => $values) {
-            $detail = DetailProductIn::find($detailId);
-            if (!$detail) continue;
-
-            $oldDetailProductId = $detail->id_detail_product;
-            $oldQty             = $detail->qty;
-            $oldWarehouse       = $detail->warehouse;
-            $newDetailProductId = $values['id_detail_product'] ?? $oldDetailProductId;
-            $newQty             = (int) ($values['qty'] ?? $oldQty);
-            $newWarehouse       = $values['warehouse'] ?? $oldWarehouse;
-
-            // Revert stok lama
-            $oldProductD = DetailProduct::find($oldDetailProductId);
-            if ($oldProductD) {
-                $oldProduct = $oldProductD->product;
-                if ($oldWarehouse == 'BDG') {
-                    $oldProductD->stock           -= $oldQty;
-                    $oldProduct->stock            -= $oldQty;
-                } else {
-                    $oldProductD->warehouse_stock -= $oldQty;
-                    $oldProduct->warehouse_stock  -= $oldQty;
-                }
-                $oldProductD->save();
-                $oldProduct->save();
+        return DB::transaction(function () use ($request, $id) {
+            $productIn = ProductIn::find($id);
+            if ($productIn) {
+                $productIn->no_do       = $request->no_do;
+                $productIn->date        = $request->date;
+                $productIn->id_supplier = $request->id_supplier ?: $productIn->id_supplier;
+                $productIn->info        = $request->info;
+                $productIn->save();
             }
 
-            // Terapkan stok baru
-            $newProductD = DetailProduct::find($newDetailProductId);
-            if ($newProductD) {
-                $newProduct = $newProductD->product;
-                if ($newWarehouse == 'BDG') {
-                    $newProductD->stock           += $newQty;
-                    $newProduct->stock            += $newQty;
-                } else {
-                    $newProductD->warehouse_stock += $newQty;
-                    $newProduct->warehouse_stock  += $newQty;
+            foreach ($request->items ?? [] as $detailId => $values) {
+                $detail = DetailProductIn::find($detailId);
+                if (!$detail) continue;
+
+                $oldDetailProductId = $detail->id_detail_product;
+                $oldQty             = $detail->qty;
+                $oldWarehouse       = $detail->warehouse;
+                $newDetailProductId = $values['id_detail_product'] ?? $oldDetailProductId;
+                $newQty             = (int) ($values['qty'] ?? $oldQty);
+                $newWarehouse       = $values['warehouse'] ?? $oldWarehouse;
+
+                // Revert stok lama
+                $oldProductD = DetailProduct::find($oldDetailProductId);
+                if ($oldProductD) {
+                    $oldProduct = $oldProductD->product;
+                    if ($oldWarehouse == 'BDG') {
+                        $oldProductD->stock           -= $oldQty;
+                        if ($oldProduct) $oldProduct->stock -= $oldQty;
+                    } else {
+                        $oldProductD->warehouse_stock -= $oldQty;
+                        if ($oldProduct) $oldProduct->warehouse_stock -= $oldQty;
+                    }
+                    $oldProductD->save();
+                    if ($oldProduct) $oldProduct->save();
                 }
-                $newProductD->save();
-                $newProduct->save();
+
+                // Terapkan stok baru
+                $newProductD = DetailProduct::find($newDetailProductId);
+                if ($newProductD) {
+                    $newProduct = $newProductD->product;
+                    if ($newWarehouse == 'BDG') {
+                        $newProductD->stock           += $newQty;
+                        if ($newProduct) $newProduct->stock += $newQty;
+                    } else {
+                        $newProductD->warehouse_stock += $newQty;
+                        if ($newProduct) $newProduct->warehouse_stock += $newQty;
+                    }
+                    $newProductD->save();
+                    if ($newProduct) $newProduct->save();
+                }
+
+                $detail->id_detail_product = $newDetailProductId;
+                $detail->qty               = $newQty;
+                $detail->warehouse         = $newWarehouse;
+                $detail->save();
             }
 
-            $detail->id_detail_product = $newDetailProductId;
-            $detail->qty               = $newQty;
-            $detail->warehouse         = $newWarehouse;
-            $detail->save();
-        }
+            // Tambah item baru
+            foreach ($request->new_items ?? [] as $newItem) {
+                if (empty($newItem['id_detail_product']) || empty($newItem['qty'])) continue;
 
-        // Tambah item baru
-        foreach ($request->new_items ?? [] as $newItem) {
-            if (empty($newItem['id_detail_product']) || empty($newItem['qty'])) continue;
+                $dProductIn = new DetailProductIn();
+                $dProductIn->id_product_in    = $id;
+                $dProductIn->id_detail_product = $newItem['id_detail_product'];
+                $dProductIn->qty              = (int) $newItem['qty'];
+                $dProductIn->warehouse        = $newItem['warehouse'];
+                $dProductIn->modal            = null;
+                $dProductIn->amount           = null;
+                $dProductIn->save();
 
-            $dProductIn = new DetailProductIn();
-            $dProductIn->id_product_in    = $id;
-            $dProductIn->id_detail_product = $newItem['id_detail_product'];
-            $dProductIn->qty              = (int) $newItem['qty'];
-            $dProductIn->warehouse        = $newItem['warehouse'];
-            $dProductIn->modal            = null;
-            $dProductIn->amount           = null;
-            $dProductIn->save();
-
-            $productD = DetailProduct::find($newItem['id_detail_product']);
-            if ($productD) {
-                $product = $productD->product;
-                if ($newItem['warehouse'] == 'BDG') {
-                    $productD->stock          += $dProductIn->qty;
-                    $product->stock           += $dProductIn->qty;
-                } else {
-                    $productD->warehouse_stock += $dProductIn->qty;
-                    $product->warehouse_stock  += $dProductIn->qty;
+                $productD = DetailProduct::find($newItem['id_detail_product']);
+                if ($productD) {
+                    $product = $productD->product;
+                    if ($newItem['warehouse'] == 'BDG') {
+                        $productD->stock          += $dProductIn->qty;
+                        if ($product) $product->stock += $dProductIn->qty;
+                    } else {
+                        $productD->warehouse_stock += $dProductIn->qty;
+                        if ($product) $product->warehouse_stock += $dProductIn->qty;
+                    }
+                    $productD->save();
+                    if ($product) $product->save();
                 }
-                $productD->save();
-                $product->save();
             }
-        }
 
-        return response()->json(['success' => true, 'message' => 'Data berhasil diperbarui']);
+            return response()->json(['success' => true, 'message' => 'Data berhasil diperbarui']);
+        });
     }
 
     public function destroyDetail($id)
@@ -877,6 +870,12 @@ class ProductInController extends Controller
         ]);
 
         $pic = SupplierPic::find($id);
+        if (!$pic) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'PIC tidak ditemukan'], 404);
+            }
+            return redirect()->back()->with('error', 'PIC tidak ditemukan');
+        }
         $pic->name_pic = $request->namePic;
         $pic->position = $request->position;
         $pic->phone_pic = $request->phonePic;

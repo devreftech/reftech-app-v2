@@ -13,6 +13,7 @@ class HrEmployeeAsset extends Model
 
     protected $fillable = [
         'employee_id',
+        'fixed_asset_id',
         'asset_name',
         'asset_code',
         'serial_number',
@@ -31,5 +32,10 @@ class HrEmployeeAsset extends Model
     public function employee()
     {
         return $this->belongsTo(Employee::class, 'employee_id');
+    }
+
+    public function fixedAsset()
+    {
+        return $this->belongsTo(\App\Models\FixedAsset::class, 'fixed_asset_id');
     }
 }

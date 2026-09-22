@@ -32,7 +32,8 @@ class User extends Authenticatable
         'active',
         'role',
         'date_in',
-        'remember_token'
+        'remember_token',
+        'quick_actions'
     ];
 
     /**
@@ -52,6 +53,7 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'quick_actions'     => 'array',
     ];
 
 
@@ -80,6 +82,11 @@ class User extends Authenticatable
         return $this->hasMany('App\Models\DetailUser', 'id_users');
     }
 
+    public function detailUser()
+    {
+        return $this->hasMany('App\Models\DetailUser', 'id_users');
+    }
+
     public function clients()
     {
         return $this->hasMany('App\Models\Client', 'id_sales');
@@ -92,6 +99,14 @@ class User extends Authenticatable
     public function target()
     {
         return $this->hasMany('App\Models\Target', 'id_sales');
+    }
+    public function salesTargetHistories()
+    {
+        return $this->hasMany('App\Models\SalesTargetHistory', 'user_id');
+    }
+    public function currentRoster()
+    {
+        return $this->hasOne('App\Models\SalesTargetHistory', 'user_id')->where('year', date('Y'));
     }
     public function audit()
     {

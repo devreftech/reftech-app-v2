@@ -610,6 +610,9 @@ class FixedController extends Controller
     {
         $fixed = FixedAsset::with('unit', 'rentalScans.client', 'rentalScans.picInternal', 'rentalScans.scannedBy')
             ->find($id);
+        if (!$fixed) {
+            return redirect()->route('unit-acquisition.index')->with('error', 'Unit Acquisition tidak ditemukan');
+        }
         $services = FixedAssetService::where('id_fixed_asset', $id)->with('detailProduct.product')->get();
 
         $hitung = $fixed->hitungNilaiBuku();

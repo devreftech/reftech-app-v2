@@ -134,8 +134,9 @@
                             @if ($user->id == 23) @continue @endif
                             @php
                                 $isActive = $user->id == ($firstSales->id ?? 1);
-                                $displayName = $user->id == 16 ? 'Team E-Commerce' : Str::words($user->name, 1, '');
-                                $displayArea = $user->id == 16 ? 'Online' : ($user->latestRole->area ?? 'Sales');
+                                $roster = $user->currentRoster;
+                                $displayName = ($roster && !empty($roster->display_name)) ? $roster->display_name : ($user->id == 16 ? 'Team E-Commerce' : Str::words($user->name, 1, ''));
+                                $displayArea = ($roster && !empty($roster->subtitle)) ? $roster->subtitle : ($user->id == 16 ? 'Online' : ($user->latestRole->area ?? 'Sales'));
                             @endphp
                             <li class="nav-item change-sales text-center flex-shrink-0" role="presentation" data-id="{{ $user->id }}">
                                 <a class="nav-link btn {{ $isActive ? 'active' : '' }} d-flex flex-column align-items-center justify-content-center p-2 rounded-3"

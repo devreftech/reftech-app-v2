@@ -1,7 +1,7 @@
 <form action="{{ $quote->type == 'Sparepart' ? route('invoice.pph', $invoice->id) : route('invoice.pph_service', $invoice->id) }}" method="post" enctype="multipart/form-data">
     {{-- {{ csrf_token() }} --}}
     @csrf
-    <div class="modal animate__animated animate__fadeIn" id="addPph" tabindex="-1" style="display: none;"
+    <div class="modal fade" id="addPph" tabindex="-1" style="display: none;"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">

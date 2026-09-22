@@ -24,10 +24,10 @@ use App\Models\ServiceOrder;
 use App\Models\SubtitleQuotation;
 use App\Models\ProjectExpense;
 use App\Models\UnitQuotation;
-use Auth;
-use Cache;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use DB;
 use Illuminate\Http\Request;
 
 class PendingController extends Controller
@@ -204,6 +204,9 @@ class PendingController extends Controller
     public function edit($id)
     {
         $pending = PendingPO::find($id);
+        if (!$pending) {
+            return redirect()->route('pending-po.index')->with('error', 'Pending PO tidak ditemukan');
+        }
         $quote = Quotation::find($pending->id_quotation);
         $Dquote = DetailQuotation::where('id_quotation', $pending->id_quotation)->get();
         $dPending = DetailPendingPO::where('id_pending', $id)->get();
@@ -299,51 +302,52 @@ class PendingController extends Controller
     }
     public function connect_out(Request $request, $id)
     {
-        $pending = PendingPO::findOrFail($id);
-        $dPending = DetailPendingPO::where('id_pending', $id)->get();
-        $cekstock = 0;
-        foreach ($dPending as $detail) {
-            $cekstock += $detail->bdg + $detail->bks;
-        }
-        if ($pending->id_unit_quotation) {
-            if ($cekstock != 0) {
-                foreach ($dPending as $item) {
-                    $product = Product::join('serial_product as sp', 'sp.id_product', '=', 'product.id')->where('sp.id', $item->id_equivalent)->select('product.*')->first();
+        return DB::transaction(function () use ($request, $id) {
+            $pending = PendingPO::findOrFail($id);
+            $dPending = DetailPendingPO::where('id_pending', $id)->get();
+            $cekstock = 0;
+            foreach ($dPending as $detail) {
+                $cekstock += $detail->bdg + $detail->bks;
+            }
+            if ($pending->id_unit_quotation) {
+                if ($cekstock != 0) {
+                    foreach ($dPending as $item) {
+                        $product = Product::join('serial_product as sp', 'sp.id_product', '=', 'product.id')->where('sp.id', $item->id_equivalent)->select('product.*')->first();
+                        if (!$product) {
+                            continue;
+                        }
+                        $product->stock += $item->bdg;
+                        $product->warehouse_stock += $item->bks;
+                        $product->pending_stock -= $item->bdg + $item->bks;
+                        $product->save();
+                        $item->bdg = 0;
+                        $item->bks = 0;
+                        $item->save();
+                    }
+                }
+            } elseif ($cekstock == 0) {
+                $quote = Quotation::findOrFail($pending->id_quotation);
+                $dQuote = DetailQuotation::where('id_quotation', $quote->id)->get();
+                foreach ($dQuote as $item) {
+                    $equivalent = SerialProduct::find($item->id_equivalent);
+                    if (!$equivalent) {
+                        continue;
+                    }
+                    $product = Product::find($equivalent->id_product);
                     if (!$product) {
                         continue;
                     }
-                    $product->stock += $item->bdg;
-                    $product->warehouse_stock += $item->bks;
-                    $product->pending_stock -= $item->bdg + $item->bks;
+                    $product->pending_stock -= $item->qty;
+                    $product->stock += $item->qty;
                     $product->save();
-                    $item->bdg = 0;
-                    $item->bks = 0;
-                    $item->save();
                 }
             }
-        } elseif ($cekstock == 0) {
-            $quote = Quotation::findOrFail($pending->id_quotation);
-            $dQuote = DetailQuotation::where('id_quotation', $quote->id)->get();
-            foreach ($dQuote as $item) {
-                $equivalent = SerialProduct::find($item->id_equivalent);
-                if (!$equivalent) {
-                    continue;
-                }
-                $product = Product::find($equivalent->id_product);
-                if (!$product) {
-                    continue;
-                }
-                $product->pending_stock -= $item->qty;
-                $product->stock += $item->qty;
-                $productSave = $product->save();
-            }
-        }
-        $pending->status = '6';
-        $pending->id_product_out = $request->product;
-        $pendingSave = $pending->save();
-        if ($pendingSave) {
+            $pending->status = '6';
+            $pending->id_product_out = $request->product;
+            $pending->save();
+
             return redirect('/pending-po/' . $id)->with('message', 'Product Out telah disambungkan');
-        }
+        });
     }
     public function productEdit(Request $request, $id)
     {
@@ -427,12 +431,52 @@ class PendingController extends Controller
         } catch (\RuntimeException $e) {
             return back()->withErrors(['bdg' => $e->getMessage()])->withInput();
         }
+        $request->validate([
+            'no_pending' => 'required|string|max:255',
+            'title' => 'required|string|max:255',
+            'delivery' => 'nullable|string|max:255',
+            'shipping_address_type' => 'nullable|in:customer,manual',
+            'shipping_address_manual' => 'nullable|string|max:1000',
+            'doc_address_type' => 'nullable|in:customer,manual',
+            'doc_address_manual' => 'nullable|string|max:1000',
+            'charged' => 'nullable|string|max:255',
+            'doc_charged' => 'nullable|string|max:255',
+            'shipping_charged' => 'nullable|string|max:255',
+        ]);
+
+        $pending = PendingPO::findOrFail($id);
+
+        $combine = $request->has('combine_shipping_and_parts') || $request->combine_shipping_and_parts == 1;
+
+        $pending->no_pending = $request->no_pending;
+        $pending->title = $request->title;
+        $pending->delivery = $request->delivery;
+        $pending->combine_shipping_and_parts = $combine;
+
+        $pending->shipping_address_type = $request->shipping_address_type ?? 'customer';
+        $pending->shipping_address_manual = $request->shipping_address_type === 'manual' ? $request->shipping_address_manual : null;
+
+        if ($combine) {
+            $pending->doc_address_type = $pending->shipping_address_type;
+            $pending->doc_address_manual = $pending->shipping_address_manual;
+            $pending->charged = $request->charged;
+            $pending->doc_charged = null;
+            $pending->shipping_charged = null;
+        } else {
+            $pending->doc_address_type = $request->doc_address_type ?? 'customer';
+            $pending->doc_address_manual = $request->doc_address_type === 'manual' ? $request->doc_address_manual : null;
+            $pending->charged = null;
+            $pending->doc_charged = $request->doc_charged;
+            $pending->shipping_charged = $request->shipping_charged;
+        }
+
+        $pending->save();
 
         if (str_contains(request()->header('referer'), 'project-monitoring')) {
-            return redirect()->route('project-monitoring.show', $id)
-                ->with('success', 'Pengecekan logistik / status barang proyek berhasil diperbarui.');
+            return redirect()->route('project-monitoring.show', $id)->with('success', 'Informasi project berhasil diperbarui.');
         }
-        return redirect('/pending-po/' . $id)->with('message', 'Product Pending PO telah diedit');
+
+        return redirect()->back()->with('message', 'Informasi Project Pending PO berhasil diperbarui');
     }
     public function statusEdit(Request $request, $id)
     {
@@ -441,80 +485,83 @@ class PendingController extends Controller
         if (!$hasApprovedInvoice) {
             return redirect()->back()->with('error', 'Proses logistik dikunci karena invoice belum di-approve oleh Accounting.');
         }
-        $pending->status = $request->status;
-        $pending->save();
 
-        switch ($request->status) {
-            case 1:
-                $note = 'On Check';
-                break;
-            case 2:
-                $note = 'Ready Stock';
-                break;
-            case 3:
-                $note = 'Kurang';
-                break;
-            case 4:
-                $note = 'Pre order';
-                break;
-            case 5:
-                $note = 'Delivery Process';
-                break;
-            case 6:
-                $note = 'Done';
-                break;
-            default:
-                $note = 'Cancel';
-                break;
-        }
+        return DB::transaction(function () use ($request, $pending, $id) {
+            $pending->status = $request->status;
+            $pending->save();
 
-        $status = new ChangeStatus();
-        $status->id_pending = $pending->id;
-        $status->status = $request->status;
-        $status->note = $note;
-        $status->date = Carbon::now();
-        $status->save();
-        if ($request->status == '7') {
-            if ($pending->id_unit_quotation) {
-                $dPendingCancel = DetailPendingPO::where('id_pending', $pending->id)->get();
-                foreach ($dPendingCancel as $item) {
-                    $product = Product::join('serial_product as sp', 'sp.id_product', '=', 'product.id')->where('sp.id', $item->id_equivalent)->select('product.*')->first();
-                    if (!$product) {
-                        continue;
+            switch ($request->status) {
+                case 1:
+                    $note = 'On Check';
+                    break;
+                case 2:
+                    $note = 'Ready Stock';
+                    break;
+                case 3:
+                    $note = 'Kurang';
+                    break;
+                case 4:
+                    $note = 'Pre order';
+                    break;
+                case 5:
+                    $note = 'Delivery Process';
+                    break;
+                case 6:
+                    $note = 'Done';
+                    break;
+                default:
+                    $note = 'Cancel';
+                    break;
+            }
+
+            $status = new ChangeStatus();
+            $status->id_pending = $pending->id;
+            $status->status = $request->status;
+            $status->note = $note;
+            $status->date = Carbon::now();
+            $status->save();
+            if ($request->status == '7') {
+                if ($pending->id_unit_quotation) {
+                    $dPendingCancel = DetailPendingPO::where('id_pending', $pending->id)->get();
+                    foreach ($dPendingCancel as $item) {
+                        $product = Product::join('serial_product as sp', 'sp.id_product', '=', 'product.id')->where('sp.id', $item->id_equivalent)->select('product.*')->first();
+                        if (!$product) {
+                            continue;
+                        }
+                        $product->stock += $item->bdg;
+                        $product->warehouse_stock += $item->bks;
+                        $product->pending_stock -= $item->bdg + $item->bks;
+                        $product->save();
+                        $item->bdg = 0;
+                        $item->bks = 0;
+                        $item->save();
                     }
-                    $product->stock += $item->bdg;
-                    $product->warehouse_stock += $item->bks;
-                    $product->pending_stock -= $item->bdg + $item->bks;
-                    $product->save();
-                    $item->bdg = 0;
-                    $item->bks = 0;
-                    $item->save();
+                } else {
+                    $Dquote = DetailQuotation::where('id_quotation', $pending->id_quotation)->get();
+                    foreach ($Dquote as $item) {
+                        $product = Product::join('serial_product as sp', 'sp.id_product', '=', 'product.id')->where('sp.id', $item->id_equivalent)->select('product.*')->first();
+                        if (!$product) {
+                            continue;
+                        }
+                        $product->stock += $item->qty;
+                        $product->pending_stock -= $item->qty;
+                        $product->save();
+                    }
+                }
+            }
+            if ($request->status == '6') {
+                if ($pending->id_unit_quotation) {
+                    return redirect('/pending-po/product-out-project/' . $id)->with('message', 'Status Product Pending PO telah diedit');
+                } else {
+                    return redirect('/pending-po/product-out/' . $id)->with('message', 'Status Product Pending PO telah diedit');
                 }
             } else {
-                $Dquote = DetailQuotation::where('id_quotation', $pending->id_quotation)->get();
-                foreach ($Dquote as $item) {
-                    $product = Product::join('serial_product as sp', 'sp.id', '=', 'product.id')->where('sp.id', $item->id_equivalent)->select('product.*')->first();
-                    if (!$product) {
-                        continue;
-                    }
-                    $product->stock += $item->qty;
-                    $product->pending_stock -= $item->qty;
-                    $product->save();
+                if (str_contains(request()->header('referer'), 'project-monitoring')) {
+                    return redirect()->route('project-monitoring.show', $id)->with('success', 'Status proyek berhasil diperbarui.');
                 }
+                return redirect('/pending-po/' . $id)->with('message', 'Status Product Pending PO telah diedit');
             }
-        }
-        if ($request->status == '6') {
-            if ($pending->id_unit_quotation) {
-                return redirect('/pending-po/product-out-project/' . $id)->with('message', 'Status Product Pending PO telah diedit');
-            } else {
-                return redirect('/pending-po/product-out/' . $id)->with('message', 'Status Product Pending PO telah diedit');
-            }
-        } else {
-            if (str_contains(request()->header('referer'), 'project-monitoring')) {
-                return redirect()->route('project-monitoring.show', $id)->with('success', 'Status proyek berhasil diperbarui.');
-            }
-            return redirect('/pending-po/' . $id)->with('message', 'Status Product Pending PO telah diedit');
-        }
+        });
     }
     public function changeType($id)
     {
@@ -597,6 +644,9 @@ class PendingController extends Controller
     public function pending_out($id)
     {
         $pending = PendingPO::find($id);
+        if (!$pending) {
+            return redirect()->route('pending-po.index')->with('error', 'Pending PO tidak ditemukan');
+        }
         $quote = Quotation::find($pending->id_quotation);
         $Dquote = DetailQuotation::where('id_quotation', $pending->id_quotation)->get();
         $dPending = DetailPendingPO::where('id_pending', $id)->whereNot('status', '7')->get();
@@ -605,7 +655,7 @@ class PendingController extends Controller
         $no = 0;
         foreach ($Dquote as $item) {
             $equivalent = SerialProduct::find($item->id_equivalent);
-            $fullRep[$no] = DetailProduct::where('id_product', $equivalent->id_product)->get();
+            $fullRep[$no] = $equivalent ? DetailProduct::where('id_product', $equivalent->id_product)->get() : collect([]);
             $no++;
         }
         return view('pages.pending.form', compact('Dquote', 'fullRep', 'pending', 'quote', 'dPending', 'id'));
@@ -613,6 +663,9 @@ class PendingController extends Controller
     public function pending_out_project($id)
     {
         $pending = PendingPO::find($id);
+        if (!$pending) {
+            return redirect()->route('pending-po.index')->with('error', 'Pending PO tidak ditemukan');
+        }
         $quote = Quotation::find($pending->id_quotation);
         // $Dquote = DetailServiceQuotation::where('id_quotation', $pending->id_quotation)->get();
         $dPending = DetailPendingPO::where('id_pending', $id)->whereNot('status', '7')->get();
@@ -622,7 +675,7 @@ class PendingController extends Controller
         $no = 0;
         foreach ($dPending as $item) {
             $fullEquiv[$no] = SerialProduct::find($item->id_equivalent);
-            $fullRep[$no] = DetailProduct::where('id_product', $fullEquiv[$no]->id_product)->get();
+            $fullRep[$no] = $fullEquiv[$no] ? DetailProduct::where('id_product', $fullEquiv[$no]->id_product)->get() : collect([]);
             $no++;
         }
         // dd($dPending);
@@ -648,38 +701,41 @@ class PendingController extends Controller
             'note.required' => 'Field Note Wajib Diisi',
         ];
         $this->validate($request, $rule, $message);
-        // dd($request->all());
+        
         $pending = PendingPO::findOrFail($id);
         $hasApprovedInvoice = $this->hasApprovedInvoice($pending);
         if (!$hasApprovedInvoice) {
             return redirect()->back()->with('error', 'Proses logistik dikunci karena invoice belum di-approve oleh Accounting.');
         }
-        $isKojisha = ($pending->quote && (method_exists($pending->quote, 'isKojisha') ? $pending->quote->isKojisha() : ($pending->quote->flag === 'Kojisha')))
-            || ($pending->unitQuotation && (method_exists($pending->unitQuotation, 'isKojisha') ? $pending->unitQuotation->isKojisha() : false))
-            || ($request->flag === 'Kojisha')
-            || (is_string($request->invoice) && str_contains($request->invoice, '/KII/'))
-            || (is_string($request->po) && str_contains($request->po, 'KII'));
-            
-        $flag = $isKojisha ? 'Kojisha' : 'Reftech';
 
-        // Masukan Data ke Tabel Product Out
-        $productOut = new ProductOut();
-        $productOut->flag = $flag;
-        $productOut->no_product_out = (new \App\Http\Controllers\ProductOutController())->generateNoProductOut($request->warehouse[0] ?? 'BDG', $flag);
-        $productOut->id_user = Auth::user()->id;
-        $productOut->invoice = $request->invoice;
-        $productOut->po = $request->po;
-        $productOut->no_type = "1";
-        $productOut->detail_client = $request->detail_client;
-        $productOut->vers = $request->vers;
-        $productOut->date = $request->date;
-        $productOut->note = $request->note;
-        $productOut->shipping = $request->shipping;
-        $productOut->total = $request->total;
-        $productOutSave = $productOut->save();
-        $pending->id_product_out = $productOut->id;
-        $pending->save();
-        if ($productOutSave) {
+        return DB::transaction(function () use ($request, $pending, $id) {
+            $isKojisha = ($pending->quote && (method_exists($pending->quote, 'isKojisha') ? $pending->quote->isKojisha() : ($pending->quote->flag === 'Kojisha')))
+                || ($pending->unitQuotation && (method_exists($pending->unitQuotation, 'isKojisha') ? $pending->unitQuotation->isKojisha() : false))
+                || ($request->flag === 'Kojisha')
+                || (is_string($request->invoice) && str_contains($request->invoice, '/KII/'))
+                || (is_string($request->po) && str_contains($request->po, 'KII'));
+                
+            $flag = $isKojisha ? 'Kojisha' : 'Reftech';
+
+            // Masukan Data ke Tabel Product Out
+            $productOut = new ProductOut();
+            $productOut->flag = $flag;
+            $productOut->no_product_out = (new \App\Http\Controllers\ProductOutController())->generateNoProductOut($request->warehouse[0] ?? 'BDG', $flag);
+            $productOut->id_user = Auth::user()->id;
+            $productOut->invoice = $request->invoice;
+            $productOut->po = $request->po;
+            $productOut->no_type = "1";
+            $productOut->detail_client = $request->detail_client;
+            $productOut->vers = $request->vers;
+            $productOut->date = $request->date;
+            $productOut->note = $request->note;
+            $productOut->shipping = $request->shipping;
+            $productOut->total = $request->total;
+            $productOut->save();
+
+            $pending->id_product_out = $productOut->id;
+            $pending->save();
+
             // Masukan Data Ke Tabel Detail Quotataion
             foreach ($request->equivalent as $item => $value) {
                 $dProductIn = new DetailProductOut();
@@ -691,27 +747,24 @@ class PendingController extends Controller
                 $dProductIn->amount = $request->amount[$item];
                 $dProductIn->warehouse = $request->warehouse[$item];
                 $productD = DetailProduct::where('id', $request->replacement[$item])->first();
-                if ($request->warehouse[$item] == 'BDG') {
-                    $productD->stock -= $request->qty[$item];
-                } else {
-                    $productD->warehouse_stock -= $request->qty[$item];
+                if ($productD) {
+                    if ($request->warehouse[$item] == 'BDG') {
+                        $productD->stock -= $request->qty[$item];
+                    } else {
+                        $productD->warehouse_stock -= $request->qty[$item];
+                    }
+                    $productD->save();
+                    $product = Product::where('id', $productD->id_product)->first();
+                    if ($product) {
+                        $product->pending_stock -= $request->qty[$item];
+                        $product->save();
+                    }
                 }
-                $productD->save();
-                $product = Product::where('id', $productD->id_product)->first();
-                // if ($request->warehouse[$item] == 'BDG') {
-                $product->pending_stock -= $request->qty[$item];
-                // } else {
-                //     $product->pending_stock -= $request->qty[$item];
-                //     $product->stock += $request->qty[$item];
-                //     $product->warehouse_stock -= $request->qty[$item];
-                // }
-                $product->save();
-                $dProductSave = $dProductIn->save();
+                $dProductIn->save();
             }
-        }
-        if ($dProductSave) {
+
             return redirect('/pending-po-done')->with('message', 'data telah di tambahkan');
-        }
+        });
     }
     public function indexSOrder(Request $request)
     {
@@ -1185,11 +1238,17 @@ class PendingController extends Controller
             // $sanitized_file_name = preg_replace('/[^A-Za-z0-9\-]/', '_', $quote->no_quote);
 
             // Susun nama file
-            $file_name = $request->no_track . '.' . $file_ext;
+            $cleanTrack = preg_replace('/[^A-Za-z0-9\-]/', '_', (string) $request->no_track) ?: ('resi_' . time());
+            $file_name = $cleanTrack . '_' . \Illuminate\Support\Str::random(6) . '.' . $file_ext;
 
             // Path
-            $upload_path = base_path('../public_html/asset/resi');
-            $foto->move($upload_path, $file_name);
+            $targetDir = file_exists(base_path('../public_html/asset/resi'))
+                ? base_path('../public_html/asset/resi')
+                : public_path('asset/resi');
+            if (!file_exists($targetDir)) {
+                mkdir($targetDir, 0777, true);
+            }
+            $foto->move($targetDir, $file_name);
 
             // simpan di DB
             $resi->image = 'asset/resi/' . $file_name;
@@ -1270,22 +1329,59 @@ class PendingController extends Controller
     }
     public function returProduct(Request $request, $id)
     {
-        $pending = PendingPO::findOrFail($id);
-        // dd($pending);
-        $return = new Retur();
-        $return->id_pending = $id;
-        $return->no_return = $request->no_return;
-        $return->status = 0;
-        $return->date = Carbon::now();
-        $returnSave = $return->save();
+        return DB::transaction(function () use ($request, $id) {
+            $pending = PendingPO::findOrFail($id);
+            // dd($pending);
+            $return = new Retur();
+            $return->id_pending = $id;
+            $return->no_return = $request->no_return;
+            $return->status = 0;
+            $return->date = Carbon::now();
+            $return->save();
 
-        $pending->status = '8';
-        $pending->save();
-        $productOut = ProductOut::findOrFail($pending->id_product_out);
-        $detProduct = DetailProductOut::where('id_product_out', $productOut->id)->get();
-        foreach ($request->qty as $key => $value) {
-            if ($value != 0) {
-                $dproduct = DetailProduct::find($detProduct[$key]->id_detail_product);
+            $pending->status = '8';
+            $pending->save();
+            $productOut = ProductOut::findOrFail($pending->id_product_out);
+            $detProduct = DetailProductOut::where('id_product_out', $productOut->id)->get();
+            foreach ($request->qty as $key => $value) {
+                if ($value != 0) {
+                    $dproduct = DetailProduct::find($detProduct[$key]->id_detail_product);
+                    if (!$dproduct) {
+                        continue;
+                    }
+                    $product = Product::find($dproduct->id_product);
+                    if (!$product) {
+                        continue;
+                    }
+                    $detReturn = new DetailReturn();
+                    $detReturn->id_retur = $return->id;
+                    $detReturn->id_replacement = $detProduct[$key]->id_detail_product;
+                    $detReturn->qty = $value;
+                    $detReturn->note = $request->note[$key] ?? '-';
+                    $detReturn->status = 0;
+                    $detReturn->date = Carbon::today();
+                    $detReturn->save();
+                    // -- Stock
+                    $dproduct->stock += $value;
+                    $product->stock += $value;
+                    $dproduct->save();
+                    $product->save();
+                }
+            }
+
+            return redirect()->back()->with('success', 'Data Return Telah Ditambahkan');
+        });
+    }
+
+    public function clearReturn($id)
+    {
+        return DB::transaction(function () use ($id) {
+            $pending = PendingPO::findOrFail($id);
+            $pending->status = '6';
+            $pending->save();
+            $return = Retur::where('id_pending', $id)->get();
+            foreach ($return as $retur) {
+                $dproduct = DetailProduct::find($retur->id_replacement);
                 if (!$dproduct) {
                     continue;
                 }
@@ -1293,53 +1389,17 @@ class PendingController extends Controller
                 if (!$product) {
                     continue;
                 }
-                $detReturn = new DetailReturn();
-                $detReturn->id_retur = $return->id;
-                $detReturn->id_replacement = $detProduct[$key]->id_detail_product;
-                $detReturn->qty = $value;
-                $detReturn->note = $request->note[$key] ?? '-';
-                $detReturn->status = 0;
-                $detReturn->date = Carbon::today();
-                $detReturnSave = $detReturn->save();
+                $retur->status = 1;
+                $retur->save();
                 // -- Stock
-                $dproduct->stock += $value;
-                $product->stock += $value;
+                $dproduct->stock -= $retur->qty;
+                $product->stock -= $retur->qty;
                 $dproduct->save();
                 $product->save();
             }
-        }
-        if ($detReturnSave && $returnSave) {
-            return redirect()->back()->with('success', 'Data Return Telah Ditambahkan');
-        }
-    }
-    public function clearReturn($id)
-    {
-        $pending = PendingPO::findOrFail($id);
-        $pending->status = '6';
-        $pending->save();
-        $return = Retur::where('id_pending', $id)->get();
-        foreach ($return as $retur) {
-            $dproduct = DetailProduct::find($retur->id_replacement);
-            if (!$dproduct) {
-                continue;
-            }
-            $product = Product::find($dproduct->id_product);
-            if (!$product) {
-                continue;
-            }
-            $retur->status = 1;
-            $returSave = $retur->save();
-            // -- Stock
-            $dproduct->stock -= $retur->qty;
-            $product->stock -= $retur->qty;
-            $dproduct->save();
-            $product->save();
-        }
-        if ($returSave) {
+
             return 1;
-        } else {
-            return 0;
-        }
+        });
     }
     public function donePending($id)
     {

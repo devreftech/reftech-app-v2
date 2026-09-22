@@ -1,4 +1,6 @@
-@if (($adminView ?? 'sales') === 'salesmanager')
+@if (($adminView ?? 'sales') === 'developer')
+    @include('pages.developer.dashboard_content')
+@elseif (($adminView ?? 'sales') === 'salesmanager')
     @include('pages.salesmanager.dashboard._content')
 @elseif (($adminView ?? 'sales') === 'accounting')
     @include('pages.accounting.dashboard._content')
@@ -13,3 +15,4 @@
 @else
     @include('pages.sales.dashboard_admin_sales')
 @endif
+

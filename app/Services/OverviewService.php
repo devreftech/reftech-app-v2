@@ -257,33 +257,21 @@ class OverviewService
                     )],
                     ['name' => 'Quotation Dari New Leads', 'data' => $bucketMerged([
                         [
-                            'query' => $legacyQuote()->where('client.role', '!=', 'Customers')
-                                ->where('client.source', '!=', 'Indotrading')
-                                ->whereNull('quotation.id_support')
-                                ->whereNull('client.id_support'),
+                            'query' => $this->applyNewLeadsQuoteFilter($legacyQuote(), false),
                             'week'  => $quoteLegacyWeekExpr,
                         ],
                         [
-                            'query' => $uqQuote()->where('client.role', '!=', 'Customers')
-                                ->where('client.source', '!=', 'Indotrading')
-                                ->whereNull('unit_quotation.id_support')
-                                ->whereNull('client.id_support'),
+                            'query' => $this->applyNewLeadsQuoteFilter($uqQuote(), true),
                             'week'  => $quoteUnitWeekExpr,
                         ],
                     ])],
                     ['name' => 'PO Dari New Leads Baru', 'data' => $bucketMerged([
                         [
-                            'query' => $legacyPo()->where('client.role', '!=', 'Customers')
-                                ->where('client.source', '!=', 'Indotrading')
-                                ->whereNull('quotation.id_support')
-                                ->whereNull('client.id_support'),
+                            'query' => $this->applyFirstPoFilter($legacyPo(), false),
                             'week'  => $poLegacyWeekExpr,
                         ],
                         [
-                            'query' => $uqPo()->where('client.role', '!=', 'Customers')
-                                ->where('client.source', '!=', 'Indotrading')
-                                ->whereNull('unit_quotation.id_support')
-                                ->whereNull('client.id_support'),
+                            'query' => $this->applyFirstPoFilter($uqPo(), true),
                             'week'  => $poUnitWeekExpr,
                         ],
                     ])],
@@ -298,33 +286,21 @@ class OverviewService
                     )],
                     ['name' => 'Quotation Dari CRM', 'data' => $bucketMerged([
                         [
-                            'query' => $legacyQuote()->where('client.role', 'Customers')
-                                ->where('client.source', '!=', 'Indotrading')
-                                ->whereNull('quotation.id_support')
-                                ->whereNull('client.id_support'),
+                            'query' => $this->applyCrmQuoteFilter($legacyQuote(), false),
                             'week'  => $quoteLegacyWeekExpr,
                         ],
                         [
-                            'query' => $uqQuote()->where('client.role', 'Customers')
-                                ->where('client.source', '!=', 'Indotrading')
-                                ->whereNull('unit_quotation.id_support')
-                                ->whereNull('client.id_support'),
+                            'query' => $this->applyCrmQuoteFilter($uqQuote(), true),
                             'week'  => $quoteUnitWeekExpr,
                         ],
                     ])],
                     ['name' => 'PO Dari Customer CRM', 'data' => $bucketMerged([
                         [
-                            'query' => $legacyPo()->where('client.role', 'Customers')
-                                ->where('client.source', '!=', 'Indotrading')
-                                ->whereNull('quotation.id_support')
-                                ->whereNull('client.id_support'),
+                            'query' => $this->applyRepeatPoFilter($legacyPo(), false),
                             'week'  => $poLegacyWeekExpr,
                         ],
                         [
-                            'query' => $uqPo()->where('client.role', 'Customers')
-                                ->where('client.source', '!=', 'Indotrading')
-                                ->whereNull('unit_quotation.id_support')
-                                ->whereNull('client.id_support'),
+                            'query' => $this->applyRepeatPoFilter($uqPo(), true),
                             'week'  => $poUnitWeekExpr,
                         ],
                     ])],
@@ -388,7 +364,22 @@ class OverviewService
             ],
         ];
 
-        if (in_array((int) $sales, self::SALES_WITHOUT_NEW_LEADS, true)) {
+        // Cek pengaturan dinamis dari Sales Management
+        $historyRecord = \App\Models\SalesTargetHistory::where('user_id', $sales)->where('year', $year)->first();
+        $hasNewLeads = true;
+        if ($historyRecord && !empty($historyRecord->kpi_config) && array_key_exists('has_new_leads', $historyRecord->kpi_config)) {
+            $hasNewLeads = (bool) $historyRecord->kpi_config['has_new_leads'];
+        } elseif ($historyRecord && $historyRecord->sales_type === 'crm') {
+            $hasNewLeads = false;
+        } else {
+            $userObj = \App\Models\User::with('latestRole')->find($sales);
+            if (in_array((int) $sales, self::SALES_WITHOUT_NEW_LEADS, true) || 
+                ($userObj && trim($userObj->latestRole->area ?? '') === 'Existing Customer')) {
+                $hasNewLeads = false;
+            }
+        }
+
+        if (!$hasNewLeads) {
             unset($sections['newleads']);
         }
 
@@ -662,27 +653,15 @@ class OverviewService
                 ];
 
             case 'Quotation Dari New Leads':
-                $legacy = $legacyQuote()->where('client.role', '!=', 'Customers')
-                    ->where('client.source', '!=', 'Indotrading')
-                    ->whereNull('quotation.id_support')
-                    ->whereNull('client.id_support');
-                $smart = $uqQuote()->where('client.role', '!=', 'Customers')
-                    ->where('client.source', '!=', 'Indotrading')
-                    ->whereNull('unit_quotation.id_support')
-                    ->whereNull('client.id_support');
+                $legacy = $this->applyNewLeadsQuoteFilter($legacyQuote(), false);
+                $smart = $this->applyNewLeadsQuoteFilter($uqQuote(), true);
                 $res = $mapQuoteRows($legacy, $smart);
                 $res['title'] = 'Quotation Dari New Leads';
                 return $res;
 
             case 'PO Dari New Leads Baru':
-                $legacy = $legacyPo()->where('client.role', '!=', 'Customers')
-                    ->where('client.source', '!=', 'Indotrading')
-                    ->whereNull('quotation.id_support')
-                    ->whereNull('client.id_support');
-                $smart = $uqPo()->where('client.role', '!=', 'Customers')
-                    ->where('client.source', '!=', 'Indotrading')
-                    ->whereNull('unit_quotation.id_support')
-                    ->whereNull('client.id_support');
+                $legacy = $this->applyFirstPoFilter($legacyPo(), false);
+                $smart = $this->applyFirstPoFilter($uqPo(), true);
                 $res = $mapPoRows($legacy, $smart);
                 $res['title'] = 'PO Dari New Leads Baru';
                 return $res;
@@ -714,27 +693,15 @@ class OverviewService
                 ];
 
             case 'Quotation Dari CRM':
-                $legacy = $legacyQuote()->where('client.role', 'Customers')
-                    ->where('client.source', '!=', 'Indotrading')
-                    ->whereNull('quotation.id_support')
-                    ->whereNull('client.id_support');
-                $smart = $uqQuote()->where('client.role', 'Customers')
-                    ->where('client.source', '!=', 'Indotrading')
-                    ->whereNull('unit_quotation.id_support')
-                    ->whereNull('client.id_support');
+                $legacy = $this->applyCrmQuoteFilter($legacyQuote(), false);
+                $smart = $this->applyCrmQuoteFilter($uqQuote(), true);
                 $res = $mapQuoteRows($legacy, $smart);
                 $res['title'] = 'Quotation Dari CRM';
                 return $res;
 
             case 'PO Dari Customer CRM':
-                $legacy = $legacyPo()->where('client.role', 'Customers')
-                    ->where('client.source', '!=', 'Indotrading')
-                    ->whereNull('quotation.id_support')
-                    ->whereNull('client.id_support');
-                $smart = $uqPo()->where('client.role', 'Customers')
-                    ->where('client.source', '!=', 'Indotrading')
-                    ->whereNull('unit_quotation.id_support')
-                    ->whereNull('client.id_support');
+                $legacy = $this->applyRepeatPoFilter($legacyPo(), false);
+                $smart = $this->applyRepeatPoFilter($uqPo(), true);
                 $res = $mapPoRows($legacy, $smart);
                 $res['title'] = 'PO Dari Customer CRM';
                 return $res;
@@ -767,9 +734,9 @@ class OverviewService
 
             case 'Total New Leads Dari Marketing':
                 $q = Client::where('client.id_sales', $sales)
-                    ->where(function ($sq) {
-                        $sq->where('client.source', 'Indotrading')
-                            ->orWhereNotNull('client.id_support');
+                    ->where(function ($query) {
+                        $query->where('client.source', 'Indotrading')
+                              ->orWhereNotNull('client.id_support');
                     })
                     ->whereMonth('client.created_at', $month)
                     ->whereYear('client.created_at', $year);
@@ -780,12 +747,12 @@ class OverviewService
                     return [
                         'id' => $c->id,
                         'company' => $c->company ?? '-',
-                        'address' => $c->address ?? $c->area ?? '-',
+                        'address' => $c->area ?? $c->address ?? '-',
                         'phone' => $c->phone ?? '-',
                         'date' => $c->created_at ? $c->created_at->format('d/m/Y') : '-',
                         'source' => $c->source ?? 'Marketing',
                         'role' => $c->role ?? 'Leads',
-                        'url' => route('detail.leads', $c->id),
+                        'url' => $c->role == 'Customers' ? route('detail.customers', $c->id) : route('detail.leads', $c->id),
                     ];
                 });
                 return [
@@ -832,6 +799,206 @@ class OverviewService
                     'items' => collect([]),
                     'total_count' => 0,
                 ];
+        }
+    }
+
+    /**
+     * Filter query agar hanya menyertakan Quotation yang dibuat SEBELUM client pernah memiliki PO Closing.
+     * (New Leads Quotation)
+     */
+    private function applyNewLeadsQuoteFilter($query, bool $isUnit = false)
+    {
+        $dateCol = $isUnit ? 'unit_quotation.date' : 'quotation.estimated_date';
+        $supportCol = $isUnit ? 'unit_quotation.id_support' : 'quotation.id_support';
+
+        return $query->where('client.source', '!=', 'Indotrading')
+            ->whereNull($supportCol)
+            ->whereNull('client.id_support')
+            ->whereNotExists(function ($sub) use ($dateCol) {
+                $sub->select(DB::raw(1))
+                    ->from('quotation as prev_q')
+                    ->join('pic as prev_pic', 'prev_q.id_pic', '=', 'prev_pic.id')
+                    ->whereColumn('prev_pic.id_client', 'client.id')
+                    ->where('prev_q.status', '100')
+                    ->where('prev_q.level', '1')
+                    ->where('prev_q.is_primary', '1')
+                    ->whereColumn('prev_q.po_date', '<', $dateCol);
+            })
+            ->whereNotExists(function ($sub) use ($dateCol) {
+                $sub->select(DB::raw(1))
+                    ->from('unit_quotation as prev_uq')
+                    ->whereColumn('prev_uq.id_client', 'client.id')
+                    ->where('prev_uq.status', 'po_received')
+                    ->where('prev_uq.is_latest', 1)
+                    ->whereColumn('prev_uq.po_received', '<', $dateCol);
+            });
+    }
+
+    /**
+     * Filter query agar hanya menyertakan Quotation yang dibuat SETELAH client sudah memiliki riwayat PO Closing.
+     * (CRM Quotation)
+     */
+    private function applyCrmQuoteFilter($query, bool $isUnit = false)
+    {
+        $dateCol = $isUnit ? 'unit_quotation.date' : 'quotation.estimated_date';
+        $supportCol = $isUnit ? 'unit_quotation.id_support' : 'quotation.id_support';
+
+        return $query->where('client.source', '!=', 'Indotrading')
+            ->whereNull($supportCol)
+            ->whereNull('client.id_support')
+            ->where(function ($orQ) use ($dateCol) {
+                $orQ->whereExists(function ($sub) use ($dateCol) {
+                    $sub->select(DB::raw(1))
+                        ->from('quotation as prev_q')
+                        ->join('pic as prev_pic', 'prev_q.id_pic', '=', 'prev_pic.id')
+                        ->whereColumn('prev_pic.id_client', 'client.id')
+                        ->where('prev_q.status', '100')
+                        ->where('prev_q.level', '1')
+                        ->where('prev_q.is_primary', '1')
+                        ->whereColumn('prev_q.po_date', '<', $dateCol);
+                })->orWhereExists(function ($sub) use ($dateCol) {
+                    $sub->select(DB::raw(1))
+                        ->from('unit_quotation as prev_uq')
+                        ->whereColumn('prev_uq.id_client', 'client.id')
+                        ->where('prev_uq.status', 'po_received')
+                        ->where('prev_uq.is_latest', 1)
+                        ->whereColumn('prev_uq.po_received', '<', $dateCol);
+                });
+            });
+    }
+
+    /**
+     * Filter query agar hanya menyertakan First PO (PO Pertama/Closing dari New Leads).
+     * Tidak boleh ada PO lain yang terjadi lebih awal untuk client tersebut.
+     */
+    private function applyFirstPoFilter($query, bool $isUnit = false)
+    {
+        $supportCol = $isUnit ? 'unit_quotation.id_support' : 'quotation.id_support';
+
+        if (!$isUnit) {
+            return $query->where('client.source', '!=', 'Indotrading')
+                ->whereNull($supportCol)
+                ->whereNull('client.id_support')
+                ->whereNotExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('quotation as prev_q')
+                        ->join('pic as prev_pic', 'prev_q.id_pic', '=', 'prev_pic.id')
+                        ->whereColumn('prev_pic.id_client', 'client.id')
+                        ->where('prev_q.status', '100')
+                        ->where('prev_q.level', '1')
+                        ->where('prev_q.is_primary', '1')
+                        ->where(function ($cmp) {
+                            $cmp->whereColumn('prev_q.po_date', '<', 'quotation.po_date')
+                                ->orWhere(function ($eq) {
+                                    $eq->whereColumn('prev_q.po_date', '=', 'quotation.po_date')
+                                        ->whereColumn('prev_q.id', '<', 'quotation.id');
+                                });
+                        });
+                })
+                ->whereNotExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('unit_quotation as prev_uq')
+                        ->whereColumn('prev_uq.id_client', 'client.id')
+                        ->where('prev_uq.status', 'po_received')
+                        ->where('prev_uq.is_latest', 1)
+                        ->whereColumn('prev_uq.po_received', '<', 'quotation.po_date');
+                });
+        } else {
+            return $query->where('client.source', '!=', 'Indotrading')
+                ->whereNull($supportCol)
+                ->whereNull('client.id_support')
+                ->whereNotExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('quotation as prev_q')
+                        ->join('pic as prev_pic', 'prev_q.id_pic', '=', 'prev_pic.id')
+                        ->whereColumn('prev_pic.id_client', 'client.id')
+                        ->where('prev_q.status', '100')
+                        ->where('prev_q.level', '1')
+                        ->where('prev_q.is_primary', '1')
+                        ->whereColumn('prev_q.po_date', '<', 'unit_quotation.po_received');
+                })
+                ->whereNotExists(function ($sub) {
+                    $sub->select(DB::raw(1))
+                        ->from('unit_quotation as prev_uq')
+                        ->whereColumn('prev_uq.id_client', 'client.id')
+                        ->where('prev_uq.status', 'po_received')
+                        ->where('prev_uq.is_latest', 1)
+                        ->where(function ($cmp) {
+                            $cmp->whereColumn('prev_uq.po_received', '<', 'unit_quotation.po_received')
+                                ->orWhere(function ($eq) {
+                                    $eq->whereColumn('prev_uq.po_received', '=', 'unit_quotation.po_received')
+                                        ->whereColumn('prev_uq.id', '<', 'unit_quotation.id');
+                                });
+                        });
+                });
+        }
+    }
+
+    /**
+     * Filter query agar hanya menyertakan Repeat PO (PO dari Customer CRM yang sudah pernah order sebelumnya).
+     */
+    private function applyRepeatPoFilter($query, bool $isUnit = false)
+    {
+        $supportCol = $isUnit ? 'unit_quotation.id_support' : 'quotation.id_support';
+
+        if (!$isUnit) {
+            return $query->where('client.source', '!=', 'Indotrading')
+                ->whereNull($supportCol)
+                ->whereNull('client.id_support')
+                ->where(function ($orQ) {
+                    $orQ->whereExists(function ($sub) {
+                        $sub->select(DB::raw(1))
+                            ->from('quotation as prev_q')
+                            ->join('pic as prev_pic', 'prev_q.id_pic', '=', 'prev_pic.id')
+                            ->whereColumn('prev_pic.id_client', 'client.id')
+                            ->where('prev_q.status', '100')
+                            ->where('prev_q.level', '1')
+                            ->where('prev_q.is_primary', '1')
+                            ->where(function ($cmp) {
+                                $cmp->whereColumn('prev_q.po_date', '<', 'quotation.po_date')
+                                    ->orWhere(function ($eq) {
+                                        $eq->whereColumn('prev_q.po_date', '=', 'quotation.po_date')
+                                            ->whereColumn('prev_q.id', '<', 'quotation.id');
+                                    });
+                            });
+                    })->orWhereExists(function ($sub) {
+                        $sub->select(DB::raw(1))
+                            ->from('unit_quotation as prev_uq')
+                            ->whereColumn('prev_uq.id_client', 'client.id')
+                            ->where('prev_uq.status', 'po_received')
+                            ->where('prev_uq.is_latest', 1)
+                            ->whereColumn('prev_uq.po_received', '<', 'quotation.po_date');
+                    });
+                });
+        } else {
+            return $query->where('client.source', '!=', 'Indotrading')
+                ->whereNull($supportCol)
+                ->whereNull('client.id_support')
+                ->where(function ($orQ) {
+                    $orQ->whereExists(function ($sub) {
+                        $sub->select(DB::raw(1))
+                            ->from('quotation as prev_q')
+                            ->join('pic as prev_pic', 'prev_q.id_pic', '=', 'prev_pic.id')
+                            ->whereColumn('prev_pic.id_client', 'client.id')
+                            ->where('prev_q.status', '100')
+                            ->where('prev_q.level', '1')
+                            ->where('prev_q.is_primary', '1')
+                            ->whereColumn('prev_q.po_date', '<', 'unit_quotation.po_received');
+                    })->orWhereExists(function ($sub) {
+                        $sub->select(DB::raw(1))
+                            ->from('unit_quotation as prev_uq')
+                            ->whereColumn('prev_uq.id_client', 'client.id')
+                            ->where('prev_uq.status', 'po_received')
+                            ->where('prev_uq.is_latest', 1)
+                            ->where(function ($cmp) {
+                                $cmp->whereColumn('prev_uq.po_received', '<', 'unit_quotation.po_received')
+                                    ->orWhere(function ($eq) {
+                                        $eq->whereColumn('prev_uq.po_received', '=', 'unit_quotation.po_received')
+                                            ->whereColumn('prev_uq.id', '<', 'unit_quotation.id');
+                                    });
+                            });
+                    });
+                });
         }
     }
 }

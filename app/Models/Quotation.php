@@ -79,6 +79,11 @@ class Quotation extends Model
     {
         return $this->belongsTo('App\Models\Pic', 'id_pic', 'id');
     }
+
+    public function client()
+    {
+        return $this->hasOneThrough('App\Models\Client', 'App\Models\Pic', 'id', 'id', 'id_pic', 'id_client');
+    }
     public function sales()
     {
         return $this->belongsTo('App\Models\User', 'id_sales', 'id');

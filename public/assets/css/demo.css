@@ -488,18 +488,20 @@ html.dark-style .nav-tabs .nav-link:not(.active) {
 
 /* 1. Global SweetAlert2 Backdrop Blur & Smooth Scale-in Animation */
 .swal2-container {
-  transition: background-color 0.25s ease !important;
+  transition: background-color 0.24s ease, backdrop-filter 0.24s ease !important;
 }
 
 .swal2-container.swal2-backdrop-show {
   background: rgba(30, 41, 59, 0.45) !important;
-  backdrop-filter: blur(5px) !important;
-  -webkit-backdrop-filter: blur(5px) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
 }
 
 .swal2-popup {
   border-radius: 16px !important;
   box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.08) !important;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 .swal2-popup.swal2-show,
@@ -509,13 +511,13 @@ html.dark-style .nav-tabs .nav-link:not(.active) {
 
 .swal2-popup.swal2-hide,
 .swal2-hide {
-  animation: swalSmoothOut 0.2s cubic-bezier(0.7, 0, 0.84, 0) forwards !important;
+  animation: swalSmoothOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
 }
 
 @keyframes swalSmoothIn {
   0% {
     opacity: 0;
-    transform: scale(0.94) translateY(-12px);
+    transform: scale(0.95) translateY(-10px);
   }
   100% {
     opacity: 1;
@@ -530,33 +532,66 @@ html.dark-style .nav-tabs .nav-link:not(.active) {
   }
   100% {
     opacity: 0;
-    transform: scale(0.95) translateY(8px);
+    transform: scale(0.96) translateY(6px);
   }
 }
 
-/* 2. Global Bootstrap Modals Smooth Scale-in & Backdrop Blur (Identical to SweetAlert2) */
+/* 2. Global Bootstrap Modals Ultra-Smooth Scale-in & Backdrop Blur */
 .modal.fade {
-  transition: background-color 0.25s ease, backdrop-filter 0.25s ease, opacity 0.25s ease-out !important;
+  background-color: rgba(30, 41, 59, 0) !important;
+  backdrop-filter: blur(0px) !important;
+  -webkit-backdrop-filter: blur(0px) !important;
+  transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              backdrop-filter 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .modal.fade .modal-dialog {
-  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease-out !important;
-  transform: scale(0.94) translateY(-14px) !important;
-}
-
-.modal.show .modal-dialog {
-  transform: scale(1) translateY(0) !important;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform: scale(0.95) translateY(-12px) !important;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .modal.show {
   background-color: rgba(30, 41, 59, 0.45) !important;
   backdrop-filter: blur(6px) !important;
   -webkit-backdrop-filter: blur(6px) !important;
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              backdrop-filter 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.modal.show .modal-dialog {
+  transform: scale(1) translateY(0) !important;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .modal-content {
   border-radius: 14px !important;
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25), 0 6px 18px rgba(15, 23, 42, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22), 0 6px 18px rgba(15, 23, 42, 0.08) !important;
+  overflow: hidden;
+}
+
+.modal-header {
+  border-bottom: 1px solid rgba(24, 28, 33, 0.08);
+  padding: 1.15rem 1.4rem;
+}
+
+.modal-footer {
+  border-top: 1px solid rgba(24, 28, 33, 0.08);
+  padding: 0.95rem 1.4rem;
+}
+
+.btn-close {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.btn-close:hover {
+  transform: rotate(90deg) scale(1.1);
 }
 
 /* Let .modal handle backdrop & blur cleanly without stacking context conflict */
@@ -565,9 +600,20 @@ html.dark-style .nav-tabs .nav-link:not(.active) {
   pointer-events: none !important;
 }
 
-/* Dark mode backdrop adjustment */
+/* Dark mode backdrop & border adjustment */
 html.dark-style .modal.show {
   background-color: rgba(11, 17, 32, 0.65) !important;
+}
+
+html.dark-style .modal-content {
+  background-color: #2b2c40 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #cfcde4;
+}
+
+html.dark-style .modal-header,
+html.dark-style .modal-footer {
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 html.dark-style .swal2-container.swal2-backdrop-show {

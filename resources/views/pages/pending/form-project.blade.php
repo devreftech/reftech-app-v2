@@ -83,24 +83,24 @@
                                                 <select id="equivalent-dropdown"
                                                     class="select2 form-select invoice-item-equivalent"
                                                     data-allow-clear="true" name="equivalent[]" data-id="1" disabled>
-                                                    <option value="{{ $fullEquiv[$no]->id }}"
-                                                        data-commodity="{{ $fullEquiv[$no]->id_product }}" selected>
-                                                        {{ $fullEquiv[$no]->pn }} ||
-                                                        {{ $fullEquiv[$no]->product->commodity }} -
-                                                        {{ $fullEquiv[$no]->product->go == 'Genuine' ? 'G' : 'R' }}
+                                                    <option value="{{ $fullEquiv[$no]->id ?? '' }}"
+                                                        data-commodity="{{ $fullEquiv[$no]->id_product ?? '' }}" selected>
+                                                        {{ $fullEquiv[$no]->pn ?? '-' }} ||
+                                                        {{ $fullEquiv[$no]->product?->commodity ?? '-' }} -
+                                                        {{ ($fullEquiv[$no]->product?->go ?? '') == 'Genuine' ? 'G' : 'R' }}
                                                     </option>
                                                 </select>
                                                 <label for="equivalent-dropdown">Equivalent || Commodity</label>
                                             </div>
                                             <input type="text" class="form-control invoice-item-equivalent"
                                                 name="equivalent[]" id="equivalent-1" data-id="1" min="12"
-                                                value="{{ $fullEquiv[$no]->id }}" hidden>
+                                                value="{{ $fullEquiv[$no]->id ?? '' }}" hidden>
                                             <div class="form-floating form-floating-outline mb-2">
                                                 <select id="product-{{ $no }}"
                                                     class="select2 form-select form-select-lg invoice-item-replacement"
                                                     data-allow-clear="true" name="replacement[]">
                                                     <option> ---- Choose Replacement Here ---- </option>
-                                                    @foreach ($fullRep[$no] as $replacement)
+                                                    @foreach ($fullRep[$no] ?? [] as $replacement)
                                                         <option value="{{ $replacement->id }}"
                                                             {{ @$dPending[$no]->id_replacement == $replacement->id ? 'selected' : '' }}>
                                                             {{ $replacement->replacement }}
@@ -114,11 +114,11 @@
                                             <p class="mb-2 repeater-title">Qty</p>
                                             <input type="number" class="form-control mb-3 invoice-item-qty"
                                                 placeholder="Min 1" id="qty-1" data-id="1" min="1"
-                                                value="{{ $detail->service->qty }}" disabled>
+                                                value="{{ $detail->service?->qty ?? 0 }}" disabled>
                                             <p class="info-max-label" id="info-max-{{ $row }}"></p>
                                             <input type="number" class="form-control invoice-item-qty" name="qty[]"
                                                 id="qty-{{ $row }}" data-id="{{ $row }}"
-                                                value="{{ $detail->service->qty }}" hidden>
+                                                value="{{ $detail->service?->qty ?? 0 }}" hidden>
                                         </div>
                                         <div class="col-md-1 col-12 mb-md-0 mb-3">
                                             <p class="mb-2 repeater-title">Warehouse</p>
@@ -143,20 +143,20 @@
                                                     placeholder="Put Price Here" data-type="currency"
                                                     pattern="^[0-9]\d{0,2}(\.\d{3})*$" @focus="focused = true"
                                                     @blur="focused = false"
-                                                    value="{{ number_format($detail->service->price, 2, ',', '.') }}"
+                                                    value="{{ number_format($detail->service?->price ?? 0, 2, ',', '.') }}"
                                                     disabled>
                                                 <input class="form-control invoice-item-price" type="number"
-                                                    name="price[]" id="price-1" value="{{ $detail->service->price }}"
+                                                    name="price[]" id="price-1" value="{{ $detail->service?->price ?? 0 }}"
                                                     hidden>
                                             </div>
                                         </div>
                                         <div class="col-md-2 col-12 pe-0">
                                             <p class="mb-2 repeater-title">Amount</p>
                                             <p class="mb-0 amount-label" id="amount-label-1" data-id="1">
-                                                Rp {{ number_format($detail->service->amount, 2, ',', '.') }}</p>
+                                                Rp {{ number_format($detail->service?->amount ?? 0, 2, ',', '.') }}</p>
                                             <input type="number" class="form-control invoice-item-amount"
                                                 name="amount[]" id="amount-{{ $row }}" data-id="1"
-                                                min="12" value="{{ $detail->service->amount }}" hidden>
+                                                min="12" value="{{ $detail->service?->amount ?? 0 }}" hidden>
                                         </div>
                                     </div>
                                     <div

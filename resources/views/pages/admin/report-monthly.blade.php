@@ -16,35 +16,8 @@
         $winColor  = $winRate  >= 50 ? 'success' : ($winRate  >= 30 ? 'warning' : 'danger');
         $lossColor = $lossRate <= 20 ? 'success' : ($lossRate <= 40 ? 'warning' : 'danger');
 
-        // Pisahkan E-Commerce & regular
-        $ecommerceIds = [16, 23];
-        $ecoData      = array_filter($data, fn($s) => in_array($s['id'], $ecommerceIds));
-        $regularData  = array_values(array_filter($data, fn($s) => !in_array($s['id'], $ecommerceIds)));
-
-        // Gabungkan metrik Tim E-Commerce
-        $ecoRow = [
-            'id'            => 0,
-            'name'          => 'Team E-Commerce',
-            'image'         => null,
-            'leads'         => array_sum(array_column($ecoData, 'leads')),
-            'dc'            => array_sum(array_column($ecoData, 'dc')),
-            'crm'           => array_sum(array_column($ecoData, 'crm')),
-            'quoteCount'    => array_sum(array_column($ecoData, 'quoteCount')),
-            'quoteTotal'    => array_sum(array_column($ecoData, 'quoteTotal')),
-            'prospectCount' => array_sum(array_column($ecoData, 'prospectCount')),
-            'poCount'       => array_sum(array_column($ecoData, 'poCount')),
-            'poTotal'       => array_sum(array_column($ecoData, 'poTotal')),
-            'lossCount'     => array_sum(array_column($ecoData, 'lossCount')),
-            'target'        => array_sum(array_column($ecoData, 'target')),
-            'mktProspect'   => array_sum(array_column($ecoData, 'mktProspect')),
-            'mktQuote'      => array_sum(array_column($ecoData, 'mktQuote')),
-            'mktPo'         => array_sum(array_column($ecoData, 'mktPo')),
-        ];
-
-        // Gabungkan lalu urutkan ulang berdasarkan poTotal
-        $rows = array_merge($regularData, count($ecoData) ? [$ecoRow] : []);
-        usort($rows, fn($a, $b) => $b['poTotal'] <=> $a['poTotal']);
-
+        // Data sales rows
+        $rows             = $data;
         $totalPOAll       = array_sum(array_column($rows, 'poTotal'));
         $totalAchievement = $totalTarget > 0 ? round(($totalPOAll / $totalTarget) * 100, 1) : 0;
         $totalAchColor    = $totalAchievement >= 100 ? 'success' : ($totalAchievement >= 70 ? 'warning' : 'danger');
@@ -305,8 +278,7 @@
                 <tbody>
                     @forelse ($rows as $i => $s)
                         @php
-                            $isEco    = $s['id'] === 0;
-                            $reportUrl = $isEco ? null : route('detail-overview.semester', ['sales' => $s['id'], 'date' => sprintf('%02d-%d', $month, $year)]);
+                            $reportUrl = route('detail-overview.semester', ['sales' => $s['id'], 'date' => sprintf('%02d-%d', $month, $year)]);
                             $pct      = $s['target'] > 0 ? round(($s['poTotal'] / $s['target']) * 100, 1) : 0;
                             $pctColor = $pct >= 100 ? 'success' : ($pct >= 70 ? 'warning' : 'danger');
 
@@ -331,33 +303,29 @@
                             {{-- Sales Profile --}}
                             <td>
                                 <div class="d-flex align-items-center gap-3">
-                                    @if ($isEco)
-                                        <div class="avatar avatar-md flex-shrink-0">
-                                            <div class="avatar-initial bg-label-info rounded-circle shadow-xs fw-bold">
-                                                <i class="mdi mdi-shopping-outline fs-5"></i>
-                                            </div>
-                                        </div>
-                                    @else
-                                        <a href="{{ $reportUrl }}"
-                                           class="avatar avatar-md flex-shrink-0 sales-profile-link"
-                                           title="Lihat detail performance {{ $s['name'] }} ({{ $bulanMap[$month] }} {{ $year }})">
-                                            <img src="{{ url('') . '/' . $s['image'] }}"
-                                                 alt="{{ $s['name'] }}"
-                                                 class="rounded-circle shadow-xs object-fit-cover"
-                                                 onerror="this.onerror=null; this.src='{{ asset('assets/img/avatars/1.png') }}'">
-                                        </a>
-                                    @endif
+                                    <a href="{{ $reportUrl }}"
+                                       class="avatar avatar-md flex-shrink-0 sales-profile-link"
+                                       title="Lihat detail performance {{ $s['name'] }} ({{ $bulanMap[$month] }} {{ $year }})">
+                                        <img src="{{ url('') . '/' . $s['image'] }}"
+                                             alt="{{ $s['name'] }}"
+                                             class="rounded-circle shadow-xs object-fit-cover"
+                                             onerror="this.onerror=null; this.src='{{ asset('assets/img/avatars/1.png') }}'">
+                                    </a>
 
                                     <div class="sales-info">
                                         <span class="fw-bold text-heading d-block">
-                                            @if ($reportUrl)
-                                                <a href="{{ $reportUrl }}" class="text-heading sales-name-link">{{ $s['name'] }}</a>
-                                            @else
+                                            <a href="{{ $reportUrl }}" class="text-heading sales-name-link">
                                                 {{ $s['name'] }}
-                                            @endif
+                                            </a>
                                         </span>
                                         
-                                        @if (($s['mktProspect'] ?? 0) > 0)
+                                        @if ($s['id'] == 16)
+                                            <div class="mt-1">
+                                                <span class="badge bg-label-info px-2 py-0" style="font-size: 0.7rem;">
+                                                    <i class="mdi mdi-shopping-outline me-1"></i>E-Commerce
+                                                </span>
+                                            </div>
+                                        @elseif (($s['mktProspect'] ?? 0) > 0)
                                             @php
                                                 $mktRateQ  = $s['mktProspect'] > 0 ? round(($s['mktQuote'] / $s['mktProspect']) * 100, 0) : 0;
                                                 $mktRatePo = $s['mktQuote']    > 0 ? round(($s['mktPo']    / $s['mktQuote'])    * 100, 0) : 0;

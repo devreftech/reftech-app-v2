@@ -375,8 +375,9 @@ class ToolAssignmentController extends Controller
         $fixed = FixedAsset::where('type', 'Tools')->findOrFail($id);
 
         $request->validate([
-            'qty' => 'required|integer|min:1',
+            'qty'                  => 'required|integer|min:1',
             'tanggal_serah_terima' => 'required|date',
+            'foto_awal'            => 'nullable|file|image|mimes:jpeg,jpg,png,webp|max:5120',
         ]);
 
         $fixed->qty = $request->qty;

@@ -1,5 +1,171 @@
 @extends('layouts.sales.app')
 @section('title', 'Detail Smart Quote')
+
+@push('after-style')
+    <style>
+        /* Discussion Chat Bubbles (Same as Prospect & Purchase Request) */
+        .chat-bubble-me {
+            background-color: #ECEAFE;
+            border-radius: 14px 14px 2px 14px !important;
+            color: #2F3349;
+            border: 1px solid #d5d0fa;
+        }
+
+        .chat-bubble-other {
+            background-color: #ffffff;
+            border-radius: 14px 14px 14px 2px !important;
+            color: #2F3349;
+            border: 1px solid rgba(24, 28, 33, 0.08);
+        }
+
+        html.dark-style .chat-bubble-me {
+            background-color: #3b3c5a !important;
+            border-color: rgba(105, 108, 255, 0.4) !important;
+            color: #e4e6f0 !important;
+        }
+
+        html.dark-style .chat-bubble-other {
+            background-color: #2b2c40 !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            color: #e4e6f0 !important;
+        }
+
+        .discussion-stream-box {
+            max-height: 460px;
+            overflow-y: auto;
+            background-color: #fcfcfd;
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        html.dark-style .discussion-stream-box {
+            background-color: #232333;
+            border-color: rgba(255,255,255,0.06);
+        }
+
+        .discussion-stream-box::-webkit-scrollbar {
+            width: 5px;
+        }
+        .discussion-stream-box::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .discussion-stream-box::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 10px;
+        }
+        html.dark-style .discussion-stream-box::-webkit-scrollbar-thumb {
+            background-color: #444760;
+        }
+
+        /* Mention Dropdown Elegant UI */
+        .mention-dropdown-menu {
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            width: 100%;
+            max-width: 440px;
+            z-index: 1060;
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid rgba(105, 108, 255, 0.25) !important;
+            box-shadow: 0 14px 34px rgba(34, 48, 62, 0.18), 0 2px 8px rgba(0,0,0,0.06);
+            overflow: hidden;
+            animation: mentionDropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        html.dark-style .mention-dropdown-menu {
+            background: #2b2c40 !important;
+            border-color: rgba(105, 108, 255, 0.35) !important;
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+        }
+
+        @keyframes mentionDropdownFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .mention-dropdown-header {
+            padding: 8px 14px;
+            background: #f8f9fa;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            font-size: 11.5px;
+            color: #566a7f;
+        }
+
+        html.dark-style .mention-dropdown-header {
+            background: #32344d;
+            border-bottom-color: rgba(255,255,255,0.07);
+            color: #a8abc2;
+        }
+
+        .mention-dropdown-list {
+            max-height: 220px;
+            overflow-y: auto;
+            margin: 0;
+            padding: 4px;
+            list-style: none;
+        }
+
+        .mention-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+
+        .mention-item:hover,
+        .mention-item.active-item {
+            background-color: rgba(105, 108, 255, 0.08);
+        }
+
+        html.dark-style .mention-item:hover,
+        html.dark-style .mention-item.active-item {
+            background-color: rgba(105, 108, 255, 0.2);
+        }
+
+        .mention-tag {
+            background: rgba(105, 108, 255, 0.1);
+            color: #696cff;
+            border: 1px solid rgba(105, 108, 255, 0.25);
+            border-radius: 999px;
+            padding: 3px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        html.dark-style .mention-tag {
+            background: rgba(105, 108, 255, 0.2);
+            color: #8c90ff;
+            border-color: rgba(105, 108, 255, 0.4);
+        }
+
+        .mention-tag .remove-mention {
+            cursor: pointer;
+            color: #a1acb8;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .mention-tag .remove-mention:hover {
+            color: #ff3e1d;
+        }
+    </style>
+@endpush
+
 @section('content')
 
 @php
@@ -2739,16 +2905,226 @@
         });
     });
 
+    // ── @mention logic for Smart Quote Comments ──────────────────────
+    var allUsers = @json($allUsers ?? []);
+    var selectedMentions = {}; // id => name
+    var mentionStartIndex = -1;
+    var activeMentionIndex = 0;
+    var currentFilteredUsers = [];
+
+    var commentTextarea = document.getElementById('new-comment-text');
+    var commentDropdown = document.getElementById('mentionDropdown');
+    var commentTagsEl = document.getElementById('mentionTags');
+    var commentInputsEl = document.getElementById('mentionInputs');
+
+    var roleColors = {
+        'Admin': 'danger',
+        'Super Admin': 'danger',
+        'Developer': 'dark',
+        'Sales': 'primary',
+        'Support': 'info',
+        'Logistic': 'warning',
+        'Accounting': 'success',
+        'Purchasing': 'warning'
+    };
+
+    function renderCommentMentionDropdown(query) {
+        if (!commentDropdown || !commentTextarea) return;
+        currentFilteredUsers = allUsers.filter(function (u) {
+            return u.name.toLowerCase().indexOf(query.toLowerCase()) !== -1 && !selectedMentions[u.id];
+        }).slice(0, 8);
+
+        if (!currentFilteredUsers.length) {
+            commentDropdown.style.display = 'none';
+            commentDropdown.innerHTML = '';
+            return;
+        }
+
+        activeMentionIndex = 0;
+
+        var html = `
+            <div class="mention-dropdown-header d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-1">
+                    <i class="mdi mdi-at text-primary"></i>
+                    <span class="fw-bold">Pilih Rekan Tim (${currentFilteredUsers.length})</span>
+                </div>
+                <small class="text-muted" style="font-size: 10px;">Tekan ↑ ↓ & Enter</small>
+            </div>
+            <ul class="mention-dropdown-list">
+        `;
+
+        currentFilteredUsers.forEach(function (u, index) {
+            var color = roleColors[u.role] || 'primary';
+            var initial = (u.name || 'U').charAt(0).toUpperCase();
+            var activeCls = index === 0 ? 'active-item' : '';
+            var avatarHtml = '';
+
+            if (u.image) {
+                var imgSrc = u.image.startsWith('/') ? u.image : '/' + u.image;
+                avatarHtml = `<img src="${imgSrc}" class="rounded-circle shadow-xs flex-shrink-0" width="30" height="30" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'avatar-initial rounded-circle bg-label-${color} fw-bold d-flex align-items-center justify-content-center shadow-xs flex-shrink-0\\' style=\\'width:30px;height:30px;font-size:12px;\\'>${initial}</span>'">`;
+            } else {
+                avatarHtml = `<span class="avatar-initial rounded-circle bg-label-${color} fw-bold d-flex align-items-center justify-content-center shadow-xs flex-shrink-0" style="width:30px;height:30px;font-size:12px;">${initial}</span>`;
+            }
+
+            html += `
+                <li class="mention-item ${activeCls}" data-index="${index}">
+                    ${avatarHtml}
+                    <div class="flex-grow-1 min-w-0 text-truncate">
+                        <span class="fw-semibold text-dark d-block text-truncate" style="font-size: 13px;">${u.name}</span>
+                    </div>
+                    <span class="badge bg-label-${color} rounded-pill px-2 py-0.5 ms-auto flex-shrink-0" style="font-size: 10px;">
+                        ${u.role || 'Team'}
+                    </span>
+                </li>
+            `;
+        });
+
+        html += `</ul>`;
+        commentDropdown.innerHTML = html;
+        commentDropdown.style.display = 'block';
+
+        // Bind click events
+        commentDropdown.querySelectorAll('.mention-item').forEach(function (el) {
+            el.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                var idx = parseInt(this.getAttribute('data-index'), 10);
+                if (currentFilteredUsers[idx]) {
+                    selectCommentMention(currentFilteredUsers[idx]);
+                }
+            });
+        });
+    }
+
+    function updateCommentMentionActiveItem() {
+        if (!commentDropdown) return;
+        var items = commentDropdown.querySelectorAll('.mention-item');
+        items.forEach(function (el, idx) {
+            if (idx === activeMentionIndex) {
+                el.classList.add('active-item');
+                el.scrollIntoView({ block: 'nearest' });
+            } else {
+                el.classList.remove('active-item');
+            }
+        });
+    }
+
+    function selectCommentMention(user) {
+        if (!commentTextarea) return;
+        var val = commentTextarea.value;
+        var before = val.substring(0, mentionStartIndex);
+        var after = val.substring(commentTextarea.selectionStart);
+        commentTextarea.value = before + '@' + user.name + ' ' + after;
+        commentTextarea.focus();
+
+        selectedMentions[user.id] = user.name;
+        if (commentDropdown) {
+            commentDropdown.style.display = 'none';
+            commentDropdown.innerHTML = '';
+        }
+        mentionStartIndex = -1;
+        renderCommentMentionTags();
+    }
+
+    function renderCommentMentionTags() {
+        if (!commentTagsEl || !commentInputsEl) return;
+        commentTagsEl.innerHTML = '';
+        commentInputsEl.innerHTML = '';
+        Object.keys(selectedMentions).forEach(function (id) {
+            var span = document.createElement('span');
+            span.className = 'mention-tag';
+            span.innerHTML = '@' + selectedMentions[id] +
+                ' <span class="remove-mention ms-1" data-id="' + id + '">&times;</span>';
+            commentTagsEl.appendChild(span);
+
+            var inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = 'mentions[]';
+            inp.value = id;
+            commentInputsEl.appendChild(inp);
+        });
+
+        commentTagsEl.querySelectorAll('.remove-mention').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                delete selectedMentions[this.dataset.id];
+                renderCommentMentionTags();
+            });
+        });
+    }
+
+    if (commentTextarea) {
+        commentTextarea.addEventListener('input', function () {
+            var val = this.value;
+            var pos = this.selectionStart;
+
+            var atPos = -1;
+            for (var i = pos - 1; i >= 0; i--) {
+                if (val[i] === '@') { atPos = i; break; }
+                if (val[i] === ' ' || val[i] === '\n') break;
+            }
+
+            if (atPos !== -1) {
+                mentionStartIndex = atPos;
+                var query = val.substring(atPos + 1, pos);
+                renderCommentMentionDropdown(query);
+            } else {
+                if (commentDropdown) {
+                    commentDropdown.style.display = 'none';
+                    commentDropdown.innerHTML = '';
+                }
+                mentionStartIndex = -1;
+            }
+        });
+
+        commentTextarea.addEventListener('keydown', function (e) {
+            if (!commentDropdown || commentDropdown.style.display === 'none' || !currentFilteredUsers.length) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeMentionIndex = (activeMentionIndex + 1) % currentFilteredUsers.length;
+                updateCommentMentionActiveItem();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeMentionIndex = (activeMentionIndex - 1 + currentFilteredUsers.length) % currentFilteredUsers.length;
+                updateCommentMentionActiveItem();
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                if (currentFilteredUsers[activeMentionIndex]) {
+                    selectCommentMention(currentFilteredUsers[activeMentionIndex]);
+                }
+            } else if (e.key === 'Escape') {
+                commentDropdown.style.display = 'none';
+                commentDropdown.innerHTML = '';
+                mentionStartIndex = -1;
+            }
+        });
+
+        commentTextarea.addEventListener('blur', function () {
+            setTimeout(function () {
+                if (commentDropdown) {
+                    commentDropdown.style.display = 'none';
+                    commentDropdown.innerHTML = '';
+                }
+            }, 200);
+        });
+    }
+
     // Tambah komentar baru
     $('#form-add-comment').on('submit', function (e) {
         e.preventDefault();
         var text = $('#new-comment-text').val().trim();
         if (!text) return;
         $('#btn-submit-comment').prop('disabled', true);
+        
+        var mentionIds = Object.keys(selectedMentions);
+
         $.ajax({
             type: 'POST',
             url: '{{ route('unit-quotation.storeComment', $quote->id) }}',
-            data: { comment: text, _token: '{{ csrf_token() }}' },
+            data: {
+                comment: text,
+                mentions: mentionIds,
+                _token: '{{ csrf_token() }}'
+            },
             success: function () {
                 location.reload();
             },
@@ -2759,11 +3135,19 @@
         });
     });
 
+    // Auto-scroll chat discussion stream to bottom on load
+    $(document).ready(function() {
+        var streamEl = document.getElementById('quotationDiscussionStream');
+        if (streamEl) {
+            streamEl.scrollTop = streamEl.scrollHeight;
+        }
+    });
+
     // Edit komentar
     $(document).on('click', '.btn-edit-comment', function () {
-        var $item = $(this).closest('.timeline-item');
+        var $item = $(this).closest('.item-comment, .timeline-feed-item, .timeline-item');
         var $p = $item.find('.comment-text');
-        var currentText = $p.text();
+        var currentText = $p.text().trim();
 
         Swal.fire({
             title: 'Edit Komentar',
@@ -2797,7 +3181,7 @@
 
     // Hapus komentar
     $(document).on('click', '.btn-delete-comment', function () {
-        var $item = $(this).closest('.timeline-item');
+        var $item = $(this).closest('.item-comment, .timeline-feed-item, .timeline-item');
         var id = $item.data('comment-id');
         Swal.fire({
             title: 'Hapus komentar ini?',

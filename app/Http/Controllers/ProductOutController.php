@@ -247,11 +247,12 @@ class ProductOutController extends Controller
     public function invoice($id)
     {
         $invoice = Invoice::find($id);
+        if (!$invoice) {
+            return redirect()->route('product-out.index')->with('error', 'Invoice tidak ditemukan');
+        }
         $detailQ = DetailQuotation::where('id_quotation', $invoice->id_quotation)->get();
-        $product = SerialProduct::all();
-        // dd($product);
-        $dProduct = DetailProduct::all();
-        return view('pages.warehouse.product-out.form-invoice', compact('invoice', 'detailQ', 'product', 'dProduct'));
+        $nextNoProductOut = $this->generateNoProductOut('BDG', $invoice->flag ?? 'Reftech');
+        return view('pages.warehouse.product-out.invoice', compact('invoice', 'detailQ', 'nextNoProductOut'));
     }
 
     public function invoice_store(Request $request)
@@ -272,29 +273,27 @@ class ProductOutController extends Controller
             'shipping.required' => 'Field Shipping Wajib Diisi',
             'note.required' => 'Field Note Wajib Diisi',
         ];
-        // $invoice = Invoice::find($id);
-        // $detailQ = DetailQuotation::where('id_quotation', $invoice->id_quotation)->get();
-        // dd($request->all());
         $this->validate($request, $rule, $message);
-        // Masukan Data ke Tabel Product Out
-        $invoiceObj = Invoice::where('no_invoice', $request->invoice)->orWhere('id', $request->invoice)->first();
-        $flag = $request->flag ?? ($invoiceObj?->flag ?? 'Reftech');
 
-        $productOut = new ProductOut();
-        $productOut->flag = $flag;
-        $productOut->no_product_out = $this->generateNoProductOut($request->warehouse[0] ?? 'BDG', $flag);
-        $productOut->id_user = Auth::user()->id;
-        $productOut->invoice = $request->invoice;
-        $productOut->po = $request->po;
-        $productOut->no_type = "1";
-        $productOut->detail_client = $request->detail_client;
-        $productOut->vers = $request->vers;
-        $productOut->date = $request->date;
-        $productOut->note = $request->note;
-        $productOut->shipping = $request->shipping;
-        $productOut->total = $request->total;
-        $productOutSave = $productOut->save();
-        if ($productOutSave) {
+        return DB::transaction(function () use ($request) {
+            $invoiceObj = Invoice::where('no_invoice', $request->invoice)->orWhere('id', $request->invoice)->first();
+            $flag = $request->flag ?? ($invoiceObj?->flag ?? 'Reftech');
+
+            $productOut = new ProductOut();
+            $productOut->flag = $flag;
+            $productOut->no_product_out = $this->generateNoProductOut($request->warehouse[0] ?? 'BDG', $flag);
+            $productOut->id_user = Auth::user()->id;
+            $productOut->invoice = $request->invoice;
+            $productOut->po = $request->po;
+            $productOut->no_type = "1";
+            $productOut->detail_client = $request->detail_client;
+            $productOut->vers = $request->vers;
+            $productOut->date = $request->date;
+            $productOut->note = $request->note;
+            $productOut->shipping = $request->shipping;
+            $productOut->total = $request->total;
+            $productOut->save();
+
             // Masukan Data Ke Tabel Detail Quotataion
             foreach ($request->equivalent as $item => $value) {
                 $dProductIn = new DetailProductOut;
@@ -306,26 +305,28 @@ class ProductOutController extends Controller
                 $dProductIn->amount = $request->amount[$item];
                 $dProductIn->warehouse = $request->warehouse[$item];
                 $productD = DetailProduct::where('id', $request->replacement[$item])->first();
-                if ($request->warehouse[$item] == 'BDG') {
-                    $productD->stock = $productD->stock - $request->qty[$item];
-                } else {
-                    $productD->warehouse_stock = $productD->warehouse_stock - $request->qty[$item];
+                if ($productD) {
+                    if ($request->warehouse[$item] == 'BDG') {
+                        $productD->stock = $productD->stock - $request->qty[$item];
+                    } else {
+                        $productD->warehouse_stock = $productD->warehouse_stock - $request->qty[$item];
+                    }
+                    $productD->save();
+                    $product = Product::where('id', $productD->id_product)->first();
+                    if ($product) {
+                        if ($request->warehouse[$item] == 'BDG') {
+                            $product->stock = $product->stock - $request->qty[$item];
+                        } else {
+                            $product->warehouse_stock = $product->warehouse_stock - $request->qty[$item];
+                        }
+                        $product->save();
+                    }
                 }
-                $productD->save();
-                $product = Product::where('id', $productD->id_product)->first();
-                if ($request->warehouse[$item] == 'BDG') {
-                    $product->stock = $product->stock - $request->qty[$item];
-                } else {
-                    $product->warehouse_stock = $product->warehouse_stock - $request->qty[$item];
-                }
-                // dd($product);
-                $product->save();
-                $dProductSave = $dProductIn->save();
+                $dProductIn->save();
             }
-        }
-        if ($dProductSave) {
+
             return redirect('/product-out')->with('message', 'data telah di tambahkan');
-        }
+        });
     }
 
 

@@ -409,8 +409,18 @@
                         <tbody>
                             @forelse ($myAssets as $asset)
                                 <tr>
-                                    <td><div class="fw-bold text-heading">{{ $asset->asset_name }}</div></td>
-                                    <td><span class="font-monospace text-primary">{{ $asset->asset_code ?: '-' }}</span> (S/N: {{ $asset->serial_number ?: '-' }})</td>
+                                    <td>
+                                        <div class="fw-bold text-heading">{{ $asset->asset_name }}</div>
+                                        @if ($asset->fixedAsset)
+                                            <span class="badge bg-label-info py-0 px-1 font-size-11">
+                                                <i class="mdi mdi-link-variant me-1"></i>{{ $asset->fixedAsset->type }}
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="font-monospace text-primary fw-semibold">{{ $asset->asset_code ?: '-' }}</span>
+                                        <div class="font-monospace text-muted small">S/N: {{ $asset->serial_number ?: '-' }}</div>
+                                    </td>
                                     <td><span class="badge bg-label-success">{{ $asset->condition }}</span></td>
                                     <td>{{ \Carbon\Carbon::parse($asset->handover_date)->format('d M Y') }}</td>
                                     <td><span class="small text-muted">{{ $asset->notes ?: 'Lengkap' }}</span></td>

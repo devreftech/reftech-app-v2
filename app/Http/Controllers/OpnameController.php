@@ -32,6 +32,9 @@ class OpnameController extends Controller
     public function show($id)
     {
         $opname = StockOpname::find($id);
+        if (!$opname) {
+            return redirect()->route('opname.index')->with('error', 'Stock Opname tidak ditemukan');
+        }
         $detailOpname = DetailStockOpname::where('id_stock_opname', $id)->get();
         $usedProductIds = $detailOpname->pluck('id_product')->toArray();
 
@@ -41,6 +44,9 @@ class OpnameController extends Controller
     public function show_print($id)
     {
         $opname = StockOpname::find($id);
+        if (!$opname) {
+            return redirect()->route('opname.index')->with('error', 'Stock Opname tidak ditemukan');
+        }
         $prevStockOpnameId = StockOpname::where('id', '<', $id)
             ->orderBy('id', 'desc')
             ->value('id');

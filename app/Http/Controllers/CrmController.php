@@ -165,13 +165,32 @@ class CrmController extends Controller
         $dateNow = Carbon::now();
         $monthNow = $dateNow->month;
         $yearsNow = $dateNow->year;
-        $existing = Client::find($id);
+        $existing = Client::with('crmStatus')->findOrFail($id);
+        $currentCrmStatus = (string) ($existing->crmStatus->first()?->status ?? '2');
         $machines = Machine::where('id_client', $id)->with('forecastHistories')->get();
         $charge = PIC::where('id_client', $id)->get();
         $plants = ClientPlant::where('id_client', $id)->get();
-        $callhis = Activities::where('id_client', $id)->whereIn('name', ['Daily Call', 'Follow Up', 'CRM'])->get();
+        $callhis = Activities::where('id_client', $id)->whereIn('name', ['Daily Call', 'Follow Up', 'CRM', 'Visit'])->get();
         $visit = Activities::where('id_client', $id)->where('name', 'Visit')->get();
         $quote = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')->where('pic.id_client', $id)->where('level', '1')->get('quotation.*');
+
+        $activeRegularQuoteCount = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')
+            ->where('pic.id_client', $id)
+            ->where('quotation.level', '1')
+            ->where('quotation.is_primary', '1')
+            ->whereIn('quotation.status', ['20', '30', '40', '60', '80'])
+            ->count();
+
+        $activeUnitQuoteCount = \App\Models\UnitQuotation::where(function ($q) use ($id) {
+                $q->where('id_client', $id)->orWhereHas('pic', function ($p) use ($id) {
+                    $p->where('id_client', $id);
+                });
+            })
+            ->where('is_latest', 1)
+            ->whereNotIn('status', ['po_received', 'loss', 'cancelled'])
+            ->count();
+
+        $activeQuoteCount = $activeRegularQuoteCount + $activeUnitQuoteCount;
 
         $poYears = Quotation::join('pic', 'pic.id', '=', 'quotation.id_pic')
             ->where('pic.id_client', $id)
@@ -220,6 +239,30 @@ class CrmController extends Controller
         }
         $poCurrentYearTotal = (int) (($poYearlyByYear[$yearsNow] ?? 0) + ($unitPoYearlyByYear[$yearsNow] ?? 0));
 
+        $previousYear = $yearsNow - 1;
+        $poPreviousYearTotal = (int) (($poYearlyByYear[$previousYear] ?? 0) + ($unitPoYearlyByYear[$previousYear] ?? 0));
+
+        $poGrowthPercentage = 0;
+        $poGrowthDirection = 'neutral'; // 'up', 'down', 'neutral'
+
+        if ($poPreviousYearTotal > 0) {
+            $diff = $poCurrentYearTotal - $poPreviousYearTotal;
+            $poGrowthPercentage = round(($diff / $poPreviousYearTotal) * 100, 1);
+            if ($poGrowthPercentage > 0) {
+                $poGrowthDirection = 'up';
+            } elseif ($poGrowthPercentage < 0) {
+                $poGrowthDirection = 'down';
+            } else {
+                $poGrowthDirection = 'neutral';
+            }
+        } elseif ($poCurrentYearTotal > 0) {
+            $poGrowthPercentage = 100;
+            $poGrowthDirection = 'up';
+        } else {
+            $poGrowthPercentage = 0;
+            $poGrowthDirection = 'neutral';
+        }
+
         $quotationStatusMap = [
             '20' => ['label' => 'Send Quotation', 'color' => 'secondary'],
             '30' => ['label' => 'Inquiry Accepted', 'color' => 'dark'],
@@ -230,40 +273,236 @@ class CrmController extends Controller
             '0' => ['label' => 'Loss', 'color' => 'danger'],
         ];
 
+        $sales = User::where('role', 'sales')->where('active', '1')->where('id', '!=', 23)->get();
+        $issue = Issues::all();
+        $unit = SerialProduct::whereNotNull('detail')->get();
+        $crmhis = $this->data($id);
+        $machinehis = $this->getServicePerMonth($id);
+        $service = Reports::join('pic', 'pic.id', '=', 'reports.id_pic')->where('pic.id_client', $id)->get('reports.*');
+        $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
+        $leveledProspect = Prospect::whereNULL('level')->where('id_sales', Auth::id())->count();
+
+        // ══════════════════════════════════════════════════════════════════════
+        // ── UNIFIED CUSTOMER COMPLETE HISTORY & AUDIT TRAIL TIMELINE ──────────
+        // ══════════════════════════════════════════════════════════════════════
         $activityTimeline = collect();
 
-        foreach ($callhis as $history) {
+        // 1. Registrasi Awal Customer
+        $createdDate = $existing->created_at 
+            ? Carbon::parse($existing->created_at) 
+            : ($existing->created_date ? Carbon::parse($existing->created_date) : null);
+
+        if ($createdDate) {
             $activityTimeline->push([
-                'date' => Carbon::parse($history->date),
-                'title' => $history->action,
-                'category' => $history->name,
-                'status' => $history->status,
-                'note' => $history->note,
-                'color' => match ($history->name) {
-                    'Daily Call' => 'info',
-                    'Follow Up' => 'warning',
-                    default => 'primary',
-                },
+                'date' => $createdDate,
+                'title' => 'Customer Terdaftar di Sistem',
+                'category' => 'Registrasi',
+                'type' => 'data',
+                'status' => 'Created',
+                'color' => 'primary',
+                'icon' => 'mdi-domain-plus',
+                'user_name' => $existing->sales?->name ?: 'System',
+                'note' => 'Profil awal customer didaftarkan (Sales: ' . ($existing->sales?->name ?: '-') . ', Area: ' . ($existing->area ?: '-') . ')',
+                'diffs' => [],
                 'no_quote' => null,
                 'url' => null,
             ]);
         }
 
-        foreach ($quote as $q) {
-            $statusInfo = $quotationStatusMap[$q->status] ?? ['label' => $q->status, 'color' => 'secondary'];
+        // 2. Activity Logs (Perubahan NPWP, Profil, PIC, Plant, Status)
+        $picIds = Pic::where('id_client', $id)->pluck('id')->toArray();
+        $plantIds = ClientPlant::where('id_client', $id)->pluck('id')->toArray();
+        $crmStatusIds = CrmStatus::where('id_client', $id)->pluck('id')->toArray();
 
+        $activityLogs = \App\Models\ActivityLog::with('user')
+            ->where(function ($q) use ($id, $picIds, $plantIds, $crmStatusIds) {
+                $q->where(function ($sub) use ($id) {
+                    $sub->where('subject_type', 'App\Models\Client')->where('subject_id', $id);
+                })
+                ->orWhere(function ($sub) use ($picIds) {
+                    $sub->where('subject_type', 'App\Models\Pic')->whereIn('subject_id', $picIds);
+                })
+                ->orWhere(function ($sub) use ($plantIds) {
+                    $sub->where('subject_type', 'App\Models\ClientPlant')->whereIn('subject_id', $plantIds);
+                })
+                ->orWhere(function ($sub) use ($crmStatusIds) {
+                    $sub->where('subject_type', 'App\Models\CrmStatus')->whereIn('subject_id', $crmStatusIds);
+                })
+                ->orWhere('properties->id_client', $id);
+            })
+            ->get();
+
+        $fieldLabels = [
+            'npwp' => ['label' => 'Nomor NPWP', 'type' => 'tax', 'category' => 'Perpajakan', 'icon' => 'mdi-file-certificate-outline', 'color' => 'info'],
+            'subAddress' => ['label' => 'Alamat Faktur Pajak (SPPKP)', 'type' => 'tax', 'category' => 'Perpajakan', 'icon' => 'mdi-file-document-edit-outline', 'color' => 'info'],
+            'company' => ['label' => 'Nama Perusahaan', 'type' => 'data', 'category' => 'Perubahan Data', 'icon' => 'mdi-office-building-cog', 'color' => 'primary'],
+            'address' => ['label' => 'Alamat Pabrik / Kantor', 'type' => 'data', 'category' => 'Perubahan Data', 'icon' => 'mdi-map-marker', 'color' => 'primary'],
+            'area' => ['label' => 'Wilayah / Area', 'type' => 'data', 'category' => 'Perubahan Data', 'icon' => 'mdi-crosshairs-gps', 'color' => 'primary'],
+            'phone' => ['label' => 'No. Telepon Kantor', 'type' => 'data', 'category' => 'Perubahan Data', 'icon' => 'mdi-phone', 'color' => 'primary'],
+            'mobile' => ['label' => 'Mobile Phone', 'type' => 'data', 'category' => 'Perubahan Data', 'icon' => 'mdi-cellphone', 'color' => 'primary'],
+            'email' => ['label' => 'Email Kantor', 'type' => 'data', 'category' => 'Perubahan Data', 'icon' => 'mdi-email', 'color' => 'primary'],
+            'unit' => ['label' => 'Unit Mesin Utama', 'type' => 'data', 'category' => 'Perubahan Data', 'icon' => 'mdi-cog', 'color' => 'primary'],
+            'ru' => ['label' => 'Status R/U', 'type' => 'data', 'category' => 'Perubahan Data', 'icon' => 'mdi-repeat', 'color' => 'primary'],
+            'source' => ['label' => 'Lead Source', 'type' => 'data', 'category' => 'Perubahan Data', 'icon' => 'mdi-source-branch', 'color' => 'primary'],
+            'info' => ['label' => 'Entitas / Via', 'type' => 'data', 'category' => 'Perubahan Data', 'icon' => 'mdi-domain', 'color' => 'primary'],
+        ];
+
+        foreach ($activityLogs as $log) {
+            $user = $log->user?->name ?: 'Admin/Sales';
+            $props = $log->properties ?? [];
+            $oldVals = $props['old_values'] ?? [];
+            $newVals = $props['new_values'] ?? [];
+            $diffs = [];
+
+            if ($log->subject_type === 'App\Models\Client') {
+                if ($log->action === 'updated') {
+                    $hasTaxChange = false;
+                    foreach ($newVals as $fKey => $nVal) {
+                        if (isset($fieldLabels[$fKey])) {
+                            $oVal = $oldVals[$fKey] ?? '-';
+                            if ($fKey === 'npwp' || $fKey === 'subAddress') {
+                                $hasTaxChange = true;
+                            }
+                            $diffs[] = [
+                                'field' => $fieldLabels[$fKey]['label'],
+                                'old' => empty($oVal) || $oVal === '0' ? '(kosong)' : $oVal,
+                                'new' => empty($nVal) || $nVal === '0' ? '(kosong)' : $nVal,
+                            ];
+                        }
+                    }
+
+                    if (!empty($diffs)) {
+                        $activityTimeline->push([
+                            'date' => Carbon::parse($log->created_at),
+                            'title' => $hasTaxChange ? 'Data Perpajakan / NPWP Diperbarui' : 'Data Profil Customer Diperbarui',
+                            'category' => $hasTaxChange ? 'Perpajakan' : 'Perubahan Data',
+                            'type' => $hasTaxChange ? 'tax' : 'data',
+                            'status' => 'Updated',
+                            'color' => $hasTaxChange ? 'info' : 'primary',
+                            'icon' => $hasTaxChange ? 'mdi-file-certificate-outline' : 'mdi-pencil-box-outline',
+                            'user_name' => $user,
+                            'note' => count($diffs) . ' data diperbarui oleh ' . $user,
+                            'diffs' => $diffs,
+                            'no_quote' => null,
+                            'url' => null,
+                        ]);
+                    }
+                }
+            } elseif ($log->subject_type === 'App\Models\Pic') {
+                $actionName = $log->action === 'created' ? 'Ditambahkan' : ($log->action === 'deleted' ? 'Dihapus' : 'Diperbarui');
+                $activityTimeline->push([
+                    'date' => Carbon::parse($log->created_at),
+                    'title' => 'Kontak PIC ' . $actionName,
+                    'category' => 'PIC',
+                    'type' => 'data',
+                    'status' => ucfirst($log->action),
+                    'color' => $log->action === 'deleted' ? 'danger' : 'info',
+                    'icon' => 'mdi-account-tie',
+                    'user_name' => $user,
+                    'note' => $log->description,
+                    'diffs' => [],
+                    'no_quote' => null,
+                    'url' => null,
+                ]);
+            } elseif ($log->subject_type === 'App\Models\ClientPlant') {
+                $actionName = $log->action === 'created' ? 'Ditambahkan' : ($log->action === 'deleted' ? 'Dihapus' : 'Diperbarui');
+                $activityTimeline->push([
+                    'date' => Carbon::parse($log->created_at),
+                    'title' => 'Lokasi Plant Pabrik ' . $actionName,
+                    'category' => 'Plant',
+                    'type' => 'data',
+                    'status' => ucfirst($log->action),
+                    'color' => $log->action === 'deleted' ? 'danger' : 'warning',
+                    'icon' => 'mdi-factory',
+                    'user_name' => $user,
+                    'note' => $log->description,
+                    'diffs' => [],
+                    'no_quote' => null,
+                    'url' => null,
+                ]);
+            } elseif ($log->subject_type === 'App\Models\CrmStatus') {
+                $activityTimeline->push([
+                    'date' => Carbon::parse($log->created_at),
+                    'title' => 'Status Siklus Customer Diperbarui',
+                    'category' => 'Status',
+                    'type' => 'data',
+                    'status' => 'Updated',
+                    'color' => 'warning',
+                    'icon' => 'mdi-sync',
+                    'user_name' => $user,
+                    'note' => $log->description,
+                    'diffs' => [],
+                    'no_quote' => null,
+                    'url' => null,
+                ]);
+            }
+        }
+
+        // 3. Riwayat CRM Activities & Visits
+        foreach ($callhis as $history) {
+            $isVisit = in_array(strtolower($history->name), ['visit', 'kunjungan']);
             $activityTimeline->push([
-                'date' => $q->created_at ?? Carbon::parse($q->estimated_date),
-                'title' => 'Quotation Dibuat',
-                'category' => 'Quotation',
-                'status' => $statusInfo['label'],
-                'note' => $q->note,
-                'color' => $statusInfo['color'],
-                'no_quote' => $q->no_quote,
-                'url' => route('quotation.show', $q->id),
+                'date' => Carbon::parse($history->date),
+                'title' => $history->action ?: ($isVisit ? 'Kunjungan / Visit Onsite' : 'Catatan CRM'),
+                'category' => $isVisit ? 'Visit' : 'CRM',
+                'type' => $isVisit ? 'visit' : 'crm',
+                'status' => $history->status ?: 'Tercatat',
+                'color' => match ($history->name) {
+                    'Daily Call' => 'info',
+                    'Follow Up' => 'warning',
+                    'Visit' => 'danger',
+                    default => 'primary',
+                },
+                'icon' => $isVisit ? 'mdi-car-estate' : 'mdi-phone-in-talk-outline',
+                'user_name' => $existing->sales?->name ?: 'Sales',
+                'note' => $history->note,
+                'diffs' => [],
+                'no_quote' => null,
+                'url' => null,
             ]);
         }
 
+        // 4. Quotation Regular (Dibuat & Deal PO)
+        foreach ($quote as $q) {
+            $statusInfo = $quotationStatusMap[$q->status] ?? ['label' => $q->status, 'color' => 'secondary'];
+            $qPrice = $q->nett ?: $q->total_price;
+
+            // Event Quotation Dibuat
+            $activityTimeline->push([
+                'date' => $q->created_at ? Carbon::parse($q->created_at) : Carbon::parse($q->estimated_date),
+                'title' => 'Penawaran Regular Diterbitkan',
+                'category' => 'Quotation',
+                'type' => 'quotation',
+                'status' => $statusInfo['label'],
+                'color' => $statusInfo['color'],
+                'icon' => 'mdi-file-document-outline',
+                'user_name' => $existing->sales?->name ?: 'Sales',
+                'note' => 'Nilai: Rp ' . number_format($qPrice, 0, ',', '.') . ($q->note ? ' — ' . $q->note : ''),
+                'diffs' => [],
+                'no_quote' => $q->no_quote,
+                'url' => route('quotation.show', $q->id),
+            ]);
+
+            // Event Transaksi Sukses PO (Jika sudah deal)
+            if ($q->status == '100' || !empty($q->po_date) || !empty($q->po_file)) {
+                $activityTimeline->push([
+                    'date' => $q->po_date ? Carbon::parse($q->po_date) : ($q->updated_at ? Carbon::parse($q->updated_at) : Carbon::now()),
+                    'title' => '🎉 Transaksi Sukses Purchase Order (Deal)',
+                    'category' => 'Purchase Order',
+                    'type' => 'po',
+                    'status' => 'Done PO',
+                    'color' => 'success',
+                    'icon' => 'mdi-cart-check',
+                    'user_name' => $existing->sales?->name ?: 'Sales',
+                    'note' => 'PO Diterima Senilai Rp ' . number_format($qPrice, 0, ',', '.') . ($q->po_file ? ' (File PO Terlampir)' : ''),
+                    'diffs' => [],
+                    'no_quote' => $q->no_quote,
+                    'url' => route('quotation.show', $q->id),
+                ]);
+            }
+        }
+
+        // 5. Smart Quote Unit
         $unitQuotes = \App\Models\UnitQuotation::where(function ($q) use ($id) {
             $q->where('id_client', $id)->orWhereHas('pic', function ($p) use ($id) {
                 $p->where('id_client', $id);
@@ -284,30 +523,57 @@ class CrmController extends Controller
             $statusInfo = $unitStatusMap[$uq->status] ?? ['label' => $uq->status, 'color' => 'info'];
 
             $activityTimeline->push([
-                'date' => $uq->created_at ?? Carbon::parse($uq->date),
-                'title' => 'Penawaran Unit Dibuat',
-                'category' => 'Quotation Unit',
+                'date' => $uq->created_at ? Carbon::parse($uq->created_at) : Carbon::parse($uq->date),
+                'title' => 'Smart Quote Unit Diterbitkan',
+                'category' => 'Smart Quote',
+                'type' => 'quotation',
                 'status' => $statusInfo['label'],
-                'note' => $uq->note ?? $uq->title,
                 'color' => $statusInfo['color'],
+                'icon' => 'mdi-file-percent-outline',
+                'user_name' => $existing->sales?->name ?: 'Sales',
+                'note' => 'Total Nilai: Rp ' . number_format($uq->total, 0, ',', '.') . ($uq->note ? ' — ' . $uq->note : ''),
+                'diffs' => [],
                 'no_quote' => $uq->no_quote,
                 'url' => route('unit-quotation.show', $uq->id),
+            ]);
+
+            if ($uq->status === 'po_received' || !empty($uq->po_received)) {
+                $activityTimeline->push([
+                    'date' => $uq->po_received ? Carbon::parse($uq->po_received) : ($uq->updated_at ? Carbon::parse($uq->updated_at) : Carbon::now()),
+                    'title' => '🎉 Transaksi Sukses PO Smart Quote Unit (Deal)',
+                    'category' => 'Purchase Order',
+                    'type' => 'po',
+                    'status' => 'Done PO',
+                    'color' => 'success',
+                    'icon' => 'mdi-cart-check',
+                    'user_name' => $existing->sales?->name ?: 'Sales',
+                    'note' => 'PO Unit Diterima Senilai Rp ' . number_format($uq->total, 0, ',', '.'),
+                    'diffs' => [],
+                    'no_quote' => $uq->no_quote,
+                    'url' => route('unit-quotation.show', $uq->id),
+                ]);
+            }
+        }
+
+        // 6. Laporan Servis Mesin (Reports)
+        foreach ($service as $rep) {
+            $activityTimeline->push([
+                'date' => Carbon::parse($rep->date),
+                'title' => 'Laporan Servis & Maintenance Mesin',
+                'category' => 'Servis Mesin',
+                'type' => 'service',
+                'status' => $rep->status ?: 'Servis Selesai',
+                'color' => 'info',
+                'icon' => 'mdi-wrench-outline',
+                'user_name' => 'Teknisi',
+                'note' => 'No. Servis: ' . ($rep->no_service ?: '-') . ($rep->activity ? ' — ' . $rep->activity : ''),
+                'diffs' => [],
+                'no_quote' => null,
+                'url' => null,
             ]);
         }
 
         $activityTimeline = $activityTimeline->sortByDesc('date')->values();
-
-        $sales = User::where('role', 'sales')->where('active', '1')->where('id', '!=', 23)->get();
-        $issue = Issues::all();
-        $unit = SerialProduct::whereNotNull('detail')->get();
-        // dd($unit);
-        $crmhis = $this->data($id);
-        $machinehis = $this->getServicePerMonth($id);
-        // dd($yearsNow);
-        $service = Reports::join('pic', 'pic.id', '=', 'reports.id_pic')->where('pic.id_client', $id)->get('reports.*');
-        // dd($quote);
-        $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
-        $leveledProspect = Prospect::whereNULL('level')->where('id_sales', Auth::id())->count();
 
 
         // Comment Buat Admin
@@ -401,7 +667,12 @@ class CrmController extends Controller
                 'visit',
                 'machines',
                 'monthNow',
-                'yearsNow'
+                'yearsNow',
+                'currentCrmStatus',
+                'activeQuoteCount',
+                'poPreviousYearTotal',
+                'poGrowthPercentage',
+                'poGrowthDirection'
             )
         );
     }
@@ -545,18 +816,55 @@ class CrmController extends Controller
 
     public function storeActionWithCrm(Request $request, $id)
     {
+        $date = $request->date ? Carbon::parse($request->date) : Carbon::today();
+        
+        // Hitung week otomatis kalender kerja Senin-Minggu
+        $dayOfMonth = (int) $date->day;
+        $firstDayOfMonth = (int) $date->copy()->startOfMonth()->dayOfWeekIso; // 1 (Mon) - 7 (Sun)
+        $offset = ($firstDayOfMonth - 1);
+        $autoWeek = max(1, min(5, (int) floor(($dayOfMonth + $offset - 1) / 7) + 1));
+
         $action = new Activities;
         $action->id_client = $id;
-        $action->name = "CRM";
-        $action->status = $request->status;
-        $action->week = $request->week;
-        $action->action = $request->action;
-        $action->note = $request->note;
-        $action->date = $request->date;
-        $action->follow_up = $request->follow_up;
+        $action->name = ($request->action === 'Visit') ? 'Visit' : 'CRM';
+        $action->status = $request->status ?? 'Responded';
+        $action->week = !empty($request->week) ? (int)$request->week : $autoWeek;
+        $action->action = $request->action ?? 'Phone Office';
+        $action->note = $request->note ?? '-';
+        $action->date = $date->format('Y-m-d');
+        $action->follow_up = $request->follow_up ?: $date->copy()->addMonth()->format('Y-m-d');
         $activitiesSave = $action->save();
         if ($activitiesSave) {
-            return redirect("/existing/" . $id)->with("success", "Data telah ditambahkan");
+            // Update customer status to Non-Aktif ('3') atau Bangkrupt ('1') jika opsi dipilih pada status Not Respon
+            if ($request->status === 'Not Respon') {
+                $newStatus = null;
+                if ($request->filled('customer_status_action')) {
+                    $newStatus = (string) $request->customer_status_action;
+                } elseif ($request->filled('set_non_active')) {
+                    $newStatus = '3';
+                } elseif ($request->filled('set_bangkrupt')) {
+                    $newStatus = '1';
+                }
+
+                if (in_array($newStatus, ['1', '3'])) {
+                    $statusRecord = CrmStatus::where('id_client', $id)->first();
+                    if (!$statusRecord) {
+                        CrmStatus::create([
+                            'id_client' => $id,
+                            'status' => $newStatus,
+                        ]);
+                    } else {
+                        $statusRecord->status = $newStatus;
+                        $statusRecord->save();
+                        
+                        // Bersihkan jika ada record duplikat lama
+                        CrmStatus::where('id_client', $id)->where('id', '!=', $statusRecord->id)->delete();
+                    }
+                }
+            }
+
+            $msg = ($request->action === 'Visit') ? "Aktivitas Visit berhasil dicatat" : "Aktivitas CRM berhasil dicatat";
+            return redirect("/existing/" . $id)->with("success", $msg);
         }
     }
 
@@ -827,10 +1135,11 @@ class CrmController extends Controller
         // dd($machines);
         $results = [];
 
-        // Fungsi untuk mengubah angka bulan menjadi nama bulan menggunakan Carbon
-        function getMonthName($monthNumber)
-        {
-            return Carbon::create()->month($monthNumber)->format('F'); // Menghasilkan nama bulan penuh seperti January, February, dll.
+        if (!function_exists('App\Http\Controllers\getMonthName')) {
+            function getMonthName($monthNumber)
+            {
+                return \Carbon\Carbon::create()->month($monthNumber)->format('F');
+            }
         }
 
         foreach ($machines as $machine) {

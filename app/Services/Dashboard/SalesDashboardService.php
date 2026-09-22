@@ -79,7 +79,7 @@ class SalesDashboardService
         $totalHotProspectCount = $hotProspectSpCount + $hotProspectUnitCount;
         $totalHotProspectNominal = $hotProspectSpNominal + $hotProspectUnitNominal;
 
-        $clients = Client::where('id_sales', $salesUserId)->get();
+        $clients = Client::where('id_sales', $salesUserId)->get(['id', 'company']);
         $issue = Issues::all();
         
         $leveledProspect = Prospect::whereNULL('level')->where('id_sales', $salesUserId)->count();
@@ -123,7 +123,6 @@ class SalesDashboardService
             ->where('quotation.id_sales', $salesUserId)
             ->where('o.type', 'quotation')
             ->where('o.id_user', '!=', $salesUserId)
-            ->orderBy('o.date', 'DESC')
             ->select(['quotation.id as idQ', 'o.id as idC', 'o.id_user', 'o.level', 'o.comment', 'o.date', 'o.type', 'quotation.no_quote', 'u.name', 'u.image']);
 
         $prospectComment = Comment::join('prospect as p', 'comment.id_prospect', '=', 'p.id')
@@ -133,61 +132,77 @@ class SalesDashboardService
             ->where('p.id_sales', $salesUserId)
             ->where('comment.type', 'prospect')
             ->where('comment.id_user', '!=', $salesUserId)
-            ->orderBy('comment.date', 'DESC')
             ->select(['p.id as idP', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'comment.type', 'c.company', 'u.name', 'u.image']);
 
-        $comment = (clone $quotationComment)->union(clone $prospectComment)
+        $allRecentComments = $quotationComment->union($prospectComment)
             ->orderBy('date', 'DESC')
-            ->take(5)
-            ->get();
-        $unreadComment = (clone $quotationComment)->where('o.level', '1')->union(
-            (clone $prospectComment)->where('comment.level', '1')
-        )
-            ->orderBy('date', 'DESC')
-            ->take(5)
+            ->take(10)
             ->get();
 
-        // Sales Online
-        $weeklyOnline = SalesOnline::where('id_sales', $salesUserId)
-            ->whereIn('type', ['Akurasi', 'Delivery', 'Response', 'Rating', 'Customer'])
-            ->whereYear('date', $yearNow)
-            ->whereRaw('WEEK(date, 1) = ?', [$dateNow->weekOfYear])
-            ->get()->keyBy('type');
+        $comment = $allRecentComments->take(5);
+        $unreadComment = $allRecentComments->where('level', '1')->take(5)->values();
 
-        $akurasi = $weeklyOnline->get('Akurasi');
-        $delivery = $weeklyOnline->get('Delivery');
-        $response = $weeklyOnline->get('Response');
-        $rating = $weeklyOnline->get('Rating');
-        $customer = $weeklyOnline->get('Customer');
+        // Sales Online (di-cache per hari/bulan)
+        $onlineData = Cache::remember("sales_online_stats_{$salesUserId}_{$yearNow}_{$monthNow}_{$dateNow->toDateString()}", 300, function () use ($salesUserId, $yearNow, $monthNow, $dateNow) {
+            $weeklyOnline = SalesOnline::where('id_sales', $salesUserId)
+                ->whereIn('type', ['Akurasi', 'Delivery', 'Response', 'Rating', 'Customer'])
+                ->whereYear('date', $yearNow)
+                ->whereRaw('WEEK(date, 1) = ?', [$dateNow->weekOfYear])
+                ->get()->keyBy('type');
 
-        $todayOnline = SalesOnline::where('id_sales', $salesUserId)
-            ->whereIn('type', ['Video', 'SW', 'product'])
-            ->whereDate('date', $dateNow)
-            ->get()->groupBy('type');
+            $todayOnline = SalesOnline::where('id_sales', $salesUserId)
+                ->whereIn('type', ['Video', 'SW', 'product'])
+                ->whereDate('date', $dateNow)
+                ->get()->groupBy('type');
 
-        $video = $todayOnline->get('Video', collect())->first();
-        $sw = $todayOnline->get('SW', collect())->first();
-        $product = $todayOnline->get('product', collect());
+            $monthlyOnline = SalesOnline::where('id_sales', $salesUserId)
+                ->whereIn('type', ['Akurasi', 'Delivery', 'Response', 'Rating', 'Customer', 'Video', 'SW'])
+                ->whereMonth('date', $monthNow)
+                ->whereYear('date', $yearNow)
+                ->get()->groupBy('type');
 
-        $monthlyOnline = SalesOnline::where('id_sales', $salesUserId)
-            ->whereIn('type', ['Akurasi', 'Delivery', 'Response', 'Rating', 'Customer', 'Video', 'SW'])
-            ->whereMonth('date', $monthNow)
-            ->whereYear('date', $yearNow)
-            ->get()->groupBy('type');
+            $productCount = SalesOnline::where('id_sales', $salesUserId)
+                ->where('type', 'Product')
+                ->whereMonth('date', $monthNow)
+                ->whereYear('date', $yearNow)
+                ->count();
 
-        $akurasiCount = $monthlyOnline->get('Akurasi', collect());
-        $deliveryCount = $monthlyOnline->get('Delivery', collect());
-        $responseCount = $monthlyOnline->get('Response', collect());
-        $ratingCount = $monthlyOnline->get('Rating', collect());
-        $customerCount = $monthlyOnline->get('Customer', collect());
-        $videoCount = $monthlyOnline->get('Video', collect());
-        $SWCount = $monthlyOnline->get('SW', collect());
+            return [
+                'akurasi' => $weeklyOnline->get('Akurasi'),
+                'delivery' => $weeklyOnline->get('Delivery'),
+                'response' => $weeklyOnline->get('Response'),
+                'rating' => $weeklyOnline->get('Rating'),
+                'customer' => $weeklyOnline->get('Customer'),
+                'video' => $todayOnline->get('Video', collect())->first(),
+                'sw' => $todayOnline->get('SW', collect())->first(),
+                'product' => $todayOnline->get('product', collect()),
+                'akurasiCount' => $monthlyOnline->get('Akurasi', collect()),
+                'deliveryCount' => $monthlyOnline->get('Delivery', collect()),
+                'responseCount' => $monthlyOnline->get('Response', collect()),
+                'ratingCount' => $monthlyOnline->get('Rating', collect()),
+                'customerCount' => $monthlyOnline->get('Customer', collect()),
+                'videoCount' => $monthlyOnline->get('Video', collect()),
+                'SWCount' => $monthlyOnline->get('SW', collect()),
+                'productCount' => $productCount,
+            ];
+        });
 
-        $productCount = SalesOnline::where('id_sales', $salesUserId)
-            ->where('type', 'Product')
-            ->whereMonth('date', $monthNow)
-            ->whereYear('date', $yearNow)
-            ->count();
+        $akurasi = $onlineData['akurasi'];
+        $delivery = $onlineData['delivery'];
+        $response = $onlineData['response'];
+        $rating = $onlineData['rating'];
+        $customer = $onlineData['customer'];
+        $video = $onlineData['video'];
+        $sw = $onlineData['sw'];
+        $product = $onlineData['product'];
+        $akurasiCount = $onlineData['akurasiCount'];
+        $deliveryCount = $onlineData['deliveryCount'];
+        $responseCount = $onlineData['responseCount'];
+        $ratingCount = $onlineData['ratingCount'];
+        $customerCount = $onlineData['customerCount'];
+        $videoCount = $onlineData['videoCount'];
+        $SWCount = $onlineData['SWCount'];
+        $productCount = $onlineData['productCount'];
 
         $POCount = Quotation::where('id_sales', $salesUserId)
             ->where('is_primary', '1')
@@ -211,10 +226,14 @@ class SalesDashboardService
             ->where('reports.viewed', 0)
             ->count();
 
-        $salesCharts = $this->getSalesDashboardCharts($salesUserId, $leads->count(), $quotation->count(), $po->count());
+        $salesCharts = Cache::remember("sales_dash_charts_{$salesUserId}_{$yearNow}_{$monthNow}", 300, function () use ($salesUserId, $leads, $quotation, $po) {
+            return $this->getSalesDashboardCharts($salesUserId, $leads->count(), $quotation->count(), $po->count());
+        });
 
-        $forecastController = new \App\Http\Controllers\ForecastController();
-        $forecastData = $forecastController->getForecastDataArray($salesUserId, $yearNow);
+        $forecastData = Cache::remember("sales_dash_forecast_{$salesUserId}_{$yearNow}", 300, function () use ($salesUserId, $yearNow) {
+            $forecastController = new \App\Http\Controllers\ForecastController();
+            return $forecastController->getForecastDataArray($salesUserId, $yearNow);
+        });
 
         return array_merge(compact(
             'sorted',

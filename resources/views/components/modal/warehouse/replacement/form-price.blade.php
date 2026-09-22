@@ -2,7 +2,7 @@
     @csrf
     @method('PATCH')
 
-    <div class="modal animate__animated animate__fadeIn" id="editReplacement-{{ $detail->id }}" tabindex="-1"
+    <div class="modal fade" id="editReplacement-{{ $detail->id }}" tabindex="-1"
         style="display: none;" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">

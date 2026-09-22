@@ -680,11 +680,11 @@
                     <div class="info-card-title">Informasi Mesin &amp; Servis</div>
                     <div class="info-row">
                         <span class="label">Mesin:</span>
-                        <span class="value"><strong>{{ $machine?->brand ?? '-' }} {{ $machine?->model ?? '' }}</strong></span>
+                        <span class="value"><strong>{{ $machine?->unit?->brand ?? '-' }}@if($machine?->unit?->unit?->model && $machine?->unit?->unit?->model !== '-') {{ $machine?->unit?->unit?->model }}@endif{{ $machine?->desc ? ' - ' . $machine->desc : '' }}</strong></span>
                     </div>
                     <div class="info-row">
                         <span class="label">Serial Number:</span>
-                        <span class="value font-monospace">{{ $machine?->serial_number ?? '-' }}</span>
+                        <span class="value font-monospace"><strong>{{ $machine?->serial ?? '-' }}</strong>{{ $machine?->tag ? ' | ' . $machine->tag : '' }}{{ $machine?->location ? ' | ' . $machine->location : '' }}</span>
                     </div>
                     <div class="info-row">
                         <span class="label">Tipe Servis:</span>
@@ -744,11 +744,11 @@
                     <div class="photo-grid">
                         @foreach ($pict as $p)
                             <div class="photo-item">
-                                <a href="{{ asset($p->image) }}" target="_blank">
-                                    <img src="{{ asset($p->image) }}" alt="Foto Servis">
+                                <a href="{{ $p->url ?: asset($p->picture) }}" target="_blank">
+                                    <img src="{{ $p->url ?: asset($p->picture) }}" alt="Foto Servis">
                                 </a>
-                                @if ($p->title || $p->desc)
-                                    <div class="photo-caption">{{ $p->title ?: $p->desc }}</div>
+                                @if ($p->keterangan)
+                                    <div class="photo-caption">{{ $p->keterangan }}</div>
                                 @endif
                             </div>
                         @endforeach

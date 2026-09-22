@@ -31,6 +31,10 @@ class PurchaseRequestDetail extends Model
     {
         return $this->belongsTo('App\Models\PurchaseRequest', 'id_purchase_request', 'id');
     }
+    public function purchaseRequest()
+    {
+        return $this->belongsTo('App\Models\PurchaseRequest', 'id_purchase_request', 'id');
+    }
     public function equivalent()
     {
         return $this->belongsTo('App\Models\SerialProduct', 'id_equivalent', 'id');

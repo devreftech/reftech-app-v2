@@ -646,21 +646,17 @@
                 @php
                     $addrBdg = 'Taman Kopo Indah V, Ruko Soho Sommerville No. 31 Bandung - Jawabarat 40218';
                     $addrBks = 'Jl. Nancep No.45A, Cibening, Kec. Setu, Kabupaten Bekasi, Jawa Barat 17320';
-                    $currentShipTo = old('ship_to', @$purchase->ship_to ?? $addrBdg);
-                    $isBdg = trim($currentShipTo) == trim($addrBdg);
-                    $isBks = trim($currentShipTo) == trim($addrBks);
+                    $currentShipTo = old('ship_to', @$purchase->ship_to ?? '');
+                    $isBdg = !empty($currentShipTo) && trim($currentShipTo) == trim($addrBdg);
+                    $isBks = !empty($currentShipTo) && trim($currentShipTo) == trim($addrBks);
                     $isCustom = !$isBdg && !$isBks && !empty($currentShipTo);
-                    if (!$isBdg && !$isBks && !$isCustom) {
-                        $isBdg = true;
-                        $currentShipTo = $addrBdg;
-                    }
                 @endphp
                 <div class="col-12 mt-2 pt-3 border-top">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <label class="form-label fw-bold text-dark font-13 mb-0">
-                            <i class="mdi mdi-truck-delivery-outline text-primary me-1"></i>Alamat Pengiriman (Ship To)
+                            <i class="mdi mdi-truck-delivery-outline text-primary me-1"></i>Alamat Pengiriman (Ship To) <span class="text-danger">*</span>
                         </label>
-                        <span class="badge bg-label-primary font-11">Pilihan Cepat / Manual</span>
+                        <span class="badge bg-label-primary font-11">Pilih Lokasi Gudang / Custom</span>
                     </div>
 
                     {{-- Modern Segmented Tab Buttons --}}
@@ -701,7 +697,7 @@
 
                     <div class="form-floating form-floating-outline">
                         <textarea class="form-control bg-white" id="ship_to_input" name="ship_to" rows="2" style="height: 68px;"
-                            placeholder="Tuliskan alamat lengkap pengiriman..." required>{{ $currentShipTo }}</textarea>
+                            placeholder="Pilih lokasi gudang di atas atau ketik alamat pengiriman...">{{ $currentShipTo }}</textarea>
                         <label for="ship_to_input">Detail Alamat Pengiriman (Ship To) <span class="text-danger">*</span></label>
                     </div>
                 </div>
@@ -2167,8 +2163,38 @@
                     $('.ship-to-tab-btn[data-preset="BDG"]').addClass('active');
                 } else if (val && val === bks) {
                     $('.ship-to-tab-btn[data-preset="BKS"]').addClass('active');
-                } else {
+                } else if (val) {
                     $('.ship-to-tab-btn[data-preset="CUSTOM"]').addClass('active');
+                }
+            });
+
+            // Validasi Form Submit: Pastikan Alamat Pengiriman (Ship To) sudah dipilih/diisi
+            $('#formAuthentication').on('submit', function(e) {
+                var shipTo = ($('#ship_to_input').val() || '').trim();
+                if (!shipTo) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Alamat Pengiriman (Ship To) Belum Dipilih',
+                            text: 'Silakan tentukan alamat tujuan pengiriman barang dengan memilih salah satu gudang (Gudang Bandung / Gudang Bekasi) atau input alamat custom terlebih dahulu.',
+                            confirmButtonText: 'Pilih Ship To',
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            }
+                        }).then(function() {
+                            var $el = $('#ship_to_input');
+                            var offsetTop = $el.closest('.col-12').offset() ? $el.closest('.col-12').offset().top - 140 : 0;
+                            $('html, body').animate({
+                                scrollTop: offsetTop
+                            }, 300);
+                            $el.focus();
+                        });
+                    } else {
+                        alert('Alamat Pengiriman (Ship To) belum dipilih! Silakan pilih lokasi gudang atau isi alamat pengiriman terlebih dahulu.');
+                        $('#ship_to_input').focus();
+                    }
+                    return false;
                 }
             });
 

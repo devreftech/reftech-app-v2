@@ -394,6 +394,34 @@
         {{-- Button Invocie --}}
         <div class="col-xl-3 col-md-4 col-12 invoice-actions">
 
+            @if (Auth::user()->role == 'Sales')
+                <div class="card mb-3 border-warning shadow-sm">
+                    <div class="card-body p-4 text-center">
+                        <div class="avatar avatar-md mx-auto mb-3 bg-label-warning rounded-circle d-flex align-items-center justify-content-center">
+                            <i class="mdi mdi-alert-circle-outline fs-3 text-warning"></i>
+                        </div>
+                        <h6 class="fw-bold text-warning mb-1">This Model Quotation Obsolete</h6>
+                        <p class="text-muted small mb-3">
+                            Penawaran jasa/servis ini menggunakan model lama (Legacy). Pembuatan dan pengelolaan penawaran baru kini dialihkan ke <strong>Smart Quote</strong>.
+                        </p>
+                        <a class="btn btn-outline-secondary d-grid w-100 mb-2 waves-effect" target="_blank"
+                            href="{{ route('service-print.quotation', $quote->id) }}">
+                            <i class="mdi mdi-printer-outline me-1"></i> Cetak / Download PDF
+                        </a>
+                        @php
+                            $pendingPo = \App\Models\PendingPO::where('id_quotation', $quote->id)->first();
+                        @endphp
+                        @if ($pendingPo)
+                            <a href="{{ $pendingPo->type === 'Project' ? route('project-monitoring.show', $pendingPo->id) : route('pending-po.show', $pendingPo->id) }}" class="btn btn-outline-info d-grid w-100 waves-effect mb-2">
+                                <i class="mdi mdi-eye-outline me-1"></i> View Order
+                            </a>
+                        @endif
+                        <a href="{{ route('unit-quotation.create') }}" class="btn btn-primary d-grid w-100 waves-effect waves-light">
+                            <i class="mdi mdi-plus-circle-outline me-1"></i> Buka Smart Quote
+                        </a>
+                    </div>
+                </div>
+            @else
             {{-- @if ($quote->id_sales == Auth::user()->id && $quote->status != 100)
                 <div class="card mb-3">
                     <div class="card-body">
@@ -806,6 +834,7 @@
                             data-id="{{ $quote->id }}">Delete Archive</a>
                     </div>
                 </div>
+            @endif
             @endif
         </div>
         {{-- @endif --}}

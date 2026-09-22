@@ -18,9 +18,9 @@
                             <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 position-relative" style="z-index: 2;">
                                 <div class="text-start">
                                     <span class="badge bg-white text-primary fw-bold text-uppercase px-2.5 py-1 mb-2" style="border-radius: 5px; font-size: 11px;">Quotation</span>
-                                    <h4 class="text-white fw-bold mb-1" style="font-size: 20px;">{{ $quote->pic->client->company }}</h4>
+                                    <h4 class="text-white fw-bold mb-1" style="font-size: 20px;">{{ $quote->pic?->client?->company ?? '-' }}</h4>
                                     <p class="mb-0 text-white opacity-80" style="font-size: 12.5px;">
-                                        <i class="mdi mdi-account-circle-outline me-1"></i> PIC: {{ $quote->pic->name }}
+                                        <i class="mdi mdi-account-circle-outline me-1"></i> PIC: {{ $quote->pic?->name_pic ?? ($quote->pic?->name ?? '-') }}
                                     </p>
                                 </div>
                                 <div class="text-start text-sm-end d-flex flex-column align-items-start align-items-sm-end gap-1">
@@ -134,10 +134,12 @@
                                     <div class="mb-3">
                                         <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Alamat Pengiriman (Dokumen & Barang)</label>
                                         <select class="form-select mb-2" id="convert_combined_address_select" onchange="onAddressSelectChange('convert', 'combined')">
-                                            <option value="customer">Office Address: {{ $quote->pic->client->address }}</option>
-                                            @foreach ($quote->pic->client->plants as $plant)
-                                                <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
-                                            @endforeach
+                                            <option value="customer">Office Address: {{ $quote->pic?->client?->address ?? '-' }}</option>
+                                            @if ($quote->pic?->client?->plants)
+                                                @foreach ($quote->pic->client->plants as $plant)
+                                                    <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
+                                                @endforeach
+                                            @endif
                                             <option value="manual">-- Alamat Lain (Isi Manual) --</option>
                                         </select>
                                         
@@ -148,11 +150,13 @@
                                         <div class="mt-3">
                                             <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Penerima (Dokumen & Barang)</label>
                                             <select class="form-select" id="convert_combined_recipient_select">
-                                                @foreach ($quote->pic->client->pic as $c_pic)
-                                                    <option value="{{ $c_pic->id }}" {{ $quote->id_pic == $c_pic->id ? 'selected' : '' }}>
-                                                        {{ $c_pic->name_pic }} {{ $c_pic->posisi ? '(' . $c_pic->posisi . ')' : '' }}
-                                                    </option>
-                                                @endforeach
+                                                @if ($quote->pic?->client?->pic)
+                                                    @foreach ($quote->pic->client->pic as $c_pic)
+                                                        <option value="{{ $c_pic->id }}" {{ $quote->id_pic == $c_pic->id ? 'selected' : '' }}>
+                                                            {{ $c_pic->name_pic }} {{ $c_pic->posisi ? '(' . $c_pic->posisi . ')' : '' }}
+                                                        </option>
+                                                    @endforeach
+                                                @endif
                                             </select>
                                         </div>
 
@@ -178,10 +182,12 @@
                                     <div class="mb-3 pb-3 border-bottom">
                                         <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Alamat Pengiriman Dokumen / Invoice</label>
                                         <select class="form-select mb-2" id="convert_doc_address_select" onchange="onAddressSelectChange('convert', 'doc')">
-                                            <option value="customer">Office Address: {{ $quote->pic->client->address }}</option>
-                                            @foreach ($quote->pic->client->plants as $plant)
-                                                <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
-                                            @endforeach
+                                            <option value="customer">Office Address: {{ $quote->pic?->client?->address ?? '-' }}</option>
+                                            @if ($quote->pic?->client?->plants)
+                                                @foreach ($quote->pic->client->plants as $plant)
+                                                    <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
+                                                @endforeach
+                                            @endif
                                             <option value="manual">-- Alamat Lain (Isi Manual) --</option>
                                         </select>
 
@@ -192,11 +198,13 @@
                                         <div class="mt-3">
                                             <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Penerima Dokumen / Invoice</label>
                                             <select class="form-select" id="convert_doc_recipient_select">
-                                                @foreach ($quote->pic->client->pic as $c_pic)
-                                                    <option value="{{ $c_pic->id }}" {{ $quote->id_pic == $c_pic->id ? 'selected' : '' }}>
-                                                        {{ $c_pic->name_pic }} {{ $c_pic->posisi ? '(' . $c_pic->posisi . ')' : '' }}
-                                                    </option>
-                                                @endforeach
+                                                @if ($quote->pic?->client?->pic)
+                                                    @foreach ($quote->pic->client->pic as $c_pic)
+                                                        <option value="{{ $c_pic->id }}" {{ $quote->id_pic == $c_pic->id ? 'selected' : '' }}>
+                                                            {{ $c_pic->name_pic }} {{ $c_pic->posisi ? '(' . $c_pic->posisi . ')' : '' }}
+                                                        </option>
+                                                    @endforeach
+                                                @endif
                                             </select>
                                         </div>
 
@@ -219,10 +227,12 @@
                                     <div class="mb-3">
                                         <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Alamat Pengiriman Barang</label>
                                         <select class="form-select mb-2" id="convert_shipping_address_select" onchange="onAddressSelectChange('convert', 'shipping')">
-                                            <option value="customer">Office Address: {{ $quote->pic->client->address }}</option>
-                                            @foreach ($quote->pic->client->plants as $plant)
-                                                <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
-                                            @endforeach
+                                            <option value="customer">Office Address: {{ $quote->pic?->client?->address ?? '-' }}</option>
+                                            @if ($quote->pic?->client?->plants)
+                                                @foreach ($quote->pic->client->plants as $plant)
+                                                    <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
+                                                @endforeach
+                                            @endif
                                             <option value="manual">-- Alamat Lain (Isi Manual) --</option>
                                         </select>
 
@@ -233,11 +243,13 @@
                                         <div class="mt-3">
                                             <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Penerima Barang</label>
                                             <select class="form-select" id="convert_shipping_recipient_select">
-                                                @foreach ($quote->pic->client->pic as $c_pic)
-                                                    <option value="{{ $c_pic->id }}" {{ $quote->id_pic == $c_pic->id ? 'selected' : '' }}>
-                                                        {{ $c_pic->name_pic }} {{ $c_pic->posisi ? '(' . $c_pic->posisi . ')' : '' }}
-                                                    </option>
-                                                @endforeach
+                                                @if ($quote->pic?->client?->pic)
+                                                    @foreach ($quote->pic->client->pic as $c_pic)
+                                                        <option value="{{ $c_pic->id }}" {{ $quote->id_pic == $c_pic->id ? 'selected' : '' }}>
+                                                            {{ $c_pic->name_pic }} {{ $c_pic->posisi ? '(' . $c_pic->posisi . ')' : '' }}
+                                                        </option>
+                                                    @endforeach
+                                                @endif
                                             </select>
                                         </div>
 

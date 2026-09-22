@@ -1,7 +1,10 @@
 @extends('layouts.sales.app')
 @section('title', $invoice->no_invoice)
 <div class="invoice-print p-4">
-    @if ($delivery->type == 'ekspedisi')
+    @php
+        $fmt = request('format', $delivery->type ?? 'ekspedisi');
+    @endphp
+    @if ($fmt == 'ekspedisi')
         <div class="container-fluid flex-grow-1 container-p-y">
 
             @if ($invoice->flag == 'Reftech')
@@ -251,9 +254,8 @@
         </div>
     @else
         <div class="container-fluid flex-grow-1 container-p-y">
-
             <div class="table-responsive mb-5">
-                <table class="table table-bordered m-0" style="border: 1px solid rgb(60, 60, 60)">
+                <table class="table table-bordered m-0" style="border: 1px solid #000">
                     <tbody>
                         <tr>
                             <td colspan="3" class="py-1">
@@ -262,8 +264,7 @@
                                         <h5 class="fw-bold mb-0">Delivery Order</h5>
                                     </div>
                                     <div class="col-4">
-                                        <p class="mb-0"><span class="fw-bold">D.O. No :</span>
-                                            {{ $invoice->no_invoice }}</p>
+                                        <p class="mb-0"><span class="fw-bold">D.O. No :</span> {{ $invoice->no_invoice }}</p>
                                     </div>
                                 </div>
                             </td>
@@ -273,46 +274,32 @@
                                 <div class="row">
                                     <div class="col-6">
                                         @if ($invoice->flag == 'Reftech')
-                                            <div
-                                                class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column">
+                                            <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column">
                                                 <div class="mb-xl-0 pb-1">
                                                     <div class="d-flex svg-illustration align-items-center gap-2">
                                                         <span class="app-brand-logo demo">
                                                             <span style="color: var(--bs-primary)">
-                                                                <img class="text-md"
-                                                                    src="{{ asset('/asset') }}/logo/Reftech-Log.png"
-                                                                    alt="" srcset="" width="60%">
+                                                                <img class="text-md" src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt="" srcset="" width="60%">
                                                             </span>
                                                         </span>
                                                     </div>
                                                     <p class="mb-1 mx-2 fw-bolder">PT Reftech Jaya Optima</p>
                                                     <div class="mx-2" style="font-size: 10px">
-                                                        <p class="mb-1">Taman Kopo Indah V, Ruko Sommerville No.
-                                                            31</p>
+                                                        <p class="mb-1">Taman Kopo Indah V, Ruko Sommerville No. 31</p>
                                                         <p class="mb-1">Bandung – Jawa Barat 40218</p>
                                                         <p class="mb-1">
-                                                            <i
-                                                                class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-14px"></i>022
-                                                            54417653
-                                                            {{ '   ' }}<i
-                                                                class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px"></i>accounting@reftech.id
-                                                        </p>
-                                                        <p class="mb-1">
+                                                            <i class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-14px"></i>022 54417653
+                                                            {{ '   ' }}<i class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px"></i>accounting@reftech.id
                                                         </p>
                                                     </div>
                                                 </div>
                                             </div>
                                         @else
-                                            <div
-                                                class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column">
+                                            <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column">
                                                 <div class="mb-xl-0 pb-1">
-                                                    <div class="d-flex svg-illustration align-items-center gap-2 mb-2">
+                                                    <div class="d-flex svg-illustration align-items-center gap-2">
                                                         <span class="app-brand-logo demo">
-                                                            <span style="color: var(--bs-primary)">
-                                                                <img class="text-md"
-                                                                    src="{{ asset('/asset') }}/logo/Logo-update-size.png"
-                                                                    alt="" srcset="" width="60%">
-                                                            </span>
+                                                            <img class="text-md" src="{{ asset('/asset') }}/logo/Logo-update-size.png" alt="" srcset="" width="140">
                                                         </span>
                                                     </div>
                                                     <p class="mb-1 fw-bolder">PT Kojisha Innotiv Indonesia</p>
@@ -320,11 +307,8 @@
                                                         <p class="mb-1">Jl. Nancep No. 45A, Setu</p>
                                                         <p class="mb-1">Cibitung - Kab. Bekasi 17320</p>
                                                         <p class="mb-1">
-                                                            <i
-                                                                class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-14px"></i>+62
-                                                            812-1000-0997
-                                                            {{ ' | ' }}<i
-                                                                class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px"></i>admin@kojisha.com
+                                                            <i class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-14px"></i>+62 812-1000-0997
+                                                            {{ ' | ' }}<i class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px"></i>admin@kojisha.com
                                                         </p>
                                                     </div>
                                                 </div>
@@ -340,13 +324,19 @@
                                                 <p class="mb-1">Delivery To</p>
                                             </div>
                                             <div class="col-8">
-                                                <p class="mb-1">: {{ $delivery->date }}</p>
-                                                <p class="mb-1">: {{ $invoice->no_po }}</p>
-                                                <p class="mb-1">: {{ $quote->pic->client->company }}</p>
+                                                <p class="mb-1">:
+                                                    @if ($delivery->date)
+                                                        {{ \Carbon\Carbon::parse($delivery->date)->format('d-m-Y') }}
+                                                    @else
+                                                        <span style="display:inline-block; min-width:90px; border-bottom:1px solid #000;">&nbsp;</span>
+                                                    @endif
+                                                </p>
+                                                <p class="mb-1">: {{ $invoice->no_po ?: '-' }}</p>
+                                                <p class="mb-1">: {{ $quote->pic->client->company ?? '-' }}</p>
                                                 @if ($delivery->destination == '1')
-                                                    <p class="mb-1">: {{ $quote->pic->client->address }}</p>
+                                                    <p class="mb-1">: {{ $quote->pic->client->address ?? '-' }}</p>
                                                 @else
-                                                    <p class="mb-1">: {{ $quote->pic->client->subAddress }}</p>
+                                                    <p class="mb-1">: {{ $quote->pic->client->subAddress ?? '-' }}</p>
                                                 @endif
                                             </div>
                                         </div>
@@ -363,74 +353,41 @@
                             $no = 0;
                         @endphp
                         @if ($quote->type == 'Sparepart')
-                            @php
-                                $no = 0;
-                            @endphp
-                            <tr style="font-size: 13px">
-                                <td class="text-nowrap align-top">
-                                    @foreach ($dDelivery as $product)
-                                        @php
-                                            $no++;
-                                        @endphp
-                                        <p class="mb-0 fw-semibold">
-                                            {{ $no }}
-                                        </p>
-                                    @endforeach
-                                </td>
-                                <td class="text-nowrap align-top">
-                                    @foreach ($dDelivery as $product)
-                                        <p class="mb-0 fw-semibold">
-                                            {{ $product->qty }} {{ $product->info_qty }}
-                                        </p>
-                                    @endforeach
-                                </td>
-                                <td class="text-nowrap align-top">
-                                    @foreach ($dDelivery as $product)
-                                        <p class="mb-0 fw-semibold">
-                                            {{ $product->pn->brand }} {{ $product->pn->pn }}
-                                            {{ $product->desc }}
-                                        </p>
-                                    @endforeach
-                                </td>
-                            </tr>
+                            @foreach ($dDelivery as $product)
+                                @php $no++; @endphp
+                                <tr style="font-size: 13px;">
+                                    <td class="align-top py-1 text-center">{{ $no }}</td>
+                                    <td class="align-top py-1 text-center" style="white-space:nowrap;">{{ $product->qty }} {{ $product->info_qty }}</td>
+                                    <td class="align-top py-1">
+                                        <p class="mb-0 fw-semibold">{{ optional($product->pn)->brand }} {{ optional($product->pn)->pn }}</p>
+                                        @if ($product->desc)
+                                            <p class="mb-0 text-muted small">{{ $product->desc }}</p>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
                         @else
                             @php
                                 $abjad = 64;
-                                $totalPph = 0;
                             @endphp
                             @foreach ($subQuote as $subJudul)
                                 @php
-                                    $no = 0;
                                     $abjad++;
                                 @endphp
-                                <tr style="font-size: 13px;">
-                                    <td class="align-top" style="background-color: #f0f0f0;">
-                                        <p class="fw-bold mb-0">{{ chr($abjad) }}</p>
-                                    </td>
-                                    <td class="text-nowrap align-top" colspan="2"
-                                        style="background-color: #f0f0f0;">
-                                        <p class="fw-bold mb-0">{{ $subJudul->subtitle }}</p>
-                                    </td>
+                                <tr style="background:rgb(214, 214, 214);">
+                                    <td class="align-top text-center fw-bold py-1" style="font-size:12px;">{{ chr($abjad) }}</td>
+                                    <td colspan="2" class="fw-bold text-uppercase py-1" style="font-size:12px;">{{ $subJudul->subtitle }}</td>
                                 </tr>
                                 @foreach ($subJudul->detail as $product)
-                                    <tr
-                                        style="font-size: 13px; border-bottom:none !important; border-top:none !important;">
-                                        <td class="align-top py-1" style="border-bottom:none !important;">
-                                            @php
-                                                $no++;
-                                            @endphp
-                                            <p class="mb-0">{{ $no }}</p>
-                                        </td>
-                                        <td class="align-top py-1" style="border-bottom:none !important;">
-                                            <p class="mb-0">{{ $product->qty }} {{ $product->info_qty }}
-                                            </p>
-                                        </td>
-                                        <td class="text-nowrap align-top py-1" style="border-bottom:none !important;">
-                                            <p class="mb-0">{{ $product->product }} {{ $product->detail != '-' ? $product->detail : '' }}</p>
-                                            {{-- @if ($product->detail != '-')
-                                                    <pre class="mb-0"
-                                                        style="font-size: 13px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 100%; overflow-x: auto; white-space: pre-wrap;">{{ $product->detail }}</pre>
-                                                @endif --}}
+                                    @php $no++; @endphp
+                                    <tr style="font-size: 13px;">
+                                        <td class="align-top py-1 text-center">{{ $no }}</td>
+                                        <td class="align-top py-1 text-center" style="white-space:nowrap;">{{ $product->qty }} {{ $product->info_qty }}</td>
+                                        <td class="align-top py-1">
+                                            <p class="mb-0 fw-semibold">{{ $product->product }}</p>
+                                            @if ($product->detail && $product->detail != '-')
+                                                <p class="mb-0 text-muted small">{{ $product->detail }}</p>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach
@@ -439,10 +396,14 @@
                         <tr>
                             <td colspan="3">
                                 <div class="row mb-3">
-                                    <div class="col-4 mt-5 text-center">
-                                        <div class="pb-5"></div>
-                                        <p class="fw-bold mx-3 mb-0" style="border-top: 1px solid black ">
-                                            Shipper</p>
+                                    <div class="col-4 mt-4 text-center">
+                                        <div style="height:56px;" class="d-flex align-items-center justify-content-center">
+                                            @if ($delivery->sign)
+                                                <img src="{{ asset($delivery->sign) }}" alt="Shipper" style="max-height:54px; max-width:140px; object-fit:contain;">
+                                            @endif
+                                        </div>
+                                        <p class="fw-bold mx-3 mb-0" style="border-top: 1px solid black; padding-top: 3px;">Shipper</p>
+                                        <small class="text-muted d-block" style="font-size:10px;">{{ $invoice->flag == 'Reftech' ? 'PT. Reftech Jaya Optima' : 'PT. Kojisha Innotiv Indonesia' }}</small>
                                     </div>
                                     <div class="col-4"></div>
                                     <div class="col-4 mt-4 text-center">
@@ -459,18 +420,15 @@
                                             @if ($delivery->customer_signer_position)
                                                 <small class="text-muted d-block" style="font-size:10px;">{{ $delivery->customer_signer_position }}</small>
                                             @endif
-                                            <small class="text-muted d-block" style="font-size:9.5px;">Received &bull; {{ $delivery->customer_signed_at ? $delivery->customer_signed_at->format('d/m/Y') : '' }}</small>
+                                            <small class="text-muted d-block" style="font-size:9.5px;">Received &bull; {{ $delivery->customer_signed_at ? \Carbon\Carbon::parse($delivery->customer_signed_at)->format('d/m/Y') : '' }}</small>
                                         @else
-                                            <div class="pb-5"></div>
-                                            <p class="fw-bold mx-3 mb-0" style="border-top: 1px solid black ">
-                                                Recieved</p>
+                                            <div style="height:56px;"></div>
+                                            <p class="fw-bold mx-3 mb-0" style="border-top: 1px solid black; padding-top: 3px;">Received</p>
+                                            <small class="text-muted d-block" style="font-size:10px;">{{ $quote->pic->client->company ?? '-' }}</small>
                                         @endif
                                     </div>
                                 </div>
-                                <p class="mb-0">Distribusi : Putih dan Pink → Pelanggan, <span
-                                        class="fw-bold">Kuning → Accounting
-                                        {{ $delivery->invoice->flag == 'Reftech' ? 'PT. Reftech' : 'PT. Kojisha' }}</span></span>
-                                </p>
+                                <p class="mb-0">Distribusi : Putih dan Pink → Pelanggan, <span class="fw-bold">Kuning → Accounting {{ $invoice->flag == 'Reftech' ? 'PT. Reftech' : 'PT. Kojisha' }}</span></p>
                             </td>
                         </tr>
                     </tbody>

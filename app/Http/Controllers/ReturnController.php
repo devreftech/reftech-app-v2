@@ -95,6 +95,9 @@ class ReturnController extends Controller
     public function edit($id)
     {
         $invoice = Invoice::find($id);
+        if (!$invoice) {
+            return redirect()->route('invoice.index')->with('error', 'Invoice tidak ditemukan');
+        }
         $quote = Quotation::where('id', $invoice->id_quotation)->first();
         // dd($quote);
         $dQuote = DetailQuotation::where('id_quotation', $invoice->id_quotation)->get();

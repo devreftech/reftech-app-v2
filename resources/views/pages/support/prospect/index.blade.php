@@ -429,43 +429,206 @@
             </div>
         </div>
 
-        {{-- Table 1: New Assigned Prospects --}}
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-datatable table-responsive pt-0">
-                <table class="datatable-prospect-sales table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 25px;"></th>
-                            <th style="display:none;">ID</th>
-                            <th style="min-width: 220px;">Company & PIC</th>
-                            <th style="min-width: 220px;">Category & Kebutuhan</th>
-                            <th style="min-width: 140px;">Date & Source</th>
-                            <th style="min-width: 140px;">Marketing Support</th>
-                            <th style="min-width: 150px;">Quotation Status</th>
-                            <th class="text-center" style="min-width: 120px;">Action</th>
-                        </tr>
-                    </thead>
-                </table>
-            </div>
-        </div>
+        {{-- Nav-Pills Tabs for Sales Prospect Pipeline --}}
+        <div class="nav-align-top mb-4">
+            <ul class="nav nav-pills flex-column flex-md-row mb-3 gap-2" role="tablist">
+                <li class="nav-item">
+                    <button type="button" class="nav-link active d-flex align-items-center gap-2 py-2 px-3" role="tab"
+                        data-bs-toggle="tab" data-bs-target="#tab-prospect-new" aria-controls="tab-prospect-new"
+                        aria-selected="true" id="btn-tab-new">
+                        <i class="mdi mdi-inbox-arrow-down fs-5"></i>
+                        <span class="fw-semibold">New Prospect</span>
+                        <span class="badge rounded-pill bg-label-primary ms-1" id="badge-count-new">{{ $salesNewProspectCount ?? 0 }}</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button type="button" class="nav-link d-flex align-items-center gap-2 py-2 px-3" role="tab"
+                        data-bs-toggle="tab" data-bs-target="#tab-prospect-fu" aria-controls="tab-prospect-fu"
+                        aria-selected="false" id="btn-tab-fu">
+                        <i class="mdi mdi-progress-clock fs-5"></i>
+                        <span class="fw-semibold">Prospect Follow Up</span>
+                        <span class="badge rounded-pill bg-label-warning ms-1" id="badge-count-fu">{{ $salesFuProspectCount ?? 0 }}</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button type="button" class="nav-link d-flex align-items-center gap-2 py-2 px-3" role="tab"
+                        data-bs-toggle="tab" data-bs-target="#tab-prospect-quoted" aria-controls="tab-prospect-quoted"
+                        aria-selected="false" id="btn-tab-quoted">
+                        <i class="mdi mdi-file-document-outline fs-5"></i>
+                        <span class="fw-semibold">Prospect Penawaran</span>
+                        <span class="badge rounded-pill bg-label-info ms-1" id="badge-count-quoted">{{ $salesQuotedProspectCount ?? 0 }}</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button type="button" class="nav-link d-flex align-items-center gap-2 py-2 px-3" role="tab"
+                        data-bs-toggle="tab" data-bs-target="#tab-prospect-noquote" aria-controls="tab-prospect-noquote"
+                        aria-selected="false" id="btn-tab-noquote">
+                        <i class="mdi mdi-close-octagon-outline fs-5"></i>
+                        <span class="fw-semibold">No Quote / No Respon</span>
+                        <span class="badge rounded-pill bg-label-secondary ms-1" id="badge-count-noquote">{{ $salesNoQuoteProspectCount ?? 0 }}</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button type="button" class="nav-link d-flex align-items-center gap-2 py-2 px-3" role="tab"
+                        data-bs-toggle="tab" data-bs-target="#tab-prospect-po" aria-controls="tab-prospect-po"
+                        aria-selected="false" id="btn-tab-po">
+                        <i class="mdi mdi-cart-check fs-5"></i>
+                        <span class="fw-semibold">Prospect PO (By Quotation)</span>
+                        <span class="badge rounded-pill bg-label-success ms-1" id="badge-count-po">{{ $salesPoProspectCount ?? 0 }}</span>
+                    </button>
+                </li>
+            </ul>
 
-        {{-- Table 2: Follow Up Prospects In Progress --}}
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-datatable table-responsive pt-0">
-                <table class="datatable-prospect-fu-sales table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 25px;"></th>
-                            <th style="display:none;">ID</th>
-                            <th style="min-width: 220px;">Company & PIC</th>
-                            <th style="min-width: 220px;">Category & Kebutuhan</th>
-                            <th style="min-width: 140px;">Date & Source</th>
-                            <th style="min-width: 140px;">Marketing Support</th>
-                            <th style="min-width: 150px;">Quotation Status</th>
-                            <th class="text-center" style="min-width: 120px;">Action</th>
-                        </tr>
-                    </thead>
-                </table>
+            <div class="tab-content p-0 bg-transparent shadow-none">
+                {{-- TAB 1: NEW PROSPECT --}}
+                <div class="tab-pane fade show active" id="tab-prospect-new" role="tabpanel">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header pb-2 pt-3 px-4 d-flex justify-content-between align-items-center bg-transparent border-bottom">
+                            <div>
+                                <h5 class="card-title mb-1 text-primary fw-bold">
+                                    <i class="mdi mdi-inbox-arrow-down me-1"></i> New Prospects (Baru Ditugaskan)
+                                </h5>
+                                <small class="text-muted">Daftar prospek baru dari tim marketing yang siap diambil dan ditindaklanjuti.</small>
+                            </div>
+                        </div>
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatable-prospect-sales table table-hover align-middle mb-0 w-100" id="table-prospect-new">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 25px;"></th>
+                                        <th style="display:none;">ID</th>
+                                        <th style="min-width: 220px;">Company & PIC</th>
+                                        <th style="min-width: 220px;">Category & Kebutuhan</th>
+                                        <th style="min-width: 140px;">Date & Source</th>
+                                        <th style="min-width: 140px;">Marketing Support</th>
+                                        <th style="min-width: 150px;">Quotation Status</th>
+                                        <th class="text-center" style="min-width: 120px;">Action</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- TAB 2: PROSPECT FOLLOW UP --}}
+                <div class="tab-pane fade" id="tab-prospect-fu" role="tabpanel">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header pb-2 pt-3 px-4 d-flex justify-content-between align-items-center bg-transparent border-bottom">
+                            <div>
+                                <h5 class="card-title mb-1 text-warning fw-bold">
+                                    <i class="mdi mdi-progress-clock me-1"></i> Prospects In Follow Up
+                                </h5>
+                                <small class="text-muted">Prospek yang sedang dalam proses follow-up komunikasi, meeting, atau visit lapangan.</small>
+                            </div>
+                        </div>
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatable-prospect-fu-sales table table-hover align-middle mb-0 w-100" id="table-prospect-fu">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 25px;"></th>
+                                        <th style="display:none;">ID</th>
+                                        <th style="min-width: 220px;">Company & PIC</th>
+                                        <th style="min-width: 220px;">Category & Kebutuhan</th>
+                                        <th style="min-width: 140px;">Date & Source</th>
+                                        <th style="min-width: 140px;">Marketing Support</th>
+                                        <th style="min-width: 150px;">Quotation Status</th>
+                                        <th class="text-center" style="min-width: 120px;">Action</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- TAB 3: PROSPECT PENAWARAN --}}
+                <div class="tab-pane fade" id="tab-prospect-quoted" role="tabpanel">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header pb-2 pt-3 px-4 d-flex justify-content-between align-items-center bg-transparent border-bottom">
+                            <div>
+                                <h5 class="card-title mb-1 text-info fw-bold">
+                                    <i class="mdi mdi-file-document-outline me-1"></i> Prospects Dengan Penawaran (Quotation Aktif)
+                                </h5>
+                                <small class="text-muted">Prospek yang sudah memiliki dokumen penawaran harga dan sedang dalam tahap negosiasi / revisi.</small>
+                            </div>
+                        </div>
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatable-prospect-quoted-sales table table-hover align-middle mb-0 w-100" id="table-prospect-quoted">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 25px;"></th>
+                                        <th style="display:none;">ID</th>
+                                        <th style="min-width: 220px;">Company & PIC</th>
+                                        <th style="min-width: 220px;">Category & Kebutuhan</th>
+                                        <th style="min-width: 140px;">Date & Source</th>
+                                        <th style="min-width: 140px;">Marketing Support</th>
+                                        <th style="min-width: 150px;">Quotation & Value</th>
+                                        <th class="text-center" style="min-width: 120px;">Action</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- TAB 4: PROSPECT NO QUOTE / NO RESPON --}}
+                <div class="tab-pane fade" id="tab-prospect-noquote" role="tabpanel">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header pb-2 pt-3 px-4 d-flex justify-content-between align-items-center bg-transparent border-bottom">
+                            <div>
+                                <h5 class="card-title mb-1 text-secondary fw-bold">
+                                    <i class="mdi mdi-close-octagon-outline me-1"></i> Prospects No Quote / No Respon
+                                </h5>
+                                <small class="text-muted">Prospek yang ditindaklanjuti tanpa membuat penawaran atau tidak memberikan respon.</small>
+                            </div>
+                        </div>
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatable-prospect-noquote-sales table table-hover align-middle mb-0 w-100" id="table-prospect-noquote">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 25px;"></th>
+                                        <th style="display:none;">ID</th>
+                                        <th style="min-width: 220px;">Company & PIC</th>
+                                        <th style="min-width: 220px;">Category & Kebutuhan</th>
+                                        <th style="min-width: 140px;">Date & Source</th>
+                                        <th style="min-width: 140px;">Marketing Support</th>
+                                        <th style="min-width: 150px;">Status Alasan</th>
+                                        <th class="text-center" style="min-width: 120px;">Action</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- TAB 5: PROSPECT PO (BY QUOTATION) --}}
+                <div class="tab-pane fade" id="tab-prospect-po" role="tabpanel">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header pb-2 pt-3 px-4 d-flex justify-content-between align-items-center bg-transparent border-bottom">
+                            <div>
+                                <h5 class="card-title mb-1 text-success fw-bold">
+                                    <i class="mdi mdi-cart-check me-1"></i> Prospects PO (Deal Selesai)
+                                </h5>
+                                <small class="text-muted">Prospek yang sukses dikonversi menjadi transaksi Purchase Order (Done PO).</small>
+                            </div>
+                        </div>
+                        <div class="card-datatable table-responsive pt-0">
+                            <table class="datatable-prospect-po-sales table table-hover align-middle mb-0 w-100" id="table-prospect-po">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 25px;"></th>
+                                        <th style="display:none;">ID</th>
+                                        <th style="min-width: 220px;">Company & PIC</th>
+                                        <th style="min-width: 220px;">Category & Kebutuhan</th>
+                                        <th style="min-width: 140px;">Date & Source</th>
+                                        <th style="min-width: 140px;">Marketing Support</th>
+                                        <th style="min-width: 150px;">PO & Deal Value</th>
+                                        <th class="text-center" style="min-width: 120px;">Action</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -556,8 +719,7 @@
     <script src="{{ asset('assets') }}/js/tables-datatables-basic.js"></script>
     <script src="{{ asset('assets') }}/includes/table-prospect-support.js"></script>
     <script src="{{ asset('assets') }}/includes/table-prospect-support-admin.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-prospect-support-sales.js"></script>
-    <script src="{{ asset('assets') }}/includes/table-prospect-support-fu-sales.js"></script>
+    <script src="{{ asset('assets') }}/includes/table-prospect-support-sales.js?v={{ file_exists(public_path('assets/includes/table-prospect-support-sales.js')) ? filemtime(public_path('assets/includes/table-prospect-support-sales.js')) : time() }}"></script>
 @endpush
 
 @push('script')
@@ -718,7 +880,7 @@
             });
         });
 
-        $(document).on('click', '#withoutQuote', function() {
+        $(document).on('click', '#withoutQuote, .withoutQuote', function() {
             var id = $(this).data('id');
             Swal.fire({
                 title: "Without Quotation?",
@@ -750,10 +912,114 @@
                                     customClass: {
                                         confirmButton: "btn btn-success waves-effect",
                                     },
+                                    showConfirmButton: false,
+                                    timer: 1000
                                 });
                                 window.setTimeout(function() {
-                                    window.location.href = '/leads/detail/' + id;
-                                }, 1200);
+                                    window.location.reload();
+                                }, 1000);
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    text: 'Gagal memperbarui status prospek!'
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        $(document).on('click', '.onProcessFU, #onProcessFU', function() {
+            var id = $(this).data('id');
+            Swal.fire({
+                title: "Proses Follow-Up?",
+                text: "Pindahkan prospek ini ke status Follow Up aktif?",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Ya, Follow Up!",
+                cancelButtonText: "Batal",
+                customClass: {
+                    confirmButton: "btn btn-warning me-3 waves-effect waves-light",
+                    cancelButton: "btn btn-label-secondary waves-effect",
+                },
+                buttonsStyling: false,
+            }).then(function(result) {
+                if (result.value) {
+                    $.ajax({
+                        url: '{{ url('prospect') }}/' + 'onProcessFU/' + id,
+                        type: 'POST',
+                        data: {
+                            '_method': 'POST',
+                            '_token': '{{ csrf_token() }}'
+                        },
+                        success: function(response) {
+                            if (response == 1) {
+                                Swal.fire({
+                                    icon: "success",
+                                    title: "Berhasil!",
+                                    text: "Prospek berhasil dipindahkan ke status Follow Up.",
+                                    customClass: {
+                                        confirmButton: "btn btn-success waves-effect",
+                                    },
+                                    showConfirmButton: false,
+                                    timer: 1000
+                                });
+                                window.setTimeout(function() {
+                                    window.location.reload();
+                                }, 1000);
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    text: 'Gagal memperbarui status prospek!'
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        $(document).on('click', '.noRespond, #noRespond', function() {
+            var id = $(this).data('id');
+            Swal.fire({
+                title: "Tandai No Respond?",
+                text: "Prospek ini akan ditandai tidak ada respon dari calon klien.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Ya, Tandai No Respond!",
+                cancelButtonText: "Batal",
+                customClass: {
+                    confirmButton: "btn btn-secondary me-3 waves-effect waves-light",
+                    cancelButton: "btn btn-label-secondary waves-effect",
+                },
+                buttonsStyling: false,
+            }).then(function(result) {
+                if (result.value) {
+                    $.ajax({
+                        url: '{{ url('prospect') }}/' + 'no_respond/' + id,
+                        type: 'POST',
+                        data: {
+                            '_method': 'POST',
+                            '_token': '{{ csrf_token() }}'
+                        },
+                        success: function(response) {
+                            if (response == 1) {
+                                Swal.fire({
+                                    icon: "success",
+                                    title: "Berhasil!",
+                                    text: "Prospek berhasil ditandai No Respond.",
+                                    customClass: {
+                                        confirmButton: "btn btn-success waves-effect",
+                                    },
+                                    showConfirmButton: false,
+                                    timer: 1000
+                                });
+                                window.setTimeout(function() {
+                                    window.location.reload();
+                                }, 1000);
                             } else {
                                 Swal.fire({
                                     icon: 'error',

@@ -80,151 +80,60 @@
                 </a>
             </li>
             <!--/ Style Switcher -->
-            <!-- Quick Action (Sales) -->
-            @if (in_array(Auth::user()?->role, ['Sales', 'Sales Manager', 'Admin']))
-                <li class="nav-item dropdown me-2 me-xl-1">
+            <!-- Dynamic Customizable Quick Action (All Logged-in Roles, Max 4 items) -->
+            @if (Auth::check())
+                @php
+                    $userQuickActions = \App\Services\QuickActionService::getUserQuickActions(Auth::user());
+                    $activeActionIds  = collect($userQuickActions)->pluck('id')->all();
+                @endphp
+                <li class="nav-item dropdown me-2 me-xl-1" id="navbarQuickActionDropdownItem">
                     <a class="nav-link btn btn-text-primary rounded-pill btn-icon dropdown-toggle hide-arrow"
-                        href="javascript:void(0);" data-bs-toggle="dropdown" aria-expanded="false" title="Quick Action">
+                        href="javascript:void(0);" data-bs-toggle="dropdown" aria-expanded="false" title="Quick Action (Shortcut Cepat)">
                         <i class="mdi mdi-plus-circle-outline mdi-24px text-primary"></i>
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end py-2 shadow-lg" style="min-width: 240px;">
-                        <li class="dropdown-header d-flex align-items-center py-2 border-bottom mb-1">
-                            <span class="fw-bold text-primary">
-                                <i class="mdi mdi-lightning-bolt me-1"></i>Quick Action
+                    <ul class="dropdown-menu dropdown-menu-end py-2 shadow-lg quick-action-dropdown-menu" id="qaNavbarDropdownMenu" style="min-width: 270px;">
+                        <li class="dropdown-header d-flex align-items-center justify-content-between py-2 border-bottom mb-1">
+                            <span class="fw-bold text-primary d-flex align-items-center">
+                                <i class="mdi mdi-lightning-bolt me-1 text-warning"></i>Quick Action
                             </span>
+                            <button type="button" 
+                                class="btn btn-icon btn-xs btn-label-secondary rounded-circle shadow-none" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#quickActionSettingModal"
+                                title="Atur Pilihan Shortcut Saya"
+                                style="width: 26px; height: 26px;">
+                                <i class="mdi mdi-cog-outline fs-6"></i>
+                            </button>
                         </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('unit-quotation.create') }}">
-                                <div class="avatar avatar-xs me-2">
-                                    <span class="avatar-initial rounded-circle bg-label-primary">
-                                        <i class="mdi mdi-file-document-plus-outline"></i>
-                                    </span>
-                                </div>
-                                <div>
-                                    <span class="fw-semibold d-block">Create Quote</span>
-                                    <small class="text-muted">Smart Quote</small>
-                                </div>
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('leads.index') }}">
-                                <div class="avatar avatar-xs me-2">
-                                    <span class="avatar-initial rounded-circle bg-label-success">
-                                        <i class="mdi mdi-account-plus-outline"></i>
-                                    </span>
-                                </div>
-                                <div>
-                                    <span class="fw-semibold d-block">Create Leads</span>
-                                    <small class="text-muted">Tambah Calon Pelanggan</small>
-                                </div>
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ url('/product') }}">
-                                <div class="avatar avatar-xs me-2">
-                                    <span class="avatar-initial rounded-circle bg-label-warning">
-                                        <i class="mdi mdi-package-variant-closed"></i>
-                                    </span>
-                                </div>
-                                <div>
-                                    <span class="fw-semibold d-block">Stock Spare Part</span>
-                                    <small class="text-muted">Cek Data Product & Stok</small>
-                                </div>
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ url('/unit') }}">
-                                <div class="avatar avatar-xs me-2">
-                                    <span class="avatar-initial rounded-circle bg-label-info">
-                                        <i class="mdi mdi-air-conditioner"></i>
-                                    </span>
-                                </div>
-                                <div>
-                                    <span class="fw-semibold d-block">Unit Ready Stock</span>
-                                    <small class="text-muted">Cek Unit Siap Ditawarkan</small>
-                                </div>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-            @endif
 
-            <!-- Quick Action (Accounting) -->
-            @if (in_array(Auth::user()?->role, ['Accounting', 'Finance Manager']))
-                <li class="nav-item dropdown me-2 me-xl-1">
-                    <a class="nav-link btn btn-text-primary rounded-pill btn-icon dropdown-toggle hide-arrow"
-                        href="javascript:void(0);" data-bs-toggle="dropdown" aria-expanded="false" title="Quick Action Accounting">
-                        <i class="mdi mdi-plus-circle-outline mdi-24px text-primary"></i>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end py-2 shadow-lg" style="min-width: 260px;">
-                        <li class="dropdown-header d-flex align-items-center py-2 border-bottom mb-1">
-                            <span class="fw-bold text-primary">
-                                <i class="mdi mdi-lightning-bolt me-1"></i>Quick Action Accounting
-                            </span>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('invoice.index') }}">
-                                <div class="avatar avatar-xs me-2">
-                                    <span class="avatar-initial rounded-circle bg-label-primary">
-                                        <i class="mdi mdi-file-document-check-outline"></i>
-                                    </span>
-                                </div>
-                                <div>
-                                    <span class="fw-semibold d-block">Cek Invoice</span>
-                                    <small class="text-muted">Daftar & Status Tagihan</small>
-                                </div>
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('kanban.monitoring-document') }}">
-                                <div class="avatar avatar-xs me-2">
-                                    <span class="avatar-initial rounded-circle bg-label-info">
-                                        <i class="mdi mdi-view-dashboard-outline"></i>
-                                    </span>
-                                </div>
-                                <div>
-                                    <span class="fw-semibold d-block">Mon. Document</span>
-                                    <small class="text-muted">Monitoring Dokumen Penagihan</small>
-                                </div>
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('invoice.request') }}">
-                                <div class="avatar avatar-xs me-2">
-                                    <span class="avatar-initial rounded-circle bg-label-warning">
-                                        <i class="mdi mdi-file-clock-outline"></i>
-                                    </span>
-                                </div>
-                                <div>
-                                    <span class="fw-semibold d-block">Request Invoice</span>
-                                    <small class="text-muted">Antrean Permintaan Invoice</small>
-                                </div>
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('payment_index.payment') }}">
-                                <div class="avatar avatar-xs me-2">
-                                    <span class="avatar-initial rounded-circle bg-label-success">
-                                        <i class="mdi mdi-cash-check"></i>
-                                    </span>
-                                </div>
-                                <div>
-                                    <span class="fw-semibold d-block">Payment Receipt</span>
-                                    <small class="text-muted">Penerimaan Pembayaran</small>
-                                </div>
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center py-2" href="{{ route('payment_index.aging') }}">
-                                <div class="avatar avatar-xs me-2">
-                                    <span class="avatar-initial rounded-circle bg-label-danger">
-                                        <i class="mdi mdi-calendar-clock"></i>
-                                    </span>
-                                </div>
-                                <div>
-                                    <span class="fw-semibold d-block text-dark">Invoice Aging</span>
-                                    <small class="text-muted">Piutang Jatuh Tempo (AR)</small>
-                                </div>
+                        <div id="qaNavbarItemsContainer">
+                            @forelse ($userQuickActions as $qa)
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center py-2" href="{{ $qa['url'] }}">
+                                        <div class="avatar avatar-xs me-2 flex-shrink-0">
+                                            <span class="avatar-initial rounded-circle {{ $qa['icon_bg'] }}">
+                                                <i class="{{ $qa['icon'] }}"></i>
+                                            </span>
+                                        </div>
+                                        <div class="text-truncate">
+                                            <span class="fw-semibold d-block text-truncate">{{ $qa['title'] }}</span>
+                                            <small class="text-muted d-block text-truncate">{{ $qa['subtitle'] }}</small>
+                                        </div>
+                                    </a>
+                                </li>
+                            @empty
+                                <li class="px-3 py-3 text-center text-muted small">
+                                    Belum ada shortcut dipilih.
+                                </li>
+                            @endforelse
+                        </div>
+
+                        <li class="border-top mt-1 pt-1 px-2 text-center">
+                            <a href="javascript:void(0);" 
+                               class="dropdown-item text-center small text-primary fw-semibold py-1 rounded d-flex align-items-center justify-content-center"
+                               data-bs-toggle="modal" 
+                               data-bs-target="#quickActionSettingModal">
+                                <i class="mdi mdi-tune-variant me-1"></i> Sesuaikan Shortcut (Max 4)
                             </a>
                         </li>
                     </ul>
@@ -1327,18 +1236,10 @@
                         </li>
                         <li>
                             <a class="dropdown-item" href="{{ route('profile.show', Auth::user()?->id) }}">
-                                <i class="mdi mdi-account-outline me-2"></i>
-                                <span class="align-middle">My Profile</span>
+                                <i class="mdi mdi-account-circle-outline me-2"></i>
+                                <span class="align-middle">My Portal</span>
                             </a>
                         </li>
-                        @if (Auth::user() && Auth::user()->role !== 'Client' && Auth::user()->employee)
-                        <li>
-                            <a class="dropdown-item" href="{{ route('hr.portal.index') }}">
-                                <i class="mdi mdi-clock-check-outline text-success me-2"></i>
-                                <span class="align-middle fw-semibold text-success">Presensi & Portal Saya</span>
-                            </a>
-                        </li>
-                        @endif
                         <li>
                             <a class="dropdown-item" href="{{ route('profile.edit', Auth::user()?->id) }}">
                                 <i class="mdi mdi-cog-outline me-2"></i>
@@ -2012,3 +1913,650 @@
         });
     </script>
 @endif
+
+@if (Auth::check())
+    @php
+        $navQaCategorized = \App\Services\QuickActionService::getCategorizedCatalogForUser(Auth::user());
+        $navQaUserActions = \App\Services\QuickActionService::getUserQuickActions(Auth::user());
+        $navQaDefaultIds  = \App\Services\QuickActionService::getDefaultActionIdsForRole(Auth::user()?->role);
+    @endphp
+
+    <!-- Modal Quick Action Settings -->
+    <div class="modal fade" id="quickActionSettingModal" tabindex="-1" aria-labelledby="quickActionSettingModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+                <div style="height: 4px; background: linear-gradient(90deg, #696cff 0%, #03c3ec 100%); width: 100%;"></div>
+                
+                <div class="modal-header border-bottom py-3 px-4 bg-body">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="avatar avatar-sm flex-shrink-0">
+                            <span class="avatar-initial rounded-circle bg-label-primary">
+                                <i class="mdi mdi-tune-variant"></i>
+                            </span>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-heading mb-0" id="quickActionSettingModalLabel">
+                                Atur Quick Action Saya
+                            </h5>
+                            <small class="text-muted">Pilih dari menu aplikasi atau <strong>buat direct link custom sendiri</strong> (maksimal 4 slot).</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span id="qaCounterBadge" class="badge bg-label-primary rounded-pill px-3 py-2 fw-bold" style="font-size: 0.8rem;">
+                            <i class="mdi mdi-check-circle-outline me-1"></i><span id="qaSelectedCount">0</span> / 4 Slot Terisi
+                        </span>
+                        <button type="button" class="btn-close ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                </div>
+
+                <div class="modal-body p-4">
+                    <!-- Live Active 4-Slots Preview Bar -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="fw-bold text-heading text-uppercase" style="font-size: 0.76rem; letter-spacing: 0.5px;">
+                                <i class="mdi mdi-view-grid-plus-outline text-primary me-1"></i>Pintasan Aktif Navbar (4 Slot)
+                            </span>
+                            <button type="button" id="qaResetDefaultBtn" class="btn btn-xs btn-label-secondary d-flex align-items-center">
+                                <i class="mdi mdi-restore me-1"></i> Reset Default Role
+                            </button>
+                        </div>
+                        <div class="row g-2" id="qaSlotsPreviewContainer">
+                            <!-- Injected by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Navigation Tabs: Menu Catalog vs Custom Link -->
+                    <ul class="nav nav-pills nav-fill mb-3 border rounded-3 p-1 bg-body-tertiary" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active py-2 fw-semibold d-flex align-items-center justify-content-center" id="tab-catalog-btn" data-bs-toggle="pill" data-bs-target="#tab-catalog-pane" type="button" role="tab" aria-selected="true">
+                                <i class="mdi mdi-format-list-checks me-1 fs-5"></i> Pilih Menu Aplikasi
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link py-2 fw-semibold d-flex align-items-center justify-content-center" id="tab-custom-btn" data-bs-toggle="pill" data-bs-target="#tab-custom-pane" type="button" role="tab" aria-selected="false">
+                                <i class="mdi mdi-link-plus me-1 fs-5"></i> Buat Direct Link Custom
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content border-0 p-0">
+                        <!-- TAB 1: MENU CATALOG -->
+                        <div class="tab-pane fade show active" id="tab-catalog-pane" role="tabpanel" tabindex="0">
+                            <!-- Search & Quick Filter Bar -->
+                            <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+                                <div class="input-group input-group-merge shadow-xs flex-grow-1">
+                                    <span class="input-group-text bg-transparent border-end-0">
+                                        <i class="mdi mdi-magnify text-muted"></i>
+                                    </span>
+                                    <input type="text" id="qaSearchInput" class="form-control border-start-0 ps-0" placeholder="Cari nama menu / halaman..." autocomplete="off">
+                                </div>
+                            </div>
+
+                            <div class="qa-categories-container">
+                                @foreach ($navQaCategorized as $category => $items)
+                                    <div class="qa-category-group mb-4" data-category="{{ strtolower($category) }}">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <h6 class="fw-bold text-heading mb-0 text-uppercase" style="font-size: 0.78rem; letter-spacing: 0.5px;">
+                                                <i class="mdi mdi-circle-small text-primary me-1"></i>{{ $category }}
+                                            </h6>
+                                            <span class="badge bg-label-secondary rounded-pill" style="font-size: 0.7rem;">{{ count($items) }} Menu</span>
+                                        </div>
+
+                                        <div class="row g-2">
+                                            @foreach ($items as $item)
+                                                <div class="col-md-6 col-12 qa-item-col" data-search="{{ strtolower($item['title'] . ' ' . $item['subtitle'] . ' ' . $category) }}">
+                                                    <label class="qa-card-option d-flex align-items-center p-2 rounded-3 border w-100 cursor-pointer transition bg-body" id="qa_card_{{ $item['id'] }}" for="qa_check_{{ $item['id'] }}">
+                                                        <div class="form-check me-2 ms-1 mb-0">
+                                                            <input class="form-check-input qa-checkbox" 
+                                                                   type="checkbox" 
+                                                                   value="{{ $item['id'] }}" 
+                                                                   id="qa_check_{{ $item['id'] }}"
+                                                                   data-title="{{ $item['title'] }}"
+                                                                   data-subtitle="{{ $item['subtitle'] }}"
+                                                                   data-icon="{{ $item['icon'] }}"
+                                                                   data-iconbg="{{ $item['icon_bg'] }}"
+                                                                   data-url="{{ $item['url'] }}">
+                                                        </div>
+                                                        <div class="avatar avatar-sm me-2 flex-shrink-0">
+                                                            <span class="avatar-initial rounded-circle {{ $item['icon_bg'] }}">
+                                                                <i class="{{ $item['icon'] }}"></i>
+                                                            </span>
+                                                        </div>
+                                                        <div class="flex-grow-1 text-truncate">
+                                                            <span class="fw-semibold text-heading d-block text-truncate" style="font-size: 0.86rem;">
+                                                                {{ $item['title'] }}
+                                                            </span>
+                                                            <small class="text-muted d-block text-truncate" style="font-size: 0.74rem;">
+                                                                {{ $item['subtitle'] }}
+                                                            </small>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: CUSTOM DIRECT LINK FORM -->
+                        <div class="tab-pane fade" id="tab-custom-pane" role="tabpanel" tabindex="0">
+                            <div class="card border border-dashed rounded-3 p-3 mb-3 bg-body">
+                                <h6 class="fw-bold text-heading mb-3 d-flex align-items-center">
+                                    <i class="mdi mdi-plus-circle text-primary me-2"></i>Tambah Direct Link Custom
+                                </h6>
+
+                                <div class="row g-3">
+                                    <div class="col-md-6 col-12">
+                                        <label class="form-label fw-semibold small">Nama Shortcut <span class="text-danger">*</span></label>
+                                        <input type="text" id="customQaTitle" class="form-control" placeholder="Contoh: Monitoring PO Urgent" maxlength="40">
+                                    </div>
+                                    <div class="col-md-6 col-12">
+                                        <label class="form-label fw-semibold small">Keterangan / Subtitle</label>
+                                        <input type="text" id="customQaSubtitle" class="form-control" placeholder="Contoh: Akses Cepat SUO" maxlength="40">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold small">Direct URL / Path Tujuan <span class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-body-tertiary"><i class="mdi mdi-link-variant"></i></span>
+                                            <input type="text" id="customQaUrl" class="form-control" placeholder="Contoh: /sales-order?tab=urgent atau https://...">
+                                        </div>
+                                        <small class="text-muted" style="font-size: 0.74rem;">Bisa berupa path internal (misal: <code>/product-out</code>) atau URL lengkap.</small>
+                                    </div>
+                                    <div class="col-md-6 col-12">
+                                        <label class="form-label fw-semibold small">Pilihan Icon</label>
+                                        <select id="customQaIcon" class="form-select">
+                                            <option value="mdi mdi-link-variant">🔗 Link Default (mdi-link-variant)</option>
+                                            <option value="mdi mdi-star-outline">⭐ Bintang / Favorit (mdi-star-outline)</option>
+                                            <option value="mdi mdi-lightning-bolt-outline">⚡ Petir / Urgent (mdi-lightning-bolt-outline)</option>
+                                            <option value="mdi mdi-file-document-outline">📄 Dokumen (mdi-file-document-outline)</option>
+                                            <option value="mdi mdi-chart-line">📈 Grafik &amp; Laporan (mdi-chart-line)</option>
+                                            <option value="mdi mdi-cart-outline">🛒 Keranjang &amp; Order (mdi-cart-outline)</option>
+                                            <option value="mdi mdi-package-variant-closed">📦 Barang &amp; Stok (mdi-package-variant-closed)</option>
+                                            <option value="mdi mdi-tools">🛠️ Tool &amp; Servis (mdi-tools)</option>
+                                            <option value="mdi mdi-cash-multiple">💵 Keuangan &amp; Kas (mdi-cash-multiple)</option>
+                                            <option value="mdi mdi-calendar-clock">🕒 Jadwal &amp; Waktu (mdi-calendar-clock)</option>
+                                            <option value="mdi mdi-account-group-outline">👥 Pelanggan / User (mdi-account-group-outline)</option>
+                                            <option value="mdi mdi-open-in-new">↗️ Link Eksternal (mdi-open-in-new)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 col-12">
+                                        <label class="form-label fw-semibold small">Warna Badge</label>
+                                        <select id="customQaColor" class="form-select">
+                                            <option value="bg-label-primary">Primary (Ungu/Biru)</option>
+                                            <option value="bg-label-success">Success (Hijau)</option>
+                                            <option value="bg-label-warning">Warning (Oranye/Kuning)</option>
+                                            <option value="bg-label-info">Info (Cyan)</option>
+                                            <option value="bg-label-danger">Danger (Merah)</option>
+                                            <option value="bg-label-secondary">Secondary (Abu-abu)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 text-end">
+                                        <button type="button" id="btnAddCustomLink" class="btn btn-primary d-inline-flex align-items-center">
+                                            <i class="mdi mdi-plus-circle-outline me-1"></i> Tambahkan ke Slot Shortcut
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-top py-2 px-4 bg-body d-flex align-items-center justify-content-between">
+                    <small class="text-muted" id="qaFooterHint">Pilih atau buat maksimal 4 shortcut.</small>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Tutup</button>
+                        <button type="button" id="btnSaveQuickActions" class="btn btn-primary px-4">
+                            <i class="mdi mdi-content-save-outline me-1"></i> Simpan Shortcut
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .qa-card-option {
+            transition: all 0.18s ease-in-out;
+            cursor: pointer;
+            user-select: none;
+        }
+        .qa-card-option:hover {
+            border-color: rgba(105, 108, 255, 0.4) !important;
+            transform: translateY(-1px);
+        }
+        .qa-card-option.selected {
+            border-color: #696cff !important;
+            background-color: rgba(105, 108, 255, 0.08) !important;
+        }
+        html.dark-style .qa-card-option.selected {
+            background-color: rgba(105, 108, 255, 0.16) !important;
+            border-color: #696cff !important;
+        }
+        .qa-slot-card {
+            border-radius: 10px;
+            border: 1px dashed rgba(67, 89, 113, 0.2);
+            padding: 8px 12px;
+            min-height: 58px;
+            display: flex;
+            align-items: center;
+            background: #fdfdfd;
+            transition: all 0.15s ease;
+        }
+        html.dark-style .qa-slot-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+        .qa-slot-card.filled {
+            border-style: solid;
+            border-color: rgba(105, 108, 255, 0.35);
+            background: #ffffff;
+            box-shadow: 0 2px 5px rgba(67, 89, 113, 0.05);
+        }
+        html.dark-style .qa-slot-card.filled {
+            background: #2b2c40;
+            border-color: rgba(105, 108, 255, 0.4);
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var defaultActionIds = @json($navQaDefaultIds);
+            var initialUserActions = @json($navQaUserActions);
+            var updateUrl = "{{ route('user.quick-actions.update') }}";
+            var csrfToken = "{{ csrf_token() }}";
+            var maxItems = 4;
+
+            // In-memory array of selected items: strings or custom objects
+            var selectedItems = [];
+            if (Array.isArray(initialUserActions)) {
+                selectedItems = initialUserActions.slice(0, maxItems).map(function(item) {
+                    if (item.type === 'custom') {
+                        return {
+                            type: 'custom',
+                            title: item.title,
+                            subtitle: item.subtitle,
+                            url: item.raw_url || item.url,
+                            icon: item.icon,
+                            icon_bg: item.icon_bg
+                        };
+                    } else {
+                        return item.id;
+                    }
+                });
+            }
+
+            var checkboxes = document.querySelectorAll('.qa-checkbox');
+            var counterEl = document.getElementById('qaSelectedCount');
+            var counterBadge = document.getElementById('qaCounterBadge');
+            var slotsContainer = document.getElementById('qaSlotsPreviewContainer');
+            var searchInput = document.getElementById('qaSearchInput');
+            var resetBtn = document.getElementById('qaResetDefaultBtn');
+            var saveBtn = document.getElementById('btnSaveQuickActions');
+            var addCustomBtn = document.getElementById('btnAddCustomLink');
+
+            // Render 4 Slot Preview Cards and sync checkboxes
+            function renderSlots() {
+                if (counterEl) counterEl.textContent = selectedItems.length;
+
+                if (counterBadge) {
+                    if (selectedItems.length === maxItems) {
+                        counterBadge.className = 'badge bg-success rounded-pill px-3 py-2 fw-bold';
+                    } else if (selectedItems.length > 0) {
+                        counterBadge.className = 'badge bg-label-primary rounded-pill px-3 py-2 fw-bold';
+                    } else {
+                        counterBadge.className = 'badge bg-label-danger rounded-pill px-3 py-2 fw-bold';
+                    }
+                }
+
+                // Sync catalog checkboxes & card styling
+                checkboxes.forEach(function (cb) {
+                    var isSelected = selectedItems.some(function(it) {
+                        return typeof it === 'string' && it === cb.value;
+                    });
+                    cb.checked = isSelected;
+                    var card = document.getElementById('qa_card_' + cb.value);
+                    if (card) {
+                        if (isSelected) {
+                            card.classList.add('selected', 'border-primary', 'bg-label-primary');
+                        } else {
+                            card.classList.remove('selected', 'border-primary', 'bg-label-primary');
+                        }
+                    }
+                });
+
+                // Render Slot Cards (1 to 4)
+                if (slotsContainer) {
+                    var html = '';
+                    for (var i = 0; i < maxItems; i++) {
+                        var item = selectedItems[i];
+                        if (item) {
+                            var title = '';
+                            var subtitle = '';
+                            var icon = 'mdi mdi-link-variant';
+                            var iconBg = 'bg-label-primary';
+                            var isCustom = typeof item === 'object' && item.type === 'custom';
+
+                            if (isCustom) {
+                                title = item.title;
+                                subtitle = item.subtitle || 'Direct Link';
+                                icon = item.icon || icon;
+                                iconBg = item.icon_bg || iconBg;
+                            } else {
+                                var cb = document.getElementById('qa_check_' + item);
+                                if (cb) {
+                                    title = cb.getAttribute('data-title') || item;
+                                    subtitle = cb.getAttribute('data-subtitle') || '';
+                                    icon = cb.getAttribute('data-icon') || icon;
+                                    iconBg = cb.getAttribute('data-iconbg') || iconBg;
+                                } else {
+                                    title = item;
+                                    subtitle = 'Menu';
+                                }
+                            }
+
+                            html += '<div class="col-md-6 col-12">' +
+                                '<div class="qa-slot-card filled d-flex align-items-center justify-content-between gap-2">' +
+                                    '<div class="d-flex align-items-center gap-2 text-truncate">' +
+                                        '<div class="avatar avatar-xs flex-shrink-0">' +
+                                            '<span class="avatar-initial rounded-circle ' + iconBg + '">' +
+                                                '<i class="' + icon + '"></i>' +
+                                            '</span>' +
+                                        '</div>' +
+                                        '<div class="text-truncate">' +
+                                            '<span class="fw-bold text-heading d-block text-truncate" style="font-size: 0.82rem;">' + title + '</span>' +
+                                            '<small class="text-muted d-block text-truncate" style="font-size: 0.72rem;">' +
+                                                (isCustom ? '<span class="badge bg-label-warning px-1 py-0 me-1" style="font-size: 0.65rem;">Direct Link</span>' : '') +
+                                                subtitle +
+                                            '</small>' +
+                                        '</div>' +
+                                    '</div>' +
+                                    '<button type="button" class="btn btn-icon btn-xs btn-label-danger rounded-circle flex-shrink-0 shadow-none qa-remove-slot-btn" data-index="' + i + '" title="Hapus dari slot">' +
+                                        '<i class="mdi mdi-close fs-6"></i>' +
+                                    '</button>' +
+                                '</div>' +
+                            '</div>';
+                        } else {
+                            html += '<div class="col-md-6 col-12">' +
+                                '<div class="qa-slot-card text-muted d-flex align-items-center justify-content-center gap-2">' +
+                                    '<i class="mdi mdi-plus-circle-outline opacity-50"></i>' +
+                                    '<span class="small opacity-75">Slot ' + (i + 1) + ' Kosong</span>' +
+                                '</div>' +
+                            '</div>';
+                        }
+                    }
+                    slotsContainer.innerHTML = html;
+
+                    // Bind remove buttons
+                    slotsContainer.querySelectorAll('.qa-remove-slot-btn').forEach(function(btn) {
+                        btn.addEventListener('click', function() {
+                            var idx = parseInt(btn.getAttribute('data-index'), 10);
+                            if (!isNaN(idx) && idx >= 0 && idx < selectedItems.length) {
+                                selectedItems.splice(idx, 1);
+                                renderSlots();
+                            }
+                        });
+                    });
+                }
+            }
+
+            // Checkbox change listener
+            checkboxes.forEach(function (cb) {
+                cb.addEventListener('change', function () {
+                    var val = cb.value;
+                    if (cb.checked) {
+                        if (selectedItems.length >= maxItems) {
+                            cb.checked = false;
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Maksimal 4 Slot',
+                                    text: 'Slot penuh! Hapus salah satu shortcut pada preview di atas terlebih dahulu.',
+                                    timer: 2500,
+                                    showConfirmButton: false
+                                });
+                            } else {
+                                alert('Maksimal 4 shortcut dapat dipilih!');
+                            }
+                            return;
+                        }
+                        if (!selectedItems.includes(val)) {
+                            selectedItems.push(val);
+                        }
+                    } else {
+                        selectedItems = selectedItems.filter(function(it) {
+                            return it !== val;
+                        });
+                    }
+                    renderSlots();
+                });
+            });
+
+            // Add Custom Direct Link
+            if (addCustomBtn) {
+                addCustomBtn.addEventListener('click', function () {
+                    if (selectedItems.length >= maxItems) {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Slot Penuh (4 / 4)',
+                                text: 'Slot sudah mencapai batas 4 item. Hapus salah satu shortcut terlebih dahulu untuk menambah link baru.'
+                            });
+                        } else {
+                            alert('Maksimal 4 shortcut!');
+                        }
+                        return;
+                    }
+
+                    var titleInput = document.getElementById('customQaTitle');
+                    var subtitleInput = document.getElementById('customQaSubtitle');
+                    var urlInput = document.getElementById('customQaUrl');
+                    var iconSelect = document.getElementById('customQaIcon');
+                    var colorSelect = document.getElementById('customQaColor');
+
+                    var title = titleInput ? titleInput.value.trim() : '';
+                    var subtitle = subtitleInput ? subtitleInput.value.trim() : '';
+                    var url = urlInput ? urlInput.value.trim() : '';
+                    var icon = iconSelect ? iconSelect.value : 'mdi mdi-link-variant';
+                    var iconBg = colorSelect ? colorSelect.value : 'bg-label-primary';
+
+                    if (!title) {
+                        if (titleInput) titleInput.focus();
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({ icon: 'warning', title: 'Nama Wajib Diisi', text: 'Silakan isi nama shortcut custom Anda.' });
+                        }
+                        return;
+                    }
+
+                    if (!url) {
+                        if (urlInput) urlInput.focus();
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({ icon: 'warning', title: 'URL Wajib Diisi', text: 'Silakan masukkan link/URL tujuan.' });
+                        }
+                        return;
+                    }
+
+                    // Add to selected items
+                    selectedItems.push({
+                        type: 'custom',
+                        title: title,
+                        subtitle: subtitle || 'Direct Link',
+                        url: url,
+                        icon: icon,
+                        icon_bg: iconBg
+                    });
+
+                    // Clear inputs
+                    if (titleInput) titleInput.value = '';
+                    if (subtitleInput) subtitleInput.value = '';
+                    if (urlInput) urlInput.value = '';
+
+                    renderSlots();
+
+                    // Switch back to tab 1 or show toast
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Link Ditambahkan!',
+                            text: '"' + title + '" berhasil dimasukkan ke daftar shortcut.',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    }
+                });
+            }
+
+            // Live Search Filter
+            if (searchInput) {
+                searchInput.addEventListener('input', function () {
+                    var q = searchInput.value.trim().toLowerCase();
+                    var itemCols = document.querySelectorAll('.qa-item-col');
+                    var categoryGroups = document.querySelectorAll('.qa-category-group');
+
+                    itemCols.forEach(function (col) {
+                        var searchMeta = col.getAttribute('data-search') || '';
+                        if (!q || searchMeta.indexOf(q) !== -1) {
+                            col.style.display = '';
+                        } else {
+                            col.style.display = 'none';
+                        }
+                    });
+
+                    categoryGroups.forEach(function (group) {
+                        var visibleCols = group.querySelectorAll('.qa-item-col:not([style*="display: none"])');
+                        if (visibleCols.length > 0) {
+                            group.style.display = '';
+                        } else {
+                            group.style.display = 'none';
+                        }
+                    });
+                });
+            }
+
+            // Reset to Role Default
+            if (resetBtn) {
+                resetBtn.addEventListener('click', function () {
+                    selectedItems = defaultActionIds.slice(0, maxItems);
+                    renderSlots();
+
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Reset ke Default',
+                            text: 'Pilihan shortcut telah disetel ulang sesuai default role Anda.',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    }
+                });
+            }
+
+            // Save via AJAX
+            if (saveBtn) {
+                saveBtn.addEventListener('click', function () {
+                    if (selectedItems.length === 0) {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Pilih / Buat Shortcut',
+                                text: 'Silakan pilih minimal 1 menu atau direct link custom.'
+                            });
+                        } else {
+                            alert('Silakan pilih minimal 1 menu shortcut.');
+                        }
+                        return;
+                    }
+
+                    var payload = selectedItems.slice(0, maxItems);
+
+                    saveBtn.disabled = true;
+                    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...';
+
+                    fetch(updateUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            quick_actions: payload
+                        })
+                    })
+                    .then(function (res) { return res.json(); })
+                    .then(function (data) {
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = '<i class="mdi mdi-content-save-outline me-1"></i> Simpan Shortcut';
+
+                        if (data && data.success) {
+                            // Update items in navbar dropdown live
+                            var container = document.getElementById('qaNavbarItemsContainer');
+                            if (container && data.quick_actions && Array.isArray(data.quick_actions)) {
+                                var html = '';
+                                data.quick_actions.forEach(function (item) {
+                                    html += '<li>' +
+                                        '<a class="dropdown-item d-flex align-items-center py-2" href="' + item.url + '">' +
+                                            '<div class="avatar avatar-xs me-2 flex-shrink-0">' +
+                                                '<span class="avatar-initial rounded-circle ' + item.icon_bg + '">' +
+                                                    '<i class="' + item.icon + '"></i>' +
+                                                '</span>' +
+                                            '</div>' +
+                                            '<div class="text-truncate">' +
+                                                '<span class="fw-semibold d-block text-truncate">' + item.title + '</span>' +
+                                                '<small class="text-muted d-block text-truncate">' + item.subtitle + '</small>' +
+                                            '</div>' +
+                                        '</a>' +
+                                    '</li>';
+                                });
+                                container.innerHTML = html;
+                            }
+
+                            // Close modal
+                            var modalEl = document.getElementById('quickActionSettingModal');
+                            if (modalEl && typeof bootstrap !== 'undefined') {
+                                var modalInstance = bootstrap.Modal.getInstance(modalEl);
+                                if (modalInstance) modalInstance.hide();
+                            }
+
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil Disimpan!',
+                                    text: 'Shortcut Quick Action Anda telah diperbarui.',
+                                    timer: 1800,
+                                    showConfirmButton: false
+                                });
+                            }
+                        } else {
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Gagal Menyimpan',
+                                    text: data.message || 'Terjadi kesalahan saat menyimpan Quick Action.'
+                                });
+                            } else {
+                                alert(data.message || 'Gagal menyimpan.');
+                            }
+                        }
+                    })
+                    .catch(function (err) {
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = '<i class="mdi mdi-content-save-outline me-1"></i> Simpan Shortcut';
+                        console.error('Quick Action save error:', err);
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Kesalahan Sistem',
+                                text: 'Tidak dapat terhubung ke server.'
+                            });
+                        }
+                    });
+                });
+            }
+
+            renderSlots();
+        });
+    </script>
+@endif
+
+

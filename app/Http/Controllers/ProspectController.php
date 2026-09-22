@@ -51,54 +51,119 @@ class ProspectController extends Controller
         // kolom `nett` di quotation lama), status dipetakan:
         //   forecast = belum PO & belum loss | prospek tinggi = hot_prospect/negotiation
         $sqNett = 'total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)';
-        $sqBase       = UnitQuotation::where('is_latest', 1)->where('id_support', Auth::user()->id);
-        $sqBaseAdmin  = UnitQuotation::where('is_latest', 1)->whereNotNull('id_support');
 
+        // Support Quotation (User)
         $quotation = Quotation::where('id_support', Auth::user()->id)->where('level', '1')->where('is_primary', '1')->get();
-        $forecast = Quotation::where('id_support', Auth::user()->id)->where('level', '1')->where('is_primary', '1')->whereIn('status', ['20', '30', '40', '60', '80'])->sum('nett')
-            + (clone $sqBase)->whereNotIn('status', ['po_received', 'loss'])->sum(DB::raw($sqNett));
-        $prospect = Quotation::where('id_support', Auth::user()->id)->where('level', '1')->where('is_primary', '1')->where('status', '80')->sum('nett')
-            + (clone $sqBase)->whereIn('status', ['hot_prospect', 'negotiation'])->sum(DB::raw($sqNett));
-        $po = Quotation::where('id_support', Auth::user()->id)->where('status', '100')->where('level', '1')->where('is_primary', '1')->sum('nett')
-            + (clone $sqBase)->where('status', 'po_received')->sum(DB::raw($sqNett));
-        $loss = Quotation::where('id_support', Auth::user()->id)->where('status', '0')->where('level', '1')->where('is_primary', '1')->sum('nett')
-            + (clone $sqBase)->where('status', 'loss')->sum(DB::raw($sqNett));
-        $quotationAdmin = Quotation::whereNotNull('id_support')->where('level', '1')->get();
-        $forecastAdmin = Quotation::whereIn('status', ['20', '30', '40', '60', '80'])->whereNotNull('id_support')->where('level', '1')->where('is_primary', '1')->sum('nett')
-            + (clone $sqBaseAdmin)->whereNotIn('status', ['po_received', 'loss'])->sum(DB::raw($sqNett));
-        $prospectAdmin = Quotation::where('status', '80')->whereNotNull('id_support')->where('level', '1')->where('is_primary', '1')->sum('nett')
-            + (clone $sqBaseAdmin)->whereIn('status', ['hot_prospect', 'negotiation'])->sum(DB::raw($sqNett));
-        $poAdmin = Quotation::where('status', '100')->whereNotNull('id_support')->where('level', '1')->where('is_primary', '1')->sum('nett')
-            + (clone $sqBaseAdmin)->where('status', 'po_received')->sum(DB::raw($sqNett));
-        $lossAdmin = Quotation::where('status', '0')->whereNotNull('id_support')->where('level', '1')->where('is_primary', '1')->sum('nett')
-            + (clone $sqBaseAdmin)->where('status', 'loss')->sum(DB::raw($sqNett));
+        $qStatsUser = Quotation::where('id_support', Auth::user()->id)->where('level', '1')->where('is_primary', '1')
+            ->selectRaw("
+                SUM(CASE WHEN status IN ('20', '30', '40', '60', '80') THEN nett ELSE 0 END) as forecast_sum,
+                SUM(CASE WHEN status = '80' THEN nett ELSE 0 END) as prospect_sum,
+                SUM(CASE WHEN status = '100' THEN nett ELSE 0 END) as po_sum,
+                SUM(CASE WHEN status = '0' THEN nett ELSE 0 END) as loss_sum
+            ")->first();
 
-        // Jumlah dokumen penawaran Smart Quote per tahap (dipakai di sub-label kartu,
-        // digabung dengan count dari koleksi $quotation/$quotationAdmin di view).
-        $sqDocForecast      = (clone $sqBase)->whereNotIn('status', ['po_received', 'loss'])->count();
-        $sqDocProspect      = (clone $sqBase)->whereIn('status', ['hot_prospect', 'negotiation'])->count();
-        $sqDocPo            = (clone $sqBase)->where('status', 'po_received')->count();
-        $sqDocLoss          = (clone $sqBase)->where('status', 'loss')->count();
-        $sqDocForecastAdmin = (clone $sqBaseAdmin)->whereNotIn('status', ['po_received', 'loss'])->count();
-        $sqDocProspectAdmin = (clone $sqBaseAdmin)->whereIn('status', ['hot_prospect', 'negotiation'])->count();
-        $sqDocPoAdmin       = (clone $sqBaseAdmin)->where('status', 'po_received')->count();
-        $sqDocLossAdmin     = (clone $sqBaseAdmin)->where('status', 'loss')->count();
+        // Support Smart Quote (User)
+        $sqStatsUser = UnitQuotation::where('is_latest', 1)->where('id_support', Auth::user()->id)
+            ->selectRaw("
+                SUM(CASE WHEN status NOT IN ('po_received', 'loss') THEN ($sqNett) ELSE 0 END) as forecast_sum,
+                SUM(CASE WHEN status IN ('hot_prospect', 'negotiation') THEN ($sqNett) ELSE 0 END) as prospect_sum,
+                SUM(CASE WHEN status = 'po_received' THEN ($sqNett) ELSE 0 END) as po_sum,
+                SUM(CASE WHEN status = 'loss' THEN ($sqNett) ELSE 0 END) as loss_sum,
+                COUNT(CASE WHEN status NOT IN ('po_received', 'loss') THEN 1 END) as doc_forecast,
+                COUNT(CASE WHEN status IN ('hot_prospect', 'negotiation') THEN 1 END) as doc_prospect,
+                COUNT(CASE WHEN status = 'po_received' THEN 1 END) as doc_po,
+                COUNT(CASE WHEN status = 'loss' THEN 1 END) as doc_loss
+            ")->first();
+
+        $forecast = ($qStatsUser->forecast_sum ?? 0) + ($sqStatsUser->forecast_sum ?? 0);
+        $prospect = ($qStatsUser->prospect_sum ?? 0) + ($sqStatsUser->prospect_sum ?? 0);
+        $po = ($qStatsUser->po_sum ?? 0) + ($sqStatsUser->po_sum ?? 0);
+        $loss = ($qStatsUser->loss_sum ?? 0) + ($sqStatsUser->loss_sum ?? 0);
+
+        $sqDocForecast = (int) ($sqStatsUser->doc_forecast ?? 0);
+        $sqDocProspect = (int) ($sqStatsUser->doc_prospect ?? 0);
+        $sqDocPo = (int) ($sqStatsUser->doc_po ?? 0);
+        $sqDocLoss = (int) ($sqStatsUser->doc_loss ?? 0);
+
+        // Support Quotation (Admin)
+        $quotationAdmin = Quotation::whereNotNull('id_support')->where('level', '1')->get();
+        $qStatsAdmin = Quotation::whereNotNull('id_support')->where('level', '1')->where('is_primary', '1')
+            ->selectRaw("
+                SUM(CASE WHEN status IN ('20', '30', '40', '60', '80') THEN nett ELSE 0 END) as forecast_sum,
+                SUM(CASE WHEN status = '80' THEN nett ELSE 0 END) as prospect_sum,
+                SUM(CASE WHEN status = '100' THEN nett ELSE 0 END) as po_sum,
+                SUM(CASE WHEN status = '0' THEN nett ELSE 0 END) as loss_sum
+            ")->first();
+
+        // Support Smart Quote (Admin)
+        $sqStatsAdmin = UnitQuotation::where('is_latest', 1)->whereNotNull('id_support')
+            ->selectRaw("
+                SUM(CASE WHEN status NOT IN ('po_received', 'loss') THEN ($sqNett) ELSE 0 END) as forecast_sum,
+                SUM(CASE WHEN status IN ('hot_prospect', 'negotiation') THEN ($sqNett) ELSE 0 END) as prospect_sum,
+                SUM(CASE WHEN status = 'po_received' THEN ($sqNett) ELSE 0 END) as po_sum,
+                SUM(CASE WHEN status = 'loss' THEN ($sqNett) ELSE 0 END) as loss_sum,
+                COUNT(CASE WHEN status NOT IN ('po_received', 'loss') THEN 1 END) as doc_forecast,
+                COUNT(CASE WHEN status IN ('hot_prospect', 'negotiation') THEN 1 END) as doc_prospect,
+                COUNT(CASE WHEN status = 'po_received' THEN 1 END) as doc_po,
+                COUNT(CASE WHEN status = 'loss' THEN 1 END) as doc_loss
+            ")->first();
+
+        $forecastAdmin = ($qStatsAdmin->forecast_sum ?? 0) + ($sqStatsAdmin->forecast_sum ?? 0);
+        $prospectAdmin = ($qStatsAdmin->prospect_sum ?? 0) + ($sqStatsAdmin->prospect_sum ?? 0);
+        $poAdmin = ($qStatsAdmin->po_sum ?? 0) + ($sqStatsAdmin->po_sum ?? 0);
+        $lossAdmin = ($qStatsAdmin->loss_sum ?? 0) + ($sqStatsAdmin->loss_sum ?? 0);
+
+        $sqDocForecastAdmin = (int) ($sqStatsAdmin->doc_forecast ?? 0);
+        $sqDocProspectAdmin = (int) ($sqStatsAdmin->doc_prospect ?? 0);
+        $sqDocPoAdmin = (int) ($sqStatsAdmin->doc_po ?? 0);
+        $sqDocLossAdmin = (int) ($sqStatsAdmin->doc_loss ?? 0);
+
         $prospects = Prospect::where('id_sales', Auth::id())->whereNull('level')->get();
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
         $leveledProspect = Prospect::whereNULL('level')->where('id_sales', Auth::id())->count();
 
-        // Sales specific metrics
-        $salesNewProspectCount   = Prospect::where('id_sales', Auth::id())->whereNull('level')->count();
-        $salesFuProspectCount    = Prospect::where('id_sales', Auth::id())->where('level', '9')->count();
-        $salesTotalAssigned      = $salesNewProspectCount + $salesFuProspectCount;
-        $salesQuoteForecast      = Quotation::where('id_sales', Auth::id())->where('level', '1')->where('is_primary', '1')->whereIn('status', ['20', '30', '40', '60', '80'])->sum('nett');
-        $salesQuoteForecastCount = Quotation::where('id_sales', Auth::id())->where('level', '1')->where('is_primary', '1')->whereIn('status', ['20', '30', '40', '60', '80'])->count();
-        $salesHotProspect        = Quotation::where('id_sales', Auth::id())->where('level', '1')->where('is_primary', '1')->where('status', '80')->sum('nett');
-        $salesHotProspectCount   = Quotation::where('id_sales', Auth::id())->where('level', '1')->where('is_primary', '1')->where('status', '80')->count();
-        $salesPo                 = Quotation::where('id_sales', Auth::id())->where('status', '100')->where('level', '1')->where('is_primary', '1')->sum('nett');
-        $salesPoCount            = Quotation::where('id_sales', Auth::id())->where('status', '100')->where('level', '1')->where('is_primary', '1')->count();
-        $salesLoss               = Quotation::where('id_sales', Auth::id())->where('status', '0')->where('level', '1')->where('is_primary', '1')->sum('nett');
-        $salesLossCount          = Quotation::where('id_sales', Auth::id())->where('status', '0')->where('level', '1')->where('is_primary', '1')->count();
+        // Sales specific metrics (single conditional aggregation query for all tabs)
+        $salesProspectCounts = Prospect::leftJoin('quotation', 'quotation.id', '=', 'prospect.id_quotation')
+            ->leftJoin('unit_quotation', function ($join) {
+                $join->on('unit_quotation.id', '=', 'prospect.id_quotation')
+                    ->on('unit_quotation.id_pic', '=', 'prospect.id_pic');
+            })
+            ->where('prospect.id_sales', Auth::id())
+            ->selectRaw("
+                COUNT(CASE WHEN prospect.level IS NULL THEN 1 END) as new_count,
+                COUNT(CASE WHEN prospect.level = '9' THEN 1 END) as fu_count,
+                COUNT(CASE WHEN prospect.level = '1' AND (COALESCE(unit_quotation.status, quotation.status) NOT IN ('100', 'po_received') OR COALESCE(unit_quotation.status, quotation.status) IS NULL) THEN 1 END) as quoted_count,
+                COUNT(CASE WHEN prospect.level IN ('0', '2') THEN 1 END) as no_quote_count,
+                COUNT(CASE WHEN prospect.level = '1' AND COALESCE(unit_quotation.status, quotation.status) IN ('100', 'po_received') THEN 1 END) as po_count
+            ")->first();
+
+        $salesNewProspectCount = (int) ($salesProspectCounts->new_count ?? 0);
+        $salesFuProspectCount = (int) ($salesProspectCounts->fu_count ?? 0);
+        $salesQuotedProspectCount = (int) ($salesProspectCounts->quoted_count ?? 0);
+        $salesNoQuoteProspectCount = (int) ($salesProspectCounts->no_quote_count ?? 0);
+        $salesPoProspectCount = (int) ($salesProspectCounts->po_count ?? 0);
+        $salesTotalAssigned = $salesNewProspectCount + $salesFuProspectCount + $salesQuotedProspectCount + $salesNoQuoteProspectCount + $salesPoProspectCount;
+
+        $salesQuoteStats = Quotation::where('id_sales', Auth::id())->where('level', '1')->where('is_primary', '1')
+            ->selectRaw("
+                SUM(CASE WHEN status IN ('20', '30', '40', '60', '80') THEN nett ELSE 0 END) as forecast_sum,
+                COUNT(CASE WHEN status IN ('20', '30', '40', '60', '80') THEN 1 END) as forecast_count,
+                SUM(CASE WHEN status = '80' THEN nett ELSE 0 END) as prospect_sum,
+                COUNT(CASE WHEN status = '80' THEN 1 END) as prospect_count,
+                SUM(CASE WHEN status = '100' THEN nett ELSE 0 END) as po_sum,
+                COUNT(CASE WHEN status = '100' THEN 1 END) as po_count,
+                SUM(CASE WHEN status = '0' THEN nett ELSE 0 END) as loss_sum,
+                COUNT(CASE WHEN status = '0' THEN 1 END) as loss_count
+            ")->first();
+
+        $salesQuoteForecast = $salesQuoteStats->forecast_sum ?? 0;
+        $salesQuoteForecastCount = (int) ($salesQuoteStats->forecast_count ?? 0);
+        $salesHotProspect = $salesQuoteStats->prospect_sum ?? 0;
+        $salesHotProspectCount = (int) ($salesQuoteStats->prospect_count ?? 0);
+        $salesPo = $salesQuoteStats->po_sum ?? 0;
+        $salesPoCount = (int) ($salesQuoteStats->po_count ?? 0);
+        $salesLoss = $salesQuoteStats->loss_sum ?? 0;
+        $salesLossCount = (int) ($salesQuoteStats->loss_count ?? 0);
 
         $now = Carbon::now();
         $startOfMonth = $now->copy()->startOfMonth();
@@ -147,30 +212,32 @@ class ProspectController extends Controller
         $statusIds = $firstComments->pluck('id_status')->toArray();
         $dates = $firstComments->pluck('created_at', 'id_status');
 
-        $commentsQuery = Comment::join('change_status as c', 'c.id', '=', 'comment.id_status')
-            ->join('quotation as q', 'q.id', '=', 'c.id_quotation')
-            ->join('users as u', 'u.id', '=', 'comment.id_user')
-            ->whereIn('comment.id_status', $statusIds)
-            ->where(function ($query) use ($dates) {
-                foreach ($dates as $statusId => $createdAt) {
-                    $query->orWhere(function ($subQuery) use ($statusId, $createdAt) {
-                        $subQuery->where('comment.id_status', $statusId)
-                            ->whereRaw('TIMESTAMPDIFF(SECOND, ?, comment.created_at) > 0', [$createdAt]);
-                    });
-                }
-            })
-            ->where('comment.id_user', '!=', Auth::id());
+        if (!empty($statusIds)) {
+            $commentsQuery = Comment::join('change_status as c', 'c.id', '=', 'comment.id_status')
+                ->join('quotation as q', 'q.id', '=', 'c.id_quotation')
+                ->join('users as u', 'u.id', '=', 'comment.id_user')
+                ->whereIn('comment.id_status', $statusIds)
+                ->where(function ($query) use ($dates) {
+                    foreach ($dates as $statusId => $createdAt) {
+                        $query->orWhere(function ($subQuery) use ($statusId, $createdAt) {
+                            $subQuery->where('comment.id_status', $statusId)
+                                ->whereRaw('TIMESTAMPDIFF(SECOND, ?, comment.created_at) > 0', [$createdAt]);
+                        });
+                    }
+                })
+                ->where('comment.id_user', '!=', Auth::id());
 
-        // Ambil semua komentar yang relevan
-        $commentAdmin = $commentsQuery->orderBy('comment.id_status')
-            ->orderByDesc('comment.created_at')
-            ->get(['q.id as idQ', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'q.no_quote', 'u.name', 'u.image']);
+            // Ambil semua komentar yang relevan
+            $commentAdmin = $commentsQuery->orderBy('comment.id_status')
+                ->orderByDesc('comment.created_at')
+                ->get(['q.id as idQ', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'q.no_quote', 'u.name', 'u.image']);
 
-        // Filter untuk komentar dengan level '1'
-        $unreadCommentAdmin = $commentsQuery->where('comment.level', '1')
-            ->orderBy('comment.id_status')
-            ->orderByDesc('comment.created_at')
-            ->get(['q.id as idQ', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'q.no_quote', 'u.name', 'u.image']);
+            // Filter in-memory
+            $unreadCommentAdmin = $commentAdmin->where('level', '1')->values();
+        } else {
+            $commentAdmin = collect();
+            $unreadCommentAdmin = collect();
+        }
 
         // End Comment Admin
         $quotationComment = Quotation::join('change_status as c', 'c.id_quotation', '=', 'quotation.id')
@@ -198,12 +265,7 @@ class ProspectController extends Controller
             ->orderBy('date', 'DESC')
             ->take(5)
             ->get();
-        $unreadComment = (clone $quotationComment)->where('o.level', '1')->union(
-            (clone $prospectComment)->where('comment.level', '1')
-        )
-            ->orderBy('date', 'DESC')
-            ->take(5)
-            ->get();
+        $unreadComment = $comment->where('level', '1')->values()->take(5);
 
         // Hitung jumlah prospek yang dibuat oleh setiap sales dalam minggu ini dan bulan berjalan
         // Exclude sales yang tidak aktif menerima prospect: 23 (Nada), 16 (Mohamad Didik)
@@ -298,6 +360,9 @@ class ProspectController extends Controller
             'availableYears',
             'salesNewProspectCount',
             'salesFuProspectCount',
+            'salesQuotedProspectCount',
+            'salesNoQuoteProspectCount',
+            'salesPoProspectCount',
             'salesTotalAssigned',
             'salesQuoteForecast',
             'salesQuoteForecastCount',
@@ -886,6 +951,18 @@ class ProspectController extends Controller
                     ]);
             }
 
+            // 7. Smart Quotation Comment Mentions
+            if (\Illuminate\Support\Facades\Schema::hasTable('unit_quotation_comment_mentions')) {
+                \Illuminate\Support\Facades\DB::table('unit_quotation_comment_mentions')
+                    ->where('user_id', $userId)
+                    ->where('is_read', false)
+                    ->update([
+                        'is_read' => true,
+                        'read_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Semua notifikasi berhasil ditandai sebagai sudah dibaca'
@@ -1333,16 +1410,34 @@ class ProspectController extends Controller
         $comment->level = '1';
         $comment->type = 'prospect';
         $commentSave = $comment->save();
+        $mentionedIds = [];
         if (@$request->mention) {
             foreach ($request->mention as $key => $value) {
-                $mention = new MentionComment();
-                $mention->id_comment = $comment->id;
-                $mention->id_mention = $value;
-                $mention->level = '0';
-                // dd($mention);
-                $mention->save();
+                $valInt = (int) $value;
+                if ($valInt && $valInt !== Auth::id()) {
+                    $mentionedIds[$valInt] = $valInt;
+                }
             }
         }
+
+        // Auto detect @Username in comment text
+        $activeUsers = \App\Models\User::where('active', '1')
+            ->where('id', '!=', Auth::id())
+            ->get();
+        foreach ($activeUsers as $user) {
+            if (stripos($request->comment, '@' . $user->name) !== false) {
+                $mentionedIds[$user->id] = $user->id;
+            }
+        }
+
+        foreach ($mentionedIds as $userId) {
+            $mention = new MentionComment();
+            $mention->id_comment = $comment->id;
+            $mention->id_mention = $userId;
+            $mention->level = '0';
+            $mention->save();
+        }
+
         if ($commentSave) {
             return redirect('/prospect/'.$id.'#viewComment')->with('massage', 'Data berhasil di buat');
         }

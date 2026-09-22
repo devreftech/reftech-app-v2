@@ -119,8 +119,9 @@
                     </div>
 
                     <div class="col-md-4">
-                        <label class="form-label fw-bold">Tanggal Surat Jalan <span class="text-danger">*</span></label>
-                        <input type="date" class="form-control" id="doDate" name="date" value="{{ old('date', date('Y-m-d')) }}" required>
+                        <label class="form-label fw-bold">Tanggal Surat Jalan <small class="text-muted fw-normal">(Opsional / Boleh Kosong)</small></label>
+                        <input type="date" class="form-control" id="doDate" name="date" value="{{ old('date') }}">
+                        <div class="form-text small text-muted">Boleh dikosongkan jika tanggal belum ditentukan</div>
                     </div>
 
                     {{-- Row 3: Customer & PO --}}
@@ -197,12 +198,11 @@
                     <table class="table table-sm table-bordered align-middle mb-0" id="doItemsTable">
                         <thead class="table-light">
                             <tr>
-                                <th style="width: 4%" class="text-center">No.</th>
-                                <th style="width: 36%">Nama Barang / Produk <span class="text-danger">*</span></th>
-                                <th style="width: 32%">Deskripsi / Spesifikasi / Part No.</th>
-                                <th style="width: 12%" class="text-center">Qty <span class="text-danger">*</span></th>
-                                <th style="width: 12%">Satuan</th>
-                                <th style="width: 4%" class="text-center"><i class="mdi mdi-trash-can-outline"></i></th>
+                                <th style="width: 5%" class="text-center">No.</th>
+                                <th style="width: 65%">Nama Barang / Produk <span class="text-danger">*</span></th>
+                                <th style="width: 15%" class="text-center">Qty <span class="text-danger">*</span></th>
+                                <th style="width: 10%">Satuan</th>
+                                <th style="width: 5%" class="text-center"><i class="mdi mdi-trash-can-outline"></i></th>
                             </tr>
                         </thead>
                         <tbody id="doItemsTableBody">
@@ -250,9 +250,6 @@ $(document).ready(function() {
                 <td class="text-center fw-semibold row-number">${idx + 1}</td>
                 <td>
                     <input type="text" class="form-control form-control-sm" name="items[${idx}][product]" value="${data.product || ''}" placeholder="Nama barang / kompresor / sparepart" required>
-                </td>
-                <td>
-                    <input type="text" class="form-control form-control-sm" name="items[${idx}][desc]" value="${data.desc || ''}" placeholder="Keterangan / spesifikasi / SN / PN">
                 </td>
                 <td>
                     <input type="number" step="any" min="0.01" class="form-control form-control-sm text-center" name="items[${idx}][qty]" value="${data.qty || 1}" required>

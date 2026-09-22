@@ -210,7 +210,7 @@
                                     <select name="payment" class="form-select">
                                         <option value="Cash" {{ old('payment') == 'Cash' ? 'selected' : '' }}>Cash / Tunai</option>
                                         <option value="Transfer Bank" {{ old('payment') == 'Transfer Bank' ? 'selected' : '' }}>Transfer Bank</option>
-                                        <option value="Marketplace (Tokopedia/Shopee)" {{ old('payment') == 'Marketplace (Tokopedia/Shopee)' ? 'selected' : '' }}>Marketplace</option>
+                                        <option value="Marketplace" {{ in_array(old('payment'), ['Marketplace', 'Marketplace (Tokopedia/Shopee)']) ? 'selected' : '' }}>Marketplace</option>
                                         <option value="Petty Cash" {{ old('payment') == 'Petty Cash' ? 'selected' : '' }}>Petty Cash Gudang</option>
                                     </select>
                                 </div>

@@ -106,17 +106,18 @@ $(function () {
                     targets: 5,
                     className: "text-center",
                     render: function (data, type, full) {
-                        var titleTip = full["note"];
                         if (type !== "display") return data;
+                        var tip = full["note"] || full["tip"] || "Loss";
+                        var escapedTip = $('<div>').text(tip).html();
                         if (full["row_type"] === "unit") {
                             var uMap = {
                                 loss:   { title: "Loss", class: "bg-label-danger" },
                                 cancel: { title: "Cancel", class: "bg-label-secondary" },
                             };
                             var uInfo = uMap[data] || { title: data || "-", class: "bg-label-secondary" };
-                            return '<span data-bs-toggle="tooltip" data-bs-placement="top" title="' + (titleTip || "") + '" class="badge rounded-pill ' + uInfo.class + '">' + uInfo.title + "</span>";
+                            return '<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="tooltip-danger" title="' + escapedTip + '" class="badge rounded-pill ' + uInfo.class + ' cursor-pointer">' + uInfo.title + "</span>";
                         }
-                        return '<span data-bs-toggle="tooltip" data-bs-placement="top" title="' + (titleTip || "") + '" class="badge rounded-pill bg-label-danger">Loss</span>';
+                        return '<span data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="tooltip-danger" title="' + escapedTip + '" class="badge rounded-pill bg-label-danger cursor-pointer">Loss</span>';
                     },
                 },
                 {

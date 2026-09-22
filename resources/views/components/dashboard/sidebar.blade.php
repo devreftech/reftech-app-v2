@@ -63,12 +63,6 @@
                     <div data-i18n="Overview">Overview</div>
                 </a>
             </li>
-            <li class="menu-item {{ request()->is('kanban*') ? 'active' : '' }}">
-                <a href="{{ route('kanban.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-view-dashboard-outline"></i>
-                    <div data-i18n="Kanban">Kanban</div>
-                </a>
-            </li>
             <!-- Layouts -->
             @if (Auth::user()->role != 'Accounting')
             <li class="menu-header fw-light mt-4">
@@ -193,49 +187,18 @@
                 </ul>
             </li>
 
-            @if (in_array(Auth::user()->role, ['Admin', 'developer', 'Developer']) || (method_exists(Auth::user(), 'isDeveloper') && Auth::user()->isDeveloper()))
-            <li class="menu-item {{ request()->is('piping-rab*') ? 'active' : '' }}">
-                <a href="{{ route('piping-rab.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-calculator-variant-outline"></i>
-                    <div data-i18n="Estimasi / RAB Piping">Estimasi / RAB Piping</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('schematics*') ? 'active' : '' }}">
-                <a href="{{ route('schematics.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-vector-polyline"></i>
-                    <div data-i18n="Schematic Diagram">Schematic Diagram</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('hvac*') ? 'active open' : '' }}">
-                <a href="javascript:void(0);" class="menu-link menu-toggle">
-                    <i class="menu-icon tf-icons mdi mdi-air-conditioner"></i>
-                    <div data-i18n="HVAC Cooling Load">HVAC Cooling Load</div>
-                </a>
-                <ul class="menu-sub">
-                    <li class="menu-item {{ request()->is('hvac/quick-calculator*') ? 'active' : '' }}">
-                        <a href="{{ route('hvac.quick-calculator') }}" class="menu-link">
-                            <div data-i18n="Quick Estimator (Sales)">Quick Estimator (Sales)</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ request()->is('hvac/projects*') || request()->is('hvac/rooms*') ? 'active' : '' }}">
-                        <a href="{{ route('hvac.project.index') }}" class="menu-link">
-                            <div data-i18n="Daftar Proyek HVAC">Daftar Proyek HVAC</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ request()->is('hvac/master-catalog*') ? 'active' : '' }}">
-                        <a href="{{ route('hvac.master.index') }}" class="menu-link">
-                            <div data-i18n="Master Data & Katalog">Master Data &amp; Katalog</div>
-                        </a>
-                    </li>
-                </ul>
-            </li>
-            @endif
 
             @if (Auth::user()->role == 'Admin')
             <li class="menu-item {{ request()->is('sales-target') ? 'active' : '' }}">
                 <a href="{{ route('sales-target.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-bullseye-arrow"></i>
-                    <div data-i18n="Sales Target">Sales Target</div>
+                    <i class="menu-icon tf-icons mdi mdi-account-group-outline"></i>
+                    <div data-i18n="Sales Management">Sales Management</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('ecommerce/kpi*') ? 'active' : '' }}">
+                <a href="{{ route('ecommerce.kpi.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-shopping-outline"></i>
+                    <div data-i18n="KPI E-Commerce">KPI E-Commerce</div>
                 </a>
             </li>
             @endif
@@ -336,6 +299,87 @@
                     <div data-i18n="Return">Return</div>
                 </a>
             </li>
+
+            @if (in_array(Auth::user()?->role, ['Admin', 'developer', 'Developer']) || (method_exists(Auth::user(), 'isDeveloper') && Auth::user()->isDeveloper()))
+            <li class="menu-header fw-light mt-4">
+                <span class="menu-header-text">Project Management</span>
+            </li>
+            <li class="menu-item {{ request()->is('project-monitoring*') || (request()->is('sales-order') && request('tab') == 'project-monitoring') ? 'active' : '' }}">
+                <a href="{{ route('pending-po.sales-order', ['tab' => 'project-monitoring']) }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-monitor-dashboard"></i>
+                    <div data-i18n="Project Monitoring">Project Monitoring</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('kanban*') && !request()->is('accounting/monitoring-document*') ? 'active' : '' }}">
+                <a href="{{ route('kanban.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-view-dashboard-outline"></i>
+                    <div data-i18n="Project Kanban">Project Kanban</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('project-reports*') || (request()->is('service-reports*') && request('tab') == 'project') ? 'active' : '' }}">
+                <a href="{{ route('service-reports.index', ['tab' => 'project']) }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-clipboard-text-clock-outline"></i>
+                    <div data-i18n="Daily Project Report">Daily Project Report</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('bast') || request()->is('bast/*') ? 'active' : '' }}">
+                <a href="{{ route('bast.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-file-sign"></i>
+                    <div data-i18n="BAST">BAST (Serah Terima)</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('piping-rab*') || request()->is('piping-materials*') || request()->is('schematics*') || request()->is('hvac*') ? 'open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <i class="menu-icon tf-icons mdi mdi-compass-outline"></i>
+                    <div data-i18n="Engineering & RAB">Engineering &amp; RAB</div>
+                </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('piping-rab*') ? 'active' : '' }}">
+                        <a href="{{ route('piping-rab.index') }}" class="menu-link">
+                            <div data-i18n="Estimasi / RAB Piping">Estimasi / RAB Piping</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('schematics*') ? 'active' : '' }}">
+                        <a href="{{ route('schematics.index') }}" class="menu-link">
+                            <div data-i18n="Schematic Diagram">Schematic Diagram</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hvac/quick-calculator*') ? 'active' : '' }}">
+                        <a href="{{ route('hvac.quick-calculator') }}" class="menu-link">
+                            <div data-i18n="HVAC Quick Estimator">HVAC Quick Estimator</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hvac/projects*') || request()->is('hvac/rooms*') ? 'active' : '' }}">
+                        <a href="{{ route('hvac.project.index') }}" class="menu-link">
+                            <div data-i18n="Daftar Proyek HVAC">Daftar Proyek HVAC</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hvac/master-catalog*') ? 'active' : '' }}">
+                        <a href="{{ route('hvac.master.index') }}" class="menu-link">
+                            <div data-i18n="Master Unit HVAC">Master Unit HVAC</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="menu-item {{ request()->is('report/project-profitability*') || request()->is('payable/expenses*') ? 'open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <i class="menu-icon tf-icons mdi mdi-cash-multiple"></i>
+                    <div data-i18n="Project Cost & Profit">Project Cost &amp; Profit</div>
+                </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('report/project-profitability*') ? 'active' : '' }}">
+                        <a href="{{ route('report.project_profitability') }}" class="menu-link">
+                            <div data-i18n="Laba Rugi Proyek">Laba Rugi Proyek</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('payable/expenses*') ? 'active' : '' }}">
+                        <a href="{{ route('payable.expenses') }}" class="menu-link">
+                            <div data-i18n="Biaya Proyek AP">Biaya Proyek AP</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            @endif
             {{-- <li
                 class="menu-item {{ request()->is('pending-po') || request()->is('pending-po/*') || request()->is('pending-po-done') || request()->is('pending-po-project') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
@@ -426,12 +470,6 @@
                 <a href="{{ route('service-reports.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-list-box-outline"></i>
                     <div data-i18n="Service Report">Service Report</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('project-reports*') || (request()->is('service-reports*') && request('tab') == 'project') ? 'active' : '' }}">
-                <a href="{{ route('service-reports.index', ['tab' => 'project']) }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-clipboard-text-clock-outline"></i>
-                    <div data-i18n="Daily Project Report">Daily Project Report</div>
                 </a>
             </li>
             <li class="menu-item {{ request()->is('tool-assignment') || request()->is('tool-assignment/*') ? 'active' : '' }}">
@@ -1098,12 +1136,13 @@
                     <div data-i18n="Overview">Overview</div>
                 </a>
             </li>
-            <li class="menu-item {{ request()->is('kanban*') ? 'active' : '' }}">
-                <a href="{{ route('kanban.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-view-dashboard-outline"></i>
-                    <div data-i18n="Kanban">Kanban</div>
+            <li class="menu-item {{ request()->is('my-kpi') ? 'active' : '' }}">
+                <a href="{{ route('ecommerce.my-kpi') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-certificate-outline"></i>
+                    <div data-i18n="Rapor KPI">Rapor KPI</div>
                 </a>
             </li>
+
             <!-- Layouts -->
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Client</span>
@@ -2788,8 +2827,14 @@
             </li>
             <li class="menu-item {{ request()->is('sales-target') ? 'active' : '' }}">
                 <a href="{{ route('sales-target.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-target"></i>
-                    <div data-i18n="Sales Target">Sales Target</div>
+                    <i class="menu-icon tf-icons mdi mdi-account-group-outline"></i>
+                    <div data-i18n="Sales Management">Sales Management</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('ecommerce/kpi*') ? 'active' : '' }}">
+                <a href="{{ route('ecommerce.kpi.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-shopping-outline"></i>
+                    <div data-i18n="KPI E-Commerce">KPI E-Commerce</div>
                 </a>
             </li>
             <li class="menu-header fw-light mt-4">
@@ -2814,23 +2859,27 @@
             </li>
 
             <li class="menu-header fw-light mt-4">
-                <span class="menu-header-text">Project Operations</span>
+                <span class="menu-header-text">Project Management</span>
             </li>
-            <li class="menu-item {{ request()->is('kanban*') ? 'active' : '' }}">
-                <a href="{{ route('kanban.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-view-dashboard-outline"></i>
-                    <div data-i18n="Kanban">Kanban</div>
+            <li class="menu-item {{ request()->is('project-monitoring*') || (request()->is('sales-order') && request('tab') == 'project-monitoring') ? 'active' : '' }}">
+                <a href="{{ route('pending-po.sales-order', ['tab' => 'project-monitoring']) }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-monitor-dashboard"></i>
+                    <div data-i18n="Project Monitoring">Project Monitoring</div>
                 </a>
             </li>
-            <li
-                class="menu-item {{ request()->is('project-reports*') || (request()->is('service-reports*') && request('tab') == 'project') ? 'active' : '' }}">
+            <li class="menu-item {{ request()->is('kanban*') && !request()->is('accounting/monitoring-document*') ? 'active' : '' }}">
+                <a href="{{ route('kanban.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-view-dashboard-outline"></i>
+                    <div data-i18n="Project Kanban">Project Kanban</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('project-reports*') || (request()->is('service-reports*') && request('tab') == 'project') ? 'active' : '' }}">
                 <a href="{{ route('service-reports.index', ['tab' => 'project']) }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-clipboard-text-clock-outline"></i>
                     <div data-i18n="Daily Project Report">Daily Project Report</div>
                 </a>
             </li>
-            <li
-                class="menu-item {{ (request()->is('service-reports') || request()->is('service-reports/*')) && request('tab') != 'project' && !request()->is('project-reports*') ? 'active' : '' }}">
+            <li class="menu-item {{ (request()->is('service-reports') || request()->is('service-reports/*')) && request('tab') != 'project' && !request()->is('project-reports*') ? 'active' : '' }}">
                 <a href="{{ route('service-reports.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-wrench-outline"></i>
                     <div data-i18n="Service Report">Service Report</div>
@@ -2839,42 +2888,28 @@
             <li class="menu-item {{ request()->is('bast') || request()->is('bast/*') ? 'active' : '' }}">
                 <a href="{{ route('bast.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-file-sign"></i>
-                    <div data-i18n="BAST">BAST</div>
+                    <div data-i18n="BAST">BAST (Serah Terima)</div>
                 </a>
             </li>
-            <li class="menu-item {{ request()->is('piping-rab*') || request()->is('piping-materials*') ? 'active open' : '' }}">
+            <li class="menu-item {{ request()->is('piping-rab*') || request()->is('piping-materials*') || request()->is('schematics*') || request()->is('hvac*') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
-                    <i class="menu-icon tf-icons mdi mdi-pipe"></i>
-                    <div data-i18n="RAB & Material Piping">RAB &amp; Material Piping</div>
+                    <i class="menu-icon tf-icons mdi mdi-compass-outline"></i>
+                    <div data-i18n="Engineering & RAB">Engineering &amp; RAB</div>
                 </a>
                 <ul class="menu-sub">
                     <li class="menu-item {{ request()->is('piping-rab*') ? 'active' : '' }}">
                         <a href="{{ route('piping-rab.index') }}" class="menu-link">
-                            <div data-i18n="RAB Piping">RAB Piping</div>
+                            <div data-i18n="Estimasi / RAB Piping">Estimasi / RAB Piping</div>
                         </a>
                     </li>
-                    <li class="menu-item {{ request()->is('piping-materials*') ? 'active' : '' }}">
-                        <a href="{{ route('piping-materials.index') }}" class="menu-link">
-                            <div data-i18n="Material Piping">Material Piping</div>
+                    <li class="menu-item {{ request()->is('schematics*') ? 'active' : '' }}">
+                        <a href="{{ route('schematics.index') }}" class="menu-link">
+                            <div data-i18n="Schematic Diagram">Schematic Diagram</div>
                         </a>
                     </li>
-                </ul>
-            </li>
-            <li class="menu-item {{ request()->is('schematics*') ? 'active' : '' }}">
-                <a href="{{ route('schematics.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-vector-polyline"></i>
-                    <div data-i18n="Schematic Diagram">Schematic Diagram</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('hvac*') ? 'active open' : '' }}">
-                <a href="javascript:void(0);" class="menu-link menu-toggle">
-                    <i class="menu-icon tf-icons mdi mdi-air-conditioner"></i>
-                    <div data-i18n="HVAC Cooling Load">HVAC Cooling Load</div>
-                </a>
-                <ul class="menu-sub">
                     <li class="menu-item {{ request()->is('hvac/quick-calculator*') ? 'active' : '' }}">
                         <a href="{{ route('hvac.quick-calculator') }}" class="menu-link">
-                            <div data-i18n="Quick Estimator (Sales)">Quick Estimator (Sales)</div>
+                            <div data-i18n="HVAC Quick Estimator">HVAC Quick Estimator</div>
                         </a>
                     </li>
                     <li class="menu-item {{ request()->is('hvac/projects*') || request()->is('hvac/rooms*') ? 'active' : '' }}">
@@ -2884,7 +2919,25 @@
                     </li>
                     <li class="menu-item {{ request()->is('hvac/master-catalog*') ? 'active' : '' }}">
                         <a href="{{ route('hvac.master.index') }}" class="menu-link">
-                            <div data-i18n="Master Data & Katalog">Master Data &amp; Katalog</div>
+                            <div data-i18n="Master Unit HVAC">Master Unit HVAC</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="menu-item {{ request()->is('report/project-profitability*') || request()->is('payable/expenses*') ? 'open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <i class="menu-icon tf-icons mdi mdi-cash-multiple"></i>
+                    <div data-i18n="Project Cost & Profit">Project Cost &amp; Profit</div>
+                </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('report/project-profitability*') ? 'active' : '' }}">
+                        <a href="{{ route('report.project_profitability') }}" class="menu-link">
+                            <div data-i18n="Laba Rugi Proyek">Laba Rugi Proyek</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('payable/expenses*') ? 'active' : '' }}">
+                        <a href="{{ route('payable.expenses') }}" class="menu-link">
+                            <div data-i18n="Biaya Proyek AP">Biaya Proyek AP</div>
                         </a>
                     </li>
                 </ul>
@@ -3041,6 +3094,13 @@
         @if (Auth::user()?->isDeveloper())
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Developer Tools</span>
+            </li>
+            <li class="menu-item {{ request()->is('developer/dashboard*') || (request()->is('/') && request()->query('view') === 'developer') ? 'active' : '' }}">
+                <a href="{{ route('developer.dashboard') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-view-dashboard-variant-outline text-primary"></i>
+                    <div data-i18n="Dev Dashboard">Dev Dashboard</div>
+                    <div class="badge bg-label-success rounded-pill ms-auto">Live</div>
+                </a>
             </li>
             <li class="menu-item {{ request()->is('developer/mailbox-management*') ? 'active' : '' }}">
                 <a href="{{ route('developer.mailbox.index') }}" class="menu-link">

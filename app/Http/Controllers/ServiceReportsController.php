@@ -460,7 +460,11 @@ class ServiceReportsController extends Controller
 
     public function hand_sign(Request $request, $id)
     {
-        $photo = Reports::find($id);
+        $request->validate([
+            'sign_client' => 'nullable|file|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        $photo = Reports::findOrFail($id);
 
         if ($request->hasFile('sign_client')) {
             $foto = $request->file('sign_client'); // Akses file sesuai dengan iterasi saat ini
@@ -511,12 +515,18 @@ class ServiceReportsController extends Controller
 
     public function inputImage(Request $request, $id)
     {
+        $request->validate([
+            'image'   => 'nullable|array',
+            'image.*' => 'nullable|file|image|mimes:jpeg,jpg,png,webp|max:10240',
+        ]);
+
+        $status = false;
         foreach ($request->description as $item => $value) {
             $photo = new ReportsPict();
             $photo->id_reports = $id;
             $photo->keterangan = $value; // Gunakan $value, bukan $request->description
 
-            if ($request->hasFile('image')) {
+            if ($request->hasFile('image') && isset($request->file('image')[$item])) {
                 $foto = $request->file('image')[$item]; // Akses file sesuai dengan iterasi saat ini
                 // Proses setiap file gambar
                 $image_ext = $foto->getClientOriginalExtension();

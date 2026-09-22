@@ -28,7 +28,9 @@ try {
 
     $query = "
     SELECT q.id, q.no_quote, c.company, c.ru, q.subtotal, q.title, q.estimated_date,
-           q.status, CONCAT(q.note, ' (', q.status_date, ')') AS tip, q.type,
+           q.status,
+           COALESCE(NULLIF(TRIM(CONCAT_WS(' ', q.note, CASE WHEN q.status_date IS NOT NULL AND q.status_date != '' THEN CONCAT('(', q.status_date, ')') ELSE '' END)), ''), 'Belum di update') AS tip,
+           q.type,
            'service' AS row_type, u.name AS sales_name, u.image AS sales_image,
            NULL AS plant_name
     FROM quotation q
@@ -47,10 +49,13 @@ try {
            COALESCE(NULLIF(uq.title,''),'-') AS title,
            uq.date AS estimated_date,
            uq.status,
-           (SELECT CONCAT(DATE_FORMAT(sh.created_at,'%d-%m-%y'),' | ',COALESCE(NULLIF(sh.note,''),'Belum di update'))
-            FROM unit_quotation_status_history sh
-            WHERE sh.id_unit_quotation = uq.id
-            ORDER BY sh.created_at DESC LIMIT 1) AS tip,
+           COALESCE(
+               (SELECT CONCAT(DATE_FORMAT(sh.created_at,'%d-%m-%y'),' | ',COALESCE(NULLIF(sh.note,''),'Belum di update'))
+                FROM unit_quotation_status_history sh
+                WHERE sh.id_unit_quotation = uq.id
+                ORDER BY sh.created_at DESC LIMIT 1),
+               'Belum di update'
+           ) AS tip,
            uq.type,
            'unit' AS row_type,
            u2.name AS sales_name, u2.image AS sales_image,

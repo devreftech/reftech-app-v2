@@ -17,13 +17,13 @@ class ServiceReportSignController extends Controller
      */
     public function show($token)
     {
-        $service = Reports::with(['pic.client', 'machine', 'technician', 'picture'])
+        $service = Reports::with(['pic.client', 'machine.unit.unit', 'technician', 'picture'])
             ->where('sign_token', $token)
             ->first();
 
         // Fallback jika token berupa ID (untuk backward compatibility)
         if (!$service && is_numeric($token)) {
-            $service = Reports::with(['pic.client', 'machine', 'technician', 'picture'])->find($token);
+            $service = Reports::with(['pic.client', 'machine.unit.unit', 'technician', 'picture'])->find($token);
             if ($service) {
                 return redirect()->route('service-report.customer.sign', $service->sign_token);
             }
@@ -191,7 +191,7 @@ class ServiceReportSignController extends Controller
      */
     public function downloadPdf($token)
     {
-        $service = Reports::with(['pic.client', 'machine', 'technician', 'picture'])
+        $service = Reports::with(['pic.client', 'machine.unit.unit', 'technician', 'picture'])
             ->where('sign_token', $token)
             ->firstOrFail();
 

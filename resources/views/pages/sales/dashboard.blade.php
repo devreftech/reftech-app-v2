@@ -3,7 +3,8 @@
 @section('content')
     @if (Auth::user()->isDeveloper())
         @php
-            $adminView = request()->query('view', $adminView ?? 'sales');
+            $defaultView = 'developer';
+            $adminView = request()->query('view', $adminView ?? $defaultView);
         @endphp
 
         <div class="card clean-card mb-4 p-3" style="border-color: rgba(143, 91, 255, 0.35);">

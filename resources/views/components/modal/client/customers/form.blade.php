@@ -6,7 +6,7 @@
     @if ($customers)
         @method('patch')
     @endif
-    <div class="modal animate__animated animate__fadeIn"
+    <div class="modal fade"
         id="{{'updateCustomers-' . strval($customers->id)}}" tabindex="-1" style="display: none;"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">

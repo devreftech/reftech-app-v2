@@ -148,7 +148,11 @@ class ContractController extends Controller
 
         // Service / sparepart contract
         $quote = Quotation::where('id', $contract->id_quotation)->first();
-        if ($quote->type != 'Sparepart') {
+        if (!$quote) {
+            return redirect()->route('contract.index')->with('error', 'Quotation terkait kontrak tidak ditemukan');
+        }
+        $subQuote = collect([]);
+        if (($quote->type ?? '') != 'Sparepart') {
             $subQuote = SubtitleQuotation::with('detail')->where('id_quotation', $quote->id)->get();
         }
         $tax = ($quote->subtotal - $quote->diskon) * $quote->tax / 100;

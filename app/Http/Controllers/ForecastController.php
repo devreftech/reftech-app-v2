@@ -287,7 +287,8 @@ class ForecastController extends Controller
             $clientIds = array_unique($forecastedClientIds);
             $picIds = \App\Models\Pic::whereIn('id_client', $clientIds)->pluck('id');
 
-            $quotationQuery = Quotation::where('status', '100')
+            $quotationQuery = Quotation::with('pic.client')
+                ->where('status', '100')
                 ->where('is_primary', '1')
                 ->where('level', '1')
                 ->whereIn('id_pic', $picIds)

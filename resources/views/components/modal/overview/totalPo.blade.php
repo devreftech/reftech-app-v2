@@ -63,7 +63,7 @@
         </script>
     @endpush
 @endonce
-<div class="modal animate__animated animate__fadeIn" id="overviewPO{{ $monthKeyModal }}" tabindex="-1"
+<div class="modal fade" id="overviewPO{{ $monthKeyModal }}" tabindex="-1"
     style="display: none;" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
         <div class="modal-content">

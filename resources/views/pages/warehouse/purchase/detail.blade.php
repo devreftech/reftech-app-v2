@@ -32,7 +32,7 @@
             </div>
             <div class="d-flex align-items-center flex-wrap gap-2">
                 <span class="badge bg-label-primary fs-6 px-3 py-2">
-                    <i class="mdi mdi-receipt-text-outline me-1"></i>SO: {{ $pending->no_pending }}
+                    <i class="mdi mdi-receipt-text-outline me-1"></i>SO: {{ $pending->no_pending ?? ($purchase->no_pr ?? '-') }}
                 </span>
                 @if ($purchase)
                     <span class="badge bg-label-secondary fs-6 px-3 py-2">
@@ -99,7 +99,7 @@
                                         </tr>
                                         <tr>
                                             <td class="fw-semibold text-muted ps-0">Keperluan / Judul</td>
-                                            <td>: <span class="fw-bold text-primary">{{ $pending->title ?: 'Pengadaan Internal' }}</span></td>
+                                            <td>: <span class="fw-bold text-primary">{{ $pending?->title ?: ($purchase?->title ?: 'Pengadaan Internal') }}</span></td>
                                         </tr>
                                         <tr>
                                             <td class="fw-semibold text-muted ps-0">Tujuan</td>
@@ -153,9 +153,13 @@
                                     <tr>
                                         <td class="fw-semibold text-muted ps-0">No Sales Order</td>
                                         <td>:
-                                            <a class="text-primary fw-bold" href="{{ route('pending-po.show', $pending->id) }}">
-                                                {{ $pending->no_pending }}
-                                            </a>
+                                            @if ($pending)
+                                                <a class="text-primary fw-bold" href="{{ route('pending-po.show', $pending->id) }}">
+                                                    {{ $pending->no_pending }}
+                                                </a>
+                                            @else
+                                                <span class="text-muted fst-italic">-</span>
+                                            @endif
                                         </td>
                                     </tr>
                                     <tr>
@@ -185,7 +189,7 @@
                                         <td>:
                                             @php
                                                 $paymentInfo = null;
-                                                $paymentRecord = \App\Models\Payment::where($isUnitQuotation ? 'id_unit_quotation' : 'id_quotation', $quotation->id)->orderByDesc('id')->first();
+                                                $paymentRecord = $quotation ? \App\Models\Payment::where($isUnitQuotation ? 'id_unit_quotation' : 'id_quotation', $quotation->id)->orderByDesc('id')->first() : null;
                                                 if ($paymentRecord) {
                                                     if ($paymentRecord->type === 'Tempo') {
                                                         $days = $paymentRecord->tempo ?: preg_replace('/[^0-9]/', '', (string)$paymentRecord->note);
@@ -787,33 +791,29 @@
                         <form action="{{ route('purchase-request.add-discussion', $pending->id) }}" method="POST" id="discussionForm">
                             @csrf
                             <div class="position-relative">
+                                <div id="mentionDropdown" class="mention-dropdown-menu" style="display:none;"></div>
+
                                 <textarea
-                                    name="message"
-                                    id="discussionMessage"
-                                    class="form-control shadow-none"
-                                    rows="3"
-                                    placeholder="Tulis pesan... ketik @ untuk mention rekan tim"
-                                    style="padding-right: 120px; resize:none; border-radius: 8px; font-size: 13.5px;"
-                                    required></textarea>
+                                        name="message"
+                                        id="discussionMessage"
+                                        class="form-control shadow-none"
+                                        rows="3"
+                                        placeholder="Tulis pesan... ketik @ untuk mention rekan tim"
+                                        style="padding-right: 120px; resize:none; border-radius: 8px; font-size: 13.5px;"
+                                        required></textarea>
 
-                                {{-- Hidden inputs untuk mention --}}
-                                <div id="mentionInputs"></div>
+                                    {{-- Hidden inputs untuk mention --}}
+                                    <div id="mentionInputs"></div>
 
-                                <button type="submit" class="btn btn-primary position-absolute d-flex align-items-center"
-                                    style="bottom:12px;right:12px; padding: 6px 14px; font-size: 13px; border-radius: 6px;">
-                                    <i class="mdi mdi-send me-1"></i> Kirim
-                                </button>
-                            </div>
+                                    <button type="submit" class="btn btn-primary position-absolute d-flex align-items-center"
+                                        style="bottom:12px;right:12px; padding: 6px 14px; font-size: 13px; border-radius: 6px;">
+                                        <i class="mdi mdi-send me-1"></i> Kirim
+                                    </button>
+                                </div>
 
-                            {{-- Mention dropdown --}}
-                            <ul id="mentionDropdown"
-                                class="list-group shadow border-0"
-                                style="display:none;position:absolute;z-index:999;min-width:240px;max-height:200px;overflow-y:auto; border-radius: 8px;">
-                            </ul>
-
-                            {{-- Tag mention yang dipilih --}}
-                            <div id="mentionTags" class="d-flex flex-wrap gap-1 mt-2"></div>
-                        </form>
+                                {{-- Tag mention yang dipilih --}}
+                                <div id="mentionTags" class="d-flex flex-wrap gap-1 mt-2"></div>
+                            </form>
                     </div>
                 </div>
             </div>
@@ -1027,12 +1027,111 @@
             border-radius: 10px;
         }
 
-        #mentionDropdown .list-group-item { cursor: pointer; padding: 6px 12px; }
-        #mentionDropdown .list-group-item:hover { background: #f0f0f0; }
-        #mentionDropdown .list-group-item img { width: 28px; height: 28px; object-fit: cover; }
-        .mention-tag { background: #e7f1ff; color: #7367F0; border: 1px solid #bfdbfe; border-radius: 999px; padding: 2px 10px; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
-        .mention-tag .remove-mention { cursor: pointer; font-weight: bold; color: #6b7280; }
-        .mention-tag .remove-mention:hover { color: #ef4444; }
+        /* Mention Dropdown Elegant UI */
+        .mention-dropdown-menu {
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            width: 100%;
+            max-width: 440px;
+            z-index: 1060;
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid rgba(105, 108, 255, 0.25) !important;
+            box-shadow: 0 14px 34px rgba(34, 48, 62, 0.18), 0 2px 8px rgba(0,0,0,0.06);
+            overflow: hidden;
+            animation: mentionDropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        html.dark-style .mention-dropdown-menu {
+            background: #2b2c40 !important;
+            border-color: rgba(105, 108, 255, 0.35) !important;
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+        }
+
+        @keyframes mentionDropdownFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .mention-dropdown-header {
+            padding: 8px 14px;
+            background: #f8f9fa;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            font-size: 11.5px;
+            color: #566a7f;
+        }
+
+        html.dark-style .mention-dropdown-header {
+            background: #32344d;
+            border-bottom-color: rgba(255,255,255,0.07);
+            color: #a8abc2;
+        }
+
+        .mention-dropdown-list {
+            max-height: 220px;
+            overflow-y: auto;
+            margin: 0;
+            padding: 4px;
+            list-style: none;
+        }
+
+        .mention-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+
+        .mention-item:hover,
+        .mention-item.active-item {
+            background-color: rgba(105, 108, 255, 0.08);
+        }
+
+        html.dark-style .mention-item:hover,
+        html.dark-style .mention-item.active-item {
+            background-color: rgba(105, 108, 255, 0.2);
+        }
+
+        .mention-tag {
+            background: rgba(105, 108, 255, 0.1);
+            color: #696cff;
+            border: 1px solid rgba(105, 108, 255, 0.25);
+            border-radius: 999px;
+            padding: 3px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        html.dark-style .mention-tag {
+            background: rgba(105, 108, 255, 0.2);
+            color: #8c90ff;
+            border-color: rgba(105, 108, 255, 0.4);
+        }
+
+        .mention-tag .remove-mention {
+            cursor: pointer;
+            color: #a1acb8;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .mention-tag .remove-mention:hover {
+            color: #ff3e1d;
+        }
 
         @media (min-width: 768px) {
             .border-end-md {
@@ -1059,45 +1158,110 @@
         })();
 
         // @mention logic
-        var allUsers = @json($allUsers);
+        var allUsers = @json($allUsers ?? []);
         var selectedMentions = {}; // id => name
         var mentionStartIndex = -1;
+        var activeMentionIndex = 0;
+        var currentFilteredUsers = [];
 
         var textarea = document.getElementById('discussionMessage');
         var dropdown = document.getElementById('mentionDropdown');
         var tagsEl = document.getElementById('mentionTags');
         var inputsEl = document.getElementById('mentionInputs');
 
+        var roleColors = {
+            'Admin': 'danger',
+            'Super Admin': 'danger',
+            'Developer': 'dark',
+            'Sales': 'primary',
+            'Support': 'info',
+            'Logistic': 'warning',
+            'Accounting': 'success',
+            'Purchasing': 'warning'
+        };
+
         function renderDropdown(query) {
-            var filtered = allUsers.filter(function (u) {
+            if (!dropdown || !textarea) return;
+            currentFilteredUsers = allUsers.filter(function (u) {
                 return u.name.toLowerCase().indexOf(query.toLowerCase()) !== -1 && !selectedMentions[u.id];
             }).slice(0, 8);
 
-            dropdown.innerHTML = '';
-            if (!filtered.length) { dropdown.style.display = 'none'; return; }
+            if (!currentFilteredUsers.length) {
+                dropdown.style.display = 'none';
+                dropdown.innerHTML = '';
+                return;
+            }
 
-            filtered.forEach(function (u) {
-                var li = document.createElement('li');
-                li.className = 'list-group-item d-flex align-items-center gap-2';
-                li.innerHTML = '<img src="/' + (u.image || 'assets/img/avatars/1.png') + '" class="rounded-circle">' +
-                    '<span>' + u.name + '</span>' +
-                    '<small class="text-muted ms-auto">' + u.role + '</small>';
-                li.addEventListener('mousedown', function (e) {
-                    e.preventDefault();
-                    selectMention(u);
-                });
-                dropdown.appendChild(li);
+            activeMentionIndex = 0;
+
+            var html = `
+                <div class="mention-dropdown-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-1">
+                        <i class="mdi mdi-at text-primary"></i>
+                        <span class="fw-bold">Pilih Rekan Tim (${currentFilteredUsers.length})</span>
+                    </div>
+                    <small class="text-muted" style="font-size: 10px;">Tekan ↑ ↓ & Enter</small>
+                </div>
+                <ul class="mention-dropdown-list">
+            `;
+
+            currentFilteredUsers.forEach(function (u, index) {
+                var color = roleColors[u.role] || 'primary';
+                var initial = (u.name || 'U').charAt(0).toUpperCase();
+                var activeCls = index === 0 ? 'active-item' : '';
+                var avatarHtml = '';
+
+                if (u.image) {
+                    var imgSrc = u.image.startsWith('/') ? u.image : '/' + u.image;
+                    avatarHtml = `<img src="${imgSrc}" class="rounded-circle shadow-xs flex-shrink-0" width="30" height="30" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'avatar-initial rounded-circle bg-label-${color} fw-bold d-flex align-items-center justify-content-center shadow-xs flex-shrink-0\\' style=\\'width:30px;height:30px;font-size:12px;\\'>${initial}</span>'">`;
+                } else {
+                    avatarHtml = `<span class="avatar-initial rounded-circle bg-label-${color} fw-bold d-flex align-items-center justify-content-center shadow-xs flex-shrink-0" style="width:30px;height:30px;font-size:12px;">${initial}</span>`;
+                }
+
+                html += `
+                    <li class="mention-item ${activeCls}" data-index="${index}">
+                        ${avatarHtml}
+                        <div class="flex-grow-1 min-w-0 text-truncate">
+                            <span class="fw-semibold text-dark d-block text-truncate" style="font-size: 13px;">${u.name}</span>
+                        </div>
+                        <span class="badge bg-label-${color} rounded-pill px-2 py-0.5 ms-auto flex-shrink-0" style="font-size: 10px;">
+                            ${u.role || 'Team'}
+                        </span>
+                    </li>
+                `;
             });
 
-            // Posisikan di bawah textarea
-            var rect = textarea.getBoundingClientRect();
+            html += `</ul>`;
+            dropdown.innerHTML = html;
             dropdown.style.display = 'block';
-            dropdown.style.top = (textarea.offsetTop + textarea.offsetHeight) + 'px';
-            dropdown.style.left = textarea.offsetLeft + 'px';
+
+            // Bind click events
+            dropdown.querySelectorAll('.mention-item').forEach(function (el) {
+                el.addEventListener('mousedown', function (e) {
+                    e.preventDefault();
+                    var idx = parseInt(this.getAttribute('data-index'), 10);
+                    if (currentFilteredUsers[idx]) {
+                        selectMention(currentFilteredUsers[idx]);
+                    }
+                });
+            });
+        }
+
+        function updateActiveItem() {
+            if (!dropdown) return;
+            var items = dropdown.querySelectorAll('.mention-item');
+            items.forEach(function (el, idx) {
+                if (idx === activeMentionIndex) {
+                    el.classList.add('active-item');
+                    el.scrollIntoView({ block: 'nearest' });
+                } else {
+                    el.classList.remove('active-item');
+                }
+            });
         }
 
         function selectMention(user) {
-            // Ganti teks @query dengan @name di textarea
+            if (!textarea) return;
             var val = textarea.value;
             var before = val.substring(0, mentionStartIndex);
             var after = val.substring(textarea.selectionStart);
@@ -1105,19 +1269,23 @@
             textarea.focus();
 
             selectedMentions[user.id] = user.name;
-            dropdown.style.display = 'none';
+            if (dropdown) {
+                dropdown.style.display = 'none';
+                dropdown.innerHTML = '';
+            }
             mentionStartIndex = -1;
             renderTags();
         }
 
         function renderTags() {
+            if (!tagsEl || !inputsEl) return;
             tagsEl.innerHTML = '';
             inputsEl.innerHTML = '';
             Object.keys(selectedMentions).forEach(function (id) {
                 var span = document.createElement('span');
                 span.className = 'mention-tag';
                 span.innerHTML = '@' + selectedMentions[id] +
-                    ' <span class="remove-mention" data-id="' + id + '">&times;</span>';
+                    ' <span class="remove-mention ms-1" data-id="' + id + '">&times;</span>';
                 tagsEl.appendChild(span);
 
                 var inp = document.createElement('input');
@@ -1127,7 +1295,6 @@
                 inputsEl.appendChild(inp);
             });
 
-            // Hapus mention dari tag
             tagsEl.querySelectorAll('.remove-mention').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     delete selectedMentions[this.dataset.id];
@@ -1136,32 +1303,62 @@
             });
         }
 
-        textarea.addEventListener('input', function () {
-            var val = this.value;
-            var pos = this.selectionStart;
+        if (textarea) {
+            textarea.addEventListener('input', function () {
+                var val = this.value;
+                var pos = this.selectionStart;
 
-            // Cari posisi @ terakhir sebelum kursor
-            var atPos = -1;
-            for (var i = pos - 1; i >= 0; i--) {
-                if (val[i] === '@') { atPos = i; break; }
-                if (val[i] === ' ' || val[i] === '\n') break;
-            }
+                var atPos = -1;
+                for (var i = pos - 1; i >= 0; i--) {
+                    if (val[i] === '@') { atPos = i; break; }
+                    if (val[i] === ' ' || val[i] === '\n') break;
+                }
 
-            if (atPos !== -1) {
-                mentionStartIndex = atPos;
-                var query = val.substring(atPos + 1, pos);
-                renderDropdown(query);
-            } else {
-                dropdown.style.display = 'none';
-                mentionStartIndex = -1;
-            }
-        });
+                if (atPos !== -1) {
+                    mentionStartIndex = atPos;
+                    var query = val.substring(atPos + 1, pos);
+                    renderDropdown(query);
+                } else {
+                    if (dropdown) {
+                        dropdown.style.display = 'none';
+                        dropdown.innerHTML = '';
+                    }
+                    mentionStartIndex = -1;
+                }
+            });
 
-        textarea.addEventListener('keydown', function (e) {
-            if (dropdown.style.display === 'block') {
-                if (e.key === 'Escape') dropdown.style.display = 'none';
-            }
-        });
+            textarea.addEventListener('keydown', function (e) {
+                if (!dropdown || dropdown.style.display === 'none' || !currentFilteredUsers.length) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeMentionIndex = (activeMentionIndex + 1) % currentFilteredUsers.length;
+                    updateActiveItem();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeMentionIndex = (activeMentionIndex - 1 + currentFilteredUsers.length) % currentFilteredUsers.length;
+                    updateActiveItem();
+                } else if (e.key === 'Enter' || e.key === 'Tab') {
+                    e.preventDefault();
+                    if (currentFilteredUsers[activeMentionIndex]) {
+                        selectMention(currentFilteredUsers[activeMentionIndex]);
+                    }
+                } else if (e.key === 'Escape') {
+                    dropdown.style.display = 'none';
+                    dropdown.innerHTML = '';
+                    mentionStartIndex = -1;
+                }
+            });
+
+            textarea.addEventListener('blur', function () {
+                setTimeout(function () {
+                    if (dropdown) {
+                        dropdown.style.display = 'none';
+                        dropdown.innerHTML = '';
+                    }
+                }, 200);
+            });
+        }
 
         document.addEventListener('click', function (e) {
             if (!dropdown.contains(e.target) && e.target !== textarea) {

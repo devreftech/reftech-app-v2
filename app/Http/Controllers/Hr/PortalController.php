@@ -18,97 +18,9 @@ use Illuminate\Support\Facades\DB;
 
 class PortalController extends Controller
 {
-    public function index(Request $request)
+    public function index(?Request $request = null)
     {
-        $user = Auth::user();
-        $employee = $user?->employee;
-
-        if (!$employee) {
-            return view('pages.hr.portal.no_employee', compact('user'));
-        }
-
-        $employee->loadMissing(['department', 'position']);
-
-        $today = Carbon::today('Asia/Jakarta')->toDateString();
-        $currentMonth = Carbon::now('Asia/Jakarta')->month;
-        $currentYear = Carbon::now('Asia/Jakarta')->year;
-
-        // Evaluasi Auto Clock-Out otomatis (Asia/Jakarta GMT+7)
-        HrAttendance::processAutoClockOutIfDue();
-
-        // Today's attendance
-        $todayAttendance = HrAttendance::where('employee_id', $employee->id)
-            ->whereDate('date', $today)
-            ->first();
-
-        // Monthly attendance records
-        $monthAttendances = HrAttendance::where('employee_id', $employee->id)
-            ->whereMonth('date', $currentMonth)
-            ->whereYear('date', $currentYear)
-            ->orderByDesc('date')
-            ->get();
-
-        // Leave balances & requests
-        $leaveBalance = HrLeaveBalance::firstOrCreate(
-            ['employee_id' => $employee->id, 'year' => $currentYear],
-            ['total_quota' => 12, 'used_quota' => 0, 'remaining_quota' => 12]
-        );
-        $myLeaves = HrLeaveRequest::with('leaveType')
-            ->where('employee_id', $employee->id)
-            ->orderByDesc('created_at')
-            ->get();
-        $leaveTypes = HrLeaveType::where('is_active', true)->get();
-
-        // Payslips
-        $myPayslips = HrPayrollItem::with('payroll')
-            ->where('employee_id', $employee->id)
-            ->orderByDesc('id')
-            ->get();
-
-        // Reimbursements
-        $myReimbursements = HrReimbursement::where('employee_id', $employee->id)
-            ->orderByDesc('created_at')
-            ->get();
-
-        // Assets
-        $myAssets = HrEmployeeAsset::where('employee_id', $employee->id)
-            ->where('status', 'Digunakan')
-            ->get();
-
-        // Anti-fraud & Security settings
-        $wifiSetting = DB::table('hr_attendance_settings')->where('key', 'is_wifi_restriction_enabled')->first();
-        $isWifiRestrictionEnabled = $wifiSetting && $wifiSetting->value === '1';
-        $deviceLockSetting = DB::table('hr_attendance_settings')->where('key', 'is_device_lock_enabled')->first();
-        $isDeviceLockEnabled = !$deviceLockSetting || $deviceLockSetting->value === '1';
-        $selfieSetting = DB::table('hr_attendance_settings')->where('key', 'is_selfie_required')->first();
-        $isSelfieRequired = $selfieSetting && $selfieSetting->value === '1';
-
-        $activeWifis = HrOfficeWifi::where('is_active', true)->get();
-        $allowedIps = $activeWifis->pluck('ip_address')->toArray();
-        $clientIp = $request->ip();
-
-        $isWifiVerified = !$isWifiRestrictionEnabled
-            || in_array($clientIp, $allowedIps)
-            || (app()->isLocal() && in_array($clientIp, ['127.0.0.1', '::1']));
-
-        return view('pages.hr.portal.index', compact(
-            'user',
-            'employee',
-            'todayAttendance',
-            'monthAttendances',
-            'leaveBalance',
-            'myLeaves',
-            'leaveTypes',
-            'myPayslips',
-            'myReimbursements',
-            'myAssets',
-            'isWifiRestrictionEnabled',
-            'isWifiVerified',
-            'isDeviceLockEnabled',
-            'isSelfieRequired',
-            'clientIp',
-            'activeWifis'
-        ));
+        return redirect()->route('profile.show', Auth::id() ?? 1);
     }
 
     /**
@@ -260,7 +172,7 @@ class PortalController extends Controller
             }
         }
 
-        return redirect()->route('hr.portal.index')->with('success', $msg);
+        return redirect()->route('profile.show', Auth::id())->with('success', $msg);
     }
 
     public function clockOut(Request $request)
@@ -317,7 +229,7 @@ class PortalController extends Controller
 
         $attendance->update($updateData);
 
-        return redirect()->route('hr.portal.index')->with('success', 'Presensi pulang (Clock Out) berhasil dicatat pukul ' . substr($nowTime, 0, 5));
+        return redirect()->route('profile.show', Auth::id())->with('success', 'Presensi pulang (Clock Out) berhasil dicatat pukul ' . substr($nowTime, 0, 5));
     }
 
     /**

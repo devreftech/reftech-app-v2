@@ -11,7 +11,7 @@
                     <div class="onboarding-content mb-0">
                         <h4 class="onboarding-title text-body"> Change no PO {{ $invo == 0 ? 'DP' : 'BP' }}</h4>
                         <div class="onboarding-info mb-3">
-                            {{ $quote->pic->client->company }}
+                            {{ $quote->pic?->client?->company ?? '-' }}
                         </div>
                         <form>
                             <div class="row">

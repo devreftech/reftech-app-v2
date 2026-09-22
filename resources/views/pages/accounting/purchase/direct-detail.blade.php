@@ -144,7 +144,15 @@
                                         <tr>
                                             <td class="text-muted ps-0">Metode Bayar:</td>
                                             <td>
-                                                <span class="badge bg-label-primary font-11">{{ $purchase->payment ?: 'Cash' }}</span>
+                                                @php
+                                                    $pmtStr = $purchase->payment ?: 'Cash';
+                                                    $isMarketplace = $pmtStr === 'Marketplace (Tokopedia/Shopee)' || str_contains(strtolower($pmtStr), 'marketplace');
+                                                @endphp
+                                                @if ($isMarketplace)
+                                                    <span class="badge bg-label-warning font-11"><i class="mdi mdi-shopping-outline me-1"></i>Marketplace</span>
+                                                @else
+                                                    <span class="badge bg-label-primary font-11">{{ $pmtStr }}</span>
+                                                @endif
                                             </td>
                                         </tr>
                                         <tr>

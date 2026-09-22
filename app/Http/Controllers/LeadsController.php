@@ -237,8 +237,8 @@ class LeadsController extends Controller
         $monthNow = $dateNow->month;
         $yearsNow = $dateNow->year;
 
-        $existing = Client::where('id', $id)->first();
-        $leads = Client::where('id', $id)->first();
+        $leads = Client::findOrFail($id);
+        $existing = $leads;
         $charge = PIC::where('id_client', $id)->get();
         $unit = SerialProduct::whereNotNull('detail')->get();
         $machines = Machine::where('id_client', $id)->get();
@@ -367,8 +367,8 @@ class LeadsController extends Controller
 
             $activityTimeline->push([
                 'date' => $uq->created_at ?? Carbon::parse($uq->date),
-                'title' => 'Penawaran Unit Dibuat',
-                'category' => 'Quotation Unit',
+                'title' => 'Smart Quote Dibuat',
+                'category' => 'Smart Quote',
                 'status' => $statusInfo['label'],
                 'note' => $uq->note ?? $uq->title,
                 'color' => $statusInfo['color'],
@@ -603,25 +603,36 @@ class LeadsController extends Controller
         }
         $isuSave = $leads->save();
 
+        $date = $request->date ? \Carbon\Carbon::parse($request->date) : \Carbon\Carbon::today();
+
+        // Hitung week otomatis kalender kerja
+        $dayOfMonth = (int) $date->day;
+        $firstDayOfMonth = (int) $date->copy()->startOfMonth()->dayOfWeekIso;
+        $offset = ($firstDayOfMonth - 1);
+        $autoWeek = max(1, min(5, (int) floor(($dayOfMonth + $offset - 1) / 7) + 1));
+
         $action = new Activities;
         $action->id_client = $id;
-        if ($leads->activities != Null) {
+        if ($request->action === 'Visit') {
+            $action->name = "Visit";
+        } elseif ($leads->activities != null) {
             $action->name = "Follow Up";
         } else {
             $action->name = "Daily Call";
         }
-        $action->status = $request->status;
-        $action->action = $request->action;
-        $action->week = $this->currentCalendarWeek();
-        $action->note = $request->note;
-        $action->date = \Carbon\Carbon::today();
-        $action->follow_up = $request->follow_up;
+        $action->status = $request->status ?? 'Responded';
+        $action->action = $request->action ?? 'Phone Office';
+        $action->week = !empty($request->week) ? (int)$request->week : $autoWeek;
+        $action->note = $request->note ?? '-';
+        $action->date = $date->format('Y-m-d');
+        $action->follow_up = $request->follow_up ?: $date->copy()->addMonth()->format('Y-m-d');
         $activitiesSave = $action->save();
         if (($isuSave && $activitiesSave) || $statSave) {
+            $msg = ($request->action === 'Visit') ? "Aktivitas Visit berhasil dicatat" : "Aktivitas Daily Call / Follow Up berhasil dicatat";
             if ($request->issues == '5') {
-                return redirect("/existing/" . $id)->with("success", "Data telah ditambahkan");
+                return redirect("/existing/" . $id)->with("success", $msg . " (Client telah di-upgrade ke Customer)");
             } else {
-                return redirect("/leads/detail/" . $id)->with("success", "Data telah ditambahkan");
+                return redirect("/leads/detail/" . $id)->with("success", $msg);
             }
         }
     }

@@ -9,7 +9,7 @@
                 <div class="onboarding-content mb-0">
                     <h4 class="onboarding-title text-body"> Insert Fee of {{ $quote->no_quote }}</h4>
                     <div class="onboarding-info mb-3">
-                        {{ $quote->pic->client->company }}
+                        {{ $quote->pic?->client?->company ?? '-' }}
                     </div>
                     <form>
                         <div class="row mb-4">

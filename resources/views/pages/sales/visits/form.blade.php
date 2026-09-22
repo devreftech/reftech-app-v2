@@ -1,7 +1,7 @@
 <form action="" method="post" enctype="multipart/form-data">
     {{-- {{ csrf_token() }} --}}
     @csrf
-    <div class="modal animate__animated animate__zoomIn" id="createVisits" tabindex="-1" style="display: none;"
+    <div class="modal fade" id="createVisits" tabindex="-1" style="display: none;"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">

@@ -227,11 +227,12 @@
     @endif
 
     @if (Auth::check())
-        {{-- Polling notifikasi realtime Kanban mention dengan audio chime & floating toast alert --}}
+        {{-- Polling notifikasi realtime mention pada Smart Quotation, Prospect, Purchase Request, & Kanban --}}
         <script>
-            window.kanbanNotifUnreadUrl = '{{ route('notifications.kanban.unread') }}';
+            window.mentionNotifUnreadUrl = '{{ route('notifications.mentions.unread') }}';
+            window.csrfToken = window.csrfToken || '{{ csrf_token() }}';
         </script>
-        <script src="{{ asset('assets') }}/includes/navbar-kanban-notif.js?v={{ file_exists(public_path('assets/includes/navbar-kanban-notif.js')) ? filemtime(public_path('assets/includes/navbar-kanban-notif.js')) : time() }}"></script>
+        <script src="{{ asset('assets') }}/includes/navbar-mention-notif.js?v={{ file_exists(public_path('assets/includes/navbar-mention-notif.js')) ? filemtime(public_path('assets/includes/navbar-mention-notif.js')) : time() }}"></script>
     @endif
 
     {{-- Patch setStyle so icon updates on click without page reload --}}

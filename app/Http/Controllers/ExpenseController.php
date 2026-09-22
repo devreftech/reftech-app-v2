@@ -488,18 +488,24 @@ class Expensecontroller extends Controller
     public function showExpense($id)
     {
         $expense = Expense::find($id);
+        if (!$expense) {
+            return redirect()->route('expense.index')->with('error', 'Expense tidak ditemukan');
+        }
         $detailExpense = DetailExpense::where('id_expense', $id)->get();
         $terbilang = $this->capitalizeWords(
-            trim($this->terbilang($expense->amount))
+            trim($this->terbilang($expense->amount ?? 0))
         );
         return view('pages.finance.expense.detail', compact('detailExpense', 'expense', 'terbilang'));
     }
     public function showExpensePrint($id)
     {
         $expense = Expense::find($id);
+        if (!$expense) {
+            return redirect()->route('expense.index')->with('error', 'Expense tidak ditemukan');
+        }
         $detailExpense = DetailExpense::where('id_expense', $id)->get();
         $terbilang = $this->capitalizeWords(
-            trim($this->terbilang($expense->amount))
+            trim($this->terbilang($expense->amount ?? 0))
         );
         return view('pages.finance.expense.detail-print', compact('detailExpense', 'expense', 'terbilang'));
     }

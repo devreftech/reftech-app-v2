@@ -23,7 +23,7 @@ if (Auth::check()) {
         // Query database for data
         $year = request()->get('year');
         $yearFilter = ($year && $year !== 'all') ? " AND YEAR(q.estimated_date) = " . intval($year) : "";
-        $query = "SELECT q.*, CONCAT(q.note, ' (', q.status_date, ')') AS tip, c.company, u.name, NULL AS plant_name FROM quotation q
+        $query = "SELECT q.*, COALESCE(NULLIF(TRIM(CONCAT_WS(' ', q.note, CASE WHEN q.status_date IS NOT NULL AND q.status_date != '' THEN CONCAT('(', q.status_date, ')') ELSE '' END)), ''), 'Belum di update') AS tip, c.company, u.name, NULL AS plant_name FROM quotation q
         LEFT JOIN pic p on p.id = q.id_pic
         LEFT JOIN client c on c.id = p.id_client
         INNER JOIN users u on u.id = q.id_sales

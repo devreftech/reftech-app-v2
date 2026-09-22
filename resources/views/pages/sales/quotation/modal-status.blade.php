@@ -18,9 +18,9 @@
                             <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 position-relative" style="z-index: 2;">
                                 <div class="text-start">
                                     <span class="badge bg-white text-primary fw-bold text-uppercase px-2.5 py-1 mb-2" style="border-radius: 5px; font-size: 11px;">Quotation</span>
-                                    <h4 class="text-white fw-bold mb-1" style="font-size: 20px;">{{ $quote->pic->client->company }}</h4>
+                                    <h4 class="text-white fw-bold mb-1" style="font-size: 20px;">{{ $quote->pic?->client?->company ?? '-' }}</h4>
                                     <p class="mb-0 text-white opacity-80" style="font-size: 12.5px;">
-                                        <i class="mdi mdi-account-circle-outline me-1"></i> PIC: {{ $quote->pic->name }}
+                                        <i class="mdi mdi-account-circle-outline me-1"></i> PIC: {{ $quote->pic?->name_pic ?? ($quote->pic?->name ?? '-') }}
                                     </p>
                                 </div>
                                 <div class="text-start text-sm-end d-flex flex-column align-items-start align-items-sm-end gap-1">
@@ -163,10 +163,12 @@
                                     <div class="mb-3">
                                         <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Alamat Pengiriman (Dokumen & Barang)</label>
                                         <select class="form-select mb-2" id="modal_combined_address_select" onchange="onAddressSelectChange('modal', 'combined')">
-                                            <option value="customer">Office Address: {{ $quote->pic->client->address }}</option>
-                                            @foreach ($quote->pic->client->plants as $plant)
-                                                <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
-                                            @endforeach
+                                            <option value="customer">Office Address: {{ $quote->pic?->client?->address ?? '-' }}</option>
+                                            @if ($quote->pic?->client?->plants)
+                                                @foreach ($quote->pic->client->plants as $plant)
+                                                    <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
+                                                @endforeach
+                                            @endif
                                             <option value="manual">-- Alamat Lain (Isi Manual) --</option>
                                         </select>
                                         
@@ -196,10 +198,12 @@
                                     <div class="mb-3 pb-3 border-bottom">
                                         <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Alamat Pengiriman Dokumen / Invoice</label>
                                         <select class="form-select mb-2" id="modal_doc_address_select" onchange="onAddressSelectChange('modal', 'doc')">
-                                            <option value="customer">Office Address: {{ $quote->pic->client->address }}</option>
-                                            @foreach ($quote->pic->client->plants as $plant)
-                                                <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
-                                            @endforeach
+                                            <option value="customer">Office Address: {{ $quote->pic?->client?->address ?? '-' }}</option>
+                                            @if ($quote->pic?->client?->plants)
+                                                @foreach ($quote->pic->client->plants as $plant)
+                                                    <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
+                                                @endforeach
+                                            @endif
                                             <option value="manual">-- Alamat Lain (Isi Manual) --</option>
                                         </select>
 
@@ -226,10 +230,12 @@
                                     <div class="mb-3">
                                         <label class="form-label fw-bold text-dark mb-1" style="font-size: 12.5px;">Alamat Pengiriman Barang</label>
                                         <select class="form-select mb-2" id="modal_shipping_address_select" onchange="onAddressSelectChange('modal', 'shipping')">
-                                            <option value="customer">Office Address: {{ $quote->pic->client->address }}</option>
-                                            @foreach ($quote->pic->client->plants as $plant)
-                                                <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
-                                            @endforeach
+                                            <option value="customer">Office Address: {{ $quote->pic?->client?->address ?? '-' }}</option>
+                                            @if ($quote->pic?->client?->plants)
+                                                @foreach ($quote->pic->client->plants as $plant)
+                                                    <option value="{{ $plant->address }}">Plant: {{ $plant->name }} ({{ $plant->address }})</option>
+                                                @endforeach
+                                            @endif
                                             <option value="manual">-- Alamat Lain (Isi Manual) --</option>
                                         </select>
 

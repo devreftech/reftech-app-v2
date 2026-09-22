@@ -79,6 +79,8 @@ $(function () {
                     },
                 },
             ],
+            pageLength: 5,
+            lengthMenu: [5, 10, 25, 50],
             drawCallback: function (settings) {
                 $('[data-toggle="tooltip"]').tooltip();
             },

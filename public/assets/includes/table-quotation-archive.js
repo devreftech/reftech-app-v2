@@ -106,7 +106,7 @@ $(function () {
                     targets: 6,
                     render: function (data, type, full) {
                         if (type !== "display") return data;
-                        var tip = full["tip"] || "";
+                        var tip = full["tip"] || full["note"] || "";
                         var $status = {
                             20:  { title: "Send WA / Email",     pct: "20%",  class: "bg-label-secondary", colorTip: "tooltip-secondary" },
                             30:  { title: "Inquiry Accepted",     pct: "30%",  class: "bg-label-dark",      colorTip: "tooltip-dark" },
@@ -116,12 +116,14 @@ $(function () {
                             100: { title: "Done PO",              pct: "100%", class: "bg-label-success",   colorTip: "tooltip-success" },
                             0:   { title: "Loss",                 pct: "0%",   class: "bg-label-danger",    colorTip: "tooltip-danger" },
                         };
-                        var s = $status[data];
-                        if (!s) return data;
+                        var s = $status[data] || { title: data || "-", pct: null, class: "bg-label-secondary", colorTip: "tooltip-secondary" };
+                        var label = s.pct ? s.title + " · " + s.pct : s.title;
+                        var tipText = (tip && tip.trim() !== "") ? tip : label;
+                        var escapedTip = $('<div>').text(tipText).html();
                         return '<span class="badge rounded-pill ' + s.class + ' cursor-pointer"' +
                             ' data-bs-toggle="tooltip" data-bs-placement="top"' +
-                            ' data-bs-custom-class="' + s.colorTip + '" title="' + tip + '">' +
-                            s.title + " · " + s.pct + "</span>";
+                            ' data-bs-custom-class="' + (s.colorTip || 'tooltip-secondary') + '" title="' + escapedTip + '">' +
+                            label + "</span>";
                     },
                 },
             ],

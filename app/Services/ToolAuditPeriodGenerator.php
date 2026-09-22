@@ -167,7 +167,10 @@ class ToolAuditPeriodGenerator
             ->first();
 
         if ($openPeriod) {
-            $this->generateForPeriod($openPeriod);
+            \Illuminate\Support\Facades\Cache::remember('tool_audit_period_gen_' . $openPeriod->id, 1800, function () use ($openPeriod) {
+                $this->generateForPeriod($openPeriod);
+                return true;
+            });
             return $openPeriod;
         }
 
@@ -186,7 +189,10 @@ class ToolAuditPeriodGenerator
             ]
         );
 
-        $this->generateForPeriod($period);
+        \Illuminate\Support\Facades\Cache::remember('tool_audit_period_gen_' . $period->id, 1800, function () use ($period) {
+            $this->generateForPeriod($period);
+            return true;
+        });
 
         return $period;
     }

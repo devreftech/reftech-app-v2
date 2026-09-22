@@ -21,7 +21,7 @@ class EmployeeController extends Controller
      */
     public function index()
     {
-        $user = User::all();
+        $user = User::with(['detailUser', 'target'])->get();
         return view('pages.admin.employee.user.index', compact('user'));
     }
 
@@ -52,7 +52,7 @@ class EmployeeController extends Controller
             'address'  => 'required',
             'position' => 'required',
             'code'     => 'required',
-            'image'    => 'nullable',
+            'image'    => 'nullable|file|image|mimes:jpeg,png,jpg,webp|max:5120',
             'phone'    => 'required',
         ];
         $customMessages = [
@@ -189,7 +189,7 @@ class EmployeeController extends Controller
             'email'   => 'required|email|unique:users,email,' . $id,
             'address' => 'required',
             'code'    => 'required',
-            'image'   => 'nullable',
+            'image'   => 'nullable|file|image|mimes:jpeg,png,jpg,webp|max:5120',
             'phone'   => 'required',
         ];
         $customMessages = [

@@ -162,7 +162,7 @@
                         <tr>
                             <th>No PO</th>
                             <th>Company / Vendor</th>
-                            <th>Kategori</th>
+                            <th>Item</th>
                             <th>Sumber</th>
                             <th class="text-end">Total</th>
                             <th class="text-center">Date</th>
@@ -171,6 +171,123 @@
                         </tr>
                     </thead>
                 </table>
+            </div>
+        </div>
+
+        {{-- Sliding Quick Preview Drawer (Offcanvas) for Purchase Order with Blur Effect --}}
+        <div class="offcanvas offcanvas-end shadow-lg" tabindex="-1" id="purchaseOrderOffcanvas" aria-labelledby="purchaseOrderOffcanvasLabel" style="width: 560px; max-width: 94vw;">
+            <div class="offcanvas-header bg-label-primary border-bottom py-3">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge bg-primary text-white font-11 rounded-pill" id="poDrawerNoPo">PO-0000</span>
+                        <div id="poDrawerStatusBadge"></div>
+                    </div>
+                    <h5 class="offcanvas-title fw-bold text-heading" id="purchaseOrderOffcanvasLabel">Rincian Dokumen Purchase Order</h5>
+                </div>
+                <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body p-4">
+                {{-- Document Summary Card --}}
+                <div class="card border mb-3 bg-light">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
+                            <div>
+                                <span class="text-muted font-11 d-block text-uppercase fw-bold">Company / Vendor:</span>
+                                <h6 class="fw-bold text-heading font-14 mb-0" id="poDrawerCompany">-</h6>
+                            </div>
+                            <div class="text-end" id="poDrawerPaymentSlot">
+                                {{-- Payment status / type badge --}}
+                            </div>
+                        </div>
+
+                        <div class="row g-2 font-12">
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11">No. Purchase Order:</span>
+                                <strong class="text-primary font-monospace" id="poDrawerSummaryNoPo">-</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11">Tanggal PO:</span>
+                                <strong class="text-heading" id="poDrawerDate">-</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11">Total Nilai PO:</span>
+                                <strong class="text-success font-14" id="poDrawerTotal">-</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11">ATTN / Kontak:</span>
+                                <strong class="text-heading" id="poDrawerAttn">-</strong>
+                            </div>
+                            <div class="col-6" id="poDrawerPrCol" style="display: none;">
+                                <span class="text-muted d-block font-11">Terkait Purchase Request:</span>
+                                <strong class="text-info font-monospace" id="poDrawerNoPr">-</strong>
+                            </div>
+                            <div class="col-6" id="poDrawerCategoryCol">
+                                <span class="text-muted d-block font-11">Kategori:</span>
+                                <span id="poDrawerCategoryBadge">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Status Penerimaan & Dokumen Card --}}
+                <div class="card border mb-3 bg-white">
+                    <div class="card-body p-3">
+                        <span class="text-muted font-11 d-block text-uppercase fw-bold mb-2">
+                            <i class="mdi mdi-truck-delivery-outline text-primary me-1"></i> Status Penerimaan &amp; Dokumen
+                        </span>
+                        <div class="row g-2 font-12">
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11">Status Barang:</span>
+                                <div id="poDrawerReceiptBadge" class="mt-1"></div>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11">No. Goods Receipt (GR):</span>
+                                <div id="poDrawerGrBox" class="mt-1">
+                                    <strong class="text-heading font-monospace" id="poDrawerNoGr">-</strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11">Invoice Supplier:</span>
+                                <div id="poDrawerInvoiceBox" class="mt-1">-</div>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11">Tanda Tangan Vendor:</span>
+                                <div id="poDrawerSignBox" class="mt-1">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Ordered Items Table --}}
+                <div class="mb-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <label class="font-11 text-muted text-uppercase fw-bold mb-0">Daftar Barang / Item (<span id="poDrawerItemCount">0</span> jenis)</label>
+                        <span class="badge bg-label-primary font-11" id="poDrawerTotalPcs">0 item</span>
+                    </div>
+                    <div class="table-responsive border rounded-3 bg-white">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr class="font-11 text-muted text-uppercase">
+                                    <th style="width: 30px;" class="text-center">#</th>
+                                    <th>Nama Barang &amp; Spesifikasi</th>
+                                    <th class="text-center" style="width: 90px;">Kuantitas</th>
+                                    <th class="text-end" style="width: 120px;">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="poDrawerItemsTbody" class="font-12">
+                                {{-- Dynamically populated --}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="offcanvas-footer border-top p-3 d-flex align-items-center justify-content-between gap-2">
+                <a href="#" id="poDrawerDetailBtn" class="btn btn-primary d-flex align-items-center gap-1 shadow-xs">
+                    <i class="mdi mdi-open-in-new me-1"></i> Buka Halaman Lengkap PO
+                </a>
+                <div class="d-flex align-items-center gap-2" id="poDrawerAdditionalLinks">
+                    {{-- Dynamically populated --}}
+                </div>
             </div>
         </div>
     </div>
@@ -225,6 +342,19 @@
             vertical-align: middle;
         }
 
+        .datatable-purchase-order td.po-col-payment {
+            white-space: normal !important;
+            max-width: 180px;
+            min-width: 130px;
+        }
+
+        .datatable-purchase-order td.po-col-payment .badge {
+            white-space: normal !important;
+            word-break: break-word;
+            line-height: 1.35 !important;
+            text-align: left;
+        }
+
         .po-vendor-name {
             font-weight: 600;
         }
@@ -232,6 +362,41 @@
         .po-sub {
             font-size: 0.75rem;
             color: #94a3b8;
+        }
+
+        .btn-item-preview {
+            background-color: #f1f5f9;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            text-decoration: none;
+        }
+
+        .btn-item-preview:hover {
+            background-color: #e0e7ff;
+            color: #3730a3;
+            border-color: #a5b4fc;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(99, 102, 241, 0.15);
+        }
+
+        .btn-item-preview:hover i,
+        .btn-item-preview:hover span {
+            color: #4338ca;
+        }
+
+        .offcanvas-backdrop {
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            background-color: rgba(15, 23, 42, 0.35) !important;
+        }
+
+        .offcanvas-backdrop.show {
+            opacity: 1 !important;
         }
     </style>
 @endpush

@@ -1,7 +1,7 @@
 <form action="{{ route('invoice.expense', $invoice->id) }}" method="post" enctype="multipart/form-data">
     {{-- {{ csrf_token() }} --}}
     @csrf
-    <div class="modal modal-lg animate__animated animate__fadeIn" id="addExpense" tabindex="-1" style="display: none;"
+    <div class="modal modal-lg fade" id="addExpense" tabindex="-1" style="display: none;"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">

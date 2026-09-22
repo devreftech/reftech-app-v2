@@ -12,7 +12,7 @@
                         <h4 class="onboarding-title text-body"> Add Mention of {{ $quote->no_quote }}
                         </h4>
                         <div class="onboarding-info mb-3">
-                            {{ $quote->pic->client->company }}
+                            {{ $quote->pic?->client?->company ?? '-' }}
                         </div>
                         <form>
                             <div class="row">

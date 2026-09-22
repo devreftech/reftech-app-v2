@@ -2,7 +2,7 @@
     id="signPadForm-{{ $service->id }}">
     @csrf
     <input type="file" name="sign_client" id="signPadFileInput-{{ $service->id }}" accept="image/png" hidden>
-    <div class="modal animate__animated animate__fadeIn" id="inputSignPad-{{ $service->id }}" tabindex="-1"
+    <div class="modal fade" id="inputSignPad-{{ $service->id }}" tabindex="-1"
         style="display: none;" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">

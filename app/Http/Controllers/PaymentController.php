@@ -40,6 +40,7 @@ class PaymentController extends Controller
             ->where('quotation.tax', '11')
             ->sum('harga_total');
         $fullPayment = Invoice::join('quotation', 'quotation.id', '=', 'invoice.id_quotation')
+            ->leftJoin('payment', 'payment.id_quotation', '=', 'quotation.id')
             ->where('status', '100')
             ->where('invoice.flag', 'Reftech')
             ->where('quotation.tax', '11')
@@ -56,6 +57,7 @@ class PaymentController extends Controller
             ->where('quotation.tax', '11')
             ->sum('harga_total');
         $fullPayment = Invoice::join('quotation', 'quotation.id', '=', 'invoice.id_quotation')
+            ->leftJoin('payment', 'payment.id_quotation', '=', 'quotation.id')
             ->where('status', '100')
             ->where('invoice.flag', 'Kojisha')
             ->where('quotation.tax', '11')
@@ -67,15 +69,18 @@ class PaymentController extends Controller
     public function detail_invoice($id)
     {
         $invoice = Invoice::find($id);
+        if (!$invoice) {
+            return redirect()->route('payment_index.invoice')->with('error', 'Invoice tidak ditemukan');
+        }
 
         if ($invoice->id_unit_quotation) {
             return redirect()->route('invoice.show_unit', $id);
         }
 
         $quote = Quotation::find($invoice->id_quotation);
-        $dQuote = DetailQuotation::where('id_quotation', $quote->id)->get();
-        $subQuote = SubtitleQuotation::with('detail')->where('id_quotation', $quote->id)->get();
-        $payment = Payment::where('id_quotation', $quote->id)->get();
+        $dQuote = $quote ? DetailQuotation::where('id_quotation', $quote->id)->get() : collect([]);
+        $subQuote = $quote ? SubtitleQuotation::with('detail')->where('id_quotation', $quote->id)->get() : collect([]);
+        $payment = $quote ? Payment::where('id_quotation', $quote->id)->get() : collect([]);
         return view('pages.accounting.payment.detail-invoice', compact('invoice', 'quote', 'dQuote', 'subQuote', 'payment'));
     }
     public function index_payment()
@@ -218,8 +223,11 @@ class PaymentController extends Controller
     public function detail_aging($id)
     {
         $payment = Payment::find($id);
+        if (!$payment) {
+            return redirect()->route('payment_index.aging')->with('error', 'Payment tidak ditemukan');
+        }
         $today = Carbon::today();
-        $diffDue = $today->diffInDays($payment->due_date, false);
+        $diffDue = $payment->due_date ? $today->diffInDays($payment->due_date, false) : 0;
         $reminder = Reminder::where('id_payment', $id)->get()->sortByDesc('created_at')->values();
 
         if ($payment->id_unit_quotation) {
@@ -228,7 +236,7 @@ class PaymentController extends Controller
             $isUnitQuotation = true;
         } else {
             $quote = Quotation::find($payment->id_quotation);
-            $invoice = Invoice::where('id_quotation', $quote->id)->first();
+            $invoice = $quote ? Invoice::where('id_quotation', $quote->id)->first() : null;
             $isUnitQuotation = false;
         }
 
@@ -236,83 +244,79 @@ class PaymentController extends Controller
     }
     public function confirm_payment(Request $request, $id)
     {
-        $payment = Payment::findOrFail($id);
-        $payment->level = 1;
-        $payment->date_confirm = Carbon::now()->toDateString();
-        
-        $bankId = $request->input('id_bank') ?: $payment->id_bank;
-        if (!$bankId) {
-            $defaultBank = \App\Models\Bank::first();
-            $bankId = $defaultBank ? $defaultBank->id : null;
-        }
-        $payment->id_bank = $bankId;
-        $paymentSave = $payment->save();
+        return DB::transaction(function () use ($request, $id) {
+            $payment = Payment::findOrFail($id);
+            $payment->level = 1;
+            $payment->date_confirm = Carbon::now()->toDateString();
+            
+            $bankId = $request->input('id_bank') ?: $payment->id_bank;
+            if (!$bankId) {
+                $defaultBank = \App\Models\Bank::first();
+                $bankId = $defaultBank ? $defaultBank->id : null;
+            }
+            $payment->id_bank = $bankId;
+            $payment->save();
 
-        // Increment bank balance
-        if ($payment->id_bank && $payment->amount > 0) {
-            \App\Models\Bank::find($payment->id_bank)?->increment('saldo', $payment->amount);
-        }
+            // Increment bank balance
+            if ($payment->id_bank && $payment->amount > 0) {
+                \App\Models\Bank::find($payment->id_bank)?->increment('saldo', $payment->amount);
+            }
 
-        if ($payment->id_unit_quotation) {
-            Invoice::where('id_unit_quotation', $payment->id_unit_quotation)
-                ->whereNotNull('no_invoice')
-                ->update(['status_p' => 1]);
-        }
+            if ($payment->id_unit_quotation) {
+                Invoice::where('id_unit_quotation', $payment->id_unit_quotation)
+                    ->whereNotNull('no_invoice')
+                    ->update(['status_p' => 1]);
+            }
 
-        $activity = new ChangeStatus();
-        $activity->id_user = Auth::user()->id;
-        $activity->id_payment = $payment->id;
-        $activity->note = "Payment Verif By ";
-        $activity->status = 2;
-        $activity->date = Carbon::now();
-        $activity->save();
+            $activity = new ChangeStatus();
+            $activity->id_user = Auth::user()->id;
+            $activity->id_payment = $payment->id;
+            $activity->note = "Payment Verif By ";
+            $activity->status = 2;
+            $activity->date = Carbon::now();
+            $activity->save();
 
-        if ($paymentSave) {
             $this->prService->evaluatePaymentGate($payment, Auth::id());
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['status' => 'success', 'message' => 'Pembayaran berhasil diverifikasi & saldo bank bertambah.']);
             }
             return 1;
-        } else {
-            return 0;
-        }
+        });
     }
 
     public function unconfirm_payment(Request $request, $id)
     {
-        $payment = Payment::findOrFail($id);
-        
-        // Decrement bank balance if previously incremented
-        if ($payment->level == 1 && $payment->id_bank && $payment->amount > 0) {
-            \App\Models\Bank::find($payment->id_bank)?->decrement('saldo', $payment->amount);
-        }
+        return DB::transaction(function () use ($request, $id) {
+            $payment = Payment::findOrFail($id);
+            
+            // Decrement bank balance if previously incremented
+            if ($payment->level == 1 && $payment->id_bank && $payment->amount > 0) {
+                \App\Models\Bank::find($payment->id_bank)?->decrement('saldo', $payment->amount);
+            }
 
-        $payment->level = 0;
-        $payment->date_confirm = null;
-        $paymentSave = $payment->save();
+            $payment->level = 0;
+            $payment->date_confirm = null;
+            $payment->save();
 
-        if ($payment->id_unit_quotation) {
-            Invoice::where('id_unit_quotation', $payment->id_unit_quotation)
-                ->whereNotNull('no_invoice')
-                ->update(['status_p' => 0]);
-        }
+            if ($payment->id_unit_quotation) {
+                Invoice::where('id_unit_quotation', $payment->id_unit_quotation)
+                    ->whereNotNull('no_invoice')
+                    ->update(['status_p' => 0]);
+            }
 
-        $activity = new ChangeStatus();
-        $activity->id_user = Auth::user()->id;
-        $activity->id_payment = $payment->id;
-        $activity->note = "Unconfirmed By ";
-        $activity->status = 3;
-        $activity->date = Carbon::now();
-        $activity->save();
+            $activity = new ChangeStatus();
+            $activity->id_user = Auth::user()->id;
+            $activity->id_payment = $payment->id;
+            $activity->note = "Unconfirmed By ";
+            $activity->status = 3;
+            $activity->date = Carbon::now();
+            $activity->save();
 
-        if ($paymentSave) {
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['status' => 'success', 'message' => 'Verifikasi pembayaran dibatalkan & saldo bank dikoreksi.']);
             }
             return 1;
-        } else {
-            return 0;
-        }
+        });
     }
 
     /**

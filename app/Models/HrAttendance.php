@@ -49,9 +49,11 @@ class HrAttendance extends Model
     public static function processAutoClockOutIfDue(?string $targetDate = null): int
     {
         try {
-            $setting = \Illuminate\Support\Facades\DB::table('hr_attendance_settings')
-                ->where('key', 'is_auto_clock_out_enabled')
-                ->value('value');
+            $setting = \Illuminate\Support\Facades\Cache::remember('hr_att_setting_is_auto_clock_out_enabled', 300, function () {
+                return \Illuminate\Support\Facades\DB::table('hr_attendance_settings')
+                    ->where('key', 'is_auto_clock_out_enabled')
+                    ->value('value');
+            });
 
             if ($setting !== '1') {
                 return 0;
@@ -61,9 +63,20 @@ class HrAttendance extends Model
             $todayJakarta = $nowJakarta->toDateString();
             $evalDate = $targetDate ?: $todayJakarta;
 
-            $timeSetting = \Illuminate\Support\Facades\DB::table('hr_attendance_settings')
-                ->where('key', 'auto_clock_out_time')
-                ->value('value');
+            // Throttle: don't hit the DB more than once every 60 seconds for today's evaluation
+            if ($evalDate === $todayJakarta) {
+                $cacheKey = 'hr_auto_clock_out_ran_' . $todayJakarta . '_' . $nowJakarta->format('H_i');
+                if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+                    return 0;
+                }
+                \Illuminate\Support\Facades\Cache::put($cacheKey, true, 60);
+            }
+
+            $timeSetting = \Illuminate\Support\Facades\Cache::remember('hr_att_setting_auto_clock_out_time', 300, function () {
+                return \Illuminate\Support\Facades\DB::table('hr_attendance_settings')
+                    ->where('key', 'auto_clock_out_time')
+                    ->value('value');
+            });
 
             $clockOutTime = !empty($timeSetting) ? $timeSetting : '17:00';
             $timeParts = explode(':', $clockOutTime);
