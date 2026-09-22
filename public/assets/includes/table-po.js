@@ -1,6 +1,6 @@
 $(function () {
     var dt_table = $(".datatable-po-quote");
-    var Url = "db/po";
+    var Url = "/db/po";
 
     if (dt_table.length) {
         dt_table.find("thead tr")

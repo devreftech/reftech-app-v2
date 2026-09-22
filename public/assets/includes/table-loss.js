@@ -1,6 +1,6 @@
 $(function () {
     var dt_table = $(".datatable-loss-quote");
-    var Url = "db/loss";
+    var Url = "/db/loss";
 
     if (dt_table.length) {
         dt_table.find("thead tr")

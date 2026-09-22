@@ -1,13 +1,8 @@
 <?php
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 header('Content-Type: application/json');
-$host = config('database.connections.mysql.host');
-$users = config('database.connections.mysql.username');
-$pass = config('database.connections.mysql.password');
-
-$databaseName = config('database.connections.mysql.database');
-$tableName = "quotation";
 
 // Periksa apakah pengguna terotentikasi
 if (Auth::check()) {
@@ -15,10 +10,8 @@ if (Auth::check()) {
     $user = Auth::user();
 
     try {
-        // Membuat koneksi PDO
-        $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-	$pdo->exec("SET SESSION sql_mode = ''");
+        $pdo = DB::connection()->getPdo();
+        $pdo->exec("SET SESSION sql_mode = ''");
 
         // Query database for data
         $userId = $user->id;

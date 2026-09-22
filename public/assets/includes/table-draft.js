@@ -1,6 +1,6 @@
 $(function () {
     var dt_table_draft = $(".datatable-draft");
-    var Url = "db/quotation/draft";
+    var Url = "/db/quotation/draft";
 
     if (dt_table_draft.length) {
         dt_table_draft.find("thead tr")

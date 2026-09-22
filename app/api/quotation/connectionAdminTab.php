@@ -1,5 +1,6 @@
 <?php
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 header('Content-Type: application/json');
 
@@ -8,15 +9,9 @@ if (!Auth::check()) {
     exit;
 }
 
-$host = config('database.connections.mysql.host');
-$users = config('database.connections.mysql.username');
-$pass = config('database.connections.mysql.password');
-$databaseName = config('database.connections.mysql.database');
-
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->exec("SET SESSION sql_mode = ''");
+    $pdo = DB::connection()->getPdo();
+    $pdo->exec("SET SESSION sql_mode = ''");
 
     $salesId = request()->get('sales_id');
     $salesFilterQ = $salesId ? " AND u.id = " . intval($salesId) : "";
