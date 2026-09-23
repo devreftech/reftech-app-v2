@@ -1,94 +1,173 @@
-@extends('layouts.sales.app')
-@section('title', 'Print Opname')
-<div class="invoice-print p-4">
-    <div class="container-fluid flex-grow-1 container-p-y">
-        <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column">
-            <div class="mb-xl-0 pb-1">
-                <div class="d-flex svg-illustration align-items-center gap-2 mb-4">
-                    <span class="app-brand-logo demo">
-                        <span style="color: var(--bs-primary)">
-                            <img class="text-md" src="{{ asset('/asset') }}/logo/Reftech-Log.png" alt=""
-                                srcset="" width="60%">
-                        </span>
-                    </span>
-                </div>
-                <p class="mb-1 fw-bolder">PT Reftech Jaya Optima</p>
-                <div style="font-size: 10px">
-                    <p class="mb-1">Taman Kopo Indah V, Ruko Sommerville No. 31</p>
-                    <p class="mb-1">Bandung – Jawa Barat 40218</p>
-                    <p class="mb-1">
-                        <i class="mdi mdi-phone-outline scaleX-n1-rtl me-1 mdi-14px"></i>022 54417653
-                        {{ '  |  ' }}<i
-                            class="mdi mdi-email-outline scaleX-n1-rtl me-1 mdi-14px"></i>admin@reftech.id
-                    </p>
-                    <p class="mb-1">
-                    </p>
-                </div>
-            </div>
-            <div class="text-end">
-                <h3 class="fw-bold">Stock Opname</h3>
-                <div>
-                    <span class="fw-bolder mb-1">#PERIODE CATURWULAN - {{ $opname->periode }}</span>
-                </div>
-                <span class="fw-medium">Petugas Gudang - {{ $opname->user->name }}</span>
-                <div class="mt-1">
-                    <span class="text-muted">{{ Carbon\Carbon::parse($opname->date)->format('d-m-Y') }}</span>
-                </div>
-            </div>
-        </div>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Opname Q{{ $opname->periode }} - {{ $opname->year ?? date('Y', strtotime($opname->date)) }}</title>
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/css/core.css" />
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/css/pages/app-invoice-print.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            background: #fff;
+            padding: 20px;
+        }
+        @media print {
+            body {
+                padding: 0;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .page-break {
+                page-break-after: always;
+            }
+        }
+        .table-print {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        .table-print th, .table-print td {
+            border: 1px solid #ccc;
+            padding: 5px 7px;
+            vertical-align: middle;
+        }
+        .table-print th {
+            background-color: #f5f5f5;
+            text-align: center;
+            font-weight: 700;
+        }
+        .bg-bdg {
+            background-color: #e8f4fd !important;
+        }
+        .bg-bks {
+            background-color: #fef7ea !important;
+        }
+        .signature-box {
+            border-top: 1px solid #333;
+            width: 160px;
+            margin: 60px auto 0 auto;
+            text-align: center;
+            font-weight: bold;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print mb-4 text-end">
+        <button type="button" class="btn btn-primary" onclick="window.print();">
+            <i class="mdi mdi-printer me-1"></i> Cetak / Simpan PDF
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="window.close();">
+            Tutup
+        </button>
+    </div>
 
-        <hr>
-        <h5 class="text-muted">*note: yang belum diinput dijadikan 0;</h5>
-        <div class="mb-2">
-            <table class="table table-borderless m-0" style="width: 100%">
-                <thead class="table-light border-top">
-                    <tr>
-                        <th>No.</th>
-                        <th>Item</th>
-                        <th>Desc</th>
-                        <th>Stock Web</th>
-                        <th>Stock Gudang</th>
-                        <th>Stock Sebelumnya</th>
-                        <th>Selisih</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @php
-                        $no = 0;
-                    @endphp
-                    @foreach ($detailOpname as $products)
-                        <tr style="font-size: 13px">
-                            <td>{{ $loop->iteration }}</td>
-                            <td class="text-start">
-                                <p class="mb-0 fw-semibold">{{ $products->replacement }}</p>
-                            </td>
-                            <td>
-                                <pre class="mb-0" style="font-size: 13px;">{{ $products->description }}</pre>
-                            </td>
-                            <td>
-                                {{ $products->stock_sistem }} {{ $products->unit }}
-                            </td>
-                            <td>
-                                {{ $products->stock_gudang }} {{ $products->unit }}
-                            </td>
-                            <td>
-                                {{ $products->prev_qty }} {{ $products->unit }}
-                            </td>
-                            <td>
-                                {{ $products->selisih }} {{ $products->unit }}
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+    {{-- Company & Document Header --}}
+    <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
+        <div>
+            <h4 class="fw-bold mb-1 text-primary">PT REFTECH JAYA OPTIMA</h4>
+            <p class="mb-0 text-muted small">Taman Kopo Indah V, Ruko Sommerville No. 31, Bandung – Jawa Barat 40218</p>
+            <p class="mb-0 text-muted small">Telp: 022 54417653 | Email: admin@reftech.id</p>
+        </div>
+        <div class="text-end">
+            <h4 class="fw-bold mb-0">BERITA ACARA STOCK OPNAME</h4>
+            <div class="fw-bold text-primary mt-1">PERIODE QUARTER {{ $opname->periode }} - {{ $opname->year ?? date('Y', strtotime($opname->date)) }}</div>
+            <div class="text-muted small">No. Sesi: #{{ $opname->id }} | Tanggal: {{ \Carbon\Carbon::parse($opname->date)->translatedFormat('d F Y') }}</div>
+            <div class="text-muted small">Petugas Sesi: {{ $opname->user->name ?? '-' }}</div>
         </div>
     </div>
-</div>
-@push('after-style')
-    <!-- Page CSS -->
-    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/css/pages/app-invoice-print.css" />
-    <link rel="stylesheet" href="style.css">
-@endpush
-@push('after-script')
-    <script src="{{ asset('assets') }}/js/app-invoice-print.js"></script>
-@endpush
+
+    {{-- Table --}}
+    <table class="table-print mb-4">
+        <thead>
+            <tr>
+                <th rowspan="2" style="width: 30px;">No</th>
+                <th rowspan="2" style="min-width: 180px;">SKU / Replacement</th>
+                <th rowspan="2" style="min-width: 140px;">Deskripsi</th>
+                <th colspan="3" class="bg-bdg">Gudang Bandung (BDG)</th>
+                <th colspan="3" class="bg-bks">Gudang Bekasi (BKS)</th>
+                <th colspan="2">Konsolidasi Total</th>
+                <th rowspan="2" style="min-width: 100px;">Catatan</th>
+            </tr>
+            <tr>
+                {{-- BDG --}}
+                <th class="bg-bdg" style="width: 45px;">Sis</th>
+                <th class="bg-bdg" style="width: 45px;">Fisik</th>
+                <th class="bg-bdg" style="width: 45px;">Selisih</th>
+                {{-- BKS --}}
+                <th class="bg-bks" style="width: 45px;">Sis</th>
+                <th class="bg-bks" style="width: 45px;">Fisik</th>
+                <th class="bg-bks" style="width: 45px;">Selisih</th>
+                {{-- Total --}}
+                <th style="width: 45px;">Fisik</th>
+                <th style="width: 50px;">Selisih</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($detailOpname as $index => $item)
+                @php
+                    $sistemBdg = (int)($item->sistem_bdg ?? 0);
+                    $sistemBks = (int)($item->sistem_bks ?? 0);
+                    $fisikBdg = $item->fisik_bdg !== null ? (int)$item->fisik_bdg : '-';
+                    $fisikBks = $item->fisik_bks !== null ? (int)$item->fisik_bks : '-';
+                    $selisihBdg = $item->fisik_bdg !== null ? ((int)$item->fisik_bdg - $sistemBdg) : '-';
+                    $selisihBks = $item->fisik_bks !== null ? ((int)$item->fisik_bks - $sistemBks) : '-';
+                    $fisikTotal = $item->fisik_total !== null ? (int)$item->fisik_total : '-';
+                    $selisihTotal = $item->selisih_total !== null ? (int)$item->selisih_total : '-';
+                @endphp
+                <tr>
+                    <td class="text-center">{{ $index + 1 }}</td>
+                    <td class="fw-bold">
+                        {{ $item->replacement }}
+                        @if($item->go)
+                            <span class="text-muted">({{ substr($item->go, 0, 1) }})</span>
+                        @endif
+                    </td>
+                    <td>{{ $item->description ?? '-' }}</td>
+                    {{-- BDG --}}
+                    <td class="text-center bg-bdg">{{ $sistemBdg }}</td>
+                    <td class="text-center bg-bdg fw-bold">{{ $fisikBdg }}</td>
+                    <td class="text-center bg-bdg {{ is_numeric($selisihBdg) && $selisihBdg != 0 ? 'text-danger fw-bold' : '' }}">
+                        {{ is_numeric($selisihBdg) && $selisihBdg > 0 ? '+'.$selisihBdg : $selisihBdg }}
+                    </td>
+                    {{-- BKS --}}
+                    <td class="text-center bg-bks">{{ $sistemBks }}</td>
+                    <td class="text-center bg-bks fw-bold">{{ $fisikBks }}</td>
+                    <td class="text-center bg-bks {{ is_numeric($selisihBks) && $selisihBks != 0 ? 'text-danger fw-bold' : '' }}">
+                        {{ is_numeric($selisihBks) && $selisihBks > 0 ? '+'.$selisihBks : $selisihBks }}
+                    </td>
+                    {{-- Konsolidasi --}}
+                    <td class="text-center fw-bold">{{ $fisikTotal }}</td>
+                    <td class="text-center {{ is_numeric($selisihTotal) && $selisihTotal != 0 ? 'text-danger fw-bold' : '' }}">
+                        {{ is_numeric($selisihTotal) && $selisihTotal > 0 ? '+'.$selisihTotal : $selisihTotal }}
+                    </td>
+                    <td class="small">{{ $item->note ?? '-' }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="12" class="text-center py-4 text-muted">Tidak ada data produk pada stock opname ini.</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    {{-- Signatures --}}
+    <div class="row mt-4 pt-3 text-center" style="page-break-inside: avoid;">
+        <div class="col-4">
+            <p class="mb-0 text-muted small">Petugas Gudang BDG</p>
+            <div class="signature-box">( PIC Bandung )</div>
+        </div>
+        <div class="col-4">
+            <p class="mb-0 text-muted small">Petugas Gudang BKS</p>
+            <div class="signature-box">( PIC Bekasi )</div>
+        </div>
+        <div class="col-4">
+            <p class="mb-0 text-muted small">Warehouse Supervisor / Manager</p>
+            <div class="signature-box">( Kepala Gudang )</div>
+        </div>
+    </div>
+</body>
+</html>

@@ -40,12 +40,21 @@ class ProductController extends Controller
             $commentAdmin = collect();
             $unreadCommentAdmin = collect();
         } else {
-            $commodity = Product::count();
-            $dproduct = DetailProduct::count();
-            $sproduct = SerialProduct::count();
-            $asset = DetailProduct::sum(DB::raw('modal * stock'));
-            $revenue = DB::table(DB::raw('(SELECT p.stock * s.price AS val FROM serial_product s JOIN product p ON p.id = s.id_product GROUP BY p.id) as sub'))
-                ->sum('val');
+            $kpis = Cache::remember('product_stock_kpis', 300, function () {
+                $commodity = Product::count();
+                $dproduct = DetailProduct::count();
+                $sproduct = SerialProduct::count();
+                $asset = DetailProduct::sum(DB::raw('modal * stock'));
+                $revenue = DB::table(DB::raw('(SELECT p.stock * s.price AS val FROM serial_product s JOIN product p ON p.id = s.id_product GROUP BY p.id) as sub'))
+                    ->sum('val');
+                return compact('commodity', 'dproduct', 'sproduct', 'asset', 'revenue');
+            });
+
+            $commodity = $kpis['commodity'];
+            $dproduct = $kpis['dproduct'];
+            $sproduct = $kpis['sproduct'];
+            $asset = $kpis['asset'];
+            $revenue = $kpis['revenue'];
 
             // Comment Buat Admin
             $firstComments = Comment::where('id_user', Auth::id())
@@ -55,30 +64,32 @@ class ProductController extends Controller
             $statusIds = $firstComments->pluck('id_status')->toArray();
             $dates = $firstComments->pluck('created_at', 'id_status');
 
-            $commentsQuery = Comment::join('change_status as c', 'c.id', '=', 'comment.id_status')
-                ->join('quotation as q', 'q.id', '=', 'c.id_quotation')
-                ->join('users as u', 'u.id', '=', 'comment.id_user')
-                ->whereIn('comment.id_status', $statusIds)
-                ->where(function ($query) use ($dates) {
-                    foreach ($dates as $statusId => $createdAt) {
-                        $query->orWhere(function ($subQuery) use ($statusId, $createdAt) {
-                            $subQuery->where('comment.id_status', $statusId)
-                                ->whereRaw('TIMESTAMPDIFF(SECOND, ?, comment.created_at) > 0', [$createdAt]);
-                        });
-                    }
-                })
-                ->where('comment.id_user', '!=', Auth::id());
+            if (!empty($statusIds)) {
+                $commentsQuery = Comment::join('change_status as c', 'c.id', '=', 'comment.id_status')
+                    ->join('quotation as q', 'q.id', '=', 'c.id_quotation')
+                    ->join('users as u', 'u.id', '=', 'comment.id_user')
+                    ->whereIn('comment.id_status', $statusIds)
+                    ->where(function ($query) use ($dates) {
+                        foreach ($dates as $statusId => $createdAt) {
+                            $query->orWhere(function ($subQuery) use ($statusId, $createdAt) {
+                                $subQuery->where('comment.id_status', $statusId)
+                                    ->whereRaw('TIMESTAMPDIFF(SECOND, ?, comment.created_at) > 0', [$createdAt]);
+                            });
+                        }
+                    })
+                    ->where('comment.id_user', '!=', Auth::id());
 
-            // Ambil semua komentar yang relevan
-            $commentAdmin = $commentsQuery->orderBy('comment.id_status')
-                ->orderByDesc('comment.created_at')
-                ->get(['q.id as idQ', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'q.no_quote', 'u.name', 'u.image']);
+                // Ambil semua komentar yang relevan
+                $commentAdmin = $commentsQuery->orderBy('comment.id_status')
+                    ->orderByDesc('comment.created_at')
+                    ->get(['q.id as idQ', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'q.no_quote', 'u.name', 'u.image']);
 
-            // Filter untuk komentar dengan level '1'
-            $unreadCommentAdmin = $commentsQuery->where('comment.level', '1')
-                ->orderBy('comment.id_status')
-                ->orderByDesc('comment.created_at')
-                ->get(['q.id as idQ', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'q.no_quote', 'u.name', 'u.image']);
+                // Filter in-memory
+                $unreadCommentAdmin = $commentAdmin->where('level', '1')->values();
+            } else {
+                $commentAdmin = collect();
+                $unreadCommentAdmin = collect();
+            }
         }
 
         // End Comment Admin
@@ -107,11 +118,7 @@ class ProductController extends Controller
             ->orderBy('date', 'DESC')
             ->take(5)
             ->get();
-        $unreadComment = $quotationComment->union($prospectComment)
-            ->orderBy('date', 'DESC')
-            ->where('o.level', '1')
-            ->take(5)
-            ->get();
+        $unreadComment = $comment->where('level', '1')->values()->take(5);
         return view('pages.warehouse.product.index', compact('commodity', 'comment', 'unreadComment', 'commentAdmin', 'unreadCommentAdmin', 'leveledProspect', 'noSaleProspect', 'dproduct', 'sproduct', 'asset', 'revenue'));
     }
 
@@ -419,6 +426,7 @@ class ProductController extends Controller
         $replace->modal = 0;
         $replace->warehouse_stock = 0;
         $replace->stock = 0;
+        $replace->is_opname = $request->has('is_opname') ? (bool)$request->is_opname : true;
         $replaceSave = $replace->save();
 
         $previousUrl = url()->previous();
@@ -428,10 +436,13 @@ class ProductController extends Controller
     }
     public function updateReplacement(Request $request, $id)
     {
-        $replace = DetailProduct::find($id);
+        $replace = DetailProduct::findOrFail($id);
         $replace->replacement = $request->replacement;
         if (Auth::user()->role == 'Admin') {
             $replace->modal = $request->modal;
+        }
+        if ($request->has('is_opname')) {
+            $replace->is_opname = (bool)$request->is_opname;
         }
         $replaceSave = $replace->save();
 
@@ -439,6 +450,19 @@ class ProductController extends Controller
         if ($replaceSave) {
             return redirect($previousUrl)->with('success', 'Data berhasil disimpan!');
         }
+    }
+    public function toggleOpname($id)
+    {
+        $replace = DetailProduct::findOrFail($id);
+        $replace->is_opname = !$replace->is_opname;
+        $replace->save();
+
+        return response()->json([
+            'success' => true,
+            'id' => $replace->id,
+            'is_opname' => $replace->is_opname,
+            'message' => 'Status SKU ' . $replace->replacement . ' berhasil diubah menjadi ' . ($replace->is_opname ? 'Bisa Diopname' : 'Tidak Diopname')
+        ]);
     }
     public function destroyReplacement($id)
     {

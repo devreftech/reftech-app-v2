@@ -9,7 +9,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/piping-materials/search-api', [PipingMaterialController::class, 'search'])->name('piping-materials.search');
     Route::post('/piping-materials/{id}/vendor-prices', [PipingMaterialController::class, 'storeVendorPrice'])->name('piping-materials.vendor-prices.store');
     Route::delete('/piping-materials/vendor-prices/{id}', [PipingMaterialController::class, 'deleteVendorPrice'])->name('piping-materials.vendor-prices.destroy');
-    Route::resource('piping-materials', PipingMaterialController::class);
+    Route::resource('piping-materials', PipingMaterialController::class)->only(['index', 'store', 'update', 'destroy']);
 
     // 2. Estimasi / RAB Proyek Piping
     Route::post('/piping-rab/{id}/revise', [PipingRabController::class, 'revise'])->name('piping-rab.revise');

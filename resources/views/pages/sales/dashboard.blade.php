@@ -3,7 +3,8 @@
 @section('content')
     @if (Auth::user()->isDeveloper())
         @php
-            $adminView = request()->query('view', $adminView ?? 'sales');
+            $defaultView = 'developer';
+            $adminView = request()->query('view', $adminView ?? $defaultView);
         @endphp
 
         <div class="card clean-card mb-4 p-3" style="border-color: rgba(143, 91, 255, 0.35);">
@@ -1957,7 +1958,7 @@
 
         $('.change-sales').on('click', function(ev) {
             var id = $(this).data('id');
-            if (id === 'project') return; // Sales Project di-render server-side, gak butuh AJAX per-tab.
+            if (id === 'project' || id === 'marketing') return; // Sales Project & Marketing Team di-render server-side, gak butuh AJAX per-tab.
             console.log('sales ini ber id : ' + id);
             var $pane = $('#navs-sales-' + id);
 
@@ -2747,11 +2748,11 @@
                                 <div class="welcome-alert-icon is-crm"><i class="mdi mdi-account-arrow-right-outline"></i></div>
                                 <div>
                                     @if(($noSaleProspect ?? 0) > 0)
-                                        <p class="welcome-alert-card-title">{{ $noSaleProspect }} Prospect Baru Belum Didelegasi</p>
-                                        <p class="welcome-alert-card-text">Segera delegasikan prospect ke tim sales</p>
+                                        <p class="welcome-alert-card-title">{{ $noSaleProspect }} Marketing Lead Baru Belum Didelegasi</p>
+                                        <p class="welcome-alert-card-text">Segera delegasikan marketing lead ke tim sales</p>
                                     @else
-                                        <p class="welcome-alert-card-title">Semua Prospect Sudah Didelegasi</p>
-                                        <p class="welcome-alert-card-text">Tidak ada antrean prospect baru</p>
+                                        <p class="welcome-alert-card-title">Semua Marketing Lead Sudah Didelegasi</p>
+                                        <p class="welcome-alert-card-text">Tidak ada antrean marketing lead baru</p>
                                     @endif
                                 </div>
                             </a>

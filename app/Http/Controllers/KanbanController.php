@@ -1650,12 +1650,30 @@ class KanbanController extends Controller
             'comment' => $request->comment,
         ]);
 
-        // Parse mentions
-        $activeUsers = User::where('active', '1')->get();
+        // Process @mentions (both explicit IDs and auto-detected @Username)
+        $mentionedUserIds = [];
+
+        if ($request->has('mentions') && is_array($request->mentions)) {
+            foreach ($request->mentions as $mId) {
+                $mId = (int) $mId;
+                if ($mId && $mId !== Auth::id()) {
+                    $mentionedUserIds[$mId] = $mId;
+                }
+            }
+        }
+
+        $activeUsers = User::where('active', '1')
+            ->where('id', '!=', Auth::id())
+            ->get();
+
         foreach ($activeUsers as $user) {
             if (stripos($request->comment, '@' . $user->name) !== false) {
-                $comment->mentions()->attach($user->id);
+                $mentionedUserIds[$user->id] = $user->id;
             }
+        }
+
+        if (!empty($mentionedUserIds)) {
+            $comment->mentions()->syncWithoutDetaching(array_values($mentionedUserIds));
         }
 
         return response()->json(['success' => true]);
@@ -1766,7 +1784,7 @@ class KanbanController extends Controller
     public function uploadAttachment(Request $request, $id)
     {
         $request->validate([
-            'file' => 'required|file|max:10240', // Max 10MB
+            'file' => 'required|file|mimes:pdf,jpg,jpeg,png,webp,docx,doc,xlsx,xls,csv,txt,zip,rar|max:10240', // Max 10MB
         ]);
 
         $task = KanbanTask::findOrFail($id);

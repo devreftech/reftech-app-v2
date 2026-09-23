@@ -9,6 +9,7 @@ use App\Models\Product;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ChangeWarehouseController extends Controller
 {
@@ -77,32 +78,34 @@ class ChangeWarehouseController extends Controller
             'qty' => 'required|array',
         ]);
 
-        $changing = new ChangeWarehouse();
-        $changing->id_sender = Auth::user()->id;
-        $changing->date = Carbon::now();
-        $changing->status = 1;
-        $changing->title = $request->title;
-        $changing->kurir = $request->kurir ?? 'Internal Staff';
-        $changing->note = $request->note ?? '-';
-        $changing->to = $request->info;
-        $changing->from = $request->info == 'BDG' ? 'BKS' : 'BDG';
-        $changingSave = $changing->save();
+        return DB::transaction(function () use ($request) {
+            $changing = new ChangeWarehouse();
+            $changing->id_sender = Auth::user()->id;
+            $changing->date = Carbon::now();
+            $changing->status = 1;
+            $changing->title = $request->title;
+            $changing->kurir = $request->kurir ?? 'Internal Staff';
+            $changing->note = $request->note ?? '-';
+            $changing->to = $request->info;
+            $changing->from = $request->info == 'BDG' ? 'BKS' : 'BDG';
+            $changing->save();
 
-        if ($request->has('replacement')) {
-            foreach ($request->replacement as $item => $value) {
-                if (empty($value)) continue;
-                $qty = isset($request->qty[$item]) ? (int) $request->qty[$item] : 1;
-                if ($qty <= 0) continue;
+            if ($request->has('replacement')) {
+                foreach ($request->replacement as $item => $value) {
+                    if (empty($value)) continue;
+                    $qty = isset($request->qty[$item]) ? (int) $request->qty[$item] : 1;
+                    if ($qty <= 0) continue;
 
-                $detChanging = new DetailChangeWarehouse();
-                $detChanging->id_change_warehouse = $changing->id;
-                $detChanging->id_replacement = $value;
-                $detChanging->qty = $qty;
-                $detChanging->save();
+                    $detChanging = new DetailChangeWarehouse();
+                    $detChanging->id_change_warehouse = $changing->id;
+                    $detChanging->id_replacement = $value;
+                    $detChanging->qty = $qty;
+                    $detChanging->save();
+                }
             }
-        }
 
-        return redirect()->route('change-warehouse.index')->with('success', 'Transfer antar gudang #' . str_pad($changing->id, 4, '0', STR_PAD_LEFT) . ' berhasil dibuat.');
+            return redirect()->route('change-warehouse.index')->with('success', 'Transfer antar gudang #' . str_pad($changing->id, 4, '0', STR_PAD_LEFT) . ' berhasil dibuat.');
+        });
     }
 
     /**
@@ -157,46 +160,48 @@ class ChangeWarehouseController extends Controller
 
     public function accept(Request $request, $id)
     {
-        $change = ChangeWarehouse::findOrFail($id);
-        $change->id_reciever = Auth::user()->id;
-        $change->date_recieve = Carbon::today();
-        $change->note_recieve = $request->note;
-        $change->status = 2;
-        $changeSave = $change->save();
+        return DB::transaction(function () use ($request, $id) {
+            $change = ChangeWarehouse::findOrFail($id);
+            $change->id_reciever = Auth::user()->id;
+            $change->date_recieve = Carbon::today();
+            $change->note_recieve = $request->note;
+            $change->status = 2;
+            $change->save();
 
-        $detChange = DetailChangeWarehouse::where('id_change_warehouse', $id)->get();
-        foreach ($detChange as $detail) {
-            $detProduct = DetailProduct::find($detail->id_replacement);
-            if ($detProduct) {
-                $product = Product::find($detProduct->id_product);
-                if ($change->to == 'BKS') {
-                    $detProduct->stock -= $detail->qty;
-                    $detProduct->warehouse_stock += $detail->qty;
-                    if ($product) {
-                        $product->stock -= $detail->qty;
-                        $product->warehouse_stock += $detail->qty;
-                        $product->save();
+            $detChange = DetailChangeWarehouse::where('id_change_warehouse', $id)->get();
+            foreach ($detChange as $detail) {
+                $detProduct = DetailProduct::find($detail->id_replacement);
+                if ($detProduct) {
+                    $product = Product::find($detProduct->id_product);
+                    if ($change->to == 'BKS') {
+                        $detProduct->stock -= $detail->qty;
+                        $detProduct->warehouse_stock += $detail->qty;
+                        if ($product) {
+                            $product->stock -= $detail->qty;
+                            $product->warehouse_stock += $detail->qty;
+                            $product->save();
+                        }
+                    } else {
+                        $detProduct->stock += $detail->qty;
+                        $detProduct->warehouse_stock -= $detail->qty;
+                        if ($product) {
+                            $product->stock += $detail->qty;
+                            $product->warehouse_stock -= $detail->qty;
+                            $product->save();
+                        }
                     }
-                } else {
-                    $detProduct->stock += $detail->qty;
-                    $detProduct->warehouse_stock -= $detail->qty;
-                    if ($product) {
-                        $product->stock += $detail->qty;
-                        $product->warehouse_stock -= $detail->qty;
-                        $product->save();
-                    }
+                    $detProduct->save();
                 }
-                $detProduct->save();
             }
-        }
 
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Barang transfer berhasil diterima dan stok telah diperbarui.'
-            ]);
-        }
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Barang transfer berhasil diterima dan stok telah diperbarui.'
+                ]);
+            }
 
-        return redirect()->back()->with('success', 'Barang transfer berhasil diterima dan stok telah diperbarui.');
+            return redirect()->back()->with('success', 'Barang transfer berhasil diterima dan stok telah diperbarui.');
+        });
     }
 }

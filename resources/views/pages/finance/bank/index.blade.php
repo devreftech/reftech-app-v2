@@ -41,7 +41,7 @@
             <button type="button" class="btn btn-primary btn-sm px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#createBankModal">
                 <i class="mdi mdi-plus-circle-outline me-1"></i> Tambah Rekening Bank
             </button>
-            @if(in_array(auth::user()?->role, ['Finance Manager', 'Finance', 'Developer']) || auth::user()?->isDeveloper())
+            @if(in_array(Auth::user()?->role, ['Finance Manager', 'Finance', 'Developer']) || Auth::user()?->isDeveloper())
                 <a href="{{ route('finance.security.manage') }}" class="btn btn-label-secondary btn-sm px-2 shadow-sm" title="Pengaturan PIN Finance">
                     <i class="mdi mdi-shield-key-outline"></i>
                 </a>

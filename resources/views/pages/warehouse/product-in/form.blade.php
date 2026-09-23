@@ -10,7 +10,7 @@
             </p>
         </div>
     @endif
-    <form action="{{ route(Auth::user()->role == 'Logistic' ? 'product-in.logistic-store' : 'product-in.store') }}"
+    <form id="productInForm" action="{{ route(Auth::user()->role == 'Logistic' ? 'product-in.logistic-store' : 'product-in.store') }}"
         method="post" enctype="multipart/form-data">
         @csrf
         <div class="card mb-3">
@@ -58,16 +58,16 @@
                         <div class="col-12 {{ Auth::user()->role == 'Logistic' ? 'col-lg-5' : 'col-lg-4' }}">
                             <div class="form-floating form-floating-outline">
                                 <select id="supplier-dropdown" class="select2 form-select invoice-item-supplier"
-                                    data-allow-clear="true" name="supplier" data-id="1"
+                                    data-allow-clear="true" name="supplier" data-id="1" required
                                     {{ Auth::user()->role == 'Logistic' ? 'disabled' : '' }}>
-                                    <option selected>Pilih Supplier...</option>
+                                    <option value="">Pilih Supplier...</option>
                                     @foreach ($suppliers as $supp)
                                         <option value="{{ $supp->id }}" data-info="{{ $supp->info }}">
                                             {{ $supp->supplier }}
                                         </option>
                                     @endforeach
                                 </select>
-                                <label for="supplier-dropdown">Supplier</label>
+                                <label for="supplier-dropdown">Supplier <span class="text-danger">*</span></label>
                             </div>
                         </div>
                         <div class="col-6 {{ Auth::user()->role == 'Logistic' ? 'col-lg-3' : 'col-lg-2' }}">
@@ -626,7 +626,61 @@
                         });
                 rep++;
                 initializeSelect2Replacement();
-            })
+            });
+
+            // ── Form Submit Validation Guard ──
+            $('#productInForm').on('submit', function (e) {
+                var isLogistic = {{ Auth::user()->role == 'Logistic' ? 'true' : 'false' }};
+                if (!isLogistic) {
+                    var supplierVal = $('#supplier-dropdown').val();
+                    if (!supplierVal) {
+                        e.preventDefault();
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Supplier Wajib Dipilih',
+                                text: 'Silakan pilih rekanan supplier terlebih dahulu sebelum menyimpan transaksi barang masuk.',
+                                confirmButtonText: 'Pilih Supplier',
+                                customClass: { confirmButton: 'btn btn-primary' },
+                                buttonsStyling: false
+                            }).then(function() {
+                                $('#supplier-dropdown').select2('open');
+                            });
+                        } else {
+                            alert('Supplier wajib dipilih terlebih dahulu.');
+                            $('#supplier-dropdown').focus();
+                        }
+                        return false;
+                    }
+                }
+
+                var validItems = 0;
+                $('.invoice-item-replacement').each(function () {
+                    var val = $(this).val();
+                    if (val) {
+                        validItems++;
+                    }
+                });
+
+                if (validItems === 0) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Item Barang Masuk Belum Dipilih',
+                            text: 'Minimal 1 item sparepart (Commodity / Replacement) harus dipilih.',
+                            confirmButtonText: 'Periksa Item',
+                            customClass: { confirmButton: 'btn btn-primary' },
+                            buttonsStyling: false
+                        });
+                    } else {
+                        alert('Minimal 1 item sparepart harus dipilih.');
+                    }
+                    return false;
+                }
+
+                return true;
+            });
         });
     </script>
 @endpush

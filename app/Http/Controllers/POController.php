@@ -14,6 +14,7 @@ use App\Models\Supplier;
 use App\Models\Unit;
 use App\Services\PurchaseRequestService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class POController extends Controller
 {
@@ -57,6 +58,9 @@ class POController extends Controller
                 $selectedItems = $request->query('items', []);
 
                 $detailsToPrefill = $sourcePr->details->filter(function ($detail) use ($selectedItems) {
+                    if ($detail->is_rejected) {
+                        return false;
+                    }
                     if (!empty($selectedItems)) {
                         return array_key_exists((string) $detail->id, $selectedItems) || in_array((string) $detail->id, $selectedItems) || in_array($detail->id, $selectedItems);
                     }
@@ -308,6 +312,9 @@ class POController extends Controller
                 $selectedItems = $request->query('items', []);
 
                 $detailsToPrefill = $sourcePr->details->filter(function ($detail) use ($selectedItems) {
+                    if ($detail->is_rejected) {
+                        return false;
+                    }
                     if (!empty($selectedItems)) {
                         return array_key_exists((string) $detail->id, $selectedItems) || in_array((string) $detail->id, $selectedItems) || in_array($detail->id, $selectedItems);
                     }
@@ -353,132 +360,146 @@ class POController extends Controller
         $request->validate([
             'no_po' => 'required|string|unique:purchase_order,no_po',
             'date' => 'required|date',
-            'supplier_name' => 'required_without:supplier|nullable|string',
+            'supplier' => 'required|integer|exists:supplier,id',
             'product' => 'required|array|min:1',
             'product.*' => 'required|string',
             'qty' => 'required|array',
+            'qty.*' => 'required|numeric|min:0.01',
             'price' => 'required|array',
+        ], [
+            'no_po.required' => 'Nomor transaksi Direct Purchase wajib diisi.',
+            'no_po.unique' => 'Nomor transaksi sudah digunakan.',
+            'date.required' => 'Tanggal pembelian wajib diisi.',
+            'supplier.required' => 'Supplier wajib dipilih dari daftar master supplier.',
+            'supplier.exists' => 'Supplier yang dipilih tidak valid atau belum terdaftar.',
+            'product.required' => 'Minimal 1 item produk harus ditambahkan.',
+            'product.min' => 'Minimal 1 item produk harus ditambahkan.',
+            'product.*.required' => 'Nama produk tidak boleh kosong.',
+            'qty.*.required' => 'Kuantiti barang wajib diisi.',
+            'qty.*.min' => 'Kuantiti barang minimal 0.01.',
         ]);
 
-        $supplierId = $request->supplier ?: null;
-        $company = $request->supplier_name;
-        if ($supplierId) {
-            $sup = Supplier::find($supplierId);
-            if ($sup) {
-                $company = $sup->supplier;
-            }
-        }
-
-        $purchase = new PurchaseOrder();
-        $purchase->no_po = $request->no_po;
-        $purchase->no_reference = $request->no_reference ?? null;
-        $purchase->id_supplier = $supplierId;
-        $purchase->company = $company ?: 'Direct Purchase';
-        $purchase->category = $request->category ?: 'Sparepart';
-        $purchase->is_direct_purchase = 1;
-        $purchase->id_purchase_request = $request->id_purchase_request ?: null;
-        $purchase->date = $request->date;
-        $purchase->payment = $request->payment ?: 'Cash';
-        $purchase->payment_type = 'cash';
-        $purchase->receipt_status = 'Open';
-        $purchase->delivery = $request->cargo ?? '';
-        $purchase->note = $request->note ?? '';
-
-        $subtotal = 0;
-        foreach ($request->product as $key => $prodName) {
-            $qty = (float) ($request->qty[$key] ?? 0);
-            $price = $this->cleanNumber($request->price[$key] ?? 0);
-            $subtotal += ($qty * $price);
-        }
-        $deliveryCost = $this->cleanNumber($request->delivery_cost ?? 0);
-        $diskon = 0;
-        if ($request->filled('discount_type') && $request->filled('discount_value')) {
-            $discVal = $this->cleanNumber($request->discount_value);
-            if ($request->discount_type === 'percent') {
-                $diskon = ($subtotal * $discVal) / 100;
-            } else {
-                $diskon = $discVal;
-            }
-        } elseif ($request->filled('diskon')) {
-            $diskon = $this->cleanNumber($request->diskon);
-        }
-        $diskon = min($diskon, $subtotal);
-
-        $purchase->subtotal = $subtotal;
-        $purchase->diskon = $diskon;
-        $purchase->delivery_cost = $deliveryCost;
-        $purchase->total = max(0, $subtotal - $diskon + $deliveryCost);
-        $purchase->on_delivery_cargo = $request->cargo ?? null;
-        $purchase->on_delivery_no_resi = $request->no_resi ?? null;
-        $purchase->save();
-
-        $affectedPrIds = [];
-        if ($purchase->id_purchase_request) {
-            $affectedPrIds[] = (int) $purchase->id_purchase_request;
-        }
-
-        foreach ($request->product as $key => $prodName) {
-            $qty = (float) ($request->qty[$key] ?? 0);
-            $price = $this->cleanNumber($request->price[$key] ?? 0);
-            $amount = $qty * $price;
-            $unit = $request->unit[$key] ?? 'Pcs';
-            $productId = $request->id_product[$key] ?? null;
-
-            $dPurchase = new DetailPurchaseOrder();
-            $dPurchase->id_purchase_order = $purchase->id;
-            $dPurchase->product = $prodName;
-            $dPurchase->category = $purchase->category;
-            $dPurchase->id_product = $productId;
-            $dPurchase->qty = $qty;
-            $dPurchase->info_qty = $unit;
-            $dPurchase->price = $price;
-            $dPurchase->amount = $amount;
-            $dPurchase->save();
-
-            // Link to PR detail allocation if created from PR
-            $prDetailId = $request->pr_detail_id[$key] ?? null;
-            if ($prDetailId) {
-                $prDetail = PurchaseRequestDetail::find($prDetailId);
-                if ($prDetail && $prDetail->remainingQty > 0) {
-                    $allocQty = min((int) $qty, $prDetail->remainingQty);
-                    PurchaseRequestDetailAllocation::create([
-                        'id_purchase_request_detail' => $prDetail->id,
-                        'id_purchase_order' => $purchase->id,
-                        'qty' => $allocQty > 0 ? $allocQty : 1,
-                        'purchase_type' => $request->purchase_type ?? 'Lokal',
-                        'cargo' => $request->cargo ?? null,
-                        'no_resi' => $request->no_resi ?? null,
-                        'purchase_date' => $request->date,
-                    ]);
-                    $affectedPrIds[] = (int) $prDetail->id_purchase_request;
+        return DB::transaction(function () use ($request) {
+            $supplierId = $request->supplier;
+            $company = $request->supplier_name;
+            if ($supplierId) {
+                $sup = Supplier::find($supplierId);
+                if ($sup) {
+                    $company = $sup->supplier;
                 }
             }
-        }
 
-        $affectedPrIds = array_values(array_unique(array_filter($affectedPrIds)));
-        if (!empty($affectedPrIds) && !$purchase->id_purchase_request) {
-            $purchase->id_purchase_request = $affectedPrIds[0];
+            $purchase = new PurchaseOrder();
+            $purchase->no_po = $request->no_po;
+            $purchase->no_reference = $request->no_reference ?? null;
+            $purchase->id_supplier = $supplierId;
+            $purchase->company = $company ?: 'Direct Purchase';
+            $purchase->category = $request->category ?: 'Sparepart';
+            $purchase->is_direct_purchase = 1;
+            $purchase->id_purchase_request = $request->id_purchase_request ?: null;
+            $purchase->date = $request->date;
+            $purchase->payment = $request->payment ?: 'Cash';
+            $purchase->payment_type = 'cash';
+            $purchase->receipt_status = 'Open';
+            $purchase->delivery = $request->cargo ?? '';
+            $purchase->note = $request->note ?? '';
+
+            $subtotal = 0;
+            foreach ($request->product as $key => $prodName) {
+                $qty = (float) ($request->qty[$key] ?? 0);
+                $price = $this->cleanNumber($request->price[$key] ?? 0);
+                $subtotal += ($qty * $price);
+            }
+            $deliveryCost = $this->cleanNumber($request->delivery_cost ?? 0);
+            $diskon = 0;
+            if ($request->filled('discount_type') && $request->filled('discount_value')) {
+                $discVal = $this->cleanNumber($request->discount_value);
+                if ($request->discount_type === 'percent') {
+                    $diskon = ($subtotal * $discVal) / 100;
+                } else {
+                    $diskon = $discVal;
+                }
+            } elseif ($request->filled('diskon')) {
+                $diskon = $this->cleanNumber($request->diskon);
+            }
+            $diskon = min($diskon, $subtotal);
+
+            $purchase->subtotal = $subtotal;
+            $purchase->diskon = $diskon;
+            $purchase->delivery_cost = $deliveryCost;
+            $purchase->total = max(0, $subtotal - $diskon + $deliveryCost);
+            $purchase->on_delivery_cargo = $request->cargo ?? null;
+            $purchase->on_delivery_no_resi = $request->no_resi ?? null;
             $purchase->save();
-        }
 
-        // Cek update status PR ke On Delivery (status = 2) jika seluruh kebutuhan PR sudah dialokasi dan ada info kirim
-        foreach ($affectedPrIds as $prId) {
-            $pr = PurchaseRequest::with(['details.allocations'])->find($prId);
-            if ($pr && $pr->status == '1') {
-                if ($this->prService->allDeliveriesSubmitted($pr) && $this->prService->isFullyAllocated($pr)) {
-                    $pr->status = '2';
-                    $pr->save();
+            $affectedPrIds = [];
+            if ($purchase->id_purchase_request) {
+                $affectedPrIds[] = (int) $purchase->id_purchase_request;
+            }
+
+            foreach ($request->product as $key => $prodName) {
+                $qty = (float) ($request->qty[$key] ?? 0);
+                $price = $this->cleanNumber($request->price[$key] ?? 0);
+                $amount = $qty * $price;
+                $unit = $request->unit[$key] ?? 'Pcs';
+                $productId = $request->id_product[$key] ?? null;
+
+                $dPurchase = new DetailPurchaseOrder();
+                $dPurchase->id_purchase_order = $purchase->id;
+                $dPurchase->product = $prodName;
+                $dPurchase->category = $purchase->category;
+                $dPurchase->id_product = $productId;
+                $dPurchase->qty = $qty;
+                $dPurchase->info_qty = $unit;
+                $dPurchase->price = $price;
+                $dPurchase->amount = $amount;
+                $dPurchase->save();
+
+                // Link to PR detail allocation if created from PR
+                $prDetailId = $request->pr_detail_id[$key] ?? null;
+                if ($prDetailId) {
+                    $prDetail = PurchaseRequestDetail::find($prDetailId);
+                    if ($prDetail && $prDetail->remainingQty > 0) {
+                        $allocQty = min((int) $qty, $prDetail->remainingQty);
+                        PurchaseRequestDetailAllocation::create([
+                            'id_purchase_request_detail' => $prDetail->id,
+                            'id_purchase_order' => $purchase->id,
+                            'qty' => $allocQty > 0 ? $allocQty : 1,
+                            'purchase_type' => $request->purchase_type ?? 'Lokal',
+                            'cargo' => $request->cargo ?? null,
+                            'no_resi' => $request->no_resi ?? null,
+                            'purchase_date' => $request->date,
+                        ]);
+                        $affectedPrIds[] = (int) $prDetail->id_purchase_request;
+                    }
                 }
             }
-        }
 
-        if ($request->filled('id_purchase_request')) {
-            return redirect()->route('purchase-request.show', $purchase->id_purchase_request)
-                ->with('success', "Direct Purchase {$purchase->no_po} berhasil dibuat dan dialokasikan ke Purchase Request.");
-        }
+            $affectedPrIds = array_values(array_unique(array_filter($affectedPrIds)));
+            if (!empty($affectedPrIds) && !$purchase->id_purchase_request) {
+                $purchase->id_purchase_request = $affectedPrIds[0];
+                $purchase->save();
+            }
 
-        return redirect()->route('purchase.show', $purchase->id)
-            ->with('success', "Direct Purchase {$purchase->no_po} berhasil dibuat.");
+            // Cek update status PR ke On Delivery (status = 2) jika seluruh kebutuhan PR sudah dialokasi dan ada info kirim
+            foreach ($affectedPrIds as $prId) {
+                $pr = PurchaseRequest::with(['details.allocations'])->find($prId);
+                if ($pr && $pr->status == '1') {
+                    if ($this->prService->allDeliveriesSubmitted($pr) && $this->prService->isFullyAllocated($pr)) {
+                        $pr->status = '2';
+                        $pr->save();
+                    }
+                }
+            }
+
+            if ($request->filled('id_purchase_request')) {
+                return redirect()->route('purchase-request.show', $purchase->id_purchase_request)
+                    ->with('success', "Direct Purchase {$purchase->no_po} berhasil dibuat dan dialokasikan ke Purchase Request.");
+            }
+
+            return redirect()->route('purchase.show', $purchase->id)
+                ->with('success', "Direct Purchase {$purchase->no_po} berhasil dibuat.");
+        });
     }
 
     /**
@@ -491,37 +512,49 @@ class POController extends Controller
     {
         $rule = [
             'no_po' => 'required|string|unique:purchase_order,no_po',
+            'supplier' => 'required|integer|exists:supplier,id',
+            'date' => 'required|date',
+            'product' => 'required|array|min:1',
         ];
-        $this->validate($request, $rule);
+        $messages = [
+            'no_po.required' => 'Nomor PO wajib diisi.',
+            'no_po.unique' => 'Nomor PO sudah pernah digunakan.',
+            'supplier.required' => 'Supplier wajib dipilih dari daftar master supplier.',
+            'supplier.exists' => 'Supplier yang dipilih tidak ditemukan.',
+            'date.required' => 'Tanggal PO wajib diisi.',
+            'product.required' => 'Minimal 1 item produk harus ditambahkan pada PO.',
+            'product.min' => 'Minimal 1 item produk harus ditambahkan pada PO.',
+        ];
+        $this->validate($request, $rule, $messages);
 
-        $supplier = Supplier::find($request->supplier);
-        $itemCategories = $request->item_category ?? [];
-        $purchase = new PurchaseOrder();
-        $purchase->id_supplier = $request->supplier;
-        $purchase->id_purchase_request = $request->id_purchase_request ?: null;
-        $purchase->no_po = $request->no_po;
-        $purchase->no_reference = $request->no_reference ?? null;
-        $purchase->category = $request->category ?: (in_array('Accessories', $itemCategories) ? 'Accessories' : (in_array('Unit', $itemCategories) ? 'Unit' : 'Sparepart'));
-        $purchase->company = $supplier->supplier;
-        $purchase->attn = $request->attn ?? '';
-        $purchase->mobile = $request->mobile ?? '';
-        $purchase->delivery = $request->delivery ?? '';
-        $purchase->ship_to = $request->ship_to ?? null;
-        $purchase->date = $request->date;
-        $purchase->email = $supplier->email ?? '-';
-        $purchase->phone = $supplier->phone ?? '-';
-        $purchase->address = $request->address ?? $supplier->address ?? '-';
-        $purchase->payment = $request->payment ?? '';
-        $this->applyPaymentTerms($purchase, $request);
-        $purchase->note = $request->note ?? '';
-        $purchase->subtotal = $this->cleanNumber($request->subtotal);
-        $purchase->vat = $this->cleanNumber($request->tax);
-        $purchase->diskon = $this->cleanNumber($request->diskon);
-        $purchase->delivery_cost = $this->cleanNumber($request->delivery_cost);
-        $purchase->total = $this->cleanNumber($request->harga_total);
-        $purchaseSave = $purchase->save();
-        $dPurchaseSave = true;
-        if ($purchaseSave) {
+        return DB::transaction(function () use ($request) {
+            $supplier = Supplier::find($request->supplier);
+            $itemCategories = $request->item_category ?? [];
+            $purchase = new PurchaseOrder();
+            $purchase->id_supplier = $request->supplier;
+            $purchase->id_purchase_request = $request->id_purchase_request ?: null;
+            $purchase->no_po = $request->no_po;
+            $purchase->no_reference = $request->no_reference ?? null;
+            $purchase->category = $request->category ?: (in_array('Accessories', $itemCategories) ? 'Accessories' : (in_array('Unit', $itemCategories) ? 'Unit' : 'Sparepart'));
+            $purchase->company = $supplier ? $supplier->supplier : 'Supplier';
+            $purchase->attn = $request->attn ?? '';
+            $purchase->mobile = $request->mobile ?? '';
+            $purchase->delivery = $request->delivery ?? '';
+            $purchase->ship_to = $request->ship_to ?? null;
+            $purchase->date = $request->date;
+            $purchase->email = $supplier->email ?? '-';
+            $purchase->phone = $supplier->phone ?? '-';
+            $purchase->address = $request->address ?? $supplier->address ?? '-';
+            $purchase->payment = $request->payment ?? '';
+            $this->applyPaymentTerms($purchase, $request);
+            $purchase->note = $request->note ?? '';
+            $purchase->subtotal = $this->cleanNumber($request->subtotal);
+            $purchase->vat = $this->cleanNumber($request->tax);
+            $purchase->diskon = $this->cleanNumber($request->diskon);
+            $purchase->delivery_cost = $this->cleanNumber($request->delivery_cost);
+            $purchase->total = $this->cleanNumber($request->harga_total);
+            $purchase->save();
+
             foreach ($request->product as $key => $value) {
                 $itemCategory = $itemCategories[$key] ?? 'Sparepart';
                 $dPurchase = new DetailPurchaseOrder();
@@ -537,7 +570,7 @@ class POController extends Controller
                 $dPurchase->price = $itemCategory == 'Header' ? 0 : $this->cleanNumber($request->price[$key] ?? 0);
                 $dPurchase->disc = $itemCategory == 'Header' ? 0 : $this->cleanNumber($request->disc[$key] ?? 0);
                 $dPurchase->amount = $itemCategory == 'Header' ? 0 : $this->cleanNumber($request->amount[$key] ?? 0);
-                $dPurchaseSave = $dPurchase->save();
+                $dPurchase->save();
 
                 if ($itemCategory !== 'Header') {
                     $prDetailId = $request->pr_detail_id[$key] ?? null;
@@ -562,10 +595,9 @@ class POController extends Controller
                     $purchase->save();
                 }
             }
-        }
-        if ($purchaseSave && $dPurchaseSave) {
+
             return redirect('purchase/' . $purchase->id)->with('success', 'data berhasil ditambahkan');
-        }
+        });
     }
 
     /**
@@ -577,6 +609,9 @@ class POController extends Controller
     public function show($id)
     {
         $purchase = PurchaseOrder::with('supplier')->find($id);
+        if (!$purchase) {
+            return redirect()->route('purchase.index')->with('error', 'Purchase Order tidak ditemukan');
+        }
         $dPurchase = DetailPurchaseOrder::where('id_purchase_order', $id)->get();
         $hargaSebelumPpn = ($purchase->subtotal ?? 0) - ($purchase->diskon ?? 0);
         $dpp = ($purchase->vat ?? 0) > 0 ? round(($hargaSebelumPpn * 11) / 12) : 0;
@@ -627,57 +662,59 @@ class POController extends Controller
             'delivery_cost' => 'nullable',
         ]);
 
-        $purchase = PurchaseOrder::findOrFail($id);
+        return DB::transaction(function () use ($request, $id) {
+            $purchase = PurchaseOrder::findOrFail($id);
 
-        $cargo = $request->cargo ?: null;
-        $noResi = $request->no_resi ?: null;
-        $purchaseType = $request->purchase_type ?: 'Lokal';
-        $purchaseDate = $request->purchase_date ?: ($purchase->date ?: date('Y-m-d'));
+            $cargo = $request->cargo ?: null;
+            $noResi = $request->no_resi ?: null;
+            $purchaseType = $request->purchase_type ?: 'Lokal';
+            $purchaseDate = $request->purchase_date ?: ($purchase->date ?: date('Y-m-d'));
 
-        if ($request->has('delivery_cost')) {
-            $deliveryCost = $this->cleanNumber($request->delivery_cost);
-            $purchase->delivery_cost = $deliveryCost;
-            $purchase->total = max(0, ($purchase->subtotal ?? 0) - ($purchase->diskon ?? 0) + $deliveryCost);
-        }
+            if ($request->has('delivery_cost')) {
+                $deliveryCost = $this->cleanNumber($request->delivery_cost);
+                $purchase->delivery_cost = $deliveryCost;
+                $purchase->total = max(0, ($purchase->subtotal ?? 0) - ($purchase->diskon ?? 0) + $deliveryCost);
+            }
 
-        $purchase->delivery = $cargo ?? ($purchase->delivery ?? '');
-        $purchase->on_delivery_cargo = $cargo;
-        $purchase->on_delivery_no_resi = $noResi;
-        $purchase->save();
+            $purchase->delivery = $cargo ?? ($purchase->delivery ?? '');
+            $purchase->on_delivery_cargo = $cargo;
+            $purchase->on_delivery_no_resi = $noResi;
+            $purchase->save();
 
-        // Update seluruh alokasi PR terkait PO/Direct Purchase ini
-        $allocations = PurchaseRequestDetailAllocation::where('id_purchase_order', $purchase->id)->get();
-        if ($allocations->isNotEmpty()) {
-            PurchaseRequestDetailAllocation::where('id_purchase_order', $purchase->id)->update([
-                'purchase_type' => $purchaseType,
-                'cargo' => $cargo,
-                'no_resi' => $noResi,
-                'purchase_date' => $purchaseDate,
-            ]);
+            // Update seluruh alokasi PR terkait PO/Direct Purchase ini
+            $allocations = PurchaseRequestDetailAllocation::where('id_purchase_order', $purchase->id)->get();
+            if ($allocations->isNotEmpty()) {
+                PurchaseRequestDetailAllocation::where('id_purchase_order', $purchase->id)->update([
+                    'purchase_type' => $purchaseType,
+                    'cargo' => $cargo,
+                    'no_resi' => $noResi,
+                    'purchase_date' => $purchaseDate,
+                ]);
 
-            // Cek dan update status PR yang terhubung jika seluruh alokasi sudah memiliki info pengiriman
-            $linkedPrs = $purchase->linkedPurchaseRequests;
-            foreach ($linkedPrs as $pr) {
-                if ((int) $pr->status === 1 && $this->prService->allDeliveriesSubmitted($pr)) {
-                    $pr->status = '2';
-                    $pr->save();
+                // Cek dan update status PR yang terhubung jika seluruh alokasi sudah memiliki info pengiriman
+                $linkedPrs = $purchase->linkedPurchaseRequests;
+                foreach ($linkedPrs as $pr) {
+                    if ((int) $pr->status === 1 && $this->prService->allDeliveriesSubmitted($pr)) {
+                        $pr->status = '2';
+                        $pr->save();
+                    }
                 }
             }
-        }
 
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Informasi pengiriman & no resi berhasil diperbarui.',
-                'cargo' => $cargo,
-                'no_resi' => $noResi,
-                'purchase_type' => $purchaseType,
-                'delivery_cost' => $purchase->delivery_cost,
-                'total' => $purchase->total,
-            ]);
-        }
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Informasi pengiriman & no resi berhasil diperbarui.',
+                    'cargo' => $cargo,
+                    'no_resi' => $noResi,
+                    'purchase_type' => $purchaseType,
+                    'delivery_cost' => $purchase->delivery_cost,
+                    'total' => $purchase->total,
+                ]);
+            }
 
-        return redirect()->back()->with('success', 'Informasi pengiriman & no resi berhasil diperbarui.');
+            return redirect()->back()->with('success', 'Informasi pengiriman & resi berhasil diperbarui.');
+        });
     }
 
     private function resolvePurchaseType(?string $supplierInfo): string

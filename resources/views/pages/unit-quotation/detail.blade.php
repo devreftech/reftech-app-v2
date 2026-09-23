@@ -1,5 +1,171 @@
 @extends('layouts.sales.app')
 @section('title', 'Detail Smart Quote')
+
+@push('after-style')
+    <style>
+        /* Discussion Chat Bubbles (Same as Prospect & Purchase Request) */
+        .chat-bubble-me {
+            background-color: #ECEAFE;
+            border-radius: 14px 14px 2px 14px !important;
+            color: #2F3349;
+            border: 1px solid #d5d0fa;
+        }
+
+        .chat-bubble-other {
+            background-color: #ffffff;
+            border-radius: 14px 14px 14px 2px !important;
+            color: #2F3349;
+            border: 1px solid rgba(24, 28, 33, 0.08);
+        }
+
+        html.dark-style .chat-bubble-me {
+            background-color: #3b3c5a !important;
+            border-color: rgba(105, 108, 255, 0.4) !important;
+            color: #e4e6f0 !important;
+        }
+
+        html.dark-style .chat-bubble-other {
+            background-color: #2b2c40 !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            color: #e4e6f0 !important;
+        }
+
+        .discussion-stream-box {
+            max-height: 460px;
+            overflow-y: auto;
+            background-color: #fcfcfd;
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        html.dark-style .discussion-stream-box {
+            background-color: #232333;
+            border-color: rgba(255,255,255,0.06);
+        }
+
+        .discussion-stream-box::-webkit-scrollbar {
+            width: 5px;
+        }
+        .discussion-stream-box::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .discussion-stream-box::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 10px;
+        }
+        html.dark-style .discussion-stream-box::-webkit-scrollbar-thumb {
+            background-color: #444760;
+        }
+
+        /* Mention Dropdown Elegant UI */
+        .mention-dropdown-menu {
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            width: 100%;
+            max-width: 440px;
+            z-index: 1060;
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid rgba(105, 108, 255, 0.25) !important;
+            box-shadow: 0 14px 34px rgba(34, 48, 62, 0.18), 0 2px 8px rgba(0,0,0,0.06);
+            overflow: hidden;
+            animation: mentionDropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        html.dark-style .mention-dropdown-menu {
+            background: #2b2c40 !important;
+            border-color: rgba(105, 108, 255, 0.35) !important;
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+        }
+
+        @keyframes mentionDropdownFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .mention-dropdown-header {
+            padding: 8px 14px;
+            background: #f8f9fa;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            font-size: 11.5px;
+            color: #566a7f;
+        }
+
+        html.dark-style .mention-dropdown-header {
+            background: #32344d;
+            border-bottom-color: rgba(255,255,255,0.07);
+            color: #a8abc2;
+        }
+
+        .mention-dropdown-list {
+            max-height: 220px;
+            overflow-y: auto;
+            margin: 0;
+            padding: 4px;
+            list-style: none;
+        }
+
+        .mention-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+
+        .mention-item:hover,
+        .mention-item.active-item {
+            background-color: rgba(105, 108, 255, 0.08);
+        }
+
+        html.dark-style .mention-item:hover,
+        html.dark-style .mention-item.active-item {
+            background-color: rgba(105, 108, 255, 0.2);
+        }
+
+        .mention-tag {
+            background: rgba(105, 108, 255, 0.1);
+            color: #696cff;
+            border: 1px solid rgba(105, 108, 255, 0.25);
+            border-radius: 999px;
+            padding: 3px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        html.dark-style .mention-tag {
+            background: rgba(105, 108, 255, 0.2);
+            color: #8c90ff;
+            border-color: rgba(105, 108, 255, 0.4);
+        }
+
+        .mention-tag .remove-mention {
+            cursor: pointer;
+            color: #a1acb8;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .mention-tag .remove-mention:hover {
+            color: #ff3e1d;
+        }
+    </style>
+@endpush
+
 @section('content')
 
 @php
@@ -119,8 +285,18 @@
                 <div style="display:flex !important; align-items:stretch !important; gap:12px; margin-bottom:16px; font-size:12px;">
                     <div style="flex:1; display:flex; flex-direction:column; align-self:stretch; border:1px solid #dcdcdc; border-radius:6px; padding:10px 14px; background:#fafafa;">
                         <p class="mb-1 fw-bold text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#555;">Quote To</p>
+                        @php
+                            $clientUrl = $quote->client ? ($quote->client->role === 'Leads' ? route('detail.leads', $quote->client->id) : route('existing.show', $quote->client->id)) : null;
+                        @endphp
                         <p class="mb-1 fw-bold" style="font-size:13.5px; color:#111;">
-                            {{ $quote->client?->company ?? '-' }}
+                            @if ($clientUrl)
+                                <a href="{{ $clientUrl }}" class="text-primary text-decoration-none fw-bold" target="_blank" title="Buka halaman client">
+                                    {{ $quote->client->company }}
+                                    <i class="mdi mdi-open-in-new ms-1" style="font-size: 12px; vertical-align: middle;"></i>
+                                </a>
+                            @else
+                                {{ $quote->client?->company ?? '-' }}
+                            @endif
                             @if ($quote->plant)
                                 <span class="badge bg-label-success ms-1" style="font-size: 10.5px; vertical-align: middle;">{{ $quote->plant->name }}</span>
                             @endif
@@ -178,6 +354,12 @@
 
                 {{-- Items Table + Financial Summary — per Opsi kalau quotation ini
                      punya >1 opsi perbandingan harga, atau 1x aja kalau biasa. --}}
+                @php
+                    // Note/Terms & Conditions sekarang disimpan per-opsi (diisi lewat card
+                    // T&C yang ikut opsi aktif di form create/edit). Kalau quotation cuma
+                    // 1 opsi, tetap tampil 1x global seperti sebelum fitur ini ada.
+                    $hasCustomTerms = $quote->options->count() > 1;
+                @endphp
                 @if ($quote->options->isNotEmpty())
                     @foreach ($quote->options as $i => $option)
                         @if ($i > 0)
@@ -190,105 +372,33 @@
                         </div>
                         @endif
                         @include('pages.unit-quotation.partials.option-table', ['items' => $option->details, 'optTotals' => $option])
+                        @if ($hasCustomTerms)
+                            @include('pages.unit-quotation.partials.tc-block-detail', [
+                                'tcNote'             => $option->effective_note,
+                                'tcRentalTerms'      => $option->effective_rental_terms,
+                                'tcValidity'         => $option->effective_validity,
+                                'tcPricing'          => $option->effective_pricing,
+                                'tcDeliveryProcess'  => $option->effective_delivery_process,
+                                'tcPayment'          => $option->effective_payment,
+                                'tcWarranty'         => $option->effective_warranty,
+                            ])
+                        @endif
                     @endforeach
                 @else
                     @include('pages.unit-quotation.partials.option-table', ['items' => $quote->details, 'optTotals' => $quote])
                 @endif
 
-                {{-- Note (Remarks) --}}
-                @if ($quote->note)
-                <div style="border:1px solid #e0e0e0; border-left:3px solid #696cff; border-radius:6px; padding:10px 14px; font-size:12px; color:#333; margin-bottom:14px; background:#fafafa;">
-                    <p class="mb-1 fw-semibold text-uppercase" style="font-size:10px; color:#888; letter-spacing:.5px;">Remarks / Note</p>
-                    @php
-                        $noteLines = explode("\n", str_replace("\r", "", $quote->note));
-                    @endphp
-                    <div style="font-size:12px; color:#222; line-height:1.5;">
-                        @foreach ($noteLines as $line)
-                            @php
-                                $trimmed = trim($line);
-                            @endphp
-                            @if (empty($trimmed))
-                                <div style="height:3px;"></div>
-                            @else
-                                @php
-                                    $hasBullet = preg_match('/^([•\-\*]|\d+[\.\)])\s*(.*)/u', $trimmed, $matches);
-                                @endphp
-                                @if ($hasBullet && !empty($matches[1]) && !empty($matches[2]))
-                                    <div style="display:flex; align-items:flex-start; margin-bottom:3px;">
-                                        <span style="flex-shrink:0; min-width:20px; color:#696cff; font-weight:600;">{{ $matches[1] }}</span>
-                                        <span style="flex:1;">{{ $matches[2] }}</span>
-                                    </div>
-                                @else
-                                    <div style="margin-bottom:3px;">{{ $line }}</div>
-                                @endif
-                            @endif
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-
-                {{-- Ketentuan Rental Unit Kompresor (Khusus Tipe Rental jika ada isinya) --}}
-                @if (!empty($quote->rental_terms))
-                <div style="border:1px solid #ffe0b2; border-left:3px solid #ff9800; border-radius:6px; padding:10px 14px; font-size:12px; color:#333; margin-bottom:14px; background:#fffdf8;">
-                    <p class="mb-1 fw-semibold" style="font-size:10px; color:#e65100; text-transform:uppercase; letter-spacing:.5px;">
-                        <i class="mdi mdi-file-document-check-outline me-1"></i> Ketentuan Rental Unit Kompresor
-                    </p>
-                    @php
-                        $rentalLines = explode("\n", str_replace("\r", "", $quote->rental_terms));
-                    @endphp
-                    <div style="font-size:12px; color:#222; line-height:1.5;">
-                        @foreach ($rentalLines as $line)
-                            @php
-                                $trimmed = trim($line);
-                            @endphp
-                            @if (empty($trimmed))
-                                <div style="height:3px;"></div>
-                            @else
-                                @php
-                                    $hasBullet = preg_match('/^([•\-\*]|\d+[\.\)])\s*(.*)/u', $trimmed, $matches);
-                                @endphp
-                                @if ($hasBullet && !empty($matches[1]) && !empty($matches[2]))
-                                    <div style="display:flex; align-items:flex-start; margin-bottom:3px;">
-                                        <span style="flex-shrink:0; min-width:20px; color:#ff9800; font-weight:600;">{{ $matches[1] }}</span>
-                                        <span style="flex:1;">{{ $matches[2] }}</span>
-                                    </div>
-                                @else
-                                    <div style="margin-bottom:3px;">{{ $line }}</div>
-                                @endif
-                            @endif
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-
-                {{-- Terms & Conditions --}}
-                <div style="border:1px solid #e0e0e0; border-radius:6px; padding:12px 16px; font-size:12px; background:#fff; margin-bottom:16px;">
-                    <p class="mb-2 fw-semibold text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#888;">Term &amp; Condition</p>
-                    <table style="width:100%; border-collapse:collapse;">
-                        <tr>
-                            <td style="width:160px; padding:3px 0; color:#555; vertical-align:top;">Validity of Quotation</td>
-                            <td style="padding:3px 0; vertical-align:top;">: {{ $quote->validity ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding:3px 0; color:#555; vertical-align:top;">Price</td>
-                            <td style="padding:3px 0; vertical-align:top;">: {{ $quote->pricing ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding:3px 0; color:#555; vertical-align:top;">Delivery Process</td>
-                            <td style="padding:3px 0; vertical-align:top; white-space:pre-line;">: {{ $quote->delivery_process ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding:3px 0; color:#555; vertical-align:top;">Payment</td>
-                            <td style="padding:3px 0; vertical-align:top;">: {{ $quote->payment ?? '-' }}</td>
-                        </tr>
-                        @if (!empty($quote->warranty))
-                        <tr>
-                            <td style="padding:3px 0; color:#555; vertical-align:top;">Warranty</td>
-                            <td style="padding:3px 0; vertical-align:top;">: {{ $quote->warranty }}</td>
-                        </tr>
-                        @endif
-                    </table>
-                </div>
+                @unless ($hasCustomTerms)
+                    @include('pages.unit-quotation.partials.tc-block-detail', [
+                        'tcNote'             => $quote->note,
+                        'tcRentalTerms'      => $quote->rental_terms,
+                        'tcValidity'         => $quote->validity,
+                        'tcPricing'          => $quote->pricing,
+                        'tcDeliveryProcess'  => $quote->delivery_process,
+                        'tcPayment'          => $quote->payment,
+                        'tcWarranty'         => $quote->warranty,
+                    ])
+                @endunless
 
                 {{-- Footer Banner --}}
                 <div class="p-2 text-center rounded" style="background:#f4f4fe; border:1px solid #e0e0ff;">
@@ -330,7 +440,7 @@
 
             <div class="card-body p-3">
                 {{-- 1. Main Action: Download / Print PDF --}}
-                <div class="mb-3">
+                <div class="mb-2">
                     <a href="{{ route('unit-quotation.print', $quote->id) }}" target="_blank"
                        class="btn btn-primary d-grid w-100 shadow-sm py-2"
                        style="background: linear-gradient(135deg, #696cff 0%, #3f42db 100%); border: none;">
@@ -338,6 +448,14 @@
                             <i class="mdi mdi-printer-outline fs-5"></i> Print / Download PDF
                         </span>
                     </a>
+                </div>
+
+                {{-- 1.1 Ajukan Retur Barang --}}
+                <div class="mb-3">
+                    <button type="button" class="btn btn-outline-warning w-100 d-flex align-items-center justify-content-center gap-1 shadow-xs fw-semibold"
+                        data-bs-toggle="modal" data-bs-target="#modalRequestReturn">
+                        <i class="mdi mdi-keyboard-return"></i> Ajukan Retur Barang
+                    </button>
                 </div>
 
                 {{-- 2. Edit & Revisi Row --}}
@@ -2092,6 +2210,21 @@
      langsung dibuka via JS begitu Upload PO sukses (AJAX), tanpa perlu reload halaman. --}}
 @include('components.modal.unit-quotation.convert-po')
 
+@php
+    $returnItems = $quote->options->isNotEmpty() 
+        ? $quote->options->pluck('details')->flatten() 
+        : $quote->details;
+    $returnFormAction = route('unit-quotation.request-return', $quote->id);
+    $returnClientName = $quote->client?->company ?? ($quote->pic?->name ?? '-');
+@endphp
+@include('components.modal.sales.modal-request-return', [
+    'quote' => $quote,
+    'quoteNo' => $quote->no_quote,
+    'clientName' => $returnClientName,
+    'formAction' => $returnFormAction,
+    'returnItems' => $returnItems,
+])
+
 @endsection
 
 @push('after-style')
@@ -2739,16 +2872,226 @@
         });
     });
 
+    // ── @mention logic for Smart Quote Comments ──────────────────────
+    var allUsers = @json($allUsers ?? []);
+    var selectedMentions = {}; // id => name
+    var mentionStartIndex = -1;
+    var activeMentionIndex = 0;
+    var currentFilteredUsers = [];
+
+    var commentTextarea = document.getElementById('new-comment-text');
+    var commentDropdown = document.getElementById('mentionDropdown');
+    var commentTagsEl = document.getElementById('mentionTags');
+    var commentInputsEl = document.getElementById('mentionInputs');
+
+    var roleColors = {
+        'Admin': 'danger',
+        'Super Admin': 'danger',
+        'Developer': 'dark',
+        'Sales': 'primary',
+        'Support': 'info',
+        'Logistic': 'warning',
+        'Accounting': 'success',
+        'Purchasing': 'warning'
+    };
+
+    function renderCommentMentionDropdown(query) {
+        if (!commentDropdown || !commentTextarea) return;
+        currentFilteredUsers = allUsers.filter(function (u) {
+            return u.name.toLowerCase().indexOf(query.toLowerCase()) !== -1 && !selectedMentions[u.id];
+        }).slice(0, 8);
+
+        if (!currentFilteredUsers.length) {
+            commentDropdown.style.display = 'none';
+            commentDropdown.innerHTML = '';
+            return;
+        }
+
+        activeMentionIndex = 0;
+
+        var html = `
+            <div class="mention-dropdown-header d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-1">
+                    <i class="mdi mdi-at text-primary"></i>
+                    <span class="fw-bold">Pilih Rekan Tim (${currentFilteredUsers.length})</span>
+                </div>
+                <small class="text-muted" style="font-size: 10px;">Tekan ↑ ↓ & Enter</small>
+            </div>
+            <ul class="mention-dropdown-list">
+        `;
+
+        currentFilteredUsers.forEach(function (u, index) {
+            var color = roleColors[u.role] || 'primary';
+            var initial = (u.name || 'U').charAt(0).toUpperCase();
+            var activeCls = index === 0 ? 'active-item' : '';
+            var avatarHtml = '';
+
+            if (u.image) {
+                var imgSrc = u.image.startsWith('/') ? u.image : '/' + u.image;
+                avatarHtml = `<img src="${imgSrc}" class="rounded-circle shadow-xs flex-shrink-0" width="30" height="30" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'avatar-initial rounded-circle bg-label-${color} fw-bold d-flex align-items-center justify-content-center shadow-xs flex-shrink-0\\' style=\\'width:30px;height:30px;font-size:12px;\\'>${initial}</span>'">`;
+            } else {
+                avatarHtml = `<span class="avatar-initial rounded-circle bg-label-${color} fw-bold d-flex align-items-center justify-content-center shadow-xs flex-shrink-0" style="width:30px;height:30px;font-size:12px;">${initial}</span>`;
+            }
+
+            html += `
+                <li class="mention-item ${activeCls}" data-index="${index}">
+                    ${avatarHtml}
+                    <div class="flex-grow-1 min-w-0 text-truncate">
+                        <span class="fw-semibold text-dark d-block text-truncate" style="font-size: 13px;">${u.name}</span>
+                    </div>
+                    <span class="badge bg-label-${color} rounded-pill px-2 py-0.5 ms-auto flex-shrink-0" style="font-size: 10px;">
+                        ${u.role || 'Team'}
+                    </span>
+                </li>
+            `;
+        });
+
+        html += `</ul>`;
+        commentDropdown.innerHTML = html;
+        commentDropdown.style.display = 'block';
+
+        // Bind click events
+        commentDropdown.querySelectorAll('.mention-item').forEach(function (el) {
+            el.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                var idx = parseInt(this.getAttribute('data-index'), 10);
+                if (currentFilteredUsers[idx]) {
+                    selectCommentMention(currentFilteredUsers[idx]);
+                }
+            });
+        });
+    }
+
+    function updateCommentMentionActiveItem() {
+        if (!commentDropdown) return;
+        var items = commentDropdown.querySelectorAll('.mention-item');
+        items.forEach(function (el, idx) {
+            if (idx === activeMentionIndex) {
+                el.classList.add('active-item');
+                el.scrollIntoView({ block: 'nearest' });
+            } else {
+                el.classList.remove('active-item');
+            }
+        });
+    }
+
+    function selectCommentMention(user) {
+        if (!commentTextarea) return;
+        var val = commentTextarea.value;
+        var before = val.substring(0, mentionStartIndex);
+        var after = val.substring(commentTextarea.selectionStart);
+        commentTextarea.value = before + '@' + user.name + ' ' + after;
+        commentTextarea.focus();
+
+        selectedMentions[user.id] = user.name;
+        if (commentDropdown) {
+            commentDropdown.style.display = 'none';
+            commentDropdown.innerHTML = '';
+        }
+        mentionStartIndex = -1;
+        renderCommentMentionTags();
+    }
+
+    function renderCommentMentionTags() {
+        if (!commentTagsEl || !commentInputsEl) return;
+        commentTagsEl.innerHTML = '';
+        commentInputsEl.innerHTML = '';
+        Object.keys(selectedMentions).forEach(function (id) {
+            var span = document.createElement('span');
+            span.className = 'mention-tag';
+            span.innerHTML = '@' + selectedMentions[id] +
+                ' <span class="remove-mention ms-1" data-id="' + id + '">&times;</span>';
+            commentTagsEl.appendChild(span);
+
+            var inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = 'mentions[]';
+            inp.value = id;
+            commentInputsEl.appendChild(inp);
+        });
+
+        commentTagsEl.querySelectorAll('.remove-mention').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                delete selectedMentions[this.dataset.id];
+                renderCommentMentionTags();
+            });
+        });
+    }
+
+    if (commentTextarea) {
+        commentTextarea.addEventListener('input', function () {
+            var val = this.value;
+            var pos = this.selectionStart;
+
+            var atPos = -1;
+            for (var i = pos - 1; i >= 0; i--) {
+                if (val[i] === '@') { atPos = i; break; }
+                if (val[i] === ' ' || val[i] === '\n') break;
+            }
+
+            if (atPos !== -1) {
+                mentionStartIndex = atPos;
+                var query = val.substring(atPos + 1, pos);
+                renderCommentMentionDropdown(query);
+            } else {
+                if (commentDropdown) {
+                    commentDropdown.style.display = 'none';
+                    commentDropdown.innerHTML = '';
+                }
+                mentionStartIndex = -1;
+            }
+        });
+
+        commentTextarea.addEventListener('keydown', function (e) {
+            if (!commentDropdown || commentDropdown.style.display === 'none' || !currentFilteredUsers.length) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeMentionIndex = (activeMentionIndex + 1) % currentFilteredUsers.length;
+                updateCommentMentionActiveItem();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeMentionIndex = (activeMentionIndex - 1 + currentFilteredUsers.length) % currentFilteredUsers.length;
+                updateCommentMentionActiveItem();
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                if (currentFilteredUsers[activeMentionIndex]) {
+                    selectCommentMention(currentFilteredUsers[activeMentionIndex]);
+                }
+            } else if (e.key === 'Escape') {
+                commentDropdown.style.display = 'none';
+                commentDropdown.innerHTML = '';
+                mentionStartIndex = -1;
+            }
+        });
+
+        commentTextarea.addEventListener('blur', function () {
+            setTimeout(function () {
+                if (commentDropdown) {
+                    commentDropdown.style.display = 'none';
+                    commentDropdown.innerHTML = '';
+                }
+            }, 200);
+        });
+    }
+
     // Tambah komentar baru
     $('#form-add-comment').on('submit', function (e) {
         e.preventDefault();
         var text = $('#new-comment-text').val().trim();
         if (!text) return;
         $('#btn-submit-comment').prop('disabled', true);
+        
+        var mentionIds = Object.keys(selectedMentions);
+
         $.ajax({
             type: 'POST',
             url: '{{ route('unit-quotation.storeComment', $quote->id) }}',
-            data: { comment: text, _token: '{{ csrf_token() }}' },
+            data: {
+                comment: text,
+                mentions: mentionIds,
+                _token: '{{ csrf_token() }}'
+            },
             success: function () {
                 location.reload();
             },
@@ -2759,11 +3102,19 @@
         });
     });
 
+    // Auto-scroll chat discussion stream to bottom on load
+    $(document).ready(function() {
+        var streamEl = document.getElementById('quotationDiscussionStream');
+        if (streamEl) {
+            streamEl.scrollTop = streamEl.scrollHeight;
+        }
+    });
+
     // Edit komentar
     $(document).on('click', '.btn-edit-comment', function () {
-        var $item = $(this).closest('.timeline-item');
+        var $item = $(this).closest('.item-comment, .timeline-feed-item, .timeline-item');
         var $p = $item.find('.comment-text');
-        var currentText = $p.text();
+        var currentText = $p.text().trim();
 
         Swal.fire({
             title: 'Edit Komentar',
@@ -2797,7 +3148,7 @@
 
     // Hapus komentar
     $(document).on('click', '.btn-delete-comment', function () {
-        var $item = $(this).closest('.timeline-item');
+        var $item = $(this).closest('.item-comment, .timeline-feed-item, .timeline-item');
         var id = $item.data('comment-id');
         Swal.fire({
             title: 'Hapus komentar ini?',

@@ -32,7 +32,7 @@
             </div>
             <div class="d-flex align-items-center flex-wrap gap-2">
                 <span class="badge bg-label-primary fs-6 px-3 py-2">
-                    <i class="mdi mdi-receipt-text-outline me-1"></i>SO: {{ $pending->no_pending }}
+                    <i class="mdi mdi-receipt-text-outline me-1"></i>SO: {{ $pending->no_pending ?? ($purchase->no_pr ?? '-') }}
                 </span>
                 @if ($purchase)
                     <span class="badge bg-label-secondary fs-6 px-3 py-2">
@@ -99,7 +99,7 @@
                                         </tr>
                                         <tr>
                                             <td class="fw-semibold text-muted ps-0">Keperluan / Judul</td>
-                                            <td>: <span class="fw-bold text-primary">{{ $pending->title ?: 'Pengadaan Internal' }}</span></td>
+                                            <td>: <span class="fw-bold text-primary">{{ $pending?->title ?: ($purchase?->title ?: 'Pengadaan Internal') }}</span></td>
                                         </tr>
                                         <tr>
                                             <td class="fw-semibold text-muted ps-0">Tujuan</td>
@@ -153,9 +153,13 @@
                                     <tr>
                                         <td class="fw-semibold text-muted ps-0">No Sales Order</td>
                                         <td>:
-                                            <a class="text-primary fw-bold" href="{{ route('pending-po.show', $pending->id) }}">
-                                                {{ $pending->no_pending }}
-                                            </a>
+                                            @if ($pending)
+                                                <a class="text-primary fw-bold" href="{{ route('pending-po.show', $pending->id) }}">
+                                                    {{ $pending->no_pending }}
+                                                </a>
+                                            @else
+                                                <span class="text-muted fst-italic">-</span>
+                                            @endif
                                         </td>
                                     </tr>
                                     <tr>
@@ -185,7 +189,7 @@
                                         <td>:
                                             @php
                                                 $paymentInfo = null;
-                                                $paymentRecord = \App\Models\Payment::where($isUnitQuotation ? 'id_unit_quotation' : 'id_quotation', $quotation->id)->orderByDesc('id')->first();
+                                                $paymentRecord = $quotation ? \App\Models\Payment::where($isUnitQuotation ? 'id_unit_quotation' : 'id_quotation', $quotation->id)->orderByDesc('id')->first() : null;
                                                 if ($paymentRecord) {
                                                     if ($paymentRecord->type === 'Tempo') {
                                                         $days = $paymentRecord->tempo ?: preg_replace('/[^0-9]/', '', (string)$paymentRecord->note);
@@ -343,9 +347,11 @@
             <div class="col-12">
                 <div class="card modern-card mb-0">
                     @php
+                        $isNewPr = ($purchase && (int) $purchase->status == 0);
                         $canCreatePo = ($purchase && (int) $purchase->status >= 1);
                         $canEditPrQty = in_array(Auth::user()->role, ['Logistic', 'Admin']);
-                        $prColspan = 7 + ($canCreatePo ? 1 : 0) + ($canEditPrQty ? 1 : 0);
+                        $hasSelection = ($isNewPr || $canCreatePo);
+                        $prColspan = 7 + ($hasSelection ? 1 : 0) + ($canEditPrQty || $isNewPr ? 1 : 0);
                     @endphp
                     <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div class="d-flex align-items-center gap-2">
@@ -359,6 +365,10 @@
                                 <span class="badge bg-label-info font-11 d-none d-sm-inline-flex" id="selectedPrItemsBadge">
                                     <span id="countSelectedPrItems">0</span> item dipilih
                                 </span>
+                            @elseif ($isNewPr)
+                                <span class="badge bg-label-danger font-11 d-none d-sm-inline-flex" id="selectedPrRejectItemsBadge" style="display: none !important;">
+                                    <span id="countSelectedPrRejectItems">0</span> item dipilih untuk ditolak
+                                </span>
                             @endif
                         </div>
                         @if ($canCreatePo)
@@ -370,6 +380,12 @@
                                     <i class="mdi mdi-cart-arrow-down me-1"></i> + Direct Purchase
                                 </button>
                             </div>
+                        @elseif ($isNewPr)
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <button type="button" class="btn btn-sm btn-outline-danger shadow-xs" id="btnRejectSelectedItems" style="display: none;">
+                                    <i class="mdi mdi-close-circle-outline me-1"></i> Tolak Item Terpilih
+                                </button>
+                            </div>
                         @endif
                     </div>
                     <div class="card-body p-0">
@@ -377,7 +393,7 @@
                             <table class="table table-bordered align-middle mb-0" id="prItemsTable">
                                 <thead>
                                     <tr>
-                                        @if ($canCreatePo)
+                                        @if ($hasSelection)
                                             <th style="width: 40px;" class="text-center">
                                                 <input type="checkbox" class="form-check-input" id="checkAllPrItems" title="Pilih Semua Item">
                                             </th>
@@ -389,34 +405,60 @@
                                         <th>Pembelian Terakhir</th>
                                         <th class="text-center" style="width: 160px;">Qty &amp; Alokasi</th>
                                         <th>Catatan / Note</th>
-                                        @if ($canEditPrQty)
-                                            <th class="text-center" style="width: 50px;"></th>
+                                        @if ($canEditPrQty || $isNewPr)
+                                            <th class="text-center" style="width: 80px;">Aksi</th>
                                         @endif
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @php $no = 1; @endphp
                                     @forelse (($purchase->details ?? collect()) as $pr)
-                                        @php $remaining = $pr->remainingQty; @endphp
-                                        <tr>
-                                            @if ($canCreatePo)
+                                        @php
+                                            $remaining = $pr->remainingQty;
+                                            $isRejected = (bool) $pr->is_rejected;
+                                        @endphp
+                                        <tr class="{{ $isRejected ? 'table-light text-muted' : '' }}">
+                                            @if ($hasSelection)
                                                 <td class="text-center">
-                                                    @if ($remaining > 0)
-                                                        <input type="checkbox" class="form-check-input check-pr-item" value="{{ $pr->id }}" data-remaining="{{ $remaining }}" checked>
-                                                    @else
-                                                        <span class="badge bg-label-success p-1" data-bs-toggle="tooltip" title="Sudah teralokasi penuh ke PO"><i class="mdi mdi-check font-12"></i></span>
+                                                    @if ($isNewPr)
+                                                        @if ($isRejected)
+                                                            <span class="badge bg-label-danger p-1" data-bs-toggle="tooltip" title="Item Ditolak"><i class="mdi mdi-close font-12"></i></span>
+                                                        @else
+                                                            <input type="checkbox" class="form-check-input check-pr-reject-item" value="{{ $pr->id }}" data-name="{{ $pr->equivalent->product->description ?? ($pr->equivalent->pn ?? 'Item #' . $pr->id) }}">
+                                                        @endif
+                                                    @elseif ($canCreatePo)
+                                                        @if ($isRejected)
+                                                            <span class="badge bg-label-danger p-1" data-bs-toggle="tooltip" title="Item Ditolak"><i class="mdi mdi-close font-12"></i></span>
+                                                        @elseif ($remaining > 0)
+                                                            <input type="checkbox" class="form-check-input check-pr-item" value="{{ $pr->id }}" data-remaining="{{ $remaining }}" checked>
+                                                        @else
+                                                            <span class="badge bg-label-success p-1" data-bs-toggle="tooltip" title="Sudah teralokasi penuh ke PO"><i class="mdi mdi-check font-12"></i></span>
+                                                        @endif
                                                     @endif
                                                 </td>
                                             @endif
                                             <td class="text-center fw-medium">{{ $no }}</td>
                                             <td class="fw-bold text-dark">{{ $purchase->no_pr ?? '-' }}</td>
                                             <td style="max-width: 250px; white-space: normal;">
-                                                <div class="fw-semibold text-dark">
+                                                @if ($isRejected)
+                                                    <div class="d-flex align-items-center gap-1 mb-1">
+                                                        <span class="badge bg-label-danger font-11"><i class="mdi mdi-close-circle-outline me-1"></i>Ditolak</span>
+                                                    </div>
+                                                @endif
+                                                <div class="fw-semibold {{ $isRejected ? 'text-decoration-line-through text-muted' : 'text-dark' }}">
                                                     {{ $pr->equivalent->product->description ?? ($pr->equivalent->pn ?? '-') }}
                                                 </div>
                                                 @if ($pr->equivalent->product && $pr->equivalent->product->commodity)
                                                     <div class="text-muted font-11 mt-1">
                                                         <i class="mdi mdi-tag-outline me-1"></i>{{ $pr->equivalent->product->commodity }}
+                                                    </div>
+                                                @endif
+                                                @if ($isRejected && $pr->rejected_reason)
+                                                    <div class="alert alert-danger py-1 px-2 mt-2 mb-0 font-11 border-0" style="background-color: rgba(255, 62, 29, 0.08);">
+                                                        <strong>Alasan:</strong> {{ $pr->rejected_reason }}
+                                                        @if ($pr->rejector)
+                                                            <div class="text-muted font-10 mt-1">oleh {{ $pr->rejector->name }} · {{ \Carbon\Carbon::parse($pr->rejected_at)->diffForHumans() }}</div>
+                                                        @endif
                                                     </div>
                                                 @endif
                                             </td>
@@ -428,7 +470,7 @@
                                                         $detPrice = $detQuotation->firstWhere('id_equivalent', $pr->id_equivalent);
                                                     @endphp
                                                     <div class="d-flex align-items-center gap-1 flex-wrap">
-                                                        <span class="fw-bold text-dark">{{ $pr->equivalent->brand }} {{ $pr->equivalent->pn }}</span>
+                                                        <span class="fw-bold {{ $isRejected ? 'text-muted' : 'text-dark' }}">{{ $pr->equivalent->brand }} {{ $pr->equivalent->pn }}</span>
                                                         @if ($pr->equivalent->product && $pr->equivalent->product->go)
                                                             <span class="badge {{ $pr->equivalent->product->go == 'Genuine' ? 'bg-label-success' : 'bg-label-warning' }} font-10">
                                                                 {{ $pr->equivalent->product->go }}
@@ -480,7 +522,11 @@
                                             </td>
                                             <td class="text-center">
                                                 <span class="fw-bold text-dark fs-6">{{ $pr->totalQty }} {{ $pr->equivalent->product->unit ?? '' }}</span>
-                                                @if ($remaining > 0)
+                                                @if ($isRejected)
+                                                    <div>
+                                                        <span class="badge bg-label-danger font-11">Item Ditolak</span>
+                                                    </div>
+                                                @elseif ($remaining > 0)
                                                     <div>
                                                         <span class="badge bg-label-warning font-11" data-bs-toggle="tooltip" title="Sisa kebutuhan belum terbit PO: {{ $remaining }} {{ $pr->equivalent->product->unit ?? '' }}">
                                                             Sisa belum PO: {{ $remaining }}
@@ -521,13 +567,32 @@
                                                     <span class="text-muted">-</span>
                                                 @endif
                                             </td>
-                                            @if ($canEditPrQty)
+                                            @if ($canEditPrQty || $isNewPr)
                                                 <td class="text-center">
-                                                    <button type="button" class="btn btn-icon btn-outline-primary btn-sm edit-purchase-item"
-                                                        data-id="{{ $pr->id }}" data-qty="{{ $pr->qty }}" data-qty-stock="{{ $pr->qty_stock }}"
-                                                        data-note="{{ $pr->note }}" title="Edit Qty Purchase Request">
-                                                        <i class="mdi mdi-pencil-outline"></i>
-                                                    </button>
+                                                    <div class="d-inline-flex align-items-center gap-1">
+                                                        @if ($isNewPr && $isRejected)
+                                                            <button type="button" class="btn btn-xs btn-outline-secondary unreject-item-btn"
+                                                                data-id="{{ $pr->id }}" data-name="{{ $pr->equivalent->product->description ?? ($pr->equivalent->pn ?? 'Item #' . $pr->id) }}"
+                                                                title="Batalkan Penolakan Item">
+                                                                <i class="mdi mdi-undo-variant me-1"></i>Batal Tolak
+                                                            </button>
+                                                        @else
+                                                            @if ($canEditPrQty)
+                                                                <button type="button" class="btn btn-icon btn-outline-primary btn-sm edit-purchase-item"
+                                                                    data-id="{{ $pr->id }}" data-qty="{{ $pr->qty }}" data-qty-stock="{{ $pr->qty_stock }}"
+                                                                    data-note="{{ $pr->note }}" title="Edit Qty Purchase Request">
+                                                                    <i class="mdi mdi-pencil-outline"></i>
+                                                                </button>
+                                                            @endif
+                                                            @if ($isNewPr && !$isRejected)
+                                                                <button type="button" class="btn btn-icon btn-outline-danger btn-sm reject-single-item-btn"
+                                                                    data-id="{{ $pr->id }}" data-name="{{ $pr->equivalent->product->description ?? ($pr->equivalent->pn ?? 'Item #' . $pr->id) }}"
+                                                                    title="Tolak Item Ini">
+                                                                    <i class="mdi mdi-close-circle-outline"></i>
+                                                                </button>
+                                                            @endif
+                                                        @endif
+                                                    </div>
                                                 </td>
                                             @endif
                                         </tr>
@@ -787,33 +852,29 @@
                         <form action="{{ route('purchase-request.add-discussion', $pending->id) }}" method="POST" id="discussionForm">
                             @csrf
                             <div class="position-relative">
+                                <div id="mentionDropdown" class="mention-dropdown-menu" style="display:none;"></div>
+
                                 <textarea
-                                    name="message"
-                                    id="discussionMessage"
-                                    class="form-control shadow-none"
-                                    rows="3"
-                                    placeholder="Tulis pesan... ketik @ untuk mention rekan tim"
-                                    style="padding-right: 120px; resize:none; border-radius: 8px; font-size: 13.5px;"
-                                    required></textarea>
+                                        name="message"
+                                        id="discussionMessage"
+                                        class="form-control shadow-none"
+                                        rows="3"
+                                        placeholder="Tulis pesan... ketik @ untuk mention rekan tim"
+                                        style="padding-right: 120px; resize:none; border-radius: 8px; font-size: 13.5px;"
+                                        required></textarea>
 
-                                {{-- Hidden inputs untuk mention --}}
-                                <div id="mentionInputs"></div>
+                                    {{-- Hidden inputs untuk mention --}}
+                                    <div id="mentionInputs"></div>
 
-                                <button type="submit" class="btn btn-primary position-absolute d-flex align-items-center"
-                                    style="bottom:12px;right:12px; padding: 6px 14px; font-size: 13px; border-radius: 6px;">
-                                    <i class="mdi mdi-send me-1"></i> Kirim
-                                </button>
-                            </div>
+                                    <button type="submit" class="btn btn-primary position-absolute d-flex align-items-center"
+                                        style="bottom:12px;right:12px; padding: 6px 14px; font-size: 13px; border-radius: 6px;">
+                                        <i class="mdi mdi-send me-1"></i> Kirim
+                                    </button>
+                                </div>
 
-                            {{-- Mention dropdown --}}
-                            <ul id="mentionDropdown"
-                                class="list-group shadow border-0"
-                                style="display:none;position:absolute;z-index:999;min-width:240px;max-height:200px;overflow-y:auto; border-radius: 8px;">
-                            </ul>
-
-                            {{-- Tag mention yang dipilih --}}
-                            <div id="mentionTags" class="d-flex flex-wrap gap-1 mt-2"></div>
-                        </form>
+                                {{-- Tag mention yang dipilih --}}
+                                <div id="mentionTags" class="d-flex flex-wrap gap-1 mt-2"></div>
+                            </form>
                     </div>
                 </div>
             </div>
@@ -839,6 +900,39 @@
                             <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
                             <button type="submit" class="btn btn-danger">
                                 <i class="mdi mdi-close-circle-outline me-1"></i> Tolak PR
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- Modal Reject Selected Items --}}
+        <div class="modal fade" id="rejectItemsModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form id="rejectItemsForm">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold text-danger">
+                                <i class="mdi mdi-close-circle-outline me-1"></i> Tolak Item Purchase Request
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-warning py-2 px-3 mb-3 small d-flex align-items-center gap-2">
+                                <i class="mdi mdi-alert-circle-outline fs-5 text-warning flex-shrink-0"></i>
+                                <span id="rejectItemsCountText">Menolak item yang dipilih. Item yang ditolak tidak akan diproses ke PO.</span>
+                            </div>
+                            <div class="mb-3">
+                                <label for="rejectItemsReason" class="form-label">Alasan Penolakan <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="rejectItemsReason" name="reason" rows="3" required
+                                    placeholder="Jelaskan alasan penolakan item ini..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-danger" id="btnSubmitRejectItems">
+                                <i class="mdi mdi-close-circle-outline me-1"></i> Tolak Item
                             </button>
                         </div>
                     </div>
@@ -1027,12 +1121,111 @@
             border-radius: 10px;
         }
 
-        #mentionDropdown .list-group-item { cursor: pointer; padding: 6px 12px; }
-        #mentionDropdown .list-group-item:hover { background: #f0f0f0; }
-        #mentionDropdown .list-group-item img { width: 28px; height: 28px; object-fit: cover; }
-        .mention-tag { background: #e7f1ff; color: #7367F0; border: 1px solid #bfdbfe; border-radius: 999px; padding: 2px 10px; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
-        .mention-tag .remove-mention { cursor: pointer; font-weight: bold; color: #6b7280; }
-        .mention-tag .remove-mention:hover { color: #ef4444; }
+        /* Mention Dropdown Elegant UI */
+        .mention-dropdown-menu {
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            width: 100%;
+            max-width: 440px;
+            z-index: 1060;
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid rgba(105, 108, 255, 0.25) !important;
+            box-shadow: 0 14px 34px rgba(34, 48, 62, 0.18), 0 2px 8px rgba(0,0,0,0.06);
+            overflow: hidden;
+            animation: mentionDropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        html.dark-style .mention-dropdown-menu {
+            background: #2b2c40 !important;
+            border-color: rgba(105, 108, 255, 0.35) !important;
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+        }
+
+        @keyframes mentionDropdownFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .mention-dropdown-header {
+            padding: 8px 14px;
+            background: #f8f9fa;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            font-size: 11.5px;
+            color: #566a7f;
+        }
+
+        html.dark-style .mention-dropdown-header {
+            background: #32344d;
+            border-bottom-color: rgba(255,255,255,0.07);
+            color: #a8abc2;
+        }
+
+        .mention-dropdown-list {
+            max-height: 220px;
+            overflow-y: auto;
+            margin: 0;
+            padding: 4px;
+            list-style: none;
+        }
+
+        .mention-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+
+        .mention-item:hover,
+        .mention-item.active-item {
+            background-color: rgba(105, 108, 255, 0.08);
+        }
+
+        html.dark-style .mention-item:hover,
+        html.dark-style .mention-item.active-item {
+            background-color: rgba(105, 108, 255, 0.2);
+        }
+
+        .mention-tag {
+            background: rgba(105, 108, 255, 0.1);
+            color: #696cff;
+            border: 1px solid rgba(105, 108, 255, 0.25);
+            border-radius: 999px;
+            padding: 3px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        html.dark-style .mention-tag {
+            background: rgba(105, 108, 255, 0.2);
+            color: #8c90ff;
+            border-color: rgba(105, 108, 255, 0.4);
+        }
+
+        .mention-tag .remove-mention {
+            cursor: pointer;
+            color: #a1acb8;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .mention-tag .remove-mention:hover {
+            color: #ff3e1d;
+        }
 
         @media (min-width: 768px) {
             .border-end-md {
@@ -1059,45 +1252,110 @@
         })();
 
         // @mention logic
-        var allUsers = @json($allUsers);
+        var allUsers = @json($allUsers ?? []);
         var selectedMentions = {}; // id => name
         var mentionStartIndex = -1;
+        var activeMentionIndex = 0;
+        var currentFilteredUsers = [];
 
         var textarea = document.getElementById('discussionMessage');
         var dropdown = document.getElementById('mentionDropdown');
         var tagsEl = document.getElementById('mentionTags');
         var inputsEl = document.getElementById('mentionInputs');
 
+        var roleColors = {
+            'Admin': 'danger',
+            'Super Admin': 'danger',
+            'Developer': 'dark',
+            'Sales': 'primary',
+            'Support': 'info',
+            'Logistic': 'warning',
+            'Accounting': 'success',
+            'Purchasing': 'warning'
+        };
+
         function renderDropdown(query) {
-            var filtered = allUsers.filter(function (u) {
+            if (!dropdown || !textarea) return;
+            currentFilteredUsers = allUsers.filter(function (u) {
                 return u.name.toLowerCase().indexOf(query.toLowerCase()) !== -1 && !selectedMentions[u.id];
             }).slice(0, 8);
 
-            dropdown.innerHTML = '';
-            if (!filtered.length) { dropdown.style.display = 'none'; return; }
+            if (!currentFilteredUsers.length) {
+                dropdown.style.display = 'none';
+                dropdown.innerHTML = '';
+                return;
+            }
 
-            filtered.forEach(function (u) {
-                var li = document.createElement('li');
-                li.className = 'list-group-item d-flex align-items-center gap-2';
-                li.innerHTML = '<img src="/' + (u.image || 'assets/img/avatars/1.png') + '" class="rounded-circle">' +
-                    '<span>' + u.name + '</span>' +
-                    '<small class="text-muted ms-auto">' + u.role + '</small>';
-                li.addEventListener('mousedown', function (e) {
-                    e.preventDefault();
-                    selectMention(u);
-                });
-                dropdown.appendChild(li);
+            activeMentionIndex = 0;
+
+            var html = `
+                <div class="mention-dropdown-header d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-1">
+                        <i class="mdi mdi-at text-primary"></i>
+                        <span class="fw-bold">Pilih Rekan Tim (${currentFilteredUsers.length})</span>
+                    </div>
+                    <small class="text-muted" style="font-size: 10px;">Tekan ↑ ↓ & Enter</small>
+                </div>
+                <ul class="mention-dropdown-list">
+            `;
+
+            currentFilteredUsers.forEach(function (u, index) {
+                var color = roleColors[u.role] || 'primary';
+                var initial = (u.name || 'U').charAt(0).toUpperCase();
+                var activeCls = index === 0 ? 'active-item' : '';
+                var avatarHtml = '';
+
+                if (u.image) {
+                    var imgSrc = u.image.startsWith('/') ? u.image : '/' + u.image;
+                    avatarHtml = `<img src="${imgSrc}" class="rounded-circle shadow-xs flex-shrink-0" width="30" height="30" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'avatar-initial rounded-circle bg-label-${color} fw-bold d-flex align-items-center justify-content-center shadow-xs flex-shrink-0\\' style=\\'width:30px;height:30px;font-size:12px;\\'>${initial}</span>'">`;
+                } else {
+                    avatarHtml = `<span class="avatar-initial rounded-circle bg-label-${color} fw-bold d-flex align-items-center justify-content-center shadow-xs flex-shrink-0" style="width:30px;height:30px;font-size:12px;">${initial}</span>`;
+                }
+
+                html += `
+                    <li class="mention-item ${activeCls}" data-index="${index}">
+                        ${avatarHtml}
+                        <div class="flex-grow-1 min-w-0 text-truncate">
+                            <span class="fw-semibold text-dark d-block text-truncate" style="font-size: 13px;">${u.name}</span>
+                        </div>
+                        <span class="badge bg-label-${color} rounded-pill px-2 py-0.5 ms-auto flex-shrink-0" style="font-size: 10px;">
+                            ${u.role || 'Team'}
+                        </span>
+                    </li>
+                `;
             });
 
-            // Posisikan di bawah textarea
-            var rect = textarea.getBoundingClientRect();
+            html += `</ul>`;
+            dropdown.innerHTML = html;
             dropdown.style.display = 'block';
-            dropdown.style.top = (textarea.offsetTop + textarea.offsetHeight) + 'px';
-            dropdown.style.left = textarea.offsetLeft + 'px';
+
+            // Bind click events
+            dropdown.querySelectorAll('.mention-item').forEach(function (el) {
+                el.addEventListener('mousedown', function (e) {
+                    e.preventDefault();
+                    var idx = parseInt(this.getAttribute('data-index'), 10);
+                    if (currentFilteredUsers[idx]) {
+                        selectMention(currentFilteredUsers[idx]);
+                    }
+                });
+            });
+        }
+
+        function updateActiveItem() {
+            if (!dropdown) return;
+            var items = dropdown.querySelectorAll('.mention-item');
+            items.forEach(function (el, idx) {
+                if (idx === activeMentionIndex) {
+                    el.classList.add('active-item');
+                    el.scrollIntoView({ block: 'nearest' });
+                } else {
+                    el.classList.remove('active-item');
+                }
+            });
         }
 
         function selectMention(user) {
-            // Ganti teks @query dengan @name di textarea
+            if (!textarea) return;
             var val = textarea.value;
             var before = val.substring(0, mentionStartIndex);
             var after = val.substring(textarea.selectionStart);
@@ -1105,19 +1363,23 @@
             textarea.focus();
 
             selectedMentions[user.id] = user.name;
-            dropdown.style.display = 'none';
+            if (dropdown) {
+                dropdown.style.display = 'none';
+                dropdown.innerHTML = '';
+            }
             mentionStartIndex = -1;
             renderTags();
         }
 
         function renderTags() {
+            if (!tagsEl || !inputsEl) return;
             tagsEl.innerHTML = '';
             inputsEl.innerHTML = '';
             Object.keys(selectedMentions).forEach(function (id) {
                 var span = document.createElement('span');
                 span.className = 'mention-tag';
                 span.innerHTML = '@' + selectedMentions[id] +
-                    ' <span class="remove-mention" data-id="' + id + '">&times;</span>';
+                    ' <span class="remove-mention ms-1" data-id="' + id + '">&times;</span>';
                 tagsEl.appendChild(span);
 
                 var inp = document.createElement('input');
@@ -1127,7 +1389,6 @@
                 inputsEl.appendChild(inp);
             });
 
-            // Hapus mention dari tag
             tagsEl.querySelectorAll('.remove-mention').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     delete selectedMentions[this.dataset.id];
@@ -1136,32 +1397,62 @@
             });
         }
 
-        textarea.addEventListener('input', function () {
-            var val = this.value;
-            var pos = this.selectionStart;
+        if (textarea) {
+            textarea.addEventListener('input', function () {
+                var val = this.value;
+                var pos = this.selectionStart;
 
-            // Cari posisi @ terakhir sebelum kursor
-            var atPos = -1;
-            for (var i = pos - 1; i >= 0; i--) {
-                if (val[i] === '@') { atPos = i; break; }
-                if (val[i] === ' ' || val[i] === '\n') break;
-            }
+                var atPos = -1;
+                for (var i = pos - 1; i >= 0; i--) {
+                    if (val[i] === '@') { atPos = i; break; }
+                    if (val[i] === ' ' || val[i] === '\n') break;
+                }
 
-            if (atPos !== -1) {
-                mentionStartIndex = atPos;
-                var query = val.substring(atPos + 1, pos);
-                renderDropdown(query);
-            } else {
-                dropdown.style.display = 'none';
-                mentionStartIndex = -1;
-            }
-        });
+                if (atPos !== -1) {
+                    mentionStartIndex = atPos;
+                    var query = val.substring(atPos + 1, pos);
+                    renderDropdown(query);
+                } else {
+                    if (dropdown) {
+                        dropdown.style.display = 'none';
+                        dropdown.innerHTML = '';
+                    }
+                    mentionStartIndex = -1;
+                }
+            });
 
-        textarea.addEventListener('keydown', function (e) {
-            if (dropdown.style.display === 'block') {
-                if (e.key === 'Escape') dropdown.style.display = 'none';
-            }
-        });
+            textarea.addEventListener('keydown', function (e) {
+                if (!dropdown || dropdown.style.display === 'none' || !currentFilteredUsers.length) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeMentionIndex = (activeMentionIndex + 1) % currentFilteredUsers.length;
+                    updateActiveItem();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeMentionIndex = (activeMentionIndex - 1 + currentFilteredUsers.length) % currentFilteredUsers.length;
+                    updateActiveItem();
+                } else if (e.key === 'Enter' || e.key === 'Tab') {
+                    e.preventDefault();
+                    if (currentFilteredUsers[activeMentionIndex]) {
+                        selectMention(currentFilteredUsers[activeMentionIndex]);
+                    }
+                } else if (e.key === 'Escape') {
+                    dropdown.style.display = 'none';
+                    dropdown.innerHTML = '';
+                    mentionStartIndex = -1;
+                }
+            });
+
+            textarea.addEventListener('blur', function () {
+                setTimeout(function () {
+                    if (dropdown) {
+                        dropdown.style.display = 'none';
+                        dropdown.innerHTML = '';
+                    }
+                }, 200);
+            });
+        }
 
         document.addEventListener('click', function (e) {
             if (!dropdown.contains(e.target) && e.target !== textarea) {
@@ -1298,22 +1589,30 @@
                             if (response == 1) {
                                 Swal.fire({
                                     icon: "success",
-                                    title: "Acc succed!",
-                                    text: "Your file has been acc.",
+                                    title: "PR Disetujui",
+                                    text: "Purchase Request berhasil disetujui.",
                                     customClass: {
                                         confirmButton: "btn btn-success waves-effect",
                                     },
                                 })
                                 window.setTimeout(function() {
                                     window.location.reload();
-                                }, 2000);
+                                }, 1500);
                             } else {
                                 Swal.fire({
                                     icon: 'error',
                                     title: 'Oops...',
-                                    text: 'Data Failed to Acc!'
+                                    text: 'Gagal menyetujui PR!'
                                 });
                             }
+                        },
+                        error: function(xhr) {
+                            var message = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Data Gagal di-Approve!';
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal Approve PR',
+                                text: message
+                            });
                         }
                     });
                 } else if (result.dismiss === Swal.DismissReason.cancel) {
@@ -1603,6 +1902,156 @@
             });
         });
 
+        // ── Selection PR Items for Rejection (New PR / status = 0) ──
+        var rejectItemsModal = new bootstrap.Modal(document.getElementById('rejectItemsModal'));
+        var itemIdsToReject = [];
+
+        function updateSelectedPrRejectCount() {
+            var totalChecked = $('.check-pr-reject-item:checked').length;
+            $('#countSelectedPrRejectItems').text(totalChecked);
+            var totalAvailable = $('.check-pr-reject-item').length;
+            if (totalAvailable > 0) {
+                $('#checkAllPrItems').prop('checked', totalChecked === totalAvailable);
+            }
+            if (totalChecked > 0) {
+                $('#selectedPrRejectItemsBadge').attr('style', 'display: inline-flex !important;');
+                $('#btnRejectSelectedItems').show();
+            } else {
+                $('#selectedPrRejectItemsBadge').attr('style', 'display: none !important;');
+                $('#btnRejectSelectedItems').hide();
+            }
+        }
+
+        $(document).on('change', '.check-pr-reject-item', function() {
+            updateSelectedPrRejectCount();
+        });
+
+        // Bulk reject items button click
+        $('#btnRejectSelectedItems').on('click', function() {
+            itemIdsToReject = [];
+            $('.check-pr-reject-item:checked').each(function() {
+                itemIdsToReject.push($(this).val());
+            });
+
+            if (!itemIdsToReject.length) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Pilih Item',
+                    text: 'Silakan centang minimal 1 item untuk ditolak.',
+                    customClass: { confirmButton: 'btn btn-primary waves-effect' }
+                });
+                return;
+            }
+
+            $('#rejectItemsCountText').text('Menolak ' + itemIdsToReject.length + ' item yang dipilih. Item yang ditolak tidak akan diproses ke PO.');
+            $('#rejectItemsReason').val('');
+            rejectItemsModal.show();
+        });
+
+        // Single reject item button click
+        $(document).on('click', '.reject-single-item-btn', function() {
+            var id = $(this).data('id');
+            var name = $(this).data('name') || ('Item #' + id);
+            itemIdsToReject = [id];
+            $('#rejectItemsCountText').html('Menolak item: <strong>' + name + '</strong>. Item ini tidak akan diproses ke PO.');
+            $('#rejectItemsReason').val('');
+            rejectItemsModal.show();
+        });
+
+        // Form submit for item rejection
+        $('#rejectItemsForm').on('submit', function(e) {
+            e.preventDefault();
+            var reason = $('#rejectItemsReason').val().trim();
+            if (!reason) {
+                Swal.fire({ icon: 'warning', title: 'Alasan Wajib Diisi', text: 'Silakan masukkan alasan penolakan item.' });
+                return;
+            }
+            if (!itemIdsToReject.length) {
+                return;
+            }
+
+            var prId = '{{ $purchase ? $purchase->id : "" }}';
+            $('#btnSubmitRejectItems').prop('disabled', true).html('<i class="mdi mdi-loading mdi-spin me-1"></i> Memproses...');
+
+            $.ajax({
+                url: '{{ url('purchase-request') }}/' + prId + '/reject-items',
+                type: 'POST',
+                data: {
+                    '_method': 'PATCH',
+                    '_token': '{{ csrf_token() }}',
+                    'detail_ids': itemIdsToReject,
+                    'reason': reason
+                },
+                success: function(response) {
+                    rejectItemsModal.hide();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Item Ditolak',
+                        text: response.message || 'Item terpilih berhasil ditolak.',
+                        customClass: { confirmButton: 'btn btn-success waves-effect' },
+                    }).then(function() {
+                        window.location.reload();
+                    });
+                },
+                error: function(xhr) {
+                    $('#btnSubmitRejectItems').prop('disabled', false).html('<i class="mdi mdi-close-circle-outline me-1"></i> Tolak Item');
+                    var message = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error :
+                        (xhr.responseJSON && xhr.responseJSON.errors ? Object.values(xhr.responseJSON.errors).flat().join('\n') : 'Gagal menolak item.');
+                    Swal.fire({ icon: 'error', title: 'Oops...', text: message });
+                }
+            });
+        });
+
+        // Undo single item rejection
+        $(document).on('click', '.unreject-item-btn', function() {
+            var detailId = $(this).data('id');
+            var name = $(this).data('name') || ('Item #' + detailId);
+            var prId = '{{ $purchase ? $purchase->id : "" }}';
+
+            Swal.fire({
+                title: 'Batalkan Penolakan?',
+                html: 'Status penolakan pada item <strong>' + name + '</strong> akan dibatalkan sehingga dapat diproses kembali.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Batalkan Penolakan',
+                cancelButtonText: 'Tutup',
+                customClass: {
+                    confirmButton: 'btn btn-primary me-2 waves-effect',
+                    cancelButton: 'btn btn-label-secondary waves-effect'
+                },
+                buttonsStyling: false,
+                showLoaderOnConfirm: true,
+                preConfirm: function() {
+                    return $.ajax({
+                        url: '{{ url('purchase-request') }}/' + prId + '/unreject-item/' + detailId,
+                        type: 'POST',
+                        data: {
+                            '_method': 'PATCH',
+                            '_token': '{{ csrf_token() }}'
+                        }
+                    }).then(function(res) {
+                        return res;
+                    }).catch(function(err) {
+                        var msg = (err.responseJSON && err.responseJSON.error) ? err.responseJSON.error : 'Gagal membatalkan penolakan.';
+                        Swal.showValidationMessage(msg);
+                    });
+                },
+                allowOutsideClick: function() { return !Swal.isLoading(); }
+            }).then(function(result) {
+                if (result.isConfirmed && result.value) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: result.value.message || 'Penolakan item berhasil dibatalkan.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(function() {
+                        window.location.reload();
+                    });
+                }
+            });
+        });
+
         // ── Selection PR Items for PO / Direct Purchase Creation ──
         function updateSelectedPrCount() {
             var totalChecked = $('.check-pr-item:checked').length;
@@ -1615,8 +2064,14 @@
 
         $(document).on('change', '#checkAllPrItems', function() {
             var isChecked = $(this).is(':checked');
-            $('.check-pr-item').prop('checked', isChecked);
-            updateSelectedPrCount();
+            if ($('.check-pr-reject-item').length) {
+                $('.check-pr-reject-item').prop('checked', isChecked);
+                updateSelectedPrRejectCount();
+            }
+            if ($('.check-pr-item').length) {
+                $('.check-pr-item').prop('checked', isChecked);
+                updateSelectedPrCount();
+            }
         });
 
         $(document).on('change', '.check-pr-item', function() {
@@ -1624,7 +2079,12 @@
         });
 
         // Initialize count on page load
-        updateSelectedPrCount();
+        if ($('.check-pr-reject-item').length) {
+            updateSelectedPrRejectCount();
+        }
+        if ($('.check-pr-item').length) {
+            updateSelectedPrCount();
+        }
 
         // Create PO from selected items
         $('#btnCreatePoFromSelected').on('click', function() {

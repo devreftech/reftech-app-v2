@@ -122,7 +122,7 @@ class EmployeeController extends Controller
      */
     public function show(Employee $employee)
     {
-        $employee->load(['user', 'department', 'position', 'salary', 'salaryHistories.creator']);
+        $employee->load(['user', 'department', 'position', 'salary', 'salaryHistories.creator', 'assets.fixedAsset']);
 
         return view('pages.hr.employees.show', compact('employee'));
     }

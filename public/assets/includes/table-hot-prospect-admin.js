@@ -166,11 +166,12 @@ $(function () {
                     render: function (data, type, full) {
                         if (type !== "display") return data;
                         var tip     = full["tip"] || "Belum di update";
+                        var escapedTip = $('<div>').text(tip).html();
                         var rowType = full["row_type"];
                         var label   = rowType === 'unit' ? 'Hot Prospect' : 'Hot Prospect · 80%';
                         var badge   = '<span class="badge rounded-pill bg-label-warning cursor-pointer"' +
                             ' data-bs-toggle="tooltip" data-bs-placement="top"' +
-                            ' data-bs-custom-class="tooltip-warning" title="' + tip + '">' +
+                            ' data-bs-custom-class="tooltip-warning" title="' + escapedTip + '">' +
                             label + '</span>';
                         if (rowType === 'unit') {
                             badge += ' <span class="badge bg-label-info ms-1">Smart</span>';

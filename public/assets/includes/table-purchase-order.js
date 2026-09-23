@@ -168,6 +168,149 @@ $(function () {
           ]
         : [];
 
+    function escapeHtml(str) {
+        return $("<div>").text(str || "").html();
+    }
+
+    function openPurchaseOrderDrawer(full) {
+        if (!full) return;
+
+        $('#poDrawerNoPo').text(full.no_po || 'PO-0000');
+        $('#poDrawerSummaryNoPo').text(full.no_po || 'PO-0000');
+
+        var statusBadges = [];
+        if (isDirectPurchase(full)) {
+            statusBadges.push('<span class="badge bg-label-info font-11 rounded-pill"><i class="mdi mdi-cart-arrow-down me-1"></i>Direct Purchase</span>');
+        } else {
+            statusBadges.push('<span class="badge bg-label-primary font-11 rounded-pill"><i class="mdi mdi-file-document-outline me-1"></i>PO Resmi</span>');
+        }
+        if (isReceived(full)) {
+            statusBadges.push('<span class="badge bg-label-success font-11 rounded-pill ms-1"><i class="mdi mdi-check-circle-outline me-1"></i>Diterima</span>');
+        } else {
+            statusBadges.push('<span class="badge bg-label-warning font-11 rounded-pill ms-1"><i class="mdi mdi-progress-clock me-1"></i>Pending</span>');
+        }
+        $('#poDrawerStatusBadge').html(statusBadges.join(' '));
+
+        $('#poDrawerCompany').text(full.company || '-');
+
+        if (full.payment) {
+            var pmtStr = String(full.payment).trim();
+            var isMarketplace = pmtStr === 'Marketplace (Tokopedia/Shopee)' || pmtStr.toLowerCase().indexOf('marketplace') !== -1;
+            var badgeClass = isMarketplace ? 'bg-label-warning' : 'bg-label-info';
+            var iconClass = isMarketplace ? 'mdi-shopping-outline' : 'mdi-credit-card-outline';
+            var displayText = isMarketplace ? 'Marketplace' : pmtStr;
+            $('#poDrawerPaymentSlot').html('<span class="font-11 text-muted d-block mb-1">Tipe Pembayaran:</span><span class="badge ' + badgeClass + ' fw-semibold"><i class="mdi ' + iconClass + ' me-1"></i>' + escapeHtml(displayText) + '</span>').show();
+        } else {
+            $('#poDrawerPaymentSlot').empty().hide();
+        }
+
+        $('#poDrawerDate').text(full.tanggal || (full.date ? moment(full.date).format('DD-MM-YYYY') : '-'));
+        $('#poDrawerTotal').text(rupiah(full.total));
+        $('#poDrawerAttn').text(full.attn || full.phone || '-');
+
+        if (full.no_pr || full.id_purchase_request || full.id_pr) {
+            var prText = full.no_pr || ('PR #' + (full.id_purchase_request || full.id_pr));
+            var prId = full.id_pr || full.id_purchase_request;
+            var prLink = prId
+                ? '<a href="/purchase-request/' + prId + '" class="text-info font-monospace fw-bold" target="_blank">' + escapeHtml(prText) + ' <i class="mdi mdi-open-in-new font-11"></i></a>'
+                : '<strong class="text-info font-monospace">' + escapeHtml(prText) + '</strong>';
+            $('#poDrawerNoPr').html(prLink);
+            $('#poDrawerPrCol').show();
+        } else {
+            $('#poDrawerPrCol').hide();
+        }
+
+        $('#poDrawerCategoryBadge').html(categoryBadge(full.category));
+
+        if (isReceived(full)) {
+            $('#poDrawerReceiptBadge').html('<span class="badge bg-label-success"><i class="mdi mdi-check-circle-outline me-1"></i>Sudah Diterima</span>');
+        } else {
+            $('#poDrawerReceiptBadge').html('<span class="badge bg-label-warning"><i class="mdi mdi-truck-alert-outline me-1"></i>Belum Diterima</span>');
+        }
+
+        if (full.no_gr) {
+            var grHtml = '<strong class="text-success font-monospace">' + escapeHtml(full.no_gr) + '</strong>';
+            if (full.id_gr) {
+                grHtml += ' <a href="/product-in/' + full.id_gr + '" class="btn btn-xs btn-outline-success ms-1"><i class="mdi mdi-open-in-new me-1"></i>Lihat GR</a>';
+            }
+            $('#poDrawerGrBox').html(grHtml);
+        } else {
+            $('#poDrawerGrBox').html('<span class="text-muted">-</span>');
+        }
+
+        if (full.invoice_file) {
+            $('#poDrawerInvoiceBox').html('<a href="/' + full.invoice_file + '" target="_blank" class="btn btn-xs btn-outline-primary"><i class="mdi mdi-file-pdf-box me-1"></i>' + escapeHtml(full.no_invoice_supplier || 'Lihat File Invoice') + '</a>');
+        } else if (full.no_invoice_supplier) {
+            $('#poDrawerInvoiceBox').html('<span class="fw-semibold font-monospace font-12">' + escapeHtml(full.no_invoice_supplier) + '</span>');
+        } else {
+            $('#poDrawerInvoiceBox').html('<span class="text-muted small">Belum ada invoice</span>');
+        }
+
+        if (full.vendor_signed_at) {
+            $('#poDrawerSignBox').html('<span class="badge bg-label-success font-11"><i class="mdi mdi-draw-pen me-1"></i>Signed (' + moment(full.vendor_signed_at).format('DD/MM/YYYY') + ')</span>');
+        } else {
+            $('#poDrawerSignBox').html('<span class="text-muted small">Belum TTD online</span>');
+        }
+
+        // Ordered Items Table
+        var tbodyHtml = '';
+        var items = full.items_list || full.detail || [];
+        if (items.length > 0) {
+            items.forEach(function (it, idx) {
+                var prodName = escapeHtml(it.product || '-');
+                var catBadge = it.category ? '<span class="badge bg-label-secondary font-10 me-1">' + escapeHtml(it.category) + '</span>' : '';
+                var kondBadge = it.kondisi ? '<span class="badge bg-label-info font-10">' + escapeHtml(it.kondisi) + '</span>' : '';
+                var unit = escapeHtml(it.unit || it.info_qty || 'Pcs');
+                var qtyVal = Number(it.qty) || 0;
+                var subtotalVal = rupiah(it.amount || (qtyVal * (Number(it.price) || 0)));
+
+                tbodyHtml += '<tr>' +
+                    '<td class="text-muted font-11 text-center align-middle">' + (idx + 1) + '</td>' +
+                    '<td>' +
+                        '<div class="fw-semibold text-heading font-12">' + prodName + '</div>' +
+                        '<div class="mt-1">' + catBadge + kondBadge + '</div>' +
+                    '</td>' +
+                    '<td class="text-center align-middle">' +
+                        '<span class="fw-bold font-13 text-primary">' + qtyVal + '</span> <span class="font-11 text-muted">' + unit + '</span>' +
+                    '</td>' +
+                    '<td class="text-end align-middle">' +
+                        '<span class="fw-semibold font-12 text-heading">' + subtotalVal + '</span>' +
+                    '</td>' +
+                '</tr>';
+            });
+            $('#poDrawerItemCount').text(items.length);
+            $('#poDrawerTotalPcs').text(full.qty_full || (items.length + ' item'));
+        } else {
+            tbodyHtml = '<tr><td colspan="4" class="text-center py-4 text-muted font-12">Tidak ada rincian item.</td></tr>';
+            $('#poDrawerItemCount').text('0');
+            $('#poDrawerTotalPcs').text('0 item');
+        }
+        $('#poDrawerItemsTbody').html(tbodyHtml);
+
+        // Action links in footer
+        if (full.id) {
+            $('#poDrawerDetailBtn').attr('href', '/purchase/' + full.id).show();
+        } else {
+            $('#poDrawerDetailBtn').hide();
+        }
+
+        var extraHtml = '';
+        if (full.id) {
+            extraHtml += '<a href="/purchase/print/' + full.id + '" target="_blank" class="btn btn-outline-secondary d-flex align-items-center gap-1 shadow-xs"><i class="mdi mdi-printer-outline me-1"></i> Cetak PO</a>';
+        }
+        var prId = full.id_pr || full.id_purchase_request;
+        if (prId) {
+            extraHtml += '<a href="/purchase-request/' + prId + '" class="btn btn-outline-secondary d-flex align-items-center gap-1 shadow-xs"><i class="mdi mdi-clipboard-text-outline me-1"></i> Buka PR</a>';
+        }
+        $('#poDrawerAdditionalLinks').html(extraHtml);
+
+        var offcanvasEl = document.getElementById('purchaseOrderOffcanvas');
+        if (offcanvasEl) {
+            var bsOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
+            bsOffcanvas.show();
+        }
+    }
+
     var dt = $table.DataTable({
         ajax: {
             type: "GET",
@@ -181,7 +324,7 @@ $(function () {
         columns: [
             { data: "no_po" },
             { data: "company" },
-            { data: "category" },
+            { data: "item_count" },
             { data: null, orderable: false },
             { data: "total" },
             { data: "tanggal" },
@@ -214,8 +357,19 @@ $(function () {
             },
             {
                 targets: 2,
-                render: function (data, type) {
-                    return type === "display" ? categoryBadge(data) : data || "";
+                className: "text-center",
+                render: function (data, type, full) {
+                    var count = (full && full.item_count !== undefined) ? parseInt(full.item_count) : (data ? parseInt(data) : 0);
+                    if (type === "sort" || type === "type") return count;
+                    if (type === "filter") {
+                        var names = (full && full.items_list) ? full.items_list.map(function (it) { return it.product || ""; }).join(" ") : "";
+                        return count + " item " + names;
+                    }
+                    if (type !== "display") return count + " item";
+                    return '<button type="button" class="btn-item-preview d-inline-flex align-items-center gap-1 btn-po-drawer" data-bs-toggle="tooltip" title="Klik untuk membuka slide-over rincian PO &amp; item">' +
+                        '<i class="mdi mdi-package-variant-closed font-14 text-primary"></i>' +
+                        '<span class="fw-semibold">' + count + ' item</span>' +
+                        '</button>';
                 },
             },
             {
@@ -243,11 +397,15 @@ $(function () {
             },
             {
                 targets: 6,
+                className: "po-col-payment",
                 render: function (data, type) {
                     if (type !== "display") return data || "";
-                    return data
-                        ? '<span class="badge bg-label-secondary">' + data + "</span>"
-                        : '<span class="text-muted">-</span>';
+                    if (!data) return '<span class="text-muted">-</span>';
+                    var pmt = String(data).trim();
+                    if (pmt === 'Marketplace (Tokopedia/Shopee)' || pmt.toLowerCase().indexOf('marketplace') !== -1) {
+                        return '<span class="badge bg-label-warning text-wrap lh-sm text-start"><i class="mdi mdi-shopping-outline me-1"></i>Marketplace</span>';
+                    }
+                    return '<span class="badge bg-label-secondary text-wrap lh-sm text-start" style="white-space: normal !important; max-width: 200px; display: inline-block;">' + escapeHtml(pmt) + '</span>';
                 },
             },
             {
@@ -285,6 +443,27 @@ $(function () {
                 },
             },
         },
+    });
+
+    // Delegated click on .btn-po-drawer to open slide-over
+    $(document).on('click', '.btn-po-drawer', function (e) {
+        e.preventDefault();
+        var $tr = $(this).closest('tr');
+        var $table = $tr.closest('table');
+        if (!$table.length) return;
+        var dt = $table.DataTable();
+        var full = dt.row($tr).data();
+        if (!full) return;
+
+        openPurchaseOrderDrawer(full);
+    });
+
+    // Delegated hover on tooltips
+    $(document).on('mouseenter', '[data-bs-toggle="tooltip"]', function () {
+        var $el = $(this);
+        if (!$el.attr('data-bs-original-title') && !$el.data('bs.tooltip')) {
+            new bootstrap.Tooltip(this, { boundary: 'window' }).show();
+        }
     });
 
     // Tab filter (Semua / Belum Diterima / Sudah Diterima / Tanpa Invoice)

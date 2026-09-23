@@ -4,7 +4,7 @@
     enctype="multipart/form-data">
     {{-- {{ csrf_token() }} --}}
     @csrf
-    <div class="modal animate__animated animate__fadeIn"
+    <div class="modal fade"
         id="{{ 'createPic' }}" tabindex="-1" style="display: none;"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">

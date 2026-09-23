@@ -38,6 +38,10 @@ class PurchaseRequest extends Model
     {
         return $this->hasMany('App\Models\PurchaseRequestDetail', 'id_purchase_request');
     }
+    public function activeDetails()
+    {
+        return $this->hasMany('App\Models\PurchaseRequestDetail', 'id_purchase_request')->where('is_rejected', false);
+    }
     public function purchaseOrders()
     {
         return $this->hasMany('App\Models\PurchaseOrder', 'id_purchase_request');

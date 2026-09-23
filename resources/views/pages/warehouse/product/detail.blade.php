@@ -167,6 +167,7 @@
                             <th>Replacement</th>
                             <th>Stock</th>
                             <th class="text-center">Total In/Out</th>
+                            <th class="text-center">Opname</th>
                             @if (Auth::user()->role == 'Admin')
                                 <th>Modal</th>
                             @endif
@@ -192,6 +193,11 @@
                                     <span class="badge rounded-pill {{ $isUsed ? 'bg-label-info' : 'bg-label-secondary' }}" title="Product In: {{ $totalIn }}, Product Out: {{ $totalOut }}">
                                         In {{ $totalIn }} / Out {{ $totalOut }}
                                     </span>
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-xs {{ $detail->is_opname ? 'btn-label-success' : 'btn-label-secondary' }} btn-toggle-opname" data-id="{{ $detail->id }}" title="Klik untuk mengubah status opname">
+                                        <i class="mdi {{ $detail->is_opname ? 'mdi-check-circle-outline' : 'mdi-close-circle-outline' }} me-1"></i>{{ $detail->is_opname ? 'Bisa Opname' : 'Non-Opname' }}
+                                    </button>
                                 </td>
                                 @if (Auth::user()->role == 'Admin')
                                     <td>
@@ -222,7 +228,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center">
+                                <td colspan="6" class="text-center">
                                     Kamu belum punya Replacement.
                                 </td>
                             </tr>
@@ -560,6 +566,48 @@
                         customClass: {
                             confirmButton: "btn btn-success waves-effect",
                         },
+                    });
+                }
+            });
+        });
+        $(document).on('click', '.btn-toggle-opname', function() {
+            var $btn = $(this);
+            var id = $btn.data('id');
+            $btn.prop('disabled', true);
+            $.ajax({
+                url: '{{ url('product/replacement') }}/' + id + '/toggle-opname',
+                type: 'POST',
+                data: {
+                    '_token': '{{ csrf_token() }}'
+                },
+                success: function(res) {
+                    $btn.prop('disabled', false);
+                    if (res.success) {
+                        if (res.is_opname) {
+                            $btn.removeClass('btn-label-secondary').addClass('btn-label-success')
+                                .html('<i class="mdi mdi-check-circle-outline me-1"></i>Bisa Opname');
+                        } else {
+                            $btn.removeClass('btn-label-success').addClass('btn-label-secondary')
+                                .html('<i class="mdi mdi-close-circle-outline me-1"></i>Non-Opname');
+                        }
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                        Toast.fire({
+                            icon: 'success',
+                            title: res.message
+                        });
+                    }
+                },
+                error: function() {
+                    $btn.prop('disabled', false);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: 'Gagal mengubah status opname.'
                     });
                 }
             });

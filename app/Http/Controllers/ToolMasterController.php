@@ -32,9 +32,13 @@ class ToolMasterController extends Controller
         }
 
         $request->validate([
-            'nama_tools' => 'required|string|max:255',
+            'nama_tools'     => 'required|string|max:255',
+            'foto_referensi' => 'nullable|file|image|mimes:jpeg,png,jpg,webp|max:5120',
         ], [
             'nama_tools.required' => 'Nama Tools wajib diisi.',
+            'foto_referensi.image' => 'Foto referensi harus berupa file gambar.',
+            'foto_referensi.mimes' => 'Format gambar yang didukung: JPG, JPEG, PNG, WEBP.',
+            'foto_referensi.max' => 'Ukuran gambar maksimal 5MB.',
         ]);
 
         $tool = new ToolMaster();
@@ -61,9 +65,13 @@ class ToolMasterController extends Controller
         }
 
         $request->validate([
-            'nama_tools' => 'required|string|max:255',
+            'nama_tools'     => 'required|string|max:255',
+            'foto_referensi' => 'nullable|file|image|mimes:jpeg,png,jpg,webp|max:5120',
         ], [
             'nama_tools.required' => 'Nama Tools wajib diisi.',
+            'foto_referensi.image' => 'Foto referensi harus berupa file gambar.',
+            'foto_referensi.mimes' => 'Format gambar yang didukung: JPG, JPEG, PNG, WEBP.',
+            'foto_referensi.max' => 'Ukuran gambar maksimal 5MB.',
         ]);
 
         $tool = ToolMaster::findOrFail($id);

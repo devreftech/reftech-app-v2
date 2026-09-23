@@ -1,22 +1,17 @@
 <?php
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 header('Content-Type: application/json');
 
 if (!Auth::check()) {
-    echo json_encode(['error' => 'Pengguna tidak terotentikasi']);
+    echo json_encode(['data' => [], 'error' => 'Pengguna tidak terotentikasi']);
     exit;
 }
 
-$host = config('database.connections.mysql.host');
-$users = config('database.connections.mysql.username');
-$pass = config('database.connections.mysql.password');
-$databaseName = config('database.connections.mysql.database');
-
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $pdo->exec("SET SESSION sql_mode = ''");
+    $pdo = DB::connection()->getPdo();
+    $pdo->exec("SET SESSION sql_mode = ''");
 
     $salesId = request()->get('sales_id');
     $salesFilter = $salesId ? "AND u.id = " . intval($salesId) : "";
@@ -71,9 +66,7 @@ try {
     $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(['data' => $result], JSON_PRETTY_PRINT);
-} catch (PDOException $e) {
-    echo json_encode(['error' => 'Kesalahan Database: ' . $e->getMessage()], JSON_PRETTY_PRINT);
-} finally {
-    $pdo = null;
+} catch (\Throwable $e) {
+    echo json_encode(['data' => [], 'error' => 'Kesalahan Database: ' . $e->getMessage()], JSON_PRETTY_PRINT);
 }
 ?>

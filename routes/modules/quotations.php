@@ -9,6 +9,8 @@ use App\Models\Client;
 use App\Models\Pic;
 use App\Models\Quotation;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
@@ -116,6 +118,8 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/smart-quote/comments/{id}', [UnitQuotationController::class, 'destroyComment'])->name('unit-quotation.destroyComment');
     Route::post('/smart-quote/{id}/fee', [UnitQuotationController::class, 'updateFee'])->name('unit-quotation.update-fee');
     Route::delete('/smart-quote/{id}/fee', [UnitQuotationController::class, 'deleteFee'])->name('unit-quotation.delete-fee');
+    Route::post('/smart-quote/{id}/request-return', [\App\Http\Controllers\ReturnController::class, 'requestSalesReturn'])->defaults('type', 'smart-quote')->name('unit-quotation.request-return');
+    Route::post('/quotation/{id}/request-return', [\App\Http\Controllers\ReturnController::class, 'requestSalesReturn'])->defaults('type', 'quotation')->name('quotation.request-return');
 
     // SUO (Sales Urgent Order)
     Route::get('/suo', [SuoController::class, 'index'])->name('suo.index');

@@ -3,10 +3,10 @@
 @section('content')
 
 @php
-    $clientCompany = $isUnitQuotation ? $quote->client->company : $quote->pic->client->company;
-    $clientNpwp = $isUnitQuotation ? $quote->client->npwp : $quote->pic->client->npwp;
-    $clientAddress = $isUnitQuotation ? $quote->client->address : $quote->pic->client->address;
-    $clientInfo = $isUnitQuotation ? $quote->client->info : $quote->pic->client->info;
+    $clientCompany = $isUnitQuotation ? ($quote?->client?->company ?? '-') : ($quote?->pic?->client?->company ?? ($quote?->client?->company ?? '-'));
+    $clientNpwp = $isUnitQuotation ? ($quote?->client?->npwp ?? '-') : ($quote?->pic?->client?->npwp ?? ($quote?->client?->npwp ?? '-'));
+    $clientAddress = $isUnitQuotation ? ($quote?->client?->address ?? '-') : ($quote?->pic?->client?->address ?? ($quote?->client?->address ?? '-'));
+    $clientInfo = $isUnitQuotation ? ($quote?->client?->info ?? '-') : ($quote?->pic?->client?->info ?? ($quote?->client?->info ?? '-'));
 
     if ($payment->level == 0) {
         if ($payment->file == null) {

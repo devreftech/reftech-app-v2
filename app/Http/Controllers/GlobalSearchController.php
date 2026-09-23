@@ -322,7 +322,7 @@ class GlobalSearchController extends Controller
 
         // Admin & Developer
         if (in_array($role, ['Admin', 'Developer'])) {
-            $pages[] = ['name' => 'User Management', 'category' => 'Settings', 'icon' => 'mdi-account-cog-outline', 'url' => route('users.index')];
+            $pages[] = ['name' => 'User Management', 'category' => 'Settings', 'icon' => 'mdi-account-cog-outline', 'url' => route('employee.index')];
             $pages[] = ['name' => 'Maintenance Mode Settings', 'category' => 'Settings', 'icon' => 'mdi-server-security', 'url' => route('developer.maintenance.index')];
         }
 

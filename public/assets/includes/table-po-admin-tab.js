@@ -42,27 +42,33 @@ $(function () {
                 { data: "sales_image" },
             ],
             columnDefs: [
-                { targets: [2, 3, 4, 5, 6, 7], className: "text-center" },
+                { targets: [2, 3, 5, 6, 7], className: "text-center" },
                 {
                     targets: 0,
                     className: "text-center text-nowrap",
+                    width: "60px",
                     responsivePriority: 1,
                     render: function (data, type, full) {
                         if (type !== "display") return data;
+                        var id      = full["id"];
+                        var qType   = full["type"];
+                        var rowType = full["row_type"];
                         var url;
-                        if (full["row_type"] === "unit") {
-                            url = "/smart-quote/" + full["id"];
-                        } else if (full["type"] === "Service") {
-                            url = route("show-service.quotation", full["id"]);
-                        } else if (full["type"] === "Overhaul") {
-                            url = route("show-overhaul.quotation", full["id"]);
+                        if (rowType === "unit") {
+                            url = "/smart-quote/" + id;
+                        } else if (qType == "Sparepart") {
+                            url = route("quotation.show", id);
+                        } else if (qType == "Service") {
+                            url = route("show-service.quotation", id);
                         } else {
-                            url = route("quotation.show", full["id"]);
+                            url = route("show-overhaul.quotation", id);
                         }
-                        var unitBadge = full["row_type"] === "unit"
-                            ? ' <span class="badge bg-label-info ms-1">Smart</span>'
-                            : "";
-                        return '<a class="fw-bold text-primary" href="' + url + '">' + (data || "-") + "</a>" + unitBadge;
+                        var full_no = data || "-";
+                        var short   = full_no.length > 5 ? full_no.substring(0, 5) + "…" : full_no;
+                        return '<a class="fw-bold text-primary" href="' + url + '"' +
+                            ' data-bs-toggle="tooltip" data-bs-placement="top"' +
+                            ' data-bs-custom-class="tooltip-quote-no" title="' + full_no + '">' +
+                            short + "</a>";
                     },
                 },
                 {
@@ -121,6 +127,7 @@ $(function () {
                 },
                 {
                     targets: 4,
+                    className: "text-center text-nowrap",
                     render: function (data, type) {
                         if (type !== "display") return data;
                         return data ? moment(data).format("DD-MM-YYYY") : "-";

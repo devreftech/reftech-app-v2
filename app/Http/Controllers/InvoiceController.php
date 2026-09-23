@@ -220,41 +220,39 @@ class InvoiceController extends Controller
             'payment.required' => 'Field payment Wajib Diisi',
         ];
         $this->validate($request, $rule, $message);
-        $invoice = Invoice::findOrFail($id);
 
-        $invoice->no_invoice = $request->invoice;
-        $invoice->term = $request->payment;
+        return DB::transaction(function () use ($request, $id) {
+            $invoice = Invoice::findOrFail($id);
+            $invoice->no_invoice = $request->invoice;
+            $invoice->term = $request->payment;
 
-        if ($invoice->id_unit_quotation) {
-            if ($request->filled('no_po')) {
-                $invoice->no_po = trim($request->no_po);
-            }
-            $invoice->invoiceTo = '1';
-
-            $quote = UnitQuotation::find($invoice->id_unit_quotation);
-            if ($quote) {
-                $amount = $quote->total;
-                if ($invoice->flag === 'Reftech') {
-                    $invoice->sign = $amount >= 5000000
-                        ? 'asset/sign/reftech-m.jpeg'
-                        : 'asset/sign/reftech-nm.jpeg';
-                } else {
-                    $invoice->sign = $amount >= 5000000
-                        ? 'asset/sign/kojisha-m.jpeg'
-                        : 'asset/sign/kojisha-nm.jpeg';
+            if ($invoice->id_unit_quotation) {
+                if ($request->filled('no_po')) {
+                    $invoice->no_po = trim($request->no_po);
                 }
-            }
+                $invoice->invoiceTo = '1';
 
-            $invoiceSave = $invoice->save();
-            if ($invoiceSave) {
+                $quote = UnitQuotation::find($invoice->id_unit_quotation);
+                if ($quote) {
+                    $amount = $quote->total;
+                    if ($invoice->flag === 'Reftech') {
+                        $invoice->sign = $amount >= 5000000
+                            ? 'asset/sign/reftech-m.jpeg'
+                            : 'asset/sign/reftech-nm.jpeg';
+                    } else {
+                        $invoice->sign = $amount >= 5000000
+                            ? 'asset/sign/kojisha-m.jpeg'
+                            : 'asset/sign/kojisha-nm.jpeg';
+                    }
+                }
+
+                $invoice->save();
                 if (!empty($invoice->no_invoice)) {
                     Suo::where('id_unit_quotation', $invoice->id_unit_quotation)
                         ->where('status', '!=', 'converted')
                         ->update(['status' => 'converted']);
                 }
                 if ($quote) {
-                    // No PO itu satu per quote — rambatkan ke Smart Quote & invoice
-                    // lain pada quote yang sama biar konsisten.
                     if ($request->filled('no_po') && $quote->po_number !== trim($request->no_po)) {
                         $quote->po_number = trim($request->no_po);
                         $quote->save();
@@ -265,24 +263,22 @@ class InvoiceController extends Controller
                     $this->syncMonitoringDocumentCardUnit($quote);
                 }
                 return redirect()->route('invoice.show_unit', $id)->with('success', 'Invoice has been updated');
-            }
-        } else {
-            $quote = Quotation::find($invoice->id_quotation);
-            $invoice->invoiceTo = $quote ? $quote->destination : '1';
+            } else {
+                $quote = Quotation::find($invoice->id_quotation);
+                $invoice->invoiceTo = $quote ? $quote->destination : '1';
 
-            if ($quote) {
-                $harga = Payment::where('id_quotation', $quote->id)->orderBy('created_at', 'DESC')->first();
-                $jumlah = isset($harga) ? $harga->amount : $quote->harga_total;
+                if ($quote) {
+                    $harga = Payment::where('id_quotation', $quote->id)->orderBy('created_at', 'DESC')->first();
+                    $jumlah = isset($harga) ? $harga->amount : $quote->harga_total;
 
-                if ($invoice->flag === "Reftech") {
-                    $invoice->sign = $jumlah >= 5000000 ? "asset/sign/reftech-m.jpeg" : "asset/sign/reftech-nm.jpeg";
-                } elseif ($invoice->flag === "Kojisha") {
-                    $invoice->sign = $jumlah >= 5000000 ? "asset/sign/kojisha-m.jpeg" : "asset/sign/kojisha-nm.jpeg";
+                    if ($invoice->flag === "Reftech") {
+                        $invoice->sign = $jumlah >= 5000000 ? "asset/sign/reftech-m.jpeg" : "asset/sign/reftech-nm.jpeg";
+                    } elseif ($invoice->flag === "Kojisha") {
+                        $invoice->sign = $jumlah >= 5000000 ? "asset/sign/kojisha-m.jpeg" : "asset/sign/kojisha-nm.jpeg";
+                    }
                 }
-            }
 
-            $invoiceSave = $invoice->save();
-            if ($invoiceSave) {
+                $invoice->save();
                 if (!empty($invoice->no_invoice)) {
                     Suo::where('id_quotation', $invoice->id_quotation)
                         ->where('status', '!=', 'converted')
@@ -293,7 +289,7 @@ class InvoiceController extends Controller
                 }
                 return redirect('/invoice/' . $id)->with('message', 'Invoice has been accepted');
             }
-        }
+        });
     }
 
     /**
@@ -569,23 +565,25 @@ class InvoiceController extends Controller
             $lastUnitSeq = isset($m[1]) ? (int) $m[1] : 0;
         }
 
-        function generateNextInvoiceNumber($lastInvoice, $defaultCode, $lastSuoSeq = 0, $lastUnitSeq = 0)
-        {
-            $lastSeqFromInvoice = 0;
-            if ($lastInvoice) {
-                preg_match('/^(\d+)\//', $lastInvoice->no_invoice, $matches);
-                if (!empty($matches)) {
-                    $lastSeqFromInvoice = (int) $matches[1];
+        if (!function_exists('App\Http\Controllers\generateNextInvoiceNumber')) {
+            function generateNextInvoiceNumber($lastInvoice, $defaultCode, $lastSuoSeq = 0, $lastUnitSeq = 0)
+            {
+                $lastSeqFromInvoice = 0;
+                if ($lastInvoice) {
+                    preg_match('/^(\d+)\//', $lastInvoice->no_invoice, $matches);
+                    if (!empty($matches)) {
+                        $lastSeqFromInvoice = (int) $matches[1];
+                    }
+                }
+
+                $effectiveLast = max($lastSeqFromInvoice, $lastSuoSeq, $lastUnitSeq);
+
+                if ($effectiveLast > 0) {
+                    return str_pad($effectiveLast + 1, 3, '0', STR_PAD_LEFT);
+                } else {
+                    return $defaultCode;
                 }
             }
-
-            $effectiveLast = max($lastSeqFromInvoice, $lastSuoSeq, $lastUnitSeq);
-
-            if ($effectiveLast > 0) {
-                return str_pad($effectiveLast + 1, 3, '0', STR_PAD_LEFT);
-            }
-
-            return $defaultCode;
         }
         // Generate next invoice numbers.
         // Sequence SUO booking & invoice unit quotation semuanya berformat PPn Reftech (SJ-P/RJO),
@@ -801,18 +799,23 @@ class InvoiceController extends Controller
     public function do_ekspedisi($id)
     {
         $invoice = Invoice::find($id);
+        if (!$invoice) {
+            return redirect()->route('delivery.index')->with('error', 'Invoice tidak ditemukan');
+        }
         $quote = Quotation::find($invoice->id_quotation);
-        $dQuote = DetailQuotation::where('id_quotation', $invoice->id_quotation)->get();
-        $client = Client::where('id', $quote->pic->id_client)->first();
-        // dd($client);
+        $dQuote = $quote ? DetailQuotation::where('id_quotation', $invoice->id_quotation)->get() : collect([]);
+        $client = $quote && $quote->pic ? Client::where('id', $quote->pic->id_client)->first() : null;
 
         return view("pages.accounting.delivery.ekspedisi", compact('quote', 'invoice', 'dQuote', 'client'));
     }
     public function print_ekspedisi($id)
     {
         $invoice = Invoice::find($id);
+        if (!$invoice) {
+            return redirect()->route('delivery.index')->with('error', 'Invoice tidak ditemukan');
+        }
         $quote = Quotation::find($invoice->id_quotation);
-        $dQuote = DetailQuotation::where('id_quotation', $invoice->id_quotation)->get();
+        $dQuote = $quote ? DetailQuotation::where('id_quotation', $invoice->id_quotation)->get() : collect([]);
 
         return view("pages.accounting.delivery.ekspedisi-print", compact('quote', 'invoice', 'dQuote'));
     }
@@ -820,16 +823,22 @@ class InvoiceController extends Controller
     public function do_teknisi($id)
     {
         $invoice = Invoice::find($id);
+        if (!$invoice) {
+            return redirect()->route('delivery.index')->with('error', 'Invoice tidak ditemukan');
+        }
         $quote = Quotation::find($invoice->id_quotation);
-        $dQuote = DetailQuotation::where('id_quotation', $invoice->id_quotation)->get();
+        $dQuote = $quote ? DetailQuotation::where('id_quotation', $invoice->id_quotation)->get() : collect([]);
 
         return view("pages.accounting.delivery.teknisi", compact('quote', 'invoice', 'dQuote'));
     }
     public function print_teknisi($id)
     {
         $invoice = Invoice::find($id);
+        if (!$invoice) {
+            return redirect()->route('delivery.index')->with('error', 'Invoice tidak ditemukan');
+        }
         $quote = Quotation::find($invoice->id_quotation);
-        $dQuote = DetailQuotation::where('id_quotation', $invoice->id_quotation)->get();
+        $dQuote = $quote ? DetailQuotation::where('id_quotation', $invoice->id_quotation)->get() : collect([]);
 
         return view("pages.accounting.delivery.teknisi-print", compact('quote', 'invoice', 'dQuote'));
     }
@@ -1124,55 +1133,57 @@ class InvoiceController extends Controller
 
     public function confirm_payment_unit(Request $request, $id)
     {
-        $invoice           = Invoice::findOrFail($id);
-        $invoice->status_p = 1;
-        if ($request->filled('note')) {
-            $invoice->note_p = $request->note;
-        }
-        $invoice->save();
-
-        $pphRaw  = $request->input('pph', 0);
-        $costRaw = $request->input('cost', $request->input('admin_bank', 0));
-
-        $pph  = (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', (string) $pphRaw));
-        $cost = (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', (string) $costRaw));
-
-        $confirmedPayments = Payment::where('id_unit_quotation', $invoice->id_unit_quotation)
-            ->where('level', 0)
-            ->get();
-
-        if ($confirmedPayments->isNotEmpty()) {
-            foreach ($confirmedPayments as $idx => $payment) {
-                $payment->level        = 1;
-                $payment->date_confirm = now();
-                if ($idx === 0) {
-                    $payment->pph  = $pph;
-                    $payment->cost = $cost;
-                }
-                if ($request->filled('note') && empty($payment->note)) {
-                    $payment->note = $request->note;
-                }
-                $payment->save();
-
-                $this->prService->evaluatePaymentGate($payment, Auth::id());
+        return DB::transaction(function () use ($request, $id) {
+            $invoice           = Invoice::findOrFail($id);
+            $invoice->status_p = 1;
+            if ($request->filled('note')) {
+                $invoice->note_p = $request->note;
             }
-        } else {
-            $latestPayment = Payment::where('id_unit_quotation', $invoice->id_unit_quotation)
-                ->latest('id')
-                ->first();
-            if ($latestPayment) {
-                $latestPayment->level        = 1;
-                $latestPayment->date_confirm = now();
-                $latestPayment->pph          = $pph;
-                $latestPayment->cost         = $cost;
-                if ($request->filled('note')) {
-                    $latestPayment->note = $request->note;
-                }
-                $latestPayment->save();
-            }
-        }
+            $invoice->save();
 
-        return redirect()->route('invoice.show_unit', $id)->with('success', 'Pembayaran telah dikonfirmasi.');
+            $pphRaw  = $request->input('pph', 0);
+            $costRaw = $request->input('cost', $request->input('admin_bank', 0));
+
+            $pph  = (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', (string) $pphRaw));
+            $cost = (float) preg_replace('/[^0-9.]/', '', str_replace(',', '.', (string) $costRaw));
+
+            $confirmedPayments = Payment::where('id_unit_quotation', $invoice->id_unit_quotation)
+                ->where('level', 0)
+                ->get();
+
+            if ($confirmedPayments->isNotEmpty()) {
+                foreach ($confirmedPayments as $idx => $payment) {
+                    $payment->level        = 1;
+                    $payment->date_confirm = now();
+                    if ($idx === 0) {
+                        $payment->pph  = $pph;
+                        $payment->cost = $cost;
+                    }
+                    if ($request->filled('note') && empty($payment->note)) {
+                        $payment->note = $request->note;
+                    }
+                    $payment->save();
+
+                    $this->prService->evaluatePaymentGate($payment, Auth::id());
+                }
+            } else {
+                $latestPayment = Payment::where('id_unit_quotation', $invoice->id_unit_quotation)
+                    ->latest('id')
+                    ->first();
+                if ($latestPayment) {
+                    $latestPayment->level        = 1;
+                    $latestPayment->date_confirm = now();
+                    $latestPayment->pph          = $pph;
+                    $latestPayment->cost         = $cost;
+                    if ($request->filled('note')) {
+                        $latestPayment->note = $request->note;
+                    }
+                    $latestPayment->save();
+                }
+            }
+
+            return redirect()->route('invoice.show_unit', $id)->with('success', 'Pembayaran telah dikonfirmasi.');
+        });
     }
 
     public function toggleSpec($id)
@@ -1534,65 +1545,67 @@ class InvoiceController extends Controller
 
     public function accept_unit(Request $request, $id)
     {
-        $invoice = Invoice::findOrFail($id);
-        $quote   = UnitQuotation::with('client')->findOrFail($invoice->id_unit_quotation);
+        return DB::transaction(function () use ($request, $id) {
+            $invoice = Invoice::findOrFail($id);
+            $quote   = UnitQuotation::with('client')->findOrFail($invoice->id_unit_quotation);
 
-        $pendingInvoices = Invoice::where('id_unit_quotation', $quote->id)
-            ->whereNull('no_invoice')
-            ->orderByRaw("FIELD(type,'DP','BP','CT')")
-            ->get();
+            $pendingInvoices = Invoice::where('id_unit_quotation', $quote->id)
+                ->whereNull('no_invoice')
+                ->orderByRaw("FIELD(type,'DP','BP','CT')")
+                ->get();
 
-        $invoiceDate = $request->input('invoice_date', now()->toDateString());
-        $term        = $request->input('term');
+            $invoiceDate = $request->input('invoice_date', now()->toDateString());
+            $term        = $request->input('term');
 
-        foreach ($pendingInvoices as $inv) {
-            $noInv = $request->input('no_invoice_' . $inv->id);
-            $inv->no_invoice = $noInv;
-            $inv->date       = $invoiceDate;
-            $inv->invoiceTo  = '1';
-            $inv->term       = $term;
-            if (str_contains((string) $noInv, '/KII/') || optional($quote->client)->info === 'Kojisha' || str_contains((string) $quote->no_quote, 'KII')) {
-                $inv->flag = 'Kojisha';
-            } else {
-                $inv->flag = 'Reftech';
+            foreach ($pendingInvoices as $inv) {
+                $noInv = $request->input('no_invoice_' . $inv->id);
+                $inv->no_invoice = $noInv;
+                $inv->date       = $invoiceDate;
+                $inv->invoiceTo  = '1';
+                $inv->term       = $term;
+                if (str_contains((string) $noInv, '/KII/') || optional($quote->client)->info === 'Kojisha' || str_contains((string) $quote->no_quote, 'KII')) {
+                    $inv->flag = 'Kojisha';
+                } else {
+                    $inv->flag = 'Reftech';
+                }
+
+                $amount = $quote->total;
+                if ($inv->flag === 'Reftech') {
+                    $inv->sign = $amount >= 5000000
+                        ? 'asset/sign/reftech-m.jpeg'
+                        : 'asset/sign/reftech-nm.jpeg';
+                } else {
+                    $inv->sign = $amount >= 5000000
+                        ? 'asset/sign/kojisha-m.jpeg'
+                        : 'asset/sign/kojisha-nm.jpeg';
+                }
+
+                $inv->save();
             }
 
-            $amount = $quote->total;
-            if ($inv->flag === 'Reftech') {
-                $inv->sign = $amount >= 5000000
-                    ? 'asset/sign/reftech-m.jpeg'
-                    : 'asset/sign/reftech-nm.jpeg';
-            } else {
-                $inv->sign = $amount >= 5000000
-                    ? 'asset/sign/kojisha-m.jpeg'
-                    : 'asset/sign/kojisha-nm.jpeg';
+            $suo = Suo::where('id_unit_quotation', $quote->id)->first();
+            if ($suo && $suo->status !== 'converted') {
+                $suo->status = 'converted';
+                $suo->save();
             }
 
-            $inv->save();
-        }
+            $justIssued = $pendingInvoices->first();
 
-        $suo = Suo::where('id_unit_quotation', $quote->id)->first();
-        if ($suo && $suo->status !== 'converted') {
-            $suo->status = 'converted';
-            $suo->save();
-        }
+            // Notifikasi ke sales pemilik quotation
+            if ($quote->id_sales && $justIssued) {
+                \App\Models\UnitQuotationPaymentNotification::create([
+                    'id_invoice' => $justIssued->id,
+                    'id_unit_quotation' => $quote->id,
+                    'id_user' => $quote->id_sales,
+                    'type' => 'invoice_approved',
+                    'is_read' => false,
+                ]);
+            }
 
-        $justIssued = $pendingInvoices->first();
-
-        // Notifikasi ke sales pemilik quotation: invoice yang diajukan sudah di-acc
-        // Accounting dan resmi terbit — supaya sales tidak perlu bolak-balik cek manual.
-        if ($quote->id_sales) {
-            \App\Models\UnitQuotationPaymentNotification::create([
-                'id_invoice' => $justIssued->id,
-                'id_unit_quotation' => $quote->id,
-                'id_user' => $quote->id_sales,
-                'type' => 'invoice_approved',
-                'is_read' => false,
-            ]);
-        }
-
-        return redirect()->route('invoice.show_unit', $justIssued->id)
-            ->with('success', 'Invoice berhasil diterbitkan.');
+            $redirectId = $justIssued ? $justIssued->id : $invoice->id;
+            return redirect()->route('invoice.show_unit', $redirectId)
+                ->with('success', 'Invoice berhasil diterbitkan.');
+        });
     }
 
     /**

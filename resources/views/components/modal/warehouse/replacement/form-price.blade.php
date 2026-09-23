@@ -2,7 +2,7 @@
     @csrf
     @method('PATCH')
 
-    <div class="modal animate__animated animate__fadeIn" id="editReplacement-{{ $detail->id }}" tabindex="-1"
+    <div class="modal fade" id="editReplacement-{{ $detail->id }}" tabindex="-1"
         style="display: none;" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">
@@ -47,6 +47,15 @@
                                 </div>
                             </div>
                         @endif
+                        <div class="col-12 mt-2">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="is_opname" value="1" id="is_opname_edit_{{ $detail->id }}" {{ $detail->is_opname ? 'checked' : '' }}>
+                                <label class="form-check-label fw-semibold text-dark" for="is_opname_edit_{{ $detail->id }}">
+                                    <i class="mdi mdi-clipboard-check-outline text-success me-1"></i>Bisa di-Stock Opname
+                                </label>
+                                <div class="form-text text-muted small">Jika dinonaktifkan, SKU ini tidak akan muncul di daftar Stock Opname.</div>
+                            </div>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-label-secondary waves-effect"

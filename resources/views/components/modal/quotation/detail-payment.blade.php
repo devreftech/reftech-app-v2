@@ -9,7 +9,7 @@
                 <div class="onboarding-content mb-0">
                     <h4 class="onboarding-title text-body"> Detail Payment of {{ $quote->no_quote }}</h4>
                     <div class="onboarding-info mb-3">
-                        {{ $quote->pic->client->company }}
+                        {{ $quote->pic?->client?->company ?? '-' }}
                     </div>
                     <div class="row mb-4 text-nowrap">
                         <table class="table table-bordered">

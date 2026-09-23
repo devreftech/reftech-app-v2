@@ -3,6 +3,13 @@ $(function () {
     var rowIndex = 0;
     var optionIndex = 0;
 
+    // Term & Condition sekarang per-opsi, tapi diedit lewat 1 card di bawah form
+    // (bukan field terpisah per opsi) — card itu otomatis switch isi sesuai
+    // opsi mana yang lagi aktif di tab atas. optionTermsStore nyimpen data
+    // T&C tiap opsi di memory sebelum di-flush jadi hidden input pas submit.
+    var optionTermsStore = {};
+    var activeTermsOptionIdx = 0;
+
     // Textarea deskripsi custom-row rows="2" fixed — template PM (mis. Scope of Work
     // PM4) bisa puluhan baris, jadi harus auto-expand supaya gak keliatan "kepotong".
     function autoResizeDescTextarea(el) {
@@ -649,6 +656,7 @@ $(function () {
             $('.option-title-wrapper').addClass('d-none').removeClass('d-flex').hide();
             $('#options-tab-nav').addClass('d-none').removeClass('d-flex').hide();
         }
+        updateTermsCardLabel();
     }
 
     function initSortableForContainer(container) {
@@ -717,6 +725,19 @@ $(function () {
             $pane.find('.trade-in-body').hide();
         }
 
+        // Term & Condition per-opsi disimpan di optionTermsStore (lihat bawah),
+        // bukan lagi field statis di pane — card T&C di bawah form yang jadi editornya,
+        // otomatis switch isi sesuai opsi mana yang lagi aktif di tab.
+        optionTermsStore[opt] = {
+            note: optData.note || '',
+            validity: optData.validity !== undefined ? optData.validity : (opt === 0 ? $('#validity').val() : (optionTermsStore[0] ? optionTermsStore[0].validity : '')),
+            pricing: optData.pricing !== undefined ? optData.pricing : (opt === 0 ? $('#pricing').val() : (optionTermsStore[0] ? optionTermsStore[0].pricing : '')),
+            payment: optData.payment !== undefined ? optData.payment : (opt === 0 ? $('#input-payment-hidden').val() : (optionTermsStore[0] ? optionTermsStore[0].payment : '')),
+            warranty: optData.warranty !== undefined ? optData.warranty : (opt === 0 ? $('#warranty').val() : (optionTermsStore[0] ? optionTermsStore[0].warranty : '')),
+            delivery_process: optData.delivery_process !== undefined ? optData.delivery_process : (opt === 0 ? $('#delivery').val() : (optionTermsStore[0] ? optionTermsStore[0].delivery_process : '')),
+            rental_terms: optData.rental_terms || (optionTermsStore[0] ? optionTermsStore[0].rental_terms : '')
+        };
+
         $('#options-tab-content').append($pane);
 
         initSortableForContainer($pane.find('.line-items-container')[0]);
@@ -726,13 +747,85 @@ $(function () {
         return $pane;
     }
 
+    // ── Card Term & Condition (di bawah form) — ikut opsi mana yang lagi aktif ──
+    function readTermsCardIntoStore(idx) {
+        if (idx === undefined || idx === null) return;
+        optionTermsStore[idx] = {
+            note: $('#note').val() || '',
+            validity: $('#validity').val() || '',
+            pricing: $('#pricing').val() || '',
+            payment: $('#input-payment-hidden').val() || '',
+            warranty: $('#warranty').val() || '',
+            delivery_process: $('#delivery').val() || '',
+            rental_terms: $('#rental_terms').val() || ''
+        };
+    }
+
+    function writeStoreIntoTermsCard(idx) {
+        var data = optionTermsStore[idx] || { note: '', validity: '', pricing: '', payment: '', warranty: '', delivery_process: '', rental_terms: '' };
+        $('#note').val(data.note).trigger('input');
+        $('#validity').val(data.validity);
+        $('#pricing').val(data.pricing);
+        $('#warranty').val(data.warranty);
+        $('#delivery').val(data.delivery_process).trigger('input');
+        $('#rental_terms').val(data.rental_terms).trigger('input');
+
+        // Payment select — coba cocokkan ke salah satu <option>, kalau gak ada berarti custom/manual.
+        var $paymentSelect = $('#payment-select');
+        var matched = false;
+        if ($paymentSelect.length) {
+            $paymentSelect.find('option').each(function () {
+                if ($(this).val() === data.payment) { matched = true; return false; }
+            });
+            if (matched) {
+                $paymentSelect.val(data.payment);
+                $('#manual-payment-wrapper').hide();
+            } else {
+                $paymentSelect.val('manual');
+                $('#manual-payment-wrapper').show();
+                $('#input-payment-manual').val(data.payment || '');
+            }
+        }
+        $('#input-payment-hidden').val(data.payment || '');
+    }
+
+    function updateTermsCardLabel() {
+        var count = $('.option-pane').length;
+        var $label = $('#terms-card-active-option-label');
+        var $hint = $('#terms-card-hint');
+        if (!$label.length) return;
+        if (count > 1) {
+            var title = $('#options-tab-nav .nav-item[data-option-idx="' + activeTermsOptionIdx + '"] .tab-title-display').text() || ('Opsi ' + (activeTermsOptionIdx + 1));
+            $label.text(title).show();
+            $hint.removeClass('d-none');
+        } else {
+            $label.hide();
+            $hint.addClass('d-none');
+        }
+    }
+
+    $(document).on('shown.bs.tab', '#options-tab-nav a[data-bs-toggle="pill"]', function (e) {
+        var $prevTab = $(e.relatedTarget);
+        var prevIdx = $prevTab.length ? $prevTab.closest('.nav-item').data('option-idx') : activeTermsOptionIdx;
+        readTermsCardIntoStore(prevIdx);
+
+        var newIdx = $(this).closest('.nav-item').data('option-idx');
+        activeTermsOptionIdx = newIdx;
+        writeStoreIntoTermsCard(newIdx);
+        updateTermsCardLabel();
+    });
+
     $(document).on('click', '#btn-add-option', function () {
+        readTermsCardIntoStore(activeTermsOptionIdx);
         var $pane = addOption({});
         $('.option-pane').removeClass('show active');
         $('.nav-link', '#options-tab-nav').removeClass('active').attr('aria-selected', 'false');
         $pane.addClass('show active');
         var opt = $pane.data('option-idx');
         $('#options-tab-nav .nav-item[data-option-idx="' + opt + '"] .nav-link').addClass('active').attr('aria-selected', 'true');
+        activeTermsOptionIdx = opt;
+        writeStoreIntoTermsCard(opt);
+        updateTermsCardLabel();
         $('html, body').animate({ scrollTop: $pane.offset().top - 100 }, 300);
     });
 
@@ -745,6 +838,7 @@ $(function () {
         var text = $(this).val() || ('Opsi ' + (parseInt(opt, 10) + 1));
         $('#options-tab-nav .nav-item[data-option-idx="' + opt + '"] .tab-title-display').text(text);
         updateBubbleSummary();
+        updateTermsCardLabel();
     });
 
     $(document).on('click', '.btn-remove-option', function () {
@@ -756,6 +850,7 @@ $(function () {
         function doRemove() {
             $('#options-tab-nav .nav-item[data-option-idx="' + opt + '"]').remove();
             $pane.remove();
+            delete optionTermsStore[opt];
             if (wasActive) {
                 var $firstTab = $('#options-tab-nav .nav-item').first();
                 var $firstPane = $('.option-pane').first();
@@ -763,6 +858,8 @@ $(function () {
                 $firstTab.find('.nav-link').addClass('active').attr('aria-selected', 'true');
                 $('.option-pane').removeClass('show active');
                 $firstPane.addClass('show active');
+                activeTermsOptionIdx = $firstPane.data('option-idx');
+                writeStoreIntoTermsCard(activeTermsOptionIdx);
             }
             updateOptionRemoveButtons();
             recalcSummary();
@@ -1790,6 +1887,28 @@ $(function () {
         $('#input-payment-hidden').val($(this).val());
     });
 
+    // Term & Condition per-opsi — flush card aktif ke store, lalu tulis ulang
+    // jadi hidden input options[idx][note|validity|...] di tiap pane sebelum submit.
+    var TC_FIELDS = ['note', 'validity', 'pricing', 'payment', 'warranty', 'delivery_process', 'rental_terms'];
+    function flushTermsToHiddenInputs() {
+        readTermsCardIntoStore(activeTermsOptionIdx);
+
+        $('.option-pane').each(function () {
+            var $pane = $(this);
+            var idx = $pane.data('option-idx');
+            var data = optionTermsStore[idx] || {};
+            $pane.find('.tc-hidden-field').remove();
+            $.each(TC_FIELDS, function (i, field) {
+                $('<input>', {
+                    type: 'hidden',
+                    class: 'tc-hidden-field',
+                    name: 'options[' + idx + '][' + field + ']',
+                    value: data[field] || ''
+                }).appendTo($pane);
+            });
+        });
+    }
+
     // Safety sync right before form submission
     $('#form-unit-quotation').on('submit', function () {
         var $paymentSelect = $('#payment-select');
@@ -1801,6 +1920,7 @@ $(function () {
                 $('#input-payment-hidden').val(val);
             }
         }
+        flushTermsToHiddenInputs();
     });
 
     // ── Auto-calculate week from date ─────────────────────────────────────

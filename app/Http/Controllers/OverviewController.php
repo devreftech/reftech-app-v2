@@ -689,8 +689,7 @@ class OverviewController extends Controller
     {
         $user = User::find($sales);
         $dates = $date;
-        $dateOver = '01-' . $date;
-        $dateCarbon = Carbon::createFromFormat('d-m-Y', $dateOver);
+        $dateCarbon = $this->parseMonthYearDate($date);
 
         $month = $dateCarbon->month;
         $year = $dateCarbon->year;
@@ -786,6 +785,26 @@ class OverviewController extends Controller
     }
 
     /**
+     * Parse robustly any month/year format (e.g. "09-2026", "2026-09", "9", or "09")
+     */
+    private function parseMonthYearDate($date): Carbon
+    {
+        try {
+            $str = trim((string)$date);
+            if (preg_match('/^\d{1,2}-\d{4}$/', $str)) {
+                return Carbon::createFromFormat('d-m-Y', '01-' . $str);
+            } elseif (preg_match('/^\d{4}-\d{1,2}$/', $str)) {
+                return Carbon::createFromFormat('Y-m-d', $str . '-01');
+            } elseif (is_numeric($str) && (int)$str >= 1 && (int)$str <= 12) {
+                return Carbon::create(now()->year, (int)$str, 1);
+            }
+            return Carbon::parse($str);
+        } catch (\Throwable $e) {
+            return Carbon::now();
+        }
+    }
+
+    /**
      * Partial "Rekap KPI Mingguan" untuk dimuat lewat AJAX di modal Info
      * (card Sales Overview pada dashboard admin). Logika perhitungan minggu
      * dipindah ke OverviewService::buildWeeklyKpi() supaya dipakai bareng
@@ -793,7 +812,7 @@ class OverviewController extends Controller
      */
     public function weeklyKpiPartial($sales, $date)
     {
-        $dateCarbon = Carbon::createFromFormat('d-m-Y', '01-' . $date);
+        $dateCarbon = $this->parseMonthYearDate($date);
         $weeklyKpi = $this->overviewService->buildWeeklyKpi($sales, $dateCarbon->month, $dateCarbon->year);
         $monthLabel = $dateCarbon->locale('id')->isoFormat('MMMM Y');
 
@@ -810,7 +829,7 @@ class OverviewController extends Controller
      */
     public function weeklyKpiDetail(Request $request, $sales, $date)
     {
-        $dateCarbon = Carbon::createFromFormat('d-m-Y', '01-' . $date);
+        $dateCarbon = $this->parseMonthYearDate($date);
         $section = $request->get('section');
         $rowName = $request->get('row_name');
         $week = $request->get('week');
@@ -3130,7 +3149,6 @@ class OverviewController extends Controller
      */
     private function sqSupportMonthly(string $metric, $sales, string $from, string $to): array
     {
-        $nett = 'total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)';
         $base = UnitQuotation::where('is_latest', 1)->where('id_support', $sales);
 
         switch ($metric) {
@@ -3141,7 +3159,7 @@ class OverviewController extends Controller
             case 'forecast_value':
                 return $base->whereNotIn('status', ['po_received', 'loss'])
                     ->whereBetween('date', [$from, $to])
-                    ->selectRaw("MONTH(`date`) as m, SUM($nett) as t")
+                    ->selectRaw('MONTH(`date`) as m, SUM(total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)) as t')
                     ->groupBy('m')->pluck('t', 'm')->toArray();
             case 'po_count':
                 return $base->where('status', 'po_received')
@@ -3151,7 +3169,7 @@ class OverviewController extends Controller
             case 'po_value':
                 return $base->where('status', 'po_received')
                     ->whereBetween('po_received', [$from, $to])
-                    ->selectRaw("MONTH(po_received) as m, SUM($nett) as t")
+                    ->selectRaw('MONTH(po_received) as m, SUM(total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)) as t')
                     ->groupBy('m')->pluck('t', 'm')->toArray();
         }
 

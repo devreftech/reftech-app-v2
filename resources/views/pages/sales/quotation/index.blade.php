@@ -212,7 +212,7 @@
                                     <th>Total Price</th>
                                     <th>Type</th>
                                     <th>Description</th>
-                                    <th>Date PO</th>
+                                    <th class="text-nowrap">Date PO</th>
                                     <th>PO Number</th>
                                     <th>Invoice Number</th>
                                 </tr>
@@ -399,7 +399,7 @@
                                     <th>Company</th>
                                     <th>Total Price</th>
                                     <th>Type</th>
-                                    <th>Date PO</th>
+                                    <th class="text-nowrap">Date PO</th>
                                     <th>PO Number</th>
                                     <th>Invoice Number</th>
                                     <th class="text-center" style="width:48px;"></th>
@@ -526,10 +526,23 @@
         $(document).on('draw.dt', function (e) {
             var $tbl    = $(e.target);
             var badgeId = $tbl.data('badge');
-            if (!badgeId) return;
-            var api   = $tbl.DataTable();
-            var count = api.page.info().recordsTotal;
-            $('#' + badgeId).text(count);
+            if (badgeId) {
+                var api   = $tbl.DataTable();
+                var count = api.page.info().recordsTotal;
+                $('#' + badgeId).text(count);
+            }
+            $tbl.find('[data-bs-toggle="tooltip"]').each(function () {
+                if (!$(this).data('bs.tooltip')) {
+                    new bootstrap.Tooltip(this, { boundary: 'window' });
+                }
+            });
+        });
+
+        $(document).on('mouseenter', '[data-bs-toggle="tooltip"]', function () {
+            var $el = $(this);
+            if (!$el.attr('data-bs-original-title') && !$el.data('bs.tooltip')) {
+                new bootstrap.Tooltip(this, { boundary: 'window' }).show();
+            }
         });
 
         function updateCardStats() {
@@ -593,7 +606,7 @@
         });
 
         $(document).ready(function() {
-            $('[data-bs-toggle="tooltip"]').tooltip();
+            $('[data-bs-toggle="tooltip"]').tooltip({ boundary: 'window' });
             var urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('tab') === 'draft' || window.location.hash === '#tab-draft') {
                 var draftTabBtn = $('#quotation-tab-nav button[data-bs-target="#tab-draft"]');

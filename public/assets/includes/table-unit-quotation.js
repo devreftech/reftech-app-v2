@@ -54,8 +54,9 @@ $(function () {
                 var tip = row.last_note_date
                     ? (row.last_note_date + ' | ' + (row.last_note || 'Belum di update'))
                     : 'Belum di update';
+                var escapedTip = $('<div>').text(tip).html();
                 return '<span class="badge ' + (map[d] || 'bg-label-secondary') + ' cursor-pointer"' +
-                    ' data-bs-toggle="tooltip" data-bs-placement="top" title="' + tip + '">' +
+                    ' data-bs-toggle="tooltip" data-bs-placement="top" title="' + escapedTip + '">' +
                     (label[d] || d) + '</span>';
             }},
         ],

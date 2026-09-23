@@ -42,10 +42,15 @@ class PurchaseRequestService
     /**
      * PR baru boleh lanjut ke On Delivery kalau semua qty di semua item-nya
      * sudah teralokasi ke Purchase Order (bisa lebih dari satu PO/supplier per item).
+     * Item yang berstatus ditolak (is_rejected) dikecualikan dari perhitungan.
      */
     public function isFullyAllocated(PurchaseRequest $pr): bool
     {
-        return $pr->details->every(fn ($d) => $d->remainingQty <= 0);
+        $activeDetails = $pr->details->where('is_rejected', false);
+        if ($activeDetails->isEmpty()) {
+            return false;
+        }
+        return $activeDetails->every(fn ($d) => $d->remainingQty <= 0);
     }
 
     /**
@@ -55,7 +60,8 @@ class PurchaseRequestService
      */
     public function allDeliveriesSubmitted(PurchaseRequest $pr): bool
     {
-        $allocations = $pr->details->flatMap(fn ($d) => $d->allocations);
+        $activeDetails = $pr->details->where('is_rejected', false);
+        $allocations = $activeDetails->flatMap(fn ($d) => $d->allocations);
 
         return $allocations->isNotEmpty() && $allocations->every(fn ($a) => !is_null($a->purchase_type));
     }

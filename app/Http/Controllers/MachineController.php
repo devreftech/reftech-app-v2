@@ -194,8 +194,11 @@ class MachineController extends Controller
     }
     public function storeMonitoring(Request $request, $id)
     {
-        // dd($request->all());
-        $machine = Machine::find($id);
+        $request->validate([
+            'picture' => 'nullable|file|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        $machine = Machine::findOrFail($id);
         $monitoring = new Monitoring();
         $monitoring->id_machine = $id;
         $monitoring->id_pic = Auth::user()->id;

@@ -276,12 +276,6 @@
                                                 </a>
                                             </li>
                                             ${resetBtn}
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <button type="button" class="dropdown-item d-flex align-items-center text-danger btn-delete-delivery" data-id="${row.id}" data-num="${row.do_number}">
-                                                    <i class="mdi mdi-trash-can-outline me-2"></i> Hapus
-                                                </button>
-                                            </li>
                                         </ul>
                                     </div>
                                 `;
@@ -301,78 +295,64 @@
                 }
             });
 
-            // Copy Sign URL to clipboard
-            $(document).on('click', '.btn-copy-sign-url', function() {
-                const url = $(this).data('url');
-                if (!url) return;
-                navigator.clipboard.writeText(url).then(function() {
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Tersalin!',
-                            text: 'Tautan Tanda Tangan Online telah disalin ke clipboard.',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        alert('Tautan Tanda Tangan Online berhasil disalin: ' + url);
-                    }
-                });
-            });
-
-            // Delete Delivery
-            $(document).on('click', '.btn-delete-delivery', function(e) {
-                e.preventDefault();
-                const id = $(this).data('id');
-                const num = $(this).data('num');
-
-                const proceedDelete = () => {
-                    $.ajax({
-                        url: '/delivery/' + id,
-                        type: 'DELETE',
-                        data: {
-                            _token: '{{ csrf_token() }}'
-                        },
-                        success: function(res) {
-                            if (res == 1 || res.success) {
-                                if (typeof Swal !== 'undefined') {
-                                    Swal.fire('Terhapus!', 'Surat Jalan berhasil dihapus.', 'success').then(() => {
-                                        $('#deliveryTable').DataTable().ajax.reload(null, false);
-                                    });
-                                } else {
-                                    alert('Surat Jalan berhasil dihapus.');
-                                    $('#deliveryTable').DataTable().ajax.reload(null, false);
-                                }
-                            } else {
-                                alert('Gagal menghapus Surat Jalan.');
-                            }
-                        },
-                        error: function() {
-                            alert('Terjadi kesalahan saat menghapus data.');
-                        }
-                    });
-                };
-
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Hapus Surat Jalan?',
-                        text: `Apakah Anda yakin ingin menghapus Surat Jalan "${num}"? Data yang dihapus tidak dapat dikembalikan.`,
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#d33',
-                        cancelButtonColor: '#8592a3',
-                        confirmButtonText: 'Ya, Hapus!',
-                        cancelButtonText: 'Batal'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            proceedDelete();
-                        }
+            // Copy Sign URL to clipboard with fallback
+            function copyTextToClipboard(text) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function() {
+                        showCopySuccess(text);
+                    }).catch(function() {
+                        fallbackCopy(text);
                     });
                 } else {
-                    if (confirm(`Apakah Anda yakin ingin menghapus Surat Jalan "${num}"?`)) {
-                        proceedDelete();
-                    }
+                    fallbackCopy(text);
                 }
+            }
+
+            function fallbackCopy(text) {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                textArea.style.top = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        showCopySuccess(text);
+                    } else {
+                        prompt("Salin tautan TTD online secara manual:", text);
+                    }
+                } catch (err) {
+                    prompt("Salin tautan TTD online secara manual:", text);
+                }
+                document.body.removeChild(textArea);
+            }
+
+            function showCopySuccess(url) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Tersalin!',
+                        text: 'Tautan Tanda Tangan Online telah disalin ke clipboard.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                } else {
+                    alert('Tautan Tanda Tangan Online berhasil disalin:\n' + url);
+                }
+            }
+
+            $(document).on('click', '.btn-copy-sign-url', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const url = $(this).data('url') || $(this).attr('data-url');
+                if (!url) {
+                    alert('Tautan tanda tangan tidak tersedia.');
+                    return;
+                }
+                copyTextToClipboard(url);
             });
         });
     </script>

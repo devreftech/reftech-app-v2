@@ -27,7 +27,8 @@ class TemplateController extends Controller
      */
     public function create()
     {
-        return view('pages.admin.template.form');
+        $machine = MachineTemplate::first() ?? new MachineTemplate();
+        return view('pages.admin.template.form', compact('machine'));
     }
 
     /**

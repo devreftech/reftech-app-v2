@@ -1,7 +1,7 @@
 @extends('layouts.sales.app')
 @section('title', 'Product Out')
 @section('content')
-    <form action="{{ route('product-out.store') }}" method="post" enctype="multipart/form-data">
+    <form id="productOutForm" action="{{ route('product-out.store') }}" method="post" enctype="multipart/form-data">
         @csrf
         <div class="row">
             <div class="col-12 col-md-6">
@@ -512,7 +512,101 @@
                 initializeSelect2Commodity();
                 initializeSelect2Replacement();
                 initializeSelect2Equivalent();
-            })
+            });
+
+            // ── Form Submit Validation Guard ──
+            $('#productOutForm').on('submit', function (e) {
+                var invoice = $('input[name="invoice"]').val();
+                var detailClient = $('textarea[name="detail_client"]').val();
+                var vers = $('#vers').val();
+
+                if (!invoice || !invoice.trim()) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Nomor Invoice Kosong',
+                            text: 'Nomor invoice wajib diisi sebelum menyimpan transaksi barang keluar.',
+                            confirmButtonText: 'Isi Invoice',
+                            customClass: { confirmButton: 'btn btn-primary' },
+                            buttonsStyling: false
+                        }).then(function() {
+                            $('input[name="invoice"]').focus();
+                        });
+                    } else {
+                        alert('Nomor invoice wajib diisi.');
+                        $('input[name="invoice"]').focus();
+                    }
+                    return false;
+                }
+
+                if (!detailClient || !detailClient.trim()) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Detail Customer Kosong',
+                            text: 'Detail customer/tujuan pengeluaran barang wajib diisi.',
+                            confirmButtonText: 'Isi Detail Customer',
+                            customClass: { confirmButton: 'btn btn-primary' },
+                            buttonsStyling: false
+                        }).then(function() {
+                            $('textarea[name="detail_client"]').focus();
+                        });
+                    } else {
+                        alert('Detail customer wajib diisi.');
+                        $('textarea[name="detail_client"]').focus();
+                    }
+                    return false;
+                }
+
+                if (!vers) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Jenis Transaksi Belum Dipilih',
+                            text: 'Silakan pilih status Offline atau Online.',
+                            confirmButtonText: 'Pilih Status',
+                            customClass: { confirmButton: 'btn btn-primary' },
+                            buttonsStyling: false
+                        }).then(function() {
+                            $('#vers').focus();
+                        });
+                    } else {
+                        alert('Silakan pilih status Offline atau Online.');
+                        $('#vers').focus();
+                    }
+                    return false;
+                }
+
+                var validItems = 0;
+                $('.invoice-item-replacement').each(function () {
+                    var val = $(this).val();
+                    if (val) {
+                        validItems++;
+                    }
+                });
+
+                if (validItems === 0) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Item Barang Keluar Belum Dipilih',
+                            text: 'Minimal 1 item sparepart harus dipilih untuk transaksi barang keluar.',
+                            confirmButtonText: 'Periksa Item',
+                            customClass: { confirmButton: 'btn btn-primary' },
+                            buttonsStyling: false
+                        });
+                    } else {
+                        alert('Minimal 1 item sparepart harus dipilih.');
+                    }
+                    return false;
+                }
+
+                return true;
+            });
         });
     </script>
 @endpush

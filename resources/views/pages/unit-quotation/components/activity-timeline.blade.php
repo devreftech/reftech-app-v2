@@ -1,4 +1,4 @@
-{{-- Activity & Discussion Timeline Component --}}
+{{-- Activity & Discussion Timeline Component (Modern Chat Style) --}}
 @php
     $rootId = $quote->root_id ?? $quote->id;
     $allRevisions = \App\Models\UnitQuotation::where(function ($q) use ($rootId) {
@@ -17,18 +17,19 @@
         return ['type' => 'comment', 'data' => $comment, 'created_at' => $comment->created_at];
     });
 
-    $feed = $statusItems->concat($commentItems)->concat($revisionItems)->sortByDesc('created_at')->values();
+    // Chronological order (oldest to newest) for natural chat reading flow
+    $feed = $statusItems->concat($commentItems)->concat($revisionItems)->sortBy('created_at')->values();
 @endphp
 
-<div class="card border-0 shadow-sm overflow-hidden mb-4">
+<div class="card border-0 shadow-sm mb-4" id="activity-feed">
     {{-- Header --}}
     <div class="card-header bg-body-tertiary border-bottom py-3 px-4">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
             <h6 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2">
-                <i class="mdi mdi-forum-outline text-primary fs-5"></i> Activity &amp; Team Discussion
+                <i class="mdi mdi-forum-outline text-primary fs-5"></i> Diskusi Tim &amp; Catatan Follow-Up
             </h6>
             <span class="badge bg-label-primary rounded-pill px-3 py-1 fw-semibold">
-                {{ $feed->count() }} Aktivitas
+                {{ $quote->comments->count() }} Diskusi / {{ $feed->count() }} Total
             </span>
         </div>
         {{-- Quick Filter Pills --}}
@@ -36,11 +37,11 @@
             <button type="button" class="btn btn-xs btn-primary rounded-pill px-3 active filter-pill" data-filter="all">
                 <i class="mdi mdi-view-list me-1"></i> Semua ({{ $feed->count() }})
             </button>
-            <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-3 filter-pill" data-filter="status">
-                <i class="mdi mdi-update me-1"></i> Status ({{ $quote->statusHistory->count() }})
-            </button>
             <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-3 filter-pill" data-filter="comment">
                 <i class="mdi mdi-comment-multiple-outline me-1"></i> Diskusi ({{ $quote->comments->count() }})
+            </button>
+            <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-3 filter-pill" data-filter="status">
+                <i class="mdi mdi-update me-1"></i> Status Log ({{ $quote->statusHistory->count() }})
             </button>
             @if ($allRevisions->count() > 0)
                 <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-3 filter-pill" data-filter="revision">
@@ -64,159 +65,166 @@
             ];
         @endphp
 
-        {{-- Form Tulis Komentar Modern Card --}}
-        <div class="card border bg-light-subtle shadow-none rounded-3 mb-4 overflow-hidden">
-            <div class="card-header bg-white py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
-                <span class="fw-bold text-dark d-flex align-items-center gap-1.5" style="font-size: 12px;">
-                    <i class="mdi mdi-pencil-box-outline text-primary fs-6"></i> Tulis Catatan / Komentar Internal
-                </span>
-                <span class="badge bg-label-secondary" style="font-size: 10px;">
-                    <i class="mdi mdi-shield-lock-outline me-1"></i>Internal Team Only
-                </span>
-            </div>
-            <div class="card-body p-3 bg-white">
-                <form id="form-add-comment">
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="avatar avatar-sm flex-shrink-0 mt-1">
-                            <span class="avatar-initial rounded-circle bg-primary text-white fw-bold">
-                                {{ strtoupper(substr(Auth::user()->name ?? 'U', 0, 1)) }}
-                            </span>
-                        </div>
-                        <div class="flex-grow-1">
-                            <textarea id="new-comment-text" class="form-control border p-2.5" rows="2"
-                                placeholder="Ketik perkembangan follow up, kesepakatan dengan client, atau instruksi internal..." style="font-size: 13px; border-radius: 8px;" required></textarea>
-                            <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top">
-                                <small class="text-muted" style="font-size: 11px;">
-                                    <i class="mdi mdi-information-outline me-1"></i>Komentar hanya dapat dilihat oleh tim internal
-                                </small>
-                                <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm fw-semibold" id="btn-submit-comment">
-                                    <i class="mdi mdi-send me-1"></i> Kirim Komentar
-                                </button>
-                            </div>
-                        </div>
+        {{-- Chat & Timeline Stream Container --}}
+        <div class="discussion-stream-box discussion-list mb-3" id="quotationDiscussionStream" style="max-height: 460px; overflow-y: auto;">
+            @if ($feed->count() === 0)
+                {{-- Empty State --}}
+                <div class="text-center text-muted py-5">
+                    <div class="avatar avatar-lg mx-auto mb-3 bg-label-primary d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border-radius: 50%;">
+                        <i class="mdi mdi-forum-outline fs-3"></i>
                     </div>
-                </form>
-            </div>
-        </div>
-
-        @if ($feed->count() === 0)
-            {{-- Empty State --}}
-            <div class="text-center py-5">
-                <div class="avatar avatar-md mx-auto mb-2">
-                    <span class="avatar-initial rounded-circle bg-label-secondary">
-                        <i class="mdi mdi-clock-outline fs-4 text-secondary"></i>
-                    </span>
+                    <p class="mb-0 fw-semibold text-dark" style="font-size: 13.5px;">Belum ada catatan atau diskusi.</p>
+                    <small class="text-muted" style="font-size: 11.5px;">Mulai percakapan tim dengan mengetik pesan di bawah.</small>
                 </div>
-                <h6 class="fw-semibold text-muted mb-1" style="font-size: 13.5px;">Belum Ada Aktivitas</h6>
-                <small class="text-muted" style="font-size: 11.5px;">Aktivitas pergerakan status, revisi, dan catatan tim akan tercatat secara kronologis di sini.</small>
-            </div>
-        @else
-            {{-- Timeline Stream Container --}}
-            <div class="timeline-stream-container">
+            @else
                 @foreach ($feed as $item)
                     @if ($item['type'] === 'status')
                         @php
                             $hist = $item['data'];
                             $hst = $hstMap[$hist->status] ?? ['label' => ucfirst(str_replace('_',' ',$hist->status)), 'color' => 'secondary', 'icon' => 'mdi-circle-outline'];
                         @endphp
-                        <div class="timeline-feed-item item-status mb-3 p-3 rounded-3 border bg-white shadow-xs position-relative overflow-hidden">
-                            <div class="position-absolute top-0 start-0 bottom-0 bg-{{ $hst['color'] }}" style="width: 4px;"></div>
-                            <div class="ps-2">
-                                <div class="d-flex align-items-center justify-content-between mb-1">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge bg-label-{{ $hst['color'] }} rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 11px;">
-                                            <i class="mdi {{ $hst['icon'] }}"></i> {{ $hst['label'] }}
-                                        </span>
-                                        <small class="text-muted fw-semibold" style="font-size: 11px;">System Status Log</small>
-                                    </div>
-                                    <small class="text-muted" style="font-size: 11px;" title="{{ $hist->created_at->format('d M Y H:i') }}">
-                                        <i class="mdi mdi-clock-outline me-1"></i>
-                                        {{ $hist->created_at->diffInHours(now()) > 48
-                                            ? $hist->created_at->format('d M Y, H:i')
-                                            : $hist->created_at->diffForHumans() }}
-                                    </small>
-                                </div>
+                        {{-- Status Change Milestone Pill --}}
+                        <div class="timeline-feed-item item-status my-3 text-center">
+                            <span class="badge bg-label-{{ $hst['color'] }} rounded-pill px-3 py-1.5 shadow-xs d-inline-flex align-items-center gap-1.5 border border-{{ $hst['color'] }}-subtle" style="font-size: 11px; max-width: 92%; white-space: normal; text-align: left;">
+                                <i class="mdi {{ $hst['icon'] }} fs-6"></i>
+                                <strong>{{ $hst['label'] }}</strong>
                                 @if ($hist->note)
-                                    <div class="mt-2 p-2.5 rounded-2 bg-light" style="font-size: 12px; border-left: 3px solid var(--bs-{{ $hst['color'] }});">
-                                        <i class="mdi mdi-information-outline text-{{ $hst['color'] }} me-1"></i> {{ $hist->note }}
-                                    </div>
+                                    <span class="text-muted ms-1">— {{ $hist->note }}</span>
+                                @endif
+                                <span class="text-muted ms-auto ps-2" style="font-size: 10px;" title="{{ $hist->created_at->format('d M Y H:i') }}">
+                                    • {{ $hist->created_at->diffInHours(now()) > 24 ? $hist->created_at->format('d M Y, H:i') : $hist->created_at->diffForHumans() }}
+                                </span>
+                            </span>
+                        </div>
+
+                    @elseif ($item['type'] === 'revision')
+                        @php $rev = $item['data']; @endphp
+                        {{-- Revision Published Milestone Banner --}}
+                        <div class="timeline-feed-item item-revision my-3 p-2.5 rounded-3 bg-primary-subtle text-primary border border-primary-subtle d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-xs" data-revision-id="{{ $rev->id }}">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary rounded-pill px-2.5 py-1 fw-semibold">
+                                    <i class="mdi mdi-file-replace-outline me-1"></i>Revisi R{{ $rev->revision_number }}
+                                </span>
+                                <span style="font-size: 12px;">Penawaran direvisi ke versi <strong>#{{ $rev->no_quote }}</strong> (Total: Rp {{ number_format($rev->total, 0, ',', '.') }})</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <small class="text-muted" style="font-size: 11px;" title="{{ $rev->created_at->format('d M Y H:i') }}">
+                                    {{ $rev->created_at->diffInHours(now()) > 24 ? $rev->created_at->format('d M Y, H:i') : $rev->created_at->diffForHumans() }}
+                                </small>
+                                @if ($rev->id !== $quote->id)
+                                    <a href="{{ route('unit-quotation.show', $rev->id) }}" class="btn btn-xs btn-primary rounded-pill px-2.5 py-1">
+                                        Buka R{{ $rev->revision_number }} <i class="mdi mdi-arrow-right ms-1"></i>
+                                    </a>
+                                @else
+                                    <span class="badge bg-label-primary rounded-pill">Versi Ini</span>
                                 @endif
                             </div>
                         </div>
-                    @elseif ($item['type'] === 'revision')
-                        @php $rev = $item['data']; @endphp
-                        <div class="timeline-feed-item item-revision mb-3 p-3 rounded-3 border bg-white shadow-xs position-relative overflow-hidden" data-revision-id="{{ $rev->id }}">
-                            <div class="position-absolute top-0 start-0 bottom-0 bg-primary" style="width: 4px;"></div>
-                            <div class="ps-2">
-                                <div class="d-flex align-items-center justify-content-between mb-1">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge bg-primary rounded-pill px-3 py-1 fw-semibold d-inline-flex align-items-center gap-1" style="font-size: 11px;">
-                                            <i class="mdi mdi-file-replace-outline"></i> Revisi R{{ $rev->revision_number }} Diterbitkan
+
+                    @else
+                        @php
+                            $qcomment = $item['data'];
+                            $isMe = $qcomment->user_id == Auth::id();
+                            $userInitial = strtoupper(substr($qcomment->user->name ?? 'U', 0, 1));
+                            $userRole = $qcomment->user->role ?? 'Team';
+                        @endphp
+                        {{-- Modern Chat Message Bubble --}}
+                        <div class="timeline-feed-item item-comment d-flex gap-2.5 mb-3 {{ $isMe ? 'flex-row-reverse' : '' }}" data-comment-id="{{ $qcomment->id }}">
+                            {{-- User Avatar --}}
+                            <div class="flex-shrink-0">
+                                @if ($qcomment->user && $qcomment->user->image)
+                                    <img src="{{ url('') . '/' . $qcomment->user->image }}"
+                                        class="rounded-circle border border-2 border-white shadow-xs"
+                                        style="width: 36px; height: 36px; object-fit: cover;"
+                                        alt="{{ $qcomment->user->name }}"
+                                        onerror="this.outerHTML='<span class=\'avatar-initial rounded-circle bg-label-{{ $isMe ? 'primary' : 'info' }} fw-bold d-flex align-items-center justify-content-center shadow-xs\' style=\'width:36px;height:36px;font-size:13px;\'>{{ $userInitial }}</span>'">
+                                @else
+                                    <span class="avatar-initial rounded-circle bg-label-{{ $isMe ? 'primary' : 'info' }} fw-bold d-flex align-items-center justify-content-center shadow-xs" style="width: 36px; height: 36px; font-size: 13px;">
+                                        {{ $userInitial }}
+                                    </span>
+                                @endif
+                            </div>
+
+                            {{-- Chat Bubble & Meta --}}
+                            <div style="max-width: 78%;" class="{{ $isMe ? 'text-end' : '' }}">
+                                <div class="d-flex align-items-center gap-1.5 mb-1 {{ $isMe ? 'flex-row-reverse' : '' }}">
+                                    <span class="fw-bold text-dark" style="font-size: 12.5px;">{{ $qcomment->user->name ?? 'User' }}</span>
+                                    @if ($userRole)
+                                        <span class="badge bg-label-{{ $isMe ? 'primary' : 'secondary' }} rounded-pill px-1.5 py-0.5" style="font-size: 9.5px;">
+                                            {{ $userRole }}
                                         </span>
-                                        <small class="text-muted fw-semibold" style="font-size: 11px;">Revision Update</small>
-                                    </div>
-                                    <small class="text-muted" style="font-size: 11px;" title="{{ $rev->created_at->format('d M Y H:i') }}">
-                                        <i class="mdi mdi-clock-outline me-1"></i>
-                                        {{ $rev->created_at->diffInHours(now()) > 48
-                                            ? $rev->created_at->format('d M Y, H:i')
-                                            : $rev->created_at->diffForHumans() }}
-                                    </small>
+                                    @endif
+                                    <span class="text-muted" style="font-size: 10.5px;" title="{{ $qcomment->created_at->format('d M Y H:i') }}">
+                                        <i class="mdi mdi-clock-outline me-0.5"></i>
+                                        {{ $qcomment->created_at->diffInHours(now()) > 24 ? $qcomment->created_at->format('d M Y H:i') : $qcomment->created_at->diffForHumans() }}
+                                    </span>
                                 </div>
-                                <div class="mt-2 p-2.5 rounded-2 bg-primary-subtle text-primary border border-primary-subtle d-flex align-items-center justify-content-between flex-wrap gap-2" style="font-size: 12px;">
-                                    <div>
-                                        <i class="mdi mdi-link-variant me-1"></i> Penawaran direvisi menjadi versi <strong>#{{ $rev->no_quote }}</strong> (Total: Rp {{ number_format($rev->total, 0, ',', '.') }})
-                                    </div>
-                                    @if ($rev->id !== $quote->id)
-                                        <a href="{{ route('unit-quotation.show', $rev->id) }}" class="btn btn-xs btn-primary rounded-pill px-3 py-1 flex-shrink-0">
-                                            Buka Versi R{{ $rev->revision_number }} <i class="mdi mdi-arrow-right ms-1"></i>
-                                        </a>
-                                    @else
-                                        <span class="badge bg-primary rounded-pill flex-shrink-0">Versi Saat Ini</span>
+
+                                <div class="p-3 rounded-3 shadow-xs text-start {{ $isMe ? 'chat-bubble-me' : 'chat-bubble-other' }}"
+                                    style="word-break: break-word; font-size: 13px; line-height: 1.5;">
+                                    @php
+                                        $msgFormatted = e($qcomment->comment);
+                                        if ($qcomment->relationLoaded('mentions') && $qcomment->mentions->isNotEmpty()) {
+                                            foreach ($qcomment->mentions as $m) {
+                                                $mName = $m->name ?? '';
+                                                if ($mName) {
+                                                    $msgFormatted = str_replace(
+                                                        '@' . e($mName),
+                                                        '<span class="badge bg-label-primary px-2 py-0.5 rounded-pill fw-bold" style="font-size: 11.5px;">@' . e($mName) . '</span>',
+                                                        $msgFormatted
+                                                    );
+                                                }
+                                            }
+                                        }
+                                    @endphp
+                                    <div class="comment-text">{!! nl2br($msgFormatted) !!}</div>
+
+                                    @if ($isMe)
+                                        <div class="comment-actions mt-2 pt-1.5 border-top d-flex align-items-center justify-content-end gap-2" style="border-top-color: rgba(105, 108, 255, 0.2) !important;">
+                                            <a href="javascript:void(0);" class="btn-edit-comment text-primary text-decoration-none d-inline-flex align-items-center gap-0.5" style="font-size: 11px;">
+                                                <i class="mdi mdi-pencil-outline"></i> Edit
+                                            </a>
+                                            <span class="text-muted" style="font-size: 9px;">•</span>
+                                            <a href="javascript:void(0);" class="btn-delete-comment text-danger text-decoration-none d-inline-flex align-items-center gap-0.5" style="font-size: 11px;">
+                                                <i class="mdi mdi-trash-can-outline"></i> Hapus
+                                            </a>
+                                        </div>
                                     @endif
                                 </div>
                             </div>
                         </div>
-                    @else
-                        @php $qcomment = $item['data']; @endphp
-                        <div class="timeline-feed-item item-comment mb-3 p-3 rounded-3 border bg-white shadow-xs position-relative overflow-hidden" data-comment-id="{{ $qcomment->id }}">
-                            <div class="position-absolute top-0 start-0 bottom-0 bg-info" style="width: 4px;"></div>
-                            <div class="ps-2">
-                                <div class="d-flex align-items-center justify-content-between mb-2">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div class="avatar avatar-xs">
-                                            <span class="avatar-initial rounded-circle bg-info text-white fw-bold" style="font-size: 10px;">
-                                                {{ strtoupper(substr($qcomment->user->name ?? 'U', 0, 1)) }}
-                                            </span>
-                                        </div>
-                                        <h6 class="mb-0 fw-bold text-dark" style="font-size: 13px;">{{ $qcomment->user->name ?? 'User' }}</h6>
-                                        <span class="badge bg-label-info rounded-pill px-2 py-0.5" style="font-size: 9.5px;">
-                                            {{ $qcomment->user->role ?? 'Team' }}
-                                        </span>
-                                    </div>
-                                    <small class="text-muted" style="font-size: 11px;" title="{{ $qcomment->created_at->format('d M Y H:i') }}">
-                                        <i class="mdi mdi-clock-outline me-1"></i>
-                                        {{ $qcomment->created_at->diffInHours(now()) > 48
-                                            ? $qcomment->created_at->format('d M Y, H:i')
-                                            : $qcomment->created_at->diffForHumans() }}
-                                    </small>
-                                </div>
-                                <p class="mb-2 comment-text text-dark" style="font-size: 13px; white-space: pre-line; line-height: 1.5;">{{ $qcomment->comment }}</p>
-                                @if ($qcomment->user_id === Auth::id())
-                                    <div class="comment-actions pt-2 border-top d-flex align-items-center gap-2">
-                                        <a href="javascript:void(0);" class="btn-edit-comment text-primary text-decoration-none d-inline-flex align-items-center gap-1" style="font-size: 11px;">
-                                            <i class="mdi mdi-pencil-outline"></i> Edit
-                                        </a>
-                                        <span class="text-muted" style="font-size: 10px;">•</span>
-                                        <a href="javascript:void(0);" class="btn-delete-comment text-danger text-decoration-none d-inline-flex align-items-center gap-1" style="font-size: 11px;">
-                                            <i class="mdi mdi-trash-can-outline"></i> Hapus
-                                        </a>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
                     @endif
                 @endforeach
+            @endif
+        </div>
+
+        {{-- Form Kirim Pesan Chat (Sama Persis dengan Prospect & Purchase Request) --}}
+        <form id="form-add-comment" class="mt-3">
+            <div class="position-relative mention-textarea-wrapper">
+                {{-- Mention dropdown popup (opens upward above input) --}}
+                <div id="mentionDropdown" class="mention-dropdown-menu" style="display:none;"></div>
+
+                <textarea
+                    name="comment"
+                    id="new-comment-text"
+                    class="form-control shadow-none border"
+                    rows="3"
+                    placeholder="Tulis pesan atau catatan diskusi internal... ketik @ untuk mention rekan tim"
+                    style="padding-right: 120px; resize:none; border-radius: 10px; font-size: 13px;"
+                    required></textarea>
+
+                {{-- Hidden inputs untuk mention --}}
+                <div id="mentionInputs"></div>
+
+                <button type="submit" class="btn btn-primary position-absolute d-flex align-items-center shadow-xs"
+                    id="btn-submit-comment"
+                    style="bottom: 12px; right: 12px; padding: 6px 16px; font-size: 13px; border-radius: 8px; font-weight: 600;">
+                    <i class="mdi mdi-send me-1"></i> Kirim
+                </button>
             </div>
-        @endif
+
+            {{-- Tag mention yang dipilih --}}
+            <div id="mentionTags" class="d-flex flex-wrap gap-1 mt-2"></div>
+        </form>
     </div>
 </div>

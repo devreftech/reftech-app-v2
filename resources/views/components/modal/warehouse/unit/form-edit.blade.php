@@ -1,7 +1,7 @@
 <form action="{{ route('unit-reftech.edit', $unitr->id) }}" method="post" enctype="multipart/form-data">
     @method('PATCH')
     @csrf
-    <div class="modal animate__animated animate__fadeIn" id="editUnit-{{ $unitr->id }}" tabindex="-1"
+    <div class="modal fade" id="editUnit-{{ $unitr->id }}" tabindex="-1"
         style="display: none;" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">

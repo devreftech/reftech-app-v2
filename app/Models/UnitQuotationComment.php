@@ -23,4 +23,11 @@ class UnitQuotationComment extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    public function mentions()
+    {
+        return $this->belongsToMany(User::class, 'unit_quotation_comment_mentions', 'comment_id', 'user_id')
+            ->withPivot('is_read', 'read_at')
+            ->withTimestamps();
+    }
 }

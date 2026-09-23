@@ -14,17 +14,35 @@ class DetailStockOpname extends Model
         'updated_at',
     ];
     protected $fillable = [
+        'id_stock_opname',
+        'id_product',
         'stock_sistem',
         'stock_gudang',
+        'stock_bdg',
+        'id_user_bdg',
+        'stock_bks',
+        'id_user_bks',
         'selisih',
         'note',
     ];
     
     public function opname()
     {
-        return $this->belongsTo('App/Models/StockOpname', 'id', 'id_stock_opname');
+        return $this->belongsTo(StockOpname::class, 'id_stock_opname', 'id');
     }
-        public function product(){
-            return $this->belongsTo('App\Models\DetailProduct', 'id_product', 'id');
-        }
+
+    public function product()
+    {
+        return $this->belongsTo(DetailProduct::class, 'id_product', 'id');
+    }
+
+    public function userBdg()
+    {
+        return $this->belongsTo(User::class, 'id_user_bdg', 'id');
+    }
+
+    public function userBks()
+    {
+        return $this->belongsTo(User::class, 'id_user_bks', 'id');
+    }
 }

@@ -1,7 +1,7 @@
 @extends('layouts.sales.app')
 @section('title', 'Surat Jalan ' . ($invoice->no_invoice ?? $unitQuote->no_quote))
 @php
-    $isEkspedisi = strtolower($delivery->type ?? '') === 'ekspedisi';
+    $isEkspedisi = strtolower(request('format', $delivery->type ?? '')) === 'ekspedisi';
     $client = $unitQuote->client ?? null;
     $address = $client ? ($delivery->destination == '1' ? $client->address : $client->subAddress) : '-';
     $doNumber = $invoice->no_invoice ?? $unitQuote->no_quote;

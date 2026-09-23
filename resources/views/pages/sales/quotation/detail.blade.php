@@ -2,7 +2,7 @@
 @section('title', 'Detail Quotation')
 @section('content')
     @php
-        if ($quote->pic->client->info == 'Reftech') {
+        if ($quote->pic?->client?->info == 'Reftech') {
             $bgColor = 'rgb(224, 248, 248)';
         } else {
             $bgColor = 'rgb(255, 232, 210)';
@@ -13,7 +13,7 @@
         <div class="col-xl-9 col-md-8 col-12 mb-md-0 mb-4">
             <div class="card invoice-preview-card mb-3">
                 <div class="card-body">
-                    @if ($quote->pic->client->info == 'Reftech')
+                    @if (($quote->pic?->client?->info ?? 'Reftech') == 'Reftech')
                         <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column">
                             <div class="mb-xl-0 pb-1">
                                 <div class="d-flex svg-illustration align-items-center gap-2 mb-4">
@@ -121,9 +121,9 @@
                             <p class="mb-1">Phone </p>
                         </div>
                         <div class="col-4">
-                            <p class="mb-1">: {{ $quote->pic->client->company }}</p>
-                            <p class="mb-1">: {{ $quote->pic->name_pic }}</p>
-                            <p class="mb-1">: {{ $quote->pic->phone_pic }}</p>
+                            <p class="mb-1">: {{ $quote->pic?->client?->company ?? '-' }}</p>
+                            <p class="mb-1">: {{ $quote->pic?->name_pic ?? '-' }}</p>
+                            <p class="mb-1">: {{ $quote->pic?->phone_pic ?? '-' }}</p>
                         </div>
                         <div class="col-3 fw-medium text-end">
                             <p class="mb-1">Sales :</p>
@@ -132,10 +132,10 @@
                         </div>
                         <div class="col-3 text-end">
                             <p class="mb-1">
-                                {{ $quote->pic->client->info == 'Reftech' ? 'PT Reftech Jaya Optima' : 'PT Kojisha Innotiv Indonesia' }}
+                                {{ ($quote->pic?->client?->info ?? '') == 'Reftech' ? 'PT Reftech Jaya Optima' : 'PT Kojisha Innotiv Indonesia' }}
                             </p>
                             <p class="mb-1"> {{ $quote->no_pr ?? '-' }}</p>
-                            <p class="mb-1"> {{ $quote->pic->client->email }}</p>
+                            <p class="mb-1"> {{ $quote->pic?->client?->email ?? '-' }}</p>
                         </div>
                     </div>
                 </div>
@@ -309,17 +309,9 @@
                                             <span class="h6 mb-0">invoices.pdf</span>
                                         </div>
                                     </div>  --}}
-                                        @php
-                                            $lastStat = App\Models\ChangeStatus::where(
-                                                'id_quotation',
-                                                $quote->primary_id,
-                                            )
-                                                ->orderByDesc('id')
-                                                ->first();
-                                        @endphp
                                     </div>
                                 </li>
-                                @if ($stats->id == $lastStat->id)
+                                @if ($loop->last)
                                     <form action="{{ route('add-comment.quotation', $quote->id) }}" method="post"
                                         enctype="multipart/form-data">
                                         @csrf
@@ -344,6 +336,38 @@
         {{-- Button Invocie --}}
         <div class="col-xl-3 col-md-4 col-12 invoice-actions">
 
+            @if (Auth::user()->role == 'Sales')
+                <div class="card mb-3 border-warning shadow-sm">
+                    <div class="card-body p-4 text-center">
+                        <div class="avatar avatar-md mx-auto mb-3 bg-label-warning rounded-circle d-flex align-items-center justify-content-center">
+                            <i class="mdi mdi-alert-circle-outline fs-3 text-warning"></i>
+                        </div>
+                        <h6 class="fw-bold text-warning mb-1">This Model Quotation Obsolete</h6>
+                        <p class="text-muted small mb-3">
+                            Penawaran ini menggunakan model lama (Legacy). Pembuatan dan pengelolaan penawaran telah dialihkan ke <strong>Smart Quote</strong>.
+                        </p>
+                        <a class="btn btn-outline-secondary d-grid w-100 mb-2 waves-effect" target="_blank"
+                            href="{{ route('print.quotation', $quote->id) }}">
+                            <i class="mdi mdi-printer-outline me-1"></i> Cetak / Download PDF
+                        </a>
+                        <button type="button" class="btn btn-outline-warning d-grid w-100 mb-2 waves-effect fw-semibold"
+                            data-bs-toggle="modal" data-bs-target="#modalRequestReturn">
+                            <i class="mdi mdi-keyboard-return me-1"></i> Ajukan Retur Barang
+                        </button>
+                        @php
+                            $pendingPo = \App\Models\PendingPO::where('id_quotation', $quote->id)->first();
+                        @endphp
+                        @if ($pendingPo)
+                            <a href="{{ $pendingPo->type === 'Project' ? route('project-monitoring.show', $pendingPo->id) : route('pending-po.show', $pendingPo->id) }}" class="btn btn-outline-info d-grid w-100 waves-effect mb-2">
+                                <i class="mdi mdi-eye-outline me-1"></i> View Order
+                            </a>
+                        @endif
+                        <a href="{{ route('unit-quotation.create') }}" class="btn btn-primary d-grid w-100 waves-effect waves-light">
+                            <i class="mdi mdi-plus-circle-outline me-1"></i> Buka Smart Quote
+                        </a>
+                    </div>
+                </div>
+            @else
             @if ($quote->id_sales == Auth::user()->id && $quote->status != 100)
                 <div class="card mb-3">
                     <div class="card-body">
@@ -509,17 +533,20 @@
                                         @endphp
                                     @endforeach
                                 @else
-                                    @if ($quote->pic->client->address == '-' && $quote->pic->client->subAddress == '-')
+                                    @php
+                                        $clientObj = $quote->pic?->client;
+                                    @endphp
+                                    @if (($clientObj?->address ?? '-') == '-' && ($clientObj?->subAddress ?? '-') == '-')
                                         <button type="button"
                                             class="btn btn-whatsapp d-grid w-100 waves-effect mb-3 btn-no-address">Upload
                                             PO</button>
                                     @else
                                         <button type="button" class="btn btn-whatsapp d-grid w-100 waves-effect mb-3 btn-upload-po"
-                                            data-npwp="{{ $quote->pic->client->npwp ?? '' }}"
+                                            data-npwp="{{ $clientObj?->npwp ?? '' }}"
                                             data-tax="{{ $quote->tax }}"
-                                            data-client-id="{{ $quote->pic->client->id ?? '' }}"
-                                            data-client-name="{{ $quote->pic->client->company ?? ($quote->pic->client->name ?? 'Client') }}"
-                                            data-client-url="{{ $quote->pic->client ? ($quote->pic->client->role == 'Leads' ? route('detail.leads', $quote->pic->client->id) : route('existing.show', $quote->pic->client->id)) : '#' }}">Upload PO</button>
+                                            data-client-id="{{ $clientObj?->id ?? '' }}"
+                                            data-client-name="{{ $clientObj?->company ?? 'Client' }}"
+                                            data-client-url="{{ $clientObj ? ($clientObj->role == 'Leads' ? route('detail.leads', $clientObj->id) : route('existing.show', $clientObj->id)) : '#' }}">Upload PO</button>
                                     @endif
                                 @endif
                             @endif
@@ -725,6 +752,7 @@
                     </div>
                 </div>
             @endif
+            @endif
         </div>
         {{-- @endif --}}
     </div>
@@ -750,6 +778,19 @@
     @include('components.modal.quotation.mentions')
     @include('components.modal.quotation.detail-payment')
     @include('components.modal.viewer.pdf')
+
+    @php
+        $returnItems = $detQuotation ?? ($quote->detail ?? []);
+        $returnFormAction = route('quotation.request-return', $quote->id);
+        $returnClientName = $quote->pic?->client?->company ?? ($quote->pic?->name ?? '-');
+    @endphp
+    @include('components.modal.sales.modal-request-return', [
+        'quote' => $quote,
+        'quoteNo' => $quote->no_quote,
+        'clientName' => $returnClientName,
+        'formAction' => $returnFormAction,
+        'returnItems' => $returnItems,
+    ])
     </div>
 @endsection
 @push('after-style')

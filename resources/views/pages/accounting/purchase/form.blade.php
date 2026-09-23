@@ -646,21 +646,17 @@
                 @php
                     $addrBdg = 'Taman Kopo Indah V, Ruko Soho Sommerville No. 31 Bandung - Jawabarat 40218';
                     $addrBks = 'Jl. Nancep No.45A, Cibening, Kec. Setu, Kabupaten Bekasi, Jawa Barat 17320';
-                    $currentShipTo = old('ship_to', @$purchase->ship_to ?? $addrBdg);
-                    $isBdg = trim($currentShipTo) == trim($addrBdg);
-                    $isBks = trim($currentShipTo) == trim($addrBks);
+                    $currentShipTo = old('ship_to', @$purchase->ship_to ?? '');
+                    $isBdg = !empty($currentShipTo) && trim($currentShipTo) == trim($addrBdg);
+                    $isBks = !empty($currentShipTo) && trim($currentShipTo) == trim($addrBks);
                     $isCustom = !$isBdg && !$isBks && !empty($currentShipTo);
-                    if (!$isBdg && !$isBks && !$isCustom) {
-                        $isBdg = true;
-                        $currentShipTo = $addrBdg;
-                    }
                 @endphp
                 <div class="col-12 mt-2 pt-3 border-top">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <label class="form-label fw-bold text-dark font-13 mb-0">
-                            <i class="mdi mdi-truck-delivery-outline text-primary me-1"></i>Alamat Pengiriman (Ship To)
+                            <i class="mdi mdi-truck-delivery-outline text-primary me-1"></i>Alamat Pengiriman (Ship To) <span class="text-danger">*</span>
                         </label>
-                        <span class="badge bg-label-primary font-11">Pilihan Cepat / Manual</span>
+                        <span class="badge bg-label-primary font-11">Pilih Lokasi Gudang / Custom</span>
                     </div>
 
                     {{-- Modern Segmented Tab Buttons --}}
@@ -701,7 +697,7 @@
 
                     <div class="form-floating form-floating-outline">
                         <textarea class="form-control bg-white" id="ship_to_input" name="ship_to" rows="2" style="height: 68px;"
-                            placeholder="Tuliskan alamat lengkap pengiriman..." required>{{ $currentShipTo }}</textarea>
+                            placeholder="Pilih lokasi gudang di atas atau ketik alamat pengiriman...">{{ $currentShipTo }}</textarea>
                         <label for="ship_to_input">Detail Alamat Pengiriman (Ship To) <span class="text-danger">*</span></label>
                     </div>
                 </div>
@@ -2167,8 +2163,38 @@
                     $('.ship-to-tab-btn[data-preset="BDG"]').addClass('active');
                 } else if (val && val === bks) {
                     $('.ship-to-tab-btn[data-preset="BKS"]').addClass('active');
-                } else {
+                } else if (val) {
                     $('.ship-to-tab-btn[data-preset="CUSTOM"]').addClass('active');
+                }
+            });
+
+            // Validasi Form Submit: Pastikan Alamat Pengiriman (Ship To) sudah dipilih/diisi
+            $('#formAuthentication').on('submit', function(e) {
+                var shipTo = ($('#ship_to_input').val() || '').trim();
+                if (!shipTo) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Alamat Pengiriman (Ship To) Belum Dipilih',
+                            text: 'Silakan tentukan alamat tujuan pengiriman barang dengan memilih salah satu gudang (Gudang Bandung / Gudang Bekasi) atau input alamat custom terlebih dahulu.',
+                            confirmButtonText: 'Pilih Ship To',
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            }
+                        }).then(function() {
+                            var $el = $('#ship_to_input');
+                            var offsetTop = $el.closest('.col-12').offset() ? $el.closest('.col-12').offset().top - 140 : 0;
+                            $('html, body').animate({
+                                scrollTop: offsetTop
+                            }, 300);
+                            $el.focus();
+                        });
+                    } else {
+                        alert('Alamat Pengiriman (Ship To) belum dipilih! Silakan pilih lokasi gudang atau isi alamat pengiriman terlebih dahulu.');
+                        $('#ship_to_input').focus();
+                    }
+                    return false;
                 }
             });
 
@@ -3947,19 +3973,65 @@
                 $('#formAuthentication').on('input change', 'input, select, textarea', scheduleSave);
                 $(document).on('repeater:added repeater:deleted', scheduleSave);
 
-                // Bersihkan draft saat submit berhasil dan sinkronkan nilai numerik
-                $('#formAuthentication').on('submit', function () {
+                // Validasi Guard & Sinkronisasi nilai sebelum submit
+                $('#formAuthentication').on('submit', function (e) {
+                    var supplierVal = $('#supplier-dropdown').val();
+                    if (!supplierVal) {
+                        e.preventDefault();
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Supplier Belum Dipilih',
+                                text: 'Silakan pilih rekanan supplier terlebih dahulu sebelum menyimpan Purchase Order.',
+                                confirmButtonText: 'Pilih Supplier',
+                                customClass: { confirmButton: 'btn btn-primary' },
+                                buttonsStyling: false
+                            }).then(function() {
+                                $('#supplier-dropdown').select2('open');
+                            });
+                        } else {
+                            alert('Silakan pilih rekanan supplier terlebih dahulu.');
+                            $('#supplier-dropdown').focus();
+                        }
+                        return false;
+                    }
+
+                    var validItems = 0;
                     $('.repeater-wrapper').each(function() {
                         var $row = $(this);
                         var isHeader = $row.hasClass('header-row-wrapper') || $row.find('.item-category-value').val() === 'Header';
                         if (!isHeader) {
+                            var prod = $row.find('.invoice-item-product').val() || $row.find('select[name*="id_product"]').val() || $row.find('input[name*="product"]').val();
+                            var qty = parseFloat($row.find('.invoice-item-qty').val()) || 0;
+                            if (prod && qty > 0) {
+                                validItems++;
+                            }
                             var $label = $row.find('.invoice-item-price-label');
                             if ($label.length && $label.val() !== '') {
                                 $row.find('.invoice-item-price').val(parseCurrency($label.val()));
                             }
                         }
                     });
+
+                    if (validItems === 0) {
+                        e.preventDefault();
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Item PO Belum Lengkap',
+                                text: 'Minimal 1 item barang/jasa dengan kuantiti > 0 harus ditambahkan pada Purchase Order.',
+                                confirmButtonText: 'Periksa Item',
+                                customClass: { confirmButton: 'btn btn-primary' },
+                                buttonsStyling: false
+                            });
+                        } else {
+                            alert('Minimal 1 item barang/jasa dengan kuantiti > 0 harus ditambahkan pada Purchase Order.');
+                        }
+                        return false;
+                    }
+
                     try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+                    return true;
                 });
 
                 $('#poDraftReset').on('click', function () {

@@ -333,6 +333,9 @@ class UnitController extends Controller
         $formattedNumberCP = str_pad($numberCP->count() + 1, 3, '0', STR_PAD_LEFT);
         $formattedNumberCNP = str_pad($numberCNP->count() + 1, 3, '0', STR_PAD_LEFT);
         $quote = Quotation::find($id);
+        if (!$quote) {
+            return redirect()->route('quotation.index')->with('error', 'Quotation tidak ditemukan');
+        }
         $quotations = Quotation::where('primary_id', $quote->primary_id)->get();
         $lastQuote = Quotation::where('primary_id', $quote->primary_id)->orderByDesc('num_rev')->first();
         $primQuote = Quotation::where('primary_id', $quote->primary_id)->where('is_primary', '1')->first();

@@ -921,13 +921,15 @@ class MonitoringController extends Controller
     public function logDaily($id)
     {
         $machine = Machine::find($id);
+        if (!$machine) {
+            return redirect()->back()->with('error', 'Mesin tidak ditemukan');
+        }
         $client = Client::find($machine->id_client);
 
         $today = Carbon::today();
 
-        $monitoring = Monitoring::whereNotNULL('main_desc')->where('main_desc', '!=', '-')->whereMonth('date', $today->month)->where('id_machine', $id)->get();
-        $issue = Monitoring::whereNotNULL('issue')->where('issue', '!=', '-')->whereMonth('date', $today->month)->where('id_machine', $id)->get();
-        // dd($monitoring);
+        $monitoring = Mainlog::whereNotNull('desc')->where('desc', '!=', '-')->whereMonth('date', $today->month)->where('id_machine', $id)->get();
+        $issue = Monitoring::whereNotNull('issue')->where('issue', '!=', '-')->whereMonth('date', $today->month)->where('id_machine', $id)->get();
 
         return view('pages.monitoring.maintenance-log', compact('machine', 'client', 'monitoring', 'issue'));
     }
@@ -2385,9 +2387,21 @@ class MonitoringController extends Controller
         // dd($monitoringDRYER);
         return view('pages.monitoring.service-visitor-print-monthly', compact('machine', 'client', 'monitoringDRYER', 'thisMonth'));
     }
-    public function issueMachine($date)
+    public function issueMachine($date = null)
     {
-        $day = Carbon::createFromFormat('d-m-Y', time: $date);
+        if (!$date) {
+            $day = Carbon::today();
+        } else {
+            try {
+                $day = Carbon::createFromFormat('d-m-Y', $date);
+            } catch (\Throwable $e) {
+                try {
+                    $day = Carbon::parse($date);
+                } catch (\Throwable $e2) {
+                    $day = Carbon::today();
+                }
+            }
+        }
         $month = $day->month;
         $year = $day->year;
 
@@ -2716,8 +2730,7 @@ class MonitoringController extends Controller
                 'us.name'
             )
             ->get();
-        // dd($mesinDryer);
-        return view('pages.monitoring.recap', compact('allPlant', 'allPlantMonitoring', 'GT', 'GTMonitoring', 'GT3', 'GT3Monitoring', 'INC', 'INCMonitoring', 'PM12', 'PM12Monitoring', 'PM35', 'PM35Monitoring', 'PM78', 'PM78Monitoring', 'date'));
+        return view('pages.monitoring.recap', compact('allPlant', 'allPlantMonitoring', 'GT', 'GTMonitoring', 'GT3', 'GT3Monitoring', 'INC', 'INCMonitoring', 'PM12', 'PM12Monitoring', 'PM35', 'PM35Monitoring', 'PM78', 'PM78Monitoring', 'date', 'mesinDryer', 'mesinCompressor'));
     }
 
     public function issueUpdate(Request $request, $id, $month)
@@ -2907,9 +2920,21 @@ class MonitoringController extends Controller
         }
     }
 
-    public function getAllMachine($date)
+    public function getAllMachine($date = null)
     {
-        $day = Carbon::createFromFormat('d-m-Y', $date);
+        if (!$date) {
+            $day = Carbon::today();
+        } else {
+            try {
+                $day = Carbon::createFromFormat('d-m-Y', $date);
+            } catch (\Throwable $e) {
+                try {
+                    $day = Carbon::parse($date);
+                } catch (\Throwable $e2) {
+                    $day = Carbon::today();
+                }
+            }
+        }
         $month = $day->month;
         $year = $day->year;
 

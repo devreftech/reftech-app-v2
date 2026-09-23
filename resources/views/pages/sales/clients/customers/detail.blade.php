@@ -2,7 +2,7 @@
 @section('title', 'Detail Customers')
 @section('content')
     <h4 class="fw-bold py-3 mb-4">
-        <span class="text-muted fw-light">Clients / Customers /</span> Details {{ $customers->company }}
+        <span class="text-muted fw-light">Clients / Customers /</span> Details {{ $customers?->company ?? '-' }}
     </h4>
     <div class="row mb-4">
         <div class="col-md-6">
@@ -12,9 +12,11 @@
             <div class="card">
                 <div class="card-header pb-0">
                     <div class="text-end text-muted">
+                        @if ($customers)
                         <a type="button" data-bs-toggle="modal" data-bs-target="#updateCustomers-{{ $customers->id }}">
                             <button type="button" class="btn btn-sm btn-label-primary">Edit</button>
                         </a>
+                        @endif
                     </div>
                 </div>
                 <div class="card-body">

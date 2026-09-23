@@ -1,6 +1,6 @@
 $(function () {
     var dt_table_draft = $(".datatable-draft");
-    var Url = "db/quotation/draft";
+    var Url = "/db/quotation/draft";
 
     if (dt_table_draft.length) {
         dt_table_draft.find("thead tr")
@@ -125,8 +125,9 @@ $(function () {
                     targets: 6,
                     render: function (data, type, full) {
                         if (type !== "display") return data;
-                        var tip = full["tip"] || "Draft tersimpan";
-                        var badge = '<span class="badge rounded-pill bg-label-secondary cursor-pointer" data-bs-toggle="tooltip" data-bs-placement="top" title="' + tip + '">Draft</span>';
+                        var tip = full["tip"] || full["note"] || "Draft penawaran tersimpan";
+                        var escapedTip = $('<div>').text(tip).html();
+                        var badge = '<span class="badge rounded-pill bg-label-secondary cursor-pointer" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="tooltip-secondary" title="' + escapedTip + '">Draft</span>';
                         badge += ' <span class="badge bg-label-info ms-1">Smart</span>';
                         return badge;
                     },

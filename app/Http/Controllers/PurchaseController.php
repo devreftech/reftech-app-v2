@@ -331,9 +331,10 @@ class PurchaseController extends Controller
                 $invoice = null;
             }
         } else {
-            $quotation = Quotation::with(['sales', 'pic.client'])->find($pending->id_quotation);
-            $detQuotation = DetailQuotation::where('id_quotation', $pending->id_quotation)->get();
-            $subQuote = SubtitleQuotation::with('detail')->where('id_quotation', $pending->id_quotation)->get();
+            $quotationId = $pending ? $pending->id_quotation : ($purchase ? $purchase->id_quotation : null);
+            $quotation = $quotationId ? Quotation::with(['sales', 'pic.client'])->find($quotationId) : null;
+            $detQuotation = $quotationId ? DetailQuotation::where('id_quotation', $quotationId)->get() : collect();
+            $subQuote = $quotationId ? SubtitleQuotation::with('detail')->where('id_quotation', $quotationId)->get() : collect();
             $invoice = $quotation ? Invoice::where('id_quotation', $quotation->id)->first() : null;
         }
 
@@ -529,14 +530,32 @@ class PurchaseController extends Controller
         $discussion->message = $request->message;
         $discussion->save();
 
+        $mentionedIds = [];
         if ($request->mentions) {
             foreach ($request->mentions as $userId) {
-                $mention = new PrDiscussionMention();
-                $mention->id_discussion = $discussion->id;
-                $mention->id_user_mention = $userId;
-                $mention->level = '0';
-                $mention->save();
+                $valInt = (int) $userId;
+                if ($valInt && $valInt !== Auth::id()) {
+                    $mentionedIds[$valInt] = $valInt;
+                }
             }
+        }
+
+        // Auto detect @Username in message text
+        $activeUsers = \App\Models\User::where('active', '1')
+            ->where('id', '!=', Auth::id())
+            ->get();
+        foreach ($activeUsers as $user) {
+            if (stripos($request->message, '@' . $user->name) !== false) {
+                $mentionedIds[$user->id] = $user->id;
+            }
+        }
+
+        foreach ($mentionedIds as $userId) {
+            $mention = new PrDiscussionMention();
+            $mention->id_discussion = $discussion->id;
+            $mention->id_user_mention = $userId;
+            $mention->level = '0';
+            $mention->save();
         }
 
         return redirect()->route('purchase-request.show', $id)->with('success', 'Pesan berhasil dikirim')->withFragment('diskusi');
@@ -562,9 +581,16 @@ class PurchaseController extends Controller
     }
     public function acc($id)
     {
-        $purchase = PurchaseRequest::find($id);
+        $purchase = PurchaseRequest::with('details')->find($id);
         if (!$purchase) {
             return 0;
+        }
+        if ($purchase->status != '0') {
+            return 0;
+        }
+        $activeDetails = $purchase->details->where('is_rejected', false);
+        if ($activeDetails->isEmpty()) {
+            return response()->json(['error' => 'Semua item pada PR ini telah ditolak. Tidak ada item aktif yang bisa disetujui.'], 422);
         }
         $purchase->status = '1';
         return $purchase->save() ? 1 : 0;
@@ -582,13 +608,109 @@ class PurchaseController extends Controller
             return response()->json(['error' => 'Purchase Request ini sudah diproses, tidak bisa ditolak lagi.'], 422);
         }
 
+        $now = now();
+        $userId = Auth::id();
+
         $purchase->status = '4';
-        $purchase->rejected_at = now();
+        $purchase->rejected_at = $now;
         $purchase->rejected_reason = $request->reason;
-        $purchase->rejected_by = Auth::id();
+        $purchase->rejected_by = $userId;
         $purchase->save();
 
+        PurchaseRequestDetail::where('id_purchase_request', $id)
+            ->where('is_rejected', false)
+            ->update([
+                'is_rejected' => true,
+                'rejected_reason' => $request->reason,
+                'rejected_at' => $now,
+                'rejected_by' => $userId,
+            ]);
+
         return response()->json(1);
+    }
+    public function rejectItems(Request $request, $id)
+    {
+        $request->validate([
+            'detail_ids' => 'required|array|min:1',
+            'detail_ids.*' => 'integer|exists:purchase_request_detail,id',
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        $purchase = PurchaseRequest::find($id);
+        if (!$purchase) {
+            return response()->json(['error' => 'Purchase Request tidak ditemukan.'], 404);
+        }
+        if ($purchase->status != '0') {
+            return response()->json(['error' => 'Hanya Purchase Request baru (belum di-approve) yang dapat ditolak itemnya.'], 422);
+        }
+
+        $now = now();
+        $userId = Auth::id();
+
+        PurchaseRequestDetail::where('id_purchase_request', $id)
+            ->whereIn('id', $request->detail_ids)
+            ->update([
+                'is_rejected' => true,
+                'rejected_reason' => $request->reason,
+                'rejected_at' => $now,
+                'rejected_by' => $userId,
+            ]);
+
+        // Cek apakah semua item di PR ini sekarang ditolak
+        $hasActive = PurchaseRequestDetail::where('id_purchase_request', $id)
+            ->where('is_rejected', false)
+            ->exists();
+
+        if (!$hasActive) {
+            $purchase->status = '4';
+            $purchase->rejected_at = $now;
+            $purchase->rejected_reason = $request->reason;
+            $purchase->rejected_by = $userId;
+            $purchase->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'all_rejected' => !$hasActive,
+            'message' => !$hasActive 
+                ? 'Semua item telah ditolak. Status PR otomatis menjadi Ditolak.'
+                : 'Item terpilih berhasil ditolak.',
+        ]);
+    }
+    public function unrejectItem(Request $request, $id, $detailId)
+    {
+        $purchase = PurchaseRequest::find($id);
+        if (!$purchase) {
+            return response()->json(['error' => 'Purchase Request tidak ditemukan.'], 404);
+        }
+        if (!in_array($purchase->status, ['0', '4'])) {
+            return response()->json(['error' => 'Item pada PR yang sudah diproses tidak dapat diubah.'], 422);
+        }
+
+        $detail = PurchaseRequestDetail::where('id_purchase_request', $id)->where('id', $detailId)->first();
+        if (!$detail) {
+            return response()->json(['error' => 'Item tidak ditemukan.'], 404);
+        }
+
+        $detail->is_rejected = false;
+        $detail->rejected_reason = null;
+        $detail->rejected_at = null;
+        $detail->rejected_by = null;
+        $detail->save();
+
+        // Jika PR sebelumnya status 4 (karena semua item ditolak), kembalikan ke status 0
+        if ($purchase->status == '4') {
+            $purchase->status = '0';
+            $purchase->rejected_at = null;
+            $purchase->rejected_reason = null;
+            $purchase->rejected_by = null;
+            $purchase->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Penolakan item berhasil dibatalkan.',
+        ]);
     }
     public function delivery(Request $request, $id)
     {
@@ -654,6 +776,9 @@ class PurchaseController extends Controller
     public function done_all($id)
     {
         $pending = PendingPO::find($id);
+        if (!$pending) {
+            return redirect()->route('purchase.index')->with('error', 'Pending PO tidak ditemukan');
+        }
         $header = PurchaseRequest::where('id_pending', $id)->first();
         $purchases = $header ? $header->details()->orderBy('id')->get() : collect();
 
@@ -689,43 +814,43 @@ class PurchaseController extends Controller
         ];
         $this->validate($request, $rule, $message);
 
-        $header = PurchaseRequest::where('id_pending', $id)->first();
-        $purchases = $header ? $header->details()->orderBy('id')->get() : collect();
+        return DB::transaction(function () use ($request, $id) {
+            $header = PurchaseRequest::where('id_pending', $id)->first();
+            $purchases = $header ? $header->details()->orderBy('id')->get() : collect();
 
-        foreach ($purchases as $key => $purchase) {
-            if (isset($request->price[$key])) {
-                $purchase->price = $request->price[$key];
+            foreach ($purchases as $key => $purchase) {
+                if (isset($request->price[$key])) {
+                    $purchase->price = $request->price[$key];
+                }
+                if (isset($request->amount[$key])) {
+                    $purchase->amount = $request->amount[$key];
+                }
+                $purchase->save();
             }
-            if (isset($request->amount[$key])) {
-                $purchase->amount = $request->amount[$key];
+
+            if ($header) {
+                $header->status = '3';
+                $header->save();
             }
-            $purchase->save();
-        }
 
-        if ($header) {
-            $header->status = '3';
-            $header->save();
-        }
+            $supplier = Supplier::find($request->supplier);
+            // Masukan Data ke Tabel Quotataion
+            $productIn = new ProductIn();
+            $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
+            $productIn->no_do = NULL;
+            $productIn->invoice = $request->invoice;
+            $productIn->id_supplier = $request->supplier;
+            $productIn->info = $supplier ? $supplier->info : null;
+            $productIn->date = $request->date;
+            $productIn->date_invoice = $request->date_invoice;
+            $productIn->subtotal = $request->subtotal;
+            $productIn->total_no_tax = $request->total_no_tax;
+            $productIn->tax = $request->tax;
+            $productIn->note = $request->note;
+            $productIn->shipping = $request->shipping;
+            $productIn->total = $request->total;
+            $productIn->save();
 
-        $supplier = Supplier::find($request->supplier);
-        // Masukan Data ke Tabel Quotataion
-        $productIn = new ProductIn();
-        $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
-        $productIn->no_do = NULL;
-        $productIn->invoice = $request->invoice;
-        $productIn->id_supplier = $request->supplier;
-        // $productIn->supplier = $request->suplier;
-        $productIn->info = $supplier->info;
-        $productIn->date = $request->date;
-        $productIn->date_invoice = $request->date_invoice;
-        $productIn->subtotal = $request->subtotal;
-        $productIn->total_no_tax = $request->total_no_tax;
-        $productIn->tax = $request->tax;
-        $productIn->note = $request->note;
-        $productIn->shipping = $request->shipping;
-        $productIn->total = $request->total;
-        $productInSave = $productIn->save();
-        if ($productInSave) {
             // Masukan Data Ke Tabel Detail Quotataion
             foreach ($request->replacement as $item => $value) {
                 $dProductIn = new DetailProductIn();
@@ -756,13 +881,13 @@ class PurchaseController extends Controller
                     }
                     $product->save();
                 }
-                $dProductSave = $dProductIn->save();
+                $dProductIn->save();
             }
-        }
-        if ($dProductSave) {
+
             return redirect('/product-in')->with('message', 'data telah di tambahkan');
-        }
+        });
     }
+
     public function store_done_all_logistic(Request $request, $id)
     {
 
@@ -780,29 +905,26 @@ class PurchaseController extends Controller
             'replacement.*.exists' => 'Commodity || Replacement tidak valid',
         ];
         $this->validate($request, $rule, $message);
-        // dd($request->all());
-        $supplier = Supplier::find($request->supplier);
-        // Masukan Data ke Tabel Quotataion
-        $productIn = new ProductIn();
-        $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
-        $productIn->no_do = $request->no_do;
-        $productIn->invoice = null;
-        // $productIn->id_supplier = null;
-        $productIn->id_supplier = $request->supplier;
-        $productIn->supplier = null;
-        $productIn->info = $supplier->info;
-        // $productIn->info = $request->info;
-        $productIn->date = $request->date;
-        $productIn->date_invoice = null;
-        $productIn->subtotal = null;
-        $productIn->total_no_tax = null;
-        $productIn->tax = null;
-        $productIn->note = null;
-        $productIn->shipping = null;
-        $productIn->total = null;
-        $productInSave = $productIn->save();
-        if ($productInSave) {
-            // Masukan Data Ke Tabel Detail Quotataion
+
+        return DB::transaction(function () use ($request) {
+            $supplier = Supplier::find($request->supplier);
+            $productIn = new ProductIn();
+            $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
+            $productIn->no_do = $request->no_do;
+            $productIn->invoice = null;
+            $productIn->id_supplier = $request->supplier;
+            $productIn->supplier = null;
+            $productIn->info = $supplier ? $supplier->info : null;
+            $productIn->date = $request->date;
+            $productIn->date_invoice = null;
+            $productIn->subtotal = null;
+            $productIn->total_no_tax = null;
+            $productIn->tax = null;
+            $productIn->note = null;
+            $productIn->shipping = null;
+            $productIn->total = null;
+            $productIn->save();
+
             foreach ($request->replacement as $item => $value) {
                 $dProductIn = new DetailProductIn;
                 $dProductIn->id_product_in = $productIn->id;
@@ -830,12 +952,11 @@ class PurchaseController extends Controller
                     }
                     $product->save();
                 }
-                $dProductSave = $dProductIn->save();
+                $dProductIn->save();
             }
-        }
-        if ($dProductSave) {
+
             return redirect('/product-in')->with('message', 'data telah di tambahkan');
-        }
+        });
     }
 
     // $id = id Purchase Order. Satu PO = satu pengiriman, jadi verifikasi
@@ -910,166 +1031,151 @@ class PurchaseController extends Controller
 
         $this->validate($request, $rule, $message);
 
-        $po = PurchaseOrder::findOrFail($id);
-        $supplier = Supplier::findOrFail($request->supplier);
+        return DB::transaction(function () use ($request, $id) {
+            $po = PurchaseOrder::findOrFail($id);
+            $supplier = Supplier::findOrFail($request->supplier);
 
-        // 1. Create the ProductIn (Barang Masuk) record, satu per PO
-        $productIn = new ProductIn();
-        $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
-        $productIn->no_do = $request->no_do;
-        // Ikut invoice supplier yang sudah diupload di PO (kalau ada) — supaya GR ini
-        // langsung kebaca di tabel "Product In — Lokal/Import" tanpa nunggu upload
-        // invoice terpisah. Kalau belum ada, tetap null seperti sebelumnya (nanti ikut
-        // ke-sync begitu invoice-nya diupload lewat POController::uploadInvoice()).
-        $productIn->invoice = $po->no_invoice_supplier;
-        $productIn->id_supplier = $request->supplier;
-        $productIn->id_purchase_order = $po->id;
-        $productIn->info = $supplier->info;
-        $productIn->date = $request->gr_date;
-        // Kalau invoice supplier sudah ada di PO, sekalian stamp tanggal invoice &
-        // jatuh tempo AP di sini (basis: invoice_date PO, atau tanggal terima).
-        $productIn->date_invoice = $po->no_invoice_supplier ? ($po->invoice_date ?: $request->gr_date) : null;
-        $productIn->date_payment = $po->no_invoice_supplier
-            ? $po->resolveDueDate($productIn->date_invoice)
-            : null;
-        $productIn->subtotal = null;
-        $productIn->total_no_tax = null;
-        $productIn->tax = null;
-        $productIn->note = 'Otomatis dibuat via Goods Receipt PO ' . $po->no_po;
-        $productIn->shipping = null;
-        $productIn->total = null;
-        $productIn->created_by = Auth::id(); // tracking who received it
-        $productIn->save();
+            // 1. Create the ProductIn (Barang Masuk) record, satu per PO
+            $productIn = new ProductIn();
+            $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
+            $productIn->no_do = $request->no_do;
+            $productIn->invoice = $po->no_invoice_supplier;
+            $productIn->id_supplier = $request->supplier;
+            $productIn->id_purchase_order = $po->id;
+            $productIn->info = $supplier->info;
+            $productIn->date = $request->gr_date;
+            $productIn->date_invoice = $po->no_invoice_supplier ? ($po->invoice_date ?: $request->gr_date) : null;
+            $productIn->date_payment = $po->no_invoice_supplier
+                ? $po->resolveDueDate($productIn->date_invoice)
+                : null;
+            $productIn->subtotal = null;
+            $productIn->total_no_tax = null;
+            $productIn->tax = null;
+            $productIn->note = 'Otomatis dibuat via Goods Receipt PO ' . $po->no_po;
+            $productIn->shipping = null;
+            $productIn->total = null;
+            $productIn->created_by = Auth::id();
+            $productIn->save();
 
-        $dProductSave = false;
-        $damagedLines = [];
+            $dProductSave = false;
+            $damagedLines = [];
 
-        // 2. Loop through each allocation (item PR x PO ini) untuk simpan Goods Receipt
-        foreach ($request->alloc_id as $key => $allocId) {
-            $allocation = PurchaseRequestDetailAllocation::find($allocId);
-            if ($allocation) {
-                $status = $request->gr_status[$key];
-                // Qty Diterima yang dikirim dari form sudah otomatis dihitung di sisi
-                // client sebagai (qty order - qty rusak) untuk status Rusak, jadi di sini
-                // dia SUDAH mewakili qty yang kondisinya baik / siap masuk stok — jangan
-                // dikurangi qty_damaged lagi (dobel kurang).
-                // Qty rusak dibatasi ke qty PO asli (bisa lebih besar dari allocation->qty
-                // kalau PO-nya sengaja dilebihin buat nambah stok), bukan ke qty PR-nya —
-                // biar barang rusak dari porsi tambahan stok itu juga kecatat benar.
-                $equivalent = $allocation->detail->equivalent ?? null;
-                $poQtyCap = $equivalent
-                    ? (DetailPurchaseOrder::where('id_purchase_order', $po->id)->where('id_product', $equivalent->id_product)->value('qty') ?? $allocation->qty)
-                    : $allocation->qty;
-                $poQtyCap = max($poQtyCap, $allocation->qty);
+            // 2. Loop through each allocation (item PR x PO ini) untuk simpan Goods Receipt
+            foreach ($request->alloc_id as $key => $allocId) {
+                $allocation = PurchaseRequestDetailAllocation::find($allocId);
+                if ($allocation) {
+                    $status = $request->gr_status[$key];
+                    $equivalent = $allocation->detail->equivalent ?? null;
+                    $poQtyCap = $equivalent
+                        ? (DetailPurchaseOrder::where('id_purchase_order', $po->id)->where('id_product', $equivalent->id_product)->value('qty') ?? $allocation->qty)
+                        : $allocation->qty;
+                    $poQtyCap = max($poQtyCap, $allocation->qty);
 
-                $qtyRec = $request->qty_received[$key];
-                $qtyDamaged = min((int) ($request->qty_damaged[$key] ?? 0), $poQtyCap);
-                $qtyGood = $qtyRec;
-                $note = $request->gr_note[$key] ?? null;
-                $replId = $request->replacement[$key];
-                $wh = $request->warehouse[$key];
+                    $qtyRec = $request->qty_received[$key];
+                    $qtyDamaged = min((int) ($request->qty_damaged[$key] ?? 0), $poQtyCap);
+                    $qtyGood = $qtyRec;
+                    $note = $request->gr_note[$key] ?? null;
+                    $replId = $request->replacement[$key];
+                    $wh = $request->warehouse[$key];
 
-                // Update baris alokasi
-                $allocation->no_do = $request->no_do;
-                $allocation->gr_date = $request->gr_date;
-                $allocation->gr_status = $status;
-                $allocation->qty_received = $qtyRec;
-                $allocation->gr_note = $note;
-                $allocation->warehouse = $wh;
-                $allocation->save();
+                    // Update baris alokasi
+                    $allocation->no_do = $request->no_do;
+                    $allocation->gr_date = $request->gr_date;
+                    $allocation->gr_status = $status;
+                    $allocation->qty_received = $qtyRec;
+                    $allocation->gr_note = $note;
+                    $allocation->warehouse = $wh;
+                    $allocation->save();
 
-                if ($qtyGood > 0) {
-                    // Save Detail Product In (cuma qty yang kondisinya baik)
-                    $dProductIn = new DetailProductIn();
-                    $dProductIn->id_product_in = $productIn->id;
-                    $dProductIn->id_detail_product = $replId;
-                    $dProductIn->qty = $qtyGood;
-                    $dProductIn->modal = null;
-                    $dProductIn->amount = null;
-                    $dProductIn->warehouse = $wh;
-                    $dProductIn->save();
+                    if ($qtyGood > 0) {
+                        // Save Detail Product In (cuma qty yang kondisinya baik)
+                        $dProductIn = new DetailProductIn();
+                        $dProductIn->id_product_in = $productIn->id;
+                        $dProductIn->id_detail_product = $replId;
+                        $dProductIn->qty = $qtyGood;
+                        $dProductIn->modal = null;
+                        $dProductIn->amount = null;
+                        $dProductIn->warehouse = $wh;
+                        $dProductIn->save();
 
-                    // Update physical inventory stock
-                    $productD = DetailProduct::find($replId);
-                    if ($productD) {
-                        if ($wh == 'BDG') {
-                            $productD->stock += $qtyGood;
-                        } else {
-                            $productD->warehouse_stock += $qtyGood;
-                        }
-                        $productD->save();
-
-                        $product = Product::find($productD->id_product);
-                        if ($product) {
+                        // Update physical inventory stock
+                        $productD = DetailProduct::find($replId);
+                        if ($productD) {
                             if ($wh == 'BDG') {
-                                $product->stock += $qtyGood;
+                                $productD->stock += $qtyGood;
                             } else {
-                                $product->warehouse_stock += $qtyGood;
+                                $productD->warehouse_stock += $qtyGood;
                             }
-                            $product->save();
+                            $productD->save();
+
+                            $product = Product::find($productD->id_product);
+                            if ($product) {
+                                if ($wh == 'BDG') {
+                                    $product->stock += $qtyGood;
+                                } else {
+                                    $product->warehouse_stock += $qtyGood;
+                                }
+                                $product->save();
+                            }
                         }
+                    }
+
+                    if ($qtyDamaged > 0) {
+                        $damagedLines[] = [
+                            'id_replacement' => $replId,
+                            'qty' => $qtyDamaged,
+                            'note' => $note ?: 'Rusak saat diterima (GR PO ' . $po->no_po . ')',
+                        ];
+                    }
+
+                    $dProductSave = true;
+                }
+            }
+
+            // 3. Kalau ada item yang rusak, catat sebagai Retur ke supplier
+            if (!empty($damagedLines)) {
+                $retur = new \App\Models\Retur();
+                $retur->id_product_in = $productIn->id;
+                $retur->no_return = $this->generateNoReturn();
+                $retur->status = 0;
+                $retur->date = $request->gr_date;
+                $retur->save();
+
+                foreach ($damagedLines as $line) {
+                    $detailReturn = new \App\Models\DetailReturn();
+                    $detailReturn->id_retur = $retur->id;
+                    $detailReturn->id_replacement = $line['id_replacement'];
+                    $detailReturn->qty = $line['qty'];
+                    $detailReturn->note = $line['note'];
+                    $detailReturn->date = $request->gr_date;
+                    $detailReturn->status = 0;
+                    $detailReturn->save();
+                }
+            }
+
+            if ($dProductSave) {
+                if (!$po->no_gr) {
+                    $po->no_gr = $this->prService->generateNoGr();
+                    $po->gr_sent_at = now();
+                }
+                $po->receipt_status = 'Received';
+                $po->save();
+
+                // PR baru "done" kalau SEMUA PO-nya sudah diterima
+                $header = PurchaseRequest::find($po->id_purchase_request);
+                if ($header) {
+                    $allPosReceived = $header->purchaseOrders()->where('receipt_status', '!=', 'Received')->doesntExist();
+                    if ($allPosReceived) {
+                        $header->status = '3';
+                        $header->save();
                     }
                 }
 
-                if ($qtyDamaged > 0) {
-                    $damagedLines[] = [
-                        'id_replacement' => $replId,
-                        'qty' => $qtyDamaged,
-                        'note' => $note ?: 'Rusak saat diterima (GR PO ' . $po->no_po . ')',
-                    ];
-                }
-
-                $dProductSave = true;
-            }
-        }
-
-        // 3. Kalau ada item yang rusak, catat sebagai Retur ke supplier — terpisah
-        // dari stok, biar barang cacat nggak ikut kehitung available stock.
-        if (!empty($damagedLines)) {
-            $retur = new \App\Models\Retur();
-            $retur->id_product_in = $productIn->id;
-            $retur->no_return = $this->generateNoReturn();
-            $retur->status = 0;
-            $retur->date = $request->gr_date;
-            $retur->save();
-
-            foreach ($damagedLines as $line) {
-                $detailReturn = new \App\Models\DetailReturn();
-                $detailReturn->id_retur = $retur->id;
-                $detailReturn->id_replacement = $line['id_replacement'];
-                $detailReturn->qty = $line['qty'];
-                $detailReturn->note = $line['note'];
-                $detailReturn->date = $request->gr_date;
-                $detailReturn->status = 0;
-                $detailReturn->save();
-            }
-        }
-
-        if ($dProductSave) {
-            // No. GR baru dibuat di sini, pas barang benar-benar diverifikasi diterima —
-            // bukan lagi di langkah "Send to GR" terpisah (dihapus, alur sekarang langsung
-            // dari Incoming Goods begitu PO on delivery ke form Goods Receipt ini).
-            if (!$po->no_gr) {
-                $po->no_gr = $this->prService->generateNoGr();
-                $po->gr_sent_at = now();
-            }
-            $po->receipt_status = 'Received';
-            $po->save();
-
-            // PR baru "done" kalau SEMUA PO-nya sudah diterima (PR bisa pecah ke beberapa PO).
-            $header = PurchaseRequest::find($po->id_purchase_request);
-            if ($header) {
-                $allPosReceived = $header->purchaseOrders()->where('receipt_status', '!=', 'Received')->doesntExist();
-                if ($allPosReceived) {
-                    $header->status = '3';
-                    $header->save();
-                }
+                return redirect()->route('purchase.show', $po->id)->with('success', 'Verifikasi Goods Receipt berhasil disimpan.');
             }
 
-            return redirect()->route('purchase.show', $po->id)->with('success', 'Verifikasi Goods Receipt berhasil disimpan.');
-        }
-
-        return redirect()->back()->with('error', 'Gagal memproses Goods Receipt.');
+            return redirect()->back()->with('error', 'Gagal memproses Goods Receipt.');
+        });
     }
 
     /**
@@ -1129,124 +1235,126 @@ class PurchaseController extends Controller
 
         $this->validate($request, $rule, $message);
 
-        $po = PurchaseOrder::findOrFail($id);
-        $supplier = Supplier::findOrFail($request->supplier);
+        return DB::transaction(function () use ($request, $id) {
+            $po = PurchaseOrder::findOrFail($id);
+            $supplier = Supplier::findOrFail($request->supplier);
 
-        $productIn = new ProductIn();
-        $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
-        $productIn->no_do = $request->no_do;
-        $productIn->invoice = $po->no_invoice_supplier;
-        $productIn->id_supplier = $request->supplier;
-        $productIn->id_purchase_order = $po->id;
-        $productIn->info = $supplier->info;
-        $productIn->date = $request->gr_date;
-        $productIn->date_invoice = $po->no_invoice_supplier ? ($po->invoice_date ?: $request->gr_date) : null;
-        $productIn->date_payment = $po->no_invoice_supplier
-            ? $po->resolveDueDate($productIn->date_invoice)
-            : null;
-        $productIn->subtotal = null;
-        $productIn->total_no_tax = null;
-        $productIn->tax = null;
-        $productIn->note = 'Otomatis dibuat via Goods Receipt PO ' . $po->no_po . ' (tanpa PR)';
-        $productIn->shipping = null;
-        $productIn->total = null;
-        $productIn->created_by = Auth::id();
-        $productIn->save();
+            $productIn = new ProductIn();
+            $productIn->no_product_in = $this->generateNoProductIn($request->warehouse[0] ?? 'BDG');
+            $productIn->no_do = $request->no_do;
+            $productIn->invoice = $po->no_invoice_supplier;
+            $productIn->id_supplier = $request->supplier;
+            $productIn->id_purchase_order = $po->id;
+            $productIn->info = $supplier->info;
+            $productIn->date = $request->gr_date;
+            $productIn->date_invoice = $po->no_invoice_supplier ? ($po->invoice_date ?: $request->gr_date) : null;
+            $productIn->date_payment = $po->no_invoice_supplier
+                ? $po->resolveDueDate($productIn->date_invoice)
+                : null;
+            $productIn->subtotal = null;
+            $productIn->total_no_tax = null;
+            $productIn->tax = null;
+            $productIn->note = 'Otomatis dibuat via Goods Receipt PO ' . $po->no_po . ' (tanpa PR)';
+            $productIn->shipping = null;
+            $productIn->total = null;
+            $productIn->created_by = Auth::id();
+            $productIn->save();
 
-        $dProductSave = false;
-        $damagedLines = [];
+            $dProductSave = false;
+            $damagedLines = [];
 
-        foreach ($request->detail_id as $key => $detailId) {
-            $poDetail = DetailPurchaseOrder::find($detailId);
-            if (!$poDetail) {
-                continue;
+            foreach ($request->detail_id as $key => $detailId) {
+                $poDetail = DetailPurchaseOrder::find($detailId);
+                if (!$poDetail) {
+                    continue;
+                }
+
+                $status = $request->gr_status[$key];
+                $poQtyCap = $poDetail->qty;
+
+                $qtyRec = $request->qty_received[$key];
+                $qtyDamaged = min((int) ($request->qty_damaged[$key] ?? 0), $poQtyCap);
+                $qtyGood = $qtyRec;
+                $note = $request->gr_note[$key] ?? null;
+                $replId = $request->replacement[$key];
+                $wh = $request->warehouse[$key];
+
+                if ($qtyGood > 0) {
+                    $dProductIn = new DetailProductIn();
+                    $dProductIn->id_product_in = $productIn->id;
+                    $dProductIn->id_detail_product = $replId;
+                    $dProductIn->qty = $qtyGood;
+                    $dProductIn->modal = null;
+                    $dProductIn->amount = null;
+                    $dProductIn->warehouse = $wh;
+                    $dProductIn->save();
+
+                    // Update physical inventory stock
+                    $productD = DetailProduct::find($replId);
+                    if ($productD) {
+                        if ($wh == 'BDG') {
+                            $productD->stock += $qtyGood;
+                        } else {
+                            $productD->warehouse_stock += $qtyGood;
+                        }
+                        $productD->save();
+
+                        $product = Product::find($productD->id_product);
+                        if ($product) {
+                            if ($wh == 'BDG') {
+                                $product->stock += $qtyGood;
+                            } else {
+                                $product->warehouse_stock += $qtyGood;
+                            }
+                            $product->save();
+                        }
+                    }
+                }
+
+                if ($qtyDamaged > 0) {
+                    $damagedLines[] = [
+                        'id_replacement' => $replId,
+                        'qty' => $qtyDamaged,
+                        'note' => $note ?: 'Rusak saat diterima (GR PO ' . $po->no_po . ')',
+                    ];
+                }
+
+                $dProductSave = true;
             }
 
-            $status = $request->gr_status[$key];
-            $poQtyCap = $poDetail->qty;
+            if (!empty($damagedLines)) {
+                $retur = new \App\Models\Retur();
+                $retur->id_product_in = $productIn->id;
+                $retur->no_return = $this->generateNoReturn();
+                $retur->status = 0;
+                $retur->date = $request->gr_date;
+                $retur->save();
 
-            $qtyRec = $request->qty_received[$key];
-            $qtyDamaged = min((int) ($request->qty_damaged[$key] ?? 0), $poQtyCap);
-            $qtyGood = $qtyRec;
-            $note = $request->gr_note[$key] ?? null;
-            $replId = $request->replacement[$key];
-            $wh = $request->warehouse[$key];
-
-            if ($qtyGood > 0) {
-                $dProductIn = new DetailProductIn();
-                $dProductIn->id_product_in = $productIn->id;
-                $dProductIn->id_detail_product = $replId;
-                $dProductIn->qty = $qtyGood;
-                $dProductIn->modal = null;
-                $dProductIn->amount = null;
-                $dProductIn->warehouse = $wh;
-                $dProductIn->save();
-
-                // Update physical inventory stock
-                $productD = DetailProduct::find($replId);
-                if ($productD) {
-                    if ($wh == 'BDG') {
-                        $productD->stock += $qtyGood;
-                    } else {
-                        $productD->warehouse_stock += $qtyGood;
-                    }
-                    $productD->save();
-
-                    $product = Product::find($productD->id_product);
-                    if ($product) {
-                        if ($wh == 'BDG') {
-                            $product->stock += $qtyGood;
-                        } else {
-                            $product->warehouse_stock += $qtyGood;
-                        }
-                        $product->save();
-                    }
+                foreach ($damagedLines as $line) {
+                    $detailReturn = new \App\Models\DetailReturn();
+                    $detailReturn->id_retur = $retur->id;
+                    $detailReturn->id_replacement = $line['id_replacement'];
+                    $detailReturn->qty = $line['qty'];
+                    $detailReturn->note = $line['note'];
+                    $detailReturn->date = $request->gr_date;
+                    $detailReturn->status = 0;
+                    $detailReturn->save();
                 }
             }
 
-            if ($qtyDamaged > 0) {
-                $damagedLines[] = [
-                    'id_replacement' => $replId,
-                    'qty' => $qtyDamaged,
-                    'note' => $note ?: 'Rusak saat diterima (GR PO ' . $po->no_po . ')',
-                ];
+            if ($dProductSave) {
+                if (!$po->no_gr) {
+                    $po->no_gr = $this->prService->generateNoGr();
+                    $po->gr_sent_at = now();
+                }
+                $po->receipt_status = 'Received';
+                $po->save();
+
+                return redirect()->route('purchase.show', $po->id)->with('success', 'Verifikasi Goods Receipt berhasil disimpan.');
             }
 
-            $dProductSave = true;
-        }
-
-        if (!empty($damagedLines)) {
-            $retur = new \App\Models\Retur();
-            $retur->id_product_in = $productIn->id;
-            $retur->no_return = $this->generateNoReturn();
-            $retur->status = 0;
-            $retur->date = $request->gr_date;
-            $retur->save();
-
-            foreach ($damagedLines as $line) {
-                $detailReturn = new \App\Models\DetailReturn();
-                $detailReturn->id_retur = $retur->id;
-                $detailReturn->id_replacement = $line['id_replacement'];
-                $detailReturn->qty = $line['qty'];
-                $detailReturn->note = $line['note'];
-                $detailReturn->date = $request->gr_date;
-                $detailReturn->status = 0;
-                $detailReturn->save();
-            }
-        }
-
-        if ($dProductSave) {
-            if (!$po->no_gr) {
-                $po->no_gr = $this->prService->generateNoGr();
-                $po->gr_sent_at = now();
-            }
-            $po->receipt_status = 'Received';
-            $po->save();
-
-            return redirect()->route('purchase.show', $po->id)->with('success', 'Verifikasi Goods Receipt berhasil disimpan.');
-        }
-
-        return redirect()->back()->with('error', 'Gagal memproses Goods Receipt.');
+            return redirect()->back()->with('error', 'Gagal memproses Goods Receipt.');
+        });
     }
 
     public function update(Request $request, $id)
@@ -1414,33 +1522,98 @@ class PurchaseController extends Controller
             return response()->json(['message' => 'Aksi ini hanya dapat dilakukan oleh role Developer.'], 403);
         }
 
-        $purchase = PurchaseRequest::find($id);
-        if (!$purchase) {
-            return response()->json(['message' => 'Data Purchase Request tidak ditemukan.'], 404);
-        }
-
-        $action = $request->input('action');
-
-        if ($action === 'force_done') {
-            $purchase->status = '3';
-            $purchase->save();
-
-            // Update seluruh PO terkait (jika ada) ke Received
-            foreach ($purchase->purchaseOrders as $po) {
-                $po->receipt_status = 'Received';
-                if (empty($po->no_gr)) {
-                    $po->no_gr = 'GR-DEV-CLOSE';
-                }
-                $po->save();
+        return DB::transaction(function () use ($request, $id) {
+            $purchase = PurchaseRequest::find($id);
+            if (!$purchase) {
+                return response()->json(['message' => 'Data Purchase Request tidak ditemukan.'], 404);
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Developer Action: PR ' . ($purchase->no_pr ?: '#' . $purchase->id) . ' berhasil dipaksa selesai (Done / status 3).'
-            ]);
-        } elseif ($action === 'rollback_approved') {
-            $purchase->status = '1';
-            $purchase->save();
+            $action = $request->input('action');
+
+            if ($action === 'force_done') {
+                $purchase->status = '3';
+                $purchase->save();
+
+                // Update seluruh PO terkait (jika ada) ke Received
+                foreach ($purchase->purchaseOrders as $po) {
+                    $po->receipt_status = 'Received';
+                    if (empty($po->no_gr)) {
+                        $po->no_gr = 'GR-DEV-CLOSE';
+                    }
+                    $po->save();
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Developer Action: PR ' . ($purchase->no_pr ?: '#' . $purchase->id) . ' berhasil dipaksa selesai (Done / status 3).'
+                ]);
+            } elseif ($action === 'rollback_approved') {
+                $purchase->status = '1';
+                $purchase->save();
+
+                // Bersihkan info delivery pada details alokasi
+                $purchase->details()->update([
+                    'purchase_type' => null,
+                    'cargo' => null,
+                    'no_resi' => null,
+                    'purchase_date' => null,
+                ]);
+
+                \App\Models\PurchaseRequestDetailAllocation::whereIn('id_purchase_request_detail', $purchase->details()->pluck('id'))
+                    ->update([
+                        'purchase_type' => null,
+                        'cargo' => null,
+                        'no_resi' => null,
+                        'purchase_date' => null,
+                    ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Developer Action: PR ' . ($purchase->no_pr ?: '#' . $purchase->id) . ' berhasil di-rollback ke Approved (status 1).'
+                ]);
+            } elseif ($action === 'rollback_new') {
+                // Putuskan relasi PO jika ada
+                foreach ($purchase->purchaseOrders as $po) {
+                    $po->id_purchase_request = null;
+                    $po->save();
+                }
+
+                $purchase->status = '0';
+                $purchase->save();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Developer Action: PR ' . ($purchase->no_pr ?: '#' . $purchase->id) . ' berhasil dikembalikan ke New PR (status 0).'
+                ]);
+            }
+
+            return response()->json(['message' => 'Aksi developer tidak valid.'], 422);
+        });
+    }
+
+    /**
+     * Kembalikan Purchase Request dari status Approved (1) ke New PR (0).
+     */
+    public function rollbackToNew(Request $request, $id)
+    {
+        $user = Auth::user();
+        $userRole = $user ? $user->getRawOriginal('role') : '';
+
+        if (!in_array($userRole, ['Developer', 'Admin', 'Super Admin', 'Logistic']) && !$user?->isDeveloper()) {
+            return response()->json(['message' => 'Akses tidak diizinkan.'], 403);
+        }
+
+        return DB::transaction(function () use ($id) {
+            $purchase = PurchaseRequest::find($id);
+            if (!$purchase) {
+                return response()->json(['message' => 'Data Purchase Request tidak ditemukan.'], 404);
+            }
+
+            // Putuskan relasi PO yang terhubung jika ada
+            foreach ($purchase->purchaseOrders as $po) {
+                $po->id_purchase_request = null;
+                $po->save();
+            }
 
             // Bersihkan info delivery pada details alokasi
             $purchase->details()->update([
@@ -1458,67 +1631,15 @@ class PurchaseController extends Controller
                     'purchase_date' => null,
                 ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Developer Action: PR ' . ($purchase->no_pr ?: '#' . $purchase->id) . ' berhasil di-rollback ke Approved (status 1).'
-            ]);
-        } elseif ($action === 'rollback_new') {
-            // Putuskan relasi PO jika ada
-            foreach ($purchase->purchaseOrders as $po) {
-                $po->id_purchase_request = null;
-                $po->save();
-            }
-
             $purchase->status = '0';
             $purchase->save();
 
+            $poMsg = $poCount > 0 ? " ({$poCount} PO terkait berhasil dilepas)" : "";
             return response()->json([
                 'success' => true,
-                'message' => 'Developer Action: PR ' . ($purchase->no_pr ?: '#' . $purchase->id) . ' berhasil dikembalikan ke New PR (status 0).'
+                'message' => 'Purchase Request ' . ($purchase->no_pr ?: '#' . $purchase->id) . " berhasil dikembalikan ke New PR (Draft){$poMsg}."
             ]);
-        }
-
-        return response()->json(['message' => 'Aksi developer tidak valid.'], 422);
-    }
-
-    /**
-     * Kembalikan Purchase Request dari status Approved (1) ke New PR (0).
-     */
-    public function rollbackToNew(Request $request, $id)
-    {
-        $user = Auth::user();
-        $userRole = $user ? $user->getRawOriginal('role') : '';
-
-        if (!in_array($userRole, ['Developer', 'Admin', 'Super Admin', 'Logistic']) && !$user?->isDeveloper()) {
-            return response()->json(['message' => 'Akses tidak diizinkan.'], 403);
-        }
-
-        $purchase = PurchaseRequest::find($id);
-        if (!$purchase) {
-            return response()->json(['message' => 'Data Purchase Request tidak ditemukan.'], 404);
-        }
-
-        if ($purchase->status != '1') {
-            return response()->json(['message' => 'Hanya PR berstatus Approved (Telah Disetujui) yang dapat dikembalikan ke New PR.'], 422);
-        }
-
-        // Jika ada PO terkait, lepaskan tautan PR dari PO
-        $poCount = $purchase->purchaseOrders()->count();
-        if ($poCount > 0) {
-            foreach ($purchase->purchaseOrders as $po) {
-                $po->id_purchase_request = null;
-                $po->save();
-            }
-        }
-
-        $purchase->status = '0';
-        $purchase->save();
-
-        $poMsg = $poCount > 0 ? " ({$poCount} PO terkait berhasil dilepas)" : "";
-        return response()->json([
-            'success' => true,
-            'message' => 'Purchase Request ' . ($purchase->no_pr ?: '#' . $purchase->id) . " berhasil dikembalikan ke New PR (Draft){$poMsg}."
-        ]);
+        });
     }
 
     /**

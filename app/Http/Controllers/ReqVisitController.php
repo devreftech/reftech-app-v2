@@ -97,14 +97,17 @@ class ReqVisitController extends Controller
      */
     public function edit($id)
     {
-        $clients = Client::all();
         $visit = ReqVisit::find($id);
+        if (!$visit) {
+            return redirect()->route('req-visit.index')->with('error', 'Request visit tidak ditemukan');
+        }
+        $clients = Client::all();
         $dateNow = Carbon::now();
         $numberS = Reports::whereYear('date', $dateNow)->where('id_technician', Auth::user()->id)->count();
         $formattedNumberS = str_pad($numberS + 1, 3, '0', STR_PAD_LEFT);
         $monthNow = $dateNow->month;
         $formattedMonthNow = $this->convertToRoman($monthNow);
-        $pic = Pic::where('id_client', $visit->machine->id_client)->get();
+        $pic = $visit->machine ? Pic::where('id_client', $visit->machine->id_client)->get() : collect([]);
         // dd($visit);
         return view('pages.coordinator.visit.form', compact('visit', 'pic', 'formattedNumberS', 'formattedMonthNow', 'clients'));
     }
@@ -159,11 +162,13 @@ class ReqVisitController extends Controller
     public function reportsWithRequest(Request $request, $id)
     {
         $rule = [
-            'no_service => required',
-            'running => required',
-            'load => required',
-            'jobdesc => required',
-            'desc => required',
+            'no_service' => 'required',
+            'running'    => 'required',
+            'load'       => 'required',
+            'jobdesc'    => 'required',
+            'desc'       => 'required',
+            'image'      => 'nullable|array',
+            'image.*'    => 'nullable|file|image|mimes:jpeg,jpg,png,webp|max:10240',
         ];
         $customMessages = [
             'no_service.required' => 'Field No Service Wajib Diisi!',

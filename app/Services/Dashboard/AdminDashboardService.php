@@ -98,22 +98,30 @@ class AdminDashboardService
 
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
 
-        $poTotalPriceAdmin = Quotation::whereYear('po_date', $yearNow)
-            ->whereMonth('po_date', $monthNow)
-            ->where('status', '100')
-            ->where('level', '1')
-            ->where('is_primary', '1')
-            ->sum('nett')
-            + UnitQuotation::where('status', 'po_received')
-                ->where('is_latest', 1)
-                ->whereYear('po_received', $yearNow)
-                ->whereMonth('po_received', $monthNow)
-                ->sum(DB::raw('total - tax_amount'));
+        $adminPoTotals = Cache::remember("admin_dash_po_totals_{$yearNow}_{$monthNow}", 300, function () use ($yearNow, $monthNow) {
+            $total = Quotation::whereYear('po_date', $yearNow)
+                ->whereMonth('po_date', $monthNow)
+                ->where('status', '100')
+                ->where('level', '1')
+                ->where('is_primary', '1')
+                ->sum('nett')
+                + UnitQuotation::where('status', 'po_received')
+                    ->where('is_latest', 1)
+                    ->whereYear('po_received', $yearNow)
+                    ->whereMonth('po_received', $monthNow)
+                    ->sum(DB::raw('total - tax_amount'));
 
-        $formattedTotalPriceAdmin = $this->formatNumber($poTotalPriceAdmin);
+            return [
+                'total' => $total,
+                'formatted' => $this->formatNumber($total),
+            ];
+        });
+
+        $poTotalPriceAdmin = $adminPoTotals['total'];
+        $formattedTotalPriceAdmin = $adminPoTotals['formatted'];
 
         $salesOrder = [4, 3, 2, 1, 32, 41, 16, 22];
-        $sales = User::whereIn('role', ['Sales', 'Support'])
+        $sales = User::where('role', 'Sales')
             ->where('active', '1')
             ->get()
             ->sortBy(function ($sale) use ($salesOrder) {
@@ -126,10 +134,12 @@ class AdminDashboardService
         $firstSalesId = $firstSales ? $firstSales->id : null;
         $targett = Target::where('id_sales', $firstSalesId)->first('total');
 
-        $targetAllSales = Target::join('users as u', 'u.id', '=', 'target.id_sales')
-            ->where('u.role', 'Sales')
-            ->where('u.active', '1')
-            ->sum('target.total');
+        $targetAllSales = Cache::remember("admin_dash_target_all_sales", 300, function () {
+            return Target::join('users as u', 'u.id', '=', 'target.id_sales')
+                ->where('u.role', 'Sales')
+                ->where('u.active', '1')
+                ->sum('target.total');
+        });
 
         $targetsBySale = Target::whereIn('id_sales', $sales->pluck('id'))
             ->groupBy('id_sales')
@@ -248,57 +258,175 @@ class AdminDashboardService
         $projectQuoteCount = (int) $projectQuoteAgg->cnt + (int) $projectUnitAgg->cnt;
         $projectQuoteNominal = (float) $projectQuoteAgg->total_nett + (float) $projectUnitAgg->total_nett;
 
+        // "Marketing Team" — agregat performa seluruh akun Support/Marketing
+        $supportUserIds = User::where('role', 'Support')->where('active', '1')->pluck('id');
+        $marketingAgg = Cache::remember("admin_dash_marketing_agg_{$yearNow}_{$monthNow}", 300, function () use ($supportUserIds, $yearNow, $monthNow, $firstDayOfMonth, $lastDayOfMonth) {
+            if ($supportUserIds->isEmpty()) {
+                return [
+                    'prospect' => 0,
+                    'provided' => 0,
+                    'notProvided' => 0,
+                    'quoteCount' => 0,
+                    'poCount' => 0,
+                    'quoteNominal' => 0,
+                    'hotProspectNominal' => 0,
+                    'poNominal' => 0,
+                ];
+            }
+
+            $prospect = Prospect::whereYear('date', $yearNow)
+                ->whereMonth('date', $monthNow)
+                ->whereIn('id_support', $supportUserIds)
+                ->count();
+
+            $provided = Prospect::whereYear('date', $yearNow)
+                ->whereMonth('date', $monthNow)
+                ->where('provide', '!=', '0')
+                ->whereIn('id_support', $supportUserIds)
+                ->count();
+
+            $notProvided = Prospect::whereYear('date', $yearNow)
+                ->whereMonth('date', $monthNow)
+                ->where('provide', '0')
+                ->whereIn('id_support', $supportUserIds)
+                ->count();
+
+            $quoteCount = Quotation::whereYear('estimated_date', $yearNow)
+                ->whereMonth('estimated_date', $monthNow)
+                ->whereIn('id_support', $supportUserIds)
+                ->where('level', '1')
+                ->where('is_primary', '1')
+                ->count()
+                + UnitQuotation::where('is_latest', 1)
+                    ->whereYear('date', $yearNow)
+                    ->whereMonth('date', $monthNow)
+                    ->whereIn('id_support', $supportUserIds)
+                    ->count();
+
+            $poCount = Quotation::whereYear('po_date', $yearNow)
+                ->whereMonth('po_date', $monthNow)
+                ->whereIn('id_support', $supportUserIds)
+                ->where('status', '100')
+                ->where('level', '1')
+                ->where('is_primary', '1')
+                ->count()
+                + UnitQuotation::where('is_latest', 1)
+                    ->where('status', 'po_received')
+                    ->whereYear('po_received', $yearNow)
+                    ->whereMonth('po_received', $monthNow)
+                    ->whereIn('id_support', $supportUserIds)
+                    ->count();
+
+            $quoteNominal = (float) Quotation::whereBetween('estimated_date', [$firstDayOfMonth, $lastDayOfMonth])
+                ->whereIn('id_support', $supportUserIds)
+                ->where('level', '1')
+                ->where('is_primary', '1')
+                ->sum('nett')
+                + (float) UnitQuotation::whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
+                    ->whereIn('id_support', $supportUserIds)
+                    ->where('is_latest', 1)
+                    ->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
+
+            $hotProspectNominal = (float) Quotation::whereBetween('estimated_date', [$firstDayOfMonth, $lastDayOfMonth])
+                ->whereIn('id_support', $supportUserIds)
+                ->whereIn('status', ['80', '90'])
+                ->where('level', '1')
+                ->where('is_primary', '1')
+                ->sum('nett')
+                + (float) UnitQuotation::whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
+                    ->whereIn('id_support', $supportUserIds)
+                    ->where('is_latest', 1)
+                    ->where('status', 'hot_prospect')
+                    ->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
+
+            $poNominal = (float) Quotation::whereBetween('po_date', [$firstDayOfMonth, $lastDayOfMonth])
+                ->whereIn('id_support', $supportUserIds)
+                ->where('status', '100')
+                ->where('level', '1')
+                ->where('is_primary', '1')
+                ->sum('nett')
+                + (float) UnitQuotation::where('status', 'po_received')
+                    ->where('is_latest', 1)
+                    ->whereBetween('po_received', [$firstDayOfMonth, $lastDayOfMonth])
+                    ->whereIn('id_support', $supportUserIds)
+                    ->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
+
+            return [
+                'prospect' => $prospect,
+                'provided' => $provided,
+                'notProvided' => $notProvided,
+                'quoteCount' => $quoteCount,
+                'poCount' => $poCount,
+                'quoteNominal' => $quoteNominal,
+                'hotProspectNominal' => $hotProspectNominal,
+                'poNominal' => $poNominal,
+            ];
+        });
+
         $weekDataSales = User::activeSalesAndProjectAdmins();
 
-        $weekActivities = $this->getWeekDataActivitiesCombined($weekDataSales);
+        $cachePrefix = "admin_dash_w_{$yearNow}_{$monthNow}_";
+
+        $weekActivities = Cache::remember($cachePrefix . 'activities', 300, function () use ($weekDataSales) {
+            return $this->getWeekDataActivitiesCombined($weekDataSales);
+        });
         $dataDc = $weekActivities['dc'];
         $dataCRM = $weekActivities['crm'];
         $dataVisit = $weekActivities['visit'];
-        $dataQuote = $this->getWeekDataQuote($weekDataSales);
+
+        $dataQuote = Cache::remember($cachePrefix . 'quote', 300, function () use ($weekDataSales) {
+            return $this->getWeekDataQuote($weekDataSales);
+        });
         $dataOverview = $this->getDataOverview();
 
-        $dataLeads = $this->getWeekDataLeads($weekDataSales);
-        $dataPO = $this->getWeekDataPO($weekDataSales);
+        $dataLeads = Cache::remember($cachePrefix . 'leads', 300, function () use ($weekDataSales) {
+            return $this->getWeekDataLeads($weekDataSales);
+        });
+        $dataPO = Cache::remember($cachePrefix . 'po', 300, function () use ($weekDataSales) {
+            return $this->getWeekDataPO($weekDataSales);
+        });
 
-        $targetCrm = Client::join(DB::raw('(SELECT id_client, status FROM crm_status WHERE id IN (SELECT MAX(id) FROM crm_status GROUP BY id_client)) as cs'), 'client.id', '=', 'cs.id_client')
-            ->where('role', 'Customers')
-            ->where('cs.status', '2')
-            ->select('id_sales', DB::RAW('COUNT(*) as total'))
-            ->groupBy('id_sales')
-            ->pluck('total', 'id_sales')->toArray();
+        $targetCrm = Cache::remember("admin_dash_target_crm", 300, function () {
+            return Client::join(DB::raw('(SELECT id_client, status FROM crm_status WHERE id IN (SELECT MAX(id) FROM crm_status GROUP BY id_client)) as cs'), 'client.id', '=', 'cs.id_client')
+                ->where('role', 'Customers')
+                ->where('cs.status', '2')
+                ->select('id_sales', DB::RAW('COUNT(*) as total'))
+                ->groupBy('id_sales')
+                ->pluck('total', 'id_sales')->toArray();
+        });
 
-        // Comment Buat Admin
+        // Comment Buat Admin (dioptimalkan: 1 query terindeks, filter in-memory untuk unread)
         $firstComments = Comment::where('id_user', Auth::id())
             ->groupBy('id_status')
             ->get();
 
-        $statusIds = $firstComments->pluck('id_status')->toArray();
+        $statusIds = $firstComments->pluck('id_status')->filter()->toArray();
         $dates = $firstComments->pluck('created_at', 'id_status');
 
-        $commentsQuery = Comment::join('change_status as c', 'c.id', '=', 'comment.id_status')
-            ->join('quotation as q', 'q.id', '=', 'c.id_quotation')
-            ->join('users as u', 'u.id', '=', 'comment.id_user')
-            ->whereIn('comment.id_status', $statusIds)
-            ->where(function ($query) use ($dates) {
-                foreach ($dates as $statusId => $createdAt) {
-                    $query->orWhere(function ($subQuery) use ($statusId, $createdAt) {
-                        $subQuery->where('comment.id_status', $statusId)
-                            ->whereRaw('TIMESTAMPDIFF(SECOND, ?, comment.created_at) > 0', [$createdAt]);
-                    });
-                }
-            })
-            ->where('comment.id_user', '!=', Auth::id());
+        $commentAdmin = collect();
+        $unreadCommentAdmin = collect();
 
-        // Ambil semua komentar yang relevan
-        $commentAdmin = $commentsQuery->orderBy('comment.id_status')
-            ->orderByDesc('comment.created_at')
-            ->get(['q.id as idQ', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'q.no_quote', 'u.name', 'u.image']);
+        if (!empty($statusIds)) {
+            $commentsQuery = Comment::join('change_status as c', 'c.id', '=', 'comment.id_status')
+                ->join('quotation as q', 'q.id', '=', 'c.id_quotation')
+                ->join('users as u', 'u.id', '=', 'comment.id_user')
+                ->whereIn('comment.id_status', $statusIds)
+                ->where(function ($query) use ($dates) {
+                    foreach ($dates as $statusId => $createdAt) {
+                        $query->orWhere(function ($subQuery) use ($statusId, $createdAt) {
+                            $subQuery->where('comment.id_status', $statusId)
+                                ->where('comment.created_at', '>', $createdAt);
+                        });
+                    }
+                })
+                ->where('comment.id_user', '!=', Auth::id());
 
-        // Filter untuk komentar dengan level '1'
-        $unreadCommentAdmin = $commentsQuery->where('comment.level', '1')
-            ->orderBy('comment.id_status')
-            ->orderByDesc('comment.created_at')
-            ->get(['q.id as idQ', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'q.no_quote', 'u.name', 'u.image']);
+            $commentAdmin = $commentsQuery->orderBy('comment.id_status')
+                ->orderByDesc('comment.created_at')
+                ->get(['q.id as idQ', 'comment.id as idC', 'comment.id_user', 'comment.level', 'comment.comment', 'comment.date', 'q.no_quote', 'u.name', 'u.image']);
+
+            $unreadCommentAdmin = $commentAdmin->where('level', '1')->values();
+        }
 
         // End Comment Admin
         $newCount = PendingPO::where('status', operator: 0)
@@ -311,10 +439,11 @@ class AdminDashboardService
             ->where('type', 'Non Project')
             ->count();
 
-        // Admin bisa berpindah antar dashboard divisi lewat dropdown menu
-        $adminView = request()->query('view', 'sales');
-        if (!in_array($adminView, ['sales', 'salesmanager', 'accounting', 'finance', 'logistic', 'workshop', 'projectmanager'], true)) {
-            $adminView = 'sales';
+        // Admin / Developer bisa berpindah antar dashboard divisi lewat switcher menu
+        $defaultView = (Auth::check() && Auth::user()->isDeveloper()) ? 'developer' : 'sales';
+        $adminView = request()->query('view', $defaultView);
+        if (!in_array($adminView, ['sales', 'salesmanager', 'accounting', 'finance', 'logistic', 'workshop', 'projectmanager', 'developer'], true)) {
+            $adminView = $defaultView;
         }
 
         $adminExtraData = match ($adminView) {
@@ -324,6 +453,7 @@ class AdminDashboardService
             'logistic' => (new LogisticDashboardService())->getLogisticDashboardData(),
             'workshop' => (new WorkshopDashboardService())->getWorkshopDashboardData(),
             'projectmanager' => (new ProjectManagerDashboardService())->getProjectManagerDashboardData(),
+            'developer' => (new DeveloperDashboardService())->getDeveloperDashboardData(),
             default => [],
         };
 
@@ -382,6 +512,7 @@ class AdminDashboardService
                 'firstSales',
                 'projectQuoteCount',
                 'projectQuoteNominal',
+                'marketingAgg',
             ),
             $adminExtraData,
             $forecastData,
@@ -566,102 +697,19 @@ class AdminDashboardService
         return $this->buildWeeklyFullMonth($sales, $allData, $weekStart, $endWeek, $yearNow);
     }
 
+    /**
+     * Data overview untuk inisialisasi skeleton modal Overview.
+     * Isi tabel rekap KPI mingguan dimuat lewat AJAX saat modal dibuka (detail-overview.weekly-kpi).
+     */
     protected function getDataOverview()
     {
-        $month = Carbon::now()->month;
-        $year = Carbon::now()->year;
-        $firstDayOfMonth = "{$year}-{$month}-01";
-        $lastDayOfMonth = date('Y-m-t', strtotime($firstDayOfMonth));
-
         $users = User::activeSalesAndProjectAdmins();
-        $users->load('clients');
 
-        $allDC = Activities::join('client as c', 'activities.id_client', '=', 'c.id')
-            ->whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
-            ->where('status', 'Responded')
-            ->whereIn('name', ['Daily Call', 'Follow Up'])
-            ->groupBy('c.id')
-            ->get();
-
-        $allActivities = Activities::join('client as c', 'activities.id_client', '=', 'c.id')
-            ->whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
-            ->where('status', 'Responded')
-            ->where('name', 'CRM')
-            ->groupBy('c.id')
-            ->get();
-
-        $allLeads = Client::whereBetween('created_at', [$firstDayOfMonth . ' 00:00:00', $lastDayOfMonth . ' 23:59:59'])
-            ->get();
-
-        $allQuotes = Quotation::whereBetween('estimated_date', [$firstDayOfMonth, $lastDayOfMonth])
-            ->where('level', '1')
-            ->where('is_primary', '1')
-            ->get();
-
-        $allPOs = Quotation::whereBetween('po_date', [$firstDayOfMonth, $lastDayOfMonth])
-            ->where('status', '100')
-            ->where('level', '1')
-            ->where('is_primary', '1')
-            ->get();
-
-        $data = [];
-
-        foreach ($users as $user) {
-            $leadCounts = collect([1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0]);
-            $dcCounts = collect([1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0]);
-            $crmCounts = collect([1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0]);
-            $quoteCounts = collect([1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0]);
-            $poCounts = collect([1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0]);
-
-            // Baris "Sales Project" gabungan punya beberapa id_sales sekaligus
-            // ($user->id_sales_list) — filter di bawah pakai whereIn, bukan cuma
-            // id satu user, biar datanya beneran teragregat dari semua Admin itu.
-            $ids = $user->id_sales_list ?? [$user->id];
-            $clientIds = count($ids) > 1
-                ? Client::whereIn('id_sales', $ids)->pluck('id')
-                : $user->clients->pluck('id');
-            $userDC = $allDC->whereIn('id_sales', $ids);
-            $userCRM = $allActivities->whereIn('id_client', $clientIds);
-            $userLeads = $allLeads->whereIn('id_sales', $ids);
-            $userQuotes = $allQuotes->whereIn('id_sales', $ids);
-            $userPOs = $allPOs->whereIn('id_sales', $ids);
-
-            foreach ($userCRM as $activity) {
-                $week = Carbon::parse($activity->date)->weekOfMonth;
-                $crmCounts->put($week, $crmCounts->get($week) + 1);
-            }
-
-            foreach ($userDC as $dc) {
-                $week = Carbon::parse($dc->date)->weekOfMonth;
-                $dcCounts->put($week, $dcCounts->get($week) + 1);
-            }
-
-            foreach ($userLeads as $lead) {
-                $week = Carbon::parse($lead->created_at)->weekOfMonth;
-                $leadCounts->put($week, $leadCounts->get($week) + 1);
-            }
-
-            foreach ($userQuotes as $quote) {
-                $week = Carbon::parse($quote->estimated_date)->weekOfMonth;
-                $quoteCounts->put($week, $quoteCounts->get($week) + 1);
-            }
-
-            foreach ($userPOs as $po) {
-                $week = Carbon::parse($po->po_date)->weekOfMonth;
-                $poCounts->put($week, $poCounts->get($week) + 1);
-            }
-
-            $data[] = [
+        return $users->map(function ($user) {
+            return [
                 'salesId' => $user->id,
                 'sales' => $user->name,
-                'leads' => $leadCounts,
-                'dc' => $dcCounts,
-                'crm' => $crmCounts,
-                'quote' => $quoteCounts,
-                'po' => $poCounts,
             ];
-        }
-
-        return $data;
+        })->toArray();
     }
 }

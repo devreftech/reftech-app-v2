@@ -31,18 +31,31 @@
                 </div>
                 <hr class="my-0">
                 <div class="card-body mb-3">
-                    <div class="row">
-                        @if ($quote)
+                    <div class="row g-3">
+                        @if ($unitQuote)
                             <div class="col-4 col-lg-2 fw-medium">
                                 <p class="mb-1">Customer / Client</p>
                                 <p class="mb-1">PIC Contact</p>
                                 <p class="mb-1">Sales Person</p>
-                                <p class="mb-1">No. Quotation</p>
+                                <p class="mb-1">No. Penawaran</p>
                             </div>
-                            <div class="col-8">
+                            <div class="col-8 col-lg-4">
+                                <p class="mb-1 fw-bold">: {{ $unitQuote->client?->company ?? ($unitQuote->pic?->name ?? '-') }}</p>
+                                <p class="mb-1">: {{ $unitQuote->pic?->name ?? '-' }}</p>
+                                <p class="mb-1">: {{ $return->sales?->name ?? ($unitQuote->sales?->name ?? '-') }}</p>
+                                <p class="mb-1">: <span class="badge bg-label-primary">{{ $unitQuote->no_quote ?? '-' }}</span></p>
+                            </div>
+                        @elseif ($quote)
+                            <div class="col-4 col-lg-2 fw-medium">
+                                <p class="mb-1">Customer / Client</p>
+                                <p class="mb-1">PIC Contact</p>
+                                <p class="mb-1">Sales Person</p>
+                                <p class="mb-1">No. Penawaran</p>
+                            </div>
+                            <div class="col-8 col-lg-4">
                                 <p class="mb-1 fw-bold">: {{ $quote->pic?->client?->company ?? '-' }}</p>
                                 <p class="mb-1">: {{ $quote->pic?->name_pic ?? '-' }}</p>
-                                <p class="mb-1">: {{ $quote->sales?->name ?? '-' }}</p>
+                                <p class="mb-1">: {{ $return->sales?->name ?? ($quote->sales?->name ?? '-') }}</p>
                                 <p class="mb-1">: <span class="badge bg-label-primary">{{ $quote->no_quote ?? '-' }}</span></p>
                             </div>
                         @elseif (isset($productIn) && $productIn)
@@ -51,7 +64,7 @@
                                 <p class="mb-1">No. Invoice</p>
                                 <p class="mb-1">No. Penerimaan</p>
                             </div>
-                            <div class="col-8">
+                            <div class="col-8 col-lg-4">
                                 <p class="mb-1 fw-bold">: {{ $productIn->supplier?->nama_supplier ?? '-' }}</p>
                                 <p class="mb-1">: {{ $productIn->invoice ?? '-' }}</p>
                                 <p class="mb-1">: <span class="badge bg-label-info">{{ $productIn->no_product_in ?? '-' }}</span></p>
@@ -60,8 +73,45 @@
                             <div class="col-4 col-lg-2 fw-medium">
                                 <p class="mb-1">Tipe Dokumen</p>
                             </div>
-                            <div class="col-8">
+                            <div class="col-8 col-lg-4">
                                 <p class="mb-1 text-muted">: Dokumen Retur Standar (#{{ $return->no_return }})</p>
+                            </div>
+                        @endif
+
+                        {{-- Resolution & Reason Info --}}
+                        @if ($return->resolution || $return->reason_category)
+                            <div class="col-12 col-lg-6">
+                                <div class="p-3 bg-light rounded-3 border">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <span class="fw-bold font-12 text-dark">Solusi yang Diajukan:</span>
+                                        @if($return->resolution === 'replacement')
+                                            <span class="badge bg-primary"><i class="mdi mdi-swap-horizontal me-1"></i>Ganti Barang (Replacement)</span>
+                                        @elseif($return->resolution === 'refund')
+                                            <span class="badge bg-success"><i class="mdi mdi-cash-refund me-1"></i>Refund Dana (Pengembalian Uang)</span>
+                                        @elseif($return->resolution === 'deposit')
+                                            <span class="badge bg-info"><i class="mdi mdi-credit-card-plus-outline me-1"></i>Potong Tagihan / Deposit</span>
+                                        @else
+                                            <span class="badge bg-secondary">{{ $return->resolution ?? '-' }}</span>
+                                        @endif
+                                    </div>
+                                    @if($return->reason_category)
+                                        <div class="font-12 mb-1">
+                                            <span class="text-muted">Alasan:</span>
+                                            <strong class="text-dark">{{ ucfirst(str_replace('_', ' ', $return->reason_category)) }}</strong>
+                                        </div>
+                                    @endif
+                                    @if($return->reason_note)
+                                        <div class="font-11 text-muted fst-italic mb-2">
+                                            "{{ $return->reason_note }}"
+                                        </div>
+                                    @endif
+                                    @if($return->resolution === 'refund' && ($return->bank_name || $return->bank_account))
+                                        <div class="pt-2 border-top font-11">
+                                            <span class="fw-bold text-success"><i class="mdi mdi-bank-outline me-1"></i>Rekening Refund:</span>
+                                            {{ $return->bank_name }} - {{ $return->bank_account }} a/n {{ $return->bank_holder }}
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
                         @endif
                     </div>
@@ -70,11 +120,13 @@
                     <table class="table m-0 mb-4">
                         <thead class="table-light border-top">
                             <tr>
-                                <th>No.</th>
-                                <th>Item</th>
-                                <th>Qty</th>
-                                <th>note</th>
-                                <th>Action</th>
+                                <th style="width: 40px;">No.</th>
+                                <th>Item &amp; Deskripsi</th>
+                                <th style="width: 80px;" class="text-center">Qty</th>
+                                <th style="width: 130px;" class="text-end">Harga Satuan</th>
+                                <th style="width: 140px;" class="text-end">Subtotal</th>
+                                <th>Catatan Item</th>
+                                <th style="width: 120px;" class="text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -84,38 +136,43 @@
                             @foreach ($dReturn as $product)
                                 @php
                                     $no++;
+                                    $displayName = $product->item_name ?? ($product->replacement?->replacement ?? ('Item #' . $product->id));
+                                    $subtotal = $product->amount > 0 ? $product->amount : ($product->qty * $product->price);
                                 @endphp
                                 <tr style="font-size: 13px">
                                     <td class="align-top">{{ $no }}</td>
-                                    <td class="text-nowrap align-top">
+                                    <td class="align-top">
                                         <p class="mb-0 fw-semibold" style="font-size: 12px">
-                                            {{ $product->replacement?->replacement ?? ('Item #' . $product->id) }}
+                                            {{ $displayName }}
                                         </p>
-                                        @if ($product->replacement?->product?->description)
-                                            <pre class="mb-0"
-                                                style="font-size: 10px; font-family: inherit; max-width: 100%; overflow-x: auto; white-space: pre-wrap;">{{ $product->replacement->product->description }}</pre>
+                                        @if ($product->replacement?->product?->commodity && $product->replacement?->product?->commodity !== $displayName)
+                                            <small class="text-muted d-block">{{ $product->replacement->product->commodity }}</small>
                                         @endif
                                     </td>
-                                    <td class="align-top">{{ $product->qty }}
+                                    <td class="align-top text-center fw-bold">{{ $product->qty }}</td>
+                                    <td class="align-top text-end font-monospace">
+                                        {{ $product->price > 0 ? 'Rp ' . number_format($product->price, 0, ',', '.') : '-' }}
                                     </td>
-                                    <td class="align-top">{{ $product->note }}
+                                    <td class="align-top text-end font-monospace fw-bold text-danger">
+                                        {{ $subtotal > 0 ? 'Rp ' . number_format($subtotal, 0, ',', '.') : '-' }}
                                     </td>
-                                    <td class="align-top">
+                                    <td class="align-top font-12 text-muted">{{ $product->note ?? '-' }}</td>
+                                    <td class="align-top text-center">
                                         @if ($return->status == 0)
                                             @if ($product->status == 0)
                                                 <a href="#"
-                                                    class="btn btn-primary d-grid w-100 waves-effect accept-return mb-3"
+                                                    class="btn btn-primary btn-sm d-grid w-100 waves-effect accept-return mb-1"
                                                     data-id="{{ $product->id }}" data-return="{{ $return->id }}">
                                                     Accept
                                                 </a>
                                             @else
-                                                Accepted
+                                                <span class="badge bg-label-success">Accepted</span>
                                             @endif
                                         @else
                                             @if ($product->status == 0)
-                                                Not Accepted
+                                                <span class="badge bg-label-secondary">Not Accepted</span>
                                             @else
-                                                Done
+                                                <span class="badge bg-success">Done</span>
                                             @endif
                                         @endif
                                     </td>

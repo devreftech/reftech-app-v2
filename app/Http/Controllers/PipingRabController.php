@@ -535,4 +535,13 @@ class PipingRabController extends Controller
             return back()->with('error', 'Gagal convert ke Quotation: ' . $e->getMessage());
         }
     }
+
+    public function destroy($id)
+    {
+        $rab = PipingRab::findOrFail($id);
+        $rab->sections()->delete();
+        $rab->delete();
+
+        return redirect()->route('piping-rab.index')->with('success', 'RAB Piping berhasil dihapus.');
+    }
 }

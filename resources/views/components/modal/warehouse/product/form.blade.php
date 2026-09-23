@@ -6,7 +6,7 @@
     @if (@$product)
         @method('patch')
     @endif
-    <div class="modal animate__animated animate__fadeIn"
+    <div class="modal fade"
         id="{{ @$product ? 'updateProduct-' . @$product->id : 'createProduct' }}" tabindex="-1" style="display: none;"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">

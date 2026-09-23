@@ -3,12 +3,12 @@
 @section('content')
 
 @php
-    $clientCompany = $isUnitQuotation ? $quote->client->company : $quote->pic->client->company;
-    $clientNpwp    = $isUnitQuotation ? $quote->client->npwp : $quote->pic->client->npwp;
-    $clientAddress = $isUnitQuotation ? $quote->client->address : $quote->pic->client->address;
-    $clientInfo    = $isUnitQuotation ? $quote->client->info : $quote->pic->client->info;
+    $clientCompany = $isUnitQuotation ? ($quote?->client?->company ?? '-') : ($quote?->pic?->client?->company ?? ($quote?->client?->company ?? '-'));
+    $clientNpwp    = $isUnitQuotation ? ($quote?->client?->npwp ?? '-') : ($quote?->pic?->client?->npwp ?? ($quote?->client?->npwp ?? '-'));
+    $clientAddress = $isUnitQuotation ? ($quote?->client?->address ?? '-') : ($quote?->pic?->client?->address ?? ($quote?->client?->address ?? '-'));
+    $clientInfo    = $isUnitQuotation ? ($quote?->client?->info ?? '-') : ($quote?->pic?->client?->info ?? ($quote?->client?->info ?? '-'));
 
-    $invoiceTotal = $quote->harga_total;
+    $invoiceTotal = $quote?->harga_total ?? ($payment->amount ?? 0);
     $paid         = $payment->level == 1 ? $payment->amount : 0;
     $outstanding  = max($invoiceTotal - $paid, 0);
     $isPaid       = $outstanding <= 0;

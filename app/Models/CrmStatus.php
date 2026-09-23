@@ -14,6 +14,23 @@ class CrmStatus extends Model
         'id_client', 'status'
     ];
 
+    public function activityLogReferenceLabel(): ?string
+    {
+        $statusLabels = [
+            '1' => 'Bangkrupt',
+            '2' => 'Aktif',
+            '3' => 'Non-Aktif',
+        ];
+        return 'Status Customer: ' . ($statusLabels[$this->status] ?? $this->status);
+    }
+
+    public function activityLogExtraProperties(): array
+    {
+        return [
+            'id_client' => $this->id_client,
+        ];
+    }
+
 
     
     public function client()

@@ -1,6 +1,6 @@
 <form action="{{ route('monitoring.fajarPaper-addMainlog', $monitoring->id) }}" method="post" enctype="multipart/form-data">
     @csrf
-    <div class="modal animate__animated animate__fadeIn" id="plusMainlog" tabindex="-1" style="display: none;"
+    <div class="modal fade" id="plusMainlog" tabindex="-1" style="display: none;"
         aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">

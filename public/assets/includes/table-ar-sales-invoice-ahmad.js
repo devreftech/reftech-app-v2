@@ -136,6 +136,22 @@ $(function () {
                         return '<div class="text-center"><span class="badge rounded-pill bg-label-secondary">Non PPN</span></div>';
                     },
                 },
+                {
+                    targets: 9,
+                    className: "text-center",
+                    orderable: false,
+                    render: function (data, type, full) {
+                        if (type !== "display") return full.name || "";
+                        var name = full.name || "-";
+                        var initials = name.split(" ").map(function (w) { return w.charAt(0); }).slice(0, 2).join("").toUpperCase();
+                        var colors = ["bg-label-primary","bg-label-success","bg-label-warning","bg-label-danger","bg-label-info","bg-label-secondary"];
+                        var colorClass = colors[name.charCodeAt(0) % colors.length];
+                        var av = full.sales_image
+                            ? '<img src="/' + full.sales_image + '" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;" alt="' + name + '">'
+                            : '<div class="avatar-initial rounded-circle ' + colorClass + '" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;font-size:11px;font-weight:700;">' + initials + '</div>';
+                        return '<span data-bs-toggle="tooltip" data-bs-placement="top" title="' + name + '">' + av + '</span>';
+                    },
+                },
             ],
             order: [],
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>><"table-responsive"t><"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',

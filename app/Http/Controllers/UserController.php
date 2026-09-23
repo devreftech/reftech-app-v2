@@ -4,8 +4,20 @@ namespace App\Http\Controllers;
 
 use Auth;
 use App\Models\User;
+use App\Models\Employee;
+use App\Models\HrAttendance;
+use App\Models\HrEmployeeAsset;
+use App\Models\HrLeaveBalance;
+use App\Models\HrLeaveRequest;
+use App\Models\HrLeaveType;
+use App\Models\HrPayrollItem;
+use App\Models\HrReimbursement;
+use App\Models\Hr\HrOfficeWifi;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -41,11 +53,11 @@ class UserController extends Controller
     public function store(StoreUserRequest $request)
     {
         $rule = [
-            'name => required',
-            'email => required',
-            'area => required',
-            'image => required',
-            'phone => required',
+            'name' => 'required',
+            'email' => 'required|email|unique:users,email',
+            'area' => 'required',
+            'image' => 'nullable|file|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'phone' => 'required',
         ];
         $customMessages = [
             'name.required' => 'Field Nama Wajib Diisi!',
@@ -94,11 +106,209 @@ class UserController extends Controller
      * @param  \App\Models\User  $user
      * @return \Illuminate\Http\Response
      */
-    public function show(User $user)
+    public function show($profile)
     {
-        $user = $user->exists ? $user : User::find(Auth::id());
-        $overview = User::where("role", "sales")->get();
-        return view('pages.sales.user.profile', compact('user', 'overview'));
+        $user = ($profile instanceof User && $profile->exists) ? $profile : User::find($profile);
+        if (!$user) {
+            $user = User::find(Auth::id());
+        }
+
+        $employee = $user->employee;
+        if ($employee) {
+            $employee->loadMissing(['department', 'position', 'salary']);
+        }
+
+        $isOwnProfile = (Auth::id() == $user->id);
+        $isAdminOrHr = in_array(Auth::user()->role, ['Admin', 'HRD', 'Super Admin', 'Director']);
+
+        // Data Absensi & HR jika akun terkait karyawan
+        $todayAttendance = null;
+        $monthAttendances = collect();
+        $leaveBalance = null;
+        $myLeaves = collect();
+        $leaveTypes = collect();
+        $myPayslips = collect();
+        $myReimbursements = collect();
+        $myAssets = collect();
+
+        if ($employee) {
+            $today = Carbon::today('Asia/Jakarta')->toDateString();
+            $currentMonth = Carbon::now('Asia/Jakarta')->month;
+            $currentYear = Carbon::now('Asia/Jakarta')->year;
+
+            // Selected Month & Year (Default to current running month)
+            $selectedMonth = (int) request('att_month', request('month', $currentMonth));
+            $selectedYear  = (int) request('att_year', request('year', $currentYear));
+
+            if ($selectedMonth < 1 || $selectedMonth > 12) {
+                $selectedMonth = $currentMonth;
+            }
+            if ($selectedYear < 2020 || $selectedYear > 2035) {
+                $selectedYear = $currentYear;
+            }
+
+            // Evaluasi Auto Clock-Out otomatis (Asia/Jakarta GMT+7)
+            HrAttendance::processAutoClockOutIfDue();
+
+            // Today's attendance
+            $todayAttendance = HrAttendance::where('employee_id', $employee->id)
+                ->whereDate('date', $today)
+                ->first();
+
+            // Monthly attendance records for selected period
+            $monthAttendances = HrAttendance::where('employee_id', $employee->id)
+                ->whereMonth('date', $selectedMonth)
+                ->whereYear('date', $selectedYear)
+                ->orderByDesc('date')
+                ->get();
+
+            // Monthly attendance summary statistics
+            $attStats = [
+                'totalRecords'      => $monthAttendances->count(),
+                'totalHadir'        => $monthAttendances->where('status', 'Hadir')->count(),
+                'totalOnTime'       => $monthAttendances->where('status', 'Hadir')->where('late_minutes', '<=', 0)->count(),
+                'totalLate'         => $monthAttendances->where('late_minutes', '>', 0)->count(),
+                'totalLateMins'     => (int) $monthAttendances->sum('late_minutes'),
+                'totalOvertimeMins' => (int) $monthAttendances->sum('overtime_minutes'),
+                'totalIzin'         => $monthAttendances->whereIn('status', ['Izin', 'Sakit', 'Cuti', 'Dinas Luar'])->count(),
+            ];
+
+            // List of available months / years from employee attendance records
+            $availableAttendancePeriods = HrAttendance::where('employee_id', $employee->id)
+                ->selectRaw('YEAR(date) as year, MONTH(date) as month, count(*) as total_days')
+                ->groupByRaw('YEAR(date), MONTH(date)')
+                ->orderByDesc('year')
+                ->orderByDesc('month')
+                ->get();
+
+            // Period Navigation Helpers
+            $selectedPeriod = Carbon::createFromDate($selectedYear, $selectedMonth, 1);
+            $prevPeriod = $selectedPeriod->copy()->subMonth();
+            $nextPeriod = $selectedPeriod->copy()->addMonth();
+            $isCurrentRunningMonth = ($selectedMonth == $currentMonth && $selectedYear == $currentYear);
+
+            // Leave balances & requests
+            $leaveBalance = HrLeaveBalance::firstOrCreate(
+                ['employee_id' => $employee->id, 'year' => $currentYear],
+                ['total_quota' => 12, 'used_quota' => 0, 'remaining_quota' => 12]
+            );
+            $myLeaves = HrLeaveRequest::with('leaveType')
+                ->where('employee_id', $employee->id)
+                ->orderByDesc('created_at')
+                ->get();
+            $leaveTypes = HrLeaveType::where('is_active', true)->get();
+
+            // Payslips
+            if ($isOwnProfile || $isAdminOrHr) {
+                $myPayslips = HrPayrollItem::with('payroll')
+                    ->where('employee_id', $employee->id)
+                    ->orderByDesc('id')
+                    ->get();
+            }
+
+            // Reimbursements
+            $myReimbursements = HrReimbursement::where('employee_id', $employee->id)
+                ->orderByDesc('created_at')
+                ->get();
+
+            // Assets yang sedang dipegang
+            $myAssets = HrEmployeeAsset::with('fixedAsset')
+                ->where('employee_id', $employee->id)
+                ->where('status', 'Digunakan')
+                ->get();
+        }
+
+        // Anti-fraud & Security settings untuk Clock In widget
+        $wifiSetting = DB::table('hr_attendance_settings')->where('key', 'is_wifi_restriction_enabled')->first();
+        $isWifiRestrictionEnabled = $wifiSetting && $wifiSetting->value === '1';
+        $deviceLockSetting = DB::table('hr_attendance_settings')->where('key', 'is_device_lock_enabled')->first();
+        $isDeviceLockEnabled = !$deviceLockSetting || $deviceLockSetting->value === '1';
+        $selfieSetting = DB::table('hr_attendance_settings')->where('key', 'is_selfie_required')->first();
+        $isSelfieRequired = $selfieSetting && $selfieSetting->value === '1';
+
+        $activeWifis = HrOfficeWifi::where('is_active', true)->get();
+        $allowedIps = $activeWifis->pluck('ip_address')->toArray();
+        $clientIp = request()->ip();
+
+        $isWifiVerified = !$isWifiRestrictionEnabled
+            || in_array($clientIp, $allowedIps)
+            || (app()->isLocal() && in_array($clientIp, ['127.0.0.1', '::1']));
+
+        // Kinerja Sales (jika role Sales)
+        $isSales = ($user->role === 'Sales');
+        $salesMetrics = [];
+        $paymentTemplates = collect();
+        $salesClients = collect();
+
+        if ($isSales) {
+            $sqHot   = \App\Models\UnitQuotation::where('id_sales', $user->id)->where('status', 'hot_prospect')->count();
+            $sqNego  = \App\Models\UnitQuotation::where('id_sales', $user->id)->whereIn('status', ['negotiation', 'revision'])->count();
+            $sqPo    = \App\Models\UnitQuotation::where('id_sales', $user->id)->where('status', 'po_received')->count();
+            $sqDraft = \App\Models\UnitQuotation::where('id_sales', $user->id)->whereIn('status', ['draft', 'sent'])->count();
+            $sqLoss  = \App\Models\UnitQuotation::where('id_sales', $user->id)->where('status', 'loss')->count();
+            $totalSmartQuotes = \App\Models\UnitQuotation::where('id_sales', $user->id)->count();
+
+            $lqHot   = \App\Models\Quotation::where('id_sales', $user->id)->whereIn('status', [70, 75, 80, 90])->count();
+            $lqNego  = \App\Models\Quotation::where('id_sales', $user->id)->whereIn('status', [30, 40, 50, 60])->count();
+            $lqPo    = \App\Models\Quotation::where('id_sales', $user->id)->where('status', 100)->count();
+            $lqDraft = \App\Models\Quotation::where('id_sales', $user->id)->whereIn('status', [0, 10, 20])->count();
+            $lqLoss  = \App\Models\Quotation::where('id_sales', $user->id)->where('status', '<', 0)->count();
+            $totalLegacyQuotes = \App\Models\Quotation::where('id_sales', $user->id)->count();
+
+            $salesMetrics = [
+                'countHotProspect' => $sqHot + $lqHot,
+                'countNegotiation' => $sqNego + $lqNego,
+                'countPoReceived'  => $sqPo + $lqPo,
+                'countDraft'       => $sqDraft + $lqDraft,
+                'countLoss'        => $sqLoss + $lqLoss,
+                'totalQuotations'  => $totalSmartQuotes + $totalLegacyQuotes,
+                'totalClients'     => \App\Models\Client::where('id_sales', $user->id)->count(),
+                'totalCustomers'   => \App\Models\Client::where('id_sales', $user->id)->whereIn('role', ['Customers', 'Customer'])->count(),
+                'typeUnit'         => \App\Models\UnitQuotation::where('id_sales', $user->id)->where('type', 'Unit')->count() + \App\Models\Quotation::where('id_sales', $user->id)->where('no_quote', 'LIKE', '%-U/%')->count(),
+                'typeParts'        => \App\Models\UnitQuotation::where('id_sales', $user->id)->where('type', 'Parts')->count() + \App\Models\Quotation::where('id_sales', $user->id)->where('no_quote', 'LIKE', '%-P/%')->count(),
+                'typeService'      => \App\Models\UnitQuotation::where('id_sales', $user->id)->where('type', 'Service')->count() + \App\Models\Quotation::where('id_sales', $user->id)->where('no_quote', 'LIKE', '%-S/%')->count(),
+                'typeRental'       => \App\Models\UnitQuotation::where('id_sales', $user->id)->where('type', 'Rental')->count() + \App\Models\Quotation::where('id_sales', $user->id)->where('no_quote', 'LIKE', '%-R/%')->count(),
+                'typeProject'      => \App\Models\UnitQuotation::where('id_sales', $user->id)->where('type', 'Project')->count() + \App\Models\Quotation::where('id_sales', $user->id)->where('no_quote', 'LIKE', '%-PR/%')->count(),
+                'typePiping'       => \App\Models\UnitQuotation::where('id_sales', $user->id)->where('type', 'Piping')->count() + \App\Models\Quotation::where('id_sales', $user->id)->where('no_quote', 'LIKE', '%-PIP/%')->count(),
+                'typeAirAudit'     => \App\Models\UnitQuotation::where('id_sales', $user->id)->where('type', 'Air Audit')->count() + \App\Models\Quotation::where('id_sales', $user->id)->where('no_quote', 'LIKE', '%-AA/%')->count(),
+            ];
+
+            $paymentTemplates = \App\Models\SalesPaymentTemplate::with('client')->where('id_sales', $user->id)->orderBy('is_default', 'desc')->orderBy('name')->get();
+            $salesClients = \App\Models\Client::where('id_sales', $user->id)->orderBy('company')->get();
+        }
+
+        return view('pages.sales.user.profile', compact(
+            'user',
+            'employee',
+            'isOwnProfile',
+            'isAdminOrHr',
+            'todayAttendance',
+            'monthAttendances',
+            'selectedMonth',
+            'selectedYear',
+            'selectedPeriod',
+            'prevPeriod',
+            'nextPeriod',
+            'isCurrentRunningMonth',
+            'attStats',
+            'availableAttendancePeriods',
+            'leaveBalance',
+            'myLeaves',
+            'leaveTypes',
+            'myPayslips',
+            'myReimbursements',
+            'myAssets',
+            'isWifiRestrictionEnabled',
+            'isWifiVerified',
+            'isDeviceLockEnabled',
+            'isSelfieRequired',
+            'clientIp',
+            'activeWifis',
+            'isSales',
+            'salesMetrics',
+            'paymentTemplates',
+            'salesClients'
+        ));
     }
 
     /**
@@ -107,8 +317,12 @@ class UserController extends Controller
      * @param  \App\Models\User  $user
      * @return \Illuminate\Http\Response
      */
-    public function edit(User $user)
+    public function edit($profile)
     {
+        $user = ($profile instanceof User && $profile->exists) ? $profile : User::find($profile);
+        if (!$user) {
+            $user = User::find(Auth::id());
+        }
         return view('pages.sales.user.setting', compact('user'));
     }
 
@@ -122,10 +336,11 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, $id)
     {
         $rule = [
-            'name => required',
-            'email => required',
-            'image => required',
-            'phone => required',
+            'name'   => 'required',
+            'email'  => 'required|email|unique:users,email,' . $id,
+            'image'  => 'nullable|file|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'banner' => 'nullable|file|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'phone'  => 'required',
         ];
         $customMessages = [
             'name.required' => 'Field Nama Wajib Diisi!',
@@ -234,5 +449,72 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         abort(404);
+    }
+
+    /**
+     * Update customizable quick actions for the authenticated user (max 4).
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateQuickActions(Request $request)
+    {
+        $request->validate([
+            'quick_actions' => 'required|array|min:1|max:4',
+        ], [
+            'quick_actions.required' => 'Pilih atau buat minimal 1 menu Quick Action.',
+            'quick_actions.array'    => 'Format data Quick Action tidak valid.',
+            'quick_actions.min'      => 'Pilih minimal 1 menu Quick Action.',
+            'quick_actions.max'      => 'Maksimal 4 menu Quick Action yang dapat dipilih.',
+        ]);
+
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+        }
+
+        $catalog = \App\Services\QuickActionService::getMasterCatalog();
+        $inputItems = array_slice($request->input('quick_actions', []), 0, \App\Services\QuickActionService::MAX_ITEMS);
+        $cleanActions = [];
+
+        foreach ($inputItems as $item) {
+            if (is_string($item)) {
+                if (isset($catalog[$item])) {
+                    $cleanActions[] = $item;
+                }
+            } elseif (is_array($item)) {
+                $type = $item['type'] ?? '';
+                if ($type === 'custom' || !empty($item['is_custom'])) {
+                    $title = trim($item['title'] ?? '');
+                    $url   = trim($item['url'] ?? '');
+                    if (!empty($title) && !empty($url)) {
+                        $cleanActions[] = [
+                            'type'     => 'custom',
+                            'title'    => mb_substr($title, 0, 40),
+                            'subtitle' => mb_substr(trim($item['subtitle'] ?? 'Direct Link'), 0, 40),
+                            'url'      => $url,
+                            'icon'     => !empty($item['icon']) ? trim($item['icon']) : 'mdi mdi-link-variant',
+                            'icon_bg'  => !empty($item['icon_bg']) ? trim($item['icon_bg']) : 'bg-label-primary',
+                        ];
+                    }
+                }
+            }
+        }
+
+        if (empty($cleanActions)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Silakan pilih menu atau masukkan link custom yang valid.'
+            ], 422);
+        }
+
+        $user->quick_actions = $cleanActions;
+        $user->save();
+
+        return response()->json([
+            'success'       => true,
+            'message'       => 'Quick Action berhasil diperbarui!',
+            'quick_actions' => \App\Services\QuickActionService::getUserQuickActions($user),
+        ]);
     }
 }

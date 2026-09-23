@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Pic extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $table = "pic";
     protected $fillable = [
@@ -17,6 +18,18 @@ class Pic extends Model
         'email_pic',
         'phone_pic',
     ];
+
+    public function activityLogReferenceLabel(): ?string
+    {
+        return $this->name_pic . ($this->position ? ' (' . $this->position . ')' : '');
+    }
+
+    public function activityLogExtraProperties(): array
+    {
+        return [
+            'id_client' => $this->id_client,
+        ];
+    }
 
     
     public function client()

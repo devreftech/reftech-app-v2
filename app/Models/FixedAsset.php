@@ -131,4 +131,8 @@ class FixedAsset extends Model
     {
         return $this->hasMany('App\Models\FixedAssetRentalScan', 'id_fixed_asset')->orderByDesc('id');
     }
+    public function hrEmployeeAssets()
+    {
+        return $this->hasMany('App\Models\HrEmployeeAsset', 'fixed_asset_id')->orderByDesc('handover_date');
+    }
 }

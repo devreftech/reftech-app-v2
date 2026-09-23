@@ -12,7 +12,12 @@ use App\Models\Quotation;
 use App\Models\Retur;
 use App\Models\ReturnQ;
 use App\Models\SerialProduct;
+use App\Models\UnitQuotation;
+use App\Models\UnitQuotationDetail;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ReturnController extends Controller
 {
@@ -26,6 +31,13 @@ class ReturnController extends Controller
         $returns = Retur::with([
             'pending.quotation.pic.client',
             'pending.quotation.sales',
+            'pending.unitQuotation.client',
+            'pending.unitQuotation.sales',
+            'quotation.pic.client',
+            'quotation.sales',
+            'unitQuotation.client',
+            'unitQuotation.sales',
+            'sales',
             'productIn.supplier',
             'detail.replacement.product',
         ])
@@ -46,6 +58,94 @@ class ReturnController extends Controller
             'completedCount',
             'totalQty'
         ));
+    }
+
+    /**
+     * Store a sales return request from Quotation / Smart Quote.
+     */
+    public function requestSalesReturn(Request $request, $type, $id)
+    {
+        $request->validate([
+            'selected_items' => 'required|array|min:1',
+            'reason_category' => 'required|string',
+            'resolution' => 'required|string|in:replacement,refund,deposit',
+            'qty' => 'required|array',
+        ], [
+            'selected_items.required' => 'Pilih minimal satu item yang ingin diajukan retur.',
+            'reason_category.required' => 'Pilih kategori alasan retur.',
+            'resolution.required' => 'Pilih solusi yang diajukan.',
+        ]);
+
+        return DB::transaction(function () use ($request, $type, $id) {
+            $quote = null;
+            $unitQuote = null;
+            $pending = null;
+            $salesId = Auth::id();
+
+            if ($type === 'smart-quote' || $type === 'unit') {
+                $unitQuote = UnitQuotation::with(['details', 'pending'])->findOrFail($id);
+                $pending = $unitQuote->pending;
+                $salesId = $unitQuote->id_sales ?? Auth::id();
+            } else {
+                $quote = Quotation::with(['detail', 'pending'])->findOrFail($id);
+                $pending = $quote->pending;
+                $salesId = $quote->id_sales ?? Auth::id();
+            }
+
+            // Auto-generate No Return: RET/YYYYMM/XXXX
+            $prefix = 'RET/' . date('Ym') . '/';
+            $countThisMonth = Retur::where('no_return', 'like', $prefix . '%')->count() + 1;
+            $noReturn = $prefix . sprintf('%04d', $countThisMonth);
+
+            $return = new Retur();
+            $return->id_pending = $pending?->id;
+            $return->id_quotation = $quote?->id;
+            $return->id_unit_quotation = $unitQuote?->id;
+            $return->id_sales = $salesId;
+            $return->no_return = $noReturn;
+            $return->status = 0; // 0 = Menunggu Review
+            $return->reason_category = $request->reason_category;
+            $return->reason_note = $request->reason_note;
+            $return->resolution = $request->resolution;
+            $return->bank_name = $request->resolution === 'refund' ? $request->bank_name : null;
+            $return->bank_account = $request->resolution === 'refund' ? $request->bank_account : null;
+            $return->bank_holder = $request->resolution === 'refund' ? $request->bank_holder : null;
+            $return->date = Carbon::now();
+            $return->save();
+
+            $totalAmount = 0;
+
+            foreach ($request->selected_items as $idx) {
+                $qty = (int)($request->qty[$idx] ?? 1);
+                if ($qty <= 0) continue;
+
+                $price = (float)($request->price[$idx] ?? 0);
+                $amount = $qty * $price;
+                $totalAmount += $amount;
+
+                $detReturn = new DetailReturn();
+                $detReturn->id_retur = $return->id;
+                $detReturn->id_replacement = !empty($request->id_replacement[$idx]) ? (int)$request->id_replacement[$idx] : null;
+                if ($type === 'smart-quote' || $type === 'unit') {
+                    $detReturn->id_unit_quotation_detail = !empty($request->item_id[$idx]) ? (int)$request->item_id[$idx] : null;
+                } else {
+                    $detReturn->id_detail_quotation = !empty($request->item_id[$idx]) ? (int)$request->item_id[$idx] : null;
+                }
+                $detReturn->item_name = $request->item_name[$idx] ?? 'Item';
+                $detReturn->qty = $qty;
+                $detReturn->price = $price;
+                $detReturn->amount = $amount;
+                $detReturn->note = $request->item_note[$idx] ?? '-';
+                $detReturn->status = 0;
+                $detReturn->date = Carbon::today();
+                $detReturn->save();
+            }
+
+            $return->total_amount = $totalAmount;
+            $return->save();
+
+            return redirect()->back()->with('success', 'Pengajuan retur berhasil dikirim (' . $noReturn . ') dan masuk ke Menu Retur untuk direview.');
+        });
     }
 
     /**
@@ -77,13 +177,21 @@ class ReturnController extends Controller
      */
     public function show($id)
     {
-        $return = Retur::findOrFail($id);
+        $return = Retur::with([
+            'pending.quotation.pic.client',
+            'quotation.pic.client',
+            'unitQuotation.client',
+            'sales',
+            'productIn.supplier'
+        ])->findOrFail($id);
+
         $dReturn = DetailReturn::where('id_retur', $id)->with('replacement.product')->get();
         $pending = $return->id_pending ? PendingPO::find($return->id_pending) : null;
-        $quote = $pending ? Quotation::find($pending->id_quotation) : null;
+        $quote = $return->id_quotation ? Quotation::find($return->id_quotation) : ($pending ? Quotation::find($pending->id_quotation) : null);
+        $unitQuote = $return->id_unit_quotation ? UnitQuotation::find($return->id_unit_quotation) : ($pending ? UnitQuotation::find($pending->id_unit_quotation) : null);
         $productIn = $return->id_product_in ? ProductIn::find($return->id_product_in) : null;
 
-        return view('pages.warehouse.return.detail', compact('return', 'dReturn', 'pending', 'quote', 'productIn'));
+        return view('pages.warehouse.return.detail', compact('return', 'dReturn', 'pending', 'quote', 'unitQuote', 'productIn'));
     }
 
     /**
@@ -95,6 +203,9 @@ class ReturnController extends Controller
     public function edit($id)
     {
         $invoice = Invoice::find($id);
+        if (!$invoice) {
+            return redirect()->route('invoice.index')->with('error', 'Invoice tidak ditemukan');
+        }
         $quote = Quotation::where('id', $invoice->id_quotation)->first();
         // dd($quote);
         $dQuote = DetailQuotation::where('id_quotation', $invoice->id_quotation)->get();

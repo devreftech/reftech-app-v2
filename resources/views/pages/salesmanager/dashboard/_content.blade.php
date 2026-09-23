@@ -271,7 +271,7 @@
                     <div class="col-6 col-md-2">
                         <a href="{{ route('prospect.index') }}" class="text-decoration-none">
                             <div class="avatar avatar-lg mx-auto mb-2"><div class="avatar-initial bg-label-info rounded"><i class="mdi mdi-account-details-outline mdi-24px"></i></div></div>
-                            <small class="d-block">Prospect Pipeline</small>
+                            <small class="d-block">Marketing Leads</small>
                         </a>
                     </div>
                     <div class="col-6 col-md-2">

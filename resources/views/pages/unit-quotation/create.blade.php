@@ -393,9 +393,13 @@
 
                         {{-- Terms & Conditions --}}
                         <div class="col-md-6">
-                            <h6 class="fw-bold mb-3 text-dark">
+                            <h6 class="fw-bold mb-1 text-dark">
                                 <i class="mdi mdi-shield-check-outline me-1 text-primary"></i> Terms & Conditions
+                                <span id="terms-card-active-option-label" class="badge bg-label-primary ms-1" style="display:none; font-size:11px; vertical-align:middle;"></span>
                             </h6>
+                            <p class="text-muted small mb-3 d-none" id="terms-card-hint" style="font-size:11px;">
+                                <i class="mdi mdi-information-outline me-1"></i>Isian di bawah ini T&amp;C khusus untuk opsi yang lagi aktif di tab atas — tiap Opsi bisa beda, tinggal pindah tab lalu isi ulang.
+                            </p>
                             <div class="row mb-3 align-items-center">
                                 <label class="col-sm-4 col-form-label text-muted small fw-semibold" for="validity">Validity of Quotation</label>
                                 <div class="col-sm-8">

@@ -54,7 +54,7 @@ class CustomersController extends Controller
      */
     public function show($id)
     {
-        $customers = Client::where('id', $id)->first();
+        $customers = Client::findOrFail($id);
         $charge = Pic::where('id_client', $id)->get();
         $callhis = Activities::where('id_client', $id)->get();
         $quote = Quotation::join('pic','pic.id','=','quotation.id_pic')->where('pic.id_client', $id)->where('level', '1')->get();

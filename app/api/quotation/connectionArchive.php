@@ -1,13 +1,8 @@
 <?php
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 header('Content-Type: application/json');
-$host = config('database.connections.mysql.host');
-$users = config('database.connections.mysql.username');
-$pass = config('database.connections.mysql.password');
-
-$databaseName = config('database.connections.mysql.database');
-$tableName = "quotation";
 
 // Periksa apakah pengguna terotentikasi
 if (Auth::check()) {
@@ -15,15 +10,13 @@ if (Auth::check()) {
     $user = Auth::user();
 
     try {
-        // Membuat koneksi PDO
-        $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo = DB::connection()->getPdo();
         $pdo->exec("SET SESSION sql_mode = ''");
 
         // Query database for data
         $year = request()->get('year');
         $yearFilter = ($year && $year !== 'all') ? " AND YEAR(q.estimated_date) = " . intval($year) : "";
-        $query = "SELECT q.*, CONCAT(q.note, ' (', q.status_date, ')') AS tip, c.company, u.name, NULL AS plant_name FROM quotation q
+        $query = "SELECT q.*, COALESCE(NULLIF(TRIM(CONCAT_WS(' ', q.note, CASE WHEN q.status_date IS NOT NULL AND q.status_date != '0000-00-00' THEN CONCAT('(', q.status_date, ')') ELSE '' END)), ''), 'Belum di update') AS tip, c.company, u.name, NULL AS plant_name FROM quotation q
         LEFT JOIN pic p on p.id = q.id_pic
         LEFT JOIN client c on c.id = p.id_client
         INNER JOIN users u on u.id = q.id_sales
@@ -46,15 +39,12 @@ if (Auth::check()) {
 
         // Menampilkan hasil JSON
         echo $hasil;
-    } catch (PDOException $e) {
+    } catch (\Throwable $e) {
         // Kesalahan koneksi atau eksekusi kueri
-        echo json_encode(['error' => 'Kesalahan Database: ' . $e->getMessage()], JSON_PRETTY_PRINT);
-    } finally {
-        // Menutup koneksi PDO
-        $pdo = null;
+        echo json_encode(['data' => [], 'error' => 'Kesalahan Database: ' . $e->getMessage()], JSON_PRETTY_PRINT);
     }
 } else {
     // Pengguna tidak terotentikasi
-    echo json_encode(['error' => 'Pengguna tidak terotentikasi'], JSON_PRETTY_PRINT);
+    echo json_encode(['data' => [], 'error' => 'Pengguna tidak terotentikasi'], JSON_PRETTY_PRINT);
 }
 ?>

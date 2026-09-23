@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class UnitQuotationController extends Controller
 {
@@ -225,7 +226,7 @@ class UnitQuotationController extends Controller
             'no_quote'         => $request->no_quote ?: $this->generateNoQuote($request->type),
             'attn'             => $request->attn,
             'no_pr'            => $request->no_pr ?: null,
-            'date'             => $request->date,
+            'date'             => $request->date ?: null,
             'expired_date'     => $request->expired_date ?: \Carbon\Carbon::parse($request->date)->addMonth()->format('Y-m-d'),
             'title'            => $request->title,
             'type'             => $request->type,
@@ -245,13 +246,13 @@ class UnitQuotationController extends Controller
             'tax_amount'       => $first['tax_amount'],
             'shipping'         => $first['shipping'],
             'total'            => $first['total'],
-            'note'             => $request->note,
-            'rental_terms'     => $request->type === 'Rental' ? $request->rental_terms : null,
-            'validity'         => $request->validity,
-            'pricing'          => $request->pricing,
-            'warranty'         => $request->warranty,
-            'delivery_process' => $request->delivery_process,
-            'payment'          => $request->payment,
+            'note'             => $first['note'] ?? $request->note,
+            'rental_terms'     => $request->type === 'Rental' ? ($first['rental_terms'] ?? $request->rental_terms) : null,
+            'validity'         => $first['validity'] ?? $request->validity,
+            'pricing'          => $first['pricing'] ?? $request->pricing,
+            'warranty'         => $first['warranty'] ?? $request->warranty,
+            'delivery_process' => $first['delivery_process'] ?? $request->delivery_process,
+            'payment'          => $first['payment'] ?? $request->payment,
             'status'           => 'draft',
             'is_draft'         => $isDraft,
             'revision_number'  => 0,
@@ -283,9 +284,9 @@ class UnitQuotationController extends Controller
     public function show($id)
     {
         $quote       = UnitQuotation::with([
-            'client', 'pic', 'plant', 'sales', 'statusHistory', 'comments.user', 'feePaidBy',
+            'client', 'pic', 'plant', 'sales', 'statusHistory', 'comments.user', 'comments.mentions', 'feePaidBy',
             'details.unit', 'details.equivalent.product',
-            'options.details.unit', 'options.details.equivalent.product',
+            'options.details.unit', 'options.details.equivalent.product', 'options.quotation',
         ])->findOrFail($id);
         $allVersions = $quote->allVersions();
         $invoices    = Invoice::where('id_unit_quotation', $quote->id)->orderByRaw("FIELD(type,'DP','BP','CT')")->get();
@@ -312,8 +313,9 @@ class UnitQuotationController extends Controller
         // Kalau quotation ini udah pernah di-post ke Kanban, tombol Action-nya ganti
         // jadi link "Monitoring Project" langsung ke kartunya, bukan modal Post lagi.
         $kanbanTask = KanbanTask::where('id_unit_quotation', $quote->id)->latest()->first();
+        $allUsers   = \App\Models\User::where('active', '1')->orderBy('name')->get(['id', 'name', 'role', 'image']);
 
-        return view('pages.unit-quotation.detail', compact('quote', 'allVersions', 'invoices', 'contracts', 'payments', 'thisYear', 'formattedNumberSC', 'unitNumbers', 'pendingPo', 'kanbanBoards', 'kanbanTask'));
+        return view('pages.unit-quotation.detail', compact('quote', 'allVersions', 'invoices', 'contracts', 'payments', 'thisYear', 'formattedNumberSC', 'unitNumbers', 'pendingPo', 'kanbanBoards', 'kanbanTask', 'allUsers'));
     }
 
     /**
@@ -428,7 +430,34 @@ class UnitQuotationController extends Controller
             'comment' => $request->comment,
         ]);
 
-        return response()->json(['success' => true, 'comment' => $comment->load('user')]);
+        // Process @mentions and explicit mentions
+        $mentionedUserIds = [];
+
+        if ($request->has('mentions') && is_array($request->mentions)) {
+            foreach ($request->mentions as $mId) {
+                $mId = (int) $mId;
+                if ($mId && $mId !== Auth::id()) {
+                    $mentionedUserIds[$mId] = $mId;
+                }
+            }
+        }
+
+        // Auto-detect @Username in comment text
+        $activeUsers = \App\Models\User::where('active', '1')
+            ->where('id', '!=', Auth::id())
+            ->get();
+
+        foreach ($activeUsers as $user) {
+            if (stripos($request->comment, '@' . $user->name) !== false) {
+                $mentionedUserIds[$user->id] = $user->id;
+            }
+        }
+
+        if (!empty($mentionedUserIds)) {
+            $comment->mentions()->syncWithoutDetaching(array_values($mentionedUserIds));
+        }
+
+        return response()->json(['success' => true, 'comment' => $comment->load('user', 'mentions')]);
     }
 
     public function updateComment(Request $request, $id)
@@ -465,7 +494,7 @@ class UnitQuotationController extends Controller
     {
         $quote   = UnitQuotation::with([
             'client', 'pic', 'plant',
-            'options.details.unit', 'options.details.fixedAsset', 'options.details.equivalent.product',
+            'options.details.unit', 'options.details.fixedAsset', 'options.details.equivalent.product', 'options.quotation',
             'details.unit', 'details.fixedAsset', 'details.equivalent.product',
         ])->findOrFail($id);
         $clients = Client::orderBy('company')->get();
@@ -524,6 +553,13 @@ class UnitQuotationController extends Controller
                 'trade_in_notes' => $quote->trade_in_notes,
                 'tax'            => (bool) $quote->tax,
                 'shipping'       => (float) $quote->shipping,
+                'note'             => $quote->note,
+                'validity'         => $quote->validity,
+                'pricing'          => $quote->pricing,
+                'payment'          => $quote->payment,
+                'warranty'         => $quote->warranty,
+                'delivery_process' => $quote->delivery_process,
+                'rental_terms'     => $quote->rental_terms,
                 'items'          => $quote->details->map($mapItem)->values(),
             ]];
         } else {
@@ -541,6 +577,13 @@ class UnitQuotationController extends Controller
                     'trade_in_notes' => $opt->trade_in_notes,
                     'tax'            => (bool) $opt->tax,
                     'shipping'       => (float) $opt->shipping,
+                    'note'             => $opt->effective_note,
+                    'validity'         => $opt->effective_validity,
+                    'pricing'          => $opt->effective_pricing,
+                    'payment'          => $opt->effective_payment,
+                    'warranty'         => $opt->effective_warranty,
+                    'delivery_process' => $opt->effective_delivery_process,
+                    'rental_terms'     => $opt->effective_rental_terms,
                     'items'          => $opt->details->map($mapItem)->values(),
                 ];
             })->values();
@@ -573,7 +616,7 @@ class UnitQuotationController extends Controller
             'no_quote'         => $request->no_quote ?: $quote->no_quote,
             'attn'             => $request->attn,
             'no_pr'            => $request->no_pr ?: null,
-            'date'             => $request->date,
+            'date'             => $request->date ?: null,
             'expired_date'     => $request->expired_date ?: \Carbon\Carbon::parse($request->date)->addMonth()->format('Y-m-d'),
             'title'            => $request->title,
             'type'             => $request->type,
@@ -593,13 +636,13 @@ class UnitQuotationController extends Controller
             'tax_amount'       => $first['tax_amount'],
             'shipping'         => $first['shipping'],
             'total'            => $first['total'],
-            'note'             => $request->note,
-            'rental_terms'     => $request->type === 'Rental' ? $request->rental_terms : null,
-            'validity'         => $request->validity,
-            'pricing'          => $request->pricing,
-            'warranty'         => $request->warranty,
-            'delivery_process' => $request->delivery_process,
-            'payment'          => $request->payment,
+            'note'             => $first['note'] ?? $request->note,
+            'rental_terms'     => $request->type === 'Rental' ? ($first['rental_terms'] ?? $request->rental_terms) : null,
+            'validity'         => $first['validity'] ?? $request->validity,
+            'pricing'          => $first['pricing'] ?? $request->pricing,
+            'warranty'         => $first['warranty'] ?? $request->warranty,
+            'delivery_process' => $first['delivery_process'] ?? $request->delivery_process,
+            'payment'          => $first['payment'] ?? $request->payment,
         ];
 
         if ($isManager && $request->filled('id_sales')) {
@@ -629,117 +672,119 @@ class UnitQuotationController extends Controller
 
     public function revise($id)
     {
-        $source = UnitQuotation::with(['details', 'options.details'])->findOrFail($id);
+        return DB::transaction(function () use ($id) {
+            $source = UnitQuotation::with(['details', 'options.details'])->findOrFail($id);
 
-        $rootId  = $source->root_id ?? $source->id;
-        $nextRev = UnitQuotation::where(function ($q) use ($rootId) {
-            $q->where('id', $rootId)->orWhere('root_id', $rootId);
-        })->max('revision_number') + 1;
+            $rootId  = $source->root_id ?? $source->id;
+            $nextRev = UnitQuotation::where(function ($q) use ($rootId) {
+                $q->where('id', $rootId)->orWhere('root_id', $rootId);
+            })->max('revision_number') + 1;
 
-        $baseNo      = preg_replace('/-R\d+$/', '', $source->no_quote);
-        $newNoQuote  = $baseNo . '-R' . $nextRev;
+            $baseNo      = preg_replace('/-R\d+$/', '', $source->no_quote);
+            $newNoQuote  = $baseNo . '-R' . $nextRev;
 
-        // Mark all versions as not latest, and set status to 'revision'
-        UnitQuotation::where(function ($q) use ($rootId) {
-            $q->where('id', $rootId)->orWhere('root_id', $rootId);
-        })->update(['is_latest' => 0, 'status' => 'revision']);
+            // Mark all versions as not latest, and set status to 'revision'
+            UnitQuotation::where(function ($q) use ($rootId) {
+                $q->where('id', $rootId)->orWhere('root_id', $rootId);
+            })->update(['is_latest' => 0, 'status' => 'revision']);
 
-        $newQuote = UnitQuotation::create([
-            'root_id'          => $rootId,
-            'revision_number'  => $nextRev,
-            'is_latest'        => 1,
-            'id_client'        => $source->id_client,
-            'id_pic'           => $source->id_pic,
-            'id_plant'         => $source->id_plant,
-            'address'          => $source->address,
-            'id_sales'         => $source->id_sales,
-            'id_support'       => $source->id_support,
-            'no_quote'         => $newNoQuote,
-            'attn'             => $source->attn,
-            'no_pr'            => $source->no_pr,
-            'date'             => now()->toDateString(),
-            'expired_date'     => $source->expired_date ? $source->expired_date->format('Y-m-d') : \Carbon\Carbon::now()->addMonth()->format('Y-m-d'),
-            'title'            => $source->title,
-            'type'             => $source->type,
-            'unit_condition'   => $source->unit_condition,
-            'week'             => $source->week,
-            'subtotal'         => $source->subtotal,
-            'diskon'           => $source->diskon,
-            'diskon_type'      => $source->diskon_type,
-            'has_trade_in'     => $source->has_trade_in,
-            'trade_in_brand'   => $source->trade_in_brand,
-            'trade_in_model'   => $source->trade_in_model,
-            'trade_in_power'   => $source->trade_in_power,
-            'trade_in_sn'      => $source->trade_in_sn,
-            'trade_in_price'   => $source->trade_in_price,
-            'trade_in_notes'   => $source->trade_in_notes,
-            'tax'              => $source->tax,
-            'tax_amount'       => $source->tax_amount,
-            'shipping'         => $source->shipping,
-            'total'            => $source->total,
-            'note'             => $source->note,
-            'rental_terms'     => $source->rental_terms,
-            'validity'         => $source->validity,
-            'pricing'          => $source->pricing,
-            'warranty'         => $source->warranty,
-            'delivery_process' => $source->delivery_process,
-            'payment'          => $source->payment,
-            'status'           => 'revision',
-        ]);
-
-        $duplicateDetail = function ($d, $newQuoteId, $newOptionId = null) {
-            UnitQuotationDetail::create([
-                'id_unit_quotation' => $newQuoteId,
-                'id_option'         => $newOptionId,
-                'type'              => $d->type,
-                'id_unit'           => $d->id_unit,
-                'id_fixed_asset'    => $d->id_fixed_asset,
-                'id_equivalent'     => $d->id_equivalent,
-                'spec_visible'      => $d->spec_visible,
-                'label'             => $d->label,
-                'description'       => $d->description,
-                'qty'               => $d->qty,
-                'info_qty'          => $d->info_qty,
-                'price'             => $d->price,
-                'disc'              => $d->disc,
-                'amount'            => $d->amount,
-                'sort_order'        => $d->sort_order,
+            $newQuote = UnitQuotation::create([
+                'root_id'          => $rootId,
+                'revision_number'  => $nextRev,
+                'is_latest'        => 1,
+                'id_client'        => $source->id_client,
+                'id_pic'           => $source->id_pic,
+                'id_plant'         => $source->id_plant,
+                'address'          => $source->address,
+                'id_sales'         => $source->id_sales,
+                'id_support'       => $source->id_support,
+                'no_quote'         => $newNoQuote,
+                'attn'             => $source->attn,
+                'no_pr'            => $source->no_pr,
+                'date'             => now()->toDateString(),
+                'expired_date'     => $source->expired_date ? $source->expired_date->format('Y-m-d') : \Carbon\Carbon::now()->addMonth()->format('Y-m-d'),
+                'title'            => $source->title,
+                'type'             => $source->type,
+                'unit_condition'   => $source->unit_condition,
+                'week'             => $source->week,
+                'subtotal'         => $source->subtotal,
+                'diskon'           => $source->diskon,
+                'diskon_type'      => $source->diskon_type,
+                'has_trade_in'     => $source->has_trade_in,
+                'trade_in_brand'   => $source->trade_in_brand,
+                'trade_in_model'   => $source->trade_in_model,
+                'trade_in_power'   => $source->trade_in_power,
+                'trade_in_sn'      => $source->trade_in_sn,
+                'trade_in_price'   => $source->trade_in_price,
+                'trade_in_notes'   => $source->trade_in_notes,
+                'tax'              => $source->tax,
+                'tax_amount'       => $source->tax_amount,
+                'shipping'         => $source->shipping,
+                'total'            => $source->total,
+                'note'             => $source->note,
+                'rental_terms'     => $source->rental_terms,
+                'validity'         => $source->validity,
+                'pricing'          => $source->pricing,
+                'warranty'         => $source->warranty,
+                'delivery_process' => $source->delivery_process,
+                'payment'          => $source->payment,
+                'status'           => 'revision',
             ]);
-        };
 
-        if ($source->options->isEmpty()) {
-            foreach ($source->details as $d) {
-                $duplicateDetail($d, $newQuote->id);
-            }
-        } else {
-            foreach ($source->options as $opt) {
-                $newOption = UnitQuotationOption::create([
-                    'id_unit_quotation' => $newQuote->id,
-                    'title'             => $opt->title,
-                    'sort_order'        => $opt->sort_order,
-                    'subtotal'          => $opt->subtotal,
-                    'diskon'            => $opt->diskon,
-                    'diskon_type'       => $opt->diskon_type,
-                    'has_trade_in'      => $opt->has_trade_in,
-                    'trade_in_brand'    => $opt->trade_in_brand,
-                    'trade_in_model'    => $opt->trade_in_model,
-                    'trade_in_power'    => $opt->trade_in_power,
-                    'trade_in_sn'       => $opt->trade_in_sn,
-                    'trade_in_price'    => $opt->trade_in_price,
-                    'trade_in_notes'    => $opt->trade_in_notes,
-                    'tax'               => $opt->tax,
-                    'tax_amount'        => $opt->tax_amount,
-                    'shipping'          => $opt->shipping,
-                    'total'             => $opt->total,
+            $duplicateDetail = function ($d, $newQuoteId, $newOptionId = null) {
+                UnitQuotationDetail::create([
+                    'id_unit_quotation' => $newQuoteId,
+                    'id_option'         => $newOptionId,
+                    'type'              => $d->type,
+                    'id_unit'           => $d->id_unit,
+                    'id_fixed_asset'    => $d->id_fixed_asset,
+                    'id_equivalent'     => $d->id_equivalent,
+                    'spec_visible'      => $d->spec_visible,
+                    'label'             => $d->label,
+                    'description'       => $d->description,
+                    'qty'               => $d->qty,
+                    'info_qty'          => $d->info_qty,
+                    'price'             => $d->price,
+                    'disc'              => $d->disc,
+                    'amount'            => $d->amount,
+                    'sort_order'        => $d->sort_order,
                 ]);
-                foreach ($opt->details as $d) {
-                    $duplicateDetail($d, $newQuote->id, $newOption->id);
+            };
+
+            if ($source->options->isEmpty()) {
+                foreach ($source->details as $d) {
+                    $duplicateDetail($d, $newQuote->id);
+                }
+            } else {
+                foreach ($source->options as $opt) {
+                    $newOption = UnitQuotationOption::create([
+                        'id_unit_quotation' => $newQuote->id,
+                        'title'             => $opt->title,
+                        'sort_order'        => $opt->sort_order,
+                        'subtotal'          => $opt->subtotal,
+                        'diskon'            => $opt->diskon,
+                        'diskon_type'       => $opt->diskon_type,
+                        'has_trade_in'      => $opt->has_trade_in,
+                        'trade_in_brand'    => $opt->trade_in_brand,
+                        'trade_in_model'    => $opt->trade_in_model,
+                        'trade_in_power'    => $opt->trade_in_power,
+                        'trade_in_sn'       => $opt->trade_in_sn,
+                        'trade_in_price'    => $opt->trade_in_price,
+                        'trade_in_notes'    => $opt->trade_in_notes,
+                        'tax'               => $opt->tax,
+                        'tax_amount'        => $opt->tax_amount,
+                        'shipping'          => $opt->shipping,
+                        'total'             => $opt->total,
+                    ]);
+                    foreach ($opt->details as $d) {
+                        $duplicateDetail($d, $newQuote->id, $newOption->id);
+                    }
                 }
             }
-        }
 
-        return redirect()->route('unit-quotation.show', $newQuote->id)
-            ->with('success', 'Revisi berhasil dibuat: ' . $newNoQuote);
+            return redirect()->route('unit-quotation.show', $newQuote->id)
+                ->with('success', 'Revisi berhasil dibuat: ' . $newNoQuote);
+        });
     }
 
     public function print($id)
@@ -753,6 +798,7 @@ class UnitQuotationController extends Controller
             'details.equivalent.product',
             'options.details.unit',
             'options.details.equivalent.product',
+            'options.quotation',
         ])->findOrFail($id);
         return view('pages.unit-quotation.print', compact('quote'));
     }
@@ -933,81 +979,83 @@ class UnitQuotationController extends Controller
         $year = now()->year;
         $path = $request->file('po_file')->store("unit-quotation/po/{$year}", 'public');
 
-        $quote->update([
-            'po_number'      => $request->po_number,
-            'po_file'        => $path,
-            'payment_method' => $request->payment_method,
-            'status'         => 'po_received',
-            'po_received'    => $request->po_date ?: now()->toDateString(),
-            'type'           => 'Project',
-            'is_draft'       => 0,
-        ]);
-
-        $quote->statusHistory()->create([
-            'status' => 'po_received',
-            'note'   => 'PO No. ' . $request->po_number,
-        ]);
-
-        if ($client->id_issues != "5" || $client->role !== 'Customers') {
-            $client->id_issues = '5';
-            $client->role = 'Customers';
-            $client->save();
-
-            \App\Models\CrmStatus::create([
-                'id_client' => $client->id,
-                'status'    => 2,
+        return DB::transaction(function () use ($request, $quote, $client, $path, $id) {
+            $quote->update([
+                'po_number'      => $request->po_number,
+                'po_file'        => $path,
+                'payment_method' => $request->payment_method,
+                'status'         => 'po_received',
+                'po_received'    => $request->po_date ?: now()->toDateString(),
+                'type'           => 'Project',
+                'is_draft'       => 0,
             ]);
-        }
 
-        $pending = $this->createPendingPoForUnitQuotation($quote);
-        $invoice = $this->createInvoiceRecords($quote, $request->invoice_type, $request->dp_percent);
-        if (is_null($invoice->no_invoice)) {
-            $this->notifyInvoiceRequested($quote, $invoice);
-        } else {
-            if ($quote->id_sales) {
-                \App\Models\UnitQuotationPaymentNotification::create([
-                    'id_invoice' => $invoice->id,
-                    'id_unit_quotation' => $quote->id,
-                    'id_user' => $quote->id_sales,
-                    'type' => 'invoice_approved',
-                    'is_read' => false,
+            $quote->statusHistory()->create([
+                'status' => 'po_received',
+                'note'   => 'PO No. ' . $request->po_number,
+            ]);
+
+            if ($client->id_issues != "5" || $client->role !== 'Customers') {
+                $client->id_issues = '5';
+                $client->role = 'Customers';
+                $client->save();
+
+                \App\Models\CrmStatus::create([
+                    'id_client' => $client->id,
+                    'status'    => 2,
                 ]);
             }
-        }
 
-        if ($request->expectsJson()) {
-            return response()->json([
-                'success'     => 'PO berhasil diupload. Status diubah ke PO Received.',
-                'po_file_url' => Storage::url($path),
-                'quote'       => [
-                    'no_quote'  => $quote->no_quote,
-                    'po_number' => $quote->po_number,
-                    'total'     => $quote->total,
-                ],
-                'pendingPo'   => $pending ? [
-                    'id'                         => $pending->id,
-                    'no_pending'                 => $pending->no_pending,
-                    'title'                      => $pending->title,
-                    'delivery'                   => $pending->delivery,
-                    'combine_shipping_and_parts' => (bool) $pending->combine_shipping_and_parts,
-                    'shipping_address_manual'    => $pending->shipping_address_manual,
-                    'doc_address_manual'         => $pending->doc_address_manual,
-                    'shipping_recipient_id'      => $pending->shipping_recipient_id,
-                    'doc_recipient_id'           => $pending->doc_recipient_id,
-                ] : null,
-            ]);
-        }
+            $pending = $this->createPendingPoForUnitQuotation($quote);
+            $invoice = $this->createInvoiceRecords($quote, $request->invoice_type, $request->dp_percent);
+            if (is_null($invoice->no_invoice)) {
+                $this->notifyInvoiceRequested($quote, $invoice);
+            } else {
+                if ($quote->id_sales) {
+                    \App\Models\UnitQuotationPaymentNotification::create([
+                        'id_invoice' => $invoice->id,
+                        'id_unit_quotation' => $quote->id,
+                        'id_user' => $quote->id_sales,
+                        'type' => 'invoice_approved',
+                        'is_read' => false,
+                    ]);
+                }
+            }
 
-        // Fallback (non-AJAX): perilaku lama, modal dibuka via flash sekali pakai.
-        $flashData = [
-            'success' => 'PO berhasil diupload. Status diubah ke PO Received.',
-            'open_convert_po' => true,
-            'noPending' => $pending->no_pending ?? ($quote->po_number ?? $quote->no_quote),
-            'ekspidisi' => $pending->delivery ?? $this->resolvePendingDeliveryValue($quote->delivery_process),
-            'pending_id' => $pending->id ?? null,
-        ];
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success'     => 'PO berhasil diupload. Status diubah ke PO Received.',
+                    'po_file_url' => Storage::url($path),
+                    'quote'       => [
+                        'no_quote'  => $quote->no_quote,
+                        'po_number' => $quote->po_number,
+                        'total'     => $quote->total,
+                    ],
+                    'pendingPo'   => $pending ? [
+                        'id'                         => $pending->id,
+                        'no_pending'                 => $pending->no_pending,
+                        'title'                      => $pending->title,
+                        'delivery'                   => $pending->delivery,
+                        'combine_shipping_and_parts' => (bool) $pending->combine_shipping_and_parts,
+                        'shipping_address_manual'    => $pending->shipping_address_manual,
+                        'doc_address_manual'         => $pending->doc_address_manual,
+                        'shipping_recipient_id'      => $pending->shipping_recipient_id,
+                        'doc_recipient_id'           => $pending->doc_recipient_id,
+                    ] : null,
+                ]);
+            }
 
-        return redirect()->route('unit-quotation.show', $id)->with($flashData);
+            // Fallback (non-AJAX): perilaku lama, modal dibuka via flash sekali pakai.
+            $flashData = [
+                'success' => 'PO berhasil diupload. Status diubah ke PO Received.',
+                'open_convert_po' => true,
+                'noPending' => $pending->no_pending ?? ($quote->po_number ?? $quote->no_quote),
+                'ekspidisi' => $pending->delivery ?? $this->resolvePendingDeliveryValue($quote->delivery_process),
+                'pending_id' => $pending->id ?? null,
+            ];
+
+            return redirect()->route('unit-quotation.show', $id)->with($flashData);
+        });
     }
 
     /**
@@ -1139,135 +1187,137 @@ class UnitQuotationController extends Controller
             'item_fee'          => 'nullable|array',
         ]);
 
-        $rawFee = $request->fee;
-        if (is_string($rawFee)) {
-            $rawFee = (float) preg_replace('/[^\d]/', '', $rawFee);
-        } else {
-            $rawFee = (float) ($rawFee ?? 0);
-        }
-
-        // Simpan fee per-item jika ada input alokasi fee per item
-        $totalItemFee = 0;
-        if ($request->has('item_fee') && is_array($request->item_fee)) {
-            foreach ($request->item_fee as $detailId => $itemFeeVal) {
-                $detail = UnitQuotationDetail::where('id_unit_quotation', $quote->id)->where('id', $detailId)->first();
-                if ($detail) {
-                    $cleanedVal = is_string($itemFeeVal) ? (float) preg_replace('/[^\d]/', '', $itemFeeVal) : (float) ($itemFeeVal ?? 0);
-                    $totalItemFee += $cleanedVal;
-                }
-            }
-            $rawFee = $totalItemFee;
-        }
-
-        // Nilai penawaran sebelum PPN (Pre-Tax)
-        $preTax = floatval($quote->subtotal ?? 0) - floatval($quote->diskon ?? 0);
-        if ($preTax <= 0) {
-            $preTax = floatval($quote->total ?? 0) - floatval($quote->tax_amount ?? 0);
-        }
-        $maxFeeAllowed = round($preTax * 0.10, 2);
-
-        // Simpan detail fee per item
-        if ($request->has('item_fee') && is_array($request->item_fee)) {
-            foreach ($request->item_fee as $detailId => $itemFeeVal) {
-                $detail = UnitQuotationDetail::where('id_unit_quotation', $quote->id)->where('id', $detailId)->first();
-                if ($detail) {
-                    $cleanedVal = is_string($itemFeeVal) ? (float) preg_replace('/[^\d]/', '', $itemFeeVal) : (float) ($itemFeeVal ?? 0);
-                    $detail->fee = $cleanedVal;
-                    $detail->save();
-                }
-            }
-        }
-
-        $quote->fee = $rawFee;
-        $quote->fee_note = $request->fee_note;
-
-        // Multi-rekening tujuan transfer fee
-        $destinations = [];
-        if ($request->has('fee_destinations') && is_array($request->fee_destinations)) {
-            foreach ($request->fee_destinations as $dest) {
-                $bankName = trim($dest['bank_name'] ?? '');
-                $bankAccount = trim($dest['bank_account'] ?? '');
-                $bankHolder = trim($dest['bank_holder'] ?? '');
-                $bankBranch = trim($dest['bank_branch'] ?? '');
-                $note = trim($dest['note'] ?? '');
-
-                if ($bankName === '' && $bankAccount === '' && $bankHolder === '') {
-                    continue;
-                }
-
-                $rawNominal = $dest['nominal'] ?? 0;
-                if (is_string($rawNominal)) {
-                    $rawNominal = (float) preg_replace('/[^\d]/', '', $rawNominal);
-                } else {
-                    $rawNominal = (float) $rawNominal;
-                }
-
-                $destinations[] = [
-                    'bank_name'    => $bankName,
-                    'bank_branch'  => $bankBranch,
-                    'bank_account' => $bankAccount,
-                    'bank_holder'  => $bankHolder,
-                    'nominal'      => $rawNominal,
-                    'note'         => $note,
-                ];
-            }
-        }
-
-        if (!empty($destinations)) {
-            $quote->fee_bank_destinations = $destinations;
-            $quote->fee_bank_name         = $destinations[0]['bank_name'];
-            $quote->fee_bank_branch       = $destinations[0]['bank_branch'];
-            $quote->fee_bank_account      = $destinations[0]['bank_account'];
-            $quote->fee_bank_holder       = $destinations[0]['bank_holder'];
-        } else {
-            if ($request->has('fee_bank_name')) {
-                $quote->fee_bank_name = $request->fee_bank_name;
-            }
-            if ($request->has('fee_bank_account')) {
-                $quote->fee_bank_account = $request->fee_bank_account;
-            }
-            if ($request->has('fee_bank_holder')) {
-                $quote->fee_bank_holder = $request->fee_bank_holder;
-            }
-            if ($request->has('fee_bank_branch')) {
-                $quote->fee_bank_branch = $request->fee_bank_branch;
-            }
-
-            if (!empty($quote->fee_bank_account)) {
-                $quote->fee_bank_destinations = [
-                    [
-                        'bank_name'    => $quote->fee_bank_name,
-                        'bank_branch'  => $quote->fee_bank_branch,
-                        'bank_account' => $quote->fee_bank_account,
-                        'bank_holder'  => $quote->fee_bank_holder,
-                        'nominal'      => (float) ($quote->fee_tax_data->net_fee ?? $rawFee),
-                        'note'         => '',
-                    ]
-                ];
+        return DB::transaction(function () use ($request, $quote, $id) {
+            $rawFee = $request->fee;
+            if (is_string($rawFee)) {
+                $rawFee = (float) preg_replace('/[^\d]/', '', $rawFee);
             } else {
-                $quote->fee_bank_destinations = null;
+                $rawFee = (float) ($rawFee ?? 0);
             }
-        }
 
-        $quote->save();
+            // Simpan fee per-item jika ada input alokasi fee per item
+            $totalItemFee = 0;
+            if ($request->has('item_fee') && is_array($request->item_fee)) {
+                foreach ($request->item_fee as $detailId => $itemFeeVal) {
+                    $detail = UnitQuotationDetail::where('id_unit_quotation', $quote->id)->where('id', $detailId)->first();
+                    if ($detail) {
+                        $cleanedVal = is_string($itemFeeVal) ? (float) preg_replace('/[^\d]/', '', $itemFeeVal) : (float) ($itemFeeVal ?? 0);
+                        $totalItemFee += $cleanedVal;
+                    }
+                }
+                $rawFee = $totalItemFee;
+            }
 
-        foreach ($quote->options as $opt) {
-            $opt->fee = $rawFee;
-            $opt->save();
-        }
+            // Nilai penawaran sebelum PPN (Pre-Tax)
+            $preTax = floatval($quote->subtotal ?? 0) - floatval($quote->diskon ?? 0);
+            if ($preTax <= 0) {
+                $preTax = floatval($quote->total ?? 0) - floatval($quote->tax_amount ?? 0);
+            }
+            $maxFeeAllowed = round($preTax * 0.10, 2);
 
-        if ($request->expectsJson() || $request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Management Fee berhasil disimpan.',
-                'fee'     => $quote->fee,
-                'fee_note'=> $quote->fee_note,
-                'destinations' => $quote->fee_bank_destinations,
-            ]);
-        }
+            // Simpan detail fee per item
+            if ($request->has('item_fee') && is_array($request->item_fee)) {
+                foreach ($request->item_fee as $detailId => $itemFeeVal) {
+                    $detail = UnitQuotationDetail::where('id_unit_quotation', $quote->id)->where('id', $detailId)->first();
+                    if ($detail) {
+                        $cleanedVal = is_string($itemFeeVal) ? (float) preg_replace('/[^\d]/', '', $itemFeeVal) : (float) ($itemFeeVal ?? 0);
+                        $detail->fee = $cleanedVal;
+                        $detail->save();
+                    }
+                }
+            }
 
-        return redirect()->route('unit-quotation.show', $id)
-            ->with('success', 'Management Fee berhasil diperbarui.');
+            $quote->fee = $rawFee;
+            $quote->fee_note = $request->fee_note;
+
+            // Multi-rekening tujuan transfer fee
+            $destinations = [];
+            if ($request->has('fee_destinations') && is_array($request->fee_destinations)) {
+                foreach ($request->fee_destinations as $dest) {
+                    $bankName = trim($dest['bank_name'] ?? '');
+                    $bankAccount = trim($dest['bank_account'] ?? '');
+                    $bankHolder = trim($dest['bank_holder'] ?? '');
+                    $bankBranch = trim($dest['bank_branch'] ?? '');
+                    $note = trim($dest['note'] ?? '');
+
+                    if ($bankName === '' && $bankAccount === '' && $bankHolder === '') {
+                        continue;
+                    }
+
+                    $rawNominal = $dest['nominal'] ?? 0;
+                    if (is_string($rawNominal)) {
+                        $rawNominal = (float) preg_replace('/[^\d]/', '', $rawNominal);
+                    } else {
+                        $rawNominal = (float) $rawNominal;
+                    }
+
+                    $destinations[] = [
+                        'bank_name'    => $bankName,
+                        'bank_branch'  => $bankBranch,
+                        'bank_account' => $bankAccount,
+                        'bank_holder'  => $bankHolder,
+                        'nominal'      => $rawNominal,
+                        'note'         => $note,
+                    ];
+                }
+            }
+
+            if (!empty($destinations)) {
+                $quote->fee_bank_destinations = $destinations;
+                $quote->fee_bank_name         = $destinations[0]['bank_name'];
+                $quote->fee_bank_branch       = $destinations[0]['bank_branch'];
+                $quote->fee_bank_account      = $destinations[0]['bank_account'];
+                $quote->fee_bank_holder       = $destinations[0]['bank_holder'];
+            } else {
+                if ($request->has('fee_bank_name')) {
+                    $quote->fee_bank_name = $request->fee_bank_name;
+                }
+                if ($request->has('fee_bank_account')) {
+                    $quote->fee_bank_account = $request->fee_bank_account;
+                }
+                if ($request->has('fee_bank_holder')) {
+                    $quote->fee_bank_holder = $request->fee_bank_holder;
+                }
+                if ($request->has('fee_bank_branch')) {
+                    $quote->fee_bank_branch = $request->fee_bank_branch;
+                }
+
+                if (!empty($quote->fee_bank_account)) {
+                    $quote->fee_bank_destinations = [
+                        [
+                            'bank_name'    => $quote->fee_bank_name,
+                            'bank_branch'  => $quote->fee_bank_branch,
+                            'bank_account' => $quote->fee_bank_account,
+                            'bank_holder'  => $quote->fee_bank_holder,
+                            'nominal'      => (float) ($quote->fee_tax_data->net_fee ?? $rawFee),
+                            'note'         => '',
+                        ]
+                    ];
+                } else {
+                    $quote->fee_bank_destinations = null;
+                }
+            }
+
+            $quote->save();
+
+            foreach ($quote->options as $opt) {
+                $opt->fee = $rawFee;
+                $opt->save();
+            }
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Management Fee berhasil disimpan.',
+                    'fee'     => $quote->fee,
+                    'fee_note'=> $quote->fee_note,
+                    'destinations' => $quote->fee_bank_destinations,
+                ]);
+            }
+
+            return redirect()->route('unit-quotation.show', $id)
+                ->with('success', 'Management Fee berhasil diperbarui.');
+        });
     }
 
     /**
@@ -1296,91 +1346,93 @@ class UnitQuotationController extends Controller
 
     public function addPayment(Request $request, $id)
     {
-        $quote = UnitQuotation::findOrFail($id);
+        return DB::transaction(function () use ($request, $id) {
+            $quote = UnitQuotation::findOrFail($id);
 
-        $payment                    = new Payment();
-        $payment->id_unit_quotation = $id;
-        $payment->amount            = $request->amount;
-        $payment->percent           = $request->percent;
-        $payment->note              = $request->note;
-        $payment->type              = $request->type;
-        $payment->method            = $request->method;
-        $isEscrow                   = ($request->method === 'Escrow');
-        $payment->escrow_channel    = $isEscrow ? $request->escrow_channel : null;
-        $payment->id_marketplace    = $isEscrow ? ($request->id_marketplace ?: null) : null;
-        $payment->level             = $isEscrow ? 1 : 0;
-        $payment->date              = now()->toDateString();
-        if ($isEscrow) {
-            $payment->date_confirm = now()->toDateString();
-        }
-        if ($request->type === 'Tempo') {
-            $payment->tempo = $request->tempo;
-        }
-        $payment->save();
+            $payment                    = new Payment();
+            $payment->id_unit_quotation = $id;
+            $payment->amount            = $request->amount;
+            $payment->percent           = $request->percent;
+            $payment->note              = $request->note;
+            $payment->type              = $request->type;
+            $payment->method            = $request->method;
+            $isEscrow                   = ($request->method === 'Escrow');
+            $payment->escrow_channel    = $isEscrow ? $request->escrow_channel : null;
+            $payment->id_marketplace    = $isEscrow ? ($request->id_marketplace ?: null) : null;
+            $payment->level             = $isEscrow ? 1 : 0;
+            $payment->date              = now()->toDateString();
+            if ($isEscrow) {
+                $payment->date_confirm = now()->toDateString();
+            }
+            if ($request->type === 'Tempo') {
+                $payment->tempo = $request->tempo;
+            }
+            $payment->save();
 
-        $this->prService->evaluatePaymentGate($payment, Auth::id());
+            $this->prService->evaluatePaymentGate($payment, Auth::id());
 
-        $targetInvoice = null;
+            $targetInvoice = null;
 
-        if ($isEscrow) {
-            // Mark any invoice already issued through the normal flow as paid.
-            Invoice::where('id_unit_quotation', $id)
-                ->whereNotNull('no_invoice')
-                ->update(['status_p' => 1]);
+            if ($isEscrow) {
+                // Mark any invoice already issued through the normal flow as paid.
+                Invoice::where('id_unit_quotation', $id)
+                    ->whereNotNull('no_invoice')
+                    ->update(['status_p' => 1]);
 
-            // Escrow payments bypass the Request Invoice → Accounting approval flow:
-            // the invoice is issued immediately, using the quotation number as the
-            // invoice number so it never consumes a slot in the normal invoice
-            // numbering sequence.
-            $targetInvoice = Invoice::create([
-                'id_unit_quotation' => $id,
-                'no_po'             => $quote->po_number,
-                'flag'              => $this->invoiceFlagFor($quote),
-                'pph'               => 0,
-                'type'              => 'Escrow',
-                'percent'           => $payment->percent,
-                'no_invoice'        => $quote->no_quote,
-                'date'              => $payment->date,
-                'invoiceTo'         => '1',
-                'status_p'          => 1,
-            ]);
-
-            // Tutup otomatis invoice shell yang masih pending (dibuat waktu PO
-            // diproses, belum sempat di-nomori) — supaya tidak nyangkut minta
-            // di-approve manual lewat halaman before.accept.unit padahal invoice
-            // Escrow-nya (di atas) sudah terbit.
-            Invoice::where('id_unit_quotation', $id)
-                ->whereNull('no_invoice')
-                ->whereNull('rejected_at')
-                ->where('id', '!=', $targetInvoice->id)
-                ->update([
-                    'rejected_at'     => now(),
-                    'rejected_reason' => 'Auto-closed: dibayar via Escrow',
+                // Escrow payments bypass the Request Invoice → Accounting approval flow:
+                // the invoice is issued immediately, using the quotation number as the
+                // invoice number so it never consumes a slot in the normal invoice
+                // numbering sequence.
+                $targetInvoice = Invoice::create([
+                    'id_unit_quotation' => $id,
+                    'no_po'             => $quote->po_number,
+                    'flag'              => $this->invoiceFlagFor($quote),
+                    'pph'               => 0,
+                    'type'              => 'Escrow',
+                    'percent'           => $payment->percent,
+                    'no_invoice'        => $quote->no_quote,
+                    'date'              => $payment->date,
+                    'invoiceTo'         => '1',
+                    'status_p'          => 1,
                 ]);
-        } else {
-            // Payment biasa dicatat terhadap invoice yang sudah diterbitkan paling akhir
-            // (mis. DP/BP sebelumnya) — itu yang relevan buat Accounting cek/follow up.
-            $targetInvoice = Invoice::where('id_unit_quotation', $id)
-                ->whereNotNull('no_invoice')
-                ->latest('id')
-                ->first();
-        }
 
-        // Notifikasi Accounting: ada payment baru masuk, perlu di-follow up (mis. terbitkan invoice).
-        $quote = UnitQuotation::find($id);
-        $notifyUserIds = User::getAccountingRecipientsForSales($quote ? $quote->id_sales : null, false);
-        foreach ($notifyUserIds as $userId) {
-            \App\Models\UnitQuotationPaymentNotification::create([
-                'id_payment' => $payment->id,
-                'id_invoice' => $targetInvoice->id ?? null,
-                'id_unit_quotation' => $id,
-                'id_user' => $userId,
-                'type' => 'payment',
-                'is_read' => false,
-            ]);
-        }
+                // Tutup otomatis invoice shell yang masih pending (dibuat waktu PO
+                // diproses, belum sempat di-nomori) — supaya tidak nyangkut minta
+                // di-approve manual lewat halaman before.accept.unit padahal invoice
+                // Escrow-nya (di atas) sudah terbit.
+                Invoice::where('id_unit_quotation', $id)
+                    ->whereNull('no_invoice')
+                    ->whereNull('rejected_at')
+                    ->where('id', '!=', $targetInvoice->id)
+                    ->update([
+                        'rejected_at'     => now(),
+                        'rejected_reason' => 'Auto-closed: dibayar via Escrow',
+                    ]);
+            } else {
+                // Payment biasa dicatat terhadap invoice yang sudah diterbitkan paling akhir
+                // (mis. DP/BP sebelumnya) — itu yang relevan buat Accounting cek/follow up.
+                $targetInvoice = Invoice::where('id_unit_quotation', $id)
+                    ->whereNotNull('no_invoice')
+                    ->latest('id')
+                    ->first();
+            }
 
-        return redirect()->route('unit-quotation.show', $id)->with('success', 'Payment berhasil ditambahkan.');
+            // Notifikasi Accounting: ada payment baru masuk, perlu di-follow up (mis. terbitkan invoice).
+            $quote = UnitQuotation::find($id);
+            $notifyUserIds = User::getAccountingRecipientsForSales($quote ? $quote->id_sales : null, false);
+            foreach ($notifyUserIds as $userId) {
+                \App\Models\UnitQuotationPaymentNotification::create([
+                    'id_payment' => $payment->id,
+                    'id_invoice' => $targetInvoice->id ?? null,
+                    'id_unit_quotation' => $id,
+                    'id_user' => $userId,
+                    'type' => 'payment',
+                    'is_read' => false,
+                ]);
+            }
+
+            return redirect()->route('unit-quotation.show', $id)->with('success', 'Payment berhasil ditambahkan.');
+        });
     }
 
     // Dipanggil polling navbar (role Accounting & Sales buat notifikasi
@@ -1560,16 +1612,18 @@ class UnitQuotationController extends Controller
 
     public function approveCancelPO($id)
     {
-        $quote = UnitQuotation::findOrFail($id);
-        $this->performCancelPO($quote);
+        return DB::transaction(function () use ($id) {
+            $quote = UnitQuotation::findOrFail($id);
+            $this->performCancelPO($quote);
 
-        $quote->statusHistory()->create([
-            'status' => 'negotiation',
-            'note'   => 'Cancel PO disetujui Accounting oleh ' . Auth::user()->name,
-        ]);
+            $quote->statusHistory()->create([
+                'status' => 'negotiation',
+                'note'   => 'Cancel PO disetujui Accounting oleh ' . Auth::user()->name,
+            ]);
 
-        return redirect()->route('unit-quotation.show', $id)
-            ->with('success', 'Cancel PO disetujui. Status kembali ke Negotiation.');
+            return redirect()->route('unit-quotation.show', $id)
+                ->with('success', 'Cancel PO disetujui. Status kembali ke Negotiation.');
+        });
     }
 
     private function performCancelPO(UnitQuotation $quote): void
@@ -1928,6 +1982,15 @@ class UnitQuotationController extends Controller
                 'tax_amount'     => $taxAmount,
                 'shipping'       => $shipping,
                 'total'          => $total,
+                // Term & Condition disimpan per-opsi — diisi lewat card T&C di form
+                // yang ikut opsi mana yang lagi aktif (lihat form-unit-quotation.js).
+                'note'             => $opt['note'] ?? null,
+                'validity'         => $opt['validity'] ?? null,
+                'pricing'          => $opt['pricing'] ?? null,
+                'payment'          => $opt['payment'] ?? null,
+                'warranty'         => $opt['warranty'] ?? null,
+                'delivery_process' => $opt['delivery_process'] ?? null,
+                'rental_terms'     => $opt['rental_terms'] ?? null,
             ];
         }
 
@@ -1941,6 +2004,8 @@ class UnitQuotationController extends Controller
             'has_trade_in' => false, 'trade_in_brand' => null, 'trade_in_model' => null,
             'trade_in_power' => null, 'trade_in_sn' => null, 'trade_in_price' => 0, 'trade_in_notes' => null,
             'tax' => false, 'tax_amount' => 0, 'shipping' => 0, 'total' => 0,
+            'note' => null, 'validity' => null, 'pricing' => null, 'payment' => null,
+            'warranty' => null, 'delivery_process' => null, 'rental_terms' => null,
         ];
     }
 
@@ -1973,6 +2038,13 @@ class UnitQuotationController extends Controller
                 'tax_amount'        => $opt['tax_amount'],
                 'shipping'          => $opt['shipping'],
                 'total'             => $opt['total'],
+                'note'              => $opt['note'] ?? null,
+                'validity'          => $opt['validity'] ?? null,
+                'pricing'           => $opt['pricing'] ?? null,
+                'payment'           => $opt['payment'] ?? null,
+                'warranty'          => $opt['warranty'] ?? null,
+                'delivery_process'  => $opt['delivery_process'] ?? null,
+                'rental_terms'      => $opt['rental_terms'] ?? null,
             ]);
 
             $this->saveDetails($quoteId, $opt['items'], $option->id);

@@ -179,27 +179,29 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <!-- New Leads -->
-                        @php
-                            $tLeads = $target->leads ?? 0;
-                            $pLeads = $tLeads > 0 ? round(($totalLeads / $tLeads) * 100) : 0;
-                        @endphp
-                        <div class="col-6 col-md-4">
-                            <a href="#activities" class="text-decoration-none">
-                                <div class="p-3 border rounded-3 bg-body-tertiary h-100">
-                                    <div class="d-flex align-items-center justify-content-between mb-2">
-                                        <span class="badge bg-label-secondary p-2 rounded-circle">
-                                            <i class="mdi mdi-account-multiple-plus-outline fs-5"></i>
-                                        </span>
-                                        <span class="badge bg-label-secondary rounded-pill fs-tiny">{{ $pLeads }}%</span>
+                        @if (isset($weeklyKpi['newleads']))
+                            @php
+                                $tLeads = $target->leads ?? 0;
+                                $pLeads = $tLeads > 0 ? round(($totalLeads / $tLeads) * 100) : 0;
+                            @endphp
+                            <div class="col-6 col-md-4">
+                                <a href="#activities" class="text-decoration-none">
+                                    <div class="p-3 border rounded-3 bg-body-tertiary h-100">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <span class="badge bg-label-secondary p-2 rounded-circle">
+                                                <i class="mdi mdi-account-multiple-plus-outline fs-5"></i>
+                                            </span>
+                                            <span class="badge bg-label-secondary rounded-pill fs-tiny">{{ $pLeads }}%</span>
+                                        </div>
+                                        <small class="text-muted d-block fw-semibold" style="font-size: 0.78rem;">New Leads</small>
+                                        <div class="d-flex align-items-baseline gap-1 mt-1">
+                                            <h5 class="mb-0 fw-bold text-dark">{{ $totalLeads }}</h5>
+                                            <small class="text-muted" style="font-size: 0.7rem;">/ {{ $tLeads }}</small>
+                                        </div>
                                     </div>
-                                    <small class="text-muted d-block fw-semibold" style="font-size: 0.78rem;">New Leads</small>
-                                    <div class="d-flex align-items-baseline gap-1 mt-1">
-                                        <h5 class="mb-0 fw-bold text-dark">{{ $totalLeads }}</h5>
-                                        <small class="text-muted" style="font-size: 0.7rem;">/ {{ $tLeads }}</small>
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
+                                </a>
+                            </div>
+                        @endif
 
                         <!-- Daily Call -->
                         @php

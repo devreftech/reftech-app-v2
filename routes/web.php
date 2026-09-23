@@ -54,6 +54,8 @@ use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\CatalogUnitController;
 use App\Http\Controllers\SalesTargetController;
+use App\Http\Controllers\EcommerceKpiController;
+use App\Http\Controllers\OnlineLeadController;
 use App\Http\Controllers\ProjectMonitoringController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WatermarkController;
@@ -102,6 +104,7 @@ use App\Models\UnitQuotation;
 use App\Models\User;
 use Carbon\Carbon;
 use FontLib\Table\Type\post;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
@@ -110,6 +113,7 @@ use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\DeveloperMaintenanceController;
 use App\Http\Controllers\Developer\DeveloperMailboxController;
+use App\Http\Controllers\Developer\DeveloperDashboardController;
 use Illuminate\Http\Request;
 
 /*
@@ -122,6 +126,14 @@ use Illuminate\Http\Request;
 | contains the "web" middleware group. Now create something great!
 |
 */
+
+// Developer Dashboard & DevOps Telemetry Routes
+Route::get('/developer/dashboard', [DeveloperDashboardController::class, 'index'])->name('developer.dashboard');
+Route::get('/developer/api/telemetry', [DeveloperDashboardController::class, 'ajaxTelemetry'])->name('developer.api.telemetry');
+Route::get('/developer/api/audit-logs', [DeveloperDashboardController::class, 'ajaxAuditLogs'])->name('developer.api.audit_logs');
+Route::post('/developer/actions/run', [DeveloperDashboardController::class, 'runAction'])->name('developer.actions.run');
+Route::get('/developer/api/log-detail', [DeveloperDashboardController::class, 'getLogDetail'])->name('developer.api.log_detail');
+Route::get('/developer/api/error-findings-daily', [DeveloperDashboardController::class, 'ajaxErrorFindingsDaily'])->name('developer.api.error_findings_daily');
 
 // Maintenance Mode Routes
 Route::get('/maintenance', [DeveloperMaintenanceController::class, 'showMaintenancePage'])->name('maintenance.page');
@@ -138,6 +150,7 @@ Route::post('/developer/mailbox-management/test-connection', [DeveloperMailboxCo
 Route::post('/developer/mailbox-management/sync/{id}', [DeveloperMailboxController::class, 'syncUser'])->name('developer.mailbox.sync');
 Route::post('/developer/mailbox-management/toggle-active/{id}', [DeveloperMailboxController::class, 'toggleActive'])->name('developer.mailbox.toggle_active');
 Route::delete('/developer/mailbox-management/delete/{id}', [DeveloperMailboxController::class, 'deleteSetting'])->name('developer.mailbox.delete');
+
 
 // Route Dashboard
 // Route::get('/', function () {
@@ -208,6 +221,7 @@ Route::group(["middleware" => "auth"], function () {
     // Route User
     Route::resource('/profile', UserController::class);
     Route::post('/profile/{id}/banner', [UserController::class, 'updateBanner'])->name('profile.banner.update');
+    Route::post('/user/quick-actions', [UserController::class, 'updateQuickActions'])->name('user.quick-actions.update');
 
     // Route Sales Mailbox Hub & Backend API
     Route::get('/sales/mailbox', [MailboxController::class, 'index'])->name('sales.mailbox.index');
@@ -239,6 +253,7 @@ Route::group(["middleware" => "auth"], function () {
 
     // Route For Forecast
     Route::get('/forecast', [ForecastController::class, 'index'])->name('forecast.index');
+    Route::post('/forecast/toggle-sales-visibility', [ForecastController::class, 'toggleSalesVisibility'])->name('forecast.toggle_sales_visibility');
     Route::get('/forecast/setup', [ForecastController::class, 'bulkSetup'])->name('forecast.setup');
     Route::post('/forecast/setup', [ForecastController::class, 'storeBulkSetup'])->name('forecast.setup.store');
     Route::post('/forecast/generate-default', [ForecastController::class, 'generateDefaultForecast'])->name('forecast.generate-default');
@@ -327,6 +342,32 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/sales-target/add-year', [SalesTargetController::class, 'addYear'])->name('sales-target.add-year');
     Route::post('/sales-target/{year}/save', [SalesTargetController::class, 'saveYearTargets'])->name('sales-target.save-year');
     Route::post('/sales-target/{year}/aggregate', [SalesTargetController::class, 'saveAggregateTarget'])->name('sales-target.save-aggregate');
+    Route::post('/sales-target/{year}/kpi', [SalesTargetController::class, 'saveKpiConfig'])->name('sales-target.save-kpi');
+    Route::post('/sales-target/roster-history', [SalesTargetController::class, 'saveRosterHistory'])->name('sales-target.save-history');
+    Route::post('/sales-target/{year}/toggle-roster', [SalesTargetController::class, 'toggleRoster'])->name('sales-target.toggle-roster');
+    Route::post('/sales-target/{year}/add-sales', [SalesTargetController::class, 'addSales'])->name('sales-target.add-sales');
+    Route::post('/sales-target/{year}/update-sales/{userId}', [SalesTargetController::class, 'updateSales'])->name('sales-target.update-sales');
+    Route::delete('/sales-target/{year}/remove-sales/{userId}', [SalesTargetController::class, 'removeSales'])->name('sales-target.remove-sales');
+
+    // Route KPI E-Commerce
+    Route::get('/ecommerce/kpi', [EcommerceKpiController::class, 'index'])->name('ecommerce.kpi.index');
+    Route::post('/ecommerce/kpi/period', [EcommerceKpiController::class, 'createPeriod'])->name('ecommerce.kpi.period.create');
+    Route::get('/ecommerce/kpi/evaluate/{id}', [EcommerceKpiController::class, 'evaluate'])->name('ecommerce.kpi.evaluate');
+    Route::post('/ecommerce/kpi/evaluate/{id}', [EcommerceKpiController::class, 'saveEvaluation'])->name('ecommerce.kpi.save-evaluation');
+    Route::post('/ecommerce/kpi/sync/{id}', [EcommerceKpiController::class, 'sync'])->name('ecommerce.kpi.sync');
+    Route::post('/ecommerce/kpi/publish/{id}', [EcommerceKpiController::class, 'publish'])->name('ecommerce.kpi.publish');
+    Route::get('/my-kpi', [EcommerceKpiController::class, 'myKpi'])->name('ecommerce.my-kpi');
+
+    // Route Leads Online (Multi-Channel Quick Capture)
+    Route::prefix('online-leads')->name('online-leads.')->group(function () {
+        Route::get('/', [OnlineLeadController::class, 'index'])->name('index');
+        Route::post('/', [OnlineLeadController::class, 'store'])->name('store');
+        Route::put('/{id}', [OnlineLeadController::class, 'update'])->name('update');
+        Route::delete('/{id}', [OnlineLeadController::class, 'destroy'])->name('destroy');
+        Route::post('/{id}/convert', [OnlineLeadController::class, 'convertToClient'])->name('convert');
+        Route::post('/{id}/follow-ups', [OnlineLeadController::class, 'storeFollowUp'])->name('follow-ups.store');
+        Route::put('/follow-up-items/{itemId}/status', [OnlineLeadController::class, 'updateFollowUpItemStatus'])->name('follow-up-items.status');
+    });
     // Route untuk PO
     // Route::get('/pending-po', function () {
     //     return view('pages.sales.po.pending.index');
@@ -379,6 +420,7 @@ Route::group(["middleware" => "auth"], function () {
     Route::patch('/product/equivalent/update/{id}', [ProductController::class, 'updateEquivalent'])->name('product.equivalent.update');
     Route::delete('/product/equivalent/{id}', [ProductController::class, 'destroyEquivalent'])->name('product.equivalent.destroy');
     Route::delete('/product/replacement/{id}', [ProductController::class, 'destroyReplacement'])->name('product.replacement.destroy');
+    Route::post('/product/replacement/{id}/toggle-opname', [ProductController::class, 'toggleOpname'])->name('product.replacement.toggle-opname');
     Route::get('/master/product', [ProductController::class, 'indexMaster'])->name(name: 'master.product');
 
     // Route untuk unit
@@ -1624,9 +1666,15 @@ Route::group(["middleware" => "auth"], function () {
     Route::delete('/pending-po/delete-resi/{id}', [PendingController::class, 'delete_resi'])->name('pending-po.resiDelete');
     Route::post('/pending-po/comment/{id}', [PendingController::class, 'add_comment'])->name('pending-po.addComment');
     Route::get('/pending-po/product-out/{id}', [PendingController::class, 'pending_out'])->name('pending-po.product_out');
+    Route::get('/pending-po/replacements/search', [PendingController::class, 'searchReplacements'])->name('pending-po.replacements.search');
     Route::get('/pending-po/product-out-project/{id}', [PendingController::class, 'pending_out_project'])->name('pending-po.product_out_project');
     Route::post('/pending-po/product-out/{id}', [PendingController::class, 'product_out'])->name('pending-po.product_out-post');
     Route::post('/pending-po/done/{id}', [PendingController::class, 'donePending'])->name('pending-po.donePending');
+    Route::post('/sales-order/bulk-status', [PendingController::class, 'bulkStatusUpdate'])->name('sales-order.bulk-status');
+    Route::post('/sales-order/link', [PendingController::class, 'linkSalesOrders'])->name('sales-order.link');
+    Route::post('/sales-order/unlink/{id}', [PendingController::class, 'unlinkSalesOrder'])->name('sales-order.unlink');
+    Route::get('/sales-order/linked-group/{id}', [PendingController::class, 'getLinkedGroup'])->name('sales-order.linked-group');
+
     Route::get('/pending-po-done', [PendingController::class, 'indexDone'])->name('pending-po.done');
     Route::get('/pending-po-project', [PendingController::class, 'indexProject'])->name('pending-po.index-project');
 
@@ -1739,6 +1787,8 @@ Route::group(["middleware" => "auth"], function () {
     Route::delete('/purchase-request/delete/{id}', [PurchaseController::class, 'delete'])->name('purchase-request.delete');
     Route::patch('/purchase-request/acc/{id}', [PurchaseController::class, 'acc'])->name('purchase-request.acc');
     Route::patch('/purchase-request/reject/{id}', [PurchaseController::class, 'reject'])->name('purchase-request.reject');
+    Route::patch('/purchase-request/{id}/reject-items', [PurchaseController::class, 'rejectItems'])->name('purchase-request.reject-items');
+    Route::patch('/purchase-request/{id}/unreject-item/{detailId}', [PurchaseController::class, 'unrejectItem'])->name('purchase-request.unreject-item');
     Route::match(['post', 'patch'], '/purchase-request/rollback-new/{id}', [PurchaseController::class, 'rollbackToNew'])->name('purchase-request.rollback-new');
     Route::patch('/purchase-request/delivery/{id}', [PurchaseController::class, 'delivery'])->name('purchase-request.delivery');
     Route::patch('/purchase-request/delivery-info/{id}', [PurchaseController::class, 'updateDeliveryInfo'])->name('purchase-request.update-delivery-info');
@@ -1842,8 +1892,14 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/stock-opname', [OpnameController::class, 'store'])->name('opname.store');
     Route::get('/stock-opname/{id}', [OpnameController::class, 'show'])->name('opname.show');
     Route::get('/stock-opname-print/{id}', [OpnameController::class, 'show_print'])->name('opname.show_print');
+    Route::get('/stock-opname/{id}/sync-updates', [OpnameController::class, 'sync_updates'])->name('opname.sync_updates');
+    Route::post('/stock-opname/{id}/save-item', [OpnameController::class, 'save_item_inline'])->name('opname.save_item_inline');
+    Route::post('/stock-opname/{id}/bulk-fill-system', [OpnameController::class, 'bulk_fill_system'])->name('opname.bulk_fill_system');
+    Route::post('/stock-opname/{id}/bulk-reset', [OpnameController::class, 'bulk_reset'])->name('opname.bulk_reset');
+    Route::post('/stock-opname/{id}/finalize', [OpnameController::class, 'finalize'])->name('opname.finalize');
     Route::post('/stock-opname/{id}', [OpnameController::class, 'store_product'])->name('opname.store_product');
     Route::post('/stock-opname/update/{id}', [OpnameController::class, 'update_product'])->name('opname.update_product');
+    Route::delete('/stock-opname/{id}', [OpnameController::class, 'destroy'])->name('opname.destroy');
     Route::get('/stock/replacement/{id}', [OpnameController::class, 'stock_replacement'])->name('payable.stock_replacement');
     Route::get('/show/replacement/{id}', [OpnameController::class, 'show_replacement'])->name('payable.show_replacement');
 
@@ -2048,6 +2104,11 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/notifications/kanban/unread', [KanbanController::class, 'unreadKanbanNotifications'])->name('notifications.kanban.unread');
     Route::get('/notifications/kanban/{commentId}/go', [KanbanController::class, 'goKanbanMention'])->name('notifications.kanban.go');
     Route::post('/notifications/kanban/{commentId}/read', [KanbanController::class, 'markKanbanMentionRead'])->name('notifications.kanban.read');
+
+    // Unified Module Mentions (Smart Quotation, Prospect, Purchase Request)
+    Route::get('/notifications/mentions/unread', [\App\Http\Controllers\MentionNotificationController::class, 'unreadMentions'])->name('notifications.mentions.unread');
+    Route::get('/notifications/mentions/{module}/{id}/go', [\App\Http\Controllers\MentionNotificationController::class, 'goMention'])->name('notifications.mentions.go');
+    Route::post('/notifications/mentions/{module}/{id}/read', [\App\Http\Controllers\MentionNotificationController::class, 'markMentionRead'])->name('notifications.mentions.read');
 
     // BAST (Berita Acara Serah Terima)
     Route::get('/bast', [BastController::class, 'index'])->name('bast.index');
@@ -2767,11 +2828,12 @@ Route::group(["middleware" => "auth"], function () {
 
             $qInvoices = $qQuery->orderByDesc('invoice.date')->select([
                 'invoice.*',
-                DB::raw("SUBSTRING(invoice.no_invoice, 1, 12) as short_invoice"),
+                DB::raw("invoice.no_invoice as short_invoice"),
                 DB::raw("SUBSTRING(invoice.no_po, 1, 10) as short_po"),
                 'client.company',
                 'client.info as bendera',
                 'users.name as name',
+                'users.image as sales_image',
                 DB::raw("DATE_FORMAT(invoice.date, '%d-%m-%Y') as tanggal"),
                 'quotation.harga_total',
                 'quotation.po_date',
@@ -2817,11 +2879,12 @@ Route::group(["middleware" => "auth"], function () {
 
             $uqInvoices = $uqQuery->orderByDesc('invoice.date')->select([
                 'invoice.*',
-                DB::raw("SUBSTRING(invoice.no_invoice, 1, 12) as short_invoice"),
+                DB::raw("invoice.no_invoice as short_invoice"),
                 DB::raw("SUBSTRING(invoice.no_po, 1, 10) as short_po"),
                 'client.company',
                 'client.info as bendera',
                 'users.name as name',
+                'users.image as sales_image',
                 DB::raw("DATE_FORMAT(invoice.date, '%d-%m-%Y') as tanggal"),
                 DB::raw('unit_quotation.total as harga_total'),
                 DB::raw('unit_quotation.created_at as po_date'),
@@ -2894,6 +2957,7 @@ Route::group(["middleware" => "auth"], function () {
             ->join('client as c', 'c.id', '=', 'pic.id_client')
             ->join('users as u', 'u.id', '=', 'q.id_sales')
             ->join('payment as p', 'p.id_quotation', '=', 'q.id')
+            ->leftJoin('marketplaces as mp', 'mp.id', '=', 'p.id_marketplace')
             ->whereIn('u.id', ['16', '23'])
             ->where('p.method', 'Escrow')
             ->when($year && $year !== 'all', fn($q2) => $q2->whereYear('invoice.date', (int) $year))
@@ -2905,6 +2969,8 @@ Route::group(["middleware" => "auth"], function () {
                 'c.company',
                 'c.info as bendera',
                 'u.name as name',
+                'u.image as sales_image',
+                DB::raw('mp.name as marketplace_name'),
                 DB::raw("DATE_FORMAT(invoice.date, '%d-%m-%Y') as tanggal"),
                 'q.harga_total',
                 DB::raw('p.amount as nominal'),
@@ -4925,8 +4991,9 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             ]);
         return response()->json(['data' => $prospect]);
     });
-    Route::get('/db/prospect/sales', function () {
-        $prospect = Prospect::join('pic', 'pic.id', '=', 'prospect.id_pic')
+    Route::get('/db/prospect/sales', function (\Illuminate\Http\Request $request) {
+        $tab = $request->query('tab', 'new');
+        $query = Prospect::join('pic', 'pic.id', '=', 'prospect.id_pic')
             ->join('client', 'client.id', '=', 'pic.id_client')
             ->leftJoin('users as sale', 'sale.id', '=', 'prospect.id_sales')
             ->leftJoin('users as supp', 'supp.id', '=', 'prospect.id_support')
@@ -4935,11 +5002,29 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                 $join->on('unit_quotation.id', '=', 'prospect.id_quotation')
                     ->on('unit_quotation.id_pic', '=', 'prospect.id_pic');
             })
-            ->where('sale.id', Auth::id())
-            ->whereNull('prospect.level')
-            ->orderByDesc('prospect.id')
+            ->where('sale.id', Auth::id());
+
+        if ($tab === 'fu') {
+            $query->where('prospect.level', '9');
+        } elseif ($tab === 'quoted') {
+            $query->where('prospect.level', '1')
+                ->where(function ($q) {
+                    $q->whereNotIn(DB::raw('COALESCE(unit_quotation.status, quotation.status)'), ['100', 'po_received'])
+                        ->orWhereNull(DB::raw('COALESCE(unit_quotation.status, quotation.status)'));
+                });
+        } elseif ($tab === 'no_quote' || $tab === 'no-quote') {
+            $query->whereIn('prospect.level', ['0', '2']);
+        } elseif ($tab === 'po') {
+            $query->where('prospect.level', '1')
+                ->whereIn(DB::raw('COALESCE(unit_quotation.status, quotation.status)'), ['100', 'po_received']);
+        } else {
+            $query->whereNull('prospect.level');
+        }
+
+        $prospect = $query->orderByDesc('prospect.id')
             ->get([
                 'prospect.id',
+                'prospect.level',
                 'prospect.category',
                 'prospect.kebutuhan',
                 'prospect.date',
@@ -4958,38 +5043,9 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
             ]);
         return response()->json(['data' => $prospect]);
     });
-    Route::get('/db/prospect/sales/fu', function () {
-        $prospect = Prospect::join('pic', 'pic.id', '=', 'prospect.id_pic')
-            ->join('client', 'client.id', '=', 'pic.id_client')
-            ->leftJoin('users as sale', 'sale.id', '=', 'prospect.id_sales')
-            ->leftJoin('users as supp', 'supp.id', '=', 'prospect.id_support')
-            ->leftJoin('quotation', 'quotation.id', '=', 'prospect.id_quotation')
-            ->leftJoin('unit_quotation', function ($join) {
-                $join->on('unit_quotation.id', '=', 'prospect.id_quotation')
-                    ->on('unit_quotation.id_pic', '=', 'prospect.id_pic');
-            })
-            ->where('sale.id', Auth::id())
-            ->where('prospect.level', '9')
-            ->orderByDesc('prospect.id')
-            ->get([
-                'prospect.id',
-                'prospect.category',
-                'prospect.kebutuhan',
-                'prospect.date',
-                'client.company',
-                'client.source',
-                'client.area',
-                'supp.name as support_name',
-                'supp.image as support_image',
-                'pic.name_pic',
-                'pic.phone_pic',
-                DB::raw('COALESCE(unit_quotation.id, quotation.id) as quotation_id'),
-                DB::raw('COALESCE(unit_quotation.no_quote, quotation.no_quote) as no_quote'),
-                DB::raw('COALESCE(unit_quotation.status, quotation.status) as status'),
-                DB::raw('COALESCE(unit_quotation.total, quotation.nett) as nett'),
-                DB::raw('CASE WHEN unit_quotation.id IS NOT NULL THEN 1 ELSE 0 END as is_smart'),
-            ]);
-        return response()->json(['data' => $prospect]);
+    Route::get('/db/prospect/sales/fu', function (\Illuminate\Http\Request $request) {
+        $request->merge(['tab' => 'fu']);
+        return app()->handle(\Illuminate\Http\Request::create('/db/prospect/sales?tab=fu', 'GET'));
     });
     Route::get('/db/prospect/admin', function () {
         $prospect = Prospect::join('pic', 'pic.id', '=', 'prospect.id_pic')
@@ -7585,39 +7641,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
 
         return response()->json(['data' => $data]);
     });
-    Route::get('/db/stock/opname/{id}', function ($id) {
-
-        $prevStockOpnameId = StockOpname::where('id', '<', $id)
-            ->orderBy('id', 'desc')
-            ->value('id');
-
-        $data = DetailStockOpname::leftJoin('detail_product as dp', 'dp.id', '=', 'detail_stock_opname.id_product')
-            ->leftJoin('product as p', 'p.id', '=', 'dp.id_product')
-            ->leftJoin('detail_stock_opname as prev', function ($join) use ($prevStockOpnameId) {
-                $join->on('prev.id_product', '=', 'detail_stock_opname.id_product')
-                    ->where('prev.id_stock_opname', '=', $prevStockOpnameId);
-            })
-            ->where('detail_stock_opname.id_stock_opname', $id)
-            ->select(
-                'detail_stock_opname.*',
-                DB::raw("
-                    CONCAT(
-                        dp.replacement,
-                        ' (',
-                        LEFT(COALESCE(p.go, 'N'), 1),
-                        ')'
-                    ) as replacement
-                "),
-                DB::raw('COALESCE(prev.stock_sistem, 0) as prev_qty')
-            )
-            ->get();
-
-        return response()->json([
-            'current_stock_opname_id' => $id,
-            'previous_stock_opname_id' => $prevStockOpnameId,
-            'data' => $data
-        ]);
-    });
+    Route::get('/db/stock/opname/{id}', [OpnameController::class, 'data_items']);
     Route::get('/db/income/statment', function () {
         $data = LabaRugi::select(
             'laba_rugi.*',
@@ -7801,10 +7825,61 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
         return response()->json(['data' => $data]);
     });
     Route::get('/db/purchase-order', function () {
-        $data = PurchaseOrder::select(
+        $orders = PurchaseOrder::with([
+            'detail:id,id_purchase_order,product,category,kondisi,qty,info_qty,price,disc,amount,pph',
+            'purchaseRequest:id,no_pr,id_pending',
+            'prAllocations.detail.purchaseRequest:id,no_pr,id_pending'
+        ])->select(
             'purchase_order.*',
             DB::raw("DATE_FORMAT(purchase_order.date, '%d-%m-%Y') as tanggal")
         )->get();
+
+        $productIns = \App\Models\ProductIn::whereIn('id_purchase_order', $orders->pluck('id'))
+            ->pluck('id', 'id_purchase_order');
+
+        $data = $orders->map(function ($po) use ($productIns) {
+            $itemCount = $po->detail->count();
+            $totalPcs = (float) $po->detail->sum('qty');
+            $firstItem = $po->detail->first();
+            $unit = $firstItem ? ($firstItem->info_qty ?: 'pcs') : 'item';
+            $qtyFull = $itemCount === 1 ? ($firstItem->qty . ' ' . $unit) : ($itemCount . ' item (' . $totalPcs . ' pcs)');
+
+            $noPr = $po->purchaseRequest->no_pr ?? null;
+            $idPr = $po->purchaseRequest->id ?? null;
+            if (!$noPr && $po->prAllocations && $po->prAllocations->isNotEmpty()) {
+                $firstAlloc = $po->prAllocations->first();
+                if ($firstAlloc && $firstAlloc->detail && $firstAlloc->detail->purchaseRequest) {
+                    $noPr = $firstAlloc->detail->purchaseRequest->no_pr;
+                    $idPr = $firstAlloc->detail->purchaseRequest->id;
+                }
+            }
+
+            $itemsDetail = $po->detail->map(function ($d) {
+                return [
+                    'id' => $d->id,
+                    'product' => $d->product,
+                    'category' => $d->category,
+                    'kondisi' => $d->kondisi,
+                    'qty' => $d->qty,
+                    'unit' => $d->info_qty ?: 'Pcs',
+                    'price' => (float) $d->price,
+                    'disc' => (float) $d->disc,
+                    'amount' => (float) $d->amount,
+                    'pph' => (float) $d->pph,
+                ];
+            })->values();
+
+            $arr = $po->toArray();
+            $arr['item_count'] = $itemCount;
+            $arr['total_pcs'] = $totalPcs;
+            $arr['qty_full'] = $qtyFull;
+            $arr['items_list'] = $itemsDetail;
+            $arr['no_pr'] = $noPr;
+            $arr['id_pr'] = $idPr;
+            $arr['id_gr'] = $productIns[$po->id] ?? null;
+            return $arr;
+        });
+
         return response()->json(['data' => $data]);
     });
     Route::get('/db/product/set', function () {

@@ -74,6 +74,11 @@ class DeliveryController extends Controller
             $deliveries = $query->latest('id')->skip($start)->take($length)->get();
 
             $data = $deliveries->map(function ($del) {
+                $delType = strtolower($del->type ?? 'ekspedisi');
+                $printUrl = ($del->code === 'Manual' || !$del->id_invoice)
+                    ? route('delivery.print_manual', $del->id) . '?format=' . $delType
+                    : route('print.delivery', $del->id) . '?format=' . $delType;
+
                 return [
                     'id'            => $del->id,
                     'do_number'     => $del->do_number,
@@ -83,12 +88,12 @@ class DeliveryController extends Controller
                     'date'          => $del->date ? \Carbon\Carbon::parse($del->date)->format('d/m/Y') : '-',
                     'code'          => $del->code ?: ($del->id_suo ? 'SUO' : 'Delivery'),
                     'entity'        => $del->entity_display,
-                    'type'          => strtolower($del->type ?? 'ekspedisi'),
+                    'type'          => $delType,
                     'driver_name'   => $del->driver_name,
                     'is_signed'     => $del->isSignedByCustomer(),
                     'signed_at'     => $del->customer_signed_at ? \Carbon\Carbon::parse($del->customer_signed_at)->format('d/m/Y H:i') : null,
                     'show_url'      => route('delivery.show', $del->id),
-                    'print_url'     => route('print.delivery', $del->id),
+                    'print_url'     => $printUrl,
                     'sign_url'      => $del->sign_url,
                     'delete_url'    => route('delivery.destroy', $del->id),
                     'reset_url'     => route('delivery.reset-signature', $del->id),
@@ -259,7 +264,7 @@ class DeliveryController extends Controller
             $delivery->driver_name = $request->input('driver_name');
             $delivery->vehicle_no = $request->input('vehicle_no');
             $delivery->note = $request->input('note');
-            $delivery->date = $request->filled('date') ? $request->input('date') : now()->toDateString();
+            $delivery->date = $request->filled('date') ? $request->input('date') : null;
             $delivery->type = $request->input('type', 'ekspedisi');
             $delivery->code = 'Manual';
             $delivery->save();
@@ -393,9 +398,23 @@ class DeliveryController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
     public function edit($id)
     {
-        //
+        $delivery = Delivery::findOrFail($id);
+        $dDelivery = DetailDelivery::where('id_delivery', $id)->get();
+
+        $invoices = Invoice::with(['quote.pic.client', 'unitQuote.client'])
+            ->whereNotNull('no_invoice')
+            ->orderByDesc('id')
+            ->get();
+
+        return view('pages.accounting.delivery.edit', compact('delivery', 'dDelivery', 'invoices'));
     }
 
     /**
@@ -408,10 +427,73 @@ class DeliveryController extends Controller
     public function update(Request $request, $id)
     {
         $delivery = Delivery::findOrFail($id);
-        $delivery->date = $request->filled('date') ? $request->date : null;
-        $delivery->save();
 
-        return redirect()->back()->with('success', 'Tanggal Surat Jalan berhasil diperbarui.');
+        $request->validate([
+            'source_type'   => 'nullable|in:invoice,standalone',
+            'id_invoice'    => 'nullable|integer',
+            'entity'        => 'required|in:Reftech,Kojisha',
+            'customer_name' => 'required|string|max:255',
+            'address'       => 'required|string',
+            'date'          => 'nullable|date',
+            'type'          => 'required|in:teknisi,ekspedisi',
+            'no_do'         => 'nullable|string|max:255',
+            'po_number'     => 'nullable|string|max:255',
+            'driver_name'   => 'nullable|string|max:255',
+            'vehicle_no'    => 'nullable|string|max:255',
+            'note'          => 'nullable|string',
+            'items'         => 'nullable|array|min:1',
+            'items.*.product'  => 'required_with:items|string|max:255',
+            'items.*.desc'     => 'nullable|string',
+            'items.*.qty'      => 'required_with:items|numeric|min:0.01',
+            'items.*.info_qty' => 'required_with:items|string|max:50',
+        ], [
+            'customer_name.required' => 'Nama Customer / Perusahaan wajib diisi.',
+            'address.required'       => 'Alamat Pengiriman wajib diisi.',
+            'items.*.product.required' => 'Nama barang pada setiap baris item wajib diisi.',
+            'items.*.qty.required'     => 'Jumlah Qty wajib diisi.',
+        ]);
+
+        DB::transaction(function () use ($request, $delivery) {
+            $delivery->entity = $request->input('entity', $delivery->entity ?: 'Reftech');
+            if ($request->filled('no_do')) {
+                $delivery->no_do = trim($request->input('no_do'));
+            }
+            if ($request->input('source_type') === 'invoice' && $request->filled('id_invoice')) {
+                $delivery->id_invoice = $request->input('id_invoice');
+            } elseif ($request->input('source_type') === 'standalone') {
+                $delivery->id_invoice = null;
+            }
+            $delivery->customer_name = $request->input('customer_name');
+            $delivery->address = $request->input('address');
+            $delivery->po_number = $request->input('po_number');
+            $delivery->destination = $request->input('destination', $delivery->destination ?: '1') ?: '1';
+            $delivery->driver_name = $request->input('driver_name');
+            $delivery->vehicle_no = $request->input('vehicle_no');
+            $delivery->note = $request->input('note');
+            $delivery->date = $request->filled('date') ? $request->input('date') : null;
+            $delivery->type = $request->input('type', $delivery->type ?: 'ekspedisi');
+            $delivery->save();
+
+            if ($request->has('items') && is_array($request->input('items'))) {
+                DetailDelivery::where('id_delivery', $delivery->id)->delete();
+                foreach ($request->input('items', []) as $item) {
+                    if (empty($item['product']) && empty($item['desc'])) {
+                        continue;
+                    }
+                    $dDelivery = new DetailDelivery();
+                    $dDelivery->id_delivery = $delivery->id;
+                    $dDelivery->type = 'item';
+                    $dDelivery->product = $item['product'] ?? '';
+                    $dDelivery->desc = $item['desc'] ?? null;
+                    $dDelivery->qty = (float) ($item['qty'] ?? 1);
+                    $dDelivery->info_qty = $item['info_qty'] ?? 'Pcs';
+                    $dDelivery->view = '0';
+                    $dDelivery->save();
+                }
+            }
+        });
+
+        return redirect()->route('delivery.show', $delivery->id)->with('success', 'Surat Jalan (' . $delivery->do_number . ') berhasil diperbarui.');
     }
 
     /**
@@ -452,12 +534,18 @@ class DeliveryController extends Controller
     public function create_manual_teknisi($id)
     {
         $invoice = Invoice::find($id);
+        if (!$invoice) {
+            return redirect()->route('delivery.index')->with('error', 'Invoice tidak ditemukan');
+        }
         return view('pages.accounting.delivery.manual.form-teknisi', compact('invoice'));
     }
 
     public function create_manual_ekspedisi($id)
     {
         $invoice = Invoice::find($id);
+        if (!$invoice) {
+            return redirect()->route('delivery.index')->with('error', 'Invoice tidak ditemukan');
+        }
         return view('pages.accounting.delivery.manual.form-ekspedisi', compact('invoice'));
     }
 
@@ -519,8 +607,9 @@ class DeliveryController extends Controller
         $invoice = $delivery->id_invoice ? Invoice::find($delivery->id_invoice) : null;
         $quote = ($invoice && $invoice->id_quotation) ? Quotation::find($invoice->id_quotation) : null;
         $subQuote = $quote ? SubtitleQuotation::with('detail')->where('id_quotation', $quote->id)->get() : collect();
+        $format = request('format', $delivery->type);
 
-        return view("pages.accounting.delivery.manual.detail-print", compact('subQuote', 'delivery', 'dDelivery', 'invoice', 'quote'));
+        return view("pages.accounting.delivery.manual.detail-print", compact('subQuote', 'delivery', 'dDelivery', 'invoice', 'quote', 'format'));
     }
 
     public function print_delivery($id)

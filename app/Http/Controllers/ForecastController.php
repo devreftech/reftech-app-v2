@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AppSetting;
 use App\Models\Client;
 use App\Models\Machine;
 use App\Models\Unit;
@@ -26,6 +27,11 @@ class ForecastController extends Controller
      */
     public function index(Request $request)
     {
+        // Jika role Sales dan fitur dinonaktifkan oleh Admin/Developer, larang akses
+        if (Auth::user()->role === 'Sales' && !AppSetting::isSalesForecastMenuEnabled()) {
+            return redirect('/')->with('error', 'Fitur Forecast saat ini sedang dinonaktifkan.');
+        }
+
         $year = $request->input('year', Carbon::now()->year);
         $salesId = Auth::user()->role == 'Admin' || Auth::user()->role == 'Sales Manager' 
             ? $request->input('id_sales') 
@@ -36,13 +42,38 @@ class ForecastController extends Controller
         $salesUsers = \App\Models\User::whereIn('id', [1, 2, 3, 4, 32])->get();
 
         $forecastData = $this->getForecastDataArray($salesId, $year, $semester);
+        $salesForecastMenuEnabled = AppSetting::isSalesForecastMenuEnabled();
 
         return view('pages.sales.forecast.dashboard', array_merge([
             'year' => $year,
             'salesId' => $salesId,
             'salesUsers' => $salesUsers,
             'semester' => $semester,
+            'salesForecastMenuEnabled' => $salesForecastMenuEnabled,
         ], $forecastData));
+    }
+
+    /**
+     * Toggle visibility of Forecast menu for Sales role (Admin & Developer only).
+     */
+    public function toggleSalesVisibility(Request $request)
+    {
+        if (!in_array(Auth::user()->role, ['Admin', 'Developer', 'Super Admin'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access.',
+            ], 403);
+        }
+
+        $newState = AppSetting::toggleSalesForecastMenu();
+
+        return response()->json([
+            'success' => true,
+            'is_enabled' => $newState,
+            'message' => $newState 
+                ? 'Menu Forecast untuk role Sales berhasil DIAKTIFKAN.' 
+                : 'Menu Forecast untuk role Sales berhasil DINONAKTIFKAN (disembunyikan dari sidebar).',
+        ]);
     }
 
     /**
@@ -287,7 +318,8 @@ class ForecastController extends Controller
             $clientIds = array_unique($forecastedClientIds);
             $picIds = \App\Models\Pic::whereIn('id_client', $clientIds)->pluck('id');
 
-            $quotationQuery = Quotation::where('status', '100')
+            $quotationQuery = Quotation::with('pic.client')
+                ->where('status', '100')
                 ->where('is_primary', '1')
                 ->where('level', '1')
                 ->whereIn('id_pic', $picIds)

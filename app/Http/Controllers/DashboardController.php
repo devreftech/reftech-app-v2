@@ -71,76 +71,99 @@ class DashboardController extends Controller
         // Role lain (Accounting, Finance Manager, Logistic, Support, dst) tidak menerima variabel ini,
         // jadi query berat di bawah ini dilewati supaya dashboard mereka tidak ikut menanggung bebannya.
         if (in_array(Auth::user()->role, ['Sales', 'Admin', 'Sales Manager'], true)) {
-            $sales = User::where('role', 'Sales')
-                ->where('active', '1')
-                ->with('latestTarget')
-                ->with('latestRole')
-                ->orderByDesc('id')
-                ->get();
+            $rankingCacheKey = "sales_leaderboard_rank_{$yearNow}_{$monthNow}";
+            $rankingData = Cache::remember($rankingCacheKey, 300, function () use ($yearNow, $monthNow) {
+                // Ambil daftar sales yang aktif di roster tahun berjalan dari Sales Management
+                $rosterRecords = SalesTargetHistory::where('year', $yearNow)
+                    ->where('is_active_roster', 1)
+                    ->get()
+                    ->keyBy('user_id');
 
-            $result = [];
-            $teamIds = [16, 23];
+                $activeUserIds = $rosterRecords->isNotEmpty()
+                    ? $rosterRecords->keys()
+                    : User::where('role', 'Sales')->where('active', '1')->pluck('id');
 
-            $teamTotalPO = 0;
-            $teamTotalTarget = 0;
+                $salesList = User::whereIn('id', $activeUserIds)
+                    ->where('active', '1')
+                    ->with(['latestTarget', 'latestRole', 'currentRoster'])
+                    ->orderByDesc('id')
+                    ->get();
 
-            $poPerSales = Quotation::whereYear('po_date', $yearNow)
-                ->whereMonth('po_date', $monthNow)
-                ->where('status', '100')
-                ->where('level', '1')
-                ->where('is_primary', '1')
-                ->groupBy('id_sales')
-                ->selectRaw('id_sales, SUM(nett) as total_nett')
-                ->pluck('total_nett', 'id_sales');
-
-            $unitPoPerSales = UnitQuotation::where('status', 'po_received')
-                ->where('is_latest', 1)
-                ->whereYear('po_received', $yearNow)
-                ->whereMonth('po_received', $monthNow)
-                ->groupBy('id_sales')
-                ->selectRaw('id_sales, SUM(total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)) as total_nett')
-                ->pluck('total_nett', 'id_sales');
-
-            foreach ($sales as $sale) {
-
-                $targetPerSales = $sale->latestTarget->total ?? 0;
-                $poTotalPricePerSales = $poPerSales->get($sale->id, 0) + $unitPoPerSales->get($sale->id, 0);
-
-                // 🔥 kalau termasuk team ecommerce
-                if (in_array($sale->id, $teamIds)) {
-                    $teamTotalPO += $poTotalPricePerSales;
-                    $teamTotalTarget += $targetPerSales;
-                    continue; // skip masuk ke result individual
+                $result = [];
+                $teamIds = $rosterRecords->filter(fn($r) => $r->sales_type === 'ecommerce')->keys()->toArray();
+                if (empty($teamIds)) {
+                    $teamIds = [16, 23];
                 }
 
-                $percentage = $targetPerSales > 0
-                    ? round(($poTotalPricePerSales / $targetPerSales) * 100, 2)
+                $teamTotalPO = 0;
+                $teamTotalTarget = 0;
+
+                $poPerSales = Quotation::whereYear('po_date', $yearNow)
+                    ->whereMonth('po_date', $monthNow)
+                    ->where('status', '100')
+                    ->where('level', '1')
+                    ->where('is_primary', '1')
+                    ->groupBy('id_sales')
+                    ->selectRaw('id_sales, SUM(nett) as total_nett')
+                    ->pluck('total_nett', 'id_sales');
+
+                $unitPoPerSales = UnitQuotation::where('status', 'po_received')
+                    ->where('is_latest', 1)
+                    ->whereYear('po_received', $yearNow)
+                    ->whereMonth('po_received', $monthNow)
+                    ->groupBy('id_sales')
+                    ->selectRaw('id_sales, SUM(total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)) as total_nett')
+                    ->pluck('total_nett', 'id_sales');
+
+                foreach ($salesList as $sale) {
+
+                    $targetPerSales = $sale->latestTarget->total ?? 0;
+                    $poTotalPricePerSales = $poPerSales->get($sale->id, 0) + $unitPoPerSales->get($sale->id, 0);
+
+                    // 🔥 kalau termasuk team ecommerce
+                    if (in_array($sale->id, $teamIds)) {
+                        $teamTotalPO += $poTotalPricePerSales;
+                        $teamTotalTarget += $targetPerSales;
+                        continue; // skip masuk ke result individual
+                    }
+
+                    $percentage = $targetPerSales > 0
+                        ? round(($poTotalPricePerSales / $targetPerSales) * 100, 2)
+                        : 0;
+
+                    $result[] = [
+                        'name' => $sale->name,
+                        'area' => $sale->latestRole->area ?? '-',
+                        'percentage' => $percentage,
+                    ];
+                }
+
+                ## 🔥 Tambahin team ecommerce di akhir
+
+                $teamPercentage = $teamTotalTarget > 0
+                    ? round(($teamTotalPO / $teamTotalTarget) * 100, 2)
                     : 0;
 
                 $result[] = [
-                    'name' => $sale->name,
-                    'area' => $sale->latestRole->area ?? '-',
-                    'percentage' => $percentage,
+                    'name' => 'Team Ecommerce',
+                    'area' => 'Online',
+                    'percentage' => $teamPercentage,
                 ];
-            }
 
-            ## 🔥 Tambahin team ecommerce di akhir
+                ## 🚀 Sorting tetap sama
 
-            $teamPercentage = $teamTotalTarget > 0
-                ? round(($teamTotalPO / $teamTotalTarget) * 100, 2)
-                : 0;
+                $sortedRank = collect($result)
+                    ->sortByDesc('percentage')
+                    ->values();
 
-            $result[] = [
-                'name' => 'Team Ecommerce',
-                'area' => 'Online',
-                'percentage' => $teamPercentage,
-            ];
+                return [
+                    'sales' => $salesList,
+                    'sorted' => $sortedRank,
+                ];
+            });
 
-            ## 🚀 Sorting tetap sama
-
-            $sorted = collect($result)
-                ->sortByDesc('percentage')
-                ->values();
+            $sales = $rankingData['sales'];
+            $sorted = $rankingData['sorted'];
         }
 
         if (Auth::user()->role == 'Sales') {
@@ -715,16 +738,16 @@ class DashboardController extends Controller
                 DB::table('activities')
                     ->select('activities.id', 'activities.created_at', DB::raw("'activities' as type"), 'client.company as detail', 'status as vers', 'name as status')
                     ->join('client', 'client.id', '=', 'activities.id_client')
-                    ->where('id_sales', Auth::id())
+                    ->where('client.id_sales', Auth::id())
                     ->whereDate('activities.created_at', $date)
             )
             ->unionAll(
                 DB::table('comment')
-                    ->select('q.id', 'comment.created_at', DB::raw("'comment' as type"), 'comment.comment as detail', 'no_quote as vers', 'name as status')
+                    ->select('q.id', 'comment.created_at', DB::raw("'comment' as type"), 'comment.comment as detail', 'no_quote as vers', 'u.name as status')
                     ->join('change_status as c', 'c.id', '=', 'comment.id_status')
                     ->join('quotation as q', 'q.id', '=', 'c.id_quotation')
                     ->join('users as u', 'u.id', '=', 'q.id_sales')
-                    ->where('id_user', Auth::id())
+                    ->where('comment.id_user', Auth::id())
                     ->whereDate('comment.created_at', $date)
             )
             ->orderBy('created_at', 'desc') // Mengurutkan berdasarkan created_at
@@ -1280,9 +1303,29 @@ class DashboardController extends Controller
         return $formattedPO;
     }
 
+    public function filteredTargetProspect($sales)
+    {
+        $target = Target::where('id_sales', $sales)->first();
+        return $target ? ($target->total ?? 0) : 0;
+    }
+
     public function filteredTargetProspectAdmin($sales)
     {
         return $this->filteredTargetProspect($sales);
+    }
+
+    public function totalForecast($sales)
+    {
+        $dateNow = Carbon::now();
+        $monthNow = $dateNow->month;
+        $yearNow = $dateNow->year;
+        $totalForecast = Quotation::whereYear('estimated_date', $yearNow)
+            ->whereMonth('estimated_date', $monthNow)
+            ->where('id_sales', $sales)
+            ->where('level', '1')
+            ->where('is_primary', '1')
+            ->sum('nett');
+        return number_format($totalForecast, 0, ",", ".");
     }
 
     public function totalForecastAdmin($sales)

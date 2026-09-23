@@ -14,8 +14,17 @@
                 <li class="breadcrumb-item active text-primary fw-semibold" aria-current="page">Presensi &amp; Kehadiran</li>
             </ol>
         </nav>
-        <h4 class="fw-bold mb-0 text-heading">
-            Presensi &amp; Waktu Kerja
+        <h4 class="fw-bold mb-0 text-heading d-flex align-items-center flex-wrap gap-2">
+            <span>Presensi &amp; Waktu Kerja</span>
+            @if ($filterType === 'monthly')
+                <span class="badge bg-label-primary fs-6 fw-semibold">
+                    <i class="mdi mdi-calendar-month me-1"></i>{{ \Carbon\Carbon::create($selectedYear, $selectedMonthNum, 1)->translatedFormat('F Y') }}
+                </span>
+            @else
+                <span class="badge bg-label-primary fs-6 fw-semibold">
+                    <i class="mdi mdi-calendar-today me-1"></i>{{ \Carbon\Carbon::parse($selectedDate)->translatedFormat('d F Y') }}
+                </span>
+            @endif
         </h4>
     </div>
 
@@ -62,7 +71,7 @@
             <div class="card-body p-3">
                 <span class="text-muted small fw-semibold d-block mb-1">Hadir Tepat Waktu</span>
                 <h4 class="fw-bold text-success mb-0">{{ max(0, $stats['total_present'] - $stats['total_late']) }}</h4>
-                <div class="text-muted small mt-1" style="font-size:0.75rem;">Status hadir normal</div>
+                <div class="text-muted small mt-1" style="font-size:0.75rem;">Status hadir tepat waktu</div>
             </div>
         </div>
     </div>
@@ -108,11 +117,27 @@
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-3">
         <form action="{{ route('hr.attendances.index') }}" method="GET" class="row g-2 align-items-center">
-            <div class="col-12 col-sm-6 col-md-3">
-                <label class="form-label small fw-semibold mb-1">Pilih Tanggal</label>
-                <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-light"><i class="mdi mdi-calendar"></i></span>
-                    <input type="date" name="date" class="form-control" value="{{ $selectedDate }}">
+            <div class="col-12 col-sm-6 col-md-2">
+                <label class="form-label small fw-semibold mb-1">Tipe Periode</label>
+                <select name="filter_type" id="filterTypeSelect" class="form-select form-select-sm" onchange="toggleFilterType(this.value)">
+                    <option value="daily" @selected($filterType === 'daily')>📅 Harian (Tanggal)</option>
+                    <option value="monthly" @selected($filterType === 'monthly')>🗓️ Bulanan (Bulan)</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <div id="containerDailyFilter" style="{{ $filterType === 'monthly' ? 'display: none;' : '' }}">
+                    <label class="form-label small fw-semibold mb-1">Pilih Tanggal</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light"><i class="mdi mdi-calendar"></i></span>
+                        <input type="date" name="date" class="form-control form-control-sm" value="{{ $selectedDate }}">
+                    </div>
+                </div>
+                <div id="containerMonthlyFilter" style="{{ $filterType !== 'monthly' ? 'display: none;' : '' }}">
+                    <label class="form-label small fw-semibold mb-1">Pilih Bulan</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light"><i class="mdi mdi-calendar-month"></i></span>
+                        <input type="month" name="month" class="form-control form-control-sm" value="{{ $selectedMonth }}">
+                    </div>
                 </div>
             </div>
             <div class="col-12 col-sm-6 col-md-3">
@@ -135,14 +160,19 @@
                     <option value="Alpa" @selected($status === 'Alpa')>Alpa</option>
                 </select>
             </div>
-            <div class="col-12 col-sm-6 col-md-3">
+            <div class="col-12 col-sm-6 col-md-2">
                 <label class="form-label small fw-semibold mb-1">Cari Karyawan / NIK</label>
                 <input type="text" name="search" class="form-control form-control-sm" placeholder="Nama atau NIK..." value="{{ $search }}">
             </div>
-            <div class="col-12 col-md-1 d-flex align-items-end pt-md-3">
-                <button type="submit" class="btn btn-sm btn-primary w-100">
+            <div class="col-12 col-md-1 d-flex align-items-end pt-md-3 gap-1">
+                <button type="submit" class="btn btn-sm btn-primary w-100" title="Terapkan Filter">
                     <i class="mdi mdi-filter-variant"></i>
                 </button>
+                @if ($filterType === 'monthly' || $departmentId || $status || $search || $selectedDate !== \Carbon\Carbon::today('Asia/Jakarta')->toDateString())
+                    <a href="{{ route('hr.attendances.index') }}" class="btn btn-sm btn-outline-secondary" title="Reset Filter ke Hari Ini">
+                        <i class="mdi mdi-refresh"></i>
+                    </a>
+                @endif
             </div>
         </form>
     </div>
@@ -157,6 +187,9 @@
                     <th style="width: 50px;">#</th>
                     <th>Karyawan</th>
                     <th>Departemen &amp; Jabatan</th>
+                    @if ($filterType === 'monthly')
+                        <th>Tanggal</th>
+                    @endif
                     <th>Jam Masuk &amp; Foto</th>
                     <th>Jam Pulang</th>
                     <th>Tipe &amp; Device</th>
@@ -197,6 +230,14 @@
                             <div class="fw-semibold text-heading small">{{ $att->employee->department?->name ?? '-' }}</div>
                             <span class="text-muted small">{{ $att->employee->position?->name ?? '-' }}</span>
                         </td>
+                        @if ($filterType === 'monthly')
+                            <td>
+                                <div class="d-flex flex-column">
+                                    <span class="fw-semibold text-heading font-12 font-monospace">{{ \Carbon\Carbon::parse($att->date)->translatedFormat('d M Y') }}</span>
+                                    <small class="text-muted font-11">{{ \Carbon\Carbon::parse($att->date)->translatedFormat('l') }}</small>
+                                </div>
+                            </td>
+                        @endif
                         <td>
                             <div class="d-flex align-items-center gap-2">
                                 @if ($att->clock_in)
@@ -288,9 +329,13 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="text-center py-5 text-muted">
+                        <td colspan="{{ $filterType === 'monthly' ? 10 : 9 }}" class="text-center py-5 text-muted">
                             <i class="mdi mdi-calendar-blank-outline fs-1 d-block mb-2 text-secondary"></i>
-                            Tidak ada data presensi pada tanggal <strong>{{ \Carbon\Carbon::parse($selectedDate)->translatedFormat('d F Y') }}</strong>.
+                            @if ($filterType === 'monthly')
+                                Tidak ada data presensi pada bulan <strong>{{ \Carbon\Carbon::create($selectedYear, $selectedMonthNum, 1)->translatedFormat('F Y') }}</strong>.
+                            @else
+                                Tidak ada data presensi pada tanggal <strong>{{ \Carbon\Carbon::parse($selectedDate)->translatedFormat('d F Y') }}</strong>.
+                            @endif
                         </td>
                     </tr>
                 @endforelse
@@ -788,6 +833,18 @@
                 </div>
             </div>
 <script>
+    function toggleFilterType(val) {
+        const dailyContainer = document.getElementById('containerDailyFilter');
+        const monthlyContainer = document.getElementById('containerMonthlyFilter');
+        if (val === 'monthly') {
+            if (dailyContainer) dailyContainer.style.display = 'none';
+            if (monthlyContainer) monthlyContainer.style.display = 'block';
+        } else {
+            if (dailyContainer) dailyContainer.style.display = 'block';
+            if (monthlyContainer) monthlyContainer.style.display = 'none';
+        }
+    }
+
     function autofillMyIp(ip) {
         var ipInput = document.getElementById('wifiIpInput');
         var nameInput = document.getElementById('wifiNameInput');
