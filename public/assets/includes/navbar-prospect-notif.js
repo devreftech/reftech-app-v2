@@ -348,13 +348,13 @@ $(function () {
 
         var isAssigned = (item.type === 'prospect_assigned');
         var modalThemeClass = isAssigned ? 'modal-assigned' : '';
-        var badgeText = isAssigned ? 'PROSPEK DITUGASKAN' : 'PROSPEK BARU';
+        var badgeText = isAssigned ? 'LEAD DITUGASKAN' : 'MARKETING LEAD BARU';
         var stageBadge = item.stage_badge || (isAssigned ? 'Ditugaskan ke Anda' : 'Baru Dibuat');
-        var stageTitle = item.stage_title || (isAssigned ? 'Anda Mendapat Penugasan Prospect Baru!' : 'Ada Prospect Baru Masuk!');
+        var stageTitle = item.stage_title || (isAssigned ? 'Anda Mendapat Penugasan Marketing Lead Baru!' : 'Ada Marketing Lead Baru Masuk!');
         var stageDesc = item.stage_desc || (isAssigned
-            ? 'Prospek baru telah didelegasikan kepada Anda. Segera lakukan follow-up ke pelanggan untuk proses penawaran.'
-            : 'Tim Support baru saja menginput data prospek baru yang belum ditugaskan ke Sales. Segera tentukan dan tugaskan Sales penanggung jawab.');
-        var actionLabel = item.action_label || (isAssigned ? 'Buka Prospek' : 'Tugaskan ke Sales');
+            ? 'Marketing Lead baru telah didelegasikan kepada Anda. Segera lakukan follow-up ke pelanggan untuk proses penawaran.'
+            : 'Tim Support baru saja menginput data marketing lead baru yang belum ditugaskan ke Sales. Segera tentukan dan tugaskan Sales penanggung jawab.');
+        var actionLabel = item.action_label || (isAssigned ? 'Buka Marketing Lead' : 'Tugaskan ke Sales');
         var heroIcon = isAssigned ? 'mdi-account-arrow-right-outline' : 'mdi-account-star-outline';
 
         var avatarHtml = '';
@@ -564,7 +564,7 @@ $(function () {
 
         // Feedback toast mini jika library toastr atau alert tersedia
         if (typeof toastr !== 'undefined') {
-            toastr.info('Alert pop-up prospek berhasil di-snooze selama ' + label + '.');
+            toastr.info('Alert pop-up marketing lead berhasil di-snooze selama ' + label + '.');
         }
     });
 
@@ -630,9 +630,9 @@ $(function () {
         var $createdBadge = $('#prospectCreatedCountBadge');
         if (createdCount > 0) {
             if (!$createdBadge.length) {
-                $('.dropdown-header').find('h6').after('<span id="prospectCreatedCountBadge" class="badge rounded-pill bg-primary me-1">' + createdCount + ' Prospect Baru</span>');
+                $('.dropdown-header').find('h6').after('<span id="prospectCreatedCountBadge" class="badge rounded-pill bg-primary me-1">' + createdCount + ' Marketing Lead Baru</span>');
             } else {
-                $createdBadge.text(createdCount + ' Prospect Baru').removeClass('d-none');
+                $createdBadge.text(createdCount + ' Marketing Lead Baru').removeClass('d-none');
             }
         } else if ($createdBadge.length) {
             $createdBadge.addClass('d-none');
@@ -660,7 +660,7 @@ $(function () {
                 var iconColor = isAssigned ? 'bg-success text-white' : 'bg-primary text-white';
                 var iconClass = isAssigned ? 'mdi-account-arrow-right-outline' : 'mdi-account-star-outline';
                 var badgeColor = isAssigned ? 'bg-label-success' : 'bg-label-primary';
-                var badgeText = isAssigned ? 'Ditugaskan' : 'Prospect Baru';
+                var badgeText = isAssigned ? 'Ditugaskan' : 'Marketing Lead Baru';
                 var dotClass = isAssigned ? 'dot-success' : '';
                 var descHtml = '';
 

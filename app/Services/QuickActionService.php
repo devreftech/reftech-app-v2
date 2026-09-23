@@ -118,7 +118,7 @@ class QuickActionService
             ],
             'prospect_index' => [
                 'id'           => 'prospect_index',
-                'title'        => 'Prospect Leads',
+                'title'        => 'Marketing Leads',
                 'subtitle'     => 'Pipeline Leads Marketing',
                 'category'     => 'Sales & Marketing',
                 'icon'         => 'mdi mdi-account-details-outline',

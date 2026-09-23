@@ -122,14 +122,24 @@
             </div>
         </div>
         <div class="col-12 col-lg-8">
-            <div class="card clean-card h-100">
-                <div class="card-header d-flex justify-content-between">
-                    <div class="card-title m-0">
-                        <h5 class="mb-0">Sales Overview</h5>
+            <div class="card clean-card h-100 shadow-sm">
+                <div class="card-header d-flex align-items-center justify-content-between py-3 border-bottom">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar avatar-sm bg-label-primary rounded p-1 d-flex align-items-center justify-content-center">
+                            <i class="mdi mdi-finance fs-4"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 fw-bold text-heading" style="font-size: 1.05rem;">Sales Overview</h5>
+                            <small class="text-muted" style="font-size: 0.75rem;">Performa Tim, Aktivitas &amp; Pipeline Finansial</small>
+                        </div>
                     </div>
+                    <span class="badge bg-label-primary rounded-pill px-3 py-1" style="font-size: 0.72rem;">
+                        <i class="mdi mdi-calendar-month-outline me-1"></i> {{ \Carbon\Carbon::now()->isoFormat('MMMM Y') }}
+                    </span>
                 </div>
-                <div class="card-body pb-3">
-                    <ul class="nav nav-tabs nav-tabs-widget pb-3 gap-3 d-flex flex-nowrap overflow-auto" role="tablist" style="scrollbar-width: thin;">
+                <div class="card-body pb-3 pt-3">
+                    {{-- Roster Horizontal Slider Tabs --}}
+                    <ul class="nav nav-tabs nav-tabs-widget pb-2 gap-2 d-flex flex-nowrap overflow-auto border-0" role="tablist" style="scrollbar-width: thin; scroll-behavior: smooth;">
                         @foreach ($sales as $user)
                             @if ($user->id == 23) @continue @endif
                             @php
@@ -139,45 +149,71 @@
                                 $displayArea = ($roster && !empty($roster->subtitle)) ? $roster->subtitle : ($user->id == 16 ? 'Online' : ($user->latestRole->area ?? 'Sales'));
                             @endphp
                             <li class="nav-item change-sales text-center flex-shrink-0" role="presentation" data-id="{{ $user->id }}">
-                                <a class="nav-link btn {{ $isActive ? 'active' : '' }} d-flex flex-column align-items-center justify-content-center p-2 rounded-3"
+                                <a class="nav-link btn {{ $isActive ? 'active' : '' }} d-flex flex-column align-items-center justify-content-center p-2 rounded-3 border"
                                    role="tab" data-bs-toggle="tab" data-bs-target="#navs-sales-{{ $user->id }}"
                                    aria-controls="navs-sales-{{ $user->id }}" aria-selected="{{ $isActive ? 'true' : 'false' }}"
-                                   style="transition: all 0.2s ease;">
+                                   style="min-width: 90px; transition: all 0.25s ease;">
                                     <div class="position-relative mb-1">
                                         <img src="{{ url('') . '/' . $user->image }}" alt="{{ $displayName }}"
                                             class="rounded-circle border"
-                                            style="width: 48px; height: 48px; object-fit: cover; border-width: 2px !important;">
+                                            style="width: 44px; height: 44px; object-fit: cover; border-width: 2px !important;">
+                                        @if ($user->id == 16)
+                                            <span class="position-absolute bottom-0 end-0 badge rounded-pill bg-primary p-1" style="transform: translate(25%, 25%);">
+                                                <i class="mdi mdi-cart fs-6 text-white" style="font-size: 10px !important;"></i>
+                                            </span>
+                                        @endif
                                     </div>
-                                    <span class="fw-semibold text-dark text-truncate d-block" style="max-width: 85px; font-size: 0.78rem; line-height: 1.2;">
+                                    <span class="fw-semibold text-dark text-truncate d-block mt-1" style="max-width: 82px; font-size: 0.76rem; line-height: 1.2;">
                                         {{ $displayName }}
                                     </span>
-                                    <small class="text-muted text-truncate d-block" style="max-width: 85px; font-size: 0.7rem; line-height: 1.2;">
+                                    <small class="text-muted text-truncate d-block" style="max-width: 82px; font-size: 0.68rem; line-height: 1.2;">
                                         {{ $displayArea }}
                                     </small>
                                 </a>
                             </li>
                         @endforeach
                         <li class="nav-item change-sales text-center flex-shrink-0" role="presentation" data-id="project">
-                            <a class="nav-link btn d-flex flex-column align-items-center justify-content-center p-2 rounded-3"
+                            <a class="nav-link btn d-flex flex-column align-items-center justify-content-center p-2 rounded-3 border"
                                role="tab" data-bs-toggle="tab" data-bs-target="#navs-sales-project"
                                aria-controls="navs-sales-project" aria-selected="false"
-                               style="transition: all 0.2s ease;">
+                               style="min-width: 90px; transition: all 0.25s ease;">
                                 <div class="position-relative mb-1">
                                     <div class="rounded-circle border bg-label-primary d-flex align-items-center justify-content-center"
-                                        style="width: 48px; height: 48px; border-width: 2px !important;">
+                                        style="width: 44px; height: 44px; border-width: 2px !important;">
                                         <i class="mdi mdi-briefcase-outline fs-4"></i>
                                     </div>
                                 </div>
-                                <span class="fw-semibold text-dark text-truncate d-block" style="max-width: 85px; font-size: 0.78rem; line-height: 1.2;">
+                                <span class="fw-semibold text-dark text-truncate d-block mt-1" style="max-width: 82px; font-size: 0.76rem; line-height: 1.2;">
                                     Sales Project
                                 </span>
-                                <small class="text-muted text-truncate d-block" style="max-width: 85px; font-size: 0.7rem; line-height: 1.2;">
+                                <small class="text-muted text-truncate d-block" style="max-width: 82px; font-size: 0.68rem; line-height: 1.2;">
                                     Admin/SM
                                 </small>
                             </a>
                         </li>
+                        <li class="nav-item change-sales text-center flex-shrink-0" role="presentation" data-id="marketing">
+                            <a class="nav-link btn d-flex flex-column align-items-center justify-content-center p-2 rounded-3 border"
+                               role="tab" data-bs-toggle="tab" data-bs-target="#navs-sales-marketing"
+                               aria-controls="navs-sales-marketing" aria-selected="false"
+                               style="min-width: 90px; transition: all 0.25s ease;">
+                                <div class="position-relative mb-1">
+                                    <div class="rounded-circle border bg-label-info d-flex align-items-center justify-content-center"
+                                        style="width: 44px; height: 44px; border-width: 2px !important;">
+                                        <i class="mdi mdi-bullhorn-outline fs-4"></i>
+                                    </div>
+                                </div>
+                                <span class="fw-semibold text-dark text-truncate d-block mt-1" style="max-width: 82px; font-size: 0.76rem; line-height: 1.2;">
+                                    Marketing Team
+                                </span>
+                                <small class="text-muted text-truncate d-block" style="max-width: 82px; font-size: 0.68rem; line-height: 1.2;">
+                                    Support
+                                </small>
+                            </a>
+                        </li>
                     </ul>
-                    <div class="tab-content p-0 ms-0 ms-sm-2">
+
+                    {{-- Tab Contents --}}
+                    <div class="tab-content p-0 mt-3">
                         @php
                             $item = 0;
                         @endphp
@@ -188,470 +224,382 @@
                             @endphp
                             <div class="tab-pane fade{{ $user->id == ($firstSales->id ?? 1) ? ' show active' : '' }}"
                                 id="navs-sales-{{ $user->id }}" role="tabpanel">
-                                <div class="mb-3">
+                                <div>
                                     <div data-id="{{ $item }}">
-                                        <!-- Header Tab Pane -->
-                                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pb-2 pt-2 border-bottom mb-3">
+                                        <!-- Header Profile Banner -->
+                                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 bg-light rounded-3 border border-dashed mb-3">
                                             <div class="d-flex align-items-center gap-3">
                                                 <img src="{{ url('') . '/' . $user->image }}" alt="{{ $titleName }}"
-                                                    class="rounded-circle border" style="width: 44px; height: 44px; object-fit: cover; border-width: 2px !important;">
+                                                    class="rounded-circle border shadow-xs" style="width: 48px; height: 48px; object-fit: cover; border-width: 2px !important;">
                                                 <div>
-                                                    <h5 class="mb-0 fw-bold text-dark">{{ $titleName }}'s Performance</h5>
-                                                    <small class="text-muted d-block">{{ $user->id == 16 ? 'Online Division' : ($user->latestRole->area ?? 'Sales Area') }}</small>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <h5 class="mb-0 fw-bold text-dark">{{ $titleName }}</h5>
+                                                        <span class="badge bg-label-primary rounded-pill px-2 py-1" style="font-size: 0.7rem;">
+                                                            {{ $user->id == 16 ? 'E-Commerce' : 'Active Sales' }}
+                                                        </span>
+                                                    </div>
+                                                    <small class="text-muted d-block mt-1">
+                                                        <i class="mdi mdi-map-marker-outline me-1"></i>{{ $user->id == 16 ? 'Divisi Online & Marketplace' : ($user->latestRole->area ?? 'Area Penjualan') }}
+                                                    </small>
                                                 </div>
-                                            </div>
-                                            <div>
-                                                <span class="badge bg-label-primary px-3 py-2 rounded-pill">
-                                                    <i class="mdi mdi-account-check-outline me-1"></i> {{ $user->id == 16 ? 'Team E-Commerce' : 'Active Sales' }}
-                                                </span>
                                             </div>
                                         </div>
 
-                                        @if ($user->role == 'Sales')
-                                            <div class="row g-3">
-                                                @if ($user->id == 16 || $user->id == 23)
-                                                    <!-- Panel Kiri: E-Commerce Ops Tiles (Grid 2 Kolom) -->
-                                                    <div class="col-12 col-md-7">
-                                                        <div class="row g-2">
-                                                            <!-- Upload Product -->
-                                                            <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary">
-                                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                        <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-reproduction"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.78rem;">Upload Product</span>
-                                                                        </div>
-                                                                        <span class="badge bg-label-info rounded-pill filtered-percent-product" style="font-size: 9px;">0%</span>
+                                        <div class="row g-3">
+                                            @if ($user->id == 16 || $user->id == 23)
+                                                <!-- Panel Kiri: E-Commerce Operations Hub (Grid 2 Kolom) -->
+                                                <div class="col-12 col-md-7">
+                                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                                        <span class="fw-bold text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                                            <i class="mdi mdi-store-outline me-1 text-primary"></i> Operasional E-Commerce
+                                                        </span>
+                                                        <span class="badge bg-label-info rounded-pill" style="font-size: 0.65rem;">Metrics</span>
+                                                    </div>
+                                                    <div class="row g-2">
+                                                        <!-- Upload Product -->
+                                                        <div class="col-6">
+                                                            <div class="p-2 border rounded-3 bg-body-tertiary h-100">
+                                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                    <div class="d-flex align-items-center gap-1">
+                                                                        <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-reproduction"></i></span>
+                                                                        <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Upload Product</span>
                                                                     </div>
-                                                                    <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-product">0</h6>
-                                                                        <small class="text-muted filtered-target-product" style="font-size: 0.7rem;">/ 100</small>
-                                                                    </div>
+                                                                    <span class="badge bg-label-info rounded-pill filtered-percent-product" style="font-size: 9px;">0%</span>
+                                                                </div>
+                                                                <div class="d-flex align-items-baseline gap-1 mt-1">
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-product">0</h6>
+                                                                    <small class="text-muted filtered-target-product" style="font-size: 0.7rem;">/ 100</small>
                                                                 </div>
                                                             </div>
-                                                            <!-- Upload SW -->
-                                                            <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary">
-                                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                        <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-success p-1 rounded"><i class="mdi mdi-whatsapp"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.78rem;">Upload SW</span>
-                                                                        </div>
-                                                                        <span class="badge bg-label-success rounded-pill filtered-percent-sw" style="font-size: 9px;">0%</span>
+                                                        </div>
+                                                        <!-- Upload Video -->
+                                                        <div class="col-6">
+                                                            <div class="p-2 border rounded-3 bg-body-tertiary h-100">
+                                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                    <div class="d-flex align-items-center gap-1">
+                                                                        <span class="badge bg-label-secondary p-1 rounded"><i class="mdi mdi-video-outline"></i></span>
+                                                                        <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Upload Video</span>
                                                                     </div>
-                                                                    <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-sw">0</h6>
-                                                                        <small class="text-muted filtered-target-sw" style="font-size: 0.7rem;">/ {{ $user->id == 16 ? '120' : '60' }}</small>
-                                                                    </div>
+                                                                    <span class="badge bg-label-secondary rounded-pill filtered-percent-video" style="font-size: 9px;">0%</span>
+                                                                </div>
+                                                                <div class="d-flex align-items-baseline gap-1 mt-1">
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-video">0</h6>
+                                                                    <small class="text-muted filtered-target-video" style="font-size: 0.7rem;">/ 100%</small>
                                                                 </div>
                                                             </div>
-                                                            <!-- Upload Video -->
-                                                            <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary">
-                                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                        <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-secondary p-1 rounded"><i class="mdi mdi-video-outline"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.78rem;">Upload Video</span>
-                                                                        </div>
-                                                                        <span class="badge bg-label-secondary rounded-pill filtered-percent-video" style="font-size: 9px;">0%</span>
+                                                        </div>
+                                                        <!-- CRM -->
+                                                        <div class="col-6">
+                                                            <div class="p-2 border rounded-3 bg-body-tertiary h-100">
+                                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                    <div class="d-flex align-items-center gap-1">
+                                                                        <span class="badge bg-label-primary p-1 rounded"><i class="mdi mdi-account-multiple-outline"></i></span>
+                                                                        <span class="fw-semibold text-dark" style="font-size: 0.75rem;">CRM</span>
                                                                     </div>
-                                                                    <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-video">0</h6>
-                                                                        <small class="text-muted filtered-target-video" style="font-size: 0.7rem;">/ 100%</small>
-                                                                    </div>
+                                                                    <span class="badge bg-label-primary rounded-pill filtered-percent-crm" style="font-size: 9px;">0%</span>
+                                                                </div>
+                                                                <div class="d-flex align-items-baseline gap-1 mt-1">
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-crm">{{ $user->id == ($firstSales->id ?? 1) ? $filteredCRM : 0 }}</h6>
+                                                                    <small class="text-muted filtered-target-crm" style="font-size: 0.7rem;">/ {{ $targetCrm[$user->id] ?? 0 }}</small>
                                                                 </div>
                                                             </div>
-                                                            <!-- CRM -->
-                                                            <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary">
-                                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                        <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-primary p-1 rounded"><i class="mdi mdi-account-multiple-outline"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.78rem;">CRM</span>
-                                                                        </div>
-                                                                        <span class="badge bg-label-primary rounded-pill filtered-percent-crm" style="font-size: 9px;">0%</span>
+                                                        </div>
+                                                        <!-- Status Product -->
+                                                        <div class="col-6">
+                                                            <div class="p-2 border rounded-3 bg-body-tertiary h-100">
+                                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                    <div class="d-flex align-items-center gap-1">
+                                                                        <span class="badge bg-label-warning p-1 rounded"><i class="mdi mdi-package-variant-closed-check"></i></span>
+                                                                        <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Status Product</span>
                                                                     </div>
-                                                                    <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-crm">{{ $user->id == ($firstSales->id ?? 1) ? $filteredCRM : 0 }}</h6>
-                                                                        <small class="text-muted filtered-target-crm" style="font-size: 0.7rem;">/ {{ $targetCrm[$user->id] ?? 0 }}</small>
-                                                                    </div>
+                                                                    <span class="badge bg-label-warning rounded-pill filtered-percent-status" style="font-size: 9px;">0%</span>
+                                                                </div>
+                                                                <div class="d-flex align-items-baseline gap-1 mt-1">
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-status">0</h6>
+                                                                    <small class="text-muted filtered-target-status" style="font-size: 0.7rem;">/ 5.0</small>
                                                                 </div>
                                                             </div>
-                                                            <!-- Status Product -->
-                                                            <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary">
-                                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                        <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-warning p-1 rounded"><i class="mdi mdi-package-variant-closed-check"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.78rem;">Status Product</span>
-                                                                        </div>
-                                                                        <span class="badge bg-label-warning rounded-pill filtered-percent-status" style="font-size: 9px;">0%</span>
+                                                        </div>
+                                                        <!-- Delivery Status -->
+                                                        <div class="col-6">
+                                                            <div class="p-2 border rounded-3 bg-body-tertiary h-100">
+                                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                    <div class="d-flex align-items-center gap-1">
+                                                                        <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-truck-delivery-outline"></i></span>
+                                                                        <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Delivery Status</span>
                                                                     </div>
-                                                                    <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-status">0</h6>
-                                                                        <small class="text-muted filtered-target-status" style="font-size: 0.7rem;">/ 5.0</small>
-                                                                    </div>
+                                                                    <span class="badge bg-label-info rounded-pill filtered-percent-delivery" style="font-size: 9px;">0%</span>
+                                                                </div>
+                                                                <div class="d-flex align-items-baseline gap-1 mt-1">
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-delivery">0</h6>
+                                                                    <small class="text-muted filtered-target-delivery" style="font-size: 0.7rem;">/ 5.0</small>
                                                                 </div>
                                                             </div>
-                                                            <!-- Delivery Status -->
-                                                            <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary">
-                                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                        <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-truck-delivery-outline"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.78rem;">Delivery Status</span>
-                                                                        </div>
-                                                                        <span class="badge bg-label-info rounded-pill filtered-percent-delivery" style="font-size: 9px;">0%</span>
+                                                        </div>
+                                                        <!-- Chat Response -->
+                                                        <div class="col-6">
+                                                            <div class="p-2 border rounded-3 bg-body-tertiary h-100">
+                                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                    <div class="d-flex align-items-center gap-1">
+                                                                        <span class="badge bg-label-danger p-1 rounded"><i class="mdi mdi-account-heart-outline"></i></span>
+                                                                        <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Chat Response</span>
                                                                     </div>
-                                                                    <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-delivery">0</h6>
-                                                                        <small class="text-muted filtered-target-delivery" style="font-size: 0.7rem;">/ 5.0</small>
-                                                                    </div>
+                                                                    <span class="badge bg-label-danger rounded-pill filtered-percent-response" style="font-size: 9px;">0%</span>
+                                                                </div>
+                                                                <div class="d-flex align-items-baseline gap-1 mt-1">
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-response">0</h6>
+                                                                    <small class="text-muted filtered-target-response" style="font-size: 0.7rem;">/ 100%</small>
                                                                 </div>
                                                             </div>
-                                                            <!-- Customer Care -->
-                                                            <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary">
-                                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                        <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-dark p-1 rounded"><i class="mdi mdi-cart-check"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.78rem;">Customer Care</span>
-                                                                        </div>
-                                                                        <span class="badge bg-label-dark rounded-pill filtered-percent-customer" style="font-size: 9px;">0%</span>
+                                                        </div>
+                                                        <!-- Store Rating -->
+                                                        <div class="col-12">
+                                                            <div class="p-2 border rounded-3 bg-body-tertiary">
+                                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                    <div class="d-flex align-items-center gap-1">
+                                                                        <span class="badge bg-label-warning p-1 rounded"><i class="mdi mdi-star"></i></span>
+                                                                        <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Store Rating</span>
                                                                     </div>
-                                                                    <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-customer">0</h6>
-                                                                        <small class="text-muted filtered-target-customer" style="font-size: 0.7rem;">/ 5.0</small>
-                                                                    </div>
+                                                                    <span class="badge bg-label-warning rounded-pill filtered-percent-rating" style="font-size: 9px;">0%</span>
                                                                 </div>
-                                                            </div>
-                                                            <!-- Chat Response -->
-                                                            <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary">
-                                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                        <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-danger p-1 rounded"><i class="mdi mdi-account-heart-outline"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.78rem;">Chat Response</span>
-                                                                        </div>
-                                                                        <span class="badge bg-label-danger rounded-pill filtered-percent-response" style="font-size: 9px;">0%</span>
-                                                                    </div>
-                                                                    <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-response">0</h6>
-                                                                        <small class="text-muted filtered-target-response" style="font-size: 0.7rem;">/ 100%</small>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <!-- Store Rating -->
-                                                            <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary">
-                                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                        <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-warning p-1 rounded"><i class="mdi mdi-monitor-star"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.78rem;">Store Rating</span>
-                                                                        </div>
-                                                                        <span class="badge bg-label-warning rounded-pill filtered-percent-rating" style="font-size: 9px;">0%</span>
-                                                                    </div>
-                                                                    <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-rating">0</h6>
-                                                                        <small class="text-muted filtered-target-rating" style="font-size: 0.7rem;">/ 5.0</small>
-                                                                    </div>
+                                                                <div class="d-flex align-items-baseline gap-1 mt-1">
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-rating">0</h6>
+                                                                    <small class="text-muted filtered-target-rating" style="font-size: 0.7rem;">/ 5.0</small>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                @else
-                                                    <!-- Panel Kiri: Regular Sales Operational Tiles (Grid 2 Kolom) -->
-                                                    <div class="col-12 col-md-7">
-                                                        <div class="row g-2">
-                                                            @if ($user->id == 1 || $user->id == 2 || $user->id == 32)
-                                                                @php
-                                                                    $salesTargetLeads = ($targetSales[$item][0] ?? null)?->leads ?? 0;
-                                                                    $currentLeads = $user->id == ($firstSales->id ?? 1) ? $filteredLeads : 0;
-                                                                    $targetLeads = $salesTargetLeads > 0 ? ($currentLeads / $salesTargetLeads) * 100 : 0;
-                                                                @endphp
-                                                                <!-- New Leads -->
-                                                                <div class="col-6">
-                                                                    <div class="p-2 border rounded-3 bg-body-tertiary">
-                                                                        <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                            <div class="d-flex align-items-center gap-1">
-                                                                                <span class="badge bg-label-secondary p-1 rounded"><i class="mdi mdi-account-multiple-plus-outline"></i></span>
-                                                                                <span class="fw-semibold text-dark" style="font-size: 0.78rem;">New Leads</span>
-                                                                            </div>
-                                                                            <span class="badge bg-label-secondary rounded-pill filtered-percent-leads" style="font-size: 9px;">{{ round($targetLeads) }}%</span>
-                                                                        </div>
-                                                                        <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                            <h6 class="mb-0 fw-bold text-dark filtered-leads">{{ $user->id == ($firstSales->id ?? 1) ? $filteredLeads : 0 }}</h6>
-                                                                            <small class="text-muted filtered-target-leads" style="font-size: 0.7rem;">/ {{ $salesTargetLeads }}</small>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                <!-- Daily Call -->
-                                                                <div class="col-6">
-                                                                    <div class="p-2 border rounded-3 bg-body-tertiary">
-                                                                        <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                            <div class="d-flex align-items-center gap-1">
-                                                                                <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-phone-outline"></i></span>
-                                                                                <span class="fw-semibold text-dark" style="font-size: 0.78rem;">Daily Call</span>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                            <h6 class="mb-0 fw-bold text-dark filtered-dc">{{ $user->id == ($firstSales->id ?? 1) ? $filteredDC : 0 }}</h6>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            @endif
-
-                                                            <!-- CRM Tile -->
+                                                </div>
+                                            @else
+                                                <!-- Panel Kiri: Regular Sales Operational Hub (Grid 2 Kolom) -->
+                                                <div class="col-12 col-md-7">
+                                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                                        <span class="fw-bold text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                                            <i class="mdi mdi-clipboard-pulse-outline me-1 text-primary"></i> Aktivitas &amp; Leads
+                                                        </span>
+                                                        <span class="badge bg-label-primary rounded-pill" style="font-size: 0.65rem;">Operational</span>
+                                                    </div>
+                                                    <div class="row g-2">
+                                                        @if ($user->id == 1 || $user->id == 2 || $user->id == 32)
                                                             @php
-                                                                $crmDenominator = $targetCrm[$user->id] ?? 0;
-                                                                $currentCRM = $user->id == ($firstSales->id ?? 1) ? $filteredCRM : 0;
-                                                                $targetCRM = $crmDenominator > 0 ? ($currentCRM / $crmDenominator) * 100 : 0;
+                                                                $salesTargetLeads = ($targetSales[$item][0] ?? null)?->leads ?? 0;
+                                                                $currentLeads = $user->id == ($firstSales->id ?? 1) ? $filteredLeads : 0;
+                                                                $targetLeads = $salesTargetLeads > 0 ? ($currentLeads / $salesTargetLeads) * 100 : 0;
                                                             @endphp
+                                                            <!-- New Leads -->
                                                             <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary">
+                                                                <div class="p-2 border rounded-3 bg-body-tertiary h-100">
                                                                     <div class="d-flex align-items-center justify-content-between mb-1">
                                                                         <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-primary p-1 rounded"><i class="mdi mdi-account-multiple-outline"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.78rem;">CRM</span>
+                                                                            <span class="badge bg-label-secondary p-1 rounded"><i class="mdi mdi-account-multiple-plus-outline"></i></span>
+                                                                            <span class="fw-semibold text-dark" style="font-size: 0.75rem;">New Leads</span>
                                                                         </div>
-                                                                        @if ($user->id != 3)
-                                                                            <span class="badge bg-label-primary rounded-pill filtered-percent-crm" style="font-size: 9px;">{{ round($targetCRM) }}%</span>
-                                                                        @endif
+                                                                        <span class="badge bg-label-secondary rounded-pill filtered-percent-leads" style="font-size: 9px;">{{ round($targetLeads) }}%</span>
                                                                     </div>
                                                                     <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-crm">{{ $user->id == ($firstSales->id ?? 1) ? $filteredCRM : 0 }}</h6>
-                                                                        <small class="text-muted filtered-target-crm" style="font-size: 0.7rem;">/ {{ $crmDenominator }}</small>
+                                                                        <h6 class="mb-0 fw-bold text-dark filtered-leads">{{ $user->id == ($firstSales->id ?? 1) ? $filteredLeads : 0 }}</h6>
+                                                                        <small class="text-muted filtered-target-leads" style="font-size: 0.7rem;">/ {{ $salesTargetLeads }}</small>
                                                                     </div>
                                                                 </div>
                                                             </div>
 
-                                                            <!-- Quotation Tile -->
+                                                            <!-- Daily Call -->
                                                             <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary">
+                                                                <div class="p-2 border rounded-3 bg-body-tertiary h-100">
                                                                     <div class="d-flex align-items-center justify-content-between mb-1">
                                                                         <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-warning p-1 rounded"><i class="mdi mdi-email-multiple-outline"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.78rem;">Quotation</span>
+                                                                            <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-phone-outline"></i></span>
+                                                                            <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Daily Call</span>
                                                                         </div>
                                                                     </div>
                                                                     <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-quote">{{ $user->id == ($firstSales->id ?? 1) ? $filteredQuote : 0 }}</h6>
+                                                                        <h6 class="mb-0 fw-bold text-dark filtered-dc">{{ $user->id == ($firstSales->id ?? 1) ? $filteredDC : 0 }}</h6>
+                                                                        <small class="text-muted" style="font-size: 0.7rem;">Call</small>
                                                                     </div>
                                                                 </div>
                                                             </div>
+                                                        @endif
 
-                                                            <!-- Prospect Tile -->
-                                                            <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary">
-                                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                        <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-success p-1 rounded"><i class="mdi mdi-cart-plus"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.78rem;">Prospect</span>
-                                                                        </div>
+                                                        <!-- CRM Tile -->
+                                                        @php
+                                                            $crmDenominator = $targetCrm[$user->id] ?? 0;
+                                                            $currentCRM = $user->id == ($firstSales->id ?? 1) ? $filteredCRM : 0;
+                                                            $targetCRM = $crmDenominator > 0 ? ($currentCRM / $crmDenominator) * 100 : 0;
+                                                        @endphp
+                                                        <div class="col-6">
+                                                            <div class="p-2 border rounded-3 bg-body-tertiary h-100">
+                                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                    <div class="d-flex align-items-center gap-1">
+                                                                        <span class="badge bg-label-primary p-1 rounded"><i class="mdi mdi-account-multiple-outline"></i></span>
+                                                                        <span class="fw-semibold text-dark" style="font-size: 0.75rem;">CRM</span>
                                                                     </div>
-                                                                    <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-prospect-sales">{{ $user->id == ($firstSales->id ?? 1) ? $filteredProspect : 0 }}</h6>
-                                                                    </div>
+                                                                    @if ($user->id != 3)
+                                                                        <span class="badge bg-label-primary rounded-pill filtered-percent-crm" style="font-size: 9px;">{{ round($targetCRM) }}%</span>
+                                                                    @endif
                                                                 </div>
-                                                            </div>
-
-                                                            <!-- Closing Tile (Quotation yang jadi PO) -->
-                                                            <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary">
-                                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                        <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-success p-1 rounded"><i class="mdi mdi-file-check-outline"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.78rem;">Closing</span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-po-count">{{ $user->id == ($firstSales->id ?? 1) ? $filteredPO : 0 }}</h6>
-                                                                        <small class="text-muted" style="font-size: 0.7rem;">Quote</small>
-                                                                    </div>
+                                                                <div class="d-flex align-items-baseline gap-1 mt-1">
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-crm">{{ $user->id == ($firstSales->id ?? 1) ? $filteredCRM : 0 }}</h6>
+                                                                    <small class="text-muted filtered-target-crm" style="font-size: 0.7rem;">/ {{ $crmDenominator }}</small>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                @endif
 
-                                                <!-- Panel Kanan: Financial Pipeline Summary -->
-                                                <div class="col-12 col-md-5">
-                                                    <div class="p-3 border rounded-3 bg-body-tertiary h-100 d-flex flex-column justify-content-between">
-                                                        <div>
-                                                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                                                <span class="fw-bold text-muted text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Financial Pipeline</span>
-                                                                <i class="mdi mdi-cash-multiple text-primary"></i>
+                                                        <!-- Quotation Tile -->
+                                                        <div class="col-6">
+                                                            <div class="p-2 border rounded-3 bg-body-tertiary h-100">
+                                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                    <div class="d-flex align-items-center gap-1">
+                                                                        <span class="badge bg-label-warning p-1 rounded"><i class="mdi mdi-email-multiple-outline"></i></span>
+                                                                        <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Quotation</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="d-flex align-items-baseline gap-1 mt-1">
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-quote">{{ $user->id == ($firstSales->id ?? 1) ? $filteredQuote : 0 }}</h6>
+                                                                    <small class="text-muted" style="font-size: 0.7rem;">Dibuat</small>
+                                                                </div>
                                                             </div>
-                                                            <div class="d-flex flex-column gap-2">
-                                                                <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                                                                    <div class="d-flex align-items-center gap-2">
-                                                                        <span class="badge bg-label-secondary p-1 rounded"><i class="mdi mdi-cart"></i></span>
-                                                                        <small class="fw-semibold text-dark" style="font-size: 0.75rem;">Quotation</small>
+                                                        </div>
+
+                                                        <!-- Prospect Tile -->
+                                                        <div class="col-6">
+                                                            <div class="p-2 border rounded-3 bg-body-tertiary h-100">
+                                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                    <div class="d-flex align-items-center gap-1">
+                                                                        <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-target"></i></span>
+                                                                        <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Prospect</span>
                                                                     </div>
-                                                                    <span class="fw-bold text-dark admin-total-quotation" style="font-size: 0.8rem;">
-                                                                        Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalQuotation, 0, ',', '.') : 0 }}
-                                                                    </span>
                                                                 </div>
-                                                                <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                                                                    <div class="d-flex align-items-center gap-2">
-                                                                        <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-cart-arrow-down"></i></span>
-                                                                        <small class="fw-semibold text-dark" style="font-size: 0.75rem;">Prospect</small>
-                                                                    </div>
-                                                                    <span class="fw-bold text-dark admin-total-prospect" style="font-size: 0.8rem;">
-                                                                        Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalProspect, 0, ',', '.') : 0 }}
-                                                                    </span>
+                                                                <div class="d-flex align-items-baseline gap-1 mt-1">
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-prospect-sales">{{ $user->id == ($firstSales->id ?? 1) ? $filteredProspect : 0 }}</h6>
+                                                                    <small class="text-muted" style="font-size: 0.7rem;">Lead</small>
                                                                 </div>
-                                                                <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                                                                    <div class="d-flex align-items-center gap-2">
-                                                                        <span class="badge bg-label-warning p-1 rounded"><i class="mdi mdi-cart-heart"></i></span>
-                                                                        <small class="fw-semibold text-dark" style="font-size: 0.75rem;">Hot Prospect</small>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Closing Tile (Quotation yang jadi PO) -->
+                                                        <div class="col-6">
+                                                            <div class="p-2 border rounded-3 bg-body-tertiary h-100 border-success border-opacity-25">
+                                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                    <div class="d-flex align-items-center gap-1">
+                                                                        <span class="badge bg-label-success p-1 rounded"><i class="mdi mdi-check-decagram-outline"></i></span>
+                                                                        <span class="fw-semibold text-success" style="font-size: 0.75rem;">Closing PO</span>
                                                                     </div>
-                                                                    <span class="fw-bold text-warning admin-total-hot-prospect" style="font-size: 0.8rem;">
-                                                                        Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalHotProspect, 0, ',', '.') : 0 }}
-                                                                    </span>
                                                                 </div>
-                                                                <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                                                                    <div class="d-flex align-items-center gap-2">
-                                                                        <span class="badge bg-label-success p-1 rounded"><i class="mdi mdi-cart-plus"></i></span>
-                                                                        <div>
-                                                                            <small class="fw-semibold text-dark d-block" style="font-size: 0.75rem;">PO Received</small>
-                                                                            @php
-                                                                                $salesTargetTotal = ($targetSales[$item][0] ?? null)?->total ?? 0;
-                                                                                $currentPO = $user->id == ($firstSales->id ?? 1) ? $totalPO : 0;
-                                                                                $targetPO = $salesTargetTotal > 0 ? ($currentPO / $salesTargetTotal) * 100 : 0;
-                                                                                $color = $targetPO <= 80 ? 'danger' : ($targetPO <= 100 ? 'warning' : 'success');
-                                                                            @endphp
-                                                                            <span class="badge bg-label-{{ $color }} rounded-pill admin-target-total-po" style="font-size: 8px;">{{ round($targetPO) }}%</span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <span class="fw-bold text-success admin-total-po" style="font-size: 0.8rem;">
-                                                                        Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalPO, 0, ',', '.') : 0 }}
-                                                                    </span>
-                                                                </div>
-                                                                <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                                                                    <div class="d-flex align-items-center gap-2">
-                                                                        <span class="badge bg-label-danger p-1 rounded"><i class="mdi mdi-cart-minus"></i></span>
-                                                                        <small class="fw-semibold text-dark" style="font-size: 0.75rem;">Quotation Loss</small>
-                                                                    </div>
-                                                                    <span class="fw-bold text-danger admin-total-loss" style="font-size: 0.8rem;">
-                                                                        Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalLoss, 0, ',', '.') : 0 }}
-                                                                    </span>
+                                                                <div class="d-flex align-items-baseline gap-1 mt-1">
+                                                                    <h6 class="mb-0 fw-bold text-success filtered-po-count">{{ $user->id == ($firstSales->id ?? 1) ? $filteredPO : 0 }}</h6>
+                                                                    <small class="text-muted" style="font-size: 0.7rem;">PO Won</small>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
+                                            @endif
 
-                                                <!-- Action Buttons Row -->
-                                                <div class="col-12 mt-2">
-                                                    @php
-                                                        $month = date('m');
-                                                        $year = date('Y');
-                                                        $dateNow = $month . '-' . $year;
-                                                    @endphp
-                                                    <div class="row g-2">
-                                                        <div class="col-2">
-                                                            <a class="btn btn-warning btn-sm d-grid w-100 text-white"
-                                                                type="button" data-bs-toggle="modal"
-                                                                data-bs-target="#overview-sales-{{ $user->id }}">
-                                                                <i class="mdi mdi-information-outline me-1"></i> Info
-                                                            </a>
+                                            <!-- Panel Kanan: Financial Pipeline Funnel -->
+                                            <div class="col-12 col-md-5">
+                                                <div class="p-3 border rounded-3 bg-body-tertiary h-100 d-flex flex-column justify-content-between">
+                                                    <div>
+                                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                                            <span class="fw-bold text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                                                <i class="mdi mdi-cash-sync me-1 text-primary"></i> Financial Pipeline
+                                                            </span>
+                                                            <span class="badge bg-label-primary rounded-pill" style="font-size: 0.65rem;">Funnel</span>
                                                         </div>
-                                                        <div class="col-4">
-                                                            <a class="btn btn-facebook btn-sm d-grid w-100"
-                                                                href="{{ route('detail-overview.semester', ['sales' => $user->id, 'date' => $dateNow]) }}">
-                                                                <i class="mdi mdi-eye-outline me-1"></i> Detail
-                                                            </a>
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <a class="btn btn-secondary btn-sm d-grid w-100"
-                                                                href="{{ route('overview.semester', $user->id) }}">
-                                                                <i class="mdi mdi-chart-box-outline me-1"></i> Semester Overview
-                                                            </a>
+                                                        <div class="d-flex flex-column gap-2">
+                                                            <!-- 1. Quotation Generated -->
+                                                            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded-3 border shadow-xs">
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <span class="badge bg-label-secondary p-1 rounded"><i class="mdi mdi-cart"></i></span>
+                                                                    <small class="fw-semibold text-dark" style="font-size: 0.75rem;">Quotation</small>
+                                                                </div>
+                                                                <span class="fw-bold text-dark admin-total-quotation" style="font-size: 0.8rem;">
+                                                                    Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalQuotation, 0, ',', '.') : 0 }}
+                                                                </span>
+                                                            </div>
+                                                            <!-- 2. Prospect -->
+                                                            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded-3 border shadow-xs">
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-cart-arrow-down"></i></span>
+                                                                    <small class="fw-semibold text-dark" style="font-size: 0.75rem;">Prospect</small>
+                                                                </div>
+                                                                <span class="fw-bold text-dark admin-total-prospect" style="font-size: 0.8rem;">
+                                                                    Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalProspect, 0, ',', '.') : 0 }}
+                                                                </span>
+                                                            </div>
+                                                            <!-- 3. Hot Prospect -->
+                                                            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded-3 border shadow-xs">
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <span class="badge bg-label-warning p-1 rounded"><i class="mdi mdi-cart-heart"></i></span>
+                                                                    <small class="fw-semibold text-dark" style="font-size: 0.75rem;">Hot Prospect</small>
+                                                                </div>
+                                                                <span class="fw-bold text-warning admin-total-hot-prospect" style="font-size: 0.8rem;">
+                                                                    Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalHotProspect, 0, ',', '.') : 0 }}
+                                                                </span>
+                                                            </div>
+                                                            <!-- 4. PO Received (Closing) -->
+                                                            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded-3 border border-success border-opacity-50 shadow-xs">
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <span class="badge bg-label-success p-1 rounded"><i class="mdi mdi-cart-plus"></i></span>
+                                                                    <div>
+                                                                        <small class="fw-bold text-success d-block" style="font-size: 0.75rem;">PO Received</small>
+                                                                        @php
+                                                                            $salesTargetTotal = ($targetSales[$item][0] ?? null)?->total ?? 0;
+                                                                            $currentPO = $user->id == ($firstSales->id ?? 1) ? $totalPO : 0;
+                                                                            $targetPO = $salesTargetTotal > 0 ? ($currentPO / $salesTargetTotal) * 100 : 0;
+                                                                            $color = $targetPO <= 80 ? 'danger' : ($targetPO <= 100 ? 'warning' : 'success');
+                                                                        @endphp
+                                                                        <span class="badge bg-label-{{ $color }} rounded-pill admin-target-total-po" style="font-size: 8px;">{{ round($targetPO) }}%</span>
+                                                                    </div>
+                                                                </div>
+                                                                <span class="fw-bold text-success admin-total-po" style="font-size: 0.85rem;">
+                                                                    Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalPO, 0, ',', '.') : 0 }}
+                                                                </span>
+                                                            </div>
+                                                            <!-- 5. Quotation Loss -->
+                                                            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded-3 border shadow-xs">
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <span class="badge bg-label-danger p-1 rounded"><i class="mdi mdi-cart-minus"></i></span>
+                                                                    <small class="fw-semibold text-muted" style="font-size: 0.75rem;">Loss</small>
+                                                                </div>
+                                                                <span class="fw-semibold text-danger admin-total-loss" style="font-size: 0.8rem;">
+                                                                    Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalLoss, 0, ',', '.') : 0 }}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        @else
-                                            <!-- Non-Sales (Support/Admin) Role Content -->
-                                            <div class="row g-3">
-                                                <div class="col-12 col-md-6">
-                                                    <div class="p-3 border rounded-3 bg-body-tertiary">
-                                                        <small class="fw-bold text-muted text-uppercase d-block mb-2" style="font-size: 0.7rem;">Activity Breakdown</small>
-                                                        <div class="d-flex flex-column gap-2">
-                                                            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                                                                <small class="text-dark fw-semibold">Prospect</small>
-                                                                <span class="fw-bold filtered-prospect">{{ $user->id == ($firstSales->id ?? 1) ? $filteredProspect : 0 }} / 100</span>
-                                                            </div>
-                                                            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                                                                <small class="text-dark fw-semibold">Provided</small>
-                                                                <span class="fw-bold filtered-provided">0 / {{ $user->id == ($firstSales->id ?? 1) ? $allProspect : 0 }}</span>
-                                                            </div>
-                                                            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                                                                <small class="text-dark fw-semibold">Quotation</small>
-                                                                <span class="fw-bold filtered-quote-prospect">0 / {{ $user->id == ($firstSales->id ?? 1) ? $allProspect : 0 }}</span>
-                                                            </div>
-                                                            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                                                                <small class="text-dark fw-semibold">Not Provided</small>
-                                                                <span class="fw-bold filtered-not-provided">0 / {{ $user->id == ($firstSales->id ?? 1) ? $allProspect : 0 }}</span>
-                                                            </div>
-                                                            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                                                                <small class="text-dark fw-semibold">Purchase Order</small>
-                                                                <span class="fw-bold filtered-po-prospect">0 / 0</span>
-                                                            </div>
-                                                        </div>
+
+                                            <!-- Modern Action Buttons Toolbar -->
+                                            <div class="col-12 mt-2 pt-2 border-top">
+                                                @php
+                                                    $month = date('m');
+                                                    $year = date('Y');
+                                                    $dateNow = $month . '-' . $year;
+                                                @endphp
+                                                <div class="row g-2">
+                                                    <div class="col-3">
+                                                        <a class="btn btn-label-warning btn-sm d-grid w-100"
+                                                            type="button" data-bs-toggle="modal"
+                                                            data-bs-target="#overview-sales-{{ $user->id }}">
+                                                            <i class="mdi mdi-information-outline me-1"></i> Info
+                                                        </a>
                                                     </div>
-                                                </div>
-                                                <div class="col-12 col-md-6">
-                                                    <div class="p-3 border rounded-3 bg-body-tertiary">
-                                                        <small class="fw-bold text-muted text-uppercase d-block mb-2" style="font-size: 0.7rem;">Financial Pipeline</small>
-                                                        <div class="d-flex flex-column gap-2">
-                                                            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                                                                <small class="text-dark fw-semibold">Quotation</small>
-                                                                <span class="fw-bold total-prospect-quotation">0</span>
-                                                            </div>
-                                                            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                                                                <small class="text-dark fw-semibold">Hot Prospect</small>
-                                                                <span class="fw-bold total-prospect-hot">0</span>
-                                                            </div>
-                                                            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                                                                <small class="text-dark fw-semibold">Purchase Order</small>
-                                                                <span class="fw-bold total-prospect-po">0</span>
-                                                            </div>
-                                                        </div>
+                                                    <div class="col-4">
+                                                        <a class="btn btn-label-primary btn-sm d-grid w-100"
+                                                            href="{{ route('detail-overview.semester', ['sales' => $user->id, 'date' => $dateNow]) }}">
+                                                            <i class="mdi mdi-eye-outline me-1"></i> Detail Overview
+                                                        </a>
                                                     </div>
-                                                </div>
-                                                <div class="col-12 mt-2">
-                                                    @php
-                                                        $month = date('m');
-                                                        $year = date('Y');
-                                                        $dateNow = $month . '-' . $year;
-                                                    @endphp
-                                                    <div class="row g-2">
-                                                        <div class="col-2">
-                                                            <a class="btn btn-warning btn-sm d-grid w-100 text-white"
-                                                                type="button" data-bs-toggle="modal"
-                                                                data-bs-target="#overview-sales-{{ $item }}">
-                                                                <i class="mdi mdi-information-outline me-1"></i> Info
-                                                            </a>
-                                                        </div>
-                                                        <div class="col-4">
-                                                            <a class="btn btn-facebook btn-sm d-grid w-100"
-                                                                href="{{ route('detail-overview.semester', ['sales' => $user->id, 'date' => $dateNow]) }}">
-                                                                <i class="mdi mdi-eye-outline me-1"></i> Detail
-                                                            </a>
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <a class="btn btn-secondary btn-sm d-grid w-100"
-                                                                href="{{ route('overview.semester', $user->id) }}">
-                                                                <i class="mdi mdi-chart-box-outline me-1"></i> Semester Overview
-                                                            </a>
-                                                        </div>
+                                                    <div class="col-5">
+                                                        <a class="btn btn-label-secondary btn-sm d-grid w-100"
+                                                            href="{{ route('overview.semester', $user->id) }}">
+                                                            <i class="mdi mdi-chart-box-outline me-1"></i> Semester Overview
+                                                        </a>
                                                     </div>
                                                 </div>
                                             </div>
-                                        @endif
+                                        </div>
                                     </div>
                                 </div>
                                 @php
@@ -660,48 +608,153 @@
                             </div>
                         @endforeach
 
-                        {{-- Sales Project: quotation gabungan dibuat oleh Admin/Sales Manager.
-                        Cuma nampilin jumlah quotation & nominal bulan ini, karena project ini
-                        cuma nerima & ngolah data — gak punya target/aktivitas per-orang seperti Sales. --}}
+                        {{-- Sales Project Tab Pane --}}
                         <div class="tab-pane fade" id="navs-sales-project" role="tabpanel">
-                            <div class="mb-3">
-                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pb-2 pt-2 border-bottom mb-3">
+                            <div>
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 bg-light rounded-3 border border-dashed mb-3">
                                     <div class="d-flex align-items-center gap-3">
-                                        <div class="rounded-circle border bg-label-primary d-flex align-items-center justify-content-center"
-                                            style="width: 44px; height: 44px; border-width: 2px !important;">
-                                            <i class="mdi mdi-briefcase-outline fs-5"></i>
+                                        <div class="rounded-circle border bg-label-primary d-flex align-items-center justify-content-center shadow-xs"
+                                            style="width: 48px; height: 48px; border-width: 2px !important;">
+                                            <i class="mdi mdi-briefcase-outline fs-4"></i>
                                         </div>
                                         <div>
-                                            <h5 class="mb-0 fw-bold text-dark">Sales Project</h5>
-                                            <small class="text-muted d-block">Quotation gabungan Admin / Sales Manager</small>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <h5 class="mb-0 fw-bold text-dark">Sales Project</h5>
+                                                <span class="badge bg-label-primary rounded-pill px-2 py-1" style="font-size: 0.7rem;">
+                                                    Project Division
+                                                </span>
+                                            </div>
+                                            <small class="text-muted d-block mt-1">Quotation gabungan yang diterbitkan Admin &amp; Sales Manager</small>
                                         </div>
-                                    </div>
-                                    <div>
-                                        <span class="badge bg-label-primary px-3 py-2 rounded-pill">
-                                            <i class="mdi mdi-briefcase-check-outline me-1"></i> Project
-                                        </span>
                                     </div>
                                 </div>
 
                                 <div class="row g-3">
                                     <div class="col-12 col-md-6">
                                         <div class="p-3 border rounded-3 bg-body-tertiary h-100">
-                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
                                                 <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-email-multiple-outline"></i></span>
-                                                <span class="fw-semibold text-dark" style="font-size: 0.85rem;">Quotation Dibuat</span>
+                                                <span class="fw-semibold text-dark" style="font-size: 0.85rem;">Quotation Diterbitkan</span>
                                             </div>
-                                            <h4 class="mb-0 fw-bold text-dark">{{ $projectQuoteCount }}</h4>
-                                            <small class="text-muted">Bulan ini</small>
+                                            <h3 class="mb-0 fw-bold text-dark">{{ $projectQuoteCount }}</h3>
+                                            <small class="text-muted">Total quotation project bulan ini</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <div class="p-3 border rounded-3 bg-body-tertiary h-100 border-success border-opacity-25">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <span class="badge bg-label-success p-1 rounded"><i class="mdi mdi-cash-multiple"></i></span>
+                                                <span class="fw-semibold text-dark" style="font-size: 0.85rem;">Total Nilai Nominal</span>
+                                            </div>
+                                            <h3 class="mb-0 fw-bold text-success">Rp {{ number_format($projectQuoteNominal, 0, ',', '.') }}</h3>
+                                            <small class="text-muted">Total akumulasi nilai quotation bulan ini</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Marketing Team Tab Pane --}}
+                        <div class="tab-pane fade" id="navs-sales-marketing" role="tabpanel">
+                            <div>
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 bg-light rounded-3 border border-dashed mb-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="rounded-circle border bg-label-info d-flex align-items-center justify-content-center shadow-xs"
+                                            style="width: 48px; height: 48px; border-width: 2px !important;">
+                                            <i class="mdi mdi-bullhorn-outline fs-4"></i>
+                                        </div>
+                                        <div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <h5 class="mb-0 fw-bold text-dark">Marketing Team</h5>
+                                                <span class="badge bg-label-info rounded-pill px-2 py-1" style="font-size: 0.7rem;">
+                                                    Support &amp; Marketing
+                                                </span>
+                                            </div>
+                                            <small class="text-muted d-block mt-1">Performa gabungan seluruh akun Technical Support &amp; Marketing</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3">
+                                    <div class="col-12 col-md-6">
+                                        <div class="p-3 border rounded-3 bg-body-tertiary h-100">
+                                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                                <span class="fw-bold text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                                    <i class="mdi mdi-clipboard-list-outline me-1 text-primary"></i> Activity Breakdown
+                                                </span>
+                                                <span class="badge bg-label-info rounded-pill" style="font-size: 0.65rem;">Activities</span>
+                                            </div>
+                                            <div class="d-flex flex-column gap-2">
+                                                <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded-3 border shadow-xs">
+                                                    <small class="text-dark fw-semibold">Prospect</small>
+                                                    <span class="fw-bold">{{ $marketingAgg['prospect'] ?? 0 }}</span>
+                                                </div>
+                                                <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded-3 border shadow-xs">
+                                                    <small class="text-dark fw-semibold">Provided</small>
+                                                    <span class="fw-bold">{{ $marketingAgg['provided'] ?? 0 }}</span>
+                                                </div>
+                                                <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded-3 border shadow-xs">
+                                                    <small class="text-dark fw-semibold">Quotation</small>
+                                                    <span class="fw-bold">{{ $marketingAgg['quoteCount'] ?? 0 }}</span>
+                                                </div>
+                                                <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded-3 border shadow-xs">
+                                                    <small class="text-dark fw-semibold">Not Provided</small>
+                                                    <span class="fw-bold">{{ $marketingAgg['notProvided'] ?? 0 }}</span>
+                                                </div>
+                                                <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded-3 border border-success border-opacity-50 shadow-xs">
+                                                    <small class="text-success fw-bold">Purchase Order</small>
+                                                    <span class="fw-bold text-success">{{ $marketingAgg['poCount'] ?? 0 }}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="col-12 col-md-6">
                                         <div class="p-3 border rounded-3 bg-body-tertiary h-100">
-                                            <div class="d-flex align-items-center gap-2 mb-1">
-                                                <span class="badge bg-label-success p-1 rounded"><i class="mdi mdi-cash-multiple"></i></span>
-                                                <span class="fw-semibold text-dark" style="font-size: 0.85rem;">Total Nominal</span>
+                                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                                <span class="fw-bold text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                                    <i class="mdi mdi-cash-multiple me-1 text-primary"></i> Financial Pipeline
+                                                </span>
+                                                <span class="badge bg-label-primary rounded-pill" style="font-size: 0.65rem;">Funnel</span>
                                             </div>
-                                            <h4 class="mb-0 fw-bold text-success">Rp {{ number_format($projectQuoteNominal, 0, ',', '.') }}</h4>
-                                            <small class="text-muted">Bulan ini</small>
+                                            <div class="d-flex flex-column gap-2">
+                                                <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded-3 border shadow-xs">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <span class="badge bg-label-secondary p-1 rounded"><i class="mdi mdi-cart"></i></span>
+                                                        <small class="text-dark fw-semibold">Quotation</small>
+                                                    </div>
+                                                    <span class="fw-bold text-dark">Rp {{ number_format($marketingAgg['quoteNominal'] ?? 0, 0, ',', '.') }}</span>
+                                                </div>
+                                                <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded-3 border shadow-xs">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <span class="badge bg-label-warning p-1 rounded"><i class="mdi mdi-cart-heart"></i></span>
+                                                        <small class="text-dark fw-semibold">Hot Prospect</small>
+                                                    </div>
+                                                    <span class="fw-bold text-warning">Rp {{ number_format($marketingAgg['hotProspectNominal'] ?? 0, 0, ',', '.') }}</span>
+                                                </div>
+                                                <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded-3 border border-success border-opacity-50 shadow-xs">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <span class="badge bg-label-success p-1 rounded"><i class="mdi mdi-cart-plus"></i></span>
+                                                        <small class="text-success fw-bold">Purchase Order</small>
+                                                    </div>
+                                                    <span class="fw-bold text-success">Rp {{ number_format($marketingAgg['poNominal'] ?? 0, 0, ',', '.') }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 mt-2 pt-2 border-top">
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <a class="btn btn-label-info btn-sm d-grid w-100"
+                                                    href="{{ route('reports.support', ['year' => date('Y'), 'month' => date('m')]) }}">
+                                                    <i class="mdi mdi-eye-outline me-1"></i> Detail Laporan Support
+                                                </a>
+                                            </div>
+                                            <div class="col-6">
+                                                <a class="btn btn-label-secondary btn-sm d-grid w-100"
+                                                    href="{{ route('report.monthly', ['year' => date('Y'), 'month' => date('m')]) }}">
+                                                    <i class="mdi mdi-chart-box-outline me-1"></i> Monthly Report
+                                                </a>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

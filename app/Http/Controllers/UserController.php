@@ -106,9 +106,10 @@ class UserController extends Controller
      * @param  \App\Models\User  $user
      * @return \Illuminate\Http\Response
      */
-    public function show(User $user)
+    public function show($profile)
     {
-        if (!$user->exists) {
+        $user = ($profile instanceof User && $profile->exists) ? $profile : User::find($profile);
+        if (!$user) {
             $user = User::find(Auth::id());
         }
 
@@ -135,6 +136,17 @@ class UserController extends Controller
             $currentMonth = Carbon::now('Asia/Jakarta')->month;
             $currentYear = Carbon::now('Asia/Jakarta')->year;
 
+            // Selected Month & Year (Default to current running month)
+            $selectedMonth = (int) request('att_month', request('month', $currentMonth));
+            $selectedYear  = (int) request('att_year', request('year', $currentYear));
+
+            if ($selectedMonth < 1 || $selectedMonth > 12) {
+                $selectedMonth = $currentMonth;
+            }
+            if ($selectedYear < 2020 || $selectedYear > 2035) {
+                $selectedYear = $currentYear;
+            }
+
             // Evaluasi Auto Clock-Out otomatis (Asia/Jakarta GMT+7)
             HrAttendance::processAutoClockOutIfDue();
 
@@ -143,12 +155,37 @@ class UserController extends Controller
                 ->whereDate('date', $today)
                 ->first();
 
-            // Monthly attendance records
+            // Monthly attendance records for selected period
             $monthAttendances = HrAttendance::where('employee_id', $employee->id)
-                ->whereMonth('date', $currentMonth)
-                ->whereYear('date', $currentYear)
+                ->whereMonth('date', $selectedMonth)
+                ->whereYear('date', $selectedYear)
                 ->orderByDesc('date')
                 ->get();
+
+            // Monthly attendance summary statistics
+            $attStats = [
+                'totalRecords'      => $monthAttendances->count(),
+                'totalHadir'        => $monthAttendances->where('status', 'Hadir')->count(),
+                'totalOnTime'       => $monthAttendances->where('status', 'Hadir')->where('late_minutes', '<=', 0)->count(),
+                'totalLate'         => $monthAttendances->where('late_minutes', '>', 0)->count(),
+                'totalLateMins'     => (int) $monthAttendances->sum('late_minutes'),
+                'totalOvertimeMins' => (int) $monthAttendances->sum('overtime_minutes'),
+                'totalIzin'         => $monthAttendances->whereIn('status', ['Izin', 'Sakit', 'Cuti', 'Dinas Luar'])->count(),
+            ];
+
+            // List of available months / years from employee attendance records
+            $availableAttendancePeriods = HrAttendance::where('employee_id', $employee->id)
+                ->selectRaw('YEAR(date) as year, MONTH(date) as month, count(*) as total_days')
+                ->groupByRaw('YEAR(date), MONTH(date)')
+                ->orderByDesc('year')
+                ->orderByDesc('month')
+                ->get();
+
+            // Period Navigation Helpers
+            $selectedPeriod = Carbon::createFromDate($selectedYear, $selectedMonth, 1);
+            $prevPeriod = $selectedPeriod->copy()->subMonth();
+            $nextPeriod = $selectedPeriod->copy()->addMonth();
+            $isCurrentRunningMonth = ($selectedMonth == $currentMonth && $selectedYear == $currentYear);
 
             // Leave balances & requests
             $leaveBalance = HrLeaveBalance::firstOrCreate(
@@ -247,6 +284,14 @@ class UserController extends Controller
             'isAdminOrHr',
             'todayAttendance',
             'monthAttendances',
+            'selectedMonth',
+            'selectedYear',
+            'selectedPeriod',
+            'prevPeriod',
+            'nextPeriod',
+            'isCurrentRunningMonth',
+            'attStats',
+            'availableAttendancePeriods',
             'leaveBalance',
             'myLeaves',
             'leaveTypes',
@@ -272,8 +317,12 @@ class UserController extends Controller
      * @param  \App\Models\User  $user
      * @return \Illuminate\Http\Response
      */
-    public function edit(User $user)
+    public function edit($profile)
     {
+        $user = ($profile instanceof User && $profile->exists) ? $profile : User::find($profile);
+        if (!$user) {
+            $user = User::find(Auth::id());
+        }
         return view('pages.sales.user.setting', compact('user'));
     }
 

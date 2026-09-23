@@ -354,6 +354,12 @@
 
                 {{-- Items Table + Financial Summary — per Opsi kalau quotation ini
                      punya >1 opsi perbandingan harga, atau 1x aja kalau biasa. --}}
+                @php
+                    // Note/Terms & Conditions sekarang disimpan per-opsi (diisi lewat card
+                    // T&C yang ikut opsi aktif di form create/edit). Kalau quotation cuma
+                    // 1 opsi, tetap tampil 1x global seperti sebelum fitur ini ada.
+                    $hasCustomTerms = $quote->options->count() > 1;
+                @endphp
                 @if ($quote->options->isNotEmpty())
                     @foreach ($quote->options as $i => $option)
                         @if ($i > 0)
@@ -366,105 +372,33 @@
                         </div>
                         @endif
                         @include('pages.unit-quotation.partials.option-table', ['items' => $option->details, 'optTotals' => $option])
+                        @if ($hasCustomTerms)
+                            @include('pages.unit-quotation.partials.tc-block-detail', [
+                                'tcNote'             => $option->effective_note,
+                                'tcRentalTerms'      => $option->effective_rental_terms,
+                                'tcValidity'         => $option->effective_validity,
+                                'tcPricing'          => $option->effective_pricing,
+                                'tcDeliveryProcess'  => $option->effective_delivery_process,
+                                'tcPayment'          => $option->effective_payment,
+                                'tcWarranty'         => $option->effective_warranty,
+                            ])
+                        @endif
                     @endforeach
                 @else
                     @include('pages.unit-quotation.partials.option-table', ['items' => $quote->details, 'optTotals' => $quote])
                 @endif
 
-                {{-- Note (Remarks) --}}
-                @if ($quote->note)
-                <div style="border:1px solid #e0e0e0; border-left:3px solid #696cff; border-radius:6px; padding:10px 14px; font-size:12px; color:#333; margin-bottom:14px; background:#fafafa;">
-                    <p class="mb-1 fw-semibold text-uppercase" style="font-size:10px; color:#888; letter-spacing:.5px;">Remarks / Note</p>
-                    @php
-                        $noteLines = explode("\n", str_replace("\r", "", $quote->note));
-                    @endphp
-                    <div style="font-size:12px; color:#222; line-height:1.5;">
-                        @foreach ($noteLines as $line)
-                            @php
-                                $trimmed = trim($line);
-                            @endphp
-                            @if (empty($trimmed))
-                                <div style="height:3px;"></div>
-                            @else
-                                @php
-                                    $hasBullet = preg_match('/^([•\-\*]|\d+[\.\)])\s*(.*)/u', $trimmed, $matches);
-                                @endphp
-                                @if ($hasBullet && !empty($matches[1]) && !empty($matches[2]))
-                                    <div style="display:flex; align-items:flex-start; margin-bottom:3px;">
-                                        <span style="flex-shrink:0; min-width:20px; color:#696cff; font-weight:600;">{{ $matches[1] }}</span>
-                                        <span style="flex:1;">{{ $matches[2] }}</span>
-                                    </div>
-                                @else
-                                    <div style="margin-bottom:3px;">{{ $line }}</div>
-                                @endif
-                            @endif
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-
-                {{-- Ketentuan Rental Unit Kompresor (Khusus Tipe Rental jika ada isinya) --}}
-                @if (!empty($quote->rental_terms))
-                <div style="border:1px solid #ffe0b2; border-left:3px solid #ff9800; border-radius:6px; padding:10px 14px; font-size:12px; color:#333; margin-bottom:14px; background:#fffdf8;">
-                    <p class="mb-1 fw-semibold" style="font-size:10px; color:#e65100; text-transform:uppercase; letter-spacing:.5px;">
-                        <i class="mdi mdi-file-document-check-outline me-1"></i> Ketentuan Rental Unit Kompresor
-                    </p>
-                    @php
-                        $rentalLines = explode("\n", str_replace("\r", "", $quote->rental_terms));
-                    @endphp
-                    <div style="font-size:12px; color:#222; line-height:1.5;">
-                        @foreach ($rentalLines as $line)
-                            @php
-                                $trimmed = trim($line);
-                            @endphp
-                            @if (empty($trimmed))
-                                <div style="height:3px;"></div>
-                            @else
-                                @php
-                                    $hasBullet = preg_match('/^([•\-\*]|\d+[\.\)])\s*(.*)/u', $trimmed, $matches);
-                                @endphp
-                                @if ($hasBullet && !empty($matches[1]) && !empty($matches[2]))
-                                    <div style="display:flex; align-items:flex-start; margin-bottom:3px;">
-                                        <span style="flex-shrink:0; min-width:20px; color:#ff9800; font-weight:600;">{{ $matches[1] }}</span>
-                                        <span style="flex:1;">{{ $matches[2] }}</span>
-                                    </div>
-                                @else
-                                    <div style="margin-bottom:3px;">{{ $line }}</div>
-                                @endif
-                            @endif
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-
-                {{-- Terms & Conditions --}}
-                <div style="border:1px solid #e0e0e0; border-radius:6px; padding:12px 16px; font-size:12px; background:#fff; margin-bottom:16px;">
-                    <p class="mb-2 fw-semibold text-uppercase" style="font-size:10px; letter-spacing:.5px; color:#888;">Term &amp; Condition</p>
-                    <table style="width:100%; border-collapse:collapse;">
-                        <tr>
-                            <td style="width:160px; padding:3px 0; color:#555; vertical-align:top;">Validity of Quotation</td>
-                            <td style="padding:3px 0; vertical-align:top;">: {{ $quote->validity ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding:3px 0; color:#555; vertical-align:top;">Price</td>
-                            <td style="padding:3px 0; vertical-align:top;">: {{ $quote->pricing ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding:3px 0; color:#555; vertical-align:top;">Delivery Process</td>
-                            <td style="padding:3px 0; vertical-align:top; white-space:pre-line;">: {{ $quote->delivery_process ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding:3px 0; color:#555; vertical-align:top;">Payment</td>
-                            <td style="padding:3px 0; vertical-align:top;">: {{ $quote->payment ?? '-' }}</td>
-                        </tr>
-                        @if (!empty($quote->warranty))
-                        <tr>
-                            <td style="padding:3px 0; color:#555; vertical-align:top;">Warranty</td>
-                            <td style="padding:3px 0; vertical-align:top;">: {{ $quote->warranty }}</td>
-                        </tr>
-                        @endif
-                    </table>
-                </div>
+                @unless ($hasCustomTerms)
+                    @include('pages.unit-quotation.partials.tc-block-detail', [
+                        'tcNote'             => $quote->note,
+                        'tcRentalTerms'      => $quote->rental_terms,
+                        'tcValidity'         => $quote->validity,
+                        'tcPricing'          => $quote->pricing,
+                        'tcDeliveryProcess'  => $quote->delivery_process,
+                        'tcPayment'          => $quote->payment,
+                        'tcWarranty'         => $quote->warranty,
+                    ])
+                @endunless
 
                 {{-- Footer Banner --}}
                 <div class="p-2 text-center rounded" style="background:#f4f4fe; border:1px solid #e0e0ff;">
@@ -506,7 +440,7 @@
 
             <div class="card-body p-3">
                 {{-- 1. Main Action: Download / Print PDF --}}
-                <div class="mb-3">
+                <div class="mb-2">
                     <a href="{{ route('unit-quotation.print', $quote->id) }}" target="_blank"
                        class="btn btn-primary d-grid w-100 shadow-sm py-2"
                        style="background: linear-gradient(135deg, #696cff 0%, #3f42db 100%); border: none;">
@@ -514,6 +448,14 @@
                             <i class="mdi mdi-printer-outline fs-5"></i> Print / Download PDF
                         </span>
                     </a>
+                </div>
+
+                {{-- 1.1 Ajukan Retur Barang --}}
+                <div class="mb-3">
+                    <button type="button" class="btn btn-outline-warning w-100 d-flex align-items-center justify-content-center gap-1 shadow-xs fw-semibold"
+                        data-bs-toggle="modal" data-bs-target="#modalRequestReturn">
+                        <i class="mdi mdi-keyboard-return"></i> Ajukan Retur Barang
+                    </button>
                 </div>
 
                 {{-- 2. Edit & Revisi Row --}}
@@ -2267,6 +2209,21 @@
 {{-- Modal: Post to Sales Order — selalu di-render (tersembunyi secara default) supaya bisa
      langsung dibuka via JS begitu Upload PO sukses (AJAX), tanpa perlu reload halaman. --}}
 @include('components.modal.unit-quotation.convert-po')
+
+@php
+    $returnItems = $quote->options->isNotEmpty() 
+        ? $quote->options->pluck('details')->flatten() 
+        : $quote->details;
+    $returnFormAction = route('unit-quotation.request-return', $quote->id);
+    $returnClientName = $quote->client?->company ?? ($quote->pic?->name ?? '-');
+@endphp
+@include('components.modal.sales.modal-request-return', [
+    'quote' => $quote,
+    'quoteNo' => $quote->no_quote,
+    'clientName' => $returnClientName,
+    'formAction' => $returnFormAction,
+    'returnItems' => $returnItems,
+])
 
 @endsection
 

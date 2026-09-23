@@ -857,7 +857,7 @@
                                                 <div class="notif-card-content">
                                                     <div class="notif-card-meta">
                                                         <span class="badge {{ $isCreated ? 'bg-label-primary' : 'bg-label-success' }} notif-badge-pill">
-                                                            {{ $isCreated ? 'Prospect Baru' : 'Ditugaskan' }}
+                                                            {{ $isCreated ? 'Marketing Lead Baru' : 'Ditugaskan' }}
                                                         </span>
                                                         <span class="notif-time-ago">
                                                             <i class="mdi mdi-clock-outline fs-7"></i> {{ $ap->created_at->diffForHumans() }}
@@ -893,12 +893,12 @@
                                             </div>
                                             <div class="notif-card-content">
                                                 <div class="notif-card-meta">
-                                                    <span class="badge bg-label-info notif-badge-pill">Komentar Prospect</span>
+                                                    <span class="badge bg-label-info notif-badge-pill">Komentar Lead</span>
                                                     <span class="notif-time-ago">
                                                         <i class="mdi mdi-clock-outline fs-7"></i> {{ $date->diffInHours(\Carbon\Carbon::now()) > 24 ? $date->format('d M y') : $date->diffForHumans() }}
                                                     </span>
                                                 </div>
-                                                <h6 class="notif-card-title">{{ $item->company ?? ('Prospect #' . $prospectId) }}</h6>
+                                                <h6 class="notif-card-title">{{ $item->company ?? ('Marketing Lead #' . $prospectId) }}</h6>
                                                 <p class="notif-card-desc">
                                                     <span class="fw-semibold text-dark">{{ $item->name }}:</span> {{ \Illuminate\Support\Str::limit($item->comment, 65) }}
                                                 </p>

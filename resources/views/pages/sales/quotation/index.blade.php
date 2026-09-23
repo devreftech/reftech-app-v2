@@ -212,7 +212,7 @@
                                     <th>Total Price</th>
                                     <th>Type</th>
                                     <th>Description</th>
-                                    <th>Date PO</th>
+                                    <th class="text-nowrap">Date PO</th>
                                     <th>PO Number</th>
                                     <th>Invoice Number</th>
                                 </tr>
@@ -399,7 +399,7 @@
                                     <th>Company</th>
                                     <th>Total Price</th>
                                     <th>Type</th>
-                                    <th>Date PO</th>
+                                    <th class="text-nowrap">Date PO</th>
                                     <th>PO Number</th>
                                     <th>Invoice Number</th>
                                     <th class="text-center" style="width:48px;"></th>

@@ -426,6 +426,7 @@ class ProductController extends Controller
         $replace->modal = 0;
         $replace->warehouse_stock = 0;
         $replace->stock = 0;
+        $replace->is_opname = $request->has('is_opname') ? (bool)$request->is_opname : true;
         $replaceSave = $replace->save();
 
         $previousUrl = url()->previous();
@@ -435,10 +436,13 @@ class ProductController extends Controller
     }
     public function updateReplacement(Request $request, $id)
     {
-        $replace = DetailProduct::find($id);
+        $replace = DetailProduct::findOrFail($id);
         $replace->replacement = $request->replacement;
         if (Auth::user()->role == 'Admin') {
             $replace->modal = $request->modal;
+        }
+        if ($request->has('is_opname')) {
+            $replace->is_opname = (bool)$request->is_opname;
         }
         $replaceSave = $replace->save();
 
@@ -446,6 +450,19 @@ class ProductController extends Controller
         if ($replaceSave) {
             return redirect($previousUrl)->with('success', 'Data berhasil disimpan!');
         }
+    }
+    public function toggleOpname($id)
+    {
+        $replace = DetailProduct::findOrFail($id);
+        $replace->is_opname = !$replace->is_opname;
+        $replace->save();
+
+        return response()->json([
+            'success' => true,
+            'id' => $replace->id,
+            'is_opname' => $replace->is_opname,
+            'message' => 'Status SKU ' . $replace->replacement . ' berhasil diubah menjadi ' . ($replace->is_opname ? 'Bisa Diopname' : 'Tidak Diopname')
+        ]);
     }
     public function destroyReplacement($id)
     {

@@ -234,7 +234,7 @@ $(function () {
                                         <i class="mdi mdi-dots-vertical"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                        <li><a class="dropdown-item" href="/prospect/${full.id}"><i class="mdi mdi-eye-outline me-2 text-primary"></i>Detail Prospek</a></li>
+                                        <li><a class="dropdown-item" href="/prospect/${full.id}"><i class="mdi mdi-eye-outline me-2 text-primary"></i>Detail Marketing Lead</a></li>
                                         <li><a class="dropdown-item withoutQuote" href="javascript:void(0);" data-id="${full.id}"><i class="mdi mdi-close-circle-outline me-2 text-secondary"></i>Without Quote</a></li>
                                         <li><a class="dropdown-item noRespond" href="javascript:void(0);" data-id="${full.id}"><i class="mdi mdi-phone-missed me-2 text-warning"></i>No Respond</a></li>
                                     </ul>
@@ -334,7 +334,7 @@ $(function () {
                         return `
                             <div class="d-flex align-items-center gap-1 justify-content-center">
                                 ${quoteBtn}
-                                <a href="/prospect/${full.id}" class="btn btn-icon btn-sm btn-outline-secondary rounded-pill waves-effect" data-bs-toggle="tooltip" title="Detail Prospect">
+                                <a href="/prospect/${full.id}" class="btn btn-icon btn-sm btn-outline-secondary rounded-pill waves-effect" data-bs-toggle="tooltip" title="Detail Marketing Lead">
                                     <i class="mdi mdi-eye-outline"></i>
                                 </a>
                             </div>
@@ -373,7 +373,7 @@ $(function () {
                     render: function (data, type, full) {
                         return `
                             <div class="d-flex align-items-center gap-1 justify-content-center">
-                                <a href="/prospect/${full.id}" class="btn btn-icon btn-sm btn-outline-secondary rounded-pill waves-effect" data-bs-toggle="tooltip" title="Detail Prospek">
+                                <a href="/prospect/${full.id}" class="btn btn-icon btn-sm btn-outline-secondary rounded-pill waves-effect" data-bs-toggle="tooltip" title="Detail Marketing Lead">
                                     <i class="mdi mdi-eye-outline"></i>
                                 </a>
                                 <button type="button" class="btn btn-icon btn-sm btn-outline-primary rounded-pill waves-effect onProcessFU" data-id="${full.id}" data-bs-toggle="tooltip" title="Follow Up Kembali">
@@ -440,7 +440,7 @@ $(function () {
                                 <a href="${quoteHref}" class="btn btn-sm btn-label-success waves-effect py-1 px-2 text-nowrap fw-semibold" data-bs-toggle="tooltip" title="Lihat PO / Quote">
                                     <i class="mdi mdi-file-check-outline me-1"></i>Lihat PO
                                 </a>
-                                <a href="/prospect/${full.id}" class="btn btn-icon btn-sm btn-outline-secondary rounded-pill waves-effect" data-bs-toggle="tooltip" title="Detail Prospect">
+                                <a href="/prospect/${full.id}" class="btn btn-icon btn-sm btn-outline-secondary rounded-pill waves-effect" data-bs-toggle="tooltip" title="Detail Marketing Lead">
                                     <i class="mdi mdi-eye-outline"></i>
                                 </a>
                             </div>

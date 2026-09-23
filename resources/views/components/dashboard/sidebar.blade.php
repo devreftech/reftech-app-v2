@@ -69,7 +69,7 @@
                 <span class="menu-header-text">Sales & Marketing</span>
             </li>
             <li
-                class="menu-item {{ request()->is('leads') || request()->is('leads/detail/*') || request()->is('existing') || request()->is('existing/*') || request()->is('ru') || request()->is('existing-bangkrupt') ? 'open' : '' }}">
+                class="menu-item {{ request()->is('leads') || request()->is('leads/detail/*') || request()->is('existing') || request()->is('existing/*') || request()->is('ru') || request()->is('existing-bangkrupt') || request()->is('online-leads*') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-account-group-outline"></i>
                     <div data-i18n="Client">Client</div>
@@ -99,6 +99,12 @@
                         class="menu-item {{ request()->is('customers-by-sales') ? 'active' : '' }}">
                         <a href="{{ route('index-sales.customers') }}" class="menu-link">
                             <div data-i18n="Customers By Sales">Customers By Sales</div>
+                        </a>
+                    </li>
+                    <li
+                        class="menu-item {{ request()->is('online-leads*') ? 'active' : '' }}">
+                        <a href="{{ route('online-leads.index') }}" class="menu-link">
+                            <div data-i18n="Leads Online">Leads Online</div>
                         </a>
                     </li>
                 </ul>
@@ -140,7 +146,7 @@
                 class="menu-item {{ request()->is('prospect') || request()->is('prospect/*') || request()->is('prospect-quotation') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-account-details-outline"></i>
-                    <div data-i18n="Prospect">Prospect</div>
+                    <div data-i18n="Marketing Leads">Marketing Leads</div>
                     @if (@$noSaleProspect >= 1)
                         <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($noSaleProspect) }}</div>
                     @endif
@@ -149,7 +155,7 @@
                     <li
                         class="menu-item {{ request()->is('prospect') || request()->is('prospect/*') ? 'active' : '' }}">
                         <a href="{{ route('prospect.index') }}" class="menu-link">
-                            <div data-i18n="Prospect">Prospect</div>
+                            <div data-i18n="Marketing Leads">Marketing Leads</div>
                             @if (@$noSaleProspect >= 1)
                                 <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($noSaleProspect) }}</div>
                             @endif
@@ -193,12 +199,6 @@
                 <a href="{{ route('sales-target.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-account-group-outline"></i>
                     <div data-i18n="Sales Management">Sales Management</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('ecommerce/kpi*') ? 'active' : '' }}">
-                <a href="{{ route('ecommerce.kpi.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-shopping-outline"></i>
-                    <div data-i18n="KPI E-Commerce">KPI E-Commerce</div>
                 </a>
             </li>
             @endif
@@ -1148,7 +1148,7 @@
                 <span class="menu-header-text">Client</span>
             </li>
             <li
-                class="menu-item {{ request()->is('leads') || request()->is('leads/detail/*') || request()->is('existing') || request()->is('existing/*') || request()->is('ru') || request()->is('existing-bangkrupt') || request()->is('key-accounts') ? 'open' : '' }}">
+                class="menu-item {{ request()->is('leads') || request()->is('leads/detail/*') || request()->is('existing') || request()->is('existing/*') || request()->is('ru') || request()->is('existing-bangkrupt') || request()->is('key-accounts') || request()->is('online-leads*') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-account-group-outline"></i>
                     <div data-i18n="Client">Client</div>
@@ -1166,6 +1166,12 @@
                         class="menu-item {{ request()->is('key-accounts') ? 'active' : '' }}">
                         <a href="{{ route('key-accounts.index') }}" class="menu-link">
                             <div data-i18n="Key Accounts">Key Accounts</div>
+                        </a>
+                    </li>
+                    <li
+                        class="menu-item {{ request()->is('online-leads*') ? 'active' : '' }}">
+                        <a href="{{ route('online-leads.index') }}" class="menu-link">
+                            <div data-i18n="Leads Online">Leads Online</div>
                         </a>
                     </li>
                     {{--
@@ -1217,7 +1223,7 @@
                 class="menu-item {{ request()->is('prospect') || request()->is('prospect/*') || request()->is('prospect-quotation') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-account-details-outline"></i>
-                    <div data-i18n="Prospect">Prospect</div>
+                    <div data-i18n="Marketing Leads">Marketing Leads</div>
                     @if (@$leveledProspect >= 1)
                         <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($leveledProspect) }}</div>
                     @endif
@@ -1226,7 +1232,7 @@
                     <li
                         class="menu-item {{ request()->is('prospect') || request()->is('prospect/*') ? 'active' : '' }}">
                         <a href="{{ route('prospect.index') }}" class="menu-link">
-                            <div data-i18n="Prospect">Prospect</div>
+                            <div data-i18n="Marketing Leads">Marketing Leads</div>
                             @if (@$leveledProspect >= 1)
                                 <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($leveledProspect) }}</div>
                             @endif
@@ -1248,13 +1254,14 @@
                         <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($reportsCount) }}</div>
                     @endif
                 </a>
-            </li>
-            <li class="menu-item {{ request()->is('forecast') ? 'active' : '' }}">
-                <a href="{{ route('forecast.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-chart-box-plus-outline"></i>
-                    <div data-i18n="Forecast">Forecast</div>
-                </a>
-            </li>
+            @if (\App\Models\AppSetting::isSalesForecastMenuEnabled())
+                <li class="menu-item {{ request()->is('forecast') ? 'active' : '' }}">
+                    <a href="{{ route('forecast.index') }}" class="menu-link">
+                        <i class="menu-icon tf-icons mdi mdi-chart-box-plus-outline"></i>
+                        <div data-i18n="Forecast">Forecast</div>
+                    </a>
+                </li>
+            @endif
 
             @php
                 $salesPendingFeeCount = \App\Models\UnitQuotation::where('fee', '>', 0)
@@ -1614,13 +1621,13 @@
             -->
 
             <li class="menu-header fw-light mt-4">
-                <span class="menu-header-text">Prospect</span>
+                <span class="menu-header-text">Marketing Leads</span>
             </li>
 
             <li class="menu-item {{ request()->is('prospect') || request()->is('prospect/*') ? 'active' : '' }}">
                 <a href="{{ route('prospect.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-account-details-outline"></i>
-                    <div data-i18n="Prospect">Prospect</div>
+                    <div data-i18n="Marketing Leads">Marketing Leads</div>
                 </a>
             </li>
 
@@ -1715,10 +1722,10 @@
             </li>
 
             <li class="menu-header fw-light mt-4">
-                <span class="menu-header-text">Master Data</span>
+                <span class="menu-header-text">Warehouse</span>
             </li>
             <li
-                class="menu-item {{ request()->is('master/product') || request()->is('product') || request()->is('product/*') || request()->is('product-set') || request()->is('unit') || request()->is('unit/*') || request()->is('unit-global') || request()->is('unit-global/*') || request()->is('catalog-unit') || request()->is('catalog-unit/*') ? 'open' : '' }}">
+                class="menu-item {{ request()->is('master/product') || request()->is('product') || request()->is('product/*') || request()->is('product-set') || request()->is('unit') || request()->is('unit/*') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-database-outline"></i>
                     <div data-i18n="Master Data">Master Data</div>
@@ -1726,12 +1733,12 @@
                 <ul class="menu-sub">
                     <li class="menu-item {{ request()->is('master/product') ? 'active' : '' }}">
                         <a href="{{ route('master.product') }}" class="menu-link">
-                            <div data-i18n="Master">Master</div>
+                            <div data-i18n="SKU">SKU</div>
                         </a>
                     </li>
                     <li class="menu-item {{ request()->is('product') || request()->is('product/*') ? 'active' : '' }}">
                         <a href="{{ route('product.index') }}" class="menu-link">
-                            <div data-i18n="Product">Product</div>
+                            <div data-i18n="Sparepart">Sparepart</div>
                         </a>
                     </li>
                     <li class="menu-item {{ request()->is('product-set') ? 'active' : '' }}">
@@ -1741,28 +1748,14 @@
                     </li>
                     <li class="menu-item {{ request()->is('unit') || request()->is('unit/*') ? 'active' : '' }}">
                         <a href="{{ route('unit.index') }}" class="menu-link">
-                            <div data-i18n="Unit">Unit</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ request()->is('unit-global') || request()->is('unit-global/*') ? 'active' : '' }}">
-                        <a href="{{ route('unit-global.index') }}" class="menu-link">
-                            <div data-i18n="Unit Global">Unit Global</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ request()->is('catalog-unit') || request()->is('catalog-unit/*') ? 'active' : '' }}">
-                        <a href="{{ route('catalog-unit.index') }}" class="menu-link">
-                            <div data-i18n="Catalog Unit">Catalog Unit</div>
+                            <div data-i18n="Stock Unit">Stock Unit</div>
                         </a>
                     </li>
                 </ul>
             </li>
-
-            <li class="menu-header fw-light mt-4">
-                <span class="menu-header-text">Warehouse</span>
-            </li>
             {{-- Stock Movement Logistic --}}
             <li
-                class="menu-item {{ request()->is('product-in') || request()->is('product-in/*') || request()->is('product-out') || request()->is('product-out/*') || request()->is('change-warehouse') || request()->is('change-warehouse/*') || request()->is('unit-acquisition') || request()->is('unit-acquisition/*') || request()->is('unit-product-in') || request()->is('unit-product-in/*') || request()->is('unit-product-out') || request()->is('unit-product-out/*') || request()->is('return') || request()->is('return/*') || request()->is('warehouse/intercompany*') ? 'open' : '' }}">
+                class="menu-item {{ request()->is('product-in') || request()->is('product-in/*') || request()->is('product-out') || request()->is('product-out/*') || request()->is('unit-acquisition') || request()->is('unit-acquisition/*') || request()->is('unit-product-in') || request()->is('unit-product-in/*') || request()->is('unit-product-out') || request()->is('unit-product-out/*') || request()->is('warehouse/intercompany*') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-swap-horizontal"></i>
                     <div data-i18n="Stock Movement">Stock Movement</div>
@@ -1783,11 +1776,6 @@
                             <div data-i18n="Rekap BK Kojisha">Rekap BK Kojisha</div>
                         </a>
                     </li>
-                    <li class="menu-item {{ request()->is('change-warehouse') || request()->is('change-warehouse/*') ? 'active' : '' }}">
-                        <a href="{{ route('change-warehouse.index') }}" class="menu-link">
-                            <div data-i18n="Change Warehouse">Change Warehouse</div>
-                        </a>
-                    </li>
                     <li class="menu-item {{ request()->is('unit-product-in') || request()->is('unit-product-in/*') ? 'active' : '' }}">
                         <a href="{{ route('unit-product-in.index') }}" class="menu-link">
                             <div data-i18n="Barang Masuk Unit">Barang Masuk Unit</div>
@@ -1801,11 +1789,6 @@
                     <li class="menu-item {{ request()->is('unit-acquisition') || request()->is('unit-acquisition/*') ? 'active' : '' }}">
                         <a href="{{ route('unit-acquisition.index') }}" class="menu-link">
                             <div data-i18n="Unit Acquisition">Unit Acquisition</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ request()->is('return') || request()->is('return/*') ? 'active' : '' }}">
-                        <a href="{{ route('return.index') }}" class="menu-link">
-                            <div data-i18n="Return">Return</div>
                         </a>
                     </li>
                 </ul>
@@ -1829,6 +1812,18 @@
                     </li>
                 </ul>
             </li>
+            <li class="menu-item {{ request()->is('change-warehouse') || request()->is('change-warehouse/*') ? 'active' : '' }}">
+                <a href="{{ route('change-warehouse.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-swap-horizontal"></i>
+                    <div data-i18n="Warehouse Transfer">Warehouse Transfer</div>
+                </a>
+            </li>
+            <li class="menu-item {{ request()->is('service-reports') || request()->is('service-reports/*') ? 'active' : '' }}">
+                <a href="{{ route('service-reports.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-file-chart-outline"></i>
+                    <div data-i18n="Service Report">Service Report</div>
+                </a>
+            </li>
 
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Sales Order</span>
@@ -1849,10 +1844,6 @@
                     <div data-i18n="Sales Order">Sales Order</div>
                 </a>
             </li>
-
-            <li class="menu-header fw-light mt-4">
-                <span class="menu-header-text">Procurement</span>
-            </li>
             <li
                 class="menu-item {{ request()->is('purchase-request') || request()->is('purchase-request/*') ? 'active' : '' }}">
                 <a href="{{ route('purchase-request.index') }}" class="menu-link">
@@ -1863,61 +1854,15 @@
                     @endif
                 </a>
             </li>
-
-            <li class="menu-header fw-light mt-4">
-                <span class="menu-header-text">Invoice</span>
-            </li>
-            <li
-                class="menu-item {{ request()->is('productout/invoice/*') || request()->is('productout/index/invoice') ? 'active' : '' }}">
-                <a href="{{ route('product-out.index-invoice') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-book-open-outline"></i>
-                    <div data-i18n="Invoice">Invoice</div>
-                </a>
-            </li>
-            <li class="menu-header fw-light mt-4">
-                <span class="menu-header-text">Pending</span>
-            </li>
-            <li
-                class="menu-item {{ request()->is('pending-po') || request()->is('pending-po/*') || request()->is('pending-po-done') || request()->is('pending-po-project') ? 'open' : '' }}">
-                <a href="javascript:void(0);" class="menu-link menu-toggle">
-                    <i class="menu-icon tf-icons mdi mdi-text-box-multiple"></i>
-                    <div data-i18n="Pending PO">Pending PO</div>
-                </a>
-                <ul class="menu-sub">
-                    <li class="menu-item {{ request()->is('pending-po') ? 'active' : '' }}">
-                        <a href="{{ route('pending-po.index') }}" class="menu-link">
-                            <div data-i18n="Progress">Progress</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ request()->is('pending-po-project') ? 'active' : '' }}">
-                        <a href="{{ route('pending-po.index-project') }}" class="menu-link">
-                            <div data-i18n="Project">Project</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {{ request()->is('pending-po-done') ? 'active' : '' }}">
-                        <a href="{{ route('pending-po.done') }}" class="menu-link">
-                            <div data-i18n="Done">Done</div>
-                        </a>
-                    </li>
-                </ul>
-            </li>
-
-            <li class="menu-header fw-light mt-4">
-                <span class="menu-header-text">Notulen</span>
-            </li>
-
-            <li class="menu-item {{ request()->is('notulen') || request()->is('notulen/*') ? 'active' : '' }}">
-                <a href="{{ route('notulen.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-account-box-outline"></i>
-                    <div data-i18n="notulen">Notulen</div>
-                    {{-- @if (@$leveledProspect >= 1)
-                        <div class="badge bg-danger rounded-pill ms-auto">{{ $leveledProspect }}</div>
-                    @endif --}}
+            <li class="menu-item {{ request()->is('return') || request()->is('return/*') ? 'active' : '' }}">
+                <a href="{{ route('return.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-archive-cancel"></i>
+                    <div data-i18n="Return">Return</div>
                 </a>
             </li>
 
             <li class="menu-header fw-light mt-4">
-                <span class="menu-header-text">Library</span>
+                <span class="menu-header-text">Layanan & Bantuan</span>
             </li>
             <li class="menu-item {{ request()->is('library/index/*') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
@@ -1947,9 +1892,6 @@
                     </li>
                 </ul>
             </li>
-            <li class="menu-header fw-light mt-4">
-                <span class="menu-header-text">Helpdesk</span>
-            </li>
             <li class="menu-item {{ request()->is('helpdesk') || request()->is('helpdesk/*') ? 'active' : '' }}">
                 <a href="{{ route('helpdesk.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-lifebuoy"></i>
@@ -1957,6 +1899,20 @@
                     @if (@$openTicketCount >= 1)
                         <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($openTicketCount) }}</div>
                     @endif
+                </a>
+            </li>
+            @if (Auth::user()?->employee)
+            <li class="menu-item {{ request()->is('hr/my-portal*') ? 'active' : '' }}">
+                <a href="{{ route('hr.portal.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-card-account-details-star-outline"></i>
+                    <div data-i18n="My Portal">My Portal</div>
+                </a>
+            </li>
+            @endif
+            <li class="menu-item {{ request()->is('unit-global') || request()->is('unit-global/*') ? 'active' : '' }}">
+                <a href="{{ route('unit-global.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-desktop-tower"></i>
+                    <div data-i18n="Unit Global">Unit Global</div>
                 </a>
             </li>
         @elseif(Auth::user()?->role == 'ServiceM')
@@ -2582,25 +2538,98 @@
             </li>
 
             <li class="menu-header fw-light mt-4">
-                <span class="menu-header-text">Persediaan & Stok</span>
+                <span class="menu-header-text">E-Stock</span>
             </li>
-            <li class="menu-item {{ request()->is('stock') || request()->is('stock/*') ? 'active' : '' }}">
-                <a href="{{ route('stock.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-warehouse"></i>
-                    <div data-i18n="Current Stock">Current Stock</div>
+
+            {{-- Master Data --}}
+            <li class="menu-item {{ request()->is('master/product') || request()->is('product') || request()->is('product/*') || request()->is('product-set') || request()->is('unit-acquisition') || request()->is('unit-acquisition/*') ? 'open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <i class="menu-icon tf-icons mdi mdi-database-outline"></i>
+                    <div data-i18n="Master Data">Master Data</div>
                 </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('master/product') ? 'active' : '' }}">
+                        <a href="{{ route('master.product') }}" class="menu-link">
+                            <div data-i18n="Product Master">Product Master</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('product') || request()->is('product/*') ? 'active' : '' }}">
+                        <a href="{{ route('product.index') }}" class="menu-link">
+                            <div data-i18n="Spare Part">Spare Part</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('product-set') ? 'active' : '' }}">
+                        <a href="{{ route('product-set.index') }}" class="menu-link">
+                            <div data-i18n="Product Set">Product Set</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('unit-acquisition') || request()->is('unit-acquisition/*') ? 'active' : '' }}">
+                        <a href="{{ route('unit-acquisition.index') }}" class="menu-link">
+                            <div data-i18n="Unit Acquisition">Unit Acquisition</div>
+                        </a>
+                    </li>
+
+                </ul>
             </li>
-            <li class="menu-item {{ request()->is('stock-opname') ? 'active' : '' }}">
-                <a href="{{ route('opname.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-clipboard-check-outline"></i>
-                    <div data-i18n="Stock Opname">Stock Opname</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('change-warehouse') || request()->is('change-warehouse/*') ? 'active' : '' }}">
-                <a href="{{ route('change-warehouse.index') }}" class="menu-link">
+
+            {{-- Stock Movement --}}
+            <li class="menu-item {{ request()->is('product-in') || request()->is('product-in/*') || request()->is('product-out') || request()->is('product-out/*') || request()->is('change-warehouse') || request()->is('change-warehouse/*') || request()->is('unit-product-in') || request()->is('unit-product-in/*') || request()->is('unit-product-out') || request()->is('unit-product-out/*') || request()->is('warehouse/intercompany*') ? 'open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-swap-horizontal"></i>
-                    <div data-i18n="Warehouse Transfer">Warehouse Transfer</div>
+                    <div data-i18n="Stock Movement">Stock Movement</div>
                 </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('product-in') || request()->is('product-in/*') ? 'active' : '' }}">
+                        <a href="{{ route('product-in.index') }}" class="menu-link">
+                            <div data-i18n="Product In">Product In</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('product-out') || request()->is('product-out/*') ? 'active' : '' }}">
+                        <a href="{{ route('product-out.index') }}" class="menu-link">
+                            <div data-i18n="Product Out">Product Out</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('warehouse/intercompany*') ? 'active' : '' }}">
+                        <a href="{{ route('intercompany.index') }}" class="menu-link">
+                            <div data-i18n="Rekap BK Kojisha">Rekap BK Kojisha</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('change-warehouse') || request()->is('change-warehouse/*') ? 'active' : '' }}">
+                        <a href="{{ route('change-warehouse.index') }}" class="menu-link">
+                            <div data-i18n="Warehouse Transfer">Warehouse Transfer</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('unit-product-in') || request()->is('unit-product-in/*') ? 'active' : '' }}">
+                        <a href="{{ route('unit-product-in.index') }}" class="menu-link">
+                            <div data-i18n="Barang Masuk Unit">Barang Masuk Unit</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('unit-product-out') || request()->is('unit-product-out/*') ? 'active' : '' }}">
+                        <a href="{{ route('unit-product-out.index') }}" class="menu-link">
+                            <div data-i18n="Unit Keluar">Unit Keluar</div>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            {{-- Monitoring --}}
+            <li class="menu-item {{ request()->is('stock') || request()->is('stock/*') || request()->is('stock-opname') ? 'open' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <i class="menu-icon tf-icons mdi mdi-clipboard-list-outline"></i>
+                    <div data-i18n="Monitoring">Monitoring</div>
+                </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('stock') || request()->is('stock/*') ? 'active' : '' }}">
+                        <a href="{{ route('stock.index') }}" class="menu-link">
+                            <div data-i18n="Current Stock">Current Stock</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('stock-opname') ? 'active' : '' }}">
+                        <a href="{{ route('opname.index') }}" class="menu-link">
+                            <div data-i18n="Stock Opname">Stock Opname</div>
+                        </a>
+                    </li>
+                </ul>
             </li>
 
             <li class="menu-header fw-light mt-4">
@@ -2699,7 +2728,7 @@
                 <span class="menu-header-text">Client</span>
             </li>
             <li
-                class="menu-item {{ request()->is('leads') || request()->is('leads/detail/*') || request()->is('existing') || request()->is('existing/*') || request()->is('customer-by-status') || request()->is('key-accounts') ? 'open' : '' }}">
+                class="menu-item {{ request()->is('leads') || request()->is('leads/detail/*') || request()->is('existing') || request()->is('existing/*') || request()->is('customer-by-status') || request()->is('key-accounts') || request()->is('online-leads*') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-account-group-outline"></i>
                     <div data-i18n="Client">Client</div>
@@ -2720,6 +2749,11 @@
                             <div data-i18n="Key Accounts">Key Accounts</div>
                         </a>
                     </li>
+                    <li class="menu-item {{ request()->is('online-leads*') ? 'active' : '' }}">
+                        <a href="{{ route('online-leads.index') }}" class="menu-link">
+                            <div data-i18n="Leads Online">Leads Online</div>
+                        </a>
+                    </li>
                 </ul>
             </li>
 
@@ -2734,12 +2768,12 @@
                 class="menu-item {{ request()->is('prospect') || request()->is('prospect/*') || request()->is('prospect-quotation') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-account-details-outline"></i>
-                    <div data-i18n="Prospect">Prospect</div>
+                    <div data-i18n="Marketing Leads">Marketing Leads</div>
                 </a>
                 <ul class="menu-sub">
                     <li class="menu-item {{ request()->is('prospect') || request()->is('prospect/*') ? 'active' : '' }}">
                         <a href="{{ route('prospect.index') }}" class="menu-link">
-                            <div data-i18n="Prospect">Prospect</div>
+                            <div data-i18n="Marketing Leads">Marketing Leads</div>
                         </a>
                     </li>
                     <li class="menu-item {{ request()->is('prospect-quotation') ? 'active' : '' }}">
@@ -2829,12 +2863,6 @@
                 <a href="{{ route('sales-target.index') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-account-group-outline"></i>
                     <div data-i18n="Sales Management">Sales Management</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('ecommerce/kpi*') ? 'active' : '' }}">
-                <a href="{{ route('ecommerce.kpi.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-shopping-outline"></i>
-                    <div data-i18n="KPI E-Commerce">KPI E-Commerce</div>
                 </a>
             </li>
             <li class="menu-header fw-light mt-4">
@@ -2996,13 +3024,13 @@
                 class="menu-item {{ request()->is('prospect') || request()->is('prospect/*') || request()->is('prospect-quotation') ? 'open' : '' }}">
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-account-details-outline"></i>
-                    <div data-i18n="Prospect">Prospect</div>
+                    <div data-i18n="Marketing Leads">Marketing Leads</div>
                 </a>
                 <ul class="menu-sub">
                     <li
                         class="menu-item {{ request()->is('prospect') || request()->is('prospect/*') ? 'active' : '' }}">
                         <a href="{{ route('prospect.index') }}" class="menu-link">
-                            <div data-i18n="Prospect">Prospect</div>
+                            <div data-i18n="Marketing Leads">Marketing Leads</div>
                         </a>
                     </li>
                     <li
@@ -3136,7 +3164,7 @@
         @endif
 
         {{-- Akses Universal Portal Karyawan (ESS) untuk seluruh staf yang sudah terhubung dengan data Employee --}}
-        @if (Auth::user() && Auth::user()->role !== 'Client' && Auth::user()->employee)
+        @if (Auth::user() && !in_array(Auth::user()->role, ['Client', 'Logistic']) && Auth::user()->employee)
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">My Portal</span>
             </li>

@@ -1,5 +1,5 @@
 @extends('layouts.sales.app')
-@section('title', 'Detail Prospect - ' . ($client->company ?? 'Prospect'))
+@section('title', 'Detail Marketing Lead - ' . ($client->company ?? 'Marketing Lead'))
 
 @section('content')
     {{-- Top Header / Breadcrumb Bar --}}
@@ -7,13 +7,13 @@
         <div>
             <div class="d-flex align-items-center gap-2 mb-1">
                 <a href="{{ route('prospect.index') }}" class="text-muted fw-normal text-decoration-none">
-                    <i class="mdi mdi-arrow-left me-1"></i>Prospects
+                    <i class="mdi mdi-arrow-left me-1"></i>Marketing Leads
                 </a>
                 <span class="text-muted">/</span>
                 <span class="text-primary fw-semibold">Detail #{{ $prospect->id }}</span>
             </div>
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                <h4 class="fw-bold mb-0 text-heading">{{ $client->company ?? 'Prospect Detail' }}</h4>
+                <h4 class="fw-bold mb-0 text-heading">{{ $client->company ?? 'Marketing Lead Detail' }}</h4>
                 <span class="badge bg-label-primary rounded-pill px-3 py-1 fw-semibold">
                     <i class="mdi mdi-tag-outline me-1"></i>{{ $prospect->category ?? 'General' }}
                 </span>
@@ -27,14 +27,14 @@
                     </span>
                 @else
                     <span class="badge bg-label-warning rounded-pill px-3 py-1 fw-semibold">
-                        <i class="mdi mdi-star-outline me-1"></i>New Prospect
+                        <i class="mdi mdi-star-outline me-1"></i>New Marketing Lead
                     </span>
                 @endif
             </div>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <button type="button" class="btn btn-label-primary waves-effect" data-bs-toggle="modal" data-bs-target="#editProspectModal">
-                <i class="mdi mdi-pencil-outline me-1"></i>Edit Prospect
+                <i class="mdi mdi-pencil-outline me-1"></i>Edit Marketing Lead
             </button>
             <a href="{{ route('prospect.index') }}" class="btn btn-label-secondary waves-effect">
                 <i class="mdi mdi-arrow-left me-1"></i>Kembali
@@ -59,7 +59,7 @@
                                 <i class="mdi mdi-text-box-search-outline fs-4"></i>
                             </div>
                             <div>
-                                <h6 class="fw-bold mb-0 text-heading">Kebutuhan / Detail Prospek</h6>
+                                <h6 class="fw-bold mb-0 text-heading">Kebutuhan / Detail Marketing Lead</h6>
                                 <small class="text-muted">Informasi inquiry dan spesifikasi kebutuhan klien</small>
                             </div>
                         </div>
@@ -88,7 +88,7 @@
                             <div class="d-flex align-items-center p-2 rounded bg-light">
                                 <i class="mdi mdi-bullhorn-outline text-info me-2 fs-5"></i>
                                 <div>
-                                    <div class="text-muted small" style="font-size: 0.75rem;">Sumber Prospek (Source)</div>
+                                    <div class="text-muted small" style="font-size: 0.75rem;">Sumber Lead (Source)</div>
                                     <div class="fw-semibold text-heading small">{{ $client->source ?: 'Direct / Marketing' }}</div>
                                 </div>
                             </div>
@@ -646,7 +646,7 @@
                     @method('PUT')
                     <div class="modal-header">
                         <h5 class="modal-title fw-bold">
-                            <i class="mdi mdi-pencil-outline me-1 text-primary"></i> Edit Detail Prospek #{{ $prospect->id }}
+                            <i class="mdi mdi-pencil-outline me-1 text-primary"></i> Edit Detail Marketing Lead #{{ $prospect->id }}
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>

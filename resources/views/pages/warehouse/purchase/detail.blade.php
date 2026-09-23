@@ -347,9 +347,11 @@
             <div class="col-12">
                 <div class="card modern-card mb-0">
                     @php
+                        $isNewPr = ($purchase && (int) $purchase->status == 0);
                         $canCreatePo = ($purchase && (int) $purchase->status >= 1);
                         $canEditPrQty = in_array(Auth::user()->role, ['Logistic', 'Admin']);
-                        $prColspan = 7 + ($canCreatePo ? 1 : 0) + ($canEditPrQty ? 1 : 0);
+                        $hasSelection = ($isNewPr || $canCreatePo);
+                        $prColspan = 7 + ($hasSelection ? 1 : 0) + ($canEditPrQty || $isNewPr ? 1 : 0);
                     @endphp
                     <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div class="d-flex align-items-center gap-2">
@@ -363,6 +365,10 @@
                                 <span class="badge bg-label-info font-11 d-none d-sm-inline-flex" id="selectedPrItemsBadge">
                                     <span id="countSelectedPrItems">0</span> item dipilih
                                 </span>
+                            @elseif ($isNewPr)
+                                <span class="badge bg-label-danger font-11 d-none d-sm-inline-flex" id="selectedPrRejectItemsBadge" style="display: none !important;">
+                                    <span id="countSelectedPrRejectItems">0</span> item dipilih untuk ditolak
+                                </span>
                             @endif
                         </div>
                         @if ($canCreatePo)
@@ -374,6 +380,12 @@
                                     <i class="mdi mdi-cart-arrow-down me-1"></i> + Direct Purchase
                                 </button>
                             </div>
+                        @elseif ($isNewPr)
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <button type="button" class="btn btn-sm btn-outline-danger shadow-xs" id="btnRejectSelectedItems" style="display: none;">
+                                    <i class="mdi mdi-close-circle-outline me-1"></i> Tolak Item Terpilih
+                                </button>
+                            </div>
                         @endif
                     </div>
                     <div class="card-body p-0">
@@ -381,7 +393,7 @@
                             <table class="table table-bordered align-middle mb-0" id="prItemsTable">
                                 <thead>
                                     <tr>
-                                        @if ($canCreatePo)
+                                        @if ($hasSelection)
                                             <th style="width: 40px;" class="text-center">
                                                 <input type="checkbox" class="form-check-input" id="checkAllPrItems" title="Pilih Semua Item">
                                             </th>
@@ -393,34 +405,60 @@
                                         <th>Pembelian Terakhir</th>
                                         <th class="text-center" style="width: 160px;">Qty &amp; Alokasi</th>
                                         <th>Catatan / Note</th>
-                                        @if ($canEditPrQty)
-                                            <th class="text-center" style="width: 50px;"></th>
+                                        @if ($canEditPrQty || $isNewPr)
+                                            <th class="text-center" style="width: 80px;">Aksi</th>
                                         @endif
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @php $no = 1; @endphp
                                     @forelse (($purchase->details ?? collect()) as $pr)
-                                        @php $remaining = $pr->remainingQty; @endphp
-                                        <tr>
-                                            @if ($canCreatePo)
+                                        @php
+                                            $remaining = $pr->remainingQty;
+                                            $isRejected = (bool) $pr->is_rejected;
+                                        @endphp
+                                        <tr class="{{ $isRejected ? 'table-light text-muted' : '' }}">
+                                            @if ($hasSelection)
                                                 <td class="text-center">
-                                                    @if ($remaining > 0)
-                                                        <input type="checkbox" class="form-check-input check-pr-item" value="{{ $pr->id }}" data-remaining="{{ $remaining }}" checked>
-                                                    @else
-                                                        <span class="badge bg-label-success p-1" data-bs-toggle="tooltip" title="Sudah teralokasi penuh ke PO"><i class="mdi mdi-check font-12"></i></span>
+                                                    @if ($isNewPr)
+                                                        @if ($isRejected)
+                                                            <span class="badge bg-label-danger p-1" data-bs-toggle="tooltip" title="Item Ditolak"><i class="mdi mdi-close font-12"></i></span>
+                                                        @else
+                                                            <input type="checkbox" class="form-check-input check-pr-reject-item" value="{{ $pr->id }}" data-name="{{ $pr->equivalent->product->description ?? ($pr->equivalent->pn ?? 'Item #' . $pr->id) }}">
+                                                        @endif
+                                                    @elseif ($canCreatePo)
+                                                        @if ($isRejected)
+                                                            <span class="badge bg-label-danger p-1" data-bs-toggle="tooltip" title="Item Ditolak"><i class="mdi mdi-close font-12"></i></span>
+                                                        @elseif ($remaining > 0)
+                                                            <input type="checkbox" class="form-check-input check-pr-item" value="{{ $pr->id }}" data-remaining="{{ $remaining }}" checked>
+                                                        @else
+                                                            <span class="badge bg-label-success p-1" data-bs-toggle="tooltip" title="Sudah teralokasi penuh ke PO"><i class="mdi mdi-check font-12"></i></span>
+                                                        @endif
                                                     @endif
                                                 </td>
                                             @endif
                                             <td class="text-center fw-medium">{{ $no }}</td>
                                             <td class="fw-bold text-dark">{{ $purchase->no_pr ?? '-' }}</td>
                                             <td style="max-width: 250px; white-space: normal;">
-                                                <div class="fw-semibold text-dark">
+                                                @if ($isRejected)
+                                                    <div class="d-flex align-items-center gap-1 mb-1">
+                                                        <span class="badge bg-label-danger font-11"><i class="mdi mdi-close-circle-outline me-1"></i>Ditolak</span>
+                                                    </div>
+                                                @endif
+                                                <div class="fw-semibold {{ $isRejected ? 'text-decoration-line-through text-muted' : 'text-dark' }}">
                                                     {{ $pr->equivalent->product->description ?? ($pr->equivalent->pn ?? '-') }}
                                                 </div>
                                                 @if ($pr->equivalent->product && $pr->equivalent->product->commodity)
                                                     <div class="text-muted font-11 mt-1">
                                                         <i class="mdi mdi-tag-outline me-1"></i>{{ $pr->equivalent->product->commodity }}
+                                                    </div>
+                                                @endif
+                                                @if ($isRejected && $pr->rejected_reason)
+                                                    <div class="alert alert-danger py-1 px-2 mt-2 mb-0 font-11 border-0" style="background-color: rgba(255, 62, 29, 0.08);">
+                                                        <strong>Alasan:</strong> {{ $pr->rejected_reason }}
+                                                        @if ($pr->rejector)
+                                                            <div class="text-muted font-10 mt-1">oleh {{ $pr->rejector->name }} · {{ \Carbon\Carbon::parse($pr->rejected_at)->diffForHumans() }}</div>
+                                                        @endif
                                                     </div>
                                                 @endif
                                             </td>
@@ -432,7 +470,7 @@
                                                         $detPrice = $detQuotation->firstWhere('id_equivalent', $pr->id_equivalent);
                                                     @endphp
                                                     <div class="d-flex align-items-center gap-1 flex-wrap">
-                                                        <span class="fw-bold text-dark">{{ $pr->equivalent->brand }} {{ $pr->equivalent->pn }}</span>
+                                                        <span class="fw-bold {{ $isRejected ? 'text-muted' : 'text-dark' }}">{{ $pr->equivalent->brand }} {{ $pr->equivalent->pn }}</span>
                                                         @if ($pr->equivalent->product && $pr->equivalent->product->go)
                                                             <span class="badge {{ $pr->equivalent->product->go == 'Genuine' ? 'bg-label-success' : 'bg-label-warning' }} font-10">
                                                                 {{ $pr->equivalent->product->go }}
@@ -484,7 +522,11 @@
                                             </td>
                                             <td class="text-center">
                                                 <span class="fw-bold text-dark fs-6">{{ $pr->totalQty }} {{ $pr->equivalent->product->unit ?? '' }}</span>
-                                                @if ($remaining > 0)
+                                                @if ($isRejected)
+                                                    <div>
+                                                        <span class="badge bg-label-danger font-11">Item Ditolak</span>
+                                                    </div>
+                                                @elseif ($remaining > 0)
                                                     <div>
                                                         <span class="badge bg-label-warning font-11" data-bs-toggle="tooltip" title="Sisa kebutuhan belum terbit PO: {{ $remaining }} {{ $pr->equivalent->product->unit ?? '' }}">
                                                             Sisa belum PO: {{ $remaining }}
@@ -525,13 +567,32 @@
                                                     <span class="text-muted">-</span>
                                                 @endif
                                             </td>
-                                            @if ($canEditPrQty)
+                                            @if ($canEditPrQty || $isNewPr)
                                                 <td class="text-center">
-                                                    <button type="button" class="btn btn-icon btn-outline-primary btn-sm edit-purchase-item"
-                                                        data-id="{{ $pr->id }}" data-qty="{{ $pr->qty }}" data-qty-stock="{{ $pr->qty_stock }}"
-                                                        data-note="{{ $pr->note }}" title="Edit Qty Purchase Request">
-                                                        <i class="mdi mdi-pencil-outline"></i>
-                                                    </button>
+                                                    <div class="d-inline-flex align-items-center gap-1">
+                                                        @if ($isNewPr && $isRejected)
+                                                            <button type="button" class="btn btn-xs btn-outline-secondary unreject-item-btn"
+                                                                data-id="{{ $pr->id }}" data-name="{{ $pr->equivalent->product->description ?? ($pr->equivalent->pn ?? 'Item #' . $pr->id) }}"
+                                                                title="Batalkan Penolakan Item">
+                                                                <i class="mdi mdi-undo-variant me-1"></i>Batal Tolak
+                                                            </button>
+                                                        @else
+                                                            @if ($canEditPrQty)
+                                                                <button type="button" class="btn btn-icon btn-outline-primary btn-sm edit-purchase-item"
+                                                                    data-id="{{ $pr->id }}" data-qty="{{ $pr->qty }}" data-qty-stock="{{ $pr->qty_stock }}"
+                                                                    data-note="{{ $pr->note }}" title="Edit Qty Purchase Request">
+                                                                    <i class="mdi mdi-pencil-outline"></i>
+                                                                </button>
+                                                            @endif
+                                                            @if ($isNewPr && !$isRejected)
+                                                                <button type="button" class="btn btn-icon btn-outline-danger btn-sm reject-single-item-btn"
+                                                                    data-id="{{ $pr->id }}" data-name="{{ $pr->equivalent->product->description ?? ($pr->equivalent->pn ?? 'Item #' . $pr->id) }}"
+                                                                    title="Tolak Item Ini">
+                                                                    <i class="mdi mdi-close-circle-outline"></i>
+                                                                </button>
+                                                            @endif
+                                                        @endif
+                                                    </div>
                                                 </td>
                                             @endif
                                         </tr>
@@ -839,6 +900,39 @@
                             <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
                             <button type="submit" class="btn btn-danger">
                                 <i class="mdi mdi-close-circle-outline me-1"></i> Tolak PR
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- Modal Reject Selected Items --}}
+        <div class="modal fade" id="rejectItemsModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form id="rejectItemsForm">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold text-danger">
+                                <i class="mdi mdi-close-circle-outline me-1"></i> Tolak Item Purchase Request
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-warning py-2 px-3 mb-3 small d-flex align-items-center gap-2">
+                                <i class="mdi mdi-alert-circle-outline fs-5 text-warning flex-shrink-0"></i>
+                                <span id="rejectItemsCountText">Menolak item yang dipilih. Item yang ditolak tidak akan diproses ke PO.</span>
+                            </div>
+                            <div class="mb-3">
+                                <label for="rejectItemsReason" class="form-label">Alasan Penolakan <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="rejectItemsReason" name="reason" rows="3" required
+                                    placeholder="Jelaskan alasan penolakan item ini..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-danger" id="btnSubmitRejectItems">
+                                <i class="mdi mdi-close-circle-outline me-1"></i> Tolak Item
                             </button>
                         </div>
                     </div>
@@ -1495,22 +1589,30 @@
                             if (response == 1) {
                                 Swal.fire({
                                     icon: "success",
-                                    title: "Acc succed!",
-                                    text: "Your file has been acc.",
+                                    title: "PR Disetujui",
+                                    text: "Purchase Request berhasil disetujui.",
                                     customClass: {
                                         confirmButton: "btn btn-success waves-effect",
                                     },
                                 })
                                 window.setTimeout(function() {
                                     window.location.reload();
-                                }, 2000);
+                                }, 1500);
                             } else {
                                 Swal.fire({
                                     icon: 'error',
                                     title: 'Oops...',
-                                    text: 'Data Failed to Acc!'
+                                    text: 'Gagal menyetujui PR!'
                                 });
                             }
+                        },
+                        error: function(xhr) {
+                            var message = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Data Gagal di-Approve!';
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal Approve PR',
+                                text: message
+                            });
                         }
                     });
                 } else if (result.dismiss === Swal.DismissReason.cancel) {
@@ -1800,6 +1902,156 @@
             });
         });
 
+        // ── Selection PR Items for Rejection (New PR / status = 0) ──
+        var rejectItemsModal = new bootstrap.Modal(document.getElementById('rejectItemsModal'));
+        var itemIdsToReject = [];
+
+        function updateSelectedPrRejectCount() {
+            var totalChecked = $('.check-pr-reject-item:checked').length;
+            $('#countSelectedPrRejectItems').text(totalChecked);
+            var totalAvailable = $('.check-pr-reject-item').length;
+            if (totalAvailable > 0) {
+                $('#checkAllPrItems').prop('checked', totalChecked === totalAvailable);
+            }
+            if (totalChecked > 0) {
+                $('#selectedPrRejectItemsBadge').attr('style', 'display: inline-flex !important;');
+                $('#btnRejectSelectedItems').show();
+            } else {
+                $('#selectedPrRejectItemsBadge').attr('style', 'display: none !important;');
+                $('#btnRejectSelectedItems').hide();
+            }
+        }
+
+        $(document).on('change', '.check-pr-reject-item', function() {
+            updateSelectedPrRejectCount();
+        });
+
+        // Bulk reject items button click
+        $('#btnRejectSelectedItems').on('click', function() {
+            itemIdsToReject = [];
+            $('.check-pr-reject-item:checked').each(function() {
+                itemIdsToReject.push($(this).val());
+            });
+
+            if (!itemIdsToReject.length) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Pilih Item',
+                    text: 'Silakan centang minimal 1 item untuk ditolak.',
+                    customClass: { confirmButton: 'btn btn-primary waves-effect' }
+                });
+                return;
+            }
+
+            $('#rejectItemsCountText').text('Menolak ' + itemIdsToReject.length + ' item yang dipilih. Item yang ditolak tidak akan diproses ke PO.');
+            $('#rejectItemsReason').val('');
+            rejectItemsModal.show();
+        });
+
+        // Single reject item button click
+        $(document).on('click', '.reject-single-item-btn', function() {
+            var id = $(this).data('id');
+            var name = $(this).data('name') || ('Item #' + id);
+            itemIdsToReject = [id];
+            $('#rejectItemsCountText').html('Menolak item: <strong>' + name + '</strong>. Item ini tidak akan diproses ke PO.');
+            $('#rejectItemsReason').val('');
+            rejectItemsModal.show();
+        });
+
+        // Form submit for item rejection
+        $('#rejectItemsForm').on('submit', function(e) {
+            e.preventDefault();
+            var reason = $('#rejectItemsReason').val().trim();
+            if (!reason) {
+                Swal.fire({ icon: 'warning', title: 'Alasan Wajib Diisi', text: 'Silakan masukkan alasan penolakan item.' });
+                return;
+            }
+            if (!itemIdsToReject.length) {
+                return;
+            }
+
+            var prId = '{{ $purchase ? $purchase->id : "" }}';
+            $('#btnSubmitRejectItems').prop('disabled', true).html('<i class="mdi mdi-loading mdi-spin me-1"></i> Memproses...');
+
+            $.ajax({
+                url: '{{ url('purchase-request') }}/' + prId + '/reject-items',
+                type: 'POST',
+                data: {
+                    '_method': 'PATCH',
+                    '_token': '{{ csrf_token() }}',
+                    'detail_ids': itemIdsToReject,
+                    'reason': reason
+                },
+                success: function(response) {
+                    rejectItemsModal.hide();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Item Ditolak',
+                        text: response.message || 'Item terpilih berhasil ditolak.',
+                        customClass: { confirmButton: 'btn btn-success waves-effect' },
+                    }).then(function() {
+                        window.location.reload();
+                    });
+                },
+                error: function(xhr) {
+                    $('#btnSubmitRejectItems').prop('disabled', false).html('<i class="mdi mdi-close-circle-outline me-1"></i> Tolak Item');
+                    var message = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error :
+                        (xhr.responseJSON && xhr.responseJSON.errors ? Object.values(xhr.responseJSON.errors).flat().join('\n') : 'Gagal menolak item.');
+                    Swal.fire({ icon: 'error', title: 'Oops...', text: message });
+                }
+            });
+        });
+
+        // Undo single item rejection
+        $(document).on('click', '.unreject-item-btn', function() {
+            var detailId = $(this).data('id');
+            var name = $(this).data('name') || ('Item #' + detailId);
+            var prId = '{{ $purchase ? $purchase->id : "" }}';
+
+            Swal.fire({
+                title: 'Batalkan Penolakan?',
+                html: 'Status penolakan pada item <strong>' + name + '</strong> akan dibatalkan sehingga dapat diproses kembali.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Batalkan Penolakan',
+                cancelButtonText: 'Tutup',
+                customClass: {
+                    confirmButton: 'btn btn-primary me-2 waves-effect',
+                    cancelButton: 'btn btn-label-secondary waves-effect'
+                },
+                buttonsStyling: false,
+                showLoaderOnConfirm: true,
+                preConfirm: function() {
+                    return $.ajax({
+                        url: '{{ url('purchase-request') }}/' + prId + '/unreject-item/' + detailId,
+                        type: 'POST',
+                        data: {
+                            '_method': 'PATCH',
+                            '_token': '{{ csrf_token() }}'
+                        }
+                    }).then(function(res) {
+                        return res;
+                    }).catch(function(err) {
+                        var msg = (err.responseJSON && err.responseJSON.error) ? err.responseJSON.error : 'Gagal membatalkan penolakan.';
+                        Swal.showValidationMessage(msg);
+                    });
+                },
+                allowOutsideClick: function() { return !Swal.isLoading(); }
+            }).then(function(result) {
+                if (result.isConfirmed && result.value) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: result.value.message || 'Penolakan item berhasil dibatalkan.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(function() {
+                        window.location.reload();
+                    });
+                }
+            });
+        });
+
         // ── Selection PR Items for PO / Direct Purchase Creation ──
         function updateSelectedPrCount() {
             var totalChecked = $('.check-pr-item:checked').length;
@@ -1812,8 +2064,14 @@
 
         $(document).on('change', '#checkAllPrItems', function() {
             var isChecked = $(this).is(':checked');
-            $('.check-pr-item').prop('checked', isChecked);
-            updateSelectedPrCount();
+            if ($('.check-pr-reject-item').length) {
+                $('.check-pr-reject-item').prop('checked', isChecked);
+                updateSelectedPrRejectCount();
+            }
+            if ($('.check-pr-item').length) {
+                $('.check-pr-item').prop('checked', isChecked);
+                updateSelectedPrCount();
+            }
         });
 
         $(document).on('change', '.check-pr-item', function() {
@@ -1821,7 +2079,12 @@
         });
 
         // Initialize count on page load
-        updateSelectedPrCount();
+        if ($('.check-pr-reject-item').length) {
+            updateSelectedPrRejectCount();
+        }
+        if ($('.check-pr-item').length) {
+            updateSelectedPrCount();
+        }
 
         // Create PO from selected items
         $('#btnCreatePoFromSelected').on('click', function() {

@@ -54,6 +54,24 @@ class DeveloperDashboardController extends Controller
     }
 
     /**
+     * Endpoint API JSON untuk grafik harian "Temuan Error System 500" (auto-refresh).
+     */
+    public function ajaxErrorFindingsDaily(Request $request)
+    {
+        if (!Auth::user()?->isDeveloper()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $days = (int) $request->input('days', 14);
+        $data = $this->service->getErrorFindingsDaily($days);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $data,
+        ]);
+    }
+
+    /**
      * Endpoint API untuk mengeksekusi Quick Actions DevOps.
      */
     public function runAction(Request $request)

@@ -15,8 +15,18 @@ class AttendanceController extends Controller
 {
     public function index(Request $request)
     {
+        $filterType = $request->input('filter_type', 'daily');
         $selectedDate = $request->input('date', Carbon::today('Asia/Jakarta')->toDateString());
         
+        $selectedMonth = $request->input('month', Carbon::parse($selectedDate)->format('Y-m'));
+        $monthParts = explode('-', $selectedMonth);
+        $selectedYear = isset($monthParts[0]) ? (int) $monthParts[0] : (int) Carbon::now()->year;
+        $selectedMonthNum = isset($monthParts[1]) ? (int) $monthParts[1] : (int) Carbon::now()->month;
+
+        if (!$request->has('filter_type') && $request->has('month') && !$request->has('date')) {
+            $filterType = 'monthly';
+        }
+
         // Evaluasi Auto Clock-Out otomatis (Asia/Jakarta GMT+7)
         HrAttendance::processAutoClockOutIfDue($selectedDate);
 
@@ -24,8 +34,25 @@ class AttendanceController extends Controller
         $status = $request->input('status');
         $search = $request->input('search');
 
-        $query = HrAttendance::with(['employee.user', 'employee.department', 'employee.position'])
-            ->whereDate('date', $selectedDate);
+        $query = HrAttendance::with(['employee.user', 'employee.department', 'employee.position']);
+
+        if ($filterType === 'monthly') {
+            $query->whereYear('date', $selectedYear)
+                ->whereMonth('date', $selectedMonthNum)
+                ->orderBy('date', 'desc')
+                ->orderBy('clock_in', 'asc');
+
+            // Stats summary for the selected month
+            $allForPeriod = HrAttendance::whereYear('date', $selectedYear)
+                ->whereMonth('date', $selectedMonthNum)
+                ->get();
+        } else {
+            $query->whereDate('date', $selectedDate)
+                ->orderBy('clock_in', 'asc');
+
+            // Stats summary for the selected date
+            $allForPeriod = HrAttendance::whereDate('date', $selectedDate)->get();
+        }
 
         if ($departmentId) {
             $query->whereHas('employee', function ($q) use ($departmentId) {
@@ -46,16 +73,15 @@ class AttendanceController extends Controller
             });
         }
 
-        $attendances = $query->orderBy('clock_in', 'asc')->paginate(20)->withQueryString();
+        $attendances = $query->paginate(20)->withQueryString();
 
-        // Stats summary for the selected date
-        $allForDate = HrAttendance::whereDate('date', $selectedDate)->get();
+        // Stats summary for the selected period
         $stats = [
-            'total_present' => $allForDate->where('status', 'Hadir')->count(),
-            'total_late' => $allForDate->where('status', 'Hadir')->where('late_minutes', '>', 0)->count(),
-            'total_leave' => $allForDate->whereIn('status', ['Cuti', 'Izin'])->count(),
-            'total_sick' => $allForDate->where('status', 'Sakit')->count(),
-            'total_alpha' => $allForDate->where('status', 'Alpa')->count(),
+            'total_present' => $allForPeriod->where('status', 'Hadir')->count(),
+            'total_late' => $allForPeriod->where('status', 'Hadir')->where('late_minutes', '>', 0)->count(),
+            'total_leave' => $allForPeriod->whereIn('status', ['Cuti', 'Izin'])->count(),
+            'total_sick' => $allForPeriod->where('status', 'Sakit')->count(),
+            'total_alpha' => $allForPeriod->where('status', 'Alpa')->count(),
         ];
 
         $departments = Department::where('is_active', true)->orderBy('name')->get();
@@ -165,7 +191,11 @@ class AttendanceController extends Controller
 
         return view('pages.hr.attendances.index', compact(
             'attendances',
+            'filterType',
             'selectedDate',
+            'selectedMonth',
+            'selectedYear',
+            'selectedMonthNum',
             'departmentId',
             'status',
             'search',

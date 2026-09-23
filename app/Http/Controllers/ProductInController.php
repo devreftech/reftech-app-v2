@@ -115,14 +115,28 @@ class ProductInController extends Controller
     public function store(Request $request)
     {
         $rule = [
-            'invoice' => 'required',
-            'date' => 'required',
-            'note' => 'required',
+            'invoice' => 'required|string|max:255',
+            'supplier' => 'required|integer|exists:supplier,id',
+            'date' => 'required|date',
+            'note' => 'nullable|string',
+            'replacement' => 'required|array|min:1',
+            'replacement.*' => 'required|integer|exists:detail_product,id',
+            'warehouse' => 'required|array',
+            'warehouse.*' => 'required|in:BDG,BKS',
+            'qty' => 'required|array',
+            'qty.*' => 'required|numeric|min:0.01',
         ];
         $message = [
-            'invoice.required' => 'Field No Invoice Wajib Diisi',
-            'date.required' => 'Field Date Wajib Diisi',
-            'note.required' => 'Field Note Wajib Diisi',
+            'invoice.required' => 'Nomor Invoice wajib diisi.',
+            'supplier.required' => 'Supplier wajib dipilih dari master data.',
+            'supplier.exists' => 'Supplier yang dipilih tidak valid.',
+            'date.required' => 'Tanggal barang masuk wajib diisi.',
+            'replacement.required' => 'Minimal 1 item sparepart harus dipilih.',
+            'replacement.min' => 'Minimal 1 item sparepart harus dipilih.',
+            'replacement.*.required' => 'Item sparepart wajib dipilih.',
+            'warehouse.*.required' => 'Gudang tujuan (BDG/BKS) wajib dipilih.',
+            'qty.*.required' => 'Kuantiti barang masuk wajib diisi.',
+            'qty.*.min' => 'Kuantiti barang masuk minimal 0.01.',
         ];
         $this->validate($request, $rule, $message);
 

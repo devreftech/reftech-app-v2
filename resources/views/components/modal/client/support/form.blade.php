@@ -51,7 +51,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h4 class="modal-title" id="exampleModalLabel5">
-                        <i class="mdi mdi-account-plus-outline text-primary me-2"></i>Create Prospect
+                        <i class="mdi mdi-account-plus-outline text-primary me-2"></i>Create Marketing Lead
                     </h4>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>

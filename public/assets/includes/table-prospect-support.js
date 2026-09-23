@@ -237,7 +237,7 @@ $(function () {
                             return `
                                 <div class="d-flex flex-column align-items-center gap-1 justify-content-center">
                                     ${provideBadge}
-                                    <a href="/prospect/${full.id}" class="btn btn-icon btn-sm btn-outline-primary waves-effect rounded-pill" data-bs-toggle="tooltip" title="Lihat Detail Prospek">
+                                    <a href="/prospect/${full.id}" class="btn btn-icon btn-sm btn-outline-primary waves-effect rounded-pill" data-bs-toggle="tooltip" title="Lihat Detail Marketing Lead">
                                         <i class="mdi mdi-eye-outline"></i>
                                     </a>
                                 </div>
@@ -254,7 +254,7 @@ $(function () {
             dom: '<"card-header flex-column flex-md-row d-flex justify-content-between align-items-center py-3"<"head-label hl-supp"><"d-flex align-items-center gap-2"fB>>t<"card-footer d-flex flex-column flex-md-row justify-content-between align-items-center py-3"<"small text-muted"i><"pagination-wrapper"p>>',
             buttons: [
                 {
-                    text: '<i class="mdi mdi-plus me-sm-1"></i><span class="d-none d-sm-inline-block">Tambah Prospect</span>',
+                    text: '<i class="mdi mdi-plus me-sm-1"></i><span class="d-none d-sm-inline-block">Tambah Marketing Lead</span>',
                     className: "btn btn-primary btn-sm rounded-pill",
                     attr: {
                         "data-bs-toggle": "modal",
@@ -266,8 +266,8 @@ $(function () {
             lengthMenu: [10, 25, 50, 100],
             language: {
                 search: "",
-                searchPlaceholder: "Cari prospek...",
-                info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ prospek",
+                searchPlaceholder: "Cari marketing lead...",
+                info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ marketing lead",
                 paginate: {
                     next: '<i class="mdi mdi-chevron-right"></i>',
                     previous: '<i class="mdi mdi-chevron-left"></i>',
@@ -281,8 +281,8 @@ $(function () {
                     '<i class="mdi mdi-account-group-outline fs-4"></i>' +
                 '</div>' +
                 '<div>' +
-                    '<h6 class="fw-bold mb-0 text-heading">Daftar Prospek Marketing</h6>' +
-                    '<small class="text-muted">Kelola seluruh leads prospek masuk</small>' +
+                    '<h6 class="fw-bold mb-0 text-heading">Daftar Marketing Leads</h6>' +
+                    '<small class="text-muted">Kelola seluruh marketing leads masuk</small>' +
                 '</div>' +
             '</div>'
         );

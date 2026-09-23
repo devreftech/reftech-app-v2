@@ -5,6 +5,7 @@ namespace App\Services\Dashboard;
 use App\Models\Activities;
 use App\Models\ActivityLog;
 use App\Models\Client;
+use App\Models\HelpdeskTicket;
 use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\Quotation;
@@ -31,16 +32,55 @@ class DeveloperDashboardService
         $logsData = $this->getParsedApplicationLogs(40);
         $todayAuditLogs = $this->getTodayAuditLogs(1, 10);
         $roleDistribution = $this->getUserRoleDistribution();
+        $errorFindingsDaily = $this->getErrorFindingsDaily();
 
         return [
-            'adminView'         => 'developer',
-            'telemetry'         => $telemetry,
-            'dbMetrics'         => $dbMetrics,
-            'todayActivity'     => $todayActivity,
-            'maintenance'       => $maintenance,
-            'logsData'          => $logsData,
-            'todayAuditLogs'    => $todayAuditLogs,
-            'roleDistribution'  => $roleDistribution,
+            'adminView'          => 'developer',
+            'telemetry'          => $telemetry,
+            'dbMetrics'          => $dbMetrics,
+            'todayActivity'      => $todayActivity,
+            'maintenance'        => $maintenance,
+            'logsData'           => $logsData,
+            'todayAuditLogs'     => $todayAuditLogs,
+            'roleDistribution'   => $roleDistribution,
+            'errorFindingsDaily' => $errorFindingsDaily,
+        ];
+    }
+
+    /**
+     * Rekap harian "Temuan Error System 500" (tab Helpdesk) — dipakai buat
+     * grafik di Developer Dashboard. Error 500 tersimpan di helpdesk_tickets
+     * dengan no_ticket berformat "ERR/YYYY/MM/NNN" (lihat app/Exceptions/Handler.php).
+     */
+    public function getErrorFindingsDaily(int $days = 14): array
+    {
+        $start = Carbon::today()->subDays($days - 1);
+        $end = Carbon::today()->endOfDay();
+
+        $rows = HelpdeskTicket::where('no_ticket', 'like', 'ERR/%')
+            ->whereBetween('created_at', [$start, $end])
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
+        $labels = [];
+        $series = [];
+        $period = \Carbon\CarbonPeriod::create($start, $end);
+        foreach ($period as $date) {
+            $key = $date->format('Y-m-d');
+            $labels[] = $date->format('d M');
+            $series[] = (int) ($rows[$key] ?? 0);
+        }
+
+        $totalQuery = HelpdeskTicket::where('no_ticket', 'like', 'ERR/%');
+
+        return [
+            'labels'   => $labels,
+            'series'   => $series,
+            'total'    => (clone $totalQuery)->count(),
+            'open'     => (clone $totalQuery)->where('status', 'Open')->count(),
+            'resolved' => (clone $totalQuery)->where('status', 'Resolved')->count(),
+            'today'    => (int) end($series) ?: 0,
         ];
     }
 

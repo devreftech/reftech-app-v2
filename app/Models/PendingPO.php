@@ -11,6 +11,7 @@ class PendingPO extends Model
     use HasFactory, LogsActivity;
     protected $table = "pending_po";
     protected $fillable = [
+        'parent_id',
         'id_quotation',
         'id_unit_quotation',
         'ekspidisi',
@@ -30,6 +31,17 @@ class PendingPO extends Model
         'doc_recipient_id',
         'shipping_recipient_id',
     ];
+
+    public function parentPending()
+    {
+        return $this->belongsTo('App\Models\PendingPO', 'parent_id', 'id');
+    }
+
+    public function linkedChildren()
+    {
+        return $this->hasMany('App\Models\PendingPO', 'parent_id', 'id');
+    }
+
     public function quote()
     {
         return $this->belongsTo('App\Models\Quotation', 'id_quotation', 'id');
@@ -50,6 +62,21 @@ class PendingPO extends Model
     public function product_out()
     {
         return $this->belongsTo('App\Models\ProductOut', 'id_product_out', 'id');
+    }
+    public function productOuts()
+    {
+        return $this->hasMany('App\Models\ProductOut', 'id_pending', 'id');
+    }
+    public function getAllProductOutsAttribute()
+    {
+        $outs = $this->productOuts()->with('detail.serialProduct', 'detail.detailProduct')->get();
+        if ($this->id_product_out && !$outs->contains('id', $this->id_product_out)) {
+            $legacyOut = ProductOut::with('detail.serialProduct', 'detail.detailProduct')->find($this->id_product_out);
+            if ($legacyOut) {
+                $outs->push($legacyOut);
+            }
+        }
+        return $outs;
     }
     public function detail()
     {
@@ -78,6 +105,28 @@ class PendingPO extends Model
     public function changeStatus()
     {
         return $this->hasMany('App\Models\ChangeStatus', 'id_pending');
+    }
+
+    public function getClientIdAttribute()
+    {
+        if ($this->id_unit_quotation && $this->unitQuotation) {
+            return $this->unitQuotation->id_client ?? $this->unitQuotation->client?->id;
+        }
+        if ($this->id_quotation && $this->quote) {
+            return $this->quote->pic?->id_client ?? $this->quote->pic?->client?->id;
+        }
+        return null;
+    }
+
+    public function getClientNameAttribute()
+    {
+        if ($this->id_unit_quotation && $this->unitQuotation) {
+            return $this->unitQuotation->client?->company ?? '-';
+        }
+        if ($this->id_quotation && $this->quote) {
+            return $this->quote->pic?->client?->company ?? '-';
+        }
+        return '-';
     }
 
     public function getRevenueAttribute()

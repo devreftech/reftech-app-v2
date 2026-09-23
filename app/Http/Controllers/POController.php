@@ -58,6 +58,9 @@ class POController extends Controller
                 $selectedItems = $request->query('items', []);
 
                 $detailsToPrefill = $sourcePr->details->filter(function ($detail) use ($selectedItems) {
+                    if ($detail->is_rejected) {
+                        return false;
+                    }
                     if (!empty($selectedItems)) {
                         return array_key_exists((string) $detail->id, $selectedItems) || in_array((string) $detail->id, $selectedItems) || in_array($detail->id, $selectedItems);
                     }
@@ -309,6 +312,9 @@ class POController extends Controller
                 $selectedItems = $request->query('items', []);
 
                 $detailsToPrefill = $sourcePr->details->filter(function ($detail) use ($selectedItems) {
+                    if ($detail->is_rejected) {
+                        return false;
+                    }
                     if (!empty($selectedItems)) {
                         return array_key_exists((string) $detail->id, $selectedItems) || in_array((string) $detail->id, $selectedItems) || in_array($detail->id, $selectedItems);
                     }
@@ -354,15 +360,27 @@ class POController extends Controller
         $request->validate([
             'no_po' => 'required|string|unique:purchase_order,no_po',
             'date' => 'required|date',
-            'supplier_name' => 'required_without:supplier|nullable|string',
+            'supplier' => 'required|integer|exists:supplier,id',
             'product' => 'required|array|min:1',
             'product.*' => 'required|string',
             'qty' => 'required|array',
+            'qty.*' => 'required|numeric|min:0.01',
             'price' => 'required|array',
+        ], [
+            'no_po.required' => 'Nomor transaksi Direct Purchase wajib diisi.',
+            'no_po.unique' => 'Nomor transaksi sudah digunakan.',
+            'date.required' => 'Tanggal pembelian wajib diisi.',
+            'supplier.required' => 'Supplier wajib dipilih dari daftar master supplier.',
+            'supplier.exists' => 'Supplier yang dipilih tidak valid atau belum terdaftar.',
+            'product.required' => 'Minimal 1 item produk harus ditambahkan.',
+            'product.min' => 'Minimal 1 item produk harus ditambahkan.',
+            'product.*.required' => 'Nama produk tidak boleh kosong.',
+            'qty.*.required' => 'Kuantiti barang wajib diisi.',
+            'qty.*.min' => 'Kuantiti barang minimal 0.01.',
         ]);
 
         return DB::transaction(function () use ($request) {
-            $supplierId = $request->supplier ?: null;
+            $supplierId = $request->supplier;
             $company = $request->supplier_name;
             if ($supplierId) {
                 $sup = Supplier::find($supplierId);
@@ -494,8 +512,20 @@ class POController extends Controller
     {
         $rule = [
             'no_po' => 'required|string|unique:purchase_order,no_po',
+            'supplier' => 'required|integer|exists:supplier,id',
+            'date' => 'required|date',
+            'product' => 'required|array|min:1',
         ];
-        $this->validate($request, $rule);
+        $messages = [
+            'no_po.required' => 'Nomor PO wajib diisi.',
+            'no_po.unique' => 'Nomor PO sudah pernah digunakan.',
+            'supplier.required' => 'Supplier wajib dipilih dari daftar master supplier.',
+            'supplier.exists' => 'Supplier yang dipilih tidak ditemukan.',
+            'date.required' => 'Tanggal PO wajib diisi.',
+            'product.required' => 'Minimal 1 item produk harus ditambahkan pada PO.',
+            'product.min' => 'Minimal 1 item produk harus ditambahkan pada PO.',
+        ];
+        $this->validate($request, $rule, $messages);
 
         return DB::transaction(function () use ($request) {
             $supplier = Supplier::find($request->supplier);

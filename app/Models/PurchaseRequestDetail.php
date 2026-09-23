@@ -14,6 +14,10 @@ class PurchaseRequestDetail extends Model
         'created_at',
         'updated_at',
     ];
+    protected $casts = [
+        'is_rejected' => 'boolean',
+        'rejected_at' => 'datetime',
+    ];
     protected $fillable = [
         'id_purchase_request',
         'id_equivalent',
@@ -26,6 +30,10 @@ class PurchaseRequestDetail extends Model
         'cargo',
         'no_resi',
         'purchase_date',
+        'is_rejected',
+        'rejected_reason',
+        'rejected_at',
+        'rejected_by',
     ];
     public function header()
     {
@@ -39,9 +47,17 @@ class PurchaseRequestDetail extends Model
     {
         return $this->belongsTo('App\Models\SerialProduct', 'id_equivalent', 'id');
     }
+    public function rejector()
+    {
+        return $this->belongsTo('App\Models\User', 'rejected_by', 'id');
+    }
     public function allocations()
     {
         return $this->hasMany('App\Models\PurchaseRequestDetailAllocation', 'id_purchase_request_detail');
+    }
+    public function scopeActive($query)
+    {
+        return $query->where('is_rejected', false);
     }
     public function getAllocatedQtyAttribute()
     {
@@ -53,6 +69,9 @@ class PurchaseRequestDetail extends Model
     }
     public function getRemainingQtyAttribute()
     {
+        if ($this->is_rejected) {
+            return 0;
+        }
         return max(0, $this->totalQty - $this->allocatedQty);
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\EcommerceKpiPeriod;
+use App\Models\EcommerceKpiTemplate;
 use App\Models\SalesReports;
 use App\Models\SalesTargetHistory;
 use App\Models\Target;
@@ -114,12 +116,29 @@ class SalesTargetController extends Controller
             ->orderBy('name')
             ->get();
 
+        // ── Data untuk tab KPI E-Commerce (menggantikan menu terpisah) ──
+        $kpiYears = EcommerceKpiPeriod::select('year')->distinct()->orderByDesc('year')->pluck('year');
+        if ($kpiYears->isEmpty()) {
+            $kpiYears = collect([(int) date('Y')]);
+        }
+        $kpiCurrentYear = (int) ($request->kpi_year ?? date('Y'));
+        $kpiCurrentMonth = (int) ($request->kpi_month ?? date('n'));
+
+        $kpiPeriod = EcommerceKpiPeriod::where('year', $kpiCurrentYear)
+            ->where('month', $kpiCurrentMonth)
+            ->with(['assignments.user', 'assignments.evaluator', 'assignments.items'])
+            ->first();
+
+        $kpiAssignments = $kpiPeriod ? $kpiPeriod->assignments : collect();
+        $kpiTemplates = EcommerceKpiTemplate::where('is_active', true)->orderBy('sort_order')->get();
+
         return view('pages.admin.sales-target', compact(
             'years', 'currentYear', 'salesUsers', 'allSalesUsers', 'allExistingUsers',
             'yearRecords', 'yearTargets', 'allHistories',
             'teamTargetThisYear', 'teamTargetByYear',
             'annualByYear', 'yearGrowth',
-            'semesterRecords'
+            'semesterRecords',
+            'kpiYears', 'kpiCurrentYear', 'kpiCurrentMonth', 'kpiPeriod', 'kpiAssignments', 'kpiTemplates'
         ));
     }
 

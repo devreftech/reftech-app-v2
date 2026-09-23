@@ -171,7 +171,21 @@
             <h1 class="forecast-title">Sales Forecast Dashboard</h1>
             <p class="forecast-subtitle">Visualize annual sales targets, rolling projections, and realized purchase orders.</p>
         </div>
-        <div class="mt-3 mt-md-0 d-flex gap-2 align-self-stretch align-self-md-auto">
+        <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2 align-items-center align-self-stretch align-self-md-auto">
+            @if(in_array(Auth::user()->role, ['Admin', 'Developer', 'Super Admin']))
+                <div class="d-flex align-items-center bg-white px-3 py-2 border shadow-xs rounded-3 gap-2" style="border-radius: 12px !important;">
+                    <div class="d-flex flex-column text-start">
+                        <span class="text-muted" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Menu Sales:</span>
+                        <span class="fw-bold fs-7 {{ $salesForecastMenuEnabled ? 'text-success' : 'text-danger' }}" id="salesForecastStatusLabel">
+                            <i class="mdi {{ $salesForecastMenuEnabled ? 'mdi-check-circle-outline' : 'mdi-eye-off-outline' }} me-0.5"></i>
+                            {{ $salesForecastMenuEnabled ? 'Aktif' : 'Non-aktif (Hidden)' }}
+                        </span>
+                    </div>
+                    <div class="form-check form-switch mb-0 ms-1">
+                        <input class="form-check-input cursor-pointer" type="checkbox" id="toggleSalesForecastSwitch" style="width: 2.3rem; height: 1.25rem;" {{ $salesForecastMenuEnabled ? 'checked' : '' }} title="Klik untuk mengaktifkan / menyembunyikan menu Forecast pada akun Sales">
+                    </div>
+                </div>
+            @endif
             <a href="{{ route('forecast.setup') }}" class="btn btn-outline-primary d-flex align-items-center gap-2" style="border-radius: 12px; font-weight: 600;">
                 <i class="mdi mdi-cog-outline"></i> Forecast Setup
             </a>
@@ -675,6 +689,62 @@
         var chart = new ApexCharts(document.querySelector("#forecastChart"), options);
         chart.render();
 
+        @if(in_array(Auth::user()->role, ['Admin', 'Developer', 'Super Admin']))
+        $('#toggleSalesForecastSwitch').on('change', function() {
+            var isChecked = $(this).is(':checked');
+            var $switch = $(this);
+            var $label = $('#salesForecastStatusLabel');
+            
+            $switch.prop('disabled', true);
+
+            $.ajax({
+                url: "{{ route('forecast.toggle_sales_visibility') }}",
+                type: "POST",
+                data: {
+                    _token: "{{ csrf_token() }}"
+                },
+                success: function(response) {
+                    $switch.prop('disabled', false);
+                    if (response.success) {
+                        if (response.is_enabled) {
+                            $switch.prop('checked', true);
+                            $label.removeClass('text-danger').addClass('text-success')
+                                  .html('<i class="mdi mdi-check-circle-outline me-0.5"></i> Aktif');
+                        } else {
+                            $switch.prop('checked', false);
+                            $label.removeClass('text-success').addClass('text-danger')
+                                  .html('<i class="mdi mdi-eye-off-outline me-0.5"></i> Non-aktif (Hidden)');
+                        }
+                        
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: response.is_enabled ? 'Menu Sales Aktif' : 'Menu Sales Dinonaktifkan',
+                                text: response.message,
+                                timer: 2000,
+                                showConfirmButton: false,
+                                customClass: {
+                                    confirmButton: 'btn btn-primary'
+                                },
+                                buttonsStyling: false
+                            });
+                        }
+                    }
+                },
+                error: function(xhr) {
+                    $switch.prop('disabled', false);
+                    $switch.prop('checked', !isChecked);
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal Mengubah Status',
+                            text: xhr.responseJSON?.message || 'Terjadi kesalahan saat mengubah status.',
+                        });
+                    }
+                }
+            });
+        });
+        @endif
 
     });
 </script>

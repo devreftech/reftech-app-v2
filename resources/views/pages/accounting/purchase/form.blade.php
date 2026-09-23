@@ -3973,19 +3973,65 @@
                 $('#formAuthentication').on('input change', 'input, select, textarea', scheduleSave);
                 $(document).on('repeater:added repeater:deleted', scheduleSave);
 
-                // Bersihkan draft saat submit berhasil dan sinkronkan nilai numerik
-                $('#formAuthentication').on('submit', function () {
+                // Validasi Guard & Sinkronisasi nilai sebelum submit
+                $('#formAuthentication').on('submit', function (e) {
+                    var supplierVal = $('#supplier-dropdown').val();
+                    if (!supplierVal) {
+                        e.preventDefault();
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Supplier Belum Dipilih',
+                                text: 'Silakan pilih rekanan supplier terlebih dahulu sebelum menyimpan Purchase Order.',
+                                confirmButtonText: 'Pilih Supplier',
+                                customClass: { confirmButton: 'btn btn-primary' },
+                                buttonsStyling: false
+                            }).then(function() {
+                                $('#supplier-dropdown').select2('open');
+                            });
+                        } else {
+                            alert('Silakan pilih rekanan supplier terlebih dahulu.');
+                            $('#supplier-dropdown').focus();
+                        }
+                        return false;
+                    }
+
+                    var validItems = 0;
                     $('.repeater-wrapper').each(function() {
                         var $row = $(this);
                         var isHeader = $row.hasClass('header-row-wrapper') || $row.find('.item-category-value').val() === 'Header';
                         if (!isHeader) {
+                            var prod = $row.find('.invoice-item-product').val() || $row.find('select[name*="id_product"]').val() || $row.find('input[name*="product"]').val();
+                            var qty = parseFloat($row.find('.invoice-item-qty').val()) || 0;
+                            if (prod && qty > 0) {
+                                validItems++;
+                            }
                             var $label = $row.find('.invoice-item-price-label');
                             if ($label.length && $label.val() !== '') {
                                 $row.find('.invoice-item-price').val(parseCurrency($label.val()));
                             }
                         }
                     });
+
+                    if (validItems === 0) {
+                        e.preventDefault();
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Item PO Belum Lengkap',
+                                text: 'Minimal 1 item barang/jasa dengan kuantiti > 0 harus ditambahkan pada Purchase Order.',
+                                confirmButtonText: 'Periksa Item',
+                                customClass: { confirmButton: 'btn btn-primary' },
+                                buttonsStyling: false
+                            });
+                        } else {
+                            alert('Minimal 1 item barang/jasa dengan kuantiti > 0 harus ditambahkan pada Purchase Order.');
+                        }
+                        return false;
+                    }
+
                     try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+                    return true;
                 });
 
                 $('#poDraftReset').on('click', function () {

@@ -1,5 +1,5 @@
 @extends('layouts.sales.app')
-@section('title', 'Marketing Prospects & Pipeline')
+@section('title', 'Marketing Leads & Pipeline')
 @section('content')
     @if (Auth::user()->role != 'Sales')
         {{-- ===== ADMIN / SUPPORT VIEW (MODERN & CLEAN REDESIGN) ===== --}}
@@ -16,7 +16,7 @@
                             <span class="text-muted small">&bull;</span>
                             <span class="text-muted small">Marketing Leads & Pipeline Allocation</span>
                         </div>
-                        <h3 class="fw-bold text-heading mb-1">Prospect & Lead Pipeline</h3>
+                        <h3 class="fw-bold text-heading mb-1">Marketing Leads & Pipeline</h3>
                         <p class="text-muted mb-0">
                             Monitoring seluruh leads dari tim marketing, distribusi penugasan sales, dan tracking pipeline penawaran (quotation).
                         </p>
@@ -221,7 +221,7 @@
             <div class="modal-dialog modal-dialog-centered modal-xl" role="document" style="max-width: 90%;">
                 <div class="modal-content border-0 shadow">
                     <div class="modal-header border-bottom py-3">
-                        <h5 class="modal-title fw-bold text-dark" id="salesLeadsModalTitle">Prospect List</h5>
+                        <h5 class="modal-title fw-bold text-dark" id="salesLeadsModalTitle">Marketing Leads List</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body p-0">
@@ -239,7 +239,7 @@
                                 </thead>
                                 <tbody id="salesLeadsModalBody">
                                     <tr>
-                                        <td colspan="6" class="text-center py-4">Memuat data prospek...</td>
+                                        <td colspan="6" class="text-center py-4">Memuat data marketing leads...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -322,11 +322,11 @@
                                 <i class="mdi mdi-account-tie-outline me-1"></i> Sales Dashboard
                             </span>
                             <span class="text-muted small">&bull;</span>
-                            <span class="text-muted small">Marketing Prospect Allocation</span>
+                            <span class="text-muted small">Marketing Leads Allocation</span>
                         </div>
-                        <h3 class="fw-bold text-heading mb-1">My Prospect Pipeline</h3>
+                        <h3 class="fw-bold text-heading mb-1">My Marketing Leads Pipeline</h3>
                         <p class="text-muted mb-0">
-                            Kelola prospek dari tim marketing, proses penawaran (quotation), dan tindak lanjuti prospek calon klien.
+                            Kelola marketing leads, proses penawaran (quotation), dan tindak lanjuti calon klien.
                         </p>
                     </div>
 
@@ -357,7 +357,7 @@
                             <span class="badge bg-label-primary rounded-pill small px-2 py-1">Assigned</span>
                         </div>
                         <div>
-                            <span class="text-muted small text-uppercase fw-semibold">Total Prospects</span>
+                            <span class="text-muted small text-uppercase fw-semibold">Total Marketing Leads</span>
                             <h4 class="fw-bold mb-1 text-primary">{{ $salesTotalAssigned ?? 0 }}</h4>
                             <small class="text-muted">{{ $salesNewProspectCount ?? 0 }} Baru &bull; {{ $salesFuProspectCount ?? 0 }} Follow-Up</small>
                         </div>
@@ -437,7 +437,7 @@
                         data-bs-toggle="tab" data-bs-target="#tab-prospect-new" aria-controls="tab-prospect-new"
                         aria-selected="true" id="btn-tab-new">
                         <i class="mdi mdi-inbox-arrow-down fs-5"></i>
-                        <span class="fw-semibold">New Prospect</span>
+                        <span class="fw-semibold">New Marketing Leads</span>
                         <span class="badge rounded-pill bg-label-primary ms-1" id="badge-count-new">{{ $salesNewProspectCount ?? 0 }}</span>
                     </button>
                 </li>
@@ -446,7 +446,7 @@
                         data-bs-toggle="tab" data-bs-target="#tab-prospect-fu" aria-controls="tab-prospect-fu"
                         aria-selected="false" id="btn-tab-fu">
                         <i class="mdi mdi-progress-clock fs-5"></i>
-                        <span class="fw-semibold">Prospect Follow Up</span>
+                        <span class="fw-semibold">Marketing Leads Follow Up</span>
                         <span class="badge rounded-pill bg-label-warning ms-1" id="badge-count-fu">{{ $salesFuProspectCount ?? 0 }}</span>
                     </button>
                 </li>
@@ -455,7 +455,7 @@
                         data-bs-toggle="tab" data-bs-target="#tab-prospect-quoted" aria-controls="tab-prospect-quoted"
                         aria-selected="false" id="btn-tab-quoted">
                         <i class="mdi mdi-file-document-outline fs-5"></i>
-                        <span class="fw-semibold">Prospect Penawaran</span>
+                        <span class="fw-semibold">Marketing Leads Penawaran</span>
                         <span class="badge rounded-pill bg-label-info ms-1" id="badge-count-quoted">{{ $salesQuotedProspectCount ?? 0 }}</span>
                     </button>
                 </li>
@@ -473,7 +473,7 @@
                         data-bs-toggle="tab" data-bs-target="#tab-prospect-po" aria-controls="tab-prospect-po"
                         aria-selected="false" id="btn-tab-po">
                         <i class="mdi mdi-cart-check fs-5"></i>
-                        <span class="fw-semibold">Prospect PO (By Quotation)</span>
+                        <span class="fw-semibold">Marketing Leads PO (By Quotation)</span>
                         <span class="badge rounded-pill bg-label-success ms-1" id="badge-count-po">{{ $salesPoProspectCount ?? 0 }}</span>
                     </button>
                 </li>
@@ -792,7 +792,7 @@
                 0: { title: 'Loss', class: 'bg-label-danger' },
             };
 
-            $('#salesLeadsModalTitle').text('Prospect Bulan Ini - ' + salesName);
+            $('#salesLeadsModalTitle').text('Marketing Leads Bulan Ini - ' + salesName);
             $('#salesLeadsModalBody').html('<tr><td colspan="6" class="text-center">Loading...</td></tr>');
             modal.show();
 
@@ -819,7 +819,7 @@
                                 '</tr>';
                         });
                     } else {
-                        rows = '<tr><td colspan="6" class="text-center py-4 text-muted">Belum ada prospek untuk sales ini pada bulan berjalan.</td></tr>';
+                        rows = '<tr><td colspan="6" class="text-center py-4 text-muted">Belum ada marketing lead untuk sales ini pada bulan berjalan.</td></tr>';
                     }
                     $('#salesLeadsModalBody').html(rows);
                 },

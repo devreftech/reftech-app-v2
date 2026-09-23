@@ -581,9 +581,16 @@ class PurchaseController extends Controller
     }
     public function acc($id)
     {
-        $purchase = PurchaseRequest::find($id);
+        $purchase = PurchaseRequest::with('details')->find($id);
         if (!$purchase) {
             return 0;
+        }
+        if ($purchase->status != '0') {
+            return 0;
+        }
+        $activeDetails = $purchase->details->where('is_rejected', false);
+        if ($activeDetails->isEmpty()) {
+            return response()->json(['error' => 'Semua item pada PR ini telah ditolak. Tidak ada item aktif yang bisa disetujui.'], 422);
         }
         $purchase->status = '1';
         return $purchase->save() ? 1 : 0;
@@ -601,13 +608,109 @@ class PurchaseController extends Controller
             return response()->json(['error' => 'Purchase Request ini sudah diproses, tidak bisa ditolak lagi.'], 422);
         }
 
+        $now = now();
+        $userId = Auth::id();
+
         $purchase->status = '4';
-        $purchase->rejected_at = now();
+        $purchase->rejected_at = $now;
         $purchase->rejected_reason = $request->reason;
-        $purchase->rejected_by = Auth::id();
+        $purchase->rejected_by = $userId;
         $purchase->save();
 
+        PurchaseRequestDetail::where('id_purchase_request', $id)
+            ->where('is_rejected', false)
+            ->update([
+                'is_rejected' => true,
+                'rejected_reason' => $request->reason,
+                'rejected_at' => $now,
+                'rejected_by' => $userId,
+            ]);
+
         return response()->json(1);
+    }
+    public function rejectItems(Request $request, $id)
+    {
+        $request->validate([
+            'detail_ids' => 'required|array|min:1',
+            'detail_ids.*' => 'integer|exists:purchase_request_detail,id',
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        $purchase = PurchaseRequest::find($id);
+        if (!$purchase) {
+            return response()->json(['error' => 'Purchase Request tidak ditemukan.'], 404);
+        }
+        if ($purchase->status != '0') {
+            return response()->json(['error' => 'Hanya Purchase Request baru (belum di-approve) yang dapat ditolak itemnya.'], 422);
+        }
+
+        $now = now();
+        $userId = Auth::id();
+
+        PurchaseRequestDetail::where('id_purchase_request', $id)
+            ->whereIn('id', $request->detail_ids)
+            ->update([
+                'is_rejected' => true,
+                'rejected_reason' => $request->reason,
+                'rejected_at' => $now,
+                'rejected_by' => $userId,
+            ]);
+
+        // Cek apakah semua item di PR ini sekarang ditolak
+        $hasActive = PurchaseRequestDetail::where('id_purchase_request', $id)
+            ->where('is_rejected', false)
+            ->exists();
+
+        if (!$hasActive) {
+            $purchase->status = '4';
+            $purchase->rejected_at = $now;
+            $purchase->rejected_reason = $request->reason;
+            $purchase->rejected_by = $userId;
+            $purchase->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'all_rejected' => !$hasActive,
+            'message' => !$hasActive 
+                ? 'Semua item telah ditolak. Status PR otomatis menjadi Ditolak.'
+                : 'Item terpilih berhasil ditolak.',
+        ]);
+    }
+    public function unrejectItem(Request $request, $id, $detailId)
+    {
+        $purchase = PurchaseRequest::find($id);
+        if (!$purchase) {
+            return response()->json(['error' => 'Purchase Request tidak ditemukan.'], 404);
+        }
+        if (!in_array($purchase->status, ['0', '4'])) {
+            return response()->json(['error' => 'Item pada PR yang sudah diproses tidak dapat diubah.'], 422);
+        }
+
+        $detail = PurchaseRequestDetail::where('id_purchase_request', $id)->where('id', $detailId)->first();
+        if (!$detail) {
+            return response()->json(['error' => 'Item tidak ditemukan.'], 404);
+        }
+
+        $detail->is_rejected = false;
+        $detail->rejected_reason = null;
+        $detail->rejected_at = null;
+        $detail->rejected_by = null;
+        $detail->save();
+
+        // Jika PR sebelumnya status 4 (karena semua item ditolak), kembalikan ke status 0
+        if ($purchase->status == '4') {
+            $purchase->status = '0';
+            $purchase->rejected_at = null;
+            $purchase->rejected_reason = null;
+            $purchase->rejected_by = null;
+            $purchase->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Penolakan item berhasil dibatalkan.',
+        ]);
     }
     public function delivery(Request $request, $id)
     {

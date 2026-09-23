@@ -485,19 +485,24 @@
         <!-- 2. LOGISTIC TAB -->
         <div class="tab-pane fade" id="logistic-pane" role="tabpanel" aria-labelledby="logistic-tab">
             @if ($pending->type == 'Project')
-                @if ($pending->status != '6' && $pending->status != '8')
-                    <div class="d-flex justify-content-end mb-3 gap-2">
-                        <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal"
-                            data-bs-target="#replacementEdit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
-                            <i class="mdi mdi-list-status me-1"></i> Update Status Barang
-                        </button>
-                    </div>
-                @endif
-
                 <!-- Items Table (Project) -->
                 <div class="card mb-4 shadow-sm border-0">
-                    <div class="card-header bg-transparent py-3 border-bottom">
+                    <div class="card-header bg-transparent py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h5 class="m-0 fw-bold text-primary"><i class="mdi mdi-package-variant-closed me-2"></i> Daftar Barang Proyek</h5>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            @if ($pending->status != '6' && $pending->status != '7')
+                                <button type="button" class="btn btn-warning btn-sm text-dark fw-bold shadow-xs d-flex align-items-center gap-1"
+                                    data-bs-toggle="modal" data-bs-target="#modalCreateProductOut">
+                                    <i class="mdi mdi-truck-fast-outline me-1"></i> Barang Keluar
+                                </button>
+                            @endif
+                            @if ($pending->status != '6')
+                                <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal"
+                                    data-bs-target="#replacementEdit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
+                                    <i class="mdi mdi-list-status me-1"></i> Update Status Barang
+                                </button>
+                            @endif
+                        </div>
                     </div>
                     <div class="table-responsive text-nowrap">
                         <table class="table table-hover align-middle mb-0">
@@ -659,19 +664,24 @@
                     </div>
                 </div>
             @else
-                @if ($pending->status != '6' && $pending->status != '8')
-                    <div class="d-flex justify-content-end mb-3 gap-2">
-                        <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal"
-                            data-bs-target="#productEdit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
-                            <i class="mdi mdi-list-status me-1"></i> Update Status Barang
-                        </button>
-                    </div>
-                @endif
-
                 <!-- Items Table (Spare Part / Non-Project) -->
                 <div class="card mb-4 shadow-sm border-0">
-                    <div class="card-header bg-transparent py-3 border-bottom">
+                    <div class="card-header bg-transparent py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h5 class="m-0 fw-bold text-primary"><i class="mdi mdi-package-variant-closed me-2"></i> Daftar Barang Spare Parts</h5>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            @if ($pending->status != '6' && $pending->status != '7')
+                                <button type="button" class="btn btn-warning btn-sm text-dark fw-bold shadow-xs d-flex align-items-center gap-1"
+                                    data-bs-toggle="modal" data-bs-target="#modalCreateProductOut">
+                                    <i class="mdi mdi-truck-fast-outline me-1"></i> Barang Keluar
+                                </button>
+                            @endif
+                            @if ($pending->status != '6')
+                                <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal"
+                                    data-bs-target="#productEdit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
+                                    <i class="mdi mdi-list-status me-1"></i> Update Status Barang
+                                </button>
+                            @endif
+                        </div>
                     </div>
                     <div class="table-responsive text-nowrap">
                         <table class="table table-hover align-middle mb-0">
@@ -1143,6 +1153,7 @@
     @include('components.modal.pending.kurir')
     @include('components.modal.pending.product')
     @include('components.modal.pending.product-out')
+    @include('components.modal.pending.modal-product-out')
     @include('components.modal.pending.project')
     @include('components.modal.pending.return')
     @include('components.modal.pending.resi')

@@ -277,8 +277,9 @@
                                         <th class="fw-semibold text-dark">Customer</th>
                                         <th class="fw-semibold text-dark text-end">Nominal</th>
                                         <th class="fw-semibold text-dark text-end">Fee</th>
-                                        <th class="fw-semibold text-dark">Sales</th>
                                         <th class="fw-semibold text-dark">Flag</th>
+                                        <th class="fw-semibold text-dark">Marketplace</th>
+                                        <th class="fw-semibold text-dark text-center">Sales</th>
                                     </tr>
                                 </thead>
                             </table>

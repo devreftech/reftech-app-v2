@@ -246,13 +246,13 @@ class UnitQuotationController extends Controller
             'tax_amount'       => $first['tax_amount'],
             'shipping'         => $first['shipping'],
             'total'            => $first['total'],
-            'note'             => $request->note,
-            'rental_terms'     => $request->type === 'Rental' ? $request->rental_terms : null,
-            'validity'         => $request->validity,
-            'pricing'          => $request->pricing,
-            'warranty'         => $request->warranty,
-            'delivery_process' => $request->delivery_process,
-            'payment'          => $request->payment,
+            'note'             => $first['note'] ?? $request->note,
+            'rental_terms'     => $request->type === 'Rental' ? ($first['rental_terms'] ?? $request->rental_terms) : null,
+            'validity'         => $first['validity'] ?? $request->validity,
+            'pricing'          => $first['pricing'] ?? $request->pricing,
+            'warranty'         => $first['warranty'] ?? $request->warranty,
+            'delivery_process' => $first['delivery_process'] ?? $request->delivery_process,
+            'payment'          => $first['payment'] ?? $request->payment,
             'status'           => 'draft',
             'is_draft'         => $isDraft,
             'revision_number'  => 0,
@@ -286,7 +286,7 @@ class UnitQuotationController extends Controller
         $quote       = UnitQuotation::with([
             'client', 'pic', 'plant', 'sales', 'statusHistory', 'comments.user', 'comments.mentions', 'feePaidBy',
             'details.unit', 'details.equivalent.product',
-            'options.details.unit', 'options.details.equivalent.product',
+            'options.details.unit', 'options.details.equivalent.product', 'options.quotation',
         ])->findOrFail($id);
         $allVersions = $quote->allVersions();
         $invoices    = Invoice::where('id_unit_quotation', $quote->id)->orderByRaw("FIELD(type,'DP','BP','CT')")->get();
@@ -494,7 +494,7 @@ class UnitQuotationController extends Controller
     {
         $quote   = UnitQuotation::with([
             'client', 'pic', 'plant',
-            'options.details.unit', 'options.details.fixedAsset', 'options.details.equivalent.product',
+            'options.details.unit', 'options.details.fixedAsset', 'options.details.equivalent.product', 'options.quotation',
             'details.unit', 'details.fixedAsset', 'details.equivalent.product',
         ])->findOrFail($id);
         $clients = Client::orderBy('company')->get();
@@ -553,6 +553,13 @@ class UnitQuotationController extends Controller
                 'trade_in_notes' => $quote->trade_in_notes,
                 'tax'            => (bool) $quote->tax,
                 'shipping'       => (float) $quote->shipping,
+                'note'             => $quote->note,
+                'validity'         => $quote->validity,
+                'pricing'          => $quote->pricing,
+                'payment'          => $quote->payment,
+                'warranty'         => $quote->warranty,
+                'delivery_process' => $quote->delivery_process,
+                'rental_terms'     => $quote->rental_terms,
                 'items'          => $quote->details->map($mapItem)->values(),
             ]];
         } else {
@@ -570,6 +577,13 @@ class UnitQuotationController extends Controller
                     'trade_in_notes' => $opt->trade_in_notes,
                     'tax'            => (bool) $opt->tax,
                     'shipping'       => (float) $opt->shipping,
+                    'note'             => $opt->effective_note,
+                    'validity'         => $opt->effective_validity,
+                    'pricing'          => $opt->effective_pricing,
+                    'payment'          => $opt->effective_payment,
+                    'warranty'         => $opt->effective_warranty,
+                    'delivery_process' => $opt->effective_delivery_process,
+                    'rental_terms'     => $opt->effective_rental_terms,
                     'items'          => $opt->details->map($mapItem)->values(),
                 ];
             })->values();
@@ -622,13 +636,13 @@ class UnitQuotationController extends Controller
             'tax_amount'       => $first['tax_amount'],
             'shipping'         => $first['shipping'],
             'total'            => $first['total'],
-            'note'             => $request->note,
-            'rental_terms'     => $request->type === 'Rental' ? $request->rental_terms : null,
-            'validity'         => $request->validity,
-            'pricing'          => $request->pricing,
-            'warranty'         => $request->warranty,
-            'delivery_process' => $request->delivery_process,
-            'payment'          => $request->payment,
+            'note'             => $first['note'] ?? $request->note,
+            'rental_terms'     => $request->type === 'Rental' ? ($first['rental_terms'] ?? $request->rental_terms) : null,
+            'validity'         => $first['validity'] ?? $request->validity,
+            'pricing'          => $first['pricing'] ?? $request->pricing,
+            'warranty'         => $first['warranty'] ?? $request->warranty,
+            'delivery_process' => $first['delivery_process'] ?? $request->delivery_process,
+            'payment'          => $first['payment'] ?? $request->payment,
         ];
 
         if ($isManager && $request->filled('id_sales')) {
@@ -784,6 +798,7 @@ class UnitQuotationController extends Controller
             'details.equivalent.product',
             'options.details.unit',
             'options.details.equivalent.product',
+            'options.quotation',
         ])->findOrFail($id);
         return view('pages.unit-quotation.print', compact('quote'));
     }
@@ -1967,6 +1982,15 @@ class UnitQuotationController extends Controller
                 'tax_amount'     => $taxAmount,
                 'shipping'       => $shipping,
                 'total'          => $total,
+                // Term & Condition disimpan per-opsi — diisi lewat card T&C di form
+                // yang ikut opsi mana yang lagi aktif (lihat form-unit-quotation.js).
+                'note'             => $opt['note'] ?? null,
+                'validity'         => $opt['validity'] ?? null,
+                'pricing'          => $opt['pricing'] ?? null,
+                'payment'          => $opt['payment'] ?? null,
+                'warranty'         => $opt['warranty'] ?? null,
+                'delivery_process' => $opt['delivery_process'] ?? null,
+                'rental_terms'     => $opt['rental_terms'] ?? null,
             ];
         }
 
@@ -1980,6 +2004,8 @@ class UnitQuotationController extends Controller
             'has_trade_in' => false, 'trade_in_brand' => null, 'trade_in_model' => null,
             'trade_in_power' => null, 'trade_in_sn' => null, 'trade_in_price' => 0, 'trade_in_notes' => null,
             'tax' => false, 'tax_amount' => 0, 'shipping' => 0, 'total' => 0,
+            'note' => null, 'validity' => null, 'pricing' => null, 'payment' => null,
+            'warranty' => null, 'delivery_process' => null, 'rental_terms' => null,
         ];
     }
 
@@ -2012,6 +2038,13 @@ class UnitQuotationController extends Controller
                 'tax_amount'        => $opt['tax_amount'],
                 'shipping'          => $opt['shipping'],
                 'total'             => $opt['total'],
+                'note'              => $opt['note'] ?? null,
+                'validity'          => $opt['validity'] ?? null,
+                'pricing'           => $opt['pricing'] ?? null,
+                'payment'           => $opt['payment'] ?? null,
+                'warranty'          => $opt['warranty'] ?? null,
+                'delivery_process'  => $opt['delivery_process'] ?? null,
+                'rental_terms'      => $opt['rental_terms'] ?? null,
             ]);
 
             $this->saveDetails($quoteId, $opt['items'], $option->id);

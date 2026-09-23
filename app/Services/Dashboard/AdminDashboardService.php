@@ -121,7 +121,7 @@ class AdminDashboardService
         $formattedTotalPriceAdmin = $adminPoTotals['formatted'];
 
         $salesOrder = [4, 3, 2, 1, 32, 41, 16, 22];
-        $sales = User::whereIn('role', ['Sales', 'Support'])
+        $sales = User::where('role', 'Sales')
             ->where('active', '1')
             ->get()
             ->sortBy(function ($sale) use ($salesOrder) {
@@ -257,6 +257,111 @@ class AdminDashboardService
 
         $projectQuoteCount = (int) $projectQuoteAgg->cnt + (int) $projectUnitAgg->cnt;
         $projectQuoteNominal = (float) $projectQuoteAgg->total_nett + (float) $projectUnitAgg->total_nett;
+
+        // "Marketing Team" — agregat performa seluruh akun Support/Marketing
+        $supportUserIds = User::where('role', 'Support')->where('active', '1')->pluck('id');
+        $marketingAgg = Cache::remember("admin_dash_marketing_agg_{$yearNow}_{$monthNow}", 300, function () use ($supportUserIds, $yearNow, $monthNow, $firstDayOfMonth, $lastDayOfMonth) {
+            if ($supportUserIds->isEmpty()) {
+                return [
+                    'prospect' => 0,
+                    'provided' => 0,
+                    'notProvided' => 0,
+                    'quoteCount' => 0,
+                    'poCount' => 0,
+                    'quoteNominal' => 0,
+                    'hotProspectNominal' => 0,
+                    'poNominal' => 0,
+                ];
+            }
+
+            $prospect = Prospect::whereYear('date', $yearNow)
+                ->whereMonth('date', $monthNow)
+                ->whereIn('id_support', $supportUserIds)
+                ->count();
+
+            $provided = Prospect::whereYear('date', $yearNow)
+                ->whereMonth('date', $monthNow)
+                ->where('provide', '!=', '0')
+                ->whereIn('id_support', $supportUserIds)
+                ->count();
+
+            $notProvided = Prospect::whereYear('date', $yearNow)
+                ->whereMonth('date', $monthNow)
+                ->where('provide', '0')
+                ->whereIn('id_support', $supportUserIds)
+                ->count();
+
+            $quoteCount = Quotation::whereYear('estimated_date', $yearNow)
+                ->whereMonth('estimated_date', $monthNow)
+                ->whereIn('id_support', $supportUserIds)
+                ->where('level', '1')
+                ->where('is_primary', '1')
+                ->count()
+                + UnitQuotation::where('is_latest', 1)
+                    ->whereYear('date', $yearNow)
+                    ->whereMonth('date', $monthNow)
+                    ->whereIn('id_support', $supportUserIds)
+                    ->count();
+
+            $poCount = Quotation::whereYear('po_date', $yearNow)
+                ->whereMonth('po_date', $monthNow)
+                ->whereIn('id_support', $supportUserIds)
+                ->where('status', '100')
+                ->where('level', '1')
+                ->where('is_primary', '1')
+                ->count()
+                + UnitQuotation::where('is_latest', 1)
+                    ->where('status', 'po_received')
+                    ->whereYear('po_received', $yearNow)
+                    ->whereMonth('po_received', $monthNow)
+                    ->whereIn('id_support', $supportUserIds)
+                    ->count();
+
+            $quoteNominal = (float) Quotation::whereBetween('estimated_date', [$firstDayOfMonth, $lastDayOfMonth])
+                ->whereIn('id_support', $supportUserIds)
+                ->where('level', '1')
+                ->where('is_primary', '1')
+                ->sum('nett')
+                + (float) UnitQuotation::whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
+                    ->whereIn('id_support', $supportUserIds)
+                    ->where('is_latest', 1)
+                    ->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
+
+            $hotProspectNominal = (float) Quotation::whereBetween('estimated_date', [$firstDayOfMonth, $lastDayOfMonth])
+                ->whereIn('id_support', $supportUserIds)
+                ->whereIn('status', ['80', '90'])
+                ->where('level', '1')
+                ->where('is_primary', '1')
+                ->sum('nett')
+                + (float) UnitQuotation::whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
+                    ->whereIn('id_support', $supportUserIds)
+                    ->where('is_latest', 1)
+                    ->where('status', 'hot_prospect')
+                    ->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
+
+            $poNominal = (float) Quotation::whereBetween('po_date', [$firstDayOfMonth, $lastDayOfMonth])
+                ->whereIn('id_support', $supportUserIds)
+                ->where('status', '100')
+                ->where('level', '1')
+                ->where('is_primary', '1')
+                ->sum('nett')
+                + (float) UnitQuotation::where('status', 'po_received')
+                    ->where('is_latest', 1)
+                    ->whereBetween('po_received', [$firstDayOfMonth, $lastDayOfMonth])
+                    ->whereIn('id_support', $supportUserIds)
+                    ->sum(DB::raw('total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)'));
+
+            return [
+                'prospect' => $prospect,
+                'provided' => $provided,
+                'notProvided' => $notProvided,
+                'quoteCount' => $quoteCount,
+                'poCount' => $poCount,
+                'quoteNominal' => $quoteNominal,
+                'hotProspectNominal' => $hotProspectNominal,
+                'poNominal' => $poNominal,
+            ];
+        });
 
         $weekDataSales = User::activeSalesAndProjectAdmins();
 
@@ -407,6 +512,7 @@ class AdminDashboardService
                 'firstSales',
                 'projectQuoteCount',
                 'projectQuoteNominal',
+                'marketingAgg',
             ),
             $adminExtraData,
             $forecastData,

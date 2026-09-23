@@ -165,6 +165,42 @@
 @push('after-style')
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+    <style>
+        .btn-item-preview, .btn-so-item-preview {
+            background: #f4f5f9;
+            border: 1px solid #e2e5ec;
+            color: #435971;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .btn-item-preview:hover, .btn-so-item-preview:hover {
+            background: #696cff;
+            border-color: #696cff;
+            color: #ffffff !important;
+            box-shadow: 0 4px 10px rgba(105, 108, 255, 0.25);
+        }
+        .btn-item-preview:hover i,
+        .btn-item-preview:hover span,
+        .btn-so-item-preview:hover i,
+        .btn-so-item-preview:hover span {
+            color: #ffffff !important;
+        }
+
+        /* Glassmorphism Backdrop Blur for Offcanvas Drawer (Like PR & Modal) */
+        .offcanvas-backdrop {
+            transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        .offcanvas-backdrop.show {
+            backdrop-filter: blur(8px) saturate(160%) !important;
+            -webkit-backdrop-filter: blur(8px) saturate(160%) !important;
+            background-color: rgba(15, 23, 42, 0.5) !important;
+            opacity: 1 !important;
+        }
+    </style>
 @endpush
 
 @push('after-script')
@@ -181,8 +217,14 @@
 
                 var table = $table.DataTable({
                     orderCellsTop: true,
-                    order: [[0, 'desc']],
+                    order: [[2, 'desc']],
                     pageLength: 10,
+                    columnDefs: [{
+                        targets: 0,
+                        orderable: false,
+                        searchable: false,
+                        className: 'no-sort'
+                    }],
                     language: {
                         search: "Cari Proyek:",
                         lengthMenu: "Tampilkan _MENU_",
@@ -199,6 +241,10 @@
                 // Replace cloned headers with input fields
                 $table.find('thead tr:eq(1) th').each(function(i) {
                     var title = $(this).text();
+                    if (i === 0) { // Skip Checkbox column
+                        $(this).html('');
+                        return;
+                    }
                     if (i === 7) { // Skip Sales avatar column
                         $(this).html('');
                         return;

@@ -294,12 +294,20 @@
     <div class="card mb-4 shadow-sm border-0">
         <div class="card-header bg-transparent py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="m-0 fw-bold text-primary"><i class="mdi mdi-package-variant-closed me-2"></i> Daftar Barang</h5>
-            @if ($pending->status != '6' && $pending->status != '8')
-                <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal"
-                    data-bs-target="#replacementEditUnit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
-                    <i class="mdi mdi-list-status me-1"></i> Update Status &amp; Gudang
-                </button>
-            @endif
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                @if ($pending->status != '6' && $pending->status != '7')
+                    <button type="button" class="btn btn-warning btn-sm text-dark fw-bold shadow-xs d-flex align-items-center gap-1"
+                        data-bs-toggle="modal" data-bs-target="#modalCreateProductOut">
+                        <i class="mdi mdi-truck-fast-outline me-1"></i> Barang Keluar
+                    </button>
+                @endif
+                @if ($pending->status != '6')
+                    <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal"
+                        data-bs-target="#replacementEditUnit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
+                        <i class="mdi mdi-list-status me-1"></i> Update Status &amp; Gudang
+                    </button>
+                @endif
+            </div>
         </div>
         <div class="table-responsive text-nowrap">
                     <table class="table table-hover align-middle mb-0">
@@ -731,91 +739,98 @@
     <form action="{{ route('pending-po.projectEdit', $pending->id) }}" method="post">
         @method('PATCH')
         @csrf
-        <div class="modal-onboarding modal fade animate__animated" id="replacementEditUnit" tabindex="-1" style="display: none;" aria-hidden="true">
-            <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
-                <div class="modal-content text-center">
-                    <div class="modal-header border-0">
+        <div class="modal fade" id="replacementEditUnit" tabindex="-1" aria-labelledby="replacementEditUnitLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header bg-label-primary py-3">
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="badge bg-primary text-white font-11 rounded-pill font-monospace fw-bold">
+                                    {{ $pending->no_pending ?? 'SO' }}
+                                </span>
+                                <span class="badge bg-label-secondary font-11">{{ $quote->client->company ?? '-' }}</span>
+                            </div>
+                            <h5 class="modal-title fw-bold text-heading mb-0" id="replacementEditUnitLabel">
+                                <i class="mdi mdi-list-status me-1 text-primary"></i> Update Status Barang &amp; Alokasi Gudang
+                            </h5>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body p-0">
-                        <div class="onboarding-content mb-0">
-                            <h4 class="onboarding-title text-body">{{ $quote->client->company ?? '-' }}</h4>
-                            <p class="text-muted mb-3" style="font-size: 12.5px;">Ubah angka BDG / BKS untuk memindahkan alokasi stok item ke gudang lain — sistem otomatis melepas alokasi lama dan mengecek ketersediaan stok gudang tujuan sebelum menyimpan.</p>
-                            <div class="card">
-                                <div class="table-responsive text-nowrap h-100">
-                                    <table class="table table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th style="width: 5%">No</th>
-                                                <th style="width: 25%">Item</th>
-                                                <th style="width: 15%">Status</th>
-                                                <th style="width: 10%">BDG</th>
-                                                <th style="width: 10%">BKS</th>
-                                                <th style="width: 20%">Note</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="table-border-bottom-0">
-                                            @forelse ($dPending as $i => $item)
-                                                <tr>
-                                                    <td>{{ $i + 1 }}</td>
-                                                    <td class="text-start">
-                                                        <div class="form-floating form-floating-outline mb-2">
-                                                            <select class="form-select select2-equivalent-ajax" data-allow-clear="true" name="equivalent[]" style="width:100%">
-                                                                <option value="0"> ---- Choose Equivalent Here ---- </option>
-                                                                @if ($item->equivalent)
-                                                                    <option value="{{ $item->equivalent->id }}" selected>
-                                                                        {{ $item->equivalent->brand }} {{ $item->equivalent->pn }} - {{ $item->equivalent->product?->go == 'Replacement' ? 'R' : 'G' }}
-                                                                    </option>
-                                                                @endif
-                                                            </select>
-                                                            <label class="mb-2">Equivalent</label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div class="form-floating form-floating-outline">
-                                                            <select class="form-select" name="status[]">
-                                                                <option value="1" {{ $item->status == '1' ? 'selected' : '' }}>On Check</option>
-                                                                <option value="2" {{ $item->status == '2' ? 'selected' : '' }}>Ready Stock</option>
-                                                                <option value="3" {{ $item->status == '3' ? 'selected' : '' }}>Kurang</option>
-                                                                <option value="4" {{ $item->status == '4' ? 'selected' : '' }}>Pre-Order</option>
-                                                                <option value="5" {{ $item->status == '5' ? 'selected' : '' }}>Delivery Process</option>
-                                                                <option value="6" {{ $item->status == '6' ? 'selected' : '' }}>Done</option>
-                                                                <option value="7" {{ $item->status == '7' ? 'selected' : '' }}>Cancel</option>
-                                                            </select>
-                                                            <label>Status</label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div class="form-floating form-floating-outline">
-                                                            <input type="number" class="form-control" name="bdg[]" value="{{ $item->bdg }}">
-                                                            <label>Bandung</label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div class="form-floating form-floating-outline">
-                                                            <input type="number" class="form-control" name="bks[]" value="{{ $item->bks }}">
-                                                            <label>Bekasi</label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div class="form-floating form-floating-outline">
-                                                            <textarea class="form-control" name="note[]" placeholder="Comments here...">{{ $item->note }}</textarea>
-                                                            <label>Note</label>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            @empty
-                                                <tr><td colspan="6" class="text-center py-3 text-muted">Tidak ada data barang</td></tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                    <div class="modal-body p-4">
+                        <div class="alert bg-label-info border border-info py-2 px-3 mb-3 rounded-3 font-12">
+                            <i class="mdi mdi-information-outline me-1"></i>
+                            Ubah angka <strong>BDG / BKS</strong> untuk memindahkan alokasi stok item ke gudang lain. Sistem otomatis melepas alokasi lama dan memvalidasi ketersediaan stok fisik gudang tujuan.
+                        </div>
+
+                        <div class="table-responsive border rounded-3 bg-white">
+                            <table class="table table-sm table-hover align-middle mb-0 font-12">
+                                <thead class="table-light font-11 text-uppercase text-muted">
+                                    <tr>
+                                        <th style="width: 35px;" class="text-center">#</th>
+                                        <th style="min-width: 250px;">Item &amp; Equivalent</th>
+                                        <th style="width: 140px;" class="text-center">Status Barang</th>
+                                        <th style="width: 95px;" class="text-center">Alokasi BDG</th>
+                                        <th style="width: 95px;" class="text-center">Alokasi BKS</th>
+                                        <th style="min-width: 180px;">Catatan / Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($dPending as $i => $item)
+                                        @php
+                                            $prod = $item->equivalent?->product;
+                                            $bdgStock = $prod?->stock ?? 0;
+                                            $bksStock = $prod?->warehouse_stock ?? 0;
+                                        @endphp
+                                        <tr>
+                                            <td class="text-center text-muted font-11">{{ $i + 1 }}</td>
+                                            <td>
+                                                <div class="mb-1">
+                                                    <select class="form-select form-select-sm select2-equivalent-ajax font-12" data-allow-clear="true" name="equivalent[]" style="width:100%">
+                                                        <option value="0">-- Pilih Equivalent --</option>
+                                                        @if ($item->equivalent)
+                                                            <option value="{{ $item->equivalent->id }}" selected>
+                                                                {{ $item->equivalent->brand }} {{ $item->equivalent->pn }} - {{ $item->equivalent->product?->go == 'Replacement' ? 'R' : 'G' }}
+                                                            </option>
+                                                        @endif
+                                                    </select>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2 mt-1" style="font-size: 10.5px;">
+                                                    <span class="text-muted"><i class="mdi mdi-warehouse me-0.5"></i>Stok Fisik: BDG: <strong class="text-dark">{{ $bdgStock }}</strong> | BKS: <strong class="text-dark">{{ $bksStock }}</strong></span>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <select class="form-select form-select-sm font-11 fw-semibold" name="status[]">
+                                                    <option value="1" {{ $item->status == '1' ? 'selected' : '' }}>On Check</option>
+                                                    <option value="2" {{ $item->status == '2' ? 'selected' : '' }}>Ready Stock</option>
+                                                    <option value="3" {{ $item->status == '3' ? 'selected' : '' }}>Kurang</option>
+                                                    <option value="4" {{ $item->status == '4' ? 'selected' : '' }}>Pre-Order</option>
+                                                    <option value="5" {{ $item->status == '5' ? 'selected' : '' }}>Delivery Process</option>
+                                                    <option value="6" {{ $item->status == '6' ? 'selected' : '' }}>Done</option>
+                                                    <option value="7" {{ $item->status == '7' ? 'selected' : '' }}>Cancel</option>
+                                                </select>
+                                            </td>
+                                            <td class="text-center">
+                                                <input type="number" class="form-control form-control-sm text-center fw-bold font-12" name="bdg[]" value="{{ (int)$item->bdg }}" min="0">
+                                            </td>
+                                            <td class="text-center">
+                                                <input type="number" class="form-control form-control-sm text-center fw-bold font-12" name="bks[]" value="{{ (int)$item->bks }}" min="0">
+                                            </td>
+                                            <td>
+                                                <input type="text" class="form-control form-control-sm font-11" name="note[]" value="{{ $item->note }}" placeholder="Catatan item...">
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="6" class="text-center py-4 text-muted font-12">Tidak ada data barang</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                    <div class="modal-footer mt-4 border-0">
-                        <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary waves-effect waves-light">Submit</button>
+                    <div class="modal-footer border-top py-2 px-3 d-flex align-items-center justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary d-flex align-items-center gap-1 shadow-sm">
+                            <i class="mdi mdi-check-circle me-1"></i> Simpan Perubahan
+                        </button>
                     </div>
                 </div>
             </div>
@@ -979,6 +994,8 @@
             </div>
         </div>
     </form>
+
+    @include('components.modal.pending.modal-product-out')
 
     <!-- Modal Connect Product Out -->
     <form action="{{ route('pending-po.connect_out', $pending->id) }}" method="post">

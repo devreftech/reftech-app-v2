@@ -985,10 +985,14 @@ class ProspectController extends Controller
     public function show($id)
     {
         $prospect = Prospect::find($id);
+        if (!$prospect) {
+            return redirect()->route('prospect.index')->with('error', 'Data Prospek #' . $id . ' tidak ditemukan atau telah dihapus.');
+        }
+
         [$quotation, $quotationIsSmart] = $prospect->resolveQuotation();
-        $allQuotation = Quotation::where('id_pic', $prospect->id_pic)->get();
-        $pic = Pic::where('id', $prospect->id_pic)->first();
-        $client = Client::where('id', $pic->id_client)->first();
+        $allQuotation = $prospect->id_pic ? Quotation::where('id_pic', $prospect->id_pic)->get() : collect();
+        $pic = $prospect->id_pic ? Pic::find($prospect->id_pic) : null;
+        $client = $pic && $pic->id_client ? Client::find($pic->id_client) : null;
         $sales = User::where(function ($query) {
             $query->where('role', 'Sales')
                 ->orWhere('id', 38);
@@ -1160,18 +1164,20 @@ class ProspectController extends Controller
     public function destroy($id)
     {
         $prospect = Prospect::find($id);
-        $pic = Pic::find($prospect->id_pic);
-        $client = Client::find($pic->id_client);
+        if (!$prospect) {
+            return 0;
+        }
+        $pic = $prospect->id_pic ? Pic::find($prospect->id_pic) : null;
+        $client = $pic && $pic->id_client ? Client::find($pic->id_client) : null;
 
         $prospectDel = $prospect->delete();
-        $picDel = $pic->delete();
-        $clientDel = $client->delete();
-        if ($prospectDel && $picDel && $clientDel) {
+        $picDel = $pic ? $pic->delete() : true;
+        $clientDel = $client ? $client->delete() : true;
+        if ($prospectDel) {
             return 1;
         } else {
             return 0;
         }
-
     }
 
     public function add_sales(Request $request, $id)

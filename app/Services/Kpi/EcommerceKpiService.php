@@ -6,6 +6,7 @@ use App\Models\EcommerceKpiAssignment;
 use App\Models\EcommerceKpiAssignmentItem;
 use App\Models\EcommerceKpiPeriod;
 use App\Models\EcommerceKpiTemplate;
+use App\Models\OnlineLead;
 use App\Models\Quotation;
 use App\Models\SalesOnline;
 use App\Models\SalesTargetHistory;
@@ -307,6 +308,27 @@ class EcommerceKpiService
                 }
 
                 return round($scoreSum / $videos->count(), 2);
+
+            case 'leads_count':
+                return (float) OnlineLead::where('id_sales', $userId)
+                    ->whereYear('date', $year)
+                    ->whereMonth('date', $month)
+                    ->count();
+
+            case 'leads_conversion':
+                $totalLeads = OnlineLead::where('id_sales', $userId)
+                    ->whereYear('date', $year)
+                    ->whereMonth('date', $month)
+                    ->count();
+                if ($totalLeads === 0) {
+                    return 0.00;
+                }
+                $dealLeads = OnlineLead::where('id_sales', $userId)
+                    ->whereYear('date', $year)
+                    ->whereMonth('date', $month)
+                    ->whereIn('status', ['deal', 'quoted'])
+                    ->count();
+                return round(($dealLeads / $totalLeads) * 100, 2);
 
             case 'manual':
             default:

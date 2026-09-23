@@ -13,6 +13,7 @@
     $companyName = $isKojisha ? 'PT. KOJISHA INNOTIV INDONESIA' : 'PT. REFTECH JAYA OPTIMA';
     $companyLogo = $isKojisha ? asset('/asset/logo/Kojisha-Log.png') : asset('/asset/logo/Reftech-Log.png');
     $entityBadge = $isKojisha ? 'bg-danger text-white' : 'bg-label-primary';
+    $isLogistic = Auth::check() && in_array(strtolower(Auth::user()->role ?? ''), ['logistic']);
 @endphp
 
 @section('content')
@@ -106,16 +107,29 @@
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body p-3">
                         <div class="d-flex align-items-center justify-content-between">
-                            <div>
-                                <span class="text-muted d-block small mb-1">Total Nilai Transaksi</span>
-                                <h6 class="mb-0 fw-bold text-success">Rp {{ number_format($grandTotal, 0, '', '.') }}</h6>
-                                <span class="text-muted small" style="font-size: 11px;">
-                                    Ongkir: Rp {{ number_format($shippingCost, 0, '', '.') }}
-                                </span>
-                            </div>
-                            <div class="avatar avatar-md bg-label-success rounded-3 d-flex align-items-center justify-content-center">
-                                <i class="mdi mdi-cash-multiple fs-3"></i>
-                            </div>
+                            @if(!$isLogistic)
+                                <div>
+                                    <span class="text-muted d-block small mb-1">Total Nilai Transaksi</span>
+                                    <h6 class="mb-0 fw-bold text-success">Rp {{ number_format($grandTotal, 0, '', '.') }}</h6>
+                                    <span class="text-muted small" style="font-size: 11px;">
+                                        Ongkir: Rp {{ number_format($shippingCost, 0, '', '.') }}
+                                    </span>
+                                </div>
+                                <div class="avatar avatar-md bg-label-success rounded-3 d-flex align-items-center justify-content-center">
+                                    <i class="mdi mdi-cash-multiple fs-3"></i>
+                                </div>
+                            @else
+                                <div>
+                                    <span class="text-muted d-block small mb-1">Kanal Pengiriman</span>
+                                    <h6 class="mb-0 fw-bold text-primary">{{ $product->vers ?: 'Offline' }}</h6>
+                                    <span class="text-muted small" style="font-size: 11px;">
+                                        Tanggal: {{ \Carbon\Carbon::parse($product->date)->format('d/m/Y') }}
+                                    </span>
+                                </div>
+                                <div class="avatar avatar-md bg-label-primary rounded-3 d-flex align-items-center justify-content-center">
+                                    <i class="mdi mdi-truck-delivery-outline fs-3"></i>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -255,8 +269,10 @@
                                 <th class="text-center py-3" style="width: 65px;">G/R</th>
                                 <th class="text-center py-3" style="width: 85px;">Gudang</th>
                                 <th class="text-center py-3" style="width: 95px;">Qty</th>
-                                <th class="text-end py-3" style="width: 140px;">Harga Satuan</th>
-                                <th class="text-end py-3 pe-4" style="width: 150px;">Total (Rp)</th>
+                                @if(!$isLogistic)
+                                    <th class="text-end py-3" style="width: 140px;">Harga Satuan</th>
+                                    <th class="text-end py-3 pe-4" style="width: 150px;">Total (Rp)</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody>
@@ -337,6 +353,7 @@
                                         <span class="text-muted small" style="font-size: 11px;">{{ $unitName }}</span>
                                     </td>
 
+                                    @if(!$isLogistic)
                                     {{-- Harga Satuan --}}
                                     <td class="text-end align-top pt-3 pb-3 text-nowrap">
                                         <span class="text-dark fw-medium">Rp {{ number_format($item->price, 0, '', '.') }}</span>
@@ -346,10 +363,11 @@
                                     <td class="text-end align-top pt-3 pb-3 pe-4 text-nowrap">
                                         <span class="fw-bold text-dark fs-6">Rp {{ number_format($item->amount, 0, '', '.') }}</span>
                                     </td>
+                                    @endif
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center py-4 text-muted">
+                                    <td colspan="{{ $isLogistic ? 5 : 7 }}" class="text-center py-4 text-muted">
                                         <i class="mdi mdi-cube-outline fs-2 d-block mb-1"></i>
                                         Tidak ada item produk dalam transaksi ini.
                                     </td>
@@ -363,7 +381,7 @@
                 <div class="card-body pt-3">
                     <div class="row justify-content-between g-4">
                         {{-- Left Column: Print Signature Section --}}
-                        <div class="col-md-6 col-12 d-flex flex-column justify-content-between">
+                        <div class="{{ $isLogistic ? 'col-12' : 'col-md-6 col-12' }} d-flex flex-column justify-content-between">
                             <div class="p-3 bg-light-subtle rounded border small mb-3">
                                 <div class="fw-semibold text-dark mb-1">
                                     <i class="mdi mdi-shield-check-outline text-success me-1"></i> Syarat &amp; Ketentuan Pengeluaran:
@@ -400,6 +418,7 @@
                             </div>
                         </div>
 
+                        @if(!$isLogistic)
                         {{-- Right Column: Cost Breakdown Table --}}
                         <div class="col-md-5 col-12">
                             <div class="p-3 bg-light-subtle rounded border">
@@ -427,6 +446,7 @@
                                 </table>
                             </div>
                         </div>
+                        @endif
                     </div>
                 </div>
             </div>

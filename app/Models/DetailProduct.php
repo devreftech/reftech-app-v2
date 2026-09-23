@@ -21,6 +21,11 @@ DetailProduct extends Model
         'hpp',
         'stock',
         'warehouse_stock',
+        'is_opname',
+    ];
+
+    protected $casts = [
+        'is_opname' => 'boolean',
     ];
     
     public function unit()

@@ -24,6 +24,7 @@ use App\Models\ServiceOrder;
 use App\Models\SubtitleQuotation;
 use App\Models\ProjectExpense;
 use App\Models\UnitQuotation;
+use App\Models\UnitQuotationDetail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -148,6 +149,16 @@ class PendingController extends Controller
             }
         }
 
+        $allProductOuts = ProductOut::where('id_pending', $pending->id)
+            ->orWhere('id', $pending->id_product_out)
+            ->with(['detail.detailProduct.product', 'user'])
+            ->orderBy('id', 'desc')
+            ->get();
+        $allProductOutIds = $allProductOuts->pluck('id')->filter()->all();
+        $shippedQtyMap = DetailProductOut::whereIn('id_product_out', $allProductOutIds)
+            ->get()
+            ->groupBy('id_serial_product');
+
         if ($pending->id_unit_quotation) {
             $quote = UnitQuotation::with(['client', 'pic', 'sales', 'details'])->findOrFail($pending->id_unit_quotation);
             $invoices = Invoice::where('id_unit_quotation', $quote->id)->orderByRaw("FIELD(type,'DP','BP','CT')")->get();
@@ -165,9 +176,65 @@ class PendingController extends Controller
             $product = ProductOut::find($pending->id_product_out);
             $detProduct = $pending->id_product_out ? DetailProductOut::where('id_product_out', $pending->id_product_out)->get() : collect();
 
+            $firstInv = $invoices->first();
+            $invoiceNo = $firstInv?->no_invoice ?? '';
+            $poNo = $quote->po_number ?? ($firstInv?->no_po ?? '-');
+            $clientName = $quote->client?->company ?? '';
+            $clientAddress = $quote->client?->address ?? '';
+            $clientPic = $pending->shipping_recipient?->name ?? $quote->pic?->name ?? '';
+            $clientPhone = $pending->shipping_recipient?->phone ?? $quote->pic?->phone ?? '';
+            $detailClientFormatted = $clientName;
+            if (!empty($clientPic)) { $detailClientFormatted .= "\nAttn: " . $clientPic . ($clientPhone ? " (" . $clientPhone . ")" : ""); }
+            if (!empty($clientAddress)) { $detailClientFormatted .= "\nAlamat: " . $clientAddress; }
+
+            $isKojisha = (method_exists($quote, 'isKojisha') ? $quote->isKojisha() : ($quote->flag === 'Kojisha'))
+                || (is_string($invoiceNo) && str_contains($invoiceNo, '/KII/'))
+                || (is_string($poNo) && str_contains($poNo, 'KII'));
+            $flag = $isKojisha ? 'Kojisha' : 'Reftech';
+            $nextNoProductOut = (new \App\Http\Controllers\ProductOutController())->generateNoProductOut('BDG', $flag);
+
+            // Modal items
+            $modalItemsData = [];
+            foreach ($dPending as $idx => $item) {
+                $equiv = $item->id_equivalent ? SerialProduct::with('product')->find($item->id_equivalent) : null;
+                $rep = $equiv ? DetailProduct::with('product')->where('id_product', $equiv->id_product)->get() : collect();
+                $defaultRep = !empty($item->id_replacement) ? DetailProduct::with('product')->find($item->id_replacement) : $rep->first();
+                $defaultRepText = $defaultRep
+                    ? "{$defaultRep->replacement} | {$defaultRep->product?->commodity} (BDG: {$defaultRep->stock}, BKS: {$defaultRep->warehouse_stock})"
+                    : ($equiv ? '-- Pilih Replacement --' : '-- Non-Inventory / Ready Stock (Tanpa SKU Fisik) --');
+                $itemName = $equiv?->product?->commodity ?? $item->note ?? ('Item #' . ($idx + 1));
+                $itemQty = (float)($item->service?->qty ?? ($item->qty ?? 1));
+                $alreadyShipped = $equiv ? (float)($shippedQtyMap->get($equiv->id)?->sum('qty') ?? 0) : 0;
+                $remainingQty = max(0, $itemQty - $alreadyShipped);
+                $itemPrice = (float)($item->price ?? 0);
+                $itemAmount = (float)($item->amount ?? ($remainingQty * $itemPrice));
+
+                $modalItemsData[] = [
+                    'id' => $item->id,
+                    'equiv' => $equiv,
+                    'replacements' => $rep,
+                    'default_rep' => $defaultRep,
+                    'default_rep_id' => $defaultRep?->id ?? 0,
+                    'default_rep_text' => $defaultRepText,
+                    'default_serial_id' => $equiv?->id ?? 0,
+                    'name' => $itemName,
+                    'pn' => $equiv?->pn ?? '-',
+                    'description' => $equiv?->product?->detail_desc ?? $item->note ?? '',
+                    'stock_bdg' => $defaultRep?->stock ?? 0,
+                    'stock_bks' => $defaultRep?->warehouse_stock ?? 0,
+                    'qty_ordered' => $itemQty,
+                    'qty_shipped' => $alreadyShipped,
+                    'qty_remaining' => $remainingQty,
+                    'price' => $itemPrice,
+                    'amount' => $itemAmount,
+                    'is_non_inventory' => empty($item->id_equivalent),
+                ];
+            }
+
             return view('pages.pending.detail-unit', compact(
                 'pending', 'quote', 'invoices', 'activity', 'resis',
-                'dPending', 'purchases', 'purchase', 'return', 'allproductOut', 'product', 'detProduct'
+                'dPending', 'purchases', 'purchase', 'return', 'allproductOut', 'product', 'detProduct',
+                'modalItemsData', 'nextNoProductOut', 'allProductOuts', 'invoiceNo', 'poNo', 'detailClientFormatted'
             ));
         }
 
@@ -186,13 +253,70 @@ class PendingController extends Controller
             ->groupBy('product_out.id')
             ->select('product_out.id', 'product_out.invoice')
             ->get();
-        // $allEquiv = SerialProduct::all();
-        // $detProduct = DetailProductOut::where('id_product_out', $allproductOut[0]->id)->get();
         $purchases = PurchaseRequest::where('id_pending', $id)->with(['details.equivalent.product', 'purchaseOrders'])->get();
         $purchase = $purchases->first();
         $serial = collect();
 
-        return view('pages.pending.detail', compact('purchases', 'purchase', 'return', 'detProduct', 'activity', 'allproductOut', 'subQuote', 'pending', 'quotation', 'invoice', 'detQuotation', 'resi', 'product', 'resis', 'serial'));
+        $invoiceNo = $invoice?->no_invoice ?? '';
+        $poNo = $invoice?->no_po ?? ($quotation->no_po ?? '-');
+        $clientName = $quotation->pic?->client?->company ?? '';
+        $clientAddress = $quotation->pic?->client?->address ?? '';
+        $clientPic = $pending->shipping_recipient?->name ?? $quotation->pic?->name ?? '';
+        $clientPhone = $pending->shipping_recipient?->phone ?? $quotation->pic?->phone ?? '';
+        $detailClientFormatted = $clientName;
+        if (!empty($clientPic)) { $detailClientFormatted .= "\nAttn: " . $clientPic . ($clientPhone ? " (" . $clientPhone . ")" : ""); }
+        if (!empty($clientAddress)) { $detailClientFormatted .= "\nAlamat: " . $clientAddress; }
+
+        $isKojisha = (method_exists($quotation, 'isKojisha') ? $quotation->isKojisha() : ($quotation->flag === 'Kojisha'))
+            || (is_string($invoiceNo) && str_contains($invoiceNo, '/KII/'))
+            || (is_string($poNo) && str_contains($poNo, 'KII'));
+        $flag = $isKojisha ? 'Kojisha' : 'Reftech';
+        $nextNoProductOut = (new \App\Http\Controllers\ProductOutController())->generateNoProductOut('BDG', $flag);
+
+        // Modal items for regular pending PO
+        $dPending = DetailPendingPO::with('equivalent.product')->where('id_pending', $id)->whereNot('status', '7')->get();
+        $modalItemsData = [];
+        foreach ($dPending as $idx => $item) {
+            $equiv = $item->id_equivalent ? SerialProduct::with('product')->find($item->id_equivalent) : null;
+            $rep = $equiv ? DetailProduct::with('product')->where('id_product', $equiv->id_product)->get() : collect();
+            $defaultRep = !empty($item->id_replacement) ? DetailProduct::with('product')->find($item->id_replacement) : $rep->first();
+            $defaultRepText = $defaultRep
+                ? "{$defaultRep->replacement} | {$defaultRep->product?->commodity} (BDG: {$defaultRep->stock}, BKS: {$defaultRep->warehouse_stock})"
+                : ($equiv ? '-- Pilih Replacement --' : '-- Non-Inventory / Ready Stock (Tanpa SKU Fisik) --');
+            $itemName = $equiv?->product?->commodity ?? $item->note ?? ('Item #' . ($idx + 1));
+            $itemQty = (float)($item->service?->qty ?? ($item->qty ?? 1));
+            $alreadyShipped = $equiv ? (float)($shippedQtyMap->get($equiv->id)?->sum('qty') ?? 0) : 0;
+            $remainingQty = max(0, $itemQty - $alreadyShipped);
+            $itemPrice = (float)($item->price ?? 0);
+            $itemAmount = (float)($item->amount ?? ($remainingQty * $itemPrice));
+
+            $modalItemsData[] = [
+                'id' => $item->id,
+                'equiv' => $equiv,
+                'replacements' => $rep,
+                'default_rep' => $defaultRep,
+                'default_rep_id' => $defaultRep?->id ?? 0,
+                'default_rep_text' => $defaultRepText,
+                'default_serial_id' => $equiv?->id ?? 0,
+                'name' => $itemName,
+                'pn' => $equiv?->pn ?? '-',
+                'description' => $equiv?->product?->detail_desc ?? $item->note ?? '',
+                'stock_bdg' => $defaultRep?->stock ?? 0,
+                'stock_bks' => $defaultRep?->warehouse_stock ?? 0,
+                'qty_ordered' => $itemQty,
+                'qty_shipped' => $alreadyShipped,
+                'qty_remaining' => $remainingQty,
+                'price' => $itemPrice,
+                'amount' => $itemAmount,
+                'is_non_inventory' => empty($item->id_equivalent),
+            ];
+        }
+
+        return view('pages.pending.detail', compact(
+            'purchases', 'purchase', 'return', 'detProduct', 'activity', 'allproductOut', 'subQuote', 'pending',
+            'quotation', 'invoice', 'detQuotation', 'resi', 'product', 'resis', 'serial',
+            'modalItemsData', 'nextNoProductOut', 'allProductOuts', 'invoiceNo', 'poNo', 'detailClientFormatted'
+        ));
     }
 
     /**
@@ -509,6 +633,9 @@ class PendingController extends Controller
                 case 6:
                     $note = 'Done';
                     break;
+                case 8:
+                    $note = 'Partial Delivery';
+                    break;
                 default:
                     $note = 'Cancel';
                     break;
@@ -643,43 +770,351 @@ class PendingController extends Controller
     }
     public function pending_out($id)
     {
-        $pending = PendingPO::find($id);
+        $pending = PendingPO::with([
+            'quote.invoice',
+            'quote.pic.client',
+            'shipping_recipient',
+        ])->find($id);
+
         if (!$pending) {
             return redirect()->route('pending-po.index')->with('error', 'Pending PO tidak ditemukan');
         }
-        $quote = Quotation::find($pending->id_quotation);
-        $Dquote = DetailQuotation::where('id_quotation', $pending->id_quotation)->get();
+
+        $quote    = $pending->quote;
         $dPending = DetailPendingPO::where('id_pending', $id)->whereNot('status', '7')->get();
 
-        $fullRep = [];
+        // Dokumen references (null-safe)
+        $invoiceNo = $quote?->invoice?->first()?->no_invoice ?? '';
+        $poNo      = $quote?->invoice?->first()?->no_po ?? '';
+
+        // Client info (null-safe)
+        $clientName    = $quote?->pic?->client?->company ?? '';
+        $clientAddress = $quote?->pic?->client?->address ?? '';
+        $clientPic     = $pending->shipping_recipient?->name ?? $quote?->pic?->name ?? '';
+        $clientPhone   = $pending->shipping_recipient?->phone ?? $quote?->pic?->phone ?? '';
+
+        $detailClientFormatted = $clientName;
+        if (!empty($clientPic)) {
+            $detailClientFormatted .= "\nAttn: " . $clientPic . ($clientPhone ? " (" . $clientPhone . ")" : "");
+        }
+        if (!empty($clientAddress)) {
+            $detailClientFormatted .= "\nAlamat: " . $clientAddress;
+        }
+
+        // Build itemsData from $dPending with shipment tracking
+        $allProductOuts = ProductOut::where('id_pending', $pending->id)
+            ->orWhere('id', $pending->id_product_out)
+            ->with('detail')
+            ->get();
+        $allProductOutIds = $allProductOuts->pluck('id')->filter()->all();
+        $shippedQtyMap = DetailProductOut::whereIn('id_product_out', $allProductOutIds)
+            ->get()
+            ->groupBy('id_serial_product');
+
+        $fullRep   = [];
+        $fullEquiv = [];
+        $itemsData = [];
         $no = 0;
-        foreach ($Dquote as $item) {
-            $equivalent = SerialProduct::find($item->id_equivalent);
-            $fullRep[$no] = $equivalent ? DetailProduct::where('id_product', $equivalent->id_product)->get() : collect([]);
+
+        foreach ($dPending as $item) {
+            $equiv = $item->id_equivalent ? SerialProduct::with('product')->find($item->id_equivalent) : null;
+            $fullEquiv[$no] = $equiv;
+            $rep = $equiv ? DetailProduct::where('id_product', $equiv->id_product)->get() : collect([]);
+            $fullRep[$no] = $rep;
+
+            // Default replacement
+            $defaultRep = null;
+            if (!empty($item->id_replacement)) {
+                $defaultRep = DetailProduct::with('product')->find($item->id_replacement);
+            } elseif ($rep->isNotEmpty()) {
+                $defaultRep = $rep->first();
+            }
+
+            $defaultRepId   = $defaultRep?->id ?? 0;
+            $defaultRepText = $defaultRep
+                ? "{$defaultRep->replacement} | {$defaultRep->product?->commodity} (BDG: {$defaultRep->stock}, BKS: {$defaultRep->warehouse_stock})"
+                : ($item->id_equivalent ? '-- Pilih Replacement --' : '-- Non-Inventory / Ready Stock (Tanpa SKU Fisik) --');
+
+            $itemName   = $equiv?->product?->commodity ?? $item->note ?? ('Item #' . ($no + 1));
+            $itemQty    = (float)($item->service?->qty ?? 1);
+            $alreadyShipped = $equiv ? (float)($shippedQtyMap->get($equiv->id)?->sum('qty') ?? 0) : 0;
+            $remainingQty = max(0, $itemQty - $alreadyShipped);
+            $itemPrice  = (float)($item->price ?? 0);
+            $itemAmount = (float)($item->amount ?? ($remainingQty * $itemPrice));
+
+            $itemsData[] = [
+                'dPending'         => $item,
+                'equiv'            => $equiv,
+                'replacements'     => $rep,
+                'default_rep'      => $defaultRep,
+                'default_rep_id'   => $defaultRepId,
+                'default_rep_text' => $defaultRepText,
+                'default_stock'    => $defaultRep?->stock ?? 0,
+                'default_wh_stock' => $defaultRep?->warehouse_stock ?? 0,
+                'default_serial_id'=> $equiv?->id ?? 0,
+                'name'             => $itemName,
+                'qty_ordered'      => $itemQty,
+                'qty_shipped'      => $alreadyShipped,
+                'qty_remaining'    => $remainingQty,
+                'qty'              => $remainingQty,
+                'price'            => $itemPrice,
+                'amount'           => $itemAmount,
+                'warehouse'        => 'BDG',
+                'is_non_inventory' => empty($item->id_equivalent),
+            ];
+
             $no++;
         }
-        return view('pages.pending.form', compact('Dquote', 'fullRep', 'pending', 'quote', 'dPending', 'id'));
+
+        // Financial defaults
+        $subtotal   = $quote?->subtotal ?? array_sum(array_column($itemsData, 'amount'));
+        $shipping   = $quote?->shipping ?? 0;
+        $grandTotal = $quote?->total ?? ($subtotal + $shipping);
+
+        // Auto-generate No. Barang Keluar
+        $isKojisha = ($quote && $quote->flag === 'Kojisha')
+            || (is_string($invoiceNo) && str_contains($invoiceNo, '/KII/'))
+            || (is_string($poNo) && str_contains($poNo, 'KII'));
+        $flag = $isKojisha ? 'Kojisha' : 'Reftech';
+
+        $nextNoProductOut = (new \App\Http\Controllers\ProductOutController())->generateNoProductOut('BDG', $flag);
+
+        return view('pages.pending.form', compact(
+            'fullRep', 'fullEquiv', 'dPending', 'pending', 'quote', 'id',
+            'nextNoProductOut', 'invoiceNo', 'poNo',
+            'clientName', 'clientAddress', 'clientPic', 'clientPhone',
+            'detailClientFormatted', 'itemsData',
+            'subtotal', 'shipping', 'grandTotal', 'allProductOuts'
+        ));
     }
     public function pending_out_project($id)
     {
-        $pending = PendingPO::find($id);
+        $pending = PendingPO::with([
+            'quote.invoice',
+            'quote.pic.client',
+            'unitQuotation.invoices',
+            'unitQuotation.client',
+            'unitQuotation.pic',
+            'unitQuotation.details',
+            'shipping_recipient',
+            'doc_recipient'
+        ])->find($id);
+
         if (!$pending) {
             return redirect()->route('pending-po.index')->with('error', 'Pending PO tidak ditemukan');
         }
-        $quote = Quotation::find($pending->id_quotation);
-        // $Dquote = DetailServiceQuotation::where('id_quotation', $pending->id_quotation)->get();
+
+        $quote = $pending->quote ?? $pending->unitQuotation;
+        $isUnit = (bool) $pending->id_unit_quotation;
         $dPending = DetailPendingPO::where('id_pending', $id)->whereNot('status', '7')->get();
+
+        // Dokumen references
+        $invoiceNo = $pending->unitQuotation?->invoices?->first()?->no_invoice 
+            ?? $pending->quote?->invoice?->first()?->no_invoice 
+            ?? '';
+        $poNo = $pending->unitQuotation?->po_number 
+            ?? $pending->unitQuotation?->invoices?->first()?->no_po 
+            ?? $pending->quote?->invoice?->first()?->no_po 
+            ?? '';
+
+        // Client info
+        $clientName = $pending->unitQuotation?->client?->company 
+            ?? $pending->quote?->pic?->client?->company 
+            ?? '';
+        $clientAddress = $pending->unitQuotation?->address 
+            ?? $pending->quote?->pic?->client?->address 
+            ?? '';
+        $clientPic = $pending->shipping_recipient?->name 
+            ?? $pending->unitQuotation?->pic?->name 
+            ?? $pending->quote?->pic?->name 
+            ?? '';
+        $clientPhone = $pending->shipping_recipient?->phone 
+            ?? $pending->unitQuotation?->pic?->phone 
+            ?? $pending->quote?->pic?->phone 
+            ?? '';
+
+        $detailClientFormatted = $clientName;
+        if (!empty($clientPic)) {
+            $detailClientFormatted .= "\nAttn: " . $clientPic . ($clientPhone ? " (" . $clientPhone . ")" : "");
+        }
+        if (!empty($clientAddress)) {
+            $detailClientFormatted .= "\nAlamat: " . $clientAddress;
+        }
+
+        // Build itemsData from $dPending with shipment tracking
+        $allProductOuts = ProductOut::where('id_pending', $pending->id)
+            ->orWhere('id', $pending->id_product_out)
+            ->with('detail')
+            ->get();
+        $allProductOutIds = $allProductOuts->pluck('id')->filter()->all();
+        $shippedQtyMap = DetailProductOut::whereIn('id_product_out', $allProductOutIds)
+            ->get()
+            ->groupBy('id_serial_product');
 
         $fullRep = [];
         $fullEquiv = [];
+        $itemsData = [];
         $no = 0;
+
         foreach ($dPending as $item) {
-            $fullEquiv[$no] = SerialProduct::find($item->id_equivalent);
-            $fullRep[$no] = $fullEquiv[$no] ? DetailProduct::where('id_product', $fullEquiv[$no]->id_product)->get() : collect([]);
+            $equiv = $item->id_equivalent ? SerialProduct::with('product')->find($item->id_equivalent) : null;
+            $fullEquiv[$no] = $equiv;
+            $rep = $equiv ? DetailProduct::where('id_product', $equiv->id_product)->get() : collect([]);
+            $fullRep[$no] = $rep;
+
+            // UnitQuotationDetail matching if applicable
+            $unitDetail = null;
+            if ($pending->unitQuotation && $pending->unitQuotation->details) {
+                $unitDetail = $pending->unitQuotation->details->first(function ($d) use ($item) {
+                    return ($item->id_equivalent && $d->id_equivalent == $item->id_equivalent)
+                        || (!empty($item->note) && ($d->label === $item->note || str_contains($d->label ?? '', $item->note)));
+                }) ?? $pending->unitQuotation->details->get($no);
+            }
+
+            $itemName = $unitDetail?->label ?? $equiv?->product?->commodity ?? $item->note ?? ('Item #' . ($no + 1));
+            $itemDesc = $unitDetail?->description ?? '';
+            $itemQty = (float)($unitDetail?->qty ?? $item->service?->qty ?? 1);
+            $alreadyShipped = $equiv ? (float)($shippedQtyMap->get($equiv->id)?->sum('qty') ?? 0) : 0;
+            $remainingQty = max(0, $itemQty - $alreadyShipped);
+            $itemPrice = (float)($unitDetail?->price ?? $item->service?->price ?? 0);
+            $itemAmount = (float)($unitDetail?->amount ?? ($remainingQty * $itemPrice));
+
+            // Default replacement resolution
+            $defaultRep = null;
+            if (!empty($item->id_replacement)) {
+                $defaultRep = DetailProduct::with('product')->find($item->id_replacement);
+            } elseif ($rep->isNotEmpty()) {
+                $defaultRep = $rep->first();
+            }
+
+            $defaultRepId = $defaultRep?->id ?? 0;
+            $defaultRepText = $defaultRep
+                ? "{$defaultRep->replacement} | {$defaultRep->product?->commodity} (BDG: {$defaultRep->stock}, BKS: {$defaultRep->warehouse_stock})"
+                : ($item->id_equivalent ? '-- Pilih Replacement --' : '-- Non-Inventory / Ready Stock (Tanpa SKU Fisik) --');
+
+            $itemsData[] = [
+                'dPending' => $item,
+                'unitDetail' => $unitDetail,
+                'equiv' => $equiv,
+                'replacements' => $rep,
+                'default_rep' => $defaultRep,
+                'default_rep_id' => $defaultRepId,
+                'default_rep_text' => $defaultRepText,
+                'default_stock' => $defaultRep?->stock ?? 0,
+                'default_wh_stock' => $defaultRep?->warehouse_stock ?? 0,
+                'default_serial_id' => $equiv?->id ?? 0,
+                'name' => $itemName,
+                'description' => $itemDesc,
+                'qty_ordered' => $itemQty,
+                'qty_shipped' => $alreadyShipped,
+                'qty_remaining' => $remainingQty,
+                'qty' => $remainingQty,
+                'price' => $itemPrice,
+                'amount' => $itemAmount,
+                'warehouse' => 'BDG',
+                'is_non_inventory' => empty($item->id_equivalent),
+            ];
+
             $no++;
         }
-        // dd($dPending);
-        return view('pages.pending.form-project', compact('fullRep', 'fullEquiv', 'dPending', 'pending', 'quote', 'dPending', 'id'));
+
+        // Financial defaults
+        $subtotal = $pending->unitQuotation?->subtotal 
+            ?? $pending->quote?->subtotal 
+            ?? array_sum(array_column($itemsData, 'amount'));
+        $shipping = $pending->unitQuotation?->shipping 
+            ?? $pending->quote?->shipping 
+            ?? 0;
+        $grandTotal = $pending->unitQuotation?->total 
+            ?? ($subtotal + $shipping);
+
+        // Auto-generate No. Barang Keluar (BK) sama seperti di form barang keluar manual
+        $isKojisha = ($pending->quote && (method_exists($pending->quote, 'isKojisha') ? $pending->quote->isKojisha() : ($pending->quote->flag === 'Kojisha')))
+            || ($pending->unitQuotation && (method_exists($pending->unitQuotation, 'isKojisha') ? $pending->unitQuotation->isKojisha() : false))
+            || (is_string($invoiceNo) && str_contains($invoiceNo, '/KII/'))
+            || (is_string($poNo) && str_contains($poNo, 'KII'));
+            
+        $flag = $isKojisha ? 'Kojisha' : 'Reftech';
+
+        $nextNoProductOut = (new \App\Http\Controllers\ProductOutController())->generateNoProductOut('BDG', $flag);
+
+        return view('pages.pending.form-project', compact(
+            'fullRep',
+            'fullEquiv',
+            'dPending',
+            'pending',
+            'quote',
+            'id',
+            'isUnit',
+            'nextNoProductOut',
+            'invoiceNo',
+            'poNo',
+            'clientName',
+            'clientAddress',
+            'clientPic',
+            'clientPhone',
+            'detailClientFormatted',
+            'itemsData',
+            'subtotal',
+            'shipping',
+            'grandTotal',
+            'allProductOuts'
+        ));
+    }
+
+    public function searchReplacements(Request $request)
+    {
+        $search = $request->input('q');
+
+        $query = DetailProduct::join('product', 'detail_product.id_product', '=', 'product.id')
+            ->leftJoin('serial_product as sp', 'sp.id_product', '=', 'product.id')
+            ->select(
+                'detail_product.id',
+                'detail_product.replacement',
+                'detail_product.stock',
+                'detail_product.warehouse_stock',
+                'detail_product.id_product',
+                'product.commodity',
+                'product.detail_desc',
+                'product.go',
+                DB::raw('MIN(sp.id) as serial_id')
+            )
+            ->groupBy(
+                'detail_product.id',
+                'detail_product.replacement',
+                'detail_product.stock',
+                'detail_product.warehouse_stock',
+                'detail_product.id_product',
+                'product.commodity',
+                'product.detail_desc',
+                'product.go'
+            );
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('detail_product.replacement', 'like', "%{$search}%")
+                    ->orWhere('product.commodity', 'like', "%{$search}%")
+                    ->orWhere('product.detail_desc', 'like', "%{$search}%")
+                    ->orWhere('sp.pn', 'like', "%{$search}%");
+            });
+        }
+
+        $results = $query->limit(40)->get()->map(function ($p) {
+            $goCode = $p->go == 'Genuine' ? 'G' : 'R';
+            $text = "{$p->replacement} | {$p->commodity} (BDG: {$p->stock}, BKS: {$p->warehouse_stock}) - {$goCode}";
+            return [
+                'id' => $p->id,
+                'text' => $text,
+                'replacement' => $p->replacement,
+                'commodity' => $p->commodity,
+                'stock' => (int)$p->stock,
+                'warehouse_stock' => (int)$p->warehouse_stock,
+                'serial_id' => (int)$p->serial_id,
+                'go' => $goCode,
+            ];
+        });
+
+        return response()->json($results);
     }
 
     public function product_out(Request $request, $id)
@@ -717,55 +1152,149 @@ class PendingController extends Controller
                 
             $flag = $isKojisha ? 'Kojisha' : 'Reftech';
 
+            $selectedItems = $request->input('selected_items'); // Array of selected row indices if from modal
+
             // Masukan Data ke Tabel Product Out
             $productOut = new ProductOut();
             $productOut->flag = $flag;
-            $productOut->no_product_out = (new \App\Http\Controllers\ProductOutController())->generateNoProductOut($request->warehouse[0] ?? 'BDG', $flag);
+            $productOut->id_pending = $pending->id;
+            $productOut->no_product_out = $request->filled('no_product_out') 
+                ? trim($request->input('no_product_out')) 
+                : (new \App\Http\Controllers\ProductOutController())->generateNoProductOut($request->warehouse[0] ?? 'BDG', $flag);
             $productOut->id_user = Auth::user()->id;
             $productOut->invoice = $request->invoice;
             $productOut->po = $request->po;
             $productOut->no_type = "1";
             $productOut->detail_client = $request->detail_client;
-            $productOut->vers = $request->vers;
-            $productOut->date = $request->date;
-            $productOut->note = $request->note;
-            $productOut->shipping = $request->shipping;
-            $productOut->total = $request->total;
+            $productOut->vers = $request->vers ?? 'Offline';
+            $productOut->date = $request->date ?? date('Y-m-d');
+            $productOut->note = $request->note ?? '-';
+            $productOut->shipping = $request->shipping ?? 0;
+            $productOut->total = $request->total ?? 0;
             $productOut->save();
 
-            $pending->id_product_out = $productOut->id;
-            $pending->save();
-
-            // Masukan Data Ke Tabel Detail Quotataion
-            foreach ($request->equivalent as $item => $value) {
-                $dProductIn = new DetailProductOut();
-                $dProductIn->id_product_out = $productOut->id;
-                $dProductIn->id_detail_product = $request->replacement[$item];
-                $dProductIn->id_serial_product = $request->equivalent[$item];
-                $dProductIn->qty = $request->qty[$item];
-                $dProductIn->price = $request->price[$item];
-                $dProductIn->amount = $request->amount[$item];
-                $dProductIn->warehouse = $request->warehouse[$item];
-                $productD = DetailProduct::where('id', $request->replacement[$item])->first();
-                if ($productD) {
-                    if ($request->warehouse[$item] == 'BDG') {
-                        $productD->stock -= $request->qty[$item];
-                    } else {
-                        $productD->warehouse_stock -= $request->qty[$item];
-                    }
-                    $productD->save();
-                    $product = Product::where('id', $productD->id_product)->first();
-                    if ($product) {
-                        $product->pending_stock -= $request->qty[$item];
-                        $product->save();
-                    }
-                }
-                $dProductIn->save();
+            if (empty($pending->id_product_out)) {
+                $pending->id_product_out = $productOut->id;
+                $pending->save();
             }
 
-            return redirect('/pending-po-done')->with('message', 'data telah di tambahkan');
+            // Masukan Data Ke Tabel Detail Product Out
+            $thisBatchQty = 0;
+            $thisBatchTotalAmount = 0;
+
+            if ($request->has('equivalent') && is_array($request->equivalent)) {
+                foreach ($request->equivalent as $item => $value) {
+                    // If selected_items is passed (from modal), skip rows that are not selected
+                    if (is_array($selectedItems) && !in_array($item, $selectedItems) && !in_array((string)$item, $selectedItems)) {
+                        continue;
+                    }
+
+                    $qtyOut = (int)($request->qty[$item] ?? 0);
+                    if ($qtyOut <= 0) {
+                        continue; // Skip items with 0 qty in this partial shipment
+                    }
+                    $thisBatchQty += $qtyOut;
+
+                    $itemPrice = (int)($request->price[$item] ?? 0);
+                    $itemAmount = (int)($request->amount[$item] ?? ($qtyOut * $itemPrice));
+                    $thisBatchTotalAmount += $itemAmount;
+
+                    $dProductIn = new DetailProductOut();
+                    $dProductIn->id_product_out = $productOut->id;
+                    $dProductIn->id_detail_product = !empty($request->replacement[$item]) ? (int)$request->replacement[$item] : 0;
+                    $dProductIn->id_serial_product = !empty($request->equivalent[$item]) ? (int)$request->equivalent[$item] : 0;
+                    $dProductIn->qty = $qtyOut;
+                    $dProductIn->price = $itemPrice;
+                    $dProductIn->amount = $itemAmount;
+                    $dProductIn->warehouse = $request->warehouse[$item] ?? 'BDG';
+                    if (!empty($request->replacement[$item])) {
+                        $productD = DetailProduct::where('id', $request->replacement[$item])->first();
+                        if ($productD) {
+                            if (($request->warehouse[$item] ?? 'BDG') == 'BDG') {
+                                $productD->stock -= $qtyOut;
+                            } else {
+                                $productD->warehouse_stock -= $qtyOut;
+                            }
+                            $productD->save();
+                            $product = Product::where('id', $productD->id_product)->first();
+                            if ($product) {
+                                $product->pending_stock -= $qtyOut;
+                                $product->save();
+                            }
+                        }
+                    }
+                    $dProductIn->save();
+                }
+            }
+
+            if ($thisBatchQty === 0) {
+                // If nothing was actually selected, rollback and throw error
+                throw new \Exception('Minimal pilih 1 item dengan kuantitas lebih dari 0 untuk dikirim.');
+            }
+
+            if (empty($productOut->total) || $productOut->total == 0) {
+                $productOut->total = $thisBatchTotalAmount + (int)$productOut->shipping;
+                $productOut->save();
+            }
+
+            // Hitung total seluruh pengiriman untuk Pending PO ini
+            $allProductOutIds = ProductOut::where('id_pending', $pending->id)
+                ->orWhere('id', $pending->id_product_out)
+                ->pluck('id')
+                ->filter()
+                ->unique()
+                ->all();
+
+            $totalShippedQty = (int) DetailProductOut::whereIn('id_product_out', $allProductOutIds)->sum('qty');
+
+            $totalOrderedQty = 0;
+            if ($pending->id_quotation) {
+                $totalOrderedQty = (int) DetailQuotation::where('id_quotation', $pending->id_quotation)->sum('qty');
+                if ($totalOrderedQty === 0) {
+                    $totalOrderedQty = (int) DetailPendingPO::where('id_pending', $pending->id)->whereNot('status', '7')->sum(DB::raw('bdg + bks'));
+                }
+            } elseif ($pending->id_unit_quotation) {
+                $totalOrderedQty = (int) UnitQuotationDetail::where('id_unit_quotation', $pending->id_unit_quotation)->sum('qty');
+                if ($totalOrderedQty === 0) {
+                    $totalOrderedQty = (int) DetailPendingPO::where('id_pending', $pending->id)->whereNot('status', '7')->sum(DB::raw('bdg + bks'));
+                }
+            } else {
+                $totalOrderedQty = (int) DetailPendingPO::where('id_pending', $pending->id)->whereNot('status', '7')->sum(DB::raw('bdg + bks'));
+            }
+
+            // Tentukan status: Done (6) jika seluruh barang terkirim vs Partial Delivery (8) jika baru sebagian
+            if ($totalShippedQty >= $totalOrderedQty && $totalOrderedQty > 0) {
+                $pending->status = '6'; // Otomatis Done
+                $statusNote = 'Done (Seluruh barang telah terkirim: ' . $totalShippedQty . '/' . $totalOrderedQty . ')';
+            } elseif ($totalShippedQty > 0) {
+                $pending->status = '8'; // Partial Delivery
+                $statusNote = 'Partial Delivery (' . $totalShippedQty . '/' . $totalOrderedQty . ' item terkirim)';
+            }
+            $pending->save();
+
+            // Log activity status change
+            if (isset($statusNote)) {
+                $changeStatus = new ChangeStatus();
+                $changeStatus->id_pending = $pending->id;
+                $changeStatus->status = $pending->status;
+                $changeStatus->note = $statusNote;
+                $changeStatus->date = Carbon::now();
+                $changeStatus->save();
+            }
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Surat Jalan / Barang Keluar berhasil dibuat (' . $productOut->no_product_out . ')',
+                    'product_out_id' => $productOut->id,
+                    'no_product_out' => $productOut->no_product_out,
+                ]);
+            }
+
+            return redirect()->back()->with('message', 'Surat Jalan / Barang Keluar berhasil dibuat (' . $productOut->no_product_out . ')');
         });
     }
+
     public function indexSOrder(Request $request)
     {
         $user = Auth::user();
@@ -799,13 +1328,17 @@ class PendingController extends Controller
         }
 
         $allPending = $pendingQuery->with([
-            'quote.pic.client',
-            'quote.sales',
-            'quote.invoice',
-            'unitQuotation.client',
-            'unitQuotation.sales',
-            'unitQuotation.invoices',
-            'unitQuotation.payments',
+            'quote:id,id_pic,id_sales,po_date,nett,total_no_tax,harga_total,flag,note',
+            'quote.pic:id,id_client',
+            'quote.pic.client:id,company,info,area',
+            'quote.sales:id,name,image',
+            'quote.invoice:id,id_quotation,no_invoice,no_po,flag,status_p,term',
+            'unitQuotation:id,id_client,id_sales,po_number,payment,payment_method,subtotal,diskon,total,tax_amount',
+            'unitQuotation.client:id,company,info,area',
+            'unitQuotation.sales:id,name,image',
+            'unitQuotation.invoices:id,id_unit_quotation,no_invoice,no_po,flag,status_p,term',
+            'parentPending:id,no_pending,type,status,date,title',
+            'linkedChildren:id,parent_id,no_pending,type,status,date,title',
         ])->get()
           ->sortByDesc(function ($order) {
               return $order->quote?->po_date ?? $order->date ?? '';
@@ -841,21 +1374,49 @@ class PendingController extends Controller
         $allQuoteIds = $allPending->pluck('id_quotation')->filter()->all();
         $allUnitQuoteIds = $allPending->pluck('id_unit_quotation')->filter()->all();
 
-        $confirmedPayments = DB::table('payment')
-            ->where(function($q) use ($allQuoteIds, $allUnitQuoteIds) {
-                if (!empty($allQuoteIds)) {
-                    $q->whereIn('id_quotation', $allQuoteIds);
-                }
-                if (!empty($allUnitQuoteIds)) {
-                    $q->orWhereIn('id_unit_quotation', $allUnitQuoteIds);
-                }
-            })
-            ->where('level', 1)
-            ->select('id_quotation', 'id_unit_quotation')
-            ->get();
+        // Batch fetch order items for quick preview drawer
+        $allDetQuotes = !empty($allQuoteIds)
+            ? DetailQuotation::with(['equivalent.product'])
+                ->whereIn('id_quotation', $allQuoteIds)
+                ->get()
+                ->groupBy('id_quotation')
+            : collect();
 
-        $confirmedQuoteIds = $confirmedPayments->whereNotNull('id_quotation')->pluck('id_quotation')->flip()->all();
-        $confirmedUnitQuoteIds = $confirmedPayments->whereNotNull('id_unit_quotation')->pluck('id_unit_quotation')->flip()->all();
+        $allUnitQuoteDetails = !empty($allUnitQuoteIds)
+            ? UnitQuotationDetail::with(['equivalent.product', 'unit'])
+                ->whereIn('id_unit_quotation', $allUnitQuoteIds)
+                ->get()
+                ->groupBy('id_unit_quotation')
+            : collect();
+
+        $allPendingDetails = !empty($allPendingIds)
+            ? DetailPendingPO::with(['equivalent.product', 'service'])
+                ->whereIn('id_pending', $allPendingIds)
+                ->get()
+                ->groupBy('id_pending')
+            : collect();
+
+        $confirmedQuoteIds = [];
+        $confirmedUnitQuoteIds = [];
+        if (!empty($allQuoteIds) || !empty($allUnitQuoteIds)) {
+            $paymentRows = DB::table('payment')
+                ->where(function($q) use ($allQuoteIds, $allUnitQuoteIds) {
+                    if (!empty($allQuoteIds)) {
+                        $q->whereIn('id_quotation', $allQuoteIds);
+                    }
+                    if (!empty($allUnitQuoteIds)) {
+                        $q->orWhereIn('id_unit_quotation', $allUnitQuoteIds);
+                    }
+                })
+                ->where('level', 1)
+                ->select('id_quotation', 'id_unit_quotation')
+                ->get();
+
+            foreach ($paymentRows as $row) {
+                if ($row->id_quotation) $confirmedQuoteIds[$row->id_quotation] = true;
+                if ($row->id_unit_quotation) $confirmedUnitQuoteIds[$row->id_unit_quotation] = true;
+            }
+        }
 
         // Micro-caches for repeated string parsing & asset URLs
         $dateCache = [];
@@ -868,6 +1429,7 @@ class PendingController extends Controller
 
         $newOrders = collect();
         $checkPartsOrders = collect();
+        $partialDeliveryOrders = collect();
         $deliveryOrders = collect();
         $completedOrders = collect();
         $returnOrders = collect();
@@ -887,21 +1449,76 @@ class PendingController extends Controller
         $totalGeneralProject = 0;
         $totalShippingProject = 0;
 
+        // Batch pre-fetch all ProductOuts and DetailProductOuts for all pending orders
+        $allPendingIds = $allPending->pluck('id')->all();
+        $allProductOutLegacyIds = $allPending->pluck('id_product_out')->filter()->unique()->all();
+
+        $allProductOuts = ProductOut::where(function($q) use ($allPendingIds, $allProductOutLegacyIds) {
+            if (!empty($allPendingIds)) {
+                $q->whereIn('id_pending', $allPendingIds);
+            }
+            if (!empty($allProductOutLegacyIds)) {
+                $q->orWhereIn('id', $allProductOutLegacyIds);
+            }
+        })
+        ->with('detail')
+        ->orderByDesc('id')
+        ->get();
+
+        $productOutsByPending = [];
+        foreach ($allProductOuts as $poItem) {
+            if ($poItem->id_pending) {
+                $productOutsByPending[$poItem->id_pending][] = $poItem;
+            }
+        }
+        foreach ($allPending as $p) {
+            if ($p->id_product_out) {
+                $found = false;
+                if (isset($productOutsByPending[$p->id])) {
+                    foreach ($productOutsByPending[$p->id] as $existingPo) {
+                        if ($existingPo->id == $p->id_product_out) {
+                            $found = true;
+                            break;
+                        }
+                    }
+                }
+                if (!$found) {
+                    $legacy = $allProductOuts->firstWhere('id', $p->id_product_out);
+                    if ($legacy) {
+                        $productOutsByPending[$p->id][] = $legacy;
+                    }
+                }
+            }
+        }
+
         // ==========================================
         // UNIFIED SINGLE-PASS PROCESSING & BUCKETING
         // ==========================================
         $allMasterOrders = $allPending->map(function ($order) use (
             $matCosts, $shipCosts, $genCosts, $defaultAvatar,
+            $allDetQuotes, $allUnitQuoteDetails, $allPendingDetails,
             $confirmedQuoteIds, $confirmedUnitQuoteIds,
+            $productOutsByPending,
             $projectBaseUrl, $pendingBaseUrl, &$dateCache, &$avatarCache,
             $allOrders, $projects,
-            $newOrders, $checkPartsOrders, $deliveryOrders, $completedOrders, $returnOrders, $delayedOrders,
+            $newOrders, $checkPartsOrders, $partialDeliveryOrders, $deliveryOrders, $completedOrders, $returnOrders, $delayedOrders,
             $newProjects, $checkPartsProjects, $schedulingProjects, $inProgressProjects, $completedProjects,
             &$totalRevenueSOrder, &$totalCostSOrder,
             &$totalRevenueProject, &$totalMaterialProject, &$totalGeneralProject, &$totalShippingProject
         ) {
             $isProject = ($order->type === 'Project');
             $order->order_type = $isProject ? 'Project' : 'Non-Project';
+
+            // Parent & Linked PO references
+            $order->parent_no_pending = $order->parentPending?->no_pending;
+            $order->is_parent = $order->linkedChildren && $order->linkedChildren->isNotEmpty();
+            $order->is_child = !empty($order->parent_id);
+            $order->linked_children_count = $order->linkedChildren ? $order->linkedChildren->count() : 0;
+            $order->linked_children_list = $order->linkedChildren ? $order->linkedChildren->map(fn($c) => [
+                'id' => $c->id,
+                'no_pending' => $c->no_pending,
+                'title' => $c->title,
+            ])->values()->all() : [];
 
             $quote = $order->quote;
             $unitQuote = $order->unitQuotation;
@@ -1009,6 +1626,9 @@ class PendingController extends Controller
                 } elseif ($order->status == 0) {
                     $progressLabel = 'New';
                     $progressBadge = 'bg-label-secondary';
+                } elseif ($order->status == 8) {
+                    $progressLabel = 'Partial Delivery';
+                    $progressBadge = 'bg-label-info';
                 } elseif ($order->status == 9) {
                     $progressLabel = 'Delayed';
                     $progressBadge = 'bg-label-danger';
@@ -1038,7 +1658,8 @@ class PendingController extends Controller
                     case 4: $progressLabel = 'Pre-delivery'; $progressBadge = 'bg-label-primary'; break;
                     case 5: $progressLabel = 'Delivery Process'; $progressBadge = 'bg-label-info'; break;
                     case 6: $progressLabel = 'Done'; $progressBadge = 'bg-label-success'; break;
-                    case 8: $progressLabel = 'Return'; $progressBadge = 'bg-label-warning'; break;
+                    case 7: $progressLabel = 'Cancel'; $progressBadge = 'bg-label-danger'; break;
+                    case 8: $progressLabel = 'Partial Delivery'; $progressBadge = 'bg-label-info'; break;
                     case 9: $progressLabel = 'Delayed'; $progressBadge = 'bg-label-danger'; break;
                     default: $progressLabel = 'In Progress'; $progressBadge = 'bg-label-primary'; break;
                 }
@@ -1046,12 +1667,304 @@ class PendingController extends Controller
             $order->progress_label = $progressLabel;
             $order->progress_badge = $progressBadge;
 
+            // Extract linked ProductOut shipments and shipped qty mapping
+            $linkedProductOuts = $productOutsByPending[$order->id] ?? [];
+            $shippedQtyMapBySerial = [];
+            $totalShippedQtyAll = 0;
+            $productOutsSummaryList = [];
+
+            foreach ($linkedProductOuts as $poItem) {
+                $poQtySum = 0;
+                if ($poItem->detail) {
+                    foreach ($poItem->detail as $pod) {
+                        $podQty = (float)($pod->qty ?? 0);
+                        $poQtySum += $podQty;
+                        $sid = (int)($pod->id_serial_product ?? 0);
+                        if ($sid > 0) {
+                            $shippedQtyMapBySerial[$sid] = ($shippedQtyMapBySerial[$sid] ?? 0) + $podQty;
+                        }
+                    }
+                }
+                $totalShippedQtyAll += $poQtySum;
+                $productOutsSummaryList[] = [
+                    'id' => $poItem->id,
+                    'no_product_out' => $poItem->no_product_out ?: ('BK #' . $poItem->id),
+                    'date' => $poItem->date ? date('d-m-Y', strtotime($poItem->date)) : '-',
+                    'total_qty' => $poQtySum,
+                    'flag' => $poItem->flag,
+                    'show_url' => route('product-out.show', $poItem->id),
+                ];
+            }
+
+            // Extract items detail for quick slide drawer
+            $itemsList = [];
+            $searchTexts = [];
+            $totalOrderedQtyAll = 0;
+
+            if ($order->id_quotation && isset($allDetQuotes[$order->id_quotation])) {
+                foreach ($allDetQuotes[$order->id_quotation] as $dq) {
+                    $brandPn = $dq->equivalent ? trim(($dq->equivalent->brand ?? '') . ' ' . ($dq->equivalent->pn ?? '')) : '';
+                    $name = $brandPn ?: ($dq->detail_product ?: 'Item #' . $dq->id);
+                    $desc = $dq->detail_product ?: ($dq->equivalent?->product?->description ?? '');
+                    $go = $dq->equivalent?->product?->go ?? null;
+                    $qty = (float) ($dq->qty ?? 1);
+                    $totalOrderedQtyAll += $qty;
+                    $equivId = (int) ($dq->id_equivalent ?? 0);
+                    $shippedQty = $equivId ? ($shippedQtyMapBySerial[$equivId] ?? 0) : 0;
+                    $remainingQty = max(0, $qty - $shippedQty);
+                    $fulfillmentStatus = ($shippedQty >= $qty && $qty > 0) ? 'fulfilled' : ($shippedQty > 0 ? 'partial' : 'unfulfilled');
+
+                    $unit = $dq->info_qty ?: ($dq->equivalent?->product?->unit ?: 'pcs');
+                    $bdg = (int) ($dq->equivalent?->product?->stock ?? 0);
+                    $bks = (int) ($dq->equivalent?->product?->warehouse_stock ?? 0);
+                    $totalStock = $bdg + $bks;
+                    $statusText = match ((int) ($dq->status ?? 0)) {
+                        1 => 'On Check',
+                        2 => 'Ready Stock',
+                        3 => 'Kurang',
+                        4 => 'Pre-Order',
+                        5 => 'Delivery Process',
+                        6 => 'Done',
+                        default => 'Belum Di Cek',
+                    };
+                    $statusBadge = match ((int) ($dq->status ?? 0)) {
+                        1 => 'bg-label-warning',
+                        2 => 'bg-label-info',
+                        3 => 'bg-label-danger',
+                        4 => 'bg-label-primary',
+                        5 => 'bg-label-info',
+                        6 => 'bg-label-success',
+                        default => 'bg-label-secondary',
+                    };
+
+                    $itemsList[] = [
+                        'name' => $name,
+                        'brand_pn' => $brandPn,
+                        'description' => $desc,
+                        'go' => $go,
+                        'qty' => $qty,
+                        'qty_shipped' => $shippedQty,
+                        'qty_remaining' => $remainingQty,
+                        'fulfillment_status' => $fulfillmentStatus,
+                        'unit' => $unit,
+                        'bdg' => $bdg,
+                        'bks' => $bks,
+                        'total_stock' => $totalStock,
+                        'is_enough' => $totalStock >= $remainingQty,
+                        'status' => $statusText,
+                        'status_badge' => $statusBadge,
+                        'note' => $dq->note ?: '',
+                    ];
+                    $searchTexts[] = $name . ' ' . $desc . ' ' . $brandPn;
+                }
+            } elseif ($order->id_unit_quotation) {
+                if (isset($allPendingDetails[$order->id]) && $allPendingDetails[$order->id]->isNotEmpty()) {
+                    foreach ($allPendingDetails[$order->id] as $dp) {
+                        $brandPn = $dp->equivalent ? trim(($dp->equivalent->brand ?? '') . ' ' . ($dp->equivalent->pn ?? '')) : '';
+                        $name = $brandPn ?: ($dp->note ?: ($dp->service?->detail_service ?: 'Item #' . $dp->id));
+                        $desc = $dp->equivalent?->product?->description ?? ($dp->service?->detail_service ?? '');
+                        $go = $dp->equivalent?->product?->go ?? null;
+                        $qty = (float) ($dp->service?->qty ?? ($dp->bdg + $dp->bks ?: 1));
+                        $totalOrderedQtyAll += $qty;
+                        $equivId = (int) ($dp->id_equivalent ?? 0);
+                        $shippedQty = $equivId ? ($shippedQtyMapBySerial[$equivId] ?? 0) : 0;
+                        $remainingQty = max(0, $qty - $shippedQty);
+                        $fulfillmentStatus = ($shippedQty >= $qty && $qty > 0) ? 'fulfilled' : ($shippedQty > 0 ? 'partial' : 'unfulfilled');
+
+                        $unit = $dp->service?->unit ?: ($dp->equivalent?->product?->unit ?: 'pcs');
+                        $bdg = (int) ($dp->bdg ?? ($dp->equivalent?->product?->stock ?? 0));
+                        $bks = (int) ($dp->bks ?? ($dp->equivalent?->product?->warehouse_stock ?? 0));
+                        $totalStock = $bdg + $bks;
+                        $statusText = match ((int) ($dp->status ?? 0)) {
+                            1 => 'On Check',
+                            2 => 'Ready Stock',
+                            3 => 'Kurang',
+                            4 => 'Pre-Order',
+                            5 => 'Delivery Process',
+                            6 => 'Done',
+                            default => 'Belum Di Cek',
+                        };
+                        $statusBadge = match ((int) ($dp->status ?? 0)) {
+                            1 => 'bg-label-warning',
+                            2 => 'bg-label-info',
+                            3 => 'bg-label-danger',
+                            4 => 'bg-label-primary',
+                            5 => 'bg-label-info',
+                            6 => 'bg-label-success',
+                            default => 'bg-label-secondary',
+                        };
+
+                        $itemsList[] = [
+                            'name' => $name,
+                            'brand_pn' => $brandPn,
+                            'description' => $desc,
+                            'go' => $go,
+                            'qty' => $qty,
+                            'qty_shipped' => $shippedQty,
+                            'qty_remaining' => $remainingQty,
+                            'fulfillment_status' => $fulfillmentStatus,
+                            'unit' => $unit,
+                            'bdg' => $bdg,
+                            'bks' => $bks,
+                            'total_stock' => $totalStock,
+                            'is_enough' => $totalStock >= $remainingQty,
+                            'status' => $statusText,
+                            'status_badge' => $statusBadge,
+                            'note' => $dp->note ?: '',
+                        ];
+                        $searchTexts[] = $name . ' ' . $desc . ' ' . $brandPn;
+                    }
+                } elseif (isset($allUnitQuoteDetails[$order->id_unit_quotation])) {
+                    foreach ($allUnitQuoteDetails[$order->id_unit_quotation] as $uqd) {
+                        $brandPn = $uqd->equivalent ? trim(($uqd->equivalent->brand ?? '') . ' ' . ($uqd->equivalent->pn ?? '')) : '';
+                        $name = $uqd->label ?: ($brandPn ?: ($uqd->unit?->name ?? 'Item #' . $uqd->id));
+                        $desc = $uqd->description ?: ($uqd->equivalent?->product?->description ?? '');
+                        $go = $uqd->equivalent?->product?->go ?? null;
+                        $qty = (float) ($uqd->qty ?? 1);
+                        $totalOrderedQtyAll += $qty;
+                        $equivId = (int) ($uqd->id_equivalent ?? 0);
+                        $shippedQty = $equivId ? ($shippedQtyMapBySerial[$equivId] ?? 0) : 0;
+                        $remainingQty = max(0, $qty - $shippedQty);
+                        $fulfillmentStatus = ($shippedQty >= $qty && $qty > 0) ? 'fulfilled' : ($shippedQty > 0 ? 'partial' : 'unfulfilled');
+
+                        $unit = $uqd->info_qty ?: 'pcs';
+
+                        $itemsList[] = [
+                            'name' => $name,
+                            'brand_pn' => $brandPn,
+                            'description' => $desc,
+                            'go' => $go,
+                            'qty' => $qty,
+                            'qty_shipped' => $shippedQty,
+                            'qty_remaining' => $remainingQty,
+                            'fulfillment_status' => $fulfillmentStatus,
+                            'unit' => $unit,
+                            'bdg' => 0,
+                            'bks' => 0,
+                            'total_stock' => 0,
+                            'is_enough' => true,
+                            'status' => 'Order Item',
+                            'status_badge' => 'bg-label-primary',
+                            'note' => '',
+                        ];
+                        $searchTexts[] = $name . ' ' . $desc . ' ' . $brandPn;
+                    }
+                }
+            } elseif (isset($allPendingDetails[$order->id]) && $allPendingDetails[$order->id]->isNotEmpty()) {
+                foreach ($allPendingDetails[$order->id] as $dp) {
+                    $brandPn = $dp->equivalent ? trim(($dp->equivalent->brand ?? '') . ' ' . ($dp->equivalent->pn ?? '')) : '';
+                    $name = $brandPn ?: ($dp->note ?: ($dp->service?->detail_service ?: 'Item #' . $dp->id));
+                    $desc = $dp->equivalent?->product?->description ?? ($dp->service?->detail_service ?? '');
+                    $go = $dp->equivalent?->product?->go ?? null;
+                    $qty = (float) ($dp->service?->qty ?? ($dp->bdg + $dp->bks ?: 1));
+                    $totalOrderedQtyAll += $qty;
+                    $equivId = (int) ($dp->id_equivalent ?? 0);
+                    $shippedQty = $equivId ? ($shippedQtyMapBySerial[$equivId] ?? 0) : 0;
+                    $remainingQty = max(0, $qty - $shippedQty);
+                    $fulfillmentStatus = ($shippedQty >= $qty && $qty > 0) ? 'fulfilled' : ($shippedQty > 0 ? 'partial' : 'unfulfilled');
+
+                    $unit = $dp->service?->unit ?: ($dp->equivalent?->product?->unit ?: 'pcs');
+                    $bdg = (int) ($dp->bdg ?? 0);
+                    $bks = (int) ($dp->bks ?? 0);
+                    $totalStock = $bdg + $bks;
+                    $statusText = match ((int) ($dp->status ?? 0)) {
+                        1 => 'On Check',
+                        2 => 'Ready Stock',
+                        3 => 'Kurang',
+                        4 => 'Pre-Order',
+                        5 => 'Delivery Process',
+                        6 => 'Done',
+                        default => 'Belum Di Cek',
+                    };
+                    $statusBadge = match ((int) ($dp->status ?? 0)) {
+                        1 => 'bg-label-warning',
+                        2 => 'bg-label-info',
+                        3 => 'bg-label-danger',
+                        4 => 'bg-label-primary',
+                        5 => 'bg-label-info',
+                        6 => 'bg-label-success',
+                        default => 'bg-label-secondary',
+                    };
+
+                    $itemsList[] = [
+                        'name' => $name,
+                        'brand_pn' => $brandPn,
+                        'description' => $desc,
+                        'go' => $go,
+                        'qty' => $qty,
+                        'qty_shipped' => $shippedQty,
+                        'qty_remaining' => $remainingQty,
+                        'fulfillment_status' => $fulfillmentStatus,
+                        'unit' => $unit,
+                        'bdg' => $bdg,
+                        'bks' => $bks,
+                        'total_stock' => $totalStock,
+                        'is_enough' => $totalStock >= $remainingQty,
+                        'status' => $statusText,
+                        'status_badge' => $statusBadge,
+                        'note' => $dp->note ?: '',
+                    ];
+                    $searchTexts[] = $name . ' ' . $desc . ' ' . $brandPn;
+                }
+            }
+
+            if (empty($itemsList) && !empty($order->title)) {
+                $itemsList[] = [
+                    'name' => $order->title,
+                    'brand_pn' => '',
+                    'description' => $order->title,
+                    'go' => null,
+                    'qty' => 1,
+                    'qty_shipped' => $totalShippedQtyAll > 0 ? 1 : 0,
+                    'qty_remaining' => $totalShippedQtyAll > 0 ? 0 : 1,
+                    'fulfillment_status' => $totalShippedQtyAll > 0 ? 'fulfilled' : 'unfulfilled',
+                    'unit' => 'item',
+                    'bdg' => 0,
+                    'bks' => 0,
+                    'total_stock' => 0,
+                    'is_enough' => true,
+                    'status' => $order->progress_label,
+                    'status_badge' => $order->progress_badge,
+                    'note' => '',
+                ];
+                $searchTexts[] = $order->title;
+                $totalOrderedQtyAll = 1;
+            }
+
+            $order->items_list = $itemsList;
+            $order->items_search_text = implode(' ', $searchTexts);
+
             // Revenue
             $uqSub = $unitQuote ? (floatval($unitQuote->subtotal ?? 0) - floatval($unitQuote->diskon ?? 0)) : 0;
             if ($unitQuote && $uqSub <= 0) {
                 $uqSub = floatval($unitQuote->total ?? 0) - floatval($unitQuote->tax_amount ?? 0);
             }
             $order->revenue = $unitQuote ? $uqSub : floatval($quote?->nett ?? 0);
+
+            $order->drawer_data = [
+                'id' => $order->id,
+                'no_pending' => $order->no_pending,
+                'no_po' => $order->no_po,
+                'company' => $order->company,
+                'formatted_date' => $order->formatted_date,
+                'sales_name' => $order->sales_name,
+                'sales_avatar' => $order->sales_avatar,
+                'progress_label' => $order->progress_label,
+                'progress_badge' => $order->progress_badge,
+                'payment_label' => $order->payment_label,
+                'payment_badge' => $order->payment_badge,
+                'payment_detail' => $order->payment_detail,
+                'revenue' => number_format($order->revenue, 0, ',', '.'),
+                'detail_route' => $order->detail_route,
+                'create_product_out_route' => ($order->type === 'Project') 
+                    ? route('pending-po.product_out_project', $order->id) 
+                    : route('pending-po.product_out', $order->id),
+                'items' => $itemsList,
+                'total_ordered_qty' => $totalOrderedQtyAll,
+                'total_shipped_qty' => $totalShippedQtyAll,
+                'total_remaining_qty' => max(0, $totalOrderedQtyAll - $totalShippedQtyAll),
+                'product_outs' => $productOutsSummaryList,
+            ];
 
             // Costs & Profits
             $order->material_cost = (float) ($matCosts[$order->id] ?? 0);
@@ -1101,8 +2014,10 @@ class PendingController extends Controller
                     case 4: $checkPartsOrders->push($order); break;
                     case 5: $deliveryOrders->push($order); break;
                     case 6: $completedOrders->push($order); break;
-                    case 8: $returnOrders->push($order); break;
+                    case 7: $returnOrders->push($order); break;
+                    case 8: $partialDeliveryOrders->push($order); break;
                     case 9: $delayedOrders->push($order); break;
+                    default: $checkPartsOrders->push($order); break;
                 }
             }
 
@@ -1134,6 +2049,7 @@ class PendingController extends Controller
             'allOrders',
             'newOrders',
             'checkPartsOrders',
+            'partialDeliveryOrders',
             'deliveryOrders',
             'completedOrders',
             'returnOrders',
@@ -1415,5 +2331,229 @@ class PendingController extends Controller
         } else {
             return 0;
         }
+    }
+
+    /**
+     * Bulk update status for multiple Pending POs from sales-order page.
+     * Status 6 (Done) does NOT redirect to product-out — just changes status
+     * and records a note "Part belum diinput barang keluar".
+     */
+    public function bulkStatusUpdate(Request $request)
+    {
+        $request->validate([
+            'ids'    => 'required|array|min:1',
+            'ids.*'  => 'integer|exists:pending_po,id',
+            'status' => 'required|integer|in:0,1,2,3,4,5,6,8,9',
+        ]);
+
+        $ids    = $request->input('ids');
+        $status = (string) $request->input('status');
+        $note   = $request->input('note', '');
+
+        $statusLabels = [
+            '0' => 'New PO',
+            '1' => 'On Check',
+            '2' => 'Ready Stock',
+            '3' => 'Kurang',
+            '4' => 'Pre-delivery',
+            '5' => 'Delivery Process',
+            '6' => 'Done',
+            '8' => 'Return',
+            '9' => 'Delayed',
+        ];
+
+        $updated = 0;
+        $skipped = 0;
+
+        DB::transaction(function () use ($ids, $status, $note, $statusLabels, &$updated, &$skipped) {
+            foreach ($ids as $id) {
+                $pending = PendingPO::find($id);
+                if (!$pending) { $skipped++; continue; }
+
+                $oldStatus = $pending->status;
+                $pending->status = $status;
+                $pending->save();
+
+                // Record into change_status log
+                $changeNote = trim($note);
+                if ($status === '6' && empty($changeNote)) {
+                    $changeNote = 'Part belum diinput barang keluar.';
+                }
+                if (!empty($changeNote) || $status !== $oldStatus) {
+                    ChangeStatus::create([
+                        'id_pending' => $id,
+                        'id_user'    => Auth::id(),
+                        'status'     => $status,
+                        'date'       => now(),
+                        'note'       => $changeNote ?: ('Bulk update status ke: ' . ($statusLabels[$status] ?? $status)),
+                    ]);
+                }
+
+                $updated++;
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'updated' => $updated,
+            'skipped' => $skipped,
+            'message' => "Berhasil update {$updated} PO ke status " . ($statusLabels[$status] ?? $status) . ($skipped ? " ({$skipped} dilewati)" : '') . '.',
+        ]);
+    }
+
+    /**
+     * Link multiple Sales Orders (Pending POs) to a parent Sales Order (same job/project).
+     */
+    public function linkSalesOrders(Request $request)
+    {
+        $request->validate([
+            'parent_id' => 'required|integer|exists:pending_po,id',
+            'child_ids' => 'required|array|min:1',
+            'child_ids.*' => 'integer|exists:pending_po,id',
+        ]);
+
+        $parentId = (int) $request->input('parent_id');
+        $childIds = array_values(array_unique(array_map('intval', $request->input('child_ids'))));
+
+        // Ensure parent_id is not in child_ids
+        $childIds = array_filter($childIds, fn($id) => $id !== $parentId);
+
+        if (empty($childIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada SO anak yang valid untuk dikaitkan.',
+            ], 422);
+        }
+
+        $parent = PendingPO::with(['quote.pic.client', 'unitQuotation.client'])->findOrFail($parentId);
+
+        // If the chosen parent is itself already a child of another parent, resolve to the root parent
+        if ($parent->parent_id) {
+            $parentId = $parent->parent_id;
+            $parent = PendingPO::with(['quote.pic.client', 'unitQuotation.client'])->findOrFail($parentId);
+        }
+
+        $parentClientId = $parent->client_id;
+        $parentClientName = $parent->client_name;
+
+        // Verify that all children belong to the exact same client
+        $children = PendingPO::with(['quote.pic.client', 'unitQuotation.client'])->whereIn('id', $childIds)->get();
+        foreach ($children as $child) {
+            $childClientId = $child->client_id;
+            $childClientName = $child->client_name;
+
+            // If both have client IDs and they differ, or if client names differ
+            $isSameClient = ($parentClientId && $childClientId)
+                ? ($parentClientId === $childClientId)
+                : (strcasecmp(trim($parentClientName), trim($childClientName)) === 0 && $parentClientName !== '-');
+
+            if (!$isSameClient && ($parentClientName !== '-' || $childClientName !== '-')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Gagal mengaitkan: SO #{$child->no_pending} ({$childClientName}) memiliki Client yang berbeda dengan SO Utama #{$parent->no_pending} ({$parentClientName}). Sales Order yang dikaitkan wajib berasal dari 1 Client yang sama.",
+                ], 422);
+            }
+        }
+
+        DB::transaction(function () use ($parentId, $childIds, $parent) {
+            // Update all children
+            foreach ($childIds as $childId) {
+                $child = PendingPO::find($childId);
+                if (!$child) continue;
+
+                // If this child previously had its own children, transfer them to the new root parent
+                PendingPO::where('parent_id', $childId)->update(['parent_id' => $parentId]);
+
+                $child->parent_id = $parentId;
+                $child->save();
+            }
+
+            // Ensure the parent itself has parent_id = null
+            $parent->parent_id = null;
+            $parent->save();
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => "Berhasil mengaitkan " . count($childIds) . " Sales Order ke SO Utama #{$parent->no_pending} (Client: {$parentClientName}).",
+        ]);
+    }
+
+    /**
+     * Unlink a Sales Order from its parent, or unlink all children if parent.
+     */
+    public function unlinkSalesOrder(Request $request, $id)
+    {
+        $pending = PendingPO::findOrFail($id);
+        $unlinkAll = $request->boolean('unlink_all', false);
+
+        DB::transaction(function () use ($pending, $unlinkAll) {
+            if ($pending->parent_id) {
+                // If it's a child, unlink itself
+                $pending->parent_id = null;
+                $pending->save();
+            }
+
+            if ($unlinkAll) {
+                // If requested, unlink all its children
+                PendingPO::where('parent_id', $pending->id)->update(['parent_id' => null]);
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => "Kaitan Sales Order #{$pending->no_pending} berhasil dilepas.",
+        ]);
+    }
+
+    /**
+     * Get all linked Sales Orders in the group (Parent + all Children).
+     */
+    public function getLinkedGroup($id)
+    {
+        $pending = PendingPO::with(['quote.pic.client', 'unitQuotation.client', 'parentPending', 'linkedChildren'])->findOrFail($id);
+
+        // Find root parent
+        $rootId = $pending->parent_id ?: $pending->id;
+        $root = PendingPO::with([
+            'quote.pic.client',
+            'quote.sales',
+            'unitQuotation.client',
+            'unitQuotation.sales',
+            'linkedChildren.quote.pic.client',
+            'linkedChildren.quote.sales',
+            'linkedChildren.unitQuotation.client',
+            'linkedChildren.unitQuotation.sales',
+        ])->findOrFail($rootId);
+
+        $members = collect([$root])->merge($root->linkedChildren)->map(function ($po) use ($rootId) {
+            $isRoot = ($po->id === $rootId);
+            $company = $po->unitQuotation?->client?->company ?? $po->quote?->pic?->client?->company ?? '-';
+            $sales = $po->unitQuotation?->sales?->name ?? $po->quote?->sales?->name ?? '-';
+            $date = $po->quote?->po_date ?? $po->date;
+
+            return [
+                'id' => $po->id,
+                'no_pending' => $po->no_pending,
+                'type' => $po->type,
+                'title' => $po->title,
+                'status' => $po->status,
+                'company' => $company,
+                'sales' => $sales,
+                'date' => $date ? date('d-m-Y', strtotime($date)) : '-',
+                'is_parent' => $isRoot,
+                'detail_url' => ($po->type === 'Project' && !$po->id_unit_quotation)
+                    ? url('/project-monitoring/' . $po->id)
+                    : url('/pending-po/' . $po->id),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'parent_id' => $rootId,
+            'parent_no_pending' => $root->no_pending,
+            'total_linked' => $members->count(),
+            'members' => $members,
+        ]);
     }
 }

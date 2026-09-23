@@ -170,9 +170,14 @@
                                 </div>
 
                                 <div class="col-12">
-                                    <label class="form-label fw-semibold small text-dark">Pilih Supplier Terdaftar (Opsional)</label>
-                                    <select name="supplier" id="supplierSelect" class="form-select select2-supplier">
-                                        <option value="">-- Toko / Marketplace Manual (Ketik di bawah) --</option>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="form-label fw-semibold small text-dark mb-0">Pilih Rekanan Supplier <span class="text-danger">*</span></label>
+                                        <button type="button" class="btn btn-xs btn-outline-primary" data-bs-toggle="modal" data-bs-target="#createSupplier" title="Tambah Supplier Baru">
+                                            <i class="mdi mdi-domain-plus me-1"></i>+ Tambah Supplier Baru
+                                        </button>
+                                    </div>
+                                    <select name="supplier" id="supplierSelect" class="form-select select2-supplier" required>
+                                        <option value="">-- Pilih Rekanan Supplier Master --</option>
                                         @foreach ($suppliers as $sup)
                                             @php
                                                 $infoLower = strtolower($sup->info ?? '');
@@ -189,15 +194,8 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                </div>
-
-                                <div class="col-12" id="manualSupplierWrapper">
-                                    <label class="form-label fw-semibold small text-dark">Nama Toko / Vendor / Marketplace <span class="text-danger">*</span></label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-light"><i class="mdi mdi-store-outline"></i></span>
-                                        <input type="text" name="supplier_name" id="supplierNameInput" class="form-control" placeholder="Contoh: Tokopedia (Nama Toko), Baut Jaya Glodok, dll" value="{{ old('supplier_name') }}">
-                                    </div>
-                                    <small class="text-muted">Isi nama toko tempat pembelian barang dilakukan</small>
+                                    <input type="hidden" name="supplier_name" id="supplierNameInput" value="{{ old('supplier_name') }}">
+                                    <small class="text-muted">Supplier wajib dipilih dari master data (klik "+ Tambah Supplier Baru" jika toko belum terdaftar)</small>
                                 </div>
 
                                 <div class="col-sm-6">
@@ -498,6 +496,8 @@
             </div>
         </div>
     </div>
+
+    @include('components.modal.warehouse.supplier.form')
 @endsection
 
 @push('after-script')
@@ -960,6 +960,64 @@
                 $('#modalPullPrItems').modal('hide');
                 updateRowNumbers();
                 recalcTotals();
+            });
+
+            // ── Form Submit Validation Guard ──
+            $('#directPurchaseForm').on('submit', function(e) {
+                var supplierVal = $('#supplierSelect').val();
+                if (!supplierVal) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Supplier Wajib Dipilih',
+                            text: 'Silakan pilih rekanan supplier dari master data terlebih dahulu. Jika supplier belum terdaftar, klik "+ Tambah Supplier Baru".',
+                            confirmButtonText: 'Pilih Supplier',
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            },
+                            buttonsStyling: false
+                        }).then(function() {
+                            $('#supplierSelect').select2('open');
+                        });
+                    } else {
+                        alert('Supplier wajib dipilih dari master data terlebih dahulu.');
+                        $('#supplierSelect').focus();
+                    }
+                    return false;
+                }
+
+                var itemCount = 0;
+                var hasEmptyItem = false;
+                $('#tableItems tbody .item-row').each(function() {
+                    var prod = $(this).find('input[name="product[]"]').val();
+                    var qty = parseFloat($(this).find('.item-qty').val()) || 0;
+                    if (!prod || prod.trim() === '' || qty <= 0) {
+                        hasEmptyItem = true;
+                    }
+                    itemCount++;
+                });
+
+                if (itemCount === 0 || hasEmptyItem) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Item Barang Belum Lengkap',
+                            text: 'Pastikan seluruh baris item barang memiliki nama produk dan kuantiti minimal 1.',
+                            confirmButtonText: 'Periksa Kembali',
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            },
+                            buttonsStyling: false
+                        });
+                    } else {
+                        alert('Pastikan seluruh baris item barang memiliki nama produk dan kuantiti minimal 1.');
+                    }
+                    return false;
+                }
+
+                return true;
             });
 
             // Initial calculation

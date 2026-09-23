@@ -7,7 +7,12 @@
     $logsData = $logsData ?? ['entries' => [], 'error_count_24h' => 0, 'warning_count_24h' => 0, 'file_size' => '0 B'];
     $recentAuditLogs = $recentAuditLogs ?? [];
     $roleDistribution = $roleDistribution ?? [];
+    $errorFindingsDaily = $errorFindingsDaily ?? ['labels' => [], 'series' => [], 'total' => 0, 'open' => 0, 'resolved' => 0, 'today' => 0];
 @endphp
+
+@push('before-style')
+    <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/apex-charts/apex-charts.css" />
+@endpush
 
 <style>
     .dev-dashboard-root {
@@ -527,6 +532,34 @@
         </div>
     </div>
 
+    {{-- ROW 3.5: TEMUAN ERROR SYSTEM 500 — GRAFIK HARIAN --}}
+    <div class="row g-3 mb-4" id="section-error-findings-chart">
+        <div class="col-12">
+            <div class="card dev-card">
+                <div class="card-header d-flex align-items-center justify-content-between py-3 border-bottom flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="mdi mdi-alert-octagon-outline fs-4 text-danger"></i>
+                        <div>
+                            <h5 class="mb-0 fw-bold">Temuan Error System 500 — Harian</h5>
+                            <small class="text-muted">Jumlah error 500 baru per hari, 14 hari terakhir (tab Helpdesk &gt; Temuan Error System)</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="badge bg-label-danger rounded-pill" id="err-chart-badge-open">{{ $errorFindingsDaily['open'] ?? 0 }} Open</span>
+                        <span class="badge bg-label-secondary rounded-pill" id="err-chart-badge-total">{{ $errorFindingsDaily['total'] ?? 0 }} Total</span>
+                        <span class="badge bg-label-primary rounded-pill" id="err-chart-badge-today">{{ $errorFindingsDaily['today'] ?? 0 }} Hari Ini</span>
+                        <a href="{{ route('helpdesk.index') }}#navs-system-errors" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                            <i class="mdi mdi-open-in-new me-1"></i> Buka Helpdesk
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-3">
+                    <div id="err-findings-chart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- ROW 4: TODAY'S SYSTEM & AUDIT ACTIVITY STREAM (PAGINATED) --}}
     <div class="card dev-card">
         <div class="card-header d-flex align-items-center justify-content-between py-3 border-bottom flex-wrap gap-2">
@@ -653,6 +686,7 @@
     </div>
 </div>
 
+<script src="{{ asset('assets') }}/vendor/libs/apex-charts/apexcharts.js"></script>
 <script>
     (function() {
         let currentAuditPage = 1;
@@ -955,6 +989,79 @@
                     }, 500);
                 });
         });
+    })();
+
+    // Grafik harian "Temuan Error System 500" — auto-sinkron tiap kali ada error baru
+    // (di-poll berkala, sama seperti pola notifikasi navbar lain di app ini).
+    (function() {
+        const chartEl = document.querySelector('#err-findings-chart');
+        if (!chartEl || typeof ApexCharts === 'undefined') return;
+
+        const initial = @json($errorFindingsDaily);
+        let lastTotal = initial.total || 0;
+
+        const chart = new ApexCharts(chartEl, {
+            chart: {
+                type: 'bar',
+                height: 260,
+                toolbar: { show: false },
+                animations: { enabled: true, easing: 'easeinout', speed: 400 },
+            },
+            series: [{ name: 'Error 500', data: initial.series || [] }],
+            colors: ['#dc3545'],
+            plotOptions: {
+                bar: { borderRadius: 4, columnWidth: '45%' },
+            },
+            dataLabels: { enabled: false },
+            xaxis: {
+                categories: initial.labels || [],
+                labels: { style: { fontSize: '11px' } },
+            },
+            yaxis: {
+                labels: { formatter: (v) => Math.round(v) },
+            },
+            grid: { borderColor: 'rgba(148, 163, 184, 0.15)' },
+            tooltip: { y: { formatter: (v) => v + ' temuan' } },
+        });
+        chart.render();
+
+        function updateBadges(data) {
+            const badgeOpen = document.getElementById('err-chart-badge-open');
+            const badgeTotal = document.getElementById('err-chart-badge-total');
+            const badgeToday = document.getElementById('err-chart-badge-today');
+            if (badgeOpen) badgeOpen.innerText = (data.open || 0) + ' Open';
+            if (badgeTotal) badgeTotal.innerText = (data.total || 0) + ' Total';
+            if (badgeToday) badgeToday.innerText = (data.today || 0) + ' Hari Ini';
+        }
+
+        function refreshErrorFindingsChart() {
+            fetch("{{ route('developer.api.error_findings_daily') }}")
+                .then((res) => res.json())
+                .then((res) => {
+                    if (!res.success || !res.data) return;
+                    const data = res.data;
+
+                    chart.updateOptions({ xaxis: { categories: data.labels || [] } });
+                    chart.updateSeries([{ name: 'Error 500', data: data.series || [] }]);
+                    updateBadges(data);
+
+                    // Kalau ada temuan baru sejak poll terakhir, kasih notice singkat via badge pulse.
+                    if ((data.total || 0) > lastTotal) {
+                        const badgeOpen = document.getElementById('err-chart-badge-open');
+                        if (badgeOpen) {
+                            badgeOpen.classList.add('mdi-spin');
+                            setTimeout(() => badgeOpen.classList.remove('mdi-spin'), 800);
+                        }
+                    }
+                    lastTotal = data.total || 0;
+                })
+                .catch(() => {});
+        }
+
+        // Poll tiap 30 detik — cukup responsif tanpa membebani server (sesuai pola
+        // polling notifikasi navbar lain di app ini, cuma dengan interval lebih longgar
+        // karena grafik gak sekritikal badge notifikasi).
+        setInterval(refreshErrorFindingsChart, 30000);
     })();
 </script>
 

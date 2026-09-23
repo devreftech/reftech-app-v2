@@ -2,7 +2,6 @@
 @section('title', 'Manajemen Retur Barang')
 
 @section('content')
-<div class="container-xxl flex-grow-1 container-p-y">
     {{-- Header & Breadcrumb --}}
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
         <div>
@@ -197,16 +196,28 @@
                                 $typeCategory = $isSupplier ? 'supplier' : 'customer';
                                 $statusCategory = $r->status == 1 ? 'completed' : 'pending';
                                 
-                                // Partner name
+                                // Partner & Document Resolution
                                 $company = '-';
-                                $salesName = null;
+                                $salesName = $r->sales?->name ?? null;
                                 $refDoc = '-';
                                 
-                                if ($isCustomer && $r->pending) {
-                                    $quote = $r->pending->quotation;
-                                    $company = $quote?->pic?->client?->company ?? 'Customer Umum';
-                                    $salesName = $quote?->sales?->name;
-                                    $refDoc = $quote?->no_quote ?? '-';
+                                if ($isCustomer) {
+                                    if ($r->unitQuotation) {
+                                        $company = $r->unitQuotation->client?->company ?? ($r->unitQuotation->pic?->name ?? 'Customer Umum');
+                                        $salesName = $salesName ?? $r->unitQuotation->sales?->name;
+                                        $refDoc = $r->unitQuotation->no_quote ?? '-';
+                                    } elseif ($r->quotation) {
+                                        $company = $r->quotation->pic?->client?->company ?? 'Customer Umum';
+                                        $salesName = $salesName ?? $r->quotation->sales?->name;
+                                        $refDoc = $r->quotation->no_quote ?? '-';
+                                    } elseif ($r->pending) {
+                                        $quote = $r->pending->quotation ?? $r->pending->unitQuotation;
+                                        $company = $quote?->pic?->client?->company ?? ($quote?->client?->company ?? 'Customer Umum');
+                                        $salesName = $salesName ?? $quote?->sales?->name;
+                                        $refDoc = $quote?->no_quote ?? ($r->pending->no_pending ?? '-');
+                                    } else {
+                                        $company = 'Dokumen Internal #' . $r->id;
+                                    }
                                 } elseif ($isSupplier && $r->productIn) {
                                     $company = $r->productIn->supplier?->nama_supplier ?? 'Supplier Umum';
                                     $refDoc = $r->productIn->invoice ?? $r->productIn->no_product_in ?? '-';
@@ -234,6 +245,17 @@
                                         <span class="badge bg-label-info rounded-pill px-2 py-1">
                                             <i class="mdi mdi-account-arrow-left me-1"></i>Retur Penjualan
                                         </span>
+                                        @if($r->resolution)
+                                            <div class="mt-1">
+                                                @if($r->resolution === 'replacement')
+                                                    <span class="badge bg-label-primary font-10"><i class="mdi mdi-swap-horizontal me-0.5"></i>Ganti Barang</span>
+                                                @elseif($r->resolution === 'refund')
+                                                    <span class="badge bg-label-success font-10"><i class="mdi mdi-cash-refund me-0.5"></i>Refund Dana</span>
+                                                @elseif($r->resolution === 'deposit')
+                                                    <span class="badge bg-label-secondary font-10"><i class="mdi mdi-credit-card-plus-outline me-0.5"></i>Potong Tagihan</span>
+                                                @endif
+                                            </div>
+                                        @endif
                                     @else
                                         <span class="badge bg-label-warning rounded-pill px-2 py-1">
                                             <i class="mdi mdi-truck-delivery-outline me-1"></i>Retur Pembelian
@@ -246,6 +268,11 @@
                                         @if ($salesName)
                                             <span class="text-muted small">
                                                 <span class="badge bg-label-secondary py-0 px-1 me-1">Sales</span> {{ $salesName }}
+                                            </span>
+                                        @endif
+                                        @if($r->reason_category)
+                                            <span class="text-muted font-11 mt-0.5 text-truncate" style="max-width: 220px;" title="{{ $r->reason_note ?? $r->reason_category }}">
+                                                <i class="mdi mdi-information-outline me-0.5 text-warning"></i>{{ ucfirst(str_replace('_', ' ', $r->reason_category)) }}
                                             </span>
                                         @endif
                                     </div>
@@ -331,7 +358,6 @@
             </div>
         </div>
     </div>
-</div>
 
 {{-- Modal Panduan Buat Retur Baru --}}
 <div class="modal fade" id="modalNewReturnGuide" tabindex="-1" aria-labelledby="modalNewReturnGuideLabel" aria-hidden="true">

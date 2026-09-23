@@ -37,20 +37,36 @@ $(function () {
                 { data: "no_invoice" },
             ],
             columnDefs: [
-                { targets: [2, 3, 4, 5, 6, 7], className: "text-center" },
+                { targets: [2, 3, 4, 6, 7], className: "text-center" },
                 {
                     targets: 0,
                     className: "text-center text-nowrap",
+                    width: "60px",
+                },
+                {
                     responsivePriority: 1,
+                    targets: 0,
                     render: function (data, type, full) {
                         if (type !== "display") return data;
-                        var url = full["row_type"] === "unit"
-                            ? "/smart-quote/" + full["id"]
-                            : route("quotation.show", full["id"]);
-                        var badge = full["row_type"] === "unit"
-                            ? ' <span class="badge bg-label-info ms-1">Smart</span>'
-                            : "";
-                        return '<a class="fw-bold text-primary" href="' + url + '">' + (data || "-") + "</a>" + badge;
+                        var $dataId = full["id"];
+                        var rowType = full["row_type"];
+                        var qType   = full["type"];
+                        var detailRoute;
+                        if (rowType === "unit") {
+                            detailRoute = "/smart-quote/" + $dataId;
+                        } else if (qType == "Sparepart") {
+                            detailRoute = route("quotation.show", $dataId);
+                        } else if (qType == "Service") {
+                            detailRoute = route("show-service.quotation", $dataId);
+                        } else {
+                            detailRoute = route("show-overhaul.quotation", $dataId);
+                        }
+                        var full_no = data || "-";
+                        var short   = full_no.length > 5 ? full_no.substring(0, 5) + "…" : full_no;
+                        return '<a class="fw-bold text-primary" href="' + detailRoute + '"' +
+                            ' data-bs-toggle="tooltip" data-bs-placement="top"' +
+                            ' data-bs-custom-class="tooltip-quote-no" title="' + full_no + '">' +
+                            short + "</a>";
                     },
                 },
                 {
@@ -110,6 +126,7 @@ $(function () {
                 { targets: 4, render: function (data) { return data || "-"; } },
                 {
                     targets: 5,
+                    className: "text-center text-nowrap",
                     render: function (data, type) {
                         if (type !== "display") return data;
                         return data ? moment(data).format("DD-MM-YYYY") : "-";

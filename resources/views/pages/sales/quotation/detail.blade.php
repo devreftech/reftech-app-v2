@@ -350,6 +350,10 @@
                             href="{{ route('print.quotation', $quote->id) }}">
                             <i class="mdi mdi-printer-outline me-1"></i> Cetak / Download PDF
                         </a>
+                        <button type="button" class="btn btn-outline-warning d-grid w-100 mb-2 waves-effect fw-semibold"
+                            data-bs-toggle="modal" data-bs-target="#modalRequestReturn">
+                            <i class="mdi mdi-keyboard-return me-1"></i> Ajukan Retur Barang
+                        </button>
                         @php
                             $pendingPo = \App\Models\PendingPO::where('id_quotation', $quote->id)->first();
                         @endphp
@@ -774,6 +778,19 @@
     @include('components.modal.quotation.mentions')
     @include('components.modal.quotation.detail-payment')
     @include('components.modal.viewer.pdf')
+
+    @php
+        $returnItems = $detQuotation ?? ($quote->detail ?? []);
+        $returnFormAction = route('quotation.request-return', $quote->id);
+        $returnClientName = $quote->pic?->client?->company ?? ($quote->pic?->name ?? '-');
+    @endphp
+    @include('components.modal.sales.modal-request-return', [
+        'quote' => $quote,
+        'quoteNo' => $quote->no_quote,
+        'clientName' => $returnClientName,
+        'formAction' => $returnFormAction,
+        'returnItems' => $returnItems,
+    ])
     </div>
 @endsection
 @push('after-style')

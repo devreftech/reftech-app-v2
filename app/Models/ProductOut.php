@@ -17,6 +17,7 @@ class ProductOut extends Model
     ];
     protected $fillable = [
         'id_user',
+        'id_pending',
         'no_product_out',
         'detail_client',
         'invoice',
@@ -41,6 +42,10 @@ class ProductOut extends Model
     public function user()
     {
         return $this->belongsTo('App\Models\User', 'id_user', 'id');
+    }
+    public function pendingPo()
+    {
+        return $this->belongsTo('App\Models\PendingPO', 'id_pending', 'id');
     }
     public function pending()
     {

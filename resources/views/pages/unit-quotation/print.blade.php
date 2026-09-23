@@ -131,6 +131,12 @@
 
         {{-- Items Table + Financial Summary — per Opsi kalau quotation ini
              punya >1 opsi perbandingan harga, atau 1x aja kalau biasa. --}}
+        @php
+            // Note/Terms & Conditions sekarang disimpan per-opsi (diisi lewat card
+            // T&C yang ikut opsi aktif di form create/edit). Kalau quotation cuma
+            // 1 opsi, tetap tampil 1x global seperti sebelum fitur ini ada.
+            $hasCustomTerms = $quote->options->count() > 1;
+        @endphp
         @if ($quote->options->isNotEmpty())
             @foreach ($quote->options as $i => $option)
                 @if ($i > 0)
@@ -143,114 +149,33 @@
                 </div>
                 @endif
                 @include('pages.unit-quotation.partials.option-table-print', ['items' => $option->details, 'optTotals' => $option])
+                @if ($hasCustomTerms)
+                    @include('pages.unit-quotation.partials.tc-block-print', [
+                        'tcNote'             => $option->effective_note,
+                        'tcRentalTerms'      => $option->effective_rental_terms,
+                        'tcValidity'         => $option->effective_validity,
+                        'tcPricing'          => $option->effective_pricing,
+                        'tcDeliveryProcess'  => $option->effective_delivery_process,
+                        'tcPayment'          => $option->effective_payment,
+                        'tcWarranty'         => $option->effective_warranty,
+                    ])
+                @endif
             @endforeach
         @else
             @include('pages.unit-quotation.partials.option-table-print', ['items' => $quote->details, 'optTotals' => $quote])
         @endif
 
-            {{-- Note (full-width, di bawah financial summary) --}}
-            @if ($quote->note)
-            <div style="border:1px solid #e0e0e0; border-left:3px solid #696cff; border-radius:6px; padding:10px 14px; font-size:11px; color:#333; margin-bottom:14px; background:#fafafa; page-break-inside: avoid !important; break-inside: avoid !important;">
-                <p class="mb-1 fw-semibold" style="font-size:10px; color:#888; text-transform:uppercase; letter-spacing:.5px;">Remarks</p>
-                @php
-                    $noteLines = explode("\n", str_replace("\r", "", $quote->note));
-                @endphp
-                <div style="font-size:11px; color:#222; line-height:1.5;">
-                    @foreach ($noteLines as $line)
-                        @php
-                            $trimmed = trim($line);
-                        @endphp
-                        @if (empty($trimmed))
-                            <div style="height:3px;"></div>
-                        @else
-                            @php
-                                $hasBullet = preg_match('/^([•\-\*]|\d+[\.\)])\s*(.*)/u', $trimmed, $matches);
-                            @endphp
-                            @if ($hasBullet && !empty($matches[1]) && !empty($matches[2]))
-                                <div style="display:flex; align-items:flex-start; margin-bottom:3px;">
-                                    <span style="flex-shrink:0; min-width:20px; color:#696cff; font-weight:600;">{{ $matches[1] }}</span>
-                                    <span style="flex:1;">{{ $matches[2] }}</span>
-                                </div>
-                            @else
-                                <div style="margin-bottom:3px;">{{ $line }}</div>
-                            @endif
-                        @endif
-                    @endforeach
-                </div>
-            </div>
-            @endif
-
-            {{-- Ketentuan Rental Unit Kompresor (Khusus Tipe Rental jika ada isinya) --}}
-            @if (!empty($quote->rental_terms))
-            <div style="border:1px solid #ffe0b2; border-left:3px solid #ff9800; border-radius:6px; padding:10px 14px; font-size:11px; color:#333; margin-bottom:14px; background:#fffdf8; page-break-inside: avoid !important; break-inside: avoid !important;">
-                <p class="mb-1 fw-semibold" style="font-size:10px; color:#e65100; text-transform:uppercase; letter-spacing:.5px;">Ketentuan Rental Unit Kompresor</p>
-                @php
-                    $rentalLines = explode("\n", str_replace("\r", "", $quote->rental_terms));
-                @endphp
-                <div style="font-size:11px; color:#222; line-height:1.5;">
-                    @foreach ($rentalLines as $line)
-                        @php
-                            $trimmed = trim($line);
-                        @endphp
-                        @if (empty($trimmed))
-                            <div style="height:3px;"></div>
-                        @else
-                            @php
-                                $hasBullet = preg_match('/^([•\-\*]|\d+[\.\)])\s*(.*)/u', $trimmed, $matches);
-                            @endphp
-                            @if ($hasBullet && !empty($matches[1]) && !empty($matches[2]))
-                                <div style="display:flex; align-items:flex-start; margin-bottom:3px;">
-                                    <span style="flex-shrink:0; min-width:20px; color:#ff9800; font-weight:600;">{{ $matches[1] }}</span>
-                                    <span style="flex:1;">{{ $matches[2] }}</span>
-                                </div>
-                            @else
-                                <div style="margin-bottom:3px;">{{ $line }}</div>
-                            @endif
-                        @endif
-                    @endforeach
-                </div>
-            </div>
-            @endif
-
-            {{-- T&C --}}
-            <div style="border:1px solid #e0e0e0; border-radius:6px; padding:12px 16px; font-size:11px; background:#fff; margin-bottom:16px; page-break-inside: avoid !important; break-inside: avoid !important;">
-                <p class="mb-2 fw-semibold" style="font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:#888;">Term &amp; Condition</p>
-                <table style="width:100%; border-collapse:collapse; font-size:11px;">
-                    <tr>
-                        <td style="width:150px; padding:3px 0; color:#555; vertical-align:top;">Validity of Quotation</td>
-                        <td style="padding:3px 0; color:#222; vertical-align:top;">: {{ $quote->validity ?? '-' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:3px 0; color:#555; vertical-align:top;">Price</td>
-                        <td style="padding:3px 0; color:#222; vertical-align:top;">: {{ $quote->pricing ?? '-' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:3px 0; color:#555; vertical-align:top;">Payment</td>
-                        <td style="padding:3px 0; color:#222; vertical-align:top;">: {{ $quote->payment ?? '-' }}</td>
-                    </tr>
-                    @if ($quote->warranty)
-                        <tr>
-                            <td style="padding:3px 0; color:#555; vertical-align:top;">Warranty</td>
-                            <td style="padding:3px 0; color:#222; vertical-align:top;">: {{ $quote->warranty }}</td>
-                        </tr>
-                    @endif
-                    @php
-                        $deliveryLines = array_filter(preg_split('/\r?\n/', $quote->delivery_process ?? '-'), fn($l) => trim($l) !== '');
-                        $deliveryText = count($deliveryLines) > 1
-                            ? implode("\n", array_map(fn($l) => '• ' . trim($l), $deliveryLines))
-                            : ($quote->delivery_process ?? '-');
-                    @endphp
-                    <tr>
-                        <td style="padding:3px 0; color:#555; vertical-align:top;">Delivery Process</td>
-                        <td style="padding:3px 0; color:#222; vertical-align:top;">
-                            <div style="display:flex; align-items:flex-start;">
-                                <span style="flex-shrink:0;">:&nbsp;</span>
-                                <span style="white-space:pre-line;">{{ $deliveryText }}</span>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-            </div>
+            @unless ($hasCustomTerms)
+                @include('pages.unit-quotation.partials.tc-block-print', [
+                    'tcNote'             => $quote->note,
+                    'tcRentalTerms'      => $quote->rental_terms,
+                    'tcValidity'         => $quote->validity,
+                    'tcPricing'          => $quote->pricing,
+                    'tcDeliveryProcess'  => $quote->delivery_process,
+                    'tcPayment'          => $quote->payment,
+                    'tcWarranty'         => $quote->warranty,
+                ])
+            @endunless
 
             {{-- Signature Section Removed --}}
 

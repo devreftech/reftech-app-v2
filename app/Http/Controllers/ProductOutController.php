@@ -91,22 +91,32 @@ class ProductOutController extends Controller
     public function store(Request $request)
     {
         $rule = [
-            'invoice' => 'required',
-            'detail_client' => 'required',
+            'invoice' => 'required|string|max:255',
+            'detail_client' => 'required|string|max:255',
             'vers' => 'required',
-            'date' => 'required',
+            'date' => 'required|date',
             'shipping' => 'required',
-            'note' => 'required',
+            'note' => 'nullable|string',
+            'replacement' => 'required|array|min:1',
+            'replacement.*' => 'required|integer|exists:detail_product,id',
+            'warehouse' => 'required|array',
+            'warehouse.*' => 'required|in:BDG,BKS',
+            'qty' => 'required|array',
+            'qty.*' => 'required|numeric|min:0.01',
         ];
         $message = [
-            'invoice.required' => 'Field No Invoice Wajib Diisi',
-            'detail_client.required' => 'Field Detail Client Wajib Diisi',
-            'vers.required' => 'Field Offline / Online Wajib Diisi',
-            'date.required' => 'Field Date Wajib Diisi',
-            'shipping.required' => 'Field Shipping Wajib Diisi',
-            'note.required' => 'Field Note Wajib Diisi',
+            'invoice.required' => 'Nomor Invoice wajib diisi.',
+            'detail_client.required' => 'Detail Client / Customer wajib diisi.',
+            'vers.required' => 'Jenis Offline / Online wajib dipilih.',
+            'date.required' => 'Tanggal pengeluaran barang wajib diisi.',
+            'shipping.required' => 'Metode pengiriman wajib dipilih.',
+            'replacement.required' => 'Minimal 1 item sparepart harus dipilih.',
+            'replacement.min' => 'Minimal 1 item sparepart harus dipilih.',
+            'replacement.*.required' => 'Item sparepart wajib dipilih.',
+            'warehouse.*.required' => 'Gudang asal (BDG/BKS) wajib dipilih.',
+            'qty.*.required' => 'Kuantiti barang keluar wajib diisi.',
+            'qty.*.min' => 'Kuantiti barang keluar minimal 0.01.',
         ];
-        // dd($request->all());
         $this->validate($request, $rule, $message);
         
         $flag = $request->flag ?? 'Reftech';
