@@ -8090,4 +8090,4 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
     Route::get('/finance/tax-report', [\App\Http\Controllers\TaxReportController::class, 'index'])->name('finance.tax.index');
     Route::get('/finance/cashflow-forecast', [\App\Http\Controllers\CashFlowForecastController::class, 'index'])->name('finance.cashflow.forecast');
 });
-Auth::routes();
+Auth::routes(['register' => false]);
