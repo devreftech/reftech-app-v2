@@ -7,8 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class CatalogUnitPriceHistory extends Model
 {
     protected $table = 'catalog_unit_price_history';
-    public $timestamps = false;
-
+    const UPDATED_AT = null;
+    
     protected $fillable = [
         'id_catalog_unit', 'price_idr', 'price_usd', 'changed_by', 'note',
     ];
