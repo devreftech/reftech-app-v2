@@ -19,7 +19,6 @@ if (Auth::check()) {
         $pdo = new PDO("mysql:host=$host;dbname=$databaseName;charset=utf8", $users, $pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->exec("SET SESSION sql_mode = ''");
-        $batas90Hari = now()->subDays(90)->format('Y-m-d H:i:s');
 
         // Query database for data with last out date and out history
         $query = "SELECT 
@@ -44,7 +43,7 @@ if (Auth::check()) {
             SELECT 
                 COALESCE(dp.id_product, sp.id_product) as id_product,
                 MAX(COALESCE(po.date, po.created_at, dpo.created_at)) as last_out_date,
-                SUM(CASE WHEN COALESCE(po.date, po.created_at, dpo.created_at) >= '{$batas90Hari}' THEN dpo.qty ELSE 0 END) as total_out_90_days
+                SUM(CASE WHEN COALESCE(po.date, po.created_at, dpo.created_at) >= DATE_SUB(NOW(), INTERVAL 90 DAY) THEN dpo.qty ELSE 0 END) as total_out_90_days
             FROM detail_product_out dpo
             LEFT JOIN product_out po ON po.id = dpo.id_product_out
             LEFT JOIN detail_product dp ON dp.id = dpo.id_detail_product

@@ -7420,7 +7420,7 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                 'po.payment',
                 'po.payment_type',
                 DB::raw('COALESCE(SUM(d.qty), 0) as total_qty'),
-                DB::raw("DATEDIFF('" . now()->toDateString() . "', product_in.date) as age_days"),
+                DB::raw('DATEDIFF(CURDATE(), product_in.date) as age_days'),
                 DB::raw("DATE_FORMAT(product_in.date, '%d-%m-%Y') as tanggal"),
             ]);
 
@@ -7515,8 +7515,8 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
                 DB::raw("DATE_FORMAT(product_in.date, '%d-%m-%Y') as tanggal"),
                 DB::raw("
                 CASE
-                    WHEN DATEDIFF('" . now()->toDateString() . "', COALESCE(product_in.date_invoice, product_in.date)) > 0
-                    THEN DATEDIFF('" . now()->toDateString() . "', COALESCE(product_in.date_invoice, product_in.date))
+                    WHEN DATEDIFF(CURDATE(), COALESCE(product_in.date_invoice, product_in.date)) > 0
+                    THEN DATEDIFF(CURDATE(), COALESCE(product_in.date_invoice, product_in.date))
                     ELSE 0
                 END as overdue
             ")
@@ -8090,4 +8090,4 @@ AND u.id = ' . Auth::user()->id . ') AS price'),
     Route::get('/finance/tax-report', [\App\Http\Controllers\TaxReportController::class, 'index'])->name('finance.tax.index');
     Route::get('/finance/cashflow-forecast', [\App\Http\Controllers\CashFlowForecastController::class, 'index'])->name('finance.cashflow.forecast');
 });
-Auth::routes(['register' => false]);
+Auth::routes();

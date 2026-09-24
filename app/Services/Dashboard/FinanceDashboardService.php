@@ -89,12 +89,11 @@ class FinanceDashboardService
 
         // Aging Payable: tagihan supplier belum lunas (accept IN ('0', '2')) dengan nomor invoice
         $baseAP = ProductIn::whereIn('accept', ['0', '2'])->whereNotNull('invoice');
-        $apToday = now()->toDateString();
         $financeAgingPayableBuckets = [
-            'current' => (float) $baseAP->clone()->whereRaw('DATEDIFF(?, COALESCE(date_invoice, date)) BETWEEN 0 AND 30', [$apToday])->sum('total'),
-            '31_60'   => (float) $baseAP->clone()->whereRaw('DATEDIFF(?, COALESCE(date_invoice, date)) BETWEEN 31 AND 60', [$apToday])->sum('total'),
-            '61_90'   => (float) $baseAP->clone()->whereRaw('DATEDIFF(?, COALESCE(date_invoice, date)) BETWEEN 61 AND 90', [$apToday])->sum('total'),
-            'over_90' => (float) $baseAP->clone()->whereRaw('DATEDIFF(?, COALESCE(date_invoice, date)) > 90', [$apToday])->sum('total'),
+            'current' => (float) $baseAP->clone()->whereRaw('DATEDIFF(CURDATE(), COALESCE(date_invoice, date)) BETWEEN 0 AND 30')->sum('total'),
+            '31_60'   => (float) $baseAP->clone()->whereRaw('DATEDIFF(CURDATE(), COALESCE(date_invoice, date)) BETWEEN 31 AND 60')->sum('total'),
+            '61_90'   => (float) $baseAP->clone()->whereRaw('DATEDIFF(CURDATE(), COALESCE(date_invoice, date)) BETWEEN 61 AND 90')->sum('total'),
+            'over_90' => (float) $baseAP->clone()->whereRaw('DATEDIFF(CURDATE(), COALESCE(date_invoice, date)) > 90')->sum('total'),
         ];
         $financeOutstandingAP = array_sum($financeAgingPayableBuckets);
 
@@ -112,7 +111,7 @@ class FinanceDashboardService
         // Tagihan Supplier (AP) Overdue: lebih dari 30 hari / lewat jatuh tempo
         $baseAPOverdue = ProductIn::whereIn('accept', ['0', '2'])
             ->whereNotNull('invoice')
-            ->whereRaw('DATEDIFF(?, COALESCE(date_invoice, date)) > 30', [$apToday]);
+            ->whereRaw('DATEDIFF(CURDATE(), COALESCE(date_invoice, date)) > 30');
         $financeApOverdueCount = (int) (clone $baseAPOverdue)->count();
         $financeApOverdueNominal = (float) (clone $baseAPOverdue)->sum('total');
 

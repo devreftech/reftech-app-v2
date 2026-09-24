@@ -142,7 +142,7 @@ class PayableController extends Controller
                 'po.payment',
                 'po.payment_type',
                 DB::raw('COALESCE(SUM(d.qty), 0) as total_qty'),
-                DB::raw("DATEDIFF('" . now()->toDateString() . "', product_in.date) as age_days"),
+                DB::raw('DATEDIFF(CURDATE(), product_in.date) as age_days'),
                 DB::raw("DATE_FORMAT(product_in.date, '%d-%m-%Y') as tanggal"),
             ]);
     }
@@ -161,13 +161,12 @@ class PayableController extends Controller
     public function index_aging()
     {
         $base = ProductIn::whereIn('accept', ['0', '2'])->whereNotNull('invoice');
-        $today = now()->toDateString();
 
         $unpaid = $base->clone()->get();
-        $bucketCurrent = $base->clone()->whereRaw('DATEDIFF(?, COALESCE(date_invoice, date)) BETWEEN 0 AND 30', [$today])->get();
-        $bucket31to60 = $base->clone()->whereRaw('DATEDIFF(?, COALESCE(date_invoice, date)) BETWEEN 31 AND 60', [$today])->get();
-        $bucket61to90 = $base->clone()->whereRaw('DATEDIFF(?, COALESCE(date_invoice, date)) BETWEEN 61 AND 90', [$today])->get();
-        $bucket90plus = $base->clone()->whereRaw('DATEDIFF(?, COALESCE(date_invoice, date)) > 90', [$today])->get();
+        $bucketCurrent = $base->clone()->whereRaw('DATEDIFF(CURDATE(), COALESCE(date_invoice, date)) BETWEEN 0 AND 30')->get();
+        $bucket31to60 = $base->clone()->whereRaw('DATEDIFF(CURDATE(), COALESCE(date_invoice, date)) BETWEEN 31 AND 60')->get();
+        $bucket61to90 = $base->clone()->whereRaw('DATEDIFF(CURDATE(), COALESCE(date_invoice, date)) BETWEEN 61 AND 90')->get();
+        $bucket90plus = $base->clone()->whereRaw('DATEDIFF(CURDATE(), COALESCE(date_invoice, date)) > 90')->get();
 
         return view('pages.finance.payable.index-aging', compact(
             'unpaid',
