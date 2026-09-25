@@ -19,7 +19,7 @@ use Carbon\Carbon;
 use DB;
 use Illuminate\Http\Request;
 
-class Expensecontroller extends Controller
+class ExpenseController extends Controller
 {
     public function indexAccount()
     {
