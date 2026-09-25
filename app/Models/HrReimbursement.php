@@ -24,6 +24,7 @@ class HrReimbursement extends Model
         'approved_at',
         'paid_at',
         'rejection_reason',
+        'expense_id',
     ];
 
     protected $casts = [
@@ -41,5 +42,10 @@ class HrReimbursement extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function expense()
+    {
+        return $this->belongsTo(Expense::class, 'expense_id');
     }
 }

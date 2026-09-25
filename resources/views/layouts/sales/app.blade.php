@@ -389,8 +389,8 @@
         </div>
     </div>
 
-    {{-- Floating Chat Bubble Component (Disabled on Print, Piping RAB, Piping Materials, Smart Quote, and Tool Audit Views) --}}
-    @unless(request()->routeIs('unit-quotation.print') || request()->is('smart-quote/*/print') || request()->is('*print*') || request()->is('piping-rab*') || request()->is('piping-materials*') || request()->is('smart-quote/create*') || request()->routeIs('unit-quotation.create') || request()->is('tool-audit*') || View::hasSection('hide-chat'))
+    {{-- Floating Chat Bubble Component (Disabled on Print, Piping RAB, Piping Materials, Smart Quote, Tool Audit, and HR Attendance Views) --}}
+    @unless(request()->routeIs('unit-quotation.print') || request()->is('smart-quote/*/print') || request()->is('*print*') || request()->is('piping-rab*') || request()->is('piping-materials*') || request()->is('smart-quote/create*') || request()->routeIs('unit-quotation.create') || request()->is('tool-audit*') || request()->is('hr/attendances*') || View::hasSection('hide-chat'))
         @include('includes.sales.chat-bubble')
     @endunless
 

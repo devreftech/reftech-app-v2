@@ -10,6 +10,8 @@
     @include('pages.logistic.dashboard._content')
 @elseif (($adminView ?? 'sales') === 'workshop')
     @include('pages.workshop.dashboard._content')
+@elseif (($adminView ?? 'sales') === 'hr')
+    @include('pages.hr.dashboard._content')
 @elseif (($adminView ?? 'sales') === 'projectmanager')
     @include('pages.projectmanager.dashboard._content')
 @elseif (($adminView ?? 'sales') === 'clientvendor')

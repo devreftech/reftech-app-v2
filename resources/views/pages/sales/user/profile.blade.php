@@ -3,7 +3,14 @@
 
 @section('content')
     @php
-        $userAvatar = $user->image ? url('/') . '/' . $user->image : asset('assets/img/avatars/1.png');
+        $userAvatar = asset('assets/img/avatars/1.png');
+        if ($user->image) {
+            if (str_starts_with($user->image, 'http://') || str_starts_with($user->image, 'https://')) {
+                $userAvatar = $user->image;
+            } else {
+                $userAvatar = asset(ltrim($user->image, '/'));
+            }
+        }
         $employee = $employee ?? $user->employee;
 
         // Tenure / Masa Kerja Calculation
@@ -42,14 +49,14 @@
     {{-- ══════════════════════════════════════════════════════════════════════ --}}
     {{-- ── HERO PROFILE CARD (MODERN GLASSMORPHISM & GRADIENT HEADER) ──────── --}}
     {{-- ══════════════════════════════════════════════════════════════════════ --}}
-    <div class="card mb-4 border-0 shadow-sm overflow-hidden profile-hero-card" style="border-radius: 18px;">
+    <div class="card mb-4 border-0 shadow-sm profile-hero-card" style="border-radius: 18px; overflow: hidden;">
         {{-- Banner Container with Gradient & Ambient Backdrop --}}
-        <div class="profile-banner-wrapper position-relative" style="height: 180px; background: {{ $user->banner ? 'url(' . asset($user->banner) . ') center/cover no-repeat' : 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%)' }};">
-            <div class="profile-banner-overlay position-absolute top-0 start-0 w-100 h-100" style="background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.65) 100%);"></div>
+        <div class="profile-banner-wrapper position-relative" style="background: {{ $user->banner ? 'url(' . asset($user->banner) . ') center/cover no-repeat' : 'linear-gradient(135deg, #4338ca 0%, #6366f1 50%, #818cf8 100%)' }};">
+            <div class="profile-banner-overlay position-absolute top-0 start-0 w-100 h-100" style="background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.45) 100%);"></div>
 
             @if(!$user->banner)
                 <div class="position-absolute end-0 bottom-0 opacity-15 p-3 user-select-none pointer-events-none">
-                    <i class="mdi mdi-shield-account text-white" style="font-size: 160px; margin-right: -25px; margin-bottom: -45px;"></i>
+                    <i class="mdi mdi-shield-account text-white" style="font-size: 220px; margin-right: -35px; margin-bottom: -60px;"></i>
                 </div>
             @endif
 
@@ -64,81 +71,91 @@
 
         {{-- Profile Details Bar --}}
         <div class="card-body pt-0 pb-4 px-3 px-md-4">
-            <div class="d-flex flex-column flex-md-row align-items-center align-items-md-end gap-3 gap-md-4" style="margin-top: -65px;">
-                {{-- Avatar with Glowing Status Ring --}}
-                <div class="position-relative flex-shrink-0">
-                    <div class="profile-avatar-container position-relative">
-                        <img src="{{ $userAvatar }}" alt="{{ $user->name }}" class="rounded-circle shadow-lg profile-avatar-img" style="width: 124px; height: 124px; object-fit: cover; border: 4px solid #ffffff;">
-                        <span class="position-absolute bottom-0 end-0 p-1.5 bg-{{ $user->active == '1' ? 'success' : 'danger' }} border border-3 border-white rounded-circle status-glow-{{ $user->active == '1' ? 'active' : 'inactive' }}" title="{{ $user->active == '1' ? 'Akun Aktif' : 'Non-Aktif' }}" style="width: 22px; height: 22px;"></span>
+            <div class="d-flex flex-column flex-md-row align-items-center align-items-md-center justify-content-between gap-3 gap-md-4">
+                
+                {{-- Left Side: Avatar + Text Info --}}
+                <div class="d-flex flex-column flex-md-row align-items-center align-items-md-center gap-3 gap-md-4 text-center text-md-start flex-grow-1">
+                    {{-- Avatar with Glowing Status Ring (Overlapping banner cleanly) --}}
+                    <div class="position-relative flex-shrink-0" style="margin-top: -65px;">
+                        <div class="profile-avatar-container position-relative bg-white rounded-circle shadow-lg" style="width: 120px; height: 120px; padding: 4px;">
+                            <img src="{{ $userAvatar }}" 
+                                 alt="{{ $user->name }}" 
+                                 onerror="this.onerror=null;this.src='{{ asset('assets/img/avatars/1.png') }}';"
+                                 class="rounded-circle w-100 h-100 profile-avatar-img" 
+                                 style="object-fit: cover; display: block; background: #f8f9fa;">
+                            <span class="position-absolute bottom-0 end-0 bg-{{ $user->active == '1' ? 'success' : 'danger' }} border border-3 border-white rounded-circle status-glow-{{ $user->active == '1' ? 'active' : 'inactive' }}" 
+                                  title="{{ $user->active == '1' ? 'Akun Aktif' : 'Non-Aktif' }}" 
+                                  style="width: 20px; height: 20px; margin-bottom: 2px; margin-right: 2px;"></span>
+                        </div>
+                    </div>
+
+                    {{-- Bio & Title Information --}}
+                    <div class="flex-grow-1 pt-2 pt-md-3">
+                        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-start gap-2 mb-1.5">
+                            <h3 class="fw-bold mb-0 text-dark" style="letter-spacing: -0.3px; font-size: 1.5rem;">{{ $user->name }}</h3>
+                            <span class="badge bg-label-primary px-2.5 py-1 rounded-pill fw-bold" style="font-size: 0.75rem;">
+                                <i class="mdi mdi-shield-account-outline me-1"></i>{{ $user->role }}
+                            </span>
+                            @if ($user->active == '1')
+                                <span class="badge bg-label-success px-2 py-0.5 rounded-pill" style="font-size: 0.72rem;">
+                                    <i class="mdi mdi-check-circle-outline me-1"></i>Aktif
+                                </span>
+                            @else
+                                <span class="badge bg-label-danger px-2 py-0.5 rounded-pill" style="font-size: 0.72rem;">
+                                    Non-Aktif
+                                </span>
+                            @endif
+                        </div>
+
+                        {{-- Badges Metadata Row --}}
+                        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-start gap-1.5 mb-2">
+                            @if ($employee && $employee->department)
+                                <span class="badge bg-label-info px-2.5 py-1 rounded-pill fw-semibold">
+                                    <i class="mdi mdi-domain me-1"></i>{{ $employee->department->name }}
+                                </span>
+                            @endif
+                            @if ($employee && $employee->position)
+                                <span class="badge bg-label-secondary px-2.5 py-1 rounded-pill fw-semibold">
+                                    <i class="mdi mdi-briefcase-outline me-1"></i>{{ $employee->position->name }}
+                                </span>
+                            @endif
+                            @if ($employee && $employee->nik)
+                                <span class="badge bg-label-dark px-2.5 py-1 rounded-pill font-monospace cursor-pointer btn-copy-meta" data-copy="{{ $employee->nik }}" title="Klik untuk Salin NIK">
+                                    <i class="mdi mdi-barcode me-1"></i>NIK: {{ $employee->nik }} <i class="mdi mdi-content-copy ms-1 font-size-10 opacity-75"></i>
+                                </span>
+                            @elseif ($user->code)
+                                <span class="badge bg-label-warning px-2.5 py-1 rounded-pill fw-semibold">
+                                    <i class="mdi mdi-ticket-confirmation-outline me-1"></i>Code: {{ $user->code }}
+                                </span>
+                            @endif
+                            @if ($user->area)
+                                <span class="badge bg-label-warning px-2.5 py-1 rounded-pill fw-semibold">
+                                    <i class="mdi mdi-map-marker-outline me-1"></i>{{ $user->area }}
+                                </span>
+                            @endif
+                        </div>
+
+                        {{-- Quick Contact Strip --}}
+                        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-start gap-3 small text-secondary">
+                            <span class="cursor-pointer btn-copy-meta d-inline-flex align-items-center" data-copy="{{ $user->email }}" title="Salin Email">
+                                <i class="mdi mdi-email-outline me-1.5 text-primary fs-6"></i>{{ $user->email }}
+                            </span>
+                            @if ($user->phone)
+                                <span class="d-inline-flex align-items-center">
+                                    <i class="mdi mdi-phone-outline me-1.5 text-success fs-6"></i>{{ $user->phone }}
+                                </span>
+                            @endif
+                            @if ($joinDate)
+                                <span class="d-inline-flex align-items-center">
+                                    <i class="mdi mdi-calendar-check-outline me-1.5 text-info fs-6"></i>Bergabung: {{ $joinDate->format('d M Y') }} ({{ $tenureStr }})
+                                </span>
+                            @endif
+                        </div>
                     </div>
                 </div>
 
-                {{-- Bio & Title Information --}}
-                <div class="flex-grow-1 text-center text-md-start">
-                    <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-start gap-2 mb-1.5">
-                        <h3 class="fw-bold mb-0 text-dark" style="letter-spacing: -0.3px;">{{ $user->name }}</h3>
-                        <span class="badge bg-label-primary px-2.5 py-1 rounded-pill fw-bold" style="font-size: 0.75rem;">
-                            <i class="mdi mdi-shield-account-outline me-1"></i>{{ $user->role }}
-                        </span>
-                        @if ($user->active == '1')
-                            <span class="badge bg-label-success px-2 py-0.5 rounded-pill" style="font-size: 0.72rem;">
-                                <i class="mdi mdi-check-circle-outline me-1"></i>Aktif
-                            </span>
-                        @else
-                            <span class="badge bg-label-danger px-2 py-0.5 rounded-pill" style="font-size: 0.72rem;">
-                                Non-Aktif
-                            </span>
-                        @endif
-                    </div>
-
-                    {{-- Badges Metadata Row --}}
-                    <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-start gap-1.5 mb-2.5">
-                        @if ($employee && $employee->department)
-                            <span class="badge bg-label-info px-2.5 py-1 rounded-pill fw-semibold">
-                                <i class="mdi mdi-domain me-1"></i>{{ $employee->department->name }}
-                            </span>
-                        @endif
-                        @if ($employee && $employee->position)
-                            <span class="badge bg-label-secondary px-2.5 py-1 rounded-pill fw-semibold">
-                                <i class="mdi mdi-briefcase-outline me-1"></i>{{ $employee->position->name }}
-                            </span>
-                        @endif
-                        @if ($employee && $employee->nik)
-                            <span class="badge bg-label-dark px-2.5 py-1 rounded-pill font-monospace cursor-pointer btn-copy-meta" data-copy="{{ $employee->nik }}" title="Klik untuk Salin NIK">
-                                <i class="mdi mdi-barcode me-1"></i>NIK: {{ $employee->nik }} <i class="mdi mdi-content-copy ms-1 font-size-10 opacity-75"></i>
-                            </span>
-                        @elseif ($user->code)
-                            <span class="badge bg-label-warning px-2.5 py-1 rounded-pill fw-semibold">
-                                <i class="mdi mdi-ticket-confirmation-outline me-1"></i>Code: {{ $user->code }}
-                            </span>
-                        @endif
-                        @if ($user->area)
-                            <span class="badge bg-label-warning px-2.5 py-1 rounded-pill fw-semibold">
-                                <i class="mdi mdi-map-marker-outline me-1"></i>{{ $user->area }}
-                            </span>
-                        @endif
-                    </div>
-
-                    {{-- Quick Contact Strip --}}
-                    <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-start gap-3 small text-secondary">
-                        <span class="cursor-pointer btn-copy-meta d-inline-flex align-items-center" data-copy="{{ $user->email }}" title="Salin Email">
-                            <i class="mdi mdi-email-outline me-1.5 text-primary fs-6"></i>{{ $user->email }}
-                        </span>
-                        @if ($user->phone)
-                            <span class="d-inline-flex align-items-center">
-                                <i class="mdi mdi-phone-outline me-1.5 text-success fs-6"></i>{{ $user->phone }}
-                            </span>
-                        @endif
-                        @if ($joinDate)
-                            <span class="d-inline-flex align-items-center">
-                                <i class="mdi mdi-calendar-check-outline me-1.5 text-info fs-6"></i>Bergabung: {{ $joinDate->format('d M Y') }} ({{ $tenureStr }})
-                            </span>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- Action Buttons --}}
-                <div class="d-flex flex-wrap gap-2 align-items-center justify-content-center mt-3 mt-md-0">
+                {{-- Action Buttons (Right side on desktop, aligned nicely) --}}
+                <div class="d-flex flex-wrap gap-2 align-items-center justify-content-center flex-shrink-0 pt-2 pt-md-3">
                     @if ($cleanPhone)
                         <a href="https://wa.me/{{ $cleanPhone }}" target="_blank" class="btn btn-outline-success fw-semibold shadow-xs">
                             <i class="mdi mdi-whatsapp me-1 fs-5"></i> Chat WA
@@ -150,6 +167,7 @@
                         </a>
                     @endif
                 </div>
+
             </div>
         </div>
     </div>
@@ -217,7 +235,7 @@
                         @else
                             <h5 class="mb-0 fw-bold text-secondary">Non-Aktif</h5>
                             <span class="text-muted small d-flex align-items-center gap-1 mt-1">
-                                <i class="mdi mdi-information-outline"></i> Kuota tidak dibatasi
+                                <i class="mdi mdi-information-outline"></i> Belum diaktifkan
                             </span>
                         @endif
                     </div>
@@ -704,7 +722,14 @@
                                         </span>
                                     </div>
                                     <h4 class="mb-0 fw-bold text-warning">{{ $attStats['totalLate'] ?? 0 }} <small class="text-muted fs-6">Hari</small></h4>
-                                    <small class="text-muted d-block mt-1">Akumulasi: {{ $attStats['totalLateMins'] ?? 0 }} Menit</small>
+                                    <div class="d-flex flex-column gap-0.5 mt-1">
+                                        <small class="text-muted">Akumulasi: {{ $attStats['totalLateMins'] ?? 0 }} Menit</small>
+                                        @if (($attStats['totalLatePenalty'] ?? 0) > 0)
+                                            <small class="text-danger fw-bold d-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                                                <i class="mdi mdi-cash-minus"></i> Denda: Rp {{ number_format($attStats['totalLatePenalty'], 0, ',', '.') }}
+                                            </small>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -763,6 +788,9 @@
                                                 $durMins = $cin->diffInMinutes($cout) % 60;
                                                 $workDurationStr = "{$durHours}j {$durMins}m";
                                             }
+                                            $penalty = ($att->effective_penalty ?? 0) > 0 
+                                                ? (float) $att->effective_penalty 
+                                                : (($att->penalty_amount > 0) ? (float) $att->penalty_amount : 0);
                                         @endphp
                                         <tr>
                                             <td class="ps-3">
@@ -813,12 +841,23 @@
                                             </td>
                                             <td>
                                                 @if ($att->late_minutes > 0)
-                                                    <span class="badge bg-label-warning me-1 rounded-pill" title="Terlambat {{ $att->late_minutes }} menit">
-                                                        <i class="mdi mdi-clock-alert-outline me-0.5"></i> Telat {{ $att->late_minutes }}m
-                                                    </span>
+                                                    <div class="d-flex flex-column gap-1 align-items-start">
+                                                        <span class="badge bg-label-warning rounded-pill" title="Terlambat {{ $att->late_minutes }} menit">
+                                                            <i class="mdi mdi-clock-alert-outline me-0.5"></i> Telat {{ $att->late_minutes }}m
+                                                        </span>
+                                                        @if ($penalty > 0)
+                                                            <span class="badge bg-label-danger rounded-pill fw-semibold font-monospace" title="Nominal Denda Keterlambatan">
+                                                                <i class="mdi mdi-cash-minus me-0.5"></i> Rp {{ number_format($penalty, 0, ',', '.') }}
+                                                            </span>
+                                                        @else
+                                                            <span class="badge bg-label-secondary rounded-pill" style="font-size: 0.7rem;" title="Bebas denda atau dalam batas toleransi">
+                                                                Bebas Denda
+                                                            </span>
+                                                        @endif
+                                                    </div>
                                                 @endif
                                                 @if ($att->overtime_minutes > 0)
-                                                    <span class="badge bg-label-info rounded-pill" title="Lembur {{ $att->overtime_minutes }} menit">
+                                                    <span class="badge bg-label-info rounded-pill {{ $att->late_minutes > 0 ? 'mt-1' : '' }}" title="Lembur {{ $att->overtime_minutes }} menit">
                                                         <i class="mdi mdi-plus-circle-outline me-0.5"></i> Lembur {{ round($att->overtime_minutes / 60, 1) }}j
                                                     </span>
                                                 @endif
@@ -829,9 +868,42 @@
                                                 @endif
                                             </td>
                                             <td class="pe-3">
-                                                <small class="text-muted text-truncate d-inline-block" style="max-width: 160px;" title="{{ $att->notes }}">
-                                                    {{ $att->notes ?: '—' }}
-                                                </small>
+                                                @php
+                                                    $pInfo = $att->penalty_info ?? null;
+                                                    if (!$pInfo && ($att->late_minutes > 0 || $att->status === 'Alpa')) {
+                                                        $pInfo = \App\Models\HrAttendance::calculatePenaltyInfo($employee->id, $att->date, (int) $att->late_minutes, $employee);
+                                                    }
+                                                @endphp
+                                                <div class="d-flex flex-column gap-1">
+                                                    @if ($penalty > 0)
+                                                        <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                                                            <span class="badge {{ $pInfo['strike_badge'] ?? 'bg-label-danger' }} rounded-pill" style="font-size: 0.72rem;">
+                                                                <i class="mdi mdi-alert-outline me-0.5"></i>{{ $pInfo['strike_status'] ?? ('Terlambat ke-' . ($pInfo['late_count'] ?? 1)) }}
+                                                            </span>
+                                                            <small class="text-danger fw-semibold" style="font-size: 0.75rem;">
+                                                                {{ $pInfo['status_label'] ?? ('Denda: Rp ' . number_format($penalty, 0, ',', '.')) }}
+                                                            </small>
+                                                        </div>
+                                                    @elseif ($att->late_minutes > 0)
+                                                        <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                                                            <span class="badge bg-label-info rounded-pill" style="font-size: 0.72rem;">
+                                                                <i class="mdi mdi-information-outline me-0.5"></i>{{ $pInfo['strike_status'] ?? 'Toleransi' }}
+                                                            </span>
+                                                            <small class="text-muted" style="font-size: 0.75rem;">
+                                                                {{ $pInfo['status_label'] ?? 'Toleransi Bebas Denda' }}
+                                                            </small>
+                                                        </div>
+                                                    @endif
+
+                                                    @if (!empty($att->notes))
+                                                        <div class="text-secondary small d-flex align-items-center gap-1 {{ ($penalty > 0 || $att->late_minutes > 0) ? 'mt-0.5' : '' }}">
+                                                            <i class="mdi mdi-comment-text-outline text-muted"></i>
+                                                            <span>{{ $att->notes }}</span>
+                                                        </div>
+                                                    @elseif ($penalty == 0 && $att->late_minutes == 0)
+                                                        <small class="text-muted">—</small>
+                                                    @endif
+                                                </div>
                                             </td>
                                         </tr>
                                     @empty
@@ -1063,35 +1135,70 @@
                             <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Kategori Biaya</th>
+                                        <th>No. Klaim / Kategori</th>
                                         <th>Tanggal Nota</th>
                                         <th>Nominal Biaya</th>
                                         <th>Keperluan</th>
-                                        <th>Status Klaim</th>
+                                        <th>Bukti Nota</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse ($myReimbursements as $claim)
                                         <tr>
                                             <td>
-                                                <span class="badge bg-label-primary rounded-pill px-2.5 py-1">{{ $claim->claim_type }}</span>
+                                                <div class="fw-bold text-dark font-monospace">{{ $claim->claim_number }}</div>
+                                                <span class="badge bg-label-primary rounded-pill px-2 py-0.5" style="font-size: 0.75rem;">{{ $claim->claim_type }}</span>
                                             </td>
                                             <td>{{ \Carbon\Carbon::parse($claim->event_date)->format('d M Y') }}</td>
                                             <td>
                                                 <span class="fw-bold text-dark">Rp {{ number_format((float)($claim->amount ?? 0), 0, ',', '.') }}</span>
                                             </td>
                                             <td>
-                                                <span class="small text-muted text-truncate d-block" style="max-width: 260px;">{{ $claim->description }}</span>
+                                                <span class="small text-muted text-truncate d-block" style="max-width: 220px;" title="{{ $claim->description }}">{{ $claim->description }}</span>
+                                            </td>
+                                            <td>
+                                                @if ($claim->receipt_image)
+                                                    <a href="{{ asset($claim->receipt_image) }}" target="_blank" class="badge bg-label-info rounded-pill px-2.5 py-1 text-decoration-none d-inline-flex align-items-center gap-1">
+                                                        <i class="mdi mdi-receipt-text-outline"></i> Lihat Nota
+                                                    </a>
+                                                @else
+                                                    <span class="text-muted small">-</span>
+                                                @endif
                                             </td>
                                             <td>
                                                 <span class="badge bg-label-{{ $claim->status === 'Paid' ? 'success' : ($claim->status === 'Approved' ? 'info' : ($claim->status === 'Pending' ? 'warning' : 'danger')) }} rounded-pill px-2.5 py-1">
                                                     {{ $claim->status }}
                                                 </span>
+                                                @if ($claim->rejection_reason)
+                                                    <div class="small text-danger mt-1 text-truncate" style="max-width: 140px;" title="{{ $claim->rejection_reason }}">
+                                                        Alasan: {{ $claim->rejection_reason }}
+                                                    </div>
+                                                @endif
+                                            </td>
+                                            <td class="text-end">
+                                                @if ($claim->status === 'Pending' && ($isOwnProfile || in_array(Auth::user()->role, ['Admin', 'Developer', 'Finance'])))
+                                                    <div class="d-inline-flex gap-1">
+                                                        <button type="button" class="btn btn-sm btn-icon btn-label-warning rounded-pill" data-bs-toggle="modal" data-bs-target="#modalEssEditClaim-{{ $claim->id }}" title="Edit Klaim">
+                                                            <i class="mdi mdi-pencil-outline"></i>
+                                                        </button>
+                                                        <form action="{{ route('hr.reimbursements.destroy', $claim->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus pengajuan klaim {{ $claim->claim_number }} ini?');">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="btn btn-sm btn-icon btn-label-danger rounded-pill" title="Hapus Klaim">
+                                                                <i class="mdi mdi-trash-can-outline"></i>
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                @else
+                                                    <span class="text-muted small"><i class="mdi mdi-lock-outline me-1"></i>Terkunci</span>
+                                                @endif
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="5" class="text-center py-4 text-muted">Belum ada riwayat pengajuan reimbursement.</td>
+                                            <td colspan="7" class="text-center py-4 text-muted">Belum ada riwayat pengajuan reimbursement.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -1258,27 +1365,69 @@
                     <div class="modal-body p-4">
                         <div class="row g-3">
                             <div class="col-12">
-                                <label class="form-label fw-semibold text-dark">Jenis Cuti</label>
+                                <label class="form-label fw-semibold text-dark">Jenis Cuti / Izin</label>
+                                @php
+                                    $availableLeaveTypes = $leaveTypes->filter(function($lt) use ($isQuotaActive) {
+                                        // 1. Hilangkan opsi Izin Sakit
+                                        $isSakit = in_array(strtoupper($lt->code ?? ''), ['CS', 'SK']) || str_contains(strtolower($lt->name ?? ''), 'sakit');
+                                        if ($isSakit) {
+                                            return false;
+                                        }
+
+                                        // 2. Cuti Tahunan hanya muncul jika status kuota aktif di modul HR
+                                        $isCutiTahunan = in_array(strtoupper($lt->code ?? ''), ['CT']) || str_contains(strtolower($lt->name ?? ''), 'tahunan');
+                                        if ($isCutiTahunan && !$isQuotaActive) {
+                                            return false;
+                                        }
+
+                                        return true;
+                                    });
+                                @endphp
                                 <select name="leave_type_id" class="form-select" required>
-                                    @foreach ($leaveTypes as $lt)
-                                        <option value="{{ $lt->id }}">{{ $lt->name }}</option>
-                                    @endforeach
+                                    @forelse ($availableLeaveTypes as $lt)
+                                        @php
+                                            $isCutiTahunan = in_array(strtoupper($lt->code ?? ''), ['CT']) || str_contains(strtolower($lt->name ?? ''), 'tahunan');
+                                        @endphp
+                                        <option value="{{ $lt->id }}">
+                                            {{ $lt->name }}
+                                            @if ($isCutiTahunan)
+                                                (Sisa Kuota: {{ $leaveBalance?->remaining_quota ?? 0 }} Hari)
+                                            @endif
+                                        </option>
+                                    @empty
+                                        <option value="" disabled selected>Tidak ada opsi cuti aktif yang tersedia</option>
+                                    @endforelse
                                 </select>
+                                @if (!$isQuotaActive)
+                                    <div class="form-text text-muted font-11 mt-1">
+                                        <i class="mdi mdi-information-outline text-warning me-1"></i>
+                                        Cuti Tahunan Anda saat ini berstatus <strong>Non-Aktif</strong> oleh HR.
+                                    </div>
+                                @endif
                             </div>
+                            @php
+                                $minLeaveDate = \Carbon\Carbon::tomorrow()->format('Y-m-d');
+                            @endphp
                             <div class="col-6">
                                 <label class="form-label fw-semibold text-dark">Tanggal Mulai</label>
-                                <input type="date" name="start_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                                <input type="date" name="start_date" id="ess_leave_start_date" class="form-control" value="{{ $minLeaveDate }}" min="{{ $minLeaveDate }}" required>
                             </div>
                             <div class="col-6">
                                 <label class="form-label fw-semibold text-dark">Tanggal Berakhir</label>
-                                <input type="date" name="end_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                                <input type="date" name="end_date" id="ess_leave_end_date" class="form-control" value="{{ $minLeaveDate }}" min="{{ $minLeaveDate }}" required>
+                            </div>
+                            <div class="col-12 mt-1">
+                                <div class="form-text text-muted font-11 d-flex align-items-center">
+                                    <i class="mdi mdi-information-outline text-primary me-1 fs-6"></i>
+                                    <span>Pengajuan cuti/izin tidak dapat dilakukan pada hari yang sama. Pengajuan dimulai minimal <strong>besok ({{ \Carbon\Carbon::tomorrow()->translatedFormat('d M Y') }})</strong>.</span>
+                                </div>
                             </div>
                             <div class="col-12">
                                 <label class="form-label fw-semibold text-dark">Alasan / Keperluan</label>
                                 <textarea name="reason" class="form-control" rows="3" placeholder="Jelaskan alasan pengajuan cuti/izin..." required></textarea>
                             </div>
                             <div class="col-12">
-                                <label class="form-label fw-semibold text-dark">Lampiran (Opsional, Surat Dokter jika sakit)</label>
+                                <label class="form-label fw-semibold text-dark">Lampiran Dokumen / Bukti Pendukung (Opsional)</label>
                                 <input type="file" name="attachment" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
                             </div>
                         </div>
@@ -1339,6 +1488,68 @@
                 </form>
             </div>
         </div>
+
+        {{-- Modals: Edit Klaim Reimbursement (Pending) --}}
+        @if (isset($myReimbursements))
+            @foreach ($myReimbursements as $claim)
+                @if ($claim->status === 'Pending')
+                    <div class="modal fade" id="modalEssEditClaim-{{ $claim->id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <form action="{{ route('hr.reimbursements.update', $claim->id) }}" method="POST" enctype="multipart/form-data" class="modal-content border-0 shadow-lg rounded-4 overflow-hidden text-start">
+                                @csrf
+                                @method('PUT')
+                                <div class="modal-header bg-warning text-dark border-0 py-3">
+                                    <h5 class="modal-title fw-bold text-dark"><i class="mdi mdi-pencil-box-outline me-1.5"></i>Edit Klaim: {{ $claim->claim_number }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div class="row g-3">
+                                        <div class="col-6">
+                                            <label class="form-label fw-semibold text-dark">Kategori Biaya</label>
+                                            <select name="claim_type" class="form-select" required>
+                                                <option value="BBM / Bensin" @selected($claim->claim_type === 'BBM / Bensin')>BBM / Bensin</option>
+                                                <option value="Tol / Parkir" @selected($claim->claim_type === 'Tol / Parkir')>Tol / Parkir</option>
+                                                <option value="Akomodasi / Hotel" @selected($claim->claim_type === 'Akomodasi / Hotel')>Akomodasi / Hotel</option>
+                                                <option value="Konsumsi Lapangan" @selected($claim->claim_type === 'Konsumsi Lapangan')>Konsumsi Lapangan</option>
+                                                <option value="Medis / Pengobatan" @selected($claim->claim_type === 'Medis / Pengobatan')>Medis / Pengobatan</option>
+                                                <option value="Lainnya" @selected($claim->claim_type === 'Lainnya')>Lainnya</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label fw-semibold text-dark">Tanggal Nota</label>
+                                            <input type="date" name="event_date" class="form-control" value="{{ \Carbon\Carbon::parse($claim->event_date)->format('Y-m-d') }}" required>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-semibold text-dark">Nominal Biaya (IDR)</label>
+                                            <input type="number" name="amount" class="form-control" value="{{ (int)$claim->amount }}" min="1000" required>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-semibold text-dark">Keperluan / Keterangan</label>
+                                            <textarea name="description" class="form-control" rows="2" required>{{ $claim->description }}</textarea>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-semibold text-dark">Upload Nota Baru (Opsional)</label>
+                                            <input type="file" name="receipt_image" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                                            @if ($claim->receipt_image)
+                                                <div class="mt-1 small">
+                                                    <a href="{{ asset($claim->receipt_image) }}" target="_blank" class="text-primary">
+                                                        <i class="mdi mdi-receipt me-1"></i>Lihat file nota saat ini
+                                                    </a>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer bg-light border-0 py-3">
+                                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Batal</button>
+                                    <button type="submit" class="btn btn-warning rounded-pill px-4 fw-semibold">Simpan Perubahan</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+            @endforeach
+        @endif
     @endif
 @endsection
 
@@ -1350,9 +1561,18 @@
         border-radius: 18px;
         transition: box-shadow 0.25s ease;
     }
+    .profile-banner-wrapper {
+        height: 250px;
+        transition: height 0.25s ease;
+    }
+    @media (max-width: 767.98px) {
+        .profile-banner-wrapper {
+            height: 190px;
+        }
+    }
     .profile-avatar-container {
-        width: 124px;
-        height: 124px;
+        width: 120px;
+        height: 120px;
     }
     .profile-avatar-img {
         transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -1491,6 +1711,32 @@
                 }, 2000);
             }.bind(this));
         });
+
+        // ESS Leave Date Picker constraints (minimal mulai besok)
+        var $leaveStart = $('#ess_leave_start_date');
+        var $leaveEnd = $('#ess_leave_end_date');
+        if ($leaveStart.length && $leaveEnd.length) {
+            $leaveStart.on('change', function() {
+                var startVal = $(this).val();
+                var minDate = $(this).attr('min');
+                if (minDate && startVal < minDate) {
+                    $(this).val(minDate);
+                    startVal = minDate;
+                }
+                $leaveEnd.attr('min', startVal);
+                if ($leaveEnd.val() < startVal) {
+                    $leaveEnd.val(startVal);
+                }
+            });
+
+            $leaveEnd.on('change', function() {
+                var startVal = $leaveStart.val();
+                var endVal = $(this).val();
+                if (startVal && endVal < startVal) {
+                    $(this).val(startVal);
+                }
+            });
+        }
     });
 </script>
 @endpush

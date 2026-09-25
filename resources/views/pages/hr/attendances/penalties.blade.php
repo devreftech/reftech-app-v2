@@ -25,18 +25,34 @@
         </h4>
         <small class="text-muted">
             Periode: <strong class="text-dark">{{ \Carbon\Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y') }}</strong> &bull; 
+            @if (isset($cutoffPeriod))
+                Cut-off: <span class="badge bg-label-primary font-11"><i class="mdi mdi-calendar-range me-1"></i>{{ $cutoffPeriod['start_date']->translatedFormat('d M Y') }} s/d {{ $cutoffPeriod['end_date']->translatedFormat('d M Y') }}</span> &bull;
+            @endif
             Skema: <span class="badge bg-label-danger font-11">Bertingkat (1x: Rp {{ number_format($lateTier1Rate, 0, ',', '.') }} &bull; 2x: Rp {{ number_format($lateTier2Rate, 0, ',', '.') }} &bull; 3x: Rp {{ number_format($lateTier3Rate, 0, ',', '.') }} &bull; &gt;3x: Potong Gaji {{ $lateTierExcessPercent }}%)</span>
         </small>
     </div>
 
     <div class="d-flex align-items-center gap-2 flex-wrap">
+        {{-- Tombol Integrasi Proses ke Payroll --}}
+        @if ($existingPayroll)
+            <a href="{{ route('hr.payrolls.show', $existingPayroll->id) }}" class="btn btn-primary shadow-xs d-flex align-items-center gap-1.5" title="Batch Payroll Periode Ini Sudah Dibuat">
+                <i class="mdi mdi-calculator-variant fs-5"></i>
+                <span>Lihat Payroll ({{ $existingPayroll->code }})</span>
+            </a>
+        @else
+            <a href="{{ route('hr.payrolls.index', ['month' => $month, 'year' => $year]) }}" class="btn btn-primary shadow-xs d-flex align-items-center gap-1.5 fw-bold" title="Generate Batch Payroll dan Masukkan Rekap Denda Ini">
+                <i class="mdi mdi-calculator fs-5"></i>
+                <span>Proses ke Payroll</span>
+            </a>
+        @endif
+
         <a href="{{ route('hr.attendances.index') }}" class="btn btn-label-secondary shadow-xs d-flex align-items-center gap-1.5">
             <i class="mdi mdi-calendar-check-outline fs-5"></i>
             <span>Presensi Harian</span>
         </a>
-        <a href="{{ route('hr.payrolls.index') }}" class="btn btn-outline-primary shadow-xs d-flex align-items-center gap-1.5">
-            <i class="mdi mdi-calculator fs-5"></i>
-            <span>Modul Payroll</span>
+        <a href="{{ route('hr.attendances.penalties.export', ['month' => $month, 'year' => $year, 'department_id' => $departmentId]) }}" class="btn btn-success shadow-xs d-flex align-items-center gap-1.5">
+            <i class="mdi mdi-file-excel-outline fs-5"></i>
+            <span>Ekspor Excel / CSV</span>
         </a>
         <button type="button" class="btn btn-outline-secondary shadow-xs d-flex align-items-center gap-1.5" onclick="window.print();">
             <i class="mdi mdi-printer-outline fs-5"></i>
@@ -96,13 +112,13 @@
         <div class="card border-0 shadow-sm bg-label-primary h-100">
             <div class="card-body p-3.5">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase font-11">Peringatan / Sanksi SP</span>
+                    <span class="text-muted small fw-semibold text-uppercase font-11">Terlambat &ge; 3x (Tier 3)</span>
                     <div class="avatar avatar-xs bg-primary text-white rounded d-flex align-items-center justify-content-center">
                         <i class="mdi mdi-alert-octagon-outline"></i>
                     </div>
                 </div>
                 <h3 class="fw-bold text-primary mb-0 font-22">{{ $totalEmployeesWarning }} <small class="fs-6 fw-normal">Orang</small></h3>
-                <div class="text-muted small mt-1 font-11">&gt; 3x keterlambatan (Potong Gaji {{ $lateTierExcessPercent ?? 10 }}%)</div>
+                <div class="text-muted small mt-1 font-11">&ge; 3x terlambat (Tier 3: Rp {{ number_format($lateTier3Rate ?? 100000, 0, ',', '.') }})</div>
             </div>
         </div>
     </div>
@@ -197,19 +213,46 @@
                 @forelse ($penaltyRecap as $idx => $row)
                     @php
                         $emp = $row['employee'];
-                        $empName = $emp->user?->name ?? 'Karyawan #' . $emp->id;
+                        $empUser = $emp->user;
+                        $empName = $empUser?->name ?? 'Karyawan #' . $emp->id;
                         $initials = strtoupper(substr($empName, 0, 2));
+
+                        $empAvatar = null;
+                        if ($empUser && $empUser->image) {
+                            if (str_starts_with($empUser->image, 'http://') || str_starts_with($empUser->image, 'https://')) {
+                                $empAvatar = $empUser->image;
+                            } elseif (file_exists(public_path($empUser->image))) {
+                                $empAvatar = asset(ltrim($empUser->image, '/'));
+                            } elseif (file_exists(public_path('storage/' . $empUser->image))) {
+                                $empAvatar = asset('storage/' . $empUser->image);
+                            }
+                        }
+                        if (!$empAvatar) {
+                            $defaultAvatarNum = (($emp->user_id ?? $emp->id) % 18) + 1;
+                            $avatarPath = "assets/img/avatars/{$defaultAvatarNum}.png";
+                            if (file_exists(public_path($avatarPath))) {
+                                $empAvatar = asset($avatarPath);
+                            }
+                        }
                     @endphp
                     <tr>
                         <td class="text-muted small">{{ $idx + 1 }}</td>
                         <td>
                             <div class="d-flex align-items-center gap-2.5">
-                                <div class="avatar avatar-sm bg-label-primary rounded-circle d-flex align-items-center justify-content-center fw-bold font-12">
-                                    {{ $initials }}
+                                <div class="avatar avatar-sm rounded-circle flex-shrink-0">
+                                    @if ($empAvatar)
+                                        <img src="{{ $empAvatar }}" alt="{{ $empName }}" class="rounded-circle shadow-xs" style="width: 34px; height: 34px; object-fit: cover;">
+                                    @else
+                                        <div class="avatar-initial rounded-circle bg-label-primary fw-bold font-12" style="width: 34px; height: 34px;">
+                                            {{ $initials }}
+                                        </div>
+                                    @endif
                                 </div>
                                 <div>
-                                    <div class="fw-bold text-heading font-13">{{ $empName }}</div>
-                                    <div class="text-muted font-11 font-monospace">{{ $emp->nik }}</div>
+                                    <a href="{{ route('profile.show', $emp->user_id ?? $emp->id) }}#tabAttendance" class="fw-bold text-heading font-13 text-decoration-none hover-primary d-block">
+                                        {{ $empName }}
+                                    </a>
+                                    <div class="text-muted font-11 font-monospace">NIK: {{ $emp->nik ?? '-' }}</div>
                                 </div>
                             </div>
                         </td>
@@ -256,30 +299,103 @@
                     </tr>
                     @if ($row['late_days_count'] > 0)
                         <tr class="collapse" id="collapsePenaltyDetail{{ $emp->id }}">
-                            <td colspan="9" class="p-0 bg-light">
-                                <div class="p-3.5 border-top border-bottom">
-                                    <div class="d-flex align-items-center justify-content-between mb-2.5">
-                                        <div class="small fw-bold text-dark font-12">
-                                            <i class="mdi mdi-history me-1 text-danger"></i> Log Tanggal &amp; Rincian Denda Keterlambatan: <strong>{{ $empName }}</strong>
-                                        </div>
-                                        <span class="badge bg-white text-danger border font-11 fw-semibold">Total: Rp {{ number_format($row['penalty_total'], 0, ',', '.') }}</span>
-                                    </div>
-                                    <div class="d-flex flex-wrap gap-2.5">
-                                        @foreach ($row['late_records'] as $latRec)
-                                            <div class="card p-2.5 border bg-white shadow-none font-11" style="min-width: 200px; border-radius: 8px;">
-                                                <div class="d-flex justify-content-between text-muted mb-1.5 pb-1 border-bottom">
-                                                    <span class="fw-semibold"><i class="mdi mdi-calendar-blank me-1 text-primary"></i>{{ \Carbon\Carbon::parse($latRec->date)->translatedFormat('d M Y') }}</span>
-                                                    <span class="font-monospace text-dark fw-bold">{{ substr($latRec->clock_in, 0, 5) }} WIB</span>
+                            <td colspan="9" class="p-0">
+                                <div class="p-3 bg-light bg-opacity-75 border-top border-bottom">
+                                    <div class="card border border-primary border-opacity-25 rounded-3 shadow-xs bg-white overflow-hidden">
+                                        {{-- Sub-header info bar --}}
+                                        <div class="card-header bg-label-secondary py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge bg-danger rounded-circle p-1 d-flex align-items-center justify-content-center" style="width: 22px; height: 22px;">
+                                                    <i class="mdi mdi-clock-alert-outline text-white font-12"></i>
+                                                </span>
+                                                <div class="fw-bold text-dark font-13">
+                                                    Log Tanggal &amp; Rincian Denda Keterlambatan: <span class="text-primary">{{ $empName }}</span>
                                                 </div>
-                                                <div class="d-flex justify-content-between align-items-center pt-0.5">
-                                                    <span class="badge bg-label-warning font-10">Terlambat {{ $latRec->late_minutes }}m</span>
-                                                    <span class="font-monospace text-danger fw-bold font-12">Rp {{ number_format($latRec->penalty_amount ?? 0, 0, ',', '.') }}</span>
-                                                </div>
-                                                @if ($latRec->notes)
-                                                    <div class="text-muted font-10 mt-1 fst-italic text-truncate">{{ $latRec->notes }}</div>
-                                                @endif
                                             </div>
-                                        @endforeach
+                                            <div class="d-flex align-items-center gap-2 flex-wrap font-11">
+                                                <span class="badge bg-label-warning px-2.5 py-1 rounded-pill">
+                                                    <i class="mdi mdi-clock-alert-outline me-1"></i>{{ $row['late_days_count'] }}x Terlambat ({{ $row['late_minutes'] }} Menit)
+                                                </span>
+                                                <span class="badge bg-label-danger px-2.5 py-1 rounded-pill fw-bold">
+                                                    <i class="mdi mdi-cash-minus me-1"></i>Total Denda: Rp {{ number_format($row['penalty_total'], 0, ',', '.') }}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {{-- Structured Sub-Table --}}
+                                        <div class="table-responsive text-nowrap">
+                                            <table class="table table-sm table-hover align-middle mb-0 font-12">
+                                                <thead class="table-light text-muted font-11">
+                                                    <tr>
+                                                        <th class="ps-3" style="width: 80px;">Urutan</th>
+                                                        <th>Tanggal &amp; Hari</th>
+                                                        <th>Jam Masuk</th>
+                                                        <th>Keterlambatan</th>
+                                                        <th>Skema Sanksi</th>
+                                                        <th class="text-end">Nominal Denda</th>
+                                                        <th class="pe-3">Catatan / Alasan</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach ($row['late_records'] as $latIdx => $latRec)
+                                                        @php
+                                                            $lateSeq = $latIdx + 1;
+                                                            $penaltyVal = (float) ($latRec->penalty_amount ?? 0);
+                                                        @endphp
+                                                        <tr>
+                                                            <td class="ps-3">
+                                                                <span class="badge bg-label-secondary rounded-pill font-11 fw-semibold">
+                                                                    Ke-{{ $lateSeq }}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <div class="d-flex align-items-center gap-1.5">
+                                                                    <i class="mdi mdi-calendar-blank text-primary font-14"></i>
+                                                                    <span class="fw-semibold text-dark">{{ \Carbon\Carbon::parse($latRec->date)->translatedFormat('l, d M Y') }}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge bg-label-dark font-monospace font-11 px-2 py-1">
+                                                                    <i class="mdi mdi-clock-in text-primary me-1"></i>{{ substr($latRec->clock_in, 0, 5) }} WIB
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge bg-label-warning font-11 px-2.5 py-1 rounded-pill">
+                                                                    <i class="mdi mdi-clock-alert-outline me-1"></i>Telat {{ $latRec->late_minutes }} Menit
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                @if ($lateSeq == 1)
+                                                                    <span class="badge bg-label-warning font-10">Terlambat ke-1 (Tier 1)</span>
+                                                                @elseif ($lateSeq == 2)
+                                                                    <span class="badge bg-label-warning font-10">Terlambat ke-2 (Tier 2)</span>
+                                                                @else
+                                                                    <span class="badge bg-label-danger font-10">Terlambat ke-{{ $lateSeq }} (Tier 3)</span>
+                                                                @endif
+                                                            </td>
+                                                            <td class="text-end font-monospace">
+                                                                @if ($penaltyVal > 0)
+                                                                    <span class="fw-bold text-danger font-12">
+                                                                        Rp {{ number_format($penaltyVal, 0, ',', '.') }}
+                                                                    </span>
+                                                                @else
+                                                                    <span class="badge bg-label-info font-10">Toleransi Bebas Denda</span>
+                                                                @endif
+                                                            </td>
+                                                            <td class="pe-3">
+                                                                @if (!empty($latRec->notes))
+                                                                    <span class="text-secondary small fst-italic">
+                                                                        <i class="mdi mdi-comment-text-outline text-muted me-1"></i>{{ $latRec->notes }}
+                                                                    </span>
+                                                                @else
+                                                                    <span class="text-muted small">—</span>
+                                                                @endif
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
                             </td>
@@ -306,7 +422,11 @@
                 <i class="mdi mdi-information-outline fs-5"></i>
             </div>
             <div class="font-12 text-muted">
+<<<<<<< Updated upstream
                 <strong>Kebijakan Presensi Aktif:</strong> Jam Masuk: <strong>{{ $workStartTime }} WIB</strong> &bull; Toleransi Harian: <strong>{{ $lateToleranceMinutes }} mnt</strong> &bull; Denda Terlambat: <strong>1x Rp {{ number_format($lateTier1Rate, 0, ',', '.') }}</strong>, <strong>2x Rp {{ number_format($lateTier2Rate, 0, ',', '.') }}</strong>, <strong>3x Rp {{ number_format($lateTier3Rate, 0, ',', '.') }}</strong>, <strong>&gt;3x Potong Gaji {{ $lateTierExcessPercent }}%</strong> (SP-1) &bull; Denda Alpa: <strong>Rp {{ number_format($alphaPenaltyRate, 0, ',', '.') }}</strong> &bull; Sabtu &amp; Minggu: <strong>{{ $isWeekendOffEnabled ? 'Libur' : 'Hari Kerja' }}</strong>
+=======
+                <strong>Kebijakan Presensi Aktif:</strong> Jam Masuk: <strong>{{ $workStartTime ?? '08:00' }} WIB</strong> &bull; Toleransi: <strong>{{ $lateToleranceMinutes ?? 0 }} mnt</strong> &bull; Skema Denda Bertingkat: <strong>1x: Rp {{ number_format($lateTier1Rate ?? 50000, 0, ',', '.') }}</strong>, <strong>2x: Rp {{ number_format($lateTier2Rate ?? 75000, 0, ',', '.') }}</strong>, <strong>3x: Rp {{ number_format($lateTier3Rate ?? 100000, 0, ',', '.') }}</strong> &bull; Sanksi SP: <strong>&gt;3x (Potong Gaji {{ $lateTierExcessPercent ?? 10 }}%)</strong>
+>>>>>>> Stashed changes
             </div>
         </div>
         <a href="{{ route('hr.attendances.index') }}" class="btn btn-xs btn-outline-primary text-nowrap">

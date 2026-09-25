@@ -189,11 +189,12 @@ class DashboardController extends Controller
             return view("pages.sales.dashboard", $accountingData);
         } elseif (in_array(Auth::user()->role, ['Finance Manager', 'Finance'])) {
             $financeView = request()->query('view', 'finance');
-            if (!in_array($financeView, ['finance', 'accounting', 'logistic', 'workshop'], true)) {
+            if (!in_array($financeView, ['finance', 'hr', 'accounting', 'logistic', 'workshop'], true)) {
                 $financeView = 'finance';
             }
 
             $financeExtraData = match ($financeView) {
+                'hr' => (new \App\Services\Dashboard\HrDashboardService())->getHrDashboardData(),
                 'accounting' => (new \App\Services\Dashboard\AccountingDashboardService())->getAccountingDashboardData(),
                 'logistic' => (new \App\Services\Dashboard\LogisticDashboardService())->getLogisticDashboardData(),
                 'workshop' => (new \App\Services\Dashboard\WorkshopDashboardService())->getWorkshopDashboardData(),

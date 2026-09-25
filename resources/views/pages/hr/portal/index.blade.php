@@ -116,7 +116,7 @@
                     <div class="text-muted small mt-1" style="font-size:0.75rem;">Dari kuota {{ $leaveBalance->total_quota }} hari</div>
                 @else
                     <h5 class="fw-bold text-secondary mb-0">Non-Aktif</h5>
-                    <div class="text-muted small mt-1" style="font-size:0.75rem;">Kuota tidak dibatasi</div>
+                    <div class="text-muted small mt-1" style="font-size:0.75rem;">Belum diaktifkan</div>
                 @endif
             </div>
         </div>
@@ -228,10 +228,17 @@
                                     </td>
                                     <td>
                                         @if ($att->late_minutes > 0)
-                                            <span class="badge bg-label-warning me-1">Telat {{ $att->late_minutes }}m</span>
+                                            <div class="d-flex flex-column gap-1 align-items-start">
+                                                <span class="badge bg-label-warning me-1">Telat {{ $att->late_minutes }}m</span>
+                                                @if (($att->penalty_amount ?? 0) > 0)
+                                                    <span class="badge bg-label-danger font-11">
+                                                        <i class="mdi mdi-cash-minus me-0.5"></i> Rp {{ number_format($att->penalty_amount, 0, ',', '.') }}
+                                                    </span>
+                                                @endif
+                                            </div>
                                         @endif
                                         @if ($att->overtime_minutes > 0)
-                                            <span class="badge bg-label-info">Lembur {{ round($att->overtime_minutes / 60, 1) }}j</span>
+                                            <span class="badge bg-label-info {{ $att->late_minutes > 0 ? 'mt-1' : '' }}">Lembur {{ round($att->overtime_minutes / 60, 1) }}j</span>
                                         @endif
                                         @if ($att->late_minutes == 0 && $att->overtime_minutes == 0)
                                             <span class="text-muted small">-</span>
@@ -463,13 +470,19 @@
                             @endforeach
                         </select>
                     </div>
+                    @php
+                        $portalMinLeaveDate = \Carbon\Carbon::tomorrow()->format('Y-m-d');
+                    @endphp
                     <div class="col-6">
                         <label class="form-label fw-semibold">Tanggal Mulai</label>
-                        <input type="date" name="start_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                        <input type="date" name="start_date" id="portal_leave_start_date" class="form-control" value="{{ $portalMinLeaveDate }}" min="{{ $portalMinLeaveDate }}" required>
                     </div>
                     <div class="col-6">
                         <label class="form-label fw-semibold">Tanggal Berakhir</label>
-                        <input type="date" name="end_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                        <input type="date" name="end_date" id="portal_leave_end_date" class="form-control" value="{{ $portalMinLeaveDate }}" min="{{ $portalMinLeaveDate }}" required>
+                    </div>
+                    <div class="col-12 mt-1">
+                        <small class="text-muted"><i class="mdi mdi-information-outline text-primary me-1"></i>Pengajuan cuti/izin tidak dapat dilakukan pada hari yang sama (minimal mulai besok: <strong>{{ \Carbon\Carbon::tomorrow()->translatedFormat('d M Y') }}</strong>).</small>
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Alasan</label>
@@ -550,5 +563,32 @@
     }
     setInterval(updateLiveClock, 1000);
     updateLiveClock();
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var leaveStart = document.getElementById('portal_leave_start_date');
+        var leaveEnd = document.getElementById('portal_leave_end_date');
+        if (leaveStart && leaveEnd) {
+            leaveStart.addEventListener('change', function() {
+                var startVal = this.value;
+                var minDate = this.getAttribute('min');
+                if (minDate && startVal < minDate) {
+                    this.value = minDate;
+                    startVal = minDate;
+                }
+                leaveEnd.min = startVal;
+                if (leaveEnd.value < startVal) {
+                    leaveEnd.value = startVal;
+                }
+            });
+
+            leaveEnd.addEventListener('change', function() {
+                var startVal = leaveStart.value;
+                var endVal = this.value;
+                if (startVal && endVal < startVal) {
+                    this.value = startVal;
+                }
+            });
+        }
+    });
 </script>
 @endsection

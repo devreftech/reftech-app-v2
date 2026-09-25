@@ -668,14 +668,35 @@
 
     {{-- ── MODAL GENERATE PAYROLL BARU ──────────────────────────────────── --}}
     <div class="modal fade" id="modalGeneratePayroll" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <form action="{{ route('hr.payrolls.store') }}" method="POST" class="modal-content border-0 shadow">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
+            <form action="{{ route('hr.payrolls.store') }}" method="POST" class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                 @csrf
-                <div class="modal-header border-bottom bg-light">
-                    <h5 class="modal-title fw-bold">Generate Batch Payroll Bulanan</h5>
+                <div style="height: 4px; background: linear-gradient(90deg, #6366f1 0%, #3b82f6 100%);"></div>
+                <div class="modal-header border-bottom py-3 px-4 bg-light">
+                    <h5 class="modal-title fw-bold text-dark font-16 mb-0 d-flex align-items-center">
+                        <i class="mdi mdi-calculator me-2 text-primary fs-4"></i> Generate Batch Payroll Bulanan
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
+                    {{-- Info Banner Dynamic Cutoff Presensi --}}
+                    @if (isset($cutoffPeriod))
+                    <div class="alert alert-primary border-primary border-opacity-25 bg-label-primary p-3 rounded-3 mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="font-11 text-uppercase fw-bold text-primary">
+                                <i class="mdi mdi-calendar-sync me-1"></i>Siklus Cut-Off Presensi Dinamis
+                            </span>
+                            <span class="badge bg-primary font-10">Tgl 28 Cut-off</span>
+                        </div>
+                        <div class="font-12 fw-bold text-dark">
+                            {{ $cutoffPeriod['start_date']->translatedFormat('d M Y') }} s/d {{ $cutoffPeriod['end_date']->translatedFormat('d M Y') }}
+                        </div>
+                        <small class="text-muted font-10 d-block mt-1">
+                            *Denda keterlambatan bertingkat, lembur, dan alpa ditarik otomatis dari rentang hari kerja di atas.
+                        </small>
+                    </div>
+                    @endif
+
                     <div class="row g-3">
                         <div class="col-6">
                             <label class="form-label fw-semibold">Bulan Periode</label>
@@ -692,19 +713,19 @@
                             <input type="number" name="period_year" class="form-control" value="{{ date('Y') }}" min="2020" max="2035" required>
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-semibold">Tanggal Rencana Pencairan (Transfer)</label>
-                            <input type="date" name="payment_date" class="form-control" value="{{ date('Y-m-25') }}" required>
-                            <div class="form-text small">Biasanya tanggal 25 atau akhir bulan kerja.</div>
+                            <label class="form-label fw-semibold">Tanggal Rencana Pencairan (Gajian)</label>
+                            <input type="date" name="payment_date" class="form-control" value="{{ date('Y-m-28') }}" required>
+                            <div class="form-text small">Jadwal gajian reguler Reftech adalah <strong>setiap tanggal 28</strong>.</div>
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-semibold">Catatan Internal Payroll</label>
-                            <textarea name="notes" class="form-control" rows="2" placeholder="Catatan opsional..."></textarea>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="Catatan opsional periode ini..."></textarea>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-top bg-light">
+                <div class="modal-footer border-top bg-light py-2.5 px-4 d-flex justify-content-between">
                     <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary px-4 fw-bold shadow-xs">
                         <i class="mdi mdi-play-circle-outline me-1"></i> Mulai Generate Payroll
                     </button>
                 </div>

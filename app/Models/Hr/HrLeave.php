@@ -1,22 +1,24 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Hr;
 
+use App\Models\Employee;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class HrLeaveRequest extends Model
+class HrLeave extends Model
 {
     use HasFactory;
 
-    protected $table = 'hr_leave_requests';
+    protected $table = 'hr_leaves';
 
     protected $fillable = [
         'employee_id',
-        'leave_type_id',
+        'type',
         'start_date',
         'end_date',
-        'total_days',
         'reason',
         'attachment',
         'status',
@@ -29,17 +31,11 @@ class HrLeaveRequest extends Model
         'start_date' => 'date',
         'end_date' => 'date',
         'approved_at' => 'datetime',
-        'total_days' => 'integer',
     ];
 
     public function employee()
     {
         return $this->belongsTo(Employee::class, 'employee_id');
-    }
-
-    public function leaveType()
-    {
-        return $this->belongsTo(HrLeaveType::class, 'leave_type_id');
     }
 
     public function approver()
@@ -52,10 +48,9 @@ class HrLeaveRequest extends Model
      */
     public static function getApprovedLeaveForDate(int $employeeId, string $date): ?self
     {
-        $targetDate = \Carbon\Carbon::parse($date)->toDateString();
+        $targetDate = Carbon::parse($date)->toDateString();
 
-        return static::with('leaveType')
-            ->where('employee_id', $employeeId)
+        return static::where('employee_id', $employeeId)
             ->where('status', 'Approved')
             ->whereDate('start_date', '<=', $targetDate)
             ->whereDate('end_date', '>=', $targetDate)
@@ -67,16 +62,11 @@ class HrLeaveRequest extends Model
      */
     public static function isApprovedWfhOrTrip(int $employeeId, string $date): bool
     {
-        $targetDate = \Carbon\Carbon::parse($date)->toDateString();
+        $targetDate = Carbon::parse($date)->toDateString();
 
         return static::where('employee_id', $employeeId)
             ->where('status', 'Approved')
-            ->whereHas('leaveType', function ($q) {
-                $q->whereIn('code', ['DL', 'WFH', 'VC'])
-                  ->orWhere('name', 'LIKE', '%Dinas%')
-                  ->orWhere('name', 'LIKE', '%WFH%')
-                  ->orWhere('name', 'LIKE', '%Visit%');
-            })
+            ->whereIn('type', ['Dinas Luar', 'WFH'])
             ->whereDate('start_date', '<=', $targetDate)
             ->whereDate('end_date', '>=', $targetDate)
             ->exists();

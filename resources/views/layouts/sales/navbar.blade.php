@@ -38,18 +38,127 @@
                 </li>
             @endif
 
-            <!-- Presensi Harian Quick Widget -->
+            <!-- Presensi Harian Quick Widget & Alert Upload Surat Dokter Susulan & Alert Rekap Denda Payroll -->
             @if (Auth::user() && Auth::user()->role !== 'Client')
                 @php
                     $navEmp = Auth::user()->employee;
                     $navTodayAtt = null;
-                    if ($navEmp && $navEmp->can_online_attendance) {
-                        \App\Models\HrAttendance::processAutoClockOutIfDue();
-                        $navTodayAtt = \App\Models\Hr\HrAttendance::where('employee_id', $navEmp->id)
-                            ->whereDate('date', \Carbon\Carbon::today('Asia/Jakarta'))
+                    $navPendingSickLeave = null;
+                    $isHrCutoffRole = in_array(Auth::user()->role, ['Finance', 'Finance Manager', 'developer', 'Developer']) 
+                        || (method_exists(Auth::user(), 'isDeveloper') && Auth::user()->isDeveloper());
+                    $cutoffAlertData = null;
+
+                    if ($isHrCutoffRole) {
+                        $cutoffAlertData = \App\Services\Hr\PayrollCutoffService::getCutoffRecapSummary();
+                    }
+
+                    // Alert & Approval Klaim Reimbursement (Finance & HR Management)
+                    $userRole = Auth::user()?->role;
+                    $isFinanceOrHrRole = in_array($userRole, ['Admin', 'Developer', 'Finance', 'Finance Manager', 'Accounting', 'Super Admin'])
+                        || (method_exists(Auth::user(), 'isDeveloper') && Auth::user()->isDeveloper());
+                    $unreadReimbursementCount = 0;
+                    $pendingReimbursementsNotif = collect();
+                    if (Auth::check() && $isFinanceOrHrRole) {
+                        try {
+                            $unreadReimbursementCount = \App\Models\HrReimbursement::where('status', 'Pending')->count();
+                            $pendingReimbursementsNotif = \App\Models\HrReimbursement::where('status', 'Pending')
+                                ->with(['employee.user', 'employee.department'])
+                                ->latest()
+                                ->take(10)
+                                ->get();
+                        } catch (\Throwable $e) {
+                            $unreadReimbursementCount = 0;
+                            $pendingReimbursementsNotif = collect();
+                        }
+                    }
+
+                    // Alert & Approval Cuti / Izin Karyawan (Role-based / Account Configurable)
+                    $isLeaveAlertEligible = \App\Services\Hr\LeaveAlertService::isUserEligible(Auth::user());
+                    $leaveAlertPendingCount = 0;
+                    $leaveAlertPendingList = collect();
+                    if ($isLeaveAlertEligible) {
+                        $leaveAlertPendingCount = \App\Services\Hr\LeaveAlertService::getPendingCount();
+                        if ($leaveAlertPendingCount > 0) {
+                            $leaveAlertPendingList = \App\Services\Hr\LeaveAlertService::getPendingRequests(15);
+                        }
+                    }
+
+                    if ($navEmp) {
+                        $navPendingSickLeave = \App\Models\HrLeaveRequest::where('employee_id', $navEmp->id)
+                            ->whereNull('attachment')
+                            ->whereHas('leaveType', function($q) {
+                                $q->where('code', 'SK')->orWhere('name', 'LIKE', '%Sakit%');
+                            })
+                            ->where('status', '!=', 'Rejected')
+                            ->latest()
                             ->first();
+
+                        if ($navEmp->can_online_attendance) {
+                            \App\Models\HrAttendance::processAutoClockOutIfDue();
+                            $navTodayAtt = \App\Models\Hr\HrAttendance::where('employee_id', $navEmp->id)
+                                ->whereDate('date', \Carbon\Carbon::today('Asia/Jakarta'))
+                                ->first();
+                        }
                     }
                 @endphp
+
+                {{-- Alert Khusus HR/Finance: Rekap Denda Presensi Cutoff & Reminder Payment Payroll/Expense --}}
+                @if ($cutoffAlertData && !empty($cutoffAlertData['period']['is_recap_ready']) && empty($cutoffAlertData['is_fully_completed']))
+                <li class="nav-item me-2">
+                    @if (empty($cutoffAlertData['has_payroll_generated']))
+                    <button type="button" class="btn btn-sm btn-label-danger rounded-pill px-3 py-1 d-flex align-items-center shadow-xs border border-danger text-danger fw-bold animate__animated animate__pulse animate__infinite" data-bs-toggle="modal" data-bs-target="#modalAttendanceCutoffRecapAlert" title="Rekap denda presensi cutoff telah siap per jam 09:00. Klik untuk melihat detail & proses ke Payroll.">
+                        <i class="mdi mdi-cash-minus me-1 text-danger"></i>
+                        <span class="d-none d-sm-inline">Rekap Denda Payroll</span>
+                        <span class="d-inline d-sm-none">Denda Cutoff</span>
+                        @if ($cutoffAlertData['late_employees_count'] > 0)
+                            <span class="badge bg-danger rounded-pill ms-1 font-10">{{ $cutoffAlertData['late_employees_count'] }} Org</span>
+                        @endif
+                    </button>
+                    @else
+                    <button type="button" class="btn btn-sm btn-label-warning rounded-pill px-3 py-1 d-flex align-items-center shadow-xs border border-warning text-warning fw-bold animate__animated animate__pulse animate__infinite" data-bs-toggle="modal" data-bs-target="#modalAttendanceCutoffRecapAlert" title="Payroll periode ini belum diproses Payment / belum diposting ke Finance Expense. Klik untuk selesaikan.">
+                        <i class="mdi mdi-clock-alert-outline me-1 text-warning"></i>
+                        <span class="d-none d-sm-inline">Payroll: Belum Payment/Expense</span>
+                        <span class="d-inline d-sm-none">Payroll Pending</span>
+                        <span class="badge bg-warning text-dark rounded-pill ms-1 font-10">{{ $cutoffAlertData['existing_payroll']->code }}</span>
+                    </button>
+                    @endif
+                </li>
+                @endif
+
+                {{-- Alert Khusus: Pengajuan Klaim Reimbursement Pending (Finance & HR Management) --}}
+                @if ($isFinanceOrHrRole && $unreadReimbursementCount > 0)
+                <li class="nav-item me-2" id="navReimbursementAlertItem">
+                    <button type="button" class="btn btn-sm btn-label-warning rounded-pill px-3 py-1 d-flex align-items-center shadow-xs border border-warning text-warning fw-bold animate__animated animate__pulse animate__infinite" data-bs-toggle="modal" data-bs-target="#modalReimbursementApprovalAlert" title="Ada {{ $unreadReimbursementCount }} klaim reimbursement menunggu persetujuan Finance. Klik untuk quick review & approval.">
+                        <i class="mdi mdi-receipt-text-clock-outline me-1 text-warning"></i>
+                        <span class="d-none d-sm-inline">Klaim Reimbursement</span>
+                        <span class="d-inline d-sm-none">Klaim</span>
+                        <span class="badge bg-warning text-dark rounded-pill ms-1 font-10" id="navReimbursementAlertBadge">{{ $unreadReimbursementCount }}</span>
+                    </button>
+                </li>
+                @endif
+
+                {{-- Alert Khusus: Pengajuan Cuti / Izin Pending Approval (Finance & Akun Terdaftar) --}}
+                @if ($isLeaveAlertEligible && $leaveAlertPendingCount > 0)
+                <li class="nav-item me-2" id="navLeaveAlertItem">
+                    <button type="button" class="btn btn-sm btn-label-info rounded-pill px-3 py-1 d-flex align-items-center shadow-xs border border-info text-info fw-bold animate__animated animate__pulse animate__infinite" data-bs-toggle="modal" data-bs-target="#modalLeaveApprovalAlert" title="Ada {{ $leaveAlertPendingCount }} pengajuan cuti/izin menunggu persetujuan. Klik untuk quick review & approval.">
+                        <i class="mdi mdi-calendar-alert me-1 text-info"></i>
+                        <span class="d-none d-sm-inline">Approval Cuti/Izin</span>
+                        <span class="d-inline d-sm-none">Cuti/Izin</span>
+                        <span class="badge bg-info text-white rounded-pill ms-1 font-10" id="navLeaveAlertBadge">{{ $leaveAlertPendingCount }}</span>
+                    </button>
+                </li>
+                @endif
+
+                {{-- Alert Khusus: Surat Dokter Menyusul Belum Diunggah --}}
+                @if ($navPendingSickLeave)
+                <li class="nav-item me-2">
+                    <button type="button" class="btn btn-sm btn-label-warning rounded-pill px-3 py-1 d-flex align-items-center shadow-xs border border-warning text-warning fw-bold animate__animated animate__pulse animate__infinite" data-bs-toggle="modal" data-bs-target="#navModalUploadLateSick-{{ $navPendingSickLeave->id }}" title="Pengajuan Sakit belum ada surat dokter. Klik untuk upload sekarang.">
+                        <i class="mdi mdi-hospital-box-outline me-1 text-danger"></i>
+                        <span class="d-none d-sm-inline">Upload Surat Dokter</span>
+                        <span class="d-inline d-sm-none">Surat Dokter</span>
+                    </button>
+                </li>
+                @endif
                 @if ($navEmp && $navEmp->can_online_attendance)
                 <li class="nav-item me-2">
                     @if (!$navTodayAtt || !$navTodayAtt->clock_in)
@@ -488,6 +597,7 @@
                     @php
                         $userRole = Auth::user()?->role;
                         $isProspectRole = in_array($userRole, ['Admin', 'Developer', 'Super Admin', 'Sales', 'Support']) || in_array(Auth::id(), \App\Http\Controllers\ProspectController::PROSPECT_NOTIF_RECIPIENT_IDS);
+                        $isFinanceOrHrRole = in_array($userRole, ['Admin', 'Developer', 'Finance', 'Finance Manager', 'Accounting', 'Super Admin']);
 
                         $unreadCommentCount = 0;
                         if (Auth::user()?->role != 'Admin' && @$unreadComment && $isProspectRole) {
@@ -540,6 +650,22 @@
                             }
                         }
 
+                        $unreadReimbursementCount = 0;
+                        $pendingReimbursementsNotif = collect();
+                        if (Auth::check() && $isFinanceOrHrRole) {
+                            try {
+                                $unreadReimbursementCount = \App\Models\HrReimbursement::where('status', 'Pending')->count();
+                                $pendingReimbursementsNotif = \App\Models\HrReimbursement::where('status', 'Pending')
+                                    ->with(['employee.user', 'employee.department'])
+                                    ->latest()
+                                    ->take(10)
+                                    ->get();
+                            } catch (\Throwable $e) {
+                                $unreadReimbursementCount = 0;
+                                $pendingReimbursementsNotif = collect();
+                            }
+                        }
+
                         $hasBadge = false;
                         if (Auth::user()?->role == 'Admin' && @$unreadCommentAdmin && $unreadCommentAdmin->count() >= 1) $hasBadge = true;
                         if ($unreadCommentCount >= 1) $hasBadge = true;
@@ -551,6 +677,8 @@
                         if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && (@$apDueTodayCount >= 1 || @$apDueSoonCount >= 1 || @$apOverdueCount >= 1)) $hasBadge = true;
                         if ($myActiveToolAudit) $hasBadge = true;
                         if ($incomingToolTransfers->count() >= 1) $hasBadge = true;
+                        if ($unreadReimbursementCount >= 1) $hasBadge = true;
+                        if (isset($isLeaveAlertEligible) && $isLeaveAlertEligible && isset($leaveAlertPendingCount) && $leaveAlertPendingCount >= 1) $hasBadge = true;
                     @endphp
                     <span id="navbarBellDot" class="position-absolute top-0 start-50 translate-middle-y badge badge-dot bg-danger mt-2 border {{ $hasBadge ? '' : 'd-none' }}"></span>
                 </a>
@@ -577,6 +705,8 @@
                                         if (in_array(Auth::user()?->role, ['Admin', 'Accounting', 'Finance']) && @$apDueTodayCount) $totalBadges += $apDueTodayCount;
                                         if ($myActiveToolAudit) $totalBadges += 1;
                                         if ($incomingToolTransfers->count() > 0) $totalBadges += $incomingToolTransfers->count();
+                                        if ($unreadReimbursementCount > 0) $totalBadges += $unreadReimbursementCount;
+                                        if (isset($isLeaveAlertEligible) && $isLeaveAlertEligible && isset($leaveAlertPendingCount) && $leaveAlertPendingCount > 0) $totalBadges += $leaveAlertPendingCount;
                                     @endphp
                                     <span id="notifTotalBadge" class="badge rounded-pill bg-danger py-1 px-2 fw-bold {{ $totalBadges > 0 ? '' : 'd-none' }}" style="font-size: 11px;">
                                         {{ $totalBadges }} Baru
@@ -589,6 +719,16 @@
                             </div>
                             {{-- Category Badges --}}
                             <div class="d-flex flex-wrap gap-1 mt-2 align-items-center">
+                                @if (isset($isLeaveAlertEligible) && $isLeaveAlertEligible && isset($leaveAlertPendingCount) && $leaveAlertPendingCount > 0)
+                                    <span class="badge rounded-pill bg-info text-white" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#modalLeaveApprovalAlert">
+                                        <i class="mdi mdi-calendar-alert me-1"></i> {{ $leaveAlertPendingCount }} Izin/Cuti Menunggu
+                                    </span>
+                                @endif
+                                @if ($isFinanceOrHrRole && $unreadReimbursementCount > 0)
+                                    <a href="{{ route('hr.reimbursements.index') }}" class="badge rounded-pill bg-warning text-dark text-decoration-none">
+                                        <i class="mdi mdi-receipt-text-outline me-1"></i> {{ $unreadReimbursementCount }} Klaim Reimbursement
+                                    </a>
+                                @endif
                                 @if ($incomingToolTransfers->count() > 0)
                                     <span class="badge rounded-pill bg-warning text-dark">
                                         <i class="mdi mdi-account-arrow-right me-1"></i> {{ $incomingToolTransfers->count() }} Transfer Tools Masuk
@@ -757,6 +897,37 @@
                                         'type' => 'tool_transfer_incoming',
                                         'time' => \Carbon\Carbon::parse($trf->requested_at),
                                         'item' => $trf,
+                                    ]);
+                                }
+                            }
+
+                            // 10. Pengingat Upload Surat Dokter Susulan untuk Karyawan Sakit
+                            if (isset($navPendingSickLeave) && $navPendingSickLeave) {
+                                $unifiedNotifications->push([
+                                    'type' => 'pending_sick_leave',
+                                    'time' => \Carbon\Carbon::parse($navPendingSickLeave->created_at),
+                                    'item' => $navPendingSickLeave,
+                                ]);
+                            }
+
+                            // 11. Pengajuan Klaim Reimbursement untuk Finance / HR
+                            if ($isFinanceOrHrRole && isset($pendingReimbursementsNotif) && $pendingReimbursementsNotif->count() > 0) {
+                                foreach ($pendingReimbursementsNotif as $rNotif) {
+                                    $unifiedNotifications->push([
+                                        'type' => 'pending_reimbursement',
+                                        'time' => \Carbon\Carbon::parse($rNotif->created_at),
+                                        'item' => $rNotif,
+                                    ]);
+                                }
+                            }
+
+                            // 12. Pengajuan Cuti / Izin Karyawan untuk Finance & Akun Terdaftar
+                            if (isset($isLeaveAlertEligible) && $isLeaveAlertEligible && isset($leaveAlertPendingList) && $leaveAlertPendingList->count() > 0) {
+                                foreach ($leaveAlertPendingList as $lNotif) {
+                                    $unifiedNotifications->push([
+                                        'type' => 'pending_leave_request',
+                                        'time' => \Carbon\Carbon::parse($lNotif->created_at),
+                                        'item' => $lNotif,
                                     ]);
                                 }
                             }
@@ -1187,6 +1358,103 @@
                                             <span class="notif-unread-dot dot-warning"></span>
                                         </div>
                                     </a>
+                                @elseif ($notif['type'] === 'pending_sick_leave')
+                                    @php
+                                        $sickItem = $notif['item'];
+                                        $sickDate = \Carbon\Carbon::parse($sickItem->start_date);
+                                    @endphp
+                                    <a href="javascript:void(0);"
+                                        class="notif-card notif-card-comment notif-card-unread"
+                                        style="border-left: 3px solid #ef4444 !important; background: rgba(239, 68, 68, 0.08) !important;"
+                                        data-bs-toggle="modal" data-bs-target="#navModalUploadLateSick-{{ $sickItem->id }}">
+                                        <div class="notif-card-inner">
+                                            <div class="notif-card-avatar d-flex align-items-center justify-content-center bg-label-danger rounded-3" style="width: 40px; height: 40px; min-width: 40px;">
+                                                <i class="mdi mdi-hospital-box-outline fs-4 text-danger"></i>
+                                            </div>
+                                            <div class="notif-card-content">
+                                                <div class="notif-card-meta">
+                                                    <span class="badge bg-label-danger notif-badge-pill">
+                                                        <i class="mdi mdi-alert-circle-outline me-1"></i> Surat Dokter Diperlukan
+                                                    </span>
+                                                    <span class="notif-time-ago">
+                                                        <i class="mdi mdi-calendar-outline fs-7"></i> {{ $sickDate->translatedFormat('d M Y') }}
+                                                    </span>
+                                                </div>
+                                                <h6 class="notif-card-title text-dark fw-bold">
+                                                    Surat Dokter Belum Diunggah
+                                                </h6>
+                                                <p class="notif-card-desc mb-0">
+                                                    Pengajuan sakit Anda ({{ $sickDate->translatedFormat('d M Y') }}) belum dilampiri surat dokter. Klik di sini untuk mengunggah sekarang.
+                                                </p>
+                                            </div>
+                                            <span class="notif-unread-dot dot-danger"></span>
+                                        </div>
+                                    </a>
+                                @elseif ($notif['type'] === 'pending_reimbursement')
+                                    @php
+                                        $claimItem = $notif['item'];
+                                        $cDate = \Carbon\Carbon::parse($claimItem->event_date);
+                                        $empName = $claimItem->employee?->user?->name ?? ($claimItem->employee?->nik ? 'Karyawan ' . $claimItem->employee->nik : 'Karyawan');
+                                    @endphp
+                                    <a href="{{ route('hr.reimbursements.index') }}"
+                                        class="notif-card notif-card-comment notif-card-unread"
+                                        style="border-left: 3px solid #f59e0b !important; background: rgba(245, 158, 11, 0.08) !important;">
+                                        <div class="notif-card-inner">
+                                            <div class="notif-card-avatar d-flex align-items-center justify-content-center bg-label-warning rounded-3" style="width: 40px; height: 40px; min-width: 40px;">
+                                                <i class="mdi mdi-receipt-text-clock-outline fs-4 text-warning"></i>
+                                            </div>
+                                            <div class="notif-card-content">
+                                                <div class="notif-card-meta">
+                                                    <span class="badge bg-label-warning notif-badge-pill">
+                                                        <i class="mdi mdi-cash-fast me-1"></i> Klaim: {{ $claimItem->claim_type }}
+                                                    </span>
+                                                    <span class="notif-time-ago">
+                                                        <i class="mdi mdi-clock-outline fs-7"></i> {{ \Carbon\Carbon::parse($claimItem->created_at)->diffForHumans() }}
+                                                    </span>
+                                                </div>
+                                                <h6 class="notif-card-title text-dark fw-bold">
+                                                    Rp {{ number_format($claimItem->amount, 0, ',', '.') }} &bull; {{ $empName }}
+                                                </h6>
+                                                <p class="notif-card-desc mb-0">
+                                                    {{ $claimItem->description ?: 'Pengajuan klaim operasional baru menunggu verifikasi/pencairan Finance.' }}
+                                                </p>
+                                            </div>
+                                            <span class="notif-unread-dot dot-warning"></span>
+                                        </div>
+                                    </a>
+                                @elseif ($notif['type'] === 'pending_leave_request')
+                                    @php
+                                        $leaveItem = $notif['item'];
+                                        $empName = $leaveItem->employee?->user?->name ?? ($leaveItem->employee?->nik ? 'Karyawan ' . $leaveItem->employee->nik : 'Karyawan');
+                                        $lType = $leaveItem->leaveType?->name ?? 'Cuti/Izin';
+                                    @endphp
+                                    <a href="javascript:void(0);"
+                                        class="notif-card notif-card-comment notif-card-unread"
+                                        style="border-left: 3px solid #06b6d4 !important; background: rgba(6, 182, 212, 0.08) !important;"
+                                        data-bs-toggle="modal" data-bs-target="#modalLeaveApprovalAlert">
+                                        <div class="notif-card-inner">
+                                            <div class="notif-card-avatar d-flex align-items-center justify-content-center bg-label-info rounded-3" style="width: 40px; height: 40px; min-width: 40px;">
+                                                <i class="mdi mdi-calendar-clock-outline fs-4 text-info"></i>
+                                            </div>
+                                            <div class="notif-card-content">
+                                                <div class="notif-card-meta">
+                                                    <span class="badge bg-label-info notif-badge-pill">
+                                                        <i class="mdi mdi-calendar-account-outline me-1"></i> {{ $lType }} ({{ $leaveItem->total_days }} Hari)
+                                                    </span>
+                                                    <span class="notif-time-ago">
+                                                        <i class="mdi mdi-clock-outline fs-7"></i> {{ \Carbon\Carbon::parse($leaveItem->created_at)->diffForHumans() }}
+                                                    </span>
+                                                </div>
+                                                <h6 class="notif-card-title text-dark fw-bold">
+                                                    {{ $empName }} &bull; {{ \Carbon\Carbon::parse($leaveItem->start_date)->format('d M') }} s/d {{ \Carbon\Carbon::parse($leaveItem->end_date)->format('d M Y') }}
+                                                </h6>
+                                                <p class="notif-card-desc mb-0">
+                                                    {{ $leaveItem->reason ?: 'Permohonan izin/cuti karyawan menunggu persetujuan Anda.' }}
+                                                </p>
+                                            </div>
+                                            <span class="notif-unread-dot" style="background: #06b6d4;"></span>
+                                        </div>
+                                    </a>
                                 @endif
                             @endforeach
                         </div>
@@ -1455,12 +1723,18 @@
 </script>
 
 {{-- Modal Presensi Cepat (Clock In & Clock Out) dari Navbar --}}
-@if (Auth::user() && Auth::user()->employee && Auth::user()->employee->can_online_attendance)
+@if (Auth::user() && (Auth::user()->employee || in_array(Auth::user()->role, ['Super Admin', 'HRD', 'admin', 'Management'])))
     @php
-        $navModalEmp = Auth::user()->employee;
-        $navModalAtt = \App\Models\Hr\HrAttendance::where('employee_id', $navModalEmp->id)
-            ->whereDate('date', \Carbon\Carbon::today())
-            ->first();
+        $navModalEmp = Auth::user()->employee ?? (object)[
+            'id' => 0,
+            'nik' => 'HR-ADMIN',
+            'position' => (object)['name' => Auth::user()->role ?? 'HR Administrator'],
+            'department' => null,
+            'can_online_attendance' => true
+        ];
+        $navModalAtt = ($navModalEmp && isset($navModalEmp->id) && $navModalEmp->id > 0)
+            ? \App\Models\Hr\HrAttendance::where('employee_id', $navModalEmp->id)->whereDate('date', \Carbon\Carbon::today('Asia/Jakarta'))->first()
+            : null;
         
         $navSelfieSetting = \Illuminate\Support\Facades\DB::table('hr_attendance_settings')->where('key', 'is_selfie_required')->first();
         $navIsSelfieRequired = $navSelfieSetting && $navSelfieSetting->value === '1';
@@ -1474,29 +1748,224 @@
         $navIsWifiVerified = !$navIsWifiRestrictionEnabled
             || in_array($navClientIp, $navAllowedIps)
             || (app()->isLocal() && in_array($navClientIp, ['127.0.0.1', '::1']));
+
+        $navEarliestSetting = \Illuminate\Support\Facades\DB::table('hr_attendance_settings')->where('key', 'earliest_clock_in_time')->first();
+        $navEarliestTime = $navEarliestSetting ? ($navEarliestSetting->value ?? '07:00') : '07:00';
+        $navNowTimeJakarta = \Carbon\Carbon::now('Asia/Jakarta')->format('H:i');
+        $navIsBeforeEarliest = $navNowTimeJakarta < $navEarliestTime;
     @endphp
 
-    <!-- Modal Clock In -->
-    <div class="modal fade" id="navClockInModal" tabindex="-1" aria-labelledby="navClockInModalLabel" aria-hidden="true" data-bs-backdrop="static">
-        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
-                <div style="height: 4px; background: linear-gradient(90deg, #10b981 0%, #059669 100%); width: 100%;"></div>
+    <!-- Modal Clock In (Prospect / Jam Pulang Style) -->
+    <style>
+        #navClockInModal {
+            z-index: 1095 !important;
+        }
+        #navClockInModal .modal-dialog {
+            max-width: 550px;
+            margin: 1.75rem auto;
+        }
+        #navClockInModal .modal-content {
+            border-radius: 20px !important;
+            border: 0 !important;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.28) !important;
+            overflow: hidden;
+            background: #ffffff;
+        }
+        html.dark-style #navClockInModal .modal-content {
+            background: #2b2c40 !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7) !important;
+            color: #e4e6f0;
+        }
+        #navClockInModal .clockin-top-stripe {
+            height: 5px;
+            background: linear-gradient(90deg, #10b981 0%, #06b6d4 50%, #3b82f6 100%);
+            background-size: 200% 100%;
+            animation: clockoutShimmer 3s ease-in-out infinite;
+            width: 100%;
+        }
+        .clockin-hero-halo {
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, rgba(16, 185, 129, 0.04) 70%, transparent 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .clockin-hero-inner {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4);
+        }
+        #navClockInModal .clockin-detail-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        html.dark-style #navClockInModal .clockin-detail-card {
+            background: #32344d;
+            border-color: #3f4262;
+        }
+        #navClockInModal .clockin-card-header {
+            background: #ffffff;
+            border-bottom: 1px solid #edf0f5;
+            padding: 11px 16px;
+        }
+        html.dark-style #navClockInModal .clockin-card-header {
+            background: #2b2c40;
+            border-bottom-color: #3f4262;
+        }
+        #navClockInModal .clockin-card-body {
+            padding: 12px 16px;
+        }
+        #navClockInModal .clockin-info-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 0;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        html.dark-style #navClockInModal .clockin-info-row {
+            border-bottom-color: #434665;
+        }
+        #navClockInModal .clockin-info-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        #navClockInModal .clockin-info-label {
+            font-size: 0.815rem;
+            color: #64748b;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        html.dark-style #navClockInModal .clockin-info-label {
+            color: #a1a4b8;
+        }
+        #navClockInModal .clockin-info-val {
+            font-size: 0.865rem;
+            font-weight: 600;
+            color: #1e293b;
+            text-align: right;
+            max-width: 68%;
+        }
+        html.dark-style #navClockInModal .clockin-info-val {
+            color: #f1f5f9;
+        }
+        #navClockInModal .clockin-guide-card {
+            background: #ecfdf5;
+            border: 1px solid #d1fae5;
+            border-radius: 12px;
+            padding: 10px 14px;
+        }
+        html.dark-style #navClockInModal .clockin-guide-card {
+            background: #064e3b;
+            border-color: #047857;
+        }
+        #navClockInModal .btn-action-clockin {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 10px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.38);
+            transition: all 0.2s ease;
+        }
+        #navClockInModal .btn-action-clockin:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: #ffffff;
+            box-shadow: 0 6px 18px rgba(16, 185, 129, 0.48);
+            transform: translateY(-1px);
+        }
+        #navClockInModal .btn-dismiss-clockin {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            font-weight: 600;
+            font-size: 0.88rem;
+            padding: 10px 18px;
+            border-radius: 12px;
+            transition: all 0.15s ease;
+        }
+        #navClockInModal .btn-dismiss-clockin:hover {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+        html.dark-style #navClockInModal .btn-dismiss-clockin {
+            background: #334155;
+            color: #e2e8f0;
+            border-color: #475569;
+        }
+        html.dark-style #navClockInModal .btn-dismiss-clockin:hover {
+            background: #475569;
+            color: #ffffff;
+        }
+    </style>
+
+    <div class="modal fade" id="navClockInModal" tabindex="-1" aria-labelledby="navClockInModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0">
+                <!-- Top Accent Gradient Line -->
+                <div class="clockin-top-stripe"></div>
+
                 <form action="{{ route('hr.portal.clockin') }}" method="POST" id="navClockInForm">
                     @csrf
                     <input type="hidden" name="device_id" id="navClockInDeviceId">
                     <input type="hidden" name="device_info" id="navClockInDeviceInfo">
                     <input type="hidden" name="selfie_image" id="navClockInSelfieImage">
 
-                    <div class="modal-header border-bottom py-3 bg-light">
-                        <h5 class="modal-title fw-bold text-success d-flex align-items-center mb-0" id="navClockInModalLabel">
-                            <i class="mdi mdi-clock-in me-2 fs-4"></i> Presensi Masuk (Clock In)
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body p-4 text-center">
-                        
-                        {{-- Alert Banner Validasi Keamanan (WiFi & Device Lock) --}}
+                    <div class="modal-body p-4 pt-3">
+                        <!-- Top Status Badge & Close Button -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="badge rounded-pill px-3 py-1 text-uppercase fw-bold" style="background: rgba(16, 185, 129, 0.12); color: #059669; font-size: 0.75rem; letter-spacing: 0.5px;">
+                                <i class="mdi mdi-clock-start me-1"></i> PRESENSI MASUK &bull; {{ $navEarliestTime }} - {{ $workStartTime ?? '08:00' }} WIB
+                            </span>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+
+                        <!-- Hero Icon Halo & Centered Titles -->
+                        <div class="text-center mb-3">
+                            <div class="clockin-hero-halo mx-auto mb-2">
+                                <div class="clockin-hero-inner">
+                                    <i class="mdi mdi-clock-in fs-2"></i>
+                                </div>
+                            </div>
+
+                            <h4 class="modal-title fw-bold text-dark mb-1" id="navClockInModalLabel" style="letter-spacing: -0.3px;">
+                                Presensi Masuk (Clock In)
+                            </h4>
+                            <p class="text-muted small mb-0 px-2" style="line-height: 1.55;">
+                                Silakan catat kehadiran kerja Anda hari ini. Selamat beraktivitas &amp; semoga hari Anda produktif!
+                            </p>
+                        </div>
+
+                        {{-- Alert Banner Validasi Keamanan (Earliest Time, WiFi & Device Lock) --}}
                         <div id="navClockInAlertsContainer">
+                            {{-- Earliest Clock-In Time Alert --}}
+                            <div class="alert alert-warning d-flex align-items-start text-start font-12 py-2 px-3 mb-3 shadow-xs {{ $navIsBeforeEarliest ? '' : 'd-none' }}" id="navClockInEarlyAlert">
+                                <i class="mdi mdi-clock-alert-outline fs-4 me-2 text-warning flex-shrink-0 mt-n1"></i>
+                                <div>
+                                    <div class="fw-bold text-dark">Presensi Masuk Belum Dibuka</div>
+                                    <div class="text-dark small mt-1" id="navClockInEarlyAlertText">
+                                        Presensi masuk baru dibuka mulai pukul <strong class="text-primary font-monospace">{{ $navEarliestTime }} WIB</strong>.
+                                    </div>
+                                    <div class="text-muted font-11 mt-1">
+                                        <i class="mdi mdi-information-outline me-1"></i>Silakan lakukan presensi setelah jam operasional dibuka.
+                                    </div>
+                                </div>
+                            </div>
+
                             {{-- WiFi Alert --}}
                             @if ($navIsWifiRestrictionEnabled && !$navIsWifiVerified)
                                 <div class="alert alert-danger d-flex align-items-start text-start font-12 py-2 px-3 mb-3 shadow-xs" id="navClockInWifiAlert">
@@ -1541,7 +2010,7 @@
 
                         @if ($navIsSelfieRequired)
                             {{-- Live Selfie Camera Container --}}
-                            <div class="position-relative rounded-3 overflow-hidden mb-3 bg-dark shadow-sm border border-success" style="height: 220px;">
+                            <div class="position-relative rounded-3 overflow-hidden mb-3 bg-dark shadow-sm border border-success" style="height: 200px;">
                                 <video id="navCameraVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
                                 <canvas id="navCameraCanvas" style="display: none;"></canvas>
                                 
@@ -1561,74 +2030,393 @@
                                     <i class="mdi mdi-alert-circle me-1"></i> Izin kamera diperlukan untuk presensi!
                                 </div>
                             </div>
-                        @else
-                            <!-- Live Time & Date Display Standard -->
-                            <div class="avatar avatar-xl mx-auto mb-3" style="width: 60px; height: 60px;">
-                                <span class="avatar-initial rounded-circle bg-label-success">
-                                    <i class="mdi mdi-clock-outline fs-1 text-success"></i>
-                                </span>
-                            </div>
                         @endif
 
-                        <div class="font-monospace text-dark fw-bold fs-3 mb-1" id="navLiveClockTimeIn">
-                            {{ \Carbon\Carbon::now()->format('H:i:s') }}
-                        </div>
-                        <div class="text-muted font-12 mb-3">
-                            <i class="mdi mdi-calendar-blank-outline me-1"></i>{{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}
-                        </div>
-
-                        <!-- Employee Details Card -->
-                        <div class="card bg-label-secondary border-0 p-3 text-start mb-3">
-                            <div class="d-flex align-items-center justify-content-between mb-1">
-                                <span class="font-11 text-muted text-uppercase fw-semibold">Karyawan</span>
-                                <span class="badge bg-label-success font-10">Aktif WFO</span>
+                        <!-- Card 1: Structured Detail Card -->
+                        <div class="clockin-detail-card mb-3">
+                            <div class="clockin-card-header d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-2 text-truncate pe-2">
+                                    @if (Auth::user()->image && file_exists(public_path(Auth::user()->image)))
+                                        <img src="{{ asset(Auth::user()->image) }}" class="rounded-circle flex-shrink-0" style="width: 28px; height: 28px; object-fit: cover;" alt="{{ Auth::user()->name }}">
+                                    @else
+                                        <span class="badge rounded-circle p-2 bg-label-success flex-shrink-0" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">
+                                            <i class="mdi mdi-account-circle-outline fs-6"></i>
+                                        </span>
+                                    @endif
+                                    <span class="fw-bold text-dark text-truncate" style="font-size: 0.9rem;" title="{{ Auth::user()->name }}">
+                                        {{ Auth::user()->name }}
+                                    </span>
+                                </div>
+                                <span class="text-muted flex-shrink-0" style="font-size: 0.76rem;">
+                                    <i class="mdi mdi-calendar-today me-1"></i>{{ \Carbon\Carbon::now('Asia/Jakarta')->isoFormat('D MMM Y') }}
+                                </span>
                             </div>
-                            <div class="fw-bold text-dark font-14">{{ Auth::user()->name }}</div>
-                            <div class="text-muted font-11">
-                                NIK: {{ $navModalEmp->nik ?? '-' }} &bull; {{ $navModalEmp->position->name ?? ($navModalEmp->department->name ?? 'Staff') }}
+                            <div class="clockin-card-body">
+                                <div class="clockin-info-row">
+                                    <span class="clockin-info-label">
+                                        <i class="mdi mdi-clock-outline text-success fs-6"></i> Waktu Saat Ini
+                                    </span>
+                                    <span class="clockin-info-val">
+                                        <span class="font-monospace fw-bold text-success" style="font-size: 0.95rem;">
+                                            <span id="navLiveClockTimeIn">{{ \Carbon\Carbon::now()->format('H:i:s') }}</span> WIB
+                                        </span>
+                                    </span>
+                                </div>
+                                <div class="clockin-info-row">
+                                    <span class="clockin-info-label">
+                                        <i class="mdi mdi-badge-account-horizontal-outline text-primary fs-6"></i> Jabatan / Divisi
+                                    </span>
+                                    <span class="clockin-info-val text-truncate">
+                                        {{ $navModalEmp->position->name ?? ($navModalEmp->department->name ?? 'Staff') }} ({{ $navModalEmp->nik ?? '-' }})
+                                    </span>
+                                </div>
+                                <div class="clockin-info-row">
+                                    <span class="clockin-info-label">
+                                        <i class="mdi mdi-office-building-marker-outline text-info fs-6"></i> Tipe Kehadiran
+                                    </span>
+                                    <span class="clockin-info-val">
+                                        <div class="btn-group btn-group-sm shadow-2xs" role="group" aria-label="Tipe Kehadiran">
+                                            <input type="radio" class="btn-check" name="work_type" id="navWorkTypeWfo" value="WFO" checked autocomplete="off">
+                                            <label class="btn btn-outline-primary py-1 px-2.5 font-11 fw-semibold" for="navWorkTypeWfo">WFO</label>
+
+                                            <input type="radio" class="btn-check" name="work_type" id="navWorkTypeWfh" value="WFH" autocomplete="off">
+                                            <label class="btn btn-outline-primary py-1 px-2.5 font-11 fw-semibold" for="navWorkTypeWfh">WFH</label>
+                                        </div>
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Work Type selection (Segmented Button Switcher) -->
-                        <div class="text-start mb-3">
-                            <label class="form-label font-11 text-muted text-uppercase fw-semibold mb-1">Tipe Kehadiran</label>
-                            <div class="btn-group w-100 shadow-xs" role="group" aria-label="Tipe Kehadiran">
-                                <input type="radio" class="btn-check" name="work_type" id="navWorkTypeWfo" value="WFO" checked autocomplete="off">
-                                <label class="btn btn-outline-primary py-2 d-flex align-items-center justify-content-center gap-1.5 fw-semibold" for="navWorkTypeWfo">
-                                    <i class="mdi mdi-office-building fs-5"></i>
-                                    <span>WFO</span>
-                                </label>
-
-                                <input type="radio" class="btn-check" name="work_type" id="navWorkTypeWfh" value="WFH" autocomplete="off">
-                                <label class="btn btn-outline-primary py-2 d-flex align-items-center justify-content-center gap-1.5 fw-semibold" for="navWorkTypeWfh">
-                                    <i class="mdi mdi-home-outline fs-5"></i>
-                                    <span>WFH</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="alert alert-success d-flex align-items-center text-start font-11 py-2 px-3 mb-0">
-                            <i class="mdi mdi-shield-check-outline fs-5 me-2 text-success flex-shrink-0"></i>
-                            <span>
+                        <!-- Card 2: Guidance Notice -->
+                        <div class="clockin-guide-card d-flex align-items-center gap-2 mb-3">
+                            <i class="mdi mdi-shield-check text-success fs-5 flex-shrink-0"></i>
+                            <div class="small text-dark" style="font-size: 0.8rem; line-height: 1.45;">
                                 @if ($navIsSelfieRequired)
-                                    Posisikan wajah Anda tepat di depan kamera. Foto akan diambil otomatis saat Anda menekan konfirmasi.
+                                    Posisikan wajah Anda tepat di depan kamera. Foto akan diverifikasi secara otomatis saat menekan tombol konfirmasi.
                                 @else
-                                    Presensi terproteksi keamanan IP &amp; Device Lock. Anda akan dialihkan ke <strong>Portal Mandiri</strong>.
+                                    Presensi terproteksi keamanan IP WiFi Kantor, Anti-Titip Absen Device Lock, dan verifikasi kehadiran akurat.
                                 @endif
-                            </span>
+                            </div>
+                        </div>
+
+                        <!-- Actions Footer -->
+                        <!-- Actions Footer -->
+                        <div class="d-flex align-items-center gap-2 pt-1">
+                            <button type="button" class="btn btn-dismiss-clockin" data-bs-dismiss="modal">
+                                Batal
+                            </button>
+                            <button type="submit" class="btn btn-action-clockin flex-grow-1 d-flex align-items-center justify-content-center gap-1.5" id="btnSubmitNavClockIn"
+                                    {{ ($navIsBeforeEarliest || ($navIsWifiRestrictionEnabled && !$navIsWifiVerified)) ? 'disabled title="Presensi belum dibuka atau WiFi tidak sesuai"' : '' }}>
+                                <i class="mdi mdi-clock-in fs-5"></i>
+                                <span>Konfirmasi Clock In</span>
+                            </button>
+                        </div>
+
+                        <!-- Quick Link: Leave / Sick / Permission / Visit Customer Request -->
+                        <div class="text-center pt-3 border-top mt-3">
+                            <a href="javascript:void(0);" class="text-muted font-11 text-decoration-none d-inline-flex align-items-center gap-1" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#navLeaveRequestModal">
+                                <i class="mdi mdi-map-marker-account-outline text-primary fs-6"></i>
+                                <span>Berhalangan hadir / tugas luar? <strong class="text-primary text-decoration-underline">Ajukan Izin / Sakit / Visit Customer</strong></span>
+                            </a>
+                        </div>
+
+                        <!-- Testing & Simulation Playground Tools -->
+                        <div class="mt-3 pt-2 border-top bg-light p-2.5 rounded-3 border">
+                            <div class="d-flex align-items-center justify-content-between mb-1.5">
+                                <span class="font-10 text-uppercase fw-bold text-muted">
+                                    <i class="mdi mdi-flask-outline text-primary me-1"></i>Test Simulasi Respons Rules:
+                                </span>
+                                <span class="badge bg-label-secondary font-10">Uji Coba</span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-xs btn-outline-success rounded-pill px-2.5 py-1 font-11 flex-grow-1 shadow-xs fw-semibold" onclick="testSimulateClockIn('on_time')">
+                                    <i class="mdi mdi-check-circle-outline me-0.5"></i> Test Tepat Waktu (&lt; 08:00)
+                                </button>
+                                <button type="button" class="btn btn-xs btn-outline-warning rounded-pill px-2.5 py-1 font-11 flex-grow-1 shadow-xs fw-semibold" onclick="testSimulateClockIn('late')">
+                                    <i class="mdi mdi-clock-alert-outline me-0.5"></i> Test Terlambat (&gt; 08:00)
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <div class="modal-footer bg-light py-2 border-top">
-                        <button type="button" class="btn btn-label-secondary waves-effect" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-success waves-effect waves-light" id="btnSubmitNavClockIn"
-                                {{ ($navIsWifiRestrictionEnabled && !$navIsWifiVerified) ? 'disabled title="Jaringan WiFi kantor tidak sesuai"' : '' }}>
-                            <i class="mdi mdi-clock-in me-1"></i> Clock In
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Pengajuan Sakit, Izin & Visit Customer -->
+    <div class="modal fade" id="navLeaveRequestModal" tabindex="-1" aria-labelledby="navLeaveRequestModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div style="height: 4px; background: linear-gradient(90deg, #f59e0b 0%, #ef4444 50%, #3b82f6 100%); width: 100%;"></div>
+                <form action="{{ route('hr.portal.leave.store') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-header py-3 px-4 bg-white border-bottom">
+                        <div class="d-flex align-items-center gap-2.5">
+                            <div class="avatar avatar-sm bg-warning-subtle text-warning rounded-3 d-flex align-items-center justify-content-center">
+                                <i class="mdi mdi-clipboard-text-clock-outline fs-5 text-warning"></i>
+                            </div>
+                            <div>
+                                <h5 class="modal-title fw-bold text-dark font-15 mb-0" id="navLeaveRequestModalLabel">Form Pengajuan Sakit, Izin &amp; Visit Customer</h5>
+                                <small class="text-muted font-11">Bebas denda presensi setelah diverifikasi oleh HR</small>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+
+                    <div class="modal-body p-4">
+                        @php
+                            $modalLeaveTypes = \App\Models\HrLeaveType::where('is_active', true)
+                                ->where(function($q) {
+                                    $q->whereIn('code', ['SK', 'IZ', 'VC', 'DL'])
+                                      ->orWhere('name', 'LIKE', '%Sakit%')
+                                      ->orWhere('name', 'LIKE', '%Izin%')
+                                      ->orWhere('name', 'LIKE', '%Visit%')
+                                      ->orWhere('name', 'LIKE', '%Dinas%');
+                                })
+                                ->orderBy('id')
+                                ->get();
+                        @endphp
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label font-11 fw-bold text-dark mb-1">Jenis Pengajuan <span class="text-danger">*</span></label>
+                                <select name="leave_type_id" class="form-select font-13 rounded-3" required id="navLeaveTypeSelect" onchange="toggleAttachmentRequirement(this)">
+                                    @foreach ($modalLeaveTypes as $lType)
+                                        @php
+                                            $icon = match($lType->code) {
+                                                'SK' => '💊',
+                                                'VC' => '🚗',
+                                                'DL' => '🏢',
+                                                default => '📝',
+                                            };
+                                        @endphp
+                                        <option value="{{ $lType->id }}" data-require-attachment="{{ $lType->requires_attachment ? '1' : '0' }}" data-code="{{ $lType->code }}">
+                                            @if($lType->code === 'SK')
+                                                {{ $icon }} {{ $lType->name }} (Wajib Lampirkan Surat Dokter)
+                                            @elseif($lType->code === 'VC' || str_contains(strtolower($lType->name), 'visit'))
+                                                🚗 {{ $lType->name }} (Kunjungan Klien / Lapangan)
+                                            @else
+                                                {{ $icon }} {{ $lType->name }}
+                                            @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="col-6">
+                                <label class="form-label font-11 fw-bold text-dark mb-1">Tanggal Mulai <span class="text-danger">*</span></label>
+                                <input type="date" name="start_date" class="form-control font-13 rounded-3" value="{{ date('Y-m-d') }}" required>
+                            </div>
+
+                            <div class="col-6">
+                                <label class="form-label font-11 fw-bold text-dark mb-1">Tanggal Selesai <span class="text-danger">*</span></label>
+                                <input type="date" name="end_date" class="form-control font-13 rounded-3" value="{{ date('Y-m-d') }}" required>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label font-11 fw-bold text-dark mb-1">Alasan / Keterangan Keperluan <span class="text-danger">*</span></label>
+                                <textarea name="reason" class="form-control font-13 rounded-3" rows="3" placeholder="Jelaskan alasan izin / kondisi sakit / agenda visit customer yang dilakukan..." required></textarea>
+                            </div>
+
+                            <div class="col-12" id="navLeaveAttachmentContainer">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label font-11 fw-bold text-dark mb-0">
+                                        Lampiran Surat Dokter / Bukti Pendukung
+                                    </label>
+                                    <span class="badge bg-warning-subtle text-warning font-10 rounded-pill px-2 py-0.5">
+                                        <i class="mdi mdi-clock-outline me-0.5"></i> Bisa Upload Menyusul
+                                    </span>
+                                </div>
+                                <input type="file" name="attachment" id="navLeaveAttachmentInput" class="form-control font-12 rounded-3" accept=".jpg,.jpeg,.png,.pdf,.webp">
+                                <div class="form-text font-10 text-muted mt-1">
+                                    <i class="mdi mdi-information-outline text-primary me-0.5"></i> Jika belum periksa ke klinik/RS saat ini, surat dokter <strong>dapat diunggah menyusul</strong> setelah Anda selesai berobat.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer bg-light py-2.5 px-4 border-top d-flex justify-content-between">
+                        <button type="button" class="btn btn-label-secondary font-12 rounded-3 px-3 border-0" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary font-12 fw-bold rounded-3 px-4 shadow-xs border-0">
+                            <i class="mdi mdi-send-check me-1"></i> Kirim Pengajuan ke HR
                         </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
+    {{-- Modal Feedback Clock In: Tepat Waktu (< 08:00 WIB) dengan Loading Animation & Ucapan Terima Kasih --}}
+    <div class="modal fade" id="modalClockInFeedbackOnTime" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+            <div class="modal-content border-0 shadow-2xl rounded-4 overflow-hidden text-center position-relative">
+                <div style="height: 5px; background: linear-gradient(90deg, #10b981 0%, #06b6d4 100%);"></div>
+                
+                <div class="modal-body p-4 pt-4 pb-3">
+                    {{-- Animated Success Halo Icon --}}
+                    <div class="mb-3 position-relative d-inline-block">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width: 88px; height: 88px; background: rgba(16, 185, 129, 0.12); box-shadow: 0 0 0 12px rgba(16, 185, 129, 0.06); animation: pulseGlow 2s infinite;">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 62px; height: 62px; background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 8px 16px rgba(16, 185, 129, 0.35);">
+                                <i class="mdi mdi-check-bold text-white fs-1 animate__animated animate__zoomIn"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 class="fw-bolder text-dark mb-1 font-18" id="feedbackOnTimeTitle">Presensi Berhasil Dicatat!</h4>
+                    <p class="text-success fw-bold font-14 mb-2">
+                        🎉 Terima kasih sudah hadir tepat waktu!
+                    </p>
+                    <p class="text-muted font-12 mb-3 px-2" style="line-height: 1.5;">
+                        Selamat beraktivitas! Semoga hari kerja Anda menyenangkan, produktif, dan penuh keberkahan. 🌟
+                    </p>
+
+                    {{-- Summary Box --}}
+                    <div class="bg-label-success rounded-3 p-3 mb-3 border border-success border-opacity-25 text-start">
+                        <div class="row g-2 font-12">
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11">Waktu Presensi</span>
+                                <strong class="text-dark font-13 font-monospace" id="feedbackOnTimeClock">07:55 WIB</strong>
+                            </div>
+                            <div class="col-6 text-end">
+                                <span class="text-muted d-block font-11">Status Kehadiran</span>
+                                <span class="badge bg-success rounded-pill font-11" id="feedbackOnTimeStatus">Tepat Waktu</span>
+                            </div>
+                            <div class="col-6 pt-2 border-top border-success border-opacity-25">
+                                <span class="text-muted d-block font-11">Tipe Presensi</span>
+                                <strong class="text-dark" id="feedbackOnTimeWorkType">WFO (Kantor)</strong>
+                            </div>
+                            <div class="col-6 pt-2 border-top border-success border-opacity-25 text-end">
+                                <span class="text-muted d-block font-11">Potongan Denda</span>
+                                <strong class="text-success font-monospace" id="feedbackOnTimePenalty">Rp 0 (Bebas Denda)</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light border-0 py-2.5 px-4 d-flex justify-content-center">
+                    <button type="button" class="btn btn-success font-13 fw-bold rounded-pill px-5 shadow-sm" data-bs-dismiss="modal">
+                        Mulai Bekerja 🚀
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal Feedback Clock In: Terlambat (> 08:00 WIB) dengan Notifikasi Detail Frekuensi Keterlambatan --}}
+    <div class="modal fade" id="modalClockInFeedbackLate" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 490px;">
+            <div class="modal-content border-0 shadow-2xl rounded-4 overflow-hidden text-center position-relative">
+                <div style="height: 5px; background: linear-gradient(90deg, #f59e0b 0%, #ef4444 100%);"></div>
+                
+                <div class="modal-body p-4 pt-4 pb-3">
+                    {{-- Warning Icon Halo --}}
+                    <div class="mb-3 position-relative d-inline-block">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width: 88px; height: 88px; background: rgba(245, 158, 11, 0.14); box-shadow: 0 0 0 12px rgba(245, 158, 11, 0.07);">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 62px; height: 62px; background: linear-gradient(135deg, #f59e0b, #ef4444); box-shadow: 0 8px 16px rgba(239, 68, 68, 0.35);">
+                                <i class="mdi mdi-clock-alert-outline text-white fs-1 animate__animated animate__headShake"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 class="fw-bolder text-dark mb-1 font-18" id="feedbackLateTitle">Presensi Masuk Tercatat</h4>
+                    
+                    {{-- Warning Box Highlight --}}
+                    <div class="alert alert-warning text-dark border border-warning border-opacity-50 p-3 rounded-3 mb-3 text-start font-12 shadow-xs">
+                        <div class="d-flex align-items-start gap-2.5 mb-0">
+                            <i class="mdi mdi-alert-circle text-warning fs-4 flex-shrink-0 mt-n1"></i>
+                            <div>
+                                <span class="fw-bold font-13 d-block text-dark">
+                                    Anda terlambat hari ini (<span id="feedbackLateMinutes" class="text-danger font-monospace fw-bolder">15</span> menit).
+                                </span>
+                                <span class="text-dark font-12 d-block mt-1" id="feedbackLateCountText">
+                                    Ini adalah <strong class="text-danger font-monospace">keterlambatan ke-<span id="feedbackLateCount">1</span></strong> Anda di bulan ini.
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Breakdown Summary --}}
+                    <div class="card bg-label-secondary border-0 p-3 mb-3 text-start rounded-3">
+                        <div class="row g-2 font-12">
+                            <div class="col-6">
+                                <span class="text-muted d-block font-11">Jam Masuk</span>
+                                <strong class="text-dark font-13 font-monospace" id="feedbackLateClock">08:15 WIB</strong>
+                            </div>
+                            <div class="col-6 text-end">
+                                <span class="text-muted d-block font-11">Potongan Denda</span>
+                                <strong class="text-danger font-13 font-monospace" id="feedbackLatePenalty">Rp 50.000</strong>
+                            </div>
+                            <div class="col-12 pt-2 border-top border-secondary border-opacity-25">
+                                <span class="text-muted d-block font-11">Keterangan Skema Presensi:</span>
+                                <span class="text-dark fw-semibold" id="feedbackLateStatusLabel">Terlambat ke-1 (Tier 1)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="text-muted font-11 mb-2 px-1 text-center" style="line-height: 1.45;">
+                        <i class="mdi mdi-information-outline me-0.5 text-primary"></i>
+                        Tetap semangat bekerja! Mari tingkatkan ketepatan waktu untuk menjaga performa kerja dan menghindari akumulasi potongan denda payroll di akhir bulan.
+                    </p>
+                </div>
+
+                <div class="modal-footer bg-light border-0 py-2.5 px-4 d-flex justify-content-center">
+                    <button type="button" class="btn btn-primary font-13 fw-bold rounded-pill px-5 shadow-sm" data-bs-dismiss="modal">
+                        Saya Mengerti &amp; Mulai Bekerja
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal Khusus: Upload Surat Dokter Susulan --}}
+    @if (isset($navPendingSickLeave) && $navPendingSickLeave)
+    <div class="modal fade" id="navModalUploadLateSick-{{ $navPendingSickLeave->id }}" tabindex="-1" aria-labelledby="navModalUploadLateSickLabel-{{ $navPendingSickLeave->id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div style="height: 4px; background: linear-gradient(90deg, #ef4444 0%, #f59e0b 100%); width: 100%;"></div>
+                <form action="{{ route('hr.portal.leave.upload-attachment', $navPendingSickLeave->id) }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-header py-3 px-4 bg-white border-bottom">
+                        <div class="d-flex align-items-center gap-2.5">
+                            <div class="avatar avatar-sm bg-danger-subtle text-danger rounded-3 d-flex align-items-center justify-content-center">
+                                <i class="mdi mdi-hospital-box-outline fs-5"></i>
+                            </div>
+                            <div>
+                                <h5 class="modal-title fw-bold text-dark font-15 mb-0" id="navModalUploadLateSickLabel-{{ $navPendingSickLeave->id }}">Upload Surat Dokter Susulan</h5>
+                                <small class="text-muted font-11">Pengajuan Sakit: {{ \Carbon\Carbon::parse($navPendingSickLeave->start_date)->translatedFormat('d M Y') }}</small>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+
+                    <div class="modal-body p-4">
+                        <div class="alert alert-warning d-flex align-items-start font-12 py-2.5 px-3 mb-3 border-0 bg-warning-subtle text-dark rounded-3">
+                            <i class="mdi mdi-information-outline fs-5 me-2 text-warning flex-shrink-0 mt-0.5"></i>
+                            <div>
+                                Silakan unggah foto atau file PDF surat keterangan dokter / kwitansi klinik sebagai bukti verifikasi sah untuk HR.
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label font-11 fw-bold text-dark mb-1">
+                                File Foto / PDF Surat Dokter <span class="text-danger">*</span>
+                            </label>
+                            <input type="file" name="attachment" class="form-control font-12 rounded-3" accept=".jpg,.jpeg,.png,.pdf,.webp" required>
+                            <small class="text-muted font-10 mt-1 d-block">Format didukung: JPG, PNG, PDF (Maks. 5MB).</small>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer bg-light py-2.5 px-4 border-top d-flex justify-content-between">
+                        <button type="button" class="btn btn-label-secondary font-12 rounded-3 px-3 border-0" data-bs-dismiss="modal">Tutup</button>
+                        <button type="submit" class="btn btn-danger font-12 fw-bold rounded-3 px-4 shadow-xs border-0">
+                            <i class="mdi mdi-upload me-1"></i> Unggah Surat Dokter
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <!-- Modal Clock Out -->
     <div class="modal fade" id="navClockOutModal" tabindex="-1" aria-labelledby="navClockOutModalLabel" aria-hidden="true">
@@ -1690,8 +2478,544 @@
         </div>
     </div>
 
+    {{-- Modal Pop-up Notifikasi Rekap Denda & Absensi Payroll (Auto Trigger Cutoff Jam 09:00, sampai Batch Payroll dibayar & masuk Expense) --}}
+    @if ($cutoffAlertData && !empty($cutoffAlertData['period']['is_recap_ready']) && empty($cutoffAlertData['is_fully_completed']))
+    <div class="modal fade" id="modalAttendanceCutoffRecapAlert" tabindex="-1" aria-labelledby="modalAttendanceCutoffRecapAlertLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 600px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                <div style="height: 5px; background: {{ empty($cutoffAlertData['has_payroll_generated']) ? 'linear-gradient(90deg, #ef4444 0%, #f97316 50%, #6366f1 100%)' : 'linear-gradient(90deg, #f59e0b 0%, #ef4444 50%, #3b82f6 100%)' }}; width: 100%;"></div>
+                
+                <div class="modal-header border-bottom py-3 px-4 bg-light d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar avatar-sm rounded-circle bg-label-{{ empty($cutoffAlertData['has_payroll_generated']) ? 'danger' : 'warning' }} d-flex align-items-center justify-content-center">
+                            <i class="mdi {{ empty($cutoffAlertData['has_payroll_generated']) ? 'mdi-bell-ring-outline text-danger' : 'mdi-alert-circle-outline text-warning' }} fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark font-15 mb-0" id="modalAttendanceCutoffRecapAlertLabel">
+                                @if (empty($cutoffAlertData['has_payroll_generated']))
+                                    Rekap Denda &amp; Absensi Siap Masuk Payroll
+                                @else
+                                    Payroll Menunggu Payment &amp; Input ke Expense
+                                @endif
+                            </h5>
+                            <span class="text-muted font-11">Cut-off Siklus Gajian Reftech &bull; Pukul 09:00 WIB</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="dismissRecapAlert('{{ $cutoffAlertData['period']['year'] }}', '{{ $cutoffAlertData['period']['month'] }}')"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    {{-- Periode Pill Header --}}
+                    <div class="d-flex align-items-center justify-content-between bg-label-primary rounded-3 p-2.5 mb-3 border border-primary border-opacity-25">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="mdi mdi-calendar-range text-primary fs-5"></i>
+                            <div>
+                                <span class="font-10 text-uppercase fw-bold text-primary d-block">Periode Cut-Off Presensi</span>
+                                <span class="font-13 fw-bold text-dark">
+                                    {{ $cutoffAlertData['period']['start_date']->translatedFormat('d M Y') }} s/d {{ $cutoffAlertData['period']['end_date']->translatedFormat('d M Y') }}
+                                </span>
+                            </div>
+                        </div>
+                        <span class="badge bg-success rounded-pill px-2.5 py-1 font-11">
+                            <i class="mdi mdi-check-circle me-1"></i>Terkunci 09:00 WIB
+                        </span>
+                    </div>
+
+                    @if (!empty($cutoffAlertData['has_payroll_generated']))
+                        {{-- Status Box Payroll yang telah dibuat namun belum Paid / belum masuk Expense --}}
+                        <div class="card border border-warning bg-label-warning p-3 rounded-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <span class="font-11 text-muted text-uppercase fw-bold d-block">Batch Payroll Terdaftar</span>
+                                    <h5 class="fw-bold text-dark mb-0 font-monospace">{{ $cutoffAlertData['existing_payroll']->code }}</h5>
+                                </div>
+                                <div class="text-end">
+                                    <span class="font-11 text-muted d-block">Total Gaji Bersih</span>
+                                    <h5 class="fw-bolder text-primary mb-0 font-monospace">Rp {{ number_format($cutoffAlertData['existing_payroll']->total_net_amount, 0, ',', '.') }}</h5>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2 pt-2 border-top border-warning border-opacity-25">
+                                <span class="badge {{ $cutoffAlertData['is_paid'] ? 'bg-success' : 'bg-warning text-dark' }} rounded-pill font-11">
+                                    Status Gaji: {{ $cutoffAlertData['existing_payroll']->status }}
+                                </span>
+                                <span class="badge {{ $cutoffAlertData['has_expense_posted'] ? 'bg-success' : 'bg-danger' }} rounded-pill font-11">
+                                    {{ $cutoffAlertData['has_expense_posted'] ? 'Sudah Masuk Expense (' . ($cutoffAlertData['existing_payroll']->expense?->no_expense ?? 'EXP') . ')' : 'Belum Dibukukan ke Finance Expense' }}
+                                </span>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- 4-Card Summary Grid --}}
+                    <div class="row g-2.5 mb-3">
+                        <div class="col-6">
+                            <div class="card bg-label-danger border-0 p-3 h-100 rounded-3">
+                                <span class="font-11 text-muted d-block mb-1">Total Denda Keterlambatan</span>
+                                <h4 class="fw-bolder text-danger mb-1 font-monospace">Rp {{ number_format($cutoffAlertData['total_late_penalty'], 0, ',', '.') }}</h4>
+                                <span class="font-11 text-muted">
+                                    <strong>{{ $cutoffAlertData['late_employees_count'] }}</strong> Karyawan ({{ $cutoffAlertData['total_late_incidents'] }} Kejadian)
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card bg-label-warning border-0 p-3 h-100 rounded-3">
+                                <span class="font-11 text-muted d-block mb-1">Potongan Alpa / Tanpa Izin</span>
+                                <h4 class="fw-bolder text-warning mb-1 font-monospace">Rp {{ number_format($cutoffAlertData['total_absence_penalty'], 0, ',', '.') }}</h4>
+                                <span class="font-11 text-muted">
+                                    <strong>{{ $cutoffAlertData['total_absence_days'] }}</strong> Hari Alpa Tercatat
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card bg-label-info border-0 p-3 h-100 rounded-3">
+                                <span class="font-11 text-muted d-block mb-1">Total Jam Lembur</span>
+                                <h4 class="fw-bolder text-info mb-1">{{ $cutoffAlertData['total_overtime_hours'] }} Jam</h4>
+                                <span class="font-11 text-muted">Lembur tervalidasi</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card bg-label-dark border-0 p-3 h-100 rounded-3">
+                                <span class="font-11 text-muted d-block mb-1">Total Akumulasi Potongan</span>
+                                <h4 class="fw-bolder text-dark mb-1 font-monospace">Rp {{ number_format($cutoffAlertData['total_deduction_combined'], 0, ',', '.') }}</h4>
+                                <span class="font-11 text-muted">Denda Terlambat + Alpa</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert {{ empty($cutoffAlertData['has_payroll_generated']) ? 'alert-secondary' : 'alert-warning' }} font-11 py-2 px-3 mb-0 d-flex align-items-center rounded-3">
+                        <i class="mdi {{ empty($cutoffAlertData['has_payroll_generated']) ? 'mdi-information-outline text-primary' : 'mdi-alert-circle text-warning' }} fs-5 me-2 flex-shrink-0"></i>
+                        @if (empty($cutoffAlertData['has_payroll_generated']))
+                            <span>Data denda &amp; presensi di atas telah otomatis diintegrasikan ke perhitungan <strong>Payroll (Penggajian)</strong> Reftech.</span>
+                        @else
+                            <span>Notifikasi ini akan tetap aktif sebagai pengingat Finance sampai batch payroll <strong>dibayar (Paid)</strong> dan <strong>dibukukan ke Finance Expense</strong>.</span>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light py-2.5 px-4 border-top d-flex justify-content-between">
+                    <button type="button" class="btn btn-label-secondary font-12 rounded-3 px-3 border-0" data-bs-dismiss="modal" onclick="dismissRecapAlert('{{ $cutoffAlertData['period']['year'] }}', '{{ $cutoffAlertData['period']['month'] }}')">
+                        Nanti Saja
+                    </button>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('hr.attendances.penalties', ['month' => $cutoffAlertData['period']['month'], 'year' => $cutoffAlertData['period']['year']]) }}" class="btn btn-outline-danger font-12 fw-bold rounded-3 px-3 shadow-xs">
+                            <i class="mdi mdi-table-eye me-1"></i> Buka Rekap Denda
+                        </a>
+                        @if (empty($cutoffAlertData['has_payroll_generated']))
+                            <a href="{{ route('hr.payrolls.index', ['month' => $cutoffAlertData['period']['month'], 'year' => $cutoffAlertData['period']['year']]) }}" class="btn btn-primary font-12 fw-bold rounded-3 px-3 shadow-xs">
+                                <i class="mdi mdi-calculator me-1"></i> Proses ke Payroll
+                            </a>
+                        @else
+                            <a href="{{ route('hr.payrolls.show', $cutoffAlertData['existing_payroll']->id) }}" class="btn btn-primary font-12 fw-bold rounded-3 px-3 shadow-xs">
+                                <i class="mdi mdi-cash-check me-1"></i> Proses Payment &amp; Expense
+                            </a>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal Alert Quick Approval Cuti / Izin Karyawan --}}
+    @if ($isLeaveAlertEligible && $leaveAlertPendingCount > 0)
+    <div class="modal fade" id="modalLeaveApprovalAlert" tabindex="-1" aria-labelledby="modalLeaveApprovalAlertLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                <div style="height: 5px; background: linear-gradient(90deg, #0ea5e9 0%, #6366f1 50%, #a855f7 100%); width: 100%;"></div>
+                
+                <div class="modal-header border-bottom py-3 px-4 bg-light d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar avatar-sm rounded-circle bg-label-info d-flex align-items-center justify-content-center">
+                            <i class="mdi mdi-calendar-check-outline text-info fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark font-15 mb-0" id="modalLeaveApprovalAlertLabel">
+                                Approval Cuti, Izin &amp; Visit Customer
+                            </h5>
+                            <span class="text-muted font-11">Terdapat <strong class="text-primary">{{ $leaveAlertPendingCount }} permohonan</strong> yang menunggu persetujuan Anda</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <div class="d-flex flex-column gap-3">
+                        @foreach ($leaveAlertPendingList as $pendingItem)
+                            @php
+                                $emp = $pendingItem->employee;
+                                $uName = $emp?->user?->name ?? ($emp?->nik ? 'Karyawan ' . $emp->nik : 'Karyawan #' . $pendingItem->employee_id);
+                                $lType = $pendingItem->leaveType;
+                                $typeBadgeColor = match($lType?->code ?? '') {
+                                    'CT' => 'primary',
+                                    'SK' => 'danger',
+                                    'VC' => 'success',
+                                    'DL' => 'info',
+                                    default => 'warning',
+                                };
+                            @endphp
+                            <div class="card border border-light-subtle shadow-none rounded-3 p-3 bg-white" style="border: 1px solid #e2e8f0 !important;">
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-2 pb-2 border-bottom">
+                                    <div class="d-flex align-items-center gap-2.5">
+                                        <div class="avatar avatar-sm rounded-circle bg-label-primary d-flex align-items-center justify-content-center fw-bold text-primary font-12">
+                                            {{ strtoupper(substr($uName, 0, 2)) }}
+                                        </div>
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-0 font-14">{{ $uName }}</h6>
+                                            <span class="text-muted font-11">{{ $emp?->department?->name ?? 'Departemen -' }} &bull; NIK: {{ $emp?->nik ?? '-' }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-label-{{ $typeBadgeColor }} rounded-pill font-11 px-2.5 py-1">
+                                            <i class="mdi mdi-tag-outline me-1"></i>{{ $lType?->name ?? 'Izin' }}
+                                        </span>
+                                        <span class="badge bg-label-dark rounded-pill font-11 px-2.5 py-1">
+                                            {{ $pendingItem->total_days }} Hari
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="row g-2 mb-2 font-12 text-secondary">
+                                    <div class="col-md-6">
+                                        <span class="d-block text-muted font-11"><i class="mdi mdi-calendar me-1"></i>Periode Tanggal:</span>
+                                        <strong class="text-dark">
+                                            {{ \Carbon\Carbon::parse($pendingItem->start_date)->translatedFormat('d M Y') }}
+                                            @if ($pendingItem->start_date != $pendingItem->end_date)
+                                                s/d {{ \Carbon\Carbon::parse($pendingItem->end_date)->translatedFormat('d M Y') }}
+                                            @endif
+                                        </strong>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <span class="d-block text-muted font-11"><i class="mdi mdi-comment-text-outline me-1"></i>Alasan:</span>
+                                        <span class="text-dark">{{ $pendingItem->reason ?: '-' }}</span>
+                                    </div>
+                                    @if ($pendingItem->attachment)
+                                    <div class="col-12 mt-1">
+                                        <a href="{{ asset($pendingItem->attachment) }}" target="_blank" class="btn btn-xs btn-label-primary rounded-pill px-2.5 py-1 font-11 text-decoration-none">
+                                            <i class="mdi mdi-paperclip me-1"></i>Lihat Surat Lampiran / Bukti
+                                        </a>
+                                    </div>
+                                    @elseif ($pendingItem->leaveType?->code === 'SK' || str_contains(strtolower($pendingItem->leaveType?->name ?? ''), 'sakit'))
+                                    <div class="col-12 mt-1">
+                                        <span class="badge bg-label-warning font-10">
+                                            <i class="mdi mdi-clock-outline me-1"></i>Surat dokter menyusul
+                                        </span>
+                                    </div>
+                                    @endif
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                    <span class="text-muted font-10">
+                                        Diajukan: {{ \Carbon\Carbon::parse($pendingItem->created_at)->diffForHumans() }}
+                                    </span>
+                                    <div class="d-flex align-items-center gap-2">
+                                        {{-- Reject Form --}}
+                                        <form action="{{ route('hr.leaves.reject', $pendingItem->id) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <input type="hidden" name="rejection_note" class="rejection-note-input" value="Ditolak oleh manajemen">
+                                            <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-3 py-1 font-11 fw-semibold btn-reject-leave" data-id="{{ $pendingItem->id }}" data-name="{{ $uName }}">
+                                                <i class="mdi mdi-close me-1"></i>Tolak
+                                            </button>
+                                        </form>
+
+                                        {{-- Approve Form --}}
+                                        <form action="{{ route('hr.leaves.approve', $pendingItem->id) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-xs btn-success rounded-pill px-3 py-1 font-11 fw-bold shadow-xs">
+                                                <i class="mdi mdi-check me-1"></i>Setujui
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light py-2.5 px-4 border-top d-flex justify-content-between">
+                    <a href="{{ route('hr.leaves.index', ['tab' => 'alert_settings']) }}" class="btn btn-label-secondary font-12 rounded-3 px-3">
+                        <i class="mdi mdi-cog-outline me-1"></i> Atur Penerima Alert
+                    </a>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-label-secondary font-12 rounded-3 px-3" data-bs-dismiss="modal">Tutup</button>
+                        <a href="{{ route('hr.leaves.index') }}" class="btn btn-primary font-12 fw-bold rounded-3 px-3 shadow-xs">
+                            <i class="mdi mdi-format-list-bulleted me-1"></i> Buka Manajemen Cuti
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Modal Alert Quick Approval Reimbursement Karyawan --}}
+    @if ($isFinanceOrHrRole && isset($pendingReimbursementsNotif) && $pendingReimbursementsNotif->count() > 0)
+    <div class="modal fade" id="modalReimbursementApprovalAlert" tabindex="-1" aria-labelledby="modalReimbursementApprovalAlertLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                <div style="height: 5px; background: linear-gradient(90deg, #f59e0b 0%, #ec4899 50%, #8b5cf6 100%); width: 100%;"></div>
+                
+                <div class="modal-header border-bottom py-3 px-4 bg-light d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar avatar-sm rounded-circle bg-label-warning d-flex align-items-center justify-content-center">
+                            <i class="mdi mdi-receipt-text-clock-outline text-warning fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark font-15 mb-0" id="modalReimbursementApprovalAlertLabel">
+                                Review &amp; Approval Klaim Reimbursement
+                            </h5>
+                            <span class="text-muted font-11">Terdapat <strong class="text-warning">{{ $unreadReimbursementCount }} klaim biaya</strong> menunggu verifikasi / persetujuan Finance</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <div class="d-flex flex-column gap-3">
+                        @foreach ($pendingReimbursementsNotif as $claimItem)
+                            @php
+                                $emp = $claimItem->employee;
+                                $uName = $emp?->user?->name ?? ($emp?->nik ? 'Karyawan ' . $emp->nik : 'Karyawan #' . $claimItem->employee_id);
+                            @endphp
+                            <div class="card border border-light-subtle shadow-none rounded-3 p-3 bg-white" style="border: 1px solid #e2e8f0 !important;">
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-2 pb-2 border-bottom">
+                                    <div class="d-flex align-items-center gap-2.5">
+                                        <div class="avatar avatar-sm rounded-circle bg-label-warning d-flex align-items-center justify-content-center fw-bold text-warning font-12">
+                                            {{ strtoupper(substr($uName, 0, 2)) }}
+                                        </div>
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-0 font-14">{{ $uName }}</h6>
+                                            <span class="text-muted font-11">{{ $emp?->department?->name ?? 'Departemen -' }} &bull; NIK: {{ $emp?->nik ?? '-' }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-label-primary rounded-pill font-11 px-2.5 py-1">
+                                            <i class="mdi mdi-tag-outline me-1"></i>{{ $claimItem->claim_type }}
+                                        </span>
+                                        <span class="badge bg-label-dark font-monospace rounded-pill font-11 px-2.5 py-1">
+                                            {{ $claimItem->claim_number }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="row g-2 mb-2 font-12 text-secondary">
+                                    <div class="col-md-6">
+                                        <span class="d-block text-muted font-11"><i class="mdi mdi-calendar-blank-outline me-1"></i>Tanggal Nota:</span>
+                                        <strong class="text-dark">
+                                            {{ \Carbon\Carbon::parse($claimItem->event_date)->translatedFormat('d M Y') }}
+                                        </strong>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <span class="d-block text-muted font-11"><i class="mdi mdi-cash-multiple me-1"></i>Nominal Klaim:</span>
+                                        <strong class="text-success fs-6">
+                                            Rp {{ number_format($claimItem->amount, 0, ',', '.') }}
+                                        </strong>
+                                    </div>
+                                    <div class="col-12">
+                                        <span class="d-block text-muted font-11"><i class="mdi mdi-text-box-outline me-1"></i>Keperluan / Keterangan:</span>
+                                        <span class="text-dark">{{ $claimItem->description ?: '-' }}</span>
+                                    </div>
+                                    @if ($claimItem->receipt_image)
+                                    <div class="col-12 mt-1">
+                                        <a href="{{ asset($claimItem->receipt_image) }}" target="_blank" class="btn btn-xs btn-label-primary rounded-pill px-2.5 py-1 font-11 text-decoration-none d-inline-flex align-items-center gap-1">
+                                            <i class="mdi mdi-receipt-text-outline"></i>Lihat Foto Struk / Nota Pembayaran
+                                        </a>
+                                    </div>
+                                    @endif
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                    <span class="text-muted font-10">
+                                        Diajukan: {{ \Carbon\Carbon::parse($claimItem->created_at)->diffForHumans() }}
+                                    </span>
+                                    <div class="d-flex align-items-center gap-2">
+                                        {{-- Reject Form --}}
+                                        <form action="{{ route('hr.reimbursements.reject', $claimItem->id) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <input type="hidden" name="rejection_reason" class="rejection-reason-input" value="Ditolak oleh finance">
+                                            <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-3 py-1 font-11 fw-semibold btn-reject-reimbursement" data-id="{{ $claimItem->id }}" data-num="{{ $claimItem->claim_number }}" data-name="{{ $uName }}">
+                                                <i class="mdi mdi-close me-1"></i>Tolak
+                                            </button>
+                                        </form>
+
+                                        {{-- Approve Form --}}
+                                        <form action="{{ route('hr.reimbursements.approve', $claimItem->id) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-xs btn-success rounded-pill px-3 py-1 font-11 fw-bold shadow-xs">
+                                                <i class="mdi mdi-check me-1"></i>Setujui
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light py-2.5 px-4 border-top d-flex justify-content-between">
+                    <span class="text-muted font-11">Pencairan dana langsung dapat diposting ke Finance Expense di modul HR</span>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-label-secondary font-12 rounded-3 px-3" data-bs-dismiss="modal">Tutup</button>
+                        <a href="{{ route('hr.reimbursements.index') }}" class="btn btn-warning text-dark font-12 fw-bold rounded-3 px-3 shadow-xs">
+                            <i class="mdi mdi-format-list-bulleted me-1"></i> Buka Modul Reimbursement
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+    @endif
+
     <script>
+        function dismissRecapAlert(year, month) {
+            try {
+                sessionStorage.setItem('reftech_cutoff_recap_dismissed_' + year + '_' + month, '1');
+            } catch (e) {}
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
+            // Auto Popup Modal Rekap Denda Cutoff Jam 09:00 (seperti SUO / Tool Audit)
+            @if ($cutoffAlertData && !empty($cutoffAlertData['period']['is_recap_ready']) && empty($cutoffAlertData['is_fully_completed']))
+                (function() {
+                    var y = '{{ $cutoffAlertData['period']['year'] }}';
+                    var m = '{{ $cutoffAlertData['period']['month'] }}';
+                    var dismissed = sessionStorage.getItem('reftech_cutoff_recap_dismissed_' + y + '_' + m);
+                    if (!dismissed) {
+                        var modalEl = document.getElementById('modalAttendanceCutoffRecapAlert');
+                        if (modalEl) {
+                            setTimeout(function() {
+                                var bsAlertModal = new bootstrap.Modal(modalEl);
+                                bsAlertModal.show();
+                            }, 800);
+                        }
+                    }
+                })();
+            @endif
+
+            // Quick Rejection Handler for Leave Approval Modal
+            document.querySelectorAll('.btn-reject-leave').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var empName = this.getAttribute('data-name');
+                    var form = this.closest('form');
+                    var noteInput = form ? form.querySelector('.rejection-note-input') : null;
+
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Tolak Pengajuan Cuti / Izin?',
+                            text: 'Masukkan alasan penolakan untuk ' + empName + ':',
+                            input: 'textarea',
+                            inputPlaceholder: 'Tuliskan alasan penolakan di sini...',
+                            inputAttributes: {
+                                'aria-label': 'Alasan penolakan'
+                            },
+                            showCancelButton: true,
+                            confirmButtonColor: '#ef4444',
+                            cancelButtonColor: '#64748b',
+                            confirmButtonText: '<i class="mdi mdi-close me-1"></i>Ya, Tolak',
+                            cancelButtonText: 'Batal',
+                            inputValidator: function(value) {
+                                if (!value || !value.trim()) {
+                                    return 'Alasan penolakan wajib diisi!';
+                                }
+                            }
+                        }).then(function(result) {
+                            if (result.isConfirmed && noteInput) {
+                                noteInput.value = result.value;
+                                form.submit();
+                            }
+                        });
+                    } else {
+                        var reason = prompt('Masukkan alasan penolakan untuk ' + empName + ':');
+                        if (reason && reason.trim() && noteInput) {
+                            noteInput.value = reason;
+                            form.submit();
+                        }
+                    }
+                });
+            });
+
+            // Quick Rejection Handler for Reimbursement Approval Modal
+            document.querySelectorAll('.btn-reject-reimbursement').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var empName = this.getAttribute('data-name');
+                    var claimNum = this.getAttribute('data-num');
+                    var form = this.closest('form');
+                    var noteInput = form ? form.querySelector('.rejection-reason-input') : null;
+
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Tolak Klaim Reimbursement?',
+                            text: 'Masukkan alasan penolakan untuk klaim ' + claimNum + ' (' + empName + '):',
+                            input: 'textarea',
+                            inputPlaceholder: 'Tuliskan alasan penolakan di sini...',
+                            showCancelButton: true,
+                            confirmButtonColor: '#ef4444',
+                            cancelButtonColor: '#64748b',
+                            confirmButtonText: '<i class="mdi mdi-close me-1"></i>Ya, Tolak',
+                            cancelButtonText: 'Batal',
+                            inputValidator: function(value) {
+                                if (!value || !value.trim()) {
+                                    return 'Alasan penolakan wajib diisi!';
+                                }
+                            }
+                        }).then(function(result) {
+                            if (result.isConfirmed && noteInput) {
+                                noteInput.value = result.value;
+                                form.submit();
+                            }
+                        });
+                    } else {
+                        var reason = prompt('Masukkan alasan penolakan untuk klaim ' + claimNum + ':');
+                        if (reason && reason.trim() && noteInput) {
+                            noteInput.value = reason;
+                            form.submit();
+                        }
+                    }
+                });
+            });
+
+            // Auto Live Polling Background untuk Reimbursement & Leave Request (Realtime tanpa reload halaman)
+            @if (Auth::check() && ($isFinanceOrHrRole || $isLeaveAlertEligible))
+            (function() {
+                var pendingCheckUrl = '{{ route('hr.notifications.pending-check') }}';
+                setInterval(function() {
+                    fetch(pendingCheckUrl, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (!data) return;
+
+                        // Update Bell Dot
+                        var bellDot = document.getElementById('navbarBellDot');
+                        if (bellDot && data.total > 0) {
+                            bellDot.classList.remove('d-none');
+                        }
+
+                        // Update Reimbursement Pill & Badge
+                        var reimbBadge = document.getElementById('navReimbursementAlertBadge');
+                        var reimbItem = document.getElementById('navReimbursementAlertItem');
+                        if (data.reimbursements > 0) {
+                            if (reimbBadge) reimbBadge.textContent = data.reimbursements;
+                            if (reimbItem) reimbItem.classList.remove('d-none');
+                        }
+
+                        // Update Leave Pill & Badge
+                        var leaveBadge = document.getElementById('navLeaveAlertBadge');
+                        var leaveItem = document.getElementById('navLeaveAlertItem');
+                        if (data.leaves > 0) {
+                            if (leaveBadge) leaveBadge.textContent = data.leaves;
+                            if (leaveItem) leaveItem.classList.remove('d-none');
+                        }
+                    })
+                    .catch(function(err) {});
+                }, 30000); // Polling background otomatis setiap 30 detik
+            })();
+            @endif
+
             // 1. Device Token (UUID) Management
             function getOrCreateDeviceId() {
                 var key = 'reftech_attendance_device_uuid';
@@ -1727,13 +3051,25 @@
             if (outDev) outDev.value = deviceId;
             if (outInfo) outInfo.value = deviceInfo;
 
-            // 1.5 Validasi Keamanan Pra-Clock In (WiFi & Device Lock)
+            // 1.5 Validasi Keamanan Pra-Clock In (Earliest Time, WiFi & Device Lock)
             var isWifiBlockedInitially = {{ ($navIsWifiRestrictionEnabled && !$navIsWifiVerified) ? 'true' : 'false' }};
+            var isEarlyBlockedInitially = {{ $navIsBeforeEarliest ? 'true' : 'false' }};
             function verifyClockInEligibility() {
                 var btn = document.getElementById('btnSubmitNavClockIn');
                 var deviceAlert = document.getElementById('navClockInDeviceAlert');
                 var deviceAlertText = document.getElementById('navClockInDeviceAlertText');
                 var wifiAlert = document.getElementById('navClockInWifiAlert');
+                var earlyAlert = document.getElementById('navClockInEarlyAlert');
+                var earlyAlertText = document.getElementById('navClockInEarlyAlertText');
+
+                if (isEarlyBlockedInitially) {
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.classList.add('disabled');
+                        btn.setAttribute('title', 'Presensi masuk belum dibuka.');
+                    }
+                    if (earlyAlert) earlyAlert.classList.remove('d-none');
+                }
 
                 if (isWifiBlockedInitially) {
                     if (btn) {
@@ -1759,7 +3095,12 @@
                             btn.classList.add('disabled');
                             btn.setAttribute('title', data.message || 'Presensi tidak dapat dilakukan.');
                         }
-                        if (data.type === 'device_error') {
+                        if (data.type === 'early_clockin_blocked') {
+                            if (earlyAlert && earlyAlertText) {
+                                earlyAlertText.textContent = data.message;
+                                earlyAlert.classList.remove('d-none');
+                            }
+                        } else if (data.type === 'device_error') {
                             if (deviceAlert && deviceAlertText) {
                                 deviceAlertText.textContent = data.message;
                                 deviceAlert.classList.remove('d-none');
@@ -1777,6 +3118,7 @@
                             }
                         }
                     } else {
+                        if (earlyAlert) earlyAlert.classList.add('d-none');
                         if (deviceAlert) deviceAlert.classList.add('d-none');
                         if (wifiAlert) wifiAlert.classList.add('d-none');
                         if (btn) {
@@ -1865,7 +3207,47 @@
                 });
             }
 
-            // 4. Loading state & Snapshot capture on submit
+            // 4. Loading state & Snapshot capture on submit & AJAX Seamless Flow
+            window.testSimulateClockIn = function(type) {
+                var clockInModalEl = document.getElementById('navClockInModal');
+                if (clockInModalEl) {
+                    var modalInstance = bootstrap.Modal.getInstance(clockInModalEl);
+                    if (modalInstance) modalInstance.hide();
+                }
+
+                if (type === 'on_time') {
+                    var onTimeEl = document.getElementById('modalClockInFeedbackOnTime');
+                    if (onTimeEl) {
+                        var cEl = document.getElementById('feedbackOnTimeClock');
+                        var sEl = document.getElementById('feedbackOnTimeStatus');
+                        var pEl = document.getElementById('feedbackOnTimePenalty');
+                        var wEl = document.getElementById('feedbackOnTimeWorkType');
+                        if (cEl) cEl.textContent = '07:52 WIB';
+                        if (sEl) sEl.textContent = 'Tepat Waktu (Disiplin)';
+                        if (pEl) pEl.textContent = 'Rp 0 (Bebas Denda)';
+                        if (wEl) wEl.textContent = 'WFO (Kantor)';
+                        var m = new bootstrap.Modal(onTimeEl);
+                        m.show();
+                    }
+                } else {
+                    var lateEl = document.getElementById('modalClockInFeedbackLate');
+                    if (lateEl) {
+                        var mEl = document.getElementById('feedbackLateMinutes');
+                        var cntEl = document.getElementById('feedbackLateCount');
+                        var clkEl = document.getElementById('feedbackLateClock');
+                        var penEl = document.getElementById('feedbackLatePenalty');
+                        var lblEl = document.getElementById('feedbackLateStatusLabel');
+                        if (mEl) mEl.textContent = '15';
+                        if (cntEl) cntEl.textContent = '1';
+                        if (clkEl) clkEl.textContent = '08:15 WIB';
+                        if (penEl) penEl.textContent = 'Rp 50.000';
+                        if (lblEl) lblEl.textContent = 'Terlambat ke-1 di bulan ini (Denda Tier 1 Rp 50.000)';
+                        var m = new bootstrap.Modal(lateEl);
+                        m.show();
+                    }
+                }
+            };
+
             var formIn = document.getElementById('navClockInForm');
             if (formIn) {
                 formIn.addEventListener('submit', function(e) {
@@ -1902,10 +3284,99 @@
                         }
                     }
 
+                    // AJAX Submit Flow (Tanpa redirect reload halaman portal)
+                    e.preventDefault();
+
                     if (btn) {
                         btn.disabled = true;
-                        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Mencatat Presensi &amp; Membuka Portal...';
+                        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Memproses Presensi...';
                     }
+
+                    var formData = new FormData(formIn);
+                    fetch(formIn.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(function(res) {
+                        return res.json().then(function(data) {
+                            return { status: res.status, ok: res.ok, data: data };
+                        });
+                    })
+                    .then(function(result) {
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="mdi mdi-clock-in fs-5"></i> <span>Konfirmasi Clock In</span>';
+                        }
+
+                        if (!result.ok || !result.data.success) {
+                            alert(result.data.message || 'Gagal melakukan presensi. Silakan coba kembali.');
+                            return;
+                        }
+
+                        // Close clock in modal
+                        var clockInModalEl = document.getElementById('navClockInModal');
+                        if (clockInModalEl) {
+                            var modalInst = bootstrap.Modal.getInstance(clockInModalEl);
+                            if (modalInst) modalInst.hide();
+                        }
+
+                        var data = result.data;
+                        if (data.is_on_time) {
+                            // Tepat Waktu -> Buka feedback modal On-Time
+                            var onTimeEl = document.getElementById('modalClockInFeedbackOnTime');
+                            if (onTimeEl) {
+                                var cEl = document.getElementById('feedbackOnTimeClock');
+                                var sEl = document.getElementById('feedbackOnTimeStatus');
+                                var pEl = document.getElementById('feedbackOnTimePenalty');
+                                var wEl = document.getElementById('feedbackOnTimeWorkType');
+                                if (cEl) cEl.textContent = data.clock_in_time_formatted || 'Tercatat';
+                                if (sEl) sEl.textContent = data.status_label || 'Tepat Waktu';
+                                if (pEl) pEl.textContent = data.penalty_formatted ? data.penalty_formatted + ' (Bebas Denda)' : 'Rp 0 (Bebas Denda)';
+                                if (wEl) wEl.textContent = data.work_type || 'WFO';
+                                var m = new bootstrap.Modal(onTimeEl);
+                                m.show();
+                            }
+                        } else {
+                            // Terlambat -> Buka feedback modal Late
+                            var lateEl = document.getElementById('modalClockInFeedbackLate');
+                            if (lateEl) {
+                                var mEl = document.getElementById('feedbackLateMinutes');
+                                var cntEl = document.getElementById('feedbackLateCount');
+                                var clkEl = document.getElementById('feedbackLateClock');
+                                var penEl = document.getElementById('feedbackLatePenalty');
+                                var lblEl = document.getElementById('feedbackLateStatusLabel');
+                                if (mEl) mEl.textContent = data.late_minutes;
+                                if (cntEl) cntEl.textContent = data.late_count;
+                                if (clkEl) clkEl.textContent = data.clock_in_time_formatted;
+                                if (penEl) penEl.textContent = data.penalty_formatted;
+                                if (lblEl) lblEl.textContent = data.status_label;
+                                var m = new bootstrap.Modal(lateEl);
+                                m.show();
+                            }
+                        }
+
+                        // Update Clock In button in navbar live to "Masuk: XX:XX WIB"
+                        var navClockInBtn = document.querySelector('[data-bs-target="#navClockInModal"]');
+                        if (navClockInBtn) {
+                            navClockInBtn.outerHTML = '<button type="button" class="btn btn-sm btn-label-success rounded-pill px-3 py-1 d-flex align-items-center shadow-xs" title="Presensi Masuk Tercatat">' +
+                                '<i class="mdi mdi-clock-check-outline me-1 text-success"></i>' +
+                                '<span class="fw-bold d-none d-sm-inline">Masuk: ' + (data.clock_in_time_formatted || 'Tercatat') + '</span>' +
+                                '<span class="fw-bold d-inline d-sm-none">Hadir</span>' +
+                            '</button>';
+                        }
+                    })
+                    .catch(function(err) {
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="mdi mdi-clock-in fs-5"></i> <span>Konfirmasi Clock In</span>';
+                        }
+                        console.error('Clock In AJAX Error:', err);
+                        alert('Terjadi kesalahan saat memproses presensi. Silakan coba kembali.');
+                    });
                 });
             }
 
@@ -1915,12 +3386,415 @@
                     var btn = document.getElementById('btnSubmitNavClockOut');
                     if (btn) {
                         btn.disabled = true;
-                        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Mencatat Clock Out &amp; Membuka Portal...';
+                        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Mencatat Clock Out...';
                     }
                 });
             }
+
+            // 5. Auto-prompt Clock In Modal on first login/visit on Weekdays (Monday - Friday)
+            @php
+                $isWeekday = \Carbon\Carbon::today('Asia/Jakarta')->isWeekday();
+                $hasClockedInToday = $navModalAtt && !empty($navModalAtt->clock_in);
+                $todayDateKey = \Carbon\Carbon::today('Asia/Jakarta')->toDateString();
+            @endphp
+
+            @if ($isWeekday && !$hasClockedInToday)
+                (function() {
+                    var todayKey = 'clock_in_auto_prompted_{{ Auth::id() }}_{{ $todayDateKey }}';
+                    var hasPrompted = sessionStorage.getItem(todayKey);
+
+                    if (!hasPrompted) {
+                        // Mark as prompted in this session so navigating pages does not re-open the modal
+                        sessionStorage.setItem(todayKey, '1');
+
+                        var triggerAutoClockIn = function() {
+                            setTimeout(function() {
+                                // Anti-collision 1: Skip if any other modal is already showing
+                                if (document.querySelector('.modal.show')) {
+                                    return;
+                                }
+
+                                // Anti-collision 2: Skip on print, document sign, or maintenance views
+                                var path = window.location.pathname;
+                                if (path.includes('/print') || path.includes('/sign/') || path.includes('/under-maintenance')) {
+                                    return;
+                                }
+
+                                // Open Clock In modal safely
+                                var clockInModalEl = document.getElementById('navClockInModal');
+                                if (clockInModalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                    var modalInstance = bootstrap.Modal.getInstance(clockInModalEl) || new bootstrap.Modal(clockInModalEl);
+                                    modalInstance.show();
+                                }
+                            }, 800);
+                        };
+
+                        if (document.readyState === 'complete') {
+                            triggerAutoClockIn();
+                        } else {
+                            window.addEventListener('load', triggerAutoClockIn);
+                        }
+                    }
+                })();
+            @endif
         });
     </script>
+@endif
+
+{{-- Modal & Notifikasi Ucapan Jam Pulang Otomatis (All Roles / Karyawan) --}}
+@if (Auth::check())
+    @php
+        $navAttSettings = \Illuminate\Support\Facades\DB::table('hr_attendance_settings')->pluck('value', 'key')->toArray();
+        $navIsGreetingEnabled = ($navAttSettings['is_clock_out_greeting_enabled'] ?? '1') === '1';
+        $navGreetingTitle = $navAttSettings['clock_out_greeting_title'] ?? 'Terima Kasih Atas Kerja Keras Hari Ini! 🎉';
+        $navGreetingMessage = $navAttSettings['clock_out_greeting_message'] ?? 'Jam kerja operasional kantor hari ini telah selesai. Selamat beristirahat, nikmati waktu berkualitas bersama keluarga, dan sampai jumpa besok!';
+        $navAutoOutTime = $navAttSettings['auto_clock_out_time'] ?? '17:00';
+        
+        $navCurrentTimeJakarta = \Carbon\Carbon::now('Asia/Jakarta');
+        $navIsAfterClockOutTime = $navCurrentTimeJakarta->format('H:i') >= $navAutoOutTime;
+        $navTodayDateKey = $navCurrentTimeJakarta->toDateString();
+
+        $navUserEmployee = Auth::user()->employee;
+        $navUserAttToday = $navUserEmployee 
+            ? \App\Models\Hr\HrAttendance::where('employee_id', $navUserEmployee->id)->whereDate('date', $navTodayDateKey)->first()
+            : null;
+        $navHasClockedIn = $navUserAttToday && !empty($navUserAttToday->clock_in);
+        $navHasClockedOut = $navUserAttToday && !empty($navUserAttToday->clock_out);
+    @endphp
+
+    @if ($navIsGreetingEnabled)
+        <!-- Modal Ucapan Jam Pulang (Clock Out Greeting Modal - Prospect Style) -->
+        <style>
+            @keyframes clockoutShimmer {
+                0% { background-position: -200% 0; }
+                100% { background-position: 200% 0; }
+            }
+            #modalClockOutGreeting {
+                z-index: 1095 !important;
+            }
+            #modalClockOutGreeting .modal-dialog {
+                max-width: 550px;
+                margin: 1.75rem auto;
+            }
+            #modalClockOutGreeting .modal-content {
+                border-radius: 20px !important;
+                border: 0 !important;
+                box-shadow: 0 25px 60px rgba(0, 0, 0, 0.28) !important;
+                overflow: hidden;
+                background: #ffffff;
+            }
+            html.dark-style #modalClockOutGreeting .modal-content {
+                background: #2b2c40 !important;
+                border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7) !important;
+                color: #e4e6f0;
+            }
+            #modalClockOutGreeting .clockout-top-stripe {
+                height: 5px;
+                background: linear-gradient(90deg, #f59e0b 0%, #ec4899 50%, #6366f1 100%);
+                background-size: 200% 100%;
+                animation: clockoutShimmer 3s ease-in-out infinite;
+                width: 100%;
+            }
+            .clockout-hero-halo {
+                width: 76px;
+                height: 76px;
+                border-radius: 50%;
+                background: radial-gradient(circle, rgba(245, 158, 11, 0.22) 0%, rgba(245, 158, 11, 0.04) 70%, transparent 100%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .clockout-hero-inner {
+                width: 52px;
+                height: 52px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                color: #ffffff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 6px 18px rgba(245, 158, 11, 0.4);
+            }
+            #modalClockOutGreeting .clockout-detail-card {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 14px;
+                overflow: hidden;
+            }
+            html.dark-style #modalClockOutGreeting .clockout-detail-card {
+                background: #32344d;
+                border-color: #3f4262;
+            }
+            #modalClockOutGreeting .clockout-card-header {
+                background: #ffffff;
+                border-bottom: 1px solid #edf0f5;
+                padding: 11px 16px;
+            }
+            html.dark-style #modalClockOutGreeting .clockout-card-header {
+                background: #2b2c40;
+                border-bottom-color: #3f4262;
+            }
+            #modalClockOutGreeting .clockout-card-body {
+                padding: 12px 16px;
+            }
+            #modalClockOutGreeting .clockout-info-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 7px 0;
+                border-bottom: 1px dashed #e2e8f0;
+            }
+            html.dark-style #modalClockOutGreeting .clockout-info-row {
+                border-bottom-color: #434665;
+            }
+            #modalClockOutGreeting .clockout-info-row:last-child {
+                border-bottom: none;
+                padding-bottom: 0;
+            }
+            #modalClockOutGreeting .clockout-info-label {
+                font-size: 0.815rem;
+                color: #64748b;
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            html.dark-style #modalClockOutGreeting .clockout-info-label {
+                color: #a1a4b8;
+            }
+            #modalClockOutGreeting .clockout-info-val {
+                font-size: 0.865rem;
+                font-weight: 600;
+                color: #1e293b;
+                text-align: right;
+                max-width: 68%;
+            }
+            html.dark-style #modalClockOutGreeting .clockout-info-val {
+                color: #f1f5f9;
+            }
+            #modalClockOutGreeting .clockout-guide-card {
+                background: #fffbeb;
+                border: 1px solid #fef3c7;
+                border-radius: 12px;
+                padding: 10px 14px;
+            }
+            html.dark-style #modalClockOutGreeting .clockout-guide-card {
+                background: #3b2a1a;
+                border-color: #573c23;
+            }
+            #modalClockOutGreeting .btn-action-clockout {
+                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                border: none;
+                color: #ffffff;
+                font-weight: 600;
+                font-size: 0.9rem;
+                padding: 10px 20px;
+                border-radius: 12px;
+                box-shadow: 0 4px 14px rgba(245, 158, 11, 0.38);
+                transition: all 0.2s ease;
+            }
+            #modalClockOutGreeting .btn-action-clockout:hover {
+                background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+                color: #ffffff;
+                box-shadow: 0 6px 18px rgba(245, 158, 11, 0.48);
+                transform: translateY(-1px);
+            }
+            #modalClockOutGreeting .btn-dismiss-clockout {
+                background: #f1f5f9;
+                color: #475569;
+                border: 1px solid #e2e8f0;
+                font-weight: 600;
+                font-size: 0.88rem;
+                padding: 10px 18px;
+                border-radius: 12px;
+                transition: all 0.15s ease;
+            }
+            #modalClockOutGreeting .btn-dismiss-clockout:hover {
+                background: #e2e8f0;
+                color: #1e293b;
+            }
+            html.dark-style #modalClockOutGreeting .btn-dismiss-clockout {
+                background: #334155;
+                color: #e2e8f0;
+                border-color: #475569;
+            }
+            html.dark-style #modalClockOutGreeting .btn-dismiss-clockout:hover {
+                background: #475569;
+                color: #ffffff;
+            }
+        </style>
+
+        <div class="modal fade" id="modalClockOutGreeting" tabindex="-1" aria-labelledby="modalClockOutGreetingLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0">
+                    <!-- Top Accent Gradient Line -->
+                    <div class="clockout-top-stripe"></div>
+
+                    <div class="modal-body p-4 pt-3">
+                        <!-- Top Status Badge & Close Button -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="badge rounded-pill px-3 py-1 text-uppercase fw-bold" style="background: rgba(245, 158, 11, 0.12); color: #d97706; font-size: 0.75rem; letter-spacing: 0.5px;">
+                                <i class="mdi mdi-weather-sunset-down me-1"></i> JAM PULANG KANTOR &bull; {{ $navAutoOutTime }} WIB
+                            </span>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+
+                        <!-- Hero Icon Halo & Centered Titles -->
+                        <div class="text-center mb-3">
+                            <div class="clockout-hero-halo mx-auto mb-2">
+                                <div class="clockout-hero-inner">
+                                    <i class="mdi mdi-party-popper fs-2"></i>
+                                </div>
+                            </div>
+
+                            <h4 class="modal-title fw-bold text-dark mb-1" id="modalClockOutGreetingTitle" style="letter-spacing: -0.3px;">
+                                {{ $navGreetingTitle }}
+                            </h4>
+                            <p class="text-muted small mb-0 px-2" style="line-height: 1.55;">
+                                Jam operasional kantor hari ini telah selesai. Terima kasih atas dedikasi dan kerja keras Anda hari ini!
+                            </p>
+                        </div>
+
+                        <!-- Card 1: Structured Detail Card -->
+                        <div class="clockout-detail-card mb-3">
+                            <div class="clockout-card-header d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-2 text-truncate pe-2">
+                                    @if (Auth::user()->image && file_exists(public_path(Auth::user()->image)))
+                                        <img src="{{ asset(Auth::user()->image) }}" class="rounded-circle flex-shrink-0" style="width: 28px; height: 28px; object-fit: cover;" alt="{{ Auth::user()->name }}">
+                                    @else
+                                        <span class="badge rounded-circle p-2 bg-label-warning flex-shrink-0" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">
+                                            <i class="mdi mdi-account-circle-outline fs-6"></i>
+                                        </span>
+                                    @endif
+                                    <span class="fw-bold text-dark text-truncate" style="font-size: 0.9rem;" title="{{ Auth::user()->name }}">
+                                        {{ Auth::user()->name }}
+                                    </span>
+                                </div>
+                                <span class="text-muted flex-shrink-0" style="font-size: 0.76rem;">
+                                    <i class="mdi mdi-calendar-today me-1"></i>{{ \Carbon\Carbon::now('Asia/Jakarta')->isoFormat('D MMM Y') }}
+                                </span>
+                            </div>
+                            <div class="clockout-card-body">
+                                <div class="clockout-info-row">
+                                    <span class="clockout-info-label">
+                                        <i class="mdi mdi-badge-account-horizontal-outline text-primary fs-6"></i> Jabatan / Divisi
+                                    </span>
+                                    <span class="clockout-info-val text-truncate">
+                                        {{ $navUserEmployee->position->name ?? ($navUserEmployee->department->name ?? (Auth::user()->role ?? 'Staff')) }}
+                                    </span>
+                                </div>
+                                <div class="clockout-info-row">
+                                    <span class="clockout-info-label">
+                                        <i class="mdi mdi-clock-check-outline text-success fs-6"></i> Presensi Hari Ini
+                                    </span>
+                                    <span class="clockout-info-val">
+                                        @if ($navHasClockedOut)
+                                            <span class="badge bg-label-success fw-bold font-11"><i class="mdi mdi-check-all me-1"></i>Pulang: {{ substr($navUserAttToday->clock_out, 0, 5) }} WIB</span>
+                                        @elseif ($navHasClockedIn)
+                                            <span class="badge bg-label-warning text-dark fw-bold font-11"><i class="mdi mdi-clock-alert-outline me-1"></i>Masuk: {{ substr($navUserAttToday->clock_in, 0, 5) }} (Belum Pulang)</span>
+                                        @else
+                                            <span class="badge bg-label-secondary font-11">Tidak Ada Presensi</span>
+                                        @endif
+                                    </span>
+                                </div>
+                                <div class="clockout-info-row">
+                                    <span class="clockout-info-label">
+                                        <i class="mdi mdi-format-quote-open text-warning fs-6"></i> Pesan Apresiasi
+                                    </span>
+                                    <span class="clockout-info-val text-muted text-start font-12 fw-normal" id="modalClockOutGreetingMessage" style="max-width: 65%; line-height: 1.45;">
+                                        {{ $navGreetingMessage }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Guidance Notice -->
+                        <div class="clockout-guide-card d-flex align-items-center gap-2 mb-3">
+                            <i class="mdi mdi-shield-heart text-danger fs-5 flex-shrink-0"></i>
+                            <div class="small text-dark" style="font-size: 0.8rem; line-height: 1.45;">
+                                Hati-hati di perjalanan pulang, utamakan keselamatan diri, dan nikmati waktu istirahat berkualitas bersama keluarga tercinta.
+                            </div>
+                        </div>
+
+                        <!-- Actions Footer -->
+                        <div class="d-flex align-items-center gap-2 pt-1">
+                            @if ($navUserEmployee && $navUserEmployee->can_online_attendance && $navHasClockedIn && !$navHasClockedOut)
+                                <button type="button" class="btn btn-dismiss-clockout flex-grow-1" data-bs-dismiss="modal">
+                                    Tutup
+                                </button>
+                                <button type="button" class="btn btn-action-clockout flex-grow-1 d-flex align-items-center justify-content-center gap-1.5" onclick="triggerClockOutFromGreeting()">
+                                    <i class="mdi mdi-clock-out fs-5"></i>
+                                    <span>Clock Out Sekarang</span>
+                                </button>
+                            @else
+                                <button type="button" class="btn btn-action-clockout w-100 d-flex align-items-center justify-content-center gap-1.5" data-bs-dismiss="modal">
+                                    <i class="mdi mdi-check-circle-outline fs-5"></i>
+                                    <span>Terima Kasih &amp; Selamat Beristirahat</span>
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function triggerClockOutFromGreeting() {
+                var greetingEl = document.getElementById('modalClockOutGreeting');
+                if (greetingEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    var greetingInstance = bootstrap.Modal.getInstance(greetingEl);
+                    if (greetingInstance) greetingInstance.hide();
+                }
+
+                setTimeout(function() {
+                    var clockOutModalEl = document.getElementById('navClockOutModal');
+                    if (clockOutModalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        var outInstance = bootstrap.Modal.getInstance(clockOutModalEl) || new bootstrap.Modal(clockOutModalEl);
+                        outInstance.show();
+                    }
+                }, 400);
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                @if ($navIsAfterClockOutTime)
+                    (function() {
+                        var greetingKey = 'clock_out_greeting_shown_{{ Auth::id() }}_{{ $navTodayDateKey }}';
+                        var hasShownGreeting = sessionStorage.getItem(greetingKey);
+
+                        if (!hasShownGreeting) {
+                            sessionStorage.setItem(greetingKey, '1');
+
+                            var triggerGreetingModal = function() {
+                                setTimeout(function() {
+                                    // Collision check: do not interrupt open modals or print/sign routes
+                                    if (document.querySelector('.modal.show')) {
+                                        return;
+                                    }
+                                    var path = window.location.pathname;
+                                    if (path.includes('/print') || path.includes('/sign/') || path.includes('/under-maintenance')) {
+                                        return;
+                                    }
+
+                                    var greetingEl = document.getElementById('modalClockOutGreeting');
+                                    if (greetingEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                        var modalInstance = bootstrap.Modal.getInstance(greetingEl) || new bootstrap.Modal(greetingEl);
+                                        modalInstance.show();
+                                    }
+                                }, 900);
+                            };
+
+                            if (document.readyState === 'complete') {
+                                triggerGreetingModal();
+                            } else {
+                                window.addEventListener('load', triggerGreetingModal);
+                            }
+                        }
+                    })();
+                @endif
+            });
+        </script>
+    @endif
 @endif
 
 @if (Auth::check())

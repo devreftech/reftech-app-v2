@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Hr;
 
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
+use App\Models\HrAttendance;
 use App\Models\HrLeaveBalance;
 use App\Models\HrLeaveRequest;
 use App\Models\HrLeaveType;
+use App\Models\Hr\HrHoliday;
+use App\Services\Hr\LeaveAlertService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -55,6 +58,11 @@ class LeaveController extends Controller
         $availableYears = array_unique(array_merge([(int)date('Y'), (int)date('Y') + 1], $balanceYears, $requestYears));
         rsort($availableYears);
 
+        // Alert & Approval Recipient Settings
+        $alertSettings = LeaveAlertService::getSettings();
+        $availableAlertRoles = LeaveAlertService::getAllAvailableRoles();
+        $allEligibleUsers = LeaveAlertService::getAllEligibleUsers();
+
         return view('pages.hr.leaves.index', compact(
             'leaveRequests',
             'leaveTypes',
@@ -65,7 +73,10 @@ class LeaveController extends Controller
             'typeId',
             'year',
             'availableYears',
-            'activeTab'
+            'activeTab',
+            'alertSettings',
+            'availableAlertRoles',
+            'allEligibleUsers'
         ));
     }
 
@@ -79,6 +90,28 @@ class LeaveController extends Controller
             'reason' => 'required|string|max:1000',
             'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:4096',
         ]);
+
+        $startDate = Carbon::parse($validated['start_date'])->startOfDay();
+        $tomorrow = Carbon::tomorrow()->startOfDay();
+
+        $userRole = strtolower(Auth::user()?->role ?? '');
+        $isHrOrAdmin = in_array($userRole, ['admin', 'superadmin', 'hr', 'hrd']);
+
+        // Karyawan tidak bisa mengajukan cuti/izin di hari yang sama (hari ini) atau lampau
+        if (!$isHrOrAdmin && $startDate->lt($tomorrow)) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Pengajuan cuti / izin tidak dapat dilakukan pada tanggal yang sama (hari ini). Pengajuan harus dimulai minimal pada tanggal berikutnya (besok).');
+        }
+
+        $leaveType = HrLeaveType::find($validated['leave_type_id']);
+        if ($leaveType && ($leaveType->code === 'CT' || str_contains(strtolower($leaveType->name), 'tahunan'))) {
+            $year = Carbon::parse($validated['start_date'])->year;
+            $balance = HrLeaveBalance::where('employee_id', $validated['employee_id'])->where('year', $year)->first();
+            if ($balance && !$balance->is_active) {
+                return redirect()->back()->with('error', 'Fasilitas Cuti Tahunan Anda saat ini berstatus Non-Aktif di sistem HR.');
+            }
+        }
 
         $start = Carbon::parse($validated['start_date']);
         $end = Carbon::parse($validated['end_date']);
@@ -132,7 +165,39 @@ class LeaveController extends Controller
             $balance->save();
         }
 
-        return redirect()->back()->with('success', 'Pengajuan cuti berhasil disetujui (Approved).');
+        // Sinkronisasi otomatis ke Data Kehadiran (HrAttendance) bebas denda Rp 0
+        $cur = Carbon::parse($leave->start_date);
+        $end = Carbon::parse($leave->end_date);
+        $typeCode = $leaveType?->code ?? 'IZ';
+        $attendanceStatus = match ($typeCode) {
+            'SK' => 'Sakit',
+            'CT' => 'Cuti',
+            'IZ' => 'Izin',
+            'DL' => 'Hadir',
+            'VC' => 'Hadir',
+            'WFH' => 'Hadir',
+            default => 'Izin',
+        };
+        $workType = in_array($typeCode, ['DL', 'VC', 'WFH']) ? ($typeCode === 'WFH' ? 'WFH' : 'Dinas Luar') : 'WFO';
+
+        while ($cur->lte($end)) {
+            $curDateStr = $cur->toDateString();
+            if (!$cur->isWeekend() && !HrHoliday::isHoliday($curDateStr)) {
+                HrAttendance::updateOrCreate(
+                    ['employee_id' => $leave->employee_id, 'date' => $curDateStr],
+                    [
+                        'status' => $attendanceStatus,
+                        'work_type' => $workType,
+                        'late_minutes' => 0,
+                        'penalty_amount' => 0,
+                        'location_in' => ($leaveType?->name ?? 'Izin') . ': ' . ($leave->reason ?: 'Disetujui HR'),
+                    ]
+                );
+            }
+            $cur->addDay();
+        }
+
+        return redirect()->back()->with('success', 'Pengajuan ' . ($leaveType?->name ?? 'Cuti/Izin') . ' berhasil disetujui (Approved) dan rekap kehadiran telah diperbarui.');
     }
 
     public function reject(Request $request, HrLeaveRequest $leave)
@@ -232,5 +297,20 @@ class LeaveController extends Controller
 
         $statusText = $balance->is_active ? 'Diaktifkan (Muncul di My Portal)' : 'Dinonaktifkan (Disembunyikan dari My Portal)';
         return redirect()->back()->with('success', "Status kuota cuti {$statusText}.");
+    }
+
+    /**
+     * Update Pengaturan Penerima Notifikasi / Alert Approval Cuti & Izin
+     */
+    public function updateAlertSettings(Request $request)
+    {
+        LeaveAlertService::saveSettings([
+            'enabled' => $request->has('enabled'),
+            'roles' => $request->input('roles', []),
+            'user_ids' => $request->input('user_ids', []),
+        ]);
+
+        return redirect()->route('hr.leaves.index', ['tab' => 'alert_settings'])
+            ->with('success', 'Pengaturan akun & role penerima alert notifikasi approval cuti/izin berhasil diperbarui.');
     }
 }

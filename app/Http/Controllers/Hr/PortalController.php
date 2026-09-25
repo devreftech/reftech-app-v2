@@ -45,8 +45,23 @@ class PortalController extends Controller
             ]);
         }
 
+        // 0. Validasi Jam Buka Presensi Masuk (Earliest Clock In Time)
+        $earliestSetting = DB::table('hr_attendance_settings')->where('key', 'earliest_clock_in_time')->first();
+        $earliestTimeStr = ($earliestSetting && !empty($earliestSetting->value)) ? $earliestSetting->value : '07:00';
+        $nowJakarta = Carbon::now('Asia/Jakarta');
+        $eParts = explode(':', $earliestTimeStr);
+        $earliestCarbon = Carbon::createFromTime((int)($eParts[0] ?? 7), (int)($eParts[1] ?? 0), 0, 'Asia/Jakarta');
+
+        if ($nowJakarta->lt($earliestCarbon)) {
+            return response()->json([
+                'allowed' => false,
+                'type' => 'early_clockin_blocked',
+                'message' => "Presensi Masuk (Clock In) belum dibuka. Presensi baru dibuka mulai pukul {$earliestTimeStr} WIB."
+            ]);
+        }
+
         // 1. Validasi Pembatasan WiFi Kantor
-        $wifiError = $this->validateWifiRestriction($request);
+        $wifiError = $this->validateWifiRestriction($request, $employee->id);
         if ($wifiError) {
             return response()->json([
                 'allowed' => false,
@@ -99,8 +114,19 @@ class PortalController extends Controller
             return redirect()->back()->with('error', 'Akun Anda tidak memiliki hak akses untuk melakukan presensi online. Silakan hubungi HR.');
         }
 
-        // 2. Check WiFi network restriction
-        $wifiError = $this->validateWifiRestriction($request);
+        // 2. Check Earliest Clock-In Time
+        $earliestSetting = DB::table('hr_attendance_settings')->where('key', 'earliest_clock_in_time')->first();
+        $earliestTimeStr = ($earliestSetting && !empty($earliestSetting->value)) ? $earliestSetting->value : '07:00';
+        $nowJakarta = Carbon::now('Asia/Jakarta');
+        $eParts = explode(':', $earliestTimeStr);
+        $earliestCarbon = Carbon::createFromTime((int)($eParts[0] ?? 7), (int)($eParts[1] ?? 0), 0, 'Asia/Jakarta');
+
+        if ($nowJakarta->lt($earliestCarbon)) {
+            return redirect()->back()->with('error', "Presensi Masuk (Clock In) belum dibuka. Presensi baru dibuka mulai pukul {$earliestTimeStr} WIB.");
+        }
+
+        // 3. Check WiFi network restriction
+        $wifiError = $this->validateWifiRestriction($request, $employee->id);
         if ($wifiError) {
             return redirect()->back()->with('error', $wifiError);
         }
@@ -122,6 +148,9 @@ class PortalController extends Controller
         if ($request->filled('selfie_image')) {
             $selfieInPath = $this->saveSelfieImage($request->input('selfie_image'), $employee->id, 'in', $today);
         } elseif ($isSelfieRequired) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Presensi Ditolak! Foto selfie kamera langsung wajib diambil saat Clock In.'], 422);
+            }
             return redirect()->back()->with('error', 'Presensi Ditolak! Foto selfie kamera langsung wajib diambil saat Clock In.');
         }
 
@@ -170,6 +199,24 @@ class PortalController extends Controller
             } else {
                 $msg .= " - " . $penaltyInfo['status_label'] . ")";
             }
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'is_on_time' => $lateMinutes <= 0,
+                'is_late' => $lateMinutes > 0,
+                'late_minutes' => $lateMinutes,
+                'late_count' => $penaltyInfo['late_count'] ?? ($lateMinutes > 0 ? 1 : 0),
+                'penalty_amount' => $penaltyAmount,
+                'penalty_formatted' => 'Rp ' . number_format($penaltyAmount, 0, ',', '.'),
+                'status_label' => $penaltyInfo['status_label'] ?? ($lateMinutes <= 0 ? 'Tepat Waktu' : 'Terlambat'),
+                'clock_in_time' => $nowTime,
+                'clock_in_time_formatted' => substr($nowTime, 0, 5) . ' WIB',
+                'employee_name' => $employee->user?->name ?? 'Karyawan',
+                'work_type' => $request->input('work_type', 'WFO'),
+                'message' => $msg,
+            ]);
         }
 
         return redirect()->route('profile.show', Auth::id())->with('success', $msg);
@@ -235,8 +282,13 @@ class PortalController extends Controller
     /**
      * Validasi apakah request berasal dari IP WiFi kantor terdaftar.
      */
-    protected function validateWifiRestriction(Request $request): ?string
+    protected function validateWifiRestriction(Request $request, ?int $employeeId = null): ?string
     {
+        // Jika karyawan sedang memiliki izin Dinas Luar atau WFH yang disetujui HR hari ini -> Bebas WiFi
+        if ($employeeId && \App\Models\HrLeaveRequest::isApprovedWfhOrTrip($employeeId, Carbon::today()->toDateString())) {
+            return null;
+        }
+
         $wifiSetting = DB::table('hr_attendance_settings')->where('key', 'is_wifi_restriction_enabled')->first();
         $isWifiRestrictionEnabled = $wifiSetting && $wifiSetting->value === '1';
 
@@ -258,6 +310,87 @@ class PortalController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Form Pengajuan Izin / Sakit / Cuti / Dinas Luar oleh Karyawan
+     */
+    public function storeLeave(Request $request)
+    {
+        $employee = Auth::user()?->employee;
+        if (!$employee) {
+            return redirect()->back()->with('error', 'Profil karyawan tidak ditemukan.');
+        }
+
+        $validated = $request->validate([
+            'leave_type_id' => 'required|exists:hr_leave_types,id',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'reason' => 'required|string|max:1000',
+            'attachment' => 'nullable|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
+        ]);
+
+        $startDate = Carbon::parse($validated['start_date'])->startOfDay();
+        $tomorrow = Carbon::tomorrow()->startOfDay();
+
+        if ($startDate->lt($tomorrow)) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Pengajuan cuti / izin tidak dapat dilakukan pada tanggal yang sama (hari ini). Pengajuan harus dimulai minimal pada tanggal berikutnya (besok).');
+        }
+
+        $start = Carbon::parse($validated['start_date']);
+        $end = Carbon::parse($validated['end_date']);
+        $totalDays = $start->diffInDays($end) + 1;
+
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $filename = 'leave_' . $employee->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('hr/leaves/attachments', $filename, 'public');
+            $attachmentPath = 'storage/' . $path;
+        }
+
+        $leaveType = \App\Models\HrLeaveType::find($validated['leave_type_id']);
+
+        \App\Models\HrLeaveRequest::create([
+            'employee_id' => $employee->id,
+            'leave_type_id' => $validated['leave_type_id'],
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'],
+            'total_days' => $totalDays,
+            'reason' => $validated['reason'],
+            'attachment' => $attachmentPath,
+            'status' => 'Pending',
+        ]);
+
+        $typeName = $leaveType?->name ?? 'Izin / Cuti';
+
+        return redirect()->back()->with('success', "Permohonan {$typeName} Anda ({$totalDays} hari) berhasil diajukan dan sedang menunggu persetujuan HR.");
+    }
+
+    /**
+     * Upload Surat Dokter / Bukti Lampiran Susulan oleh Karyawan
+     */
+    public function uploadAttachment(Request $request, \App\Models\HrLeaveRequest $leave)
+    {
+        $employee = Auth::user()?->employee;
+        if (!$employee || (int)$leave->employee_id !== (int)$employee->id) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk mengunggah lampiran pada pengajuan ini.');
+        }
+
+        $request->validate([
+            'attachment' => 'required|file|mimes:jpeg,png,jpg,pdf,webp|max:5120',
+        ]);
+
+        $file = $request->file('attachment');
+        $filename = 'leave_late_' . $employee->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('hr/leaves/attachments', $filename, 'public');
+
+        $leave->attachment = 'storage/' . $path;
+        $leave->save();
+
+        return redirect()->back()->with('success', 'Surat dokter / bukti lampiran susulan berhasil diunggah.');
     }
 
     /**

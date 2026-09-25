@@ -3,6 +3,18 @@
         $num = (int) ($count ?? 0);
         return $num > 99 ? '99+' : $num;
     };
+
+    $hrPendingLeaveCount = 0;
+    $hrPendingReimbursementCount = 0;
+    if (Auth::check() && in_array(Auth::user()->role, ['Admin', 'Developer', 'Finance', 'Finance Manager', 'Accounting', 'Super Admin'])) {
+        try {
+            $hrPendingLeaveCount = \App\Models\HrLeaveRequest::where('status', 'Pending')->count();
+            $hrPendingReimbursementCount = \App\Models\HrReimbursement::where('status', 'Pending')->count();
+        } catch (\Throwable $e) {
+            $hrPendingLeaveCount = 0;
+            $hrPendingReimbursementCount = 0;
+        }
+    }
 @endphp
 
 <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
@@ -998,54 +1010,106 @@
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">HR Management</span>
             </li>
+            {{-- 1. Dashboard HR --}}
             <li class="menu-item {{ (request()->is('hr') || request()->is('hr/dashboard')) ? 'active' : '' }}">
                 <a href="{{ route('hr.dashboard') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-view-dashboard-outline"></i>
                     <div data-i18n="Dashboard HR">Dashboard HR</div>
                 </a>
             </li>
-            <li class="menu-item {{ (request()->is('employees*') || request()->is('hr/employees*')) ? 'active' : '' }}">
-                <a href="{{ route('employees.index') }}" class="menu-link">
+
+            {{-- 2. Sub-Menu: Kepegawaian & Aset --}}
+            @php
+                $isPersonnelOpen = request()->is('employees*') || request()->is('hr/employees*') || request()->is('hr/assets*') || request()->is('hr/evaluations*') || request()->is('hr/departments*') || request()->is('hr/positions*');
+            @endphp
+            <li class="menu-item {{ $isPersonnelOpen ? 'open active' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-account-group-outline"></i>
-                    <div data-i18n="Hub Karyawan">Hub Karyawan</div>
+                    <div data-i18n="Kepegawaian & Aset">Kepegawaian &amp; Aset</div>
                 </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ (request()->is('employees*') || request()->is('hr/employees*')) ? 'active' : '' }}">
+                        <a href="{{ route('employees.index') }}" class="menu-link">
+                            <div data-i18n="Hub Karyawan">Hub Karyawan</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hr/assets*') ? 'active' : '' }}">
+                        <a href="{{ route('hr.assets.index') }}" class="menu-link">
+                            <div data-i18n="Alat Kerja">Alat Kerja Karyawan</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hr/evaluations*') ? 'active' : '' }}">
+                        <a href="{{ route('hr.evaluations.index') }}" class="menu-link">
+                            <div data-i18n="Evaluasi Kinerja">Evaluasi Kinerja</div>
+                        </a>
+                    </li>
+                </ul>
             </li>
-            <li class="menu-item {{ request()->is('hr/attendances*') ? 'active' : '' }}">
-                <a href="{{ route('hr.attendances.index') }}" class="menu-link">
+
+            {{-- 3. Sub-Menu: Waktu & Kehadiran --}}
+            @php
+                $isTimeAttendanceOpen = request()->is('hr/attendances*') || request()->is('hr/leaves*');
+            @endphp
+            <li class="menu-item {{ $isTimeAttendanceOpen ? 'open active' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-calendar-clock-outline"></i>
-                    <div data-i18n="Presensi">Presensi &amp; Waktu</div>
+                    <div data-i18n="Waktu & Kehadiran">Waktu &amp; Kehadiran</div>
+                    @if ($hrPendingLeaveCount > 0)
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($hrPendingLeaveCount) }}</div>
+                    @endif
                 </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('hr/attendances*') ? 'active' : '' }}">
+                        <a href="{{ route('hr.attendances.index') }}" class="menu-link">
+                            <div data-i18n="Presensi">Presensi &amp; Jam Kerja</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hr/leaves*') ? 'active' : '' }}">
+                        <a href="{{ route('hr.leaves.index') }}" class="menu-link">
+                            <div data-i18n="Cuti & Izin">Cuti &amp; Izin</div>
+                            @if ($hrPendingLeaveCount > 0)
+                                <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($hrPendingLeaveCount) }}</div>
+                            @endif
+                        </a>
+                    </li>
+                </ul>
             </li>
-            <li class="menu-item {{ request()->is('hr/leaves*') ? 'active' : '' }}">
-                <a href="{{ route('hr.leaves.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-calendar-remove-outline"></i>
-                    <div data-i18n="Cuti & Izin">Cuti &amp; Izin</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('hr/payrolls*') ? 'active' : '' }}">
-                <a href="{{ route('hr.payrolls.index') }}" class="menu-link">
+
+            {{-- 4. Sub-Menu: Payroll & Finansial --}}
+            @php
+                $isPayrollClaimsOpen = request()->is('hr/payrolls*') || request()->is('hr/bonuses*') || request()->is('hr/reimbursements*');
+            @endphp
+            <li class="menu-item {{ $isPayrollClaimsOpen ? 'open active' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-cash-multiple"></i>
-                    <div data-i18n="Payroll">Payroll &amp; Slip Gaji</div>
+                    <div data-i18n="Payroll & Finansial">Payroll &amp; Finansial</div>
+                    @if ($hrPendingReimbursementCount > 0)
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($hrPendingReimbursementCount) }}</div>
+                    @endif
                 </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('hr/payrolls*') ? 'active' : '' }}">
+                        <a href="{{ route('hr.payrolls.index') }}" class="menu-link">
+                            <div data-i18n="Payroll">Payroll &amp; Slip Gaji</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hr/bonuses*') ? 'active' : '' }}">
+                        <a href="{{ route('hr.bonuses.index') }}" class="menu-link">
+                            <div data-i18n="Bonus Semester">Bonus Semesteran</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hr/reimbursements*') ? 'active' : '' }}">
+                        <a href="{{ route('hr.reimbursements.index') }}" class="menu-link">
+                            <div data-i18n="Reimbursement">Klaim Reimbursement</div>
+                            @if ($hrPendingReimbursementCount > 0)
+                                <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($hrPendingReimbursementCount) }}</div>
+                            @endif
+                        </a>
+                    </li>
+                </ul>
             </li>
-            <li class="menu-item {{ request()->is('hr/reimbursements*') ? 'active' : '' }}">
-                <a href="{{ route('hr.reimbursements.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-receipt-text-outline"></i>
-                    <div data-i18n="Reimbursement">Reimbursement</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('hr/assets*') ? 'active' : '' }}">
-                <a href="{{ route('hr.assets.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-laptop"></i>
-                    <div data-i18n="Alat Kerja">Alat Kerja Karyawan</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('hr/evaluations*') ? 'active' : '' }}">
-                <a href="{{ route('hr.evaluations.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-star-circle-outline"></i>
-                    <div data-i18n="Evaluasi Kinerja">Evaluasi Kinerja</div>
-                </a>
-            </li>
+
+            {{-- 5. My Portal (ESS) --}}
             @if (Auth::user()?->employee)
             <li class="menu-item {{ request()->is('hr/my-portal*') ? 'active' : '' }}">
                 <a href="{{ route('hr.portal.index') }}" class="menu-link">
@@ -2835,54 +2899,114 @@
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">HR Management</span>
             </li>
+            {{-- 1. Dashboard HR --}}
             <li class="menu-item {{ (request()->is('hr') || request()->is('hr/dashboard')) ? 'active' : '' }}">
                 <a href="{{ route('hr.dashboard') }}" class="menu-link">
                     <i class="menu-icon tf-icons mdi mdi-view-dashboard-outline"></i>
                     <div data-i18n="Dashboard HR">Dashboard HR</div>
                 </a>
             </li>
-            <li class="menu-item {{ (request()->is('employees*') || request()->is('hr/employees*')) ? 'active' : '' }}">
-                <a href="{{ route('employees.index') }}" class="menu-link">
+
+            {{-- 2. Sub-Menu: Kepegawaian & Aset --}}
+            @php
+                $isPersonnelOpen2 = request()->is('employees*') || request()->is('hr/employees*') || request()->is('hr/assets*') || request()->is('hr/evaluations*') || request()->is('hr/departments*') || request()->is('hr/positions*');
+            @endphp
+            <li class="menu-item {{ $isPersonnelOpen2 ? 'open active' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-account-group-outline"></i>
-                    <div data-i18n="Hub Karyawan">Hub Karyawan</div>
+                    <div data-i18n="Kepegawaian & Aset">Kepegawaian &amp; Aset</div>
                 </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ (request()->is('employees*') || request()->is('hr/employees*')) ? 'active' : '' }}">
+                        <a href="{{ route('employees.index') }}" class="menu-link">
+                            <div data-i18n="Hub Karyawan">Hub Karyawan</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hr/assets*') ? 'active' : '' }}">
+                        <a href="{{ route('hr.assets.index') }}" class="menu-link">
+                            <div data-i18n="Alat Kerja">Alat Kerja Karyawan</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hr/evaluations*') ? 'active' : '' }}">
+                        <a href="{{ route('hr.evaluations.index') }}" class="menu-link">
+                            <div data-i18n="Evaluasi Kinerja">Evaluasi Kinerja</div>
+                        </a>
+                    </li>
+                </ul>
             </li>
-            <li class="menu-item {{ request()->is('hr/attendances*') ? 'active' : '' }}">
-                <a href="{{ route('hr.attendances.index') }}" class="menu-link">
+
+            {{-- 3. Sub-Menu: Waktu & Kehadiran --}}
+            @php
+                $isTimeAttendanceOpen2 = request()->is('hr/attendances*') || request()->is('hr/leaves*');
+            @endphp
+            <li class="menu-item {{ $isTimeAttendanceOpen2 ? 'open active' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-calendar-clock-outline"></i>
-                    <div data-i18n="Presensi">Presensi &amp; Waktu</div>
+                    <div data-i18n="Waktu & Kehadiran">Waktu &amp; Kehadiran</div>
+                    @if ($hrPendingLeaveCount > 0)
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($hrPendingLeaveCount) }}</div>
+                    @endif
                 </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('hr/attendances*') ? 'active' : '' }}">
+                        <a href="{{ route('hr.attendances.index') }}" class="menu-link">
+                            <div data-i18n="Presensi">Presensi &amp; Jam Kerja</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hr/leaves*') ? 'active' : '' }}">
+                        <a href="{{ route('hr.leaves.index') }}" class="menu-link">
+                            <div data-i18n="Cuti & Izin">Cuti &amp; Izin</div>
+                            @if ($hrPendingLeaveCount > 0)
+                                <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($hrPendingLeaveCount) }}</div>
+                            @endif
+                        </a>
+                    </li>
+                </ul>
             </li>
-            <li class="menu-item {{ request()->is('hr/leaves*') ? 'active' : '' }}">
-                <a href="{{ route('hr.leaves.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-calendar-remove-outline"></i>
-                    <div data-i18n="Cuti & Izin">Cuti &amp; Izin</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('hr/payrolls*') ? 'active' : '' }}">
-                <a href="{{ route('hr.payrolls.index') }}" class="menu-link">
+
+            {{-- 4. Sub-Menu: Payroll & Finansial --}}
+            @php
+                $isPayrollClaimsOpen2 = request()->is('hr/payrolls*') || request()->is('hr/bonuses*') || request()->is('hr/reimbursements*');
+            @endphp
+            <li class="menu-item {{ $isPayrollClaimsOpen2 ? 'open active' : '' }}">
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons mdi mdi-cash-multiple"></i>
-                    <div data-i18n="Payroll">Payroll &amp; Slip Gaji</div>
+                    <div data-i18n="Payroll & Finansial">Payroll &amp; Finansial</div>
+                    @if ($hrPendingReimbursementCount > 0)
+                        <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($hrPendingReimbursementCount) }}</div>
+                    @endif
+                </a>
+                <ul class="menu-sub">
+                    <li class="menu-item {{ request()->is('hr/payrolls*') ? 'active' : '' }}">
+                        <a href="{{ route('hr.payrolls.index') }}" class="menu-link">
+                            <div data-i18n="Payroll">Payroll &amp; Slip Gaji</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hr/bonuses*') ? 'active' : '' }}">
+                        <a href="{{ route('hr.bonuses.index') }}" class="menu-link">
+                            <div data-i18n="Bonus Semester">Bonus Semesteran</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {{ request()->is('hr/reimbursements*') ? 'active' : '' }}">
+                        <a href="{{ route('hr.reimbursements.index') }}" class="menu-link">
+                            <div data-i18n="Reimbursement">Klaim Reimbursement</div>
+                            @if ($hrPendingReimbursementCount > 0)
+                                <div class="badge bg-danger rounded-pill ms-auto">{{ $formatSidebarBadge($hrPendingReimbursementCount) }}</div>
+                            @endif
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            {{-- 5. My Portal (ESS) --}}
+            @if (Auth::user()?->employee)
+            <li class="menu-item {{ request()->is('hr/my-portal*') ? 'active' : '' }}">
+                <a href="{{ route('hr.portal.index') }}" class="menu-link">
+                    <i class="menu-icon tf-icons mdi mdi-card-account-details-star-outline"></i>
+                    <div data-i18n="My Portal">My Portal</div>
                 </a>
             </li>
-            <li class="menu-item {{ request()->is('hr/reimbursements*') ? 'active' : '' }}">
-                <a href="{{ route('hr.reimbursements.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-receipt-text-outline"></i>
-                    <div data-i18n="Reimbursement">Reimbursement</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('hr/assets*') ? 'active' : '' }}">
-                <a href="{{ route('hr.assets.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-laptop"></i>
-                    <div data-i18n="Alat Kerja">Alat Kerja Karyawan</div>
-                </a>
-            </li>
-            <li class="menu-item {{ request()->is('hr/evaluations*') ? 'active' : '' }}">
-                <a href="{{ route('hr.evaluations.index') }}" class="menu-link">
-                    <i class="menu-icon tf-icons mdi mdi-star-circle-outline"></i>
-                    <div data-i18n="Evaluasi Kinerja">Evaluasi Kinerja</div>
-                </a>
-            </li>
+            @endif
 
             <li class="menu-header fw-light mt-4">
                 <span class="menu-header-text">Helpdesk</span>

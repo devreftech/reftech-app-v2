@@ -12,6 +12,7 @@ use App\Models\HrAttendance;
 use App\Models\HrPayroll;
 use App\Models\HrPayrollItem;
 use App\Models\HrSalary;
+use App\Services\Hr\PayrollCutoffService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +23,7 @@ class PayrollController extends Controller
     public function index(Request $request)
     {
         $year = (int) $request->input('year', date('Y'));
+        $currentMonth = (int) $request->input('month', date('n'));
 
         $payrolls = HrPayroll::with(['generator', 'approver', 'expense'])
             ->withCount('items')
@@ -41,7 +43,27 @@ class PayrollController extends Controller
             ->orderBy('id')
             ->get();
 
-        return view('pages.hr.payrolls.index', compact('payrolls', 'stats', 'employees', 'year'));
+        // Info cutoff presensi bulan berjalan
+        $cutoffPeriod = PayrollCutoffService::getPayrollPeriod($currentMonth, $year);
+        $recapSummary = PayrollCutoffService::getCutoffRecapSummary($currentMonth, $year);
+
+        // ── HYBRID AUTO-PAYROLL ENGINE ──────────────────────────────────────
+        // Jika cutoff 09:00 WIB telah tercapai dan batch belum ada, sistem auto-generate draft otomatis
+        if (!empty($cutoffPeriod['is_recap_ready']) && empty($recapSummary['has_payroll_generated'])) {
+            try {
+                PayrollCutoffService::generateOrSyncPayrollBatch($currentMonth, $year, Auth::id(), false);
+                $payrolls = HrPayroll::with(['generator', 'approver', 'expense'])
+                    ->withCount('items')
+                    ->where('period_year', $year)
+                    ->orderByDesc('period_month')
+                    ->get();
+                $recapSummary = PayrollCutoffService::getCutoffRecapSummary($currentMonth, $year);
+            } catch (\Exception $e) {
+                // Jangan gagalkan loading halaman jika ada kendala
+            }
+        }
+
+        return view('pages.hr.payrolls.index', compact('payrolls', 'stats', 'employees', 'year', 'cutoffPeriod', 'recapSummary'));
     }
 
     public function store(Request $request)
@@ -56,127 +78,39 @@ class PayrollController extends Controller
         $month = (int) $validated['period_month'];
         $year = (int) $validated['period_year'];
 
-        // Check if payroll period already generated
-        if (HrPayroll::where('period_month', $month)->where('period_year', $year)->exists()) {
-            return redirect()->back()->with('error', "Periode penggajian untuk bulan {$month} tahun {$year} sudah pernah dibuat.");
-        }
-
-        $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth();
-        $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth();
-        $monthName = $startDate->translatedFormat('F');
-        $code = 'PAY-' . $year . str_pad($month, 2, '0', STR_PAD_LEFT);
-
-        DB::beginTransaction();
         try {
-            $payroll = HrPayroll::create([
-                'code' => $code,
-                'title' => "Gaji Karyawan {$monthName} {$year}",
-                'period_month' => $month,
-                'period_year' => $year,
-                'start_date' => $startDate->toDateString(),
-                'end_date' => $endDate->toDateString(),
-                'payment_date' => $validated['payment_date'],
-                'status' => 'Draft',
-                'generated_by' => Auth::id(),
-                'notes' => $validated['notes'],
-            ]);
+            $payroll = PayrollCutoffService::generateOrSyncPayrollBatch(
+                $month,
+                $year,
+                Auth::id(),
+                true,
+                $validated['payment_date'],
+                $validated['notes']
+            );
 
-            $employees = Employee::with('salary')
-                ->where('employment_status', '!=', 'Resign')
-                ->get();
-
-            $totalBasic = 0;
-            $totalAllowance = 0;
-            $totalOvertime = 0;
-            $totalDeductions = 0;
-            $totalNet = 0;
-
-            foreach ($employees as $index => $emp) {
-                $salary = $emp->salary ?? HrSalary::create([
-                    'employee_id' => $emp->id,
-                    'basic_salary' => 5500000.00,
-                    'transport_allowance' => 500000.00,
-                    'meal_allowance' => 650000.00,
-                    'position_allowance' => 750000.00,
-                    'bpjs_kesehatan' => 55000.00,
-                    'bpjs_ketenagakerjaan' => 110000.00,
-                ]);
-
-                // Count attendance in this period
-                $attendanceRecords = HrAttendance::where('employee_id', $emp->id)
-                    ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
-                    ->get();
-
-                $presentDays = $attendanceRecords->where('status', 'Hadir')->count();
-                $absenceDays = $attendanceRecords->where('status', 'Alpa')->count();
-                $overtimeMinutes = $attendanceRecords->sum('overtime_minutes');
-                $overtimeHours = (int) round($overtimeMinutes / 60);
-
-                // Overtime pay: standard ~ Rp 25.000 / hour
-                $overtimePay = $overtimeHours * 25000;
-
-                // Absence deduction: e.g. Rp 100.000 per unexcused absence
-                $deductionAbsence = $absenceDays * 100000;
-                $deductionBpjs = (float) ($salary->bpjs_kesehatan + $salary->bpjs_ketenagakerjaan);
-                
-                // Akumulasi denda keterlambatan presensi
-                $totalLatePenalty = (float) $attendanceRecords->sum('penalty_amount');
-                $deductionOther = $totalLatePenalty;
-
-                $totalItemDeductions = $deductionAbsence + $deductionBpjs + $deductionOther;
-                $itemAllowances = $salary->total_allowance;
-                $netSalary = max(0, ($salary->basic_salary + $itemAllowances + $overtimePay) - $totalItemDeductions);
-
-                $slipNumber = 'SLIP/' . $year . str_pad($month, 2, '0', STR_PAD_LEFT) . '/' . str_pad($emp->id, 4, '0', STR_PAD_LEFT);
-
-                HrPayrollItem::create([
-                    'payroll_id' => $payroll->id,
-                    'employee_id' => $emp->id,
-                    'slip_number' => $slipNumber,
-                    'basic_salary' => $salary->basic_salary,
-                    'transport_allowance' => $salary->transport_allowance,
-                    'meal_allowance' => $salary->meal_allowance,
-                    'position_allowance' => $salary->position_allowance,
-                    'other_allowance' => $salary->other_allowance,
-                    'overtime_pay' => $overtimePay,
-                    'deduction_absence' => $deductionAbsence,
-                    'deduction_bpjs' => $deductionBpjs,
-                    'deduction_other' => $deductionOther,
-                    'net_salary' => $netSalary,
-                    'attendance_days' => $presentDays,
-                    'absence_days' => $absenceDays,
-                    'overtime_hours' => $overtimeHours,
-                    'payment_status' => 'Unpaid',
-                    'meta_data' => [
-                        'bank_name' => $salary->bank_name,
-                        'bank_account_number' => $salary->bank_account_number,
-                        'bank_account_holder' => $salary->bank_account_holder,
-                        'late_penalty_total' => $totalLatePenalty,
-                        'late_count' => $attendanceRecords->where('late_minutes', '>', 0)->count(),
-                    ],
-                ]);
-
-                $totalBasic += $salary->basic_salary;
-                $totalAllowance += $itemAllowances;
-                $totalOvertime += $overtimePay;
-                $totalDeductions += $totalItemDeductions;
-                $totalNet += $netSalary;
-            }
-
-            $payroll->update([
-                'total_basic' => $totalBasic,
-                'total_allowance' => $totalAllowance,
-                'total_overtime' => $totalOvertime,
-                'total_deductions' => $totalDeductions,
-                'total_net_amount' => $totalNet,
-            ]);
-
-            DB::commit();
             return redirect()->route('hr.payrolls.show', $payroll->id)
-                ->with('success', "Batch payroll periode {$monthName} {$year} berhasil digenerate untuk {$employees->count()} karyawan.");
+                ->with('success', "Batch payroll {$payroll->code} berhasil digenerate.");
         } catch (\Exception $e) {
-            DB::rollBack();
             return redirect()->back()->with('error', 'Gagal generate payroll: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Sinkronisasi Ulang (Regenerate) Data Presensi & Master Gaji ke Batch Payroll Draft
+     */
+    public function resync(Request $request, HrPayroll $payroll)
+    {
+        try {
+            PayrollCutoffService::generateOrSyncPayrollBatch(
+                $payroll->period_month,
+                $payroll->period_year,
+                Auth::id(),
+                true
+            );
+
+            return redirect()->back()->with('success', "Batch payroll {$payroll->code} berhasil disinkronkan ulang dengan data presensi, lembur, dan master gaji terbaru.");
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal sinkron ulang data payroll: ' . $e->getMessage());
         }
     }
 

@@ -131,9 +131,50 @@ class HrAttendance extends Model
         $settings = \Illuminate\Support\Facades\DB::table('hr_attendance_settings')->pluck('value', 'key')->toArray();
         $isEnabled = ($settings['is_late_penalty_enabled'] ?? '1') === '1';
         $isWeekendOff = ($settings['is_weekend_off_enabled'] ?? '1') === '1';
+        $isHolidayPenaltyFree = ($settings['is_holiday_penalty_free'] ?? '1') === '1';
 
         $carbonDate = \Carbon\Carbon::parse($date);
         
+        // Cek apakah tanggal adalah Kalender Merah / Hari Libur Nasional
+        if ($isHolidayPenaltyFree) {
+            $holiday = \App\Models\Hr\HrHoliday::getHolidayInfo($date);
+            if ($holiday) {
+                return [
+                    'penalty' => 0,
+                    'late_count' => 0,
+                    'status_label' => 'Kalender Merah: ' . $holiday->name,
+                    'strike_status' => 'Libur Nasional',
+                    'strike_badge' => 'bg-label-danger',
+                    'strike_key' => 'holiday_off',
+                    'is_multiplier' => false,
+                ];
+            }
+        }
+
+        // Cek apakah ada Izin / Sakit / Cuti / Dinas Luar yang disetujui HR
+        $approvedLeave = \App\Models\HrLeaveRequest::getApprovedLeaveForDate($employeeId, $date);
+        if ($approvedLeave) {
+            $typeName = $approvedLeave->leaveType?->name ?? 'Izin';
+            $typeCode = $approvedLeave->leaveType?->code ?? 'IZ';
+            $badgeClass = match ($typeCode) {
+                'SK' => 'bg-label-warning',
+                'CT' => 'bg-label-info',
+                'DL' => 'bg-label-primary',
+                'WFH' => 'bg-label-success',
+                default => 'bg-label-secondary',
+            };
+
+            return [
+                'penalty' => 0,
+                'late_count' => 0,
+                'status_label' => 'Disetujui: ' . $typeName . ' (' . ($approvedLeave->reason ?: '-') . ')',
+                'strike_status' => $typeName,
+                'strike_badge' => $badgeClass,
+                'strike_key' => 'leave_approved',
+                'is_multiplier' => false,
+            ];
+        }
+
         // Jika akhir pekan dan setting libur akhir pekan aktif -> Bebas denda
         if ($isWeekendOff && $carbonDate->isWeekend()) {
             return [
@@ -212,33 +253,15 @@ class HrAttendance extends Model
             ];
         }
 
-        if ($currentLateCount === 3) {
-            return [
-                'penalty' => $tier3Rate,
-                'late_count' => 3,
-                'status_label' => 'Terlambat ke-3 (Denda Rp ' . number_format($tier3Rate, 0, ',', '.') . ')',
-                'strike_status' => 'Terlambat ke-3',
-                'strike_badge' => 'bg-label-danger',
-                'strike_key' => 'penalized',
-                'is_multiplier' => false,
-            ];
-        }
-
-        // Terlambat > 3 kali (ke-4, ke-5, dst): Potong Gaji Basic Salary 10%
-        if (!$employee) {
-            $employee = Employee::with('salary')->find($employeeId);
-        }
-        $basicSalary = (float) ($employee?->salary?->basic_salary ?? 0);
-        $salaryCut = $basicSalary > 0 ? round(($basicSalary * $tierExcessPercent) / 100) : $tier3Rate;
-
+        // Terlambat ke-3 dan seterusnya (Tier 3 Flat Rate)
         return [
-            'penalty' => $salaryCut,
+            'penalty' => $tier3Rate,
             'late_count' => $currentLateCount,
-            'status_label' => "Terlambat ke-{$currentLateCount} (Sanksi Potong Gaji {$tierExcessPercent}%: Rp " . number_format($salaryCut, 0, ',', '.') . ")",
-            'strike_status' => "Sanksi SP-1 (>3x Potong Gaji {$tierExcessPercent}%)",
+            'status_label' => "Terlambat ke-{$currentLateCount} (Denda Rp " . number_format($tier3Rate, 0, ',', '.') . ')',
+            'strike_status' => "Terlambat ke-{$currentLateCount}",
             'strike_badge' => 'bg-label-danger',
-            'strike_key' => 'warning_sp',
-            'is_multiplier' => true,
+            'strike_key' => 'penalized',
+            'is_multiplier' => false,
         ];
     }
 }

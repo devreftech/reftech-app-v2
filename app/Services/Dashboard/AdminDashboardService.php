@@ -588,7 +588,7 @@ class AdminDashboardService
         // Admin / Developer bisa berpindah antar dashboard divisi lewat switcher menu
         $defaultView = (Auth::check() && Auth::user()->isDeveloper()) ? 'developer' : 'sales';
         $adminView = request()->query('view', $defaultView);
-        if (!in_array($adminView, ['sales', 'salesmanager', 'accounting', 'finance', 'logistic', 'workshop', 'projectmanager', 'clientvendor', 'developer'], true)) {
+        if (!in_array($adminView, ['sales', 'salesmanager', 'accounting', 'finance', 'logistic', 'workshop', 'projectmanager', 'clientvendor', 'developer', 'hr'], true)) {
             $adminView = $defaultView;
         }
 
@@ -596,6 +596,7 @@ class AdminDashboardService
             'salesmanager' => (new SalesManagerDashboardService())->getSalesManagerDashboardData(),
             'accounting' => (new AccountingDashboardService())->getAccountingDashboardData(),
             'finance' => (new FinanceDashboardService())->getFinanceDashboardData(),
+            'hr' => (new HrDashboardService())->getHrDashboardData(),
             'logistic' => (new LogisticDashboardService())->getLogisticDashboardData(),
             'workshop' => (new WorkshopDashboardService())->getWorkshopDashboardData(),
             'projectmanager' => (new ProjectManagerDashboardService())->getProjectManagerDashboardData(),

@@ -32,6 +32,10 @@
                        class="btn btn-sm btn-admin-view-switch {{ ($adminView ?? 'sales') === 'finance' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
                         <i class="mdi mdi-cash-multiple me-1"></i> Finance
                     </button>
+                    <button type="button" data-view="hr"
+                       class="btn btn-sm btn-admin-view-switch {{ ($adminView ?? 'sales') === 'hr' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
+                        <i class="mdi mdi-account-group-outline me-1"></i> HR Management
+                    </button>
                     <button type="button" data-view="logistic"
                        class="btn btn-sm btn-admin-view-switch {{ ($adminView ?? 'sales') === 'logistic' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
                         <i class="mdi mdi-truck-delivery-outline me-1"></i> Logistic
@@ -1078,6 +1082,10 @@
                    class="btn btn-sm btn-admin-view-switch {{ ($adminView ?? 'sales') === 'finance' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
                     <i class="mdi mdi-cash-multiple me-1"></i> Finance
                 </button>
+                <button type="button" data-view="hr"
+                   class="btn btn-sm btn-admin-view-switch {{ ($adminView ?? 'sales') === 'hr' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
+                    <i class="mdi mdi-account-group-outline me-1"></i> HR Management
+                </button>
                 <button type="button" data-view="logistic"
                    class="btn btn-sm btn-admin-view-switch {{ ($adminView ?? 'sales') === 'logistic' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
                     <i class="mdi mdi-truck-delivery-outline me-1"></i> Logistic
@@ -1428,9 +1436,45 @@
     @include("pages.accounting.dashboard._content")
 @elseif (in_array(Auth::user()->role, ['Finance Manager', 'Finance']))
     @php
-        $financeView = $financeView ?? 'finance';
+        $financeView = request()->query('view', $financeView ?? 'finance');
     @endphp
-    @if ($financeView === 'accounting')
+
+    <div class="card clean-card mb-4 p-3" style="border-color: rgba(105, 108, 255, 0.25);">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-label-primary fs-7 px-3 py-2 rounded-pill">
+                    <i class="mdi mdi-finance me-1"></i> Finance Hub
+                </span>
+                <small class="text-muted fw-semibold d-none d-sm-inline">Pilih Sudut Pandang Dashboard:</small>
+            </div>
+            <div class="d-flex flex-wrap gap-1" id="finance-view-switcher">
+                <a href="{{ url('/?view=finance') }}"
+                   class="btn btn-sm {{ ($financeView ?? 'finance') === 'finance' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
+                    <i class="mdi mdi-cash-multiple me-1"></i> Finance
+                </a>
+                <a href="{{ url('/?view=hr') }}"
+                   class="btn btn-sm {{ ($financeView ?? 'finance') === 'hr' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
+                    <i class="mdi mdi-account-group-outline me-1"></i> HR Management
+                </a>
+                <a href="{{ url('/?view=accounting') }}"
+                   class="btn btn-sm {{ ($financeView ?? 'finance') === 'accounting' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
+                    <i class="mdi mdi-calculator me-1"></i> Accounting
+                </a>
+                <a href="{{ url('/?view=logistic') }}"
+                   class="btn btn-sm {{ ($financeView ?? 'finance') === 'logistic' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
+                    <i class="mdi mdi-truck-delivery-outline me-1"></i> Logistic
+                </a>
+                <a href="{{ url('/?view=workshop') }}"
+                   class="btn btn-sm {{ ($financeView ?? 'finance') === 'workshop' ? 'btn-primary shadow-xs' : 'btn-outline-secondary' }} rounded-pill px-3 waves-effect">
+                    <i class="mdi mdi-wrench-outline me-1"></i> Workshop
+                </a>
+            </div>
+        </div>
+    </div>
+
+    @if ($financeView === 'hr')
+        @include('pages.hr.dashboard._content')
+    @elseif ($financeView === 'accounting')
         @include('pages.accounting.dashboard._content')
     @elseif ($financeView === 'logistic')
         @include('pages.logistic.dashboard._content')

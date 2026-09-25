@@ -91,6 +91,11 @@
             <i class="mdi mdi-cog-outline me-1"></i> Pengaturan Kuota Cuti Karyawan
         </button>
     </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {{ $activeTab === 'alert_settings' ? 'active' : '' }}" id="tab-alert-settings-btn" data-bs-toggle="tab" data-bs-target="#tab-alert-settings" type="button" role="tab" aria-controls="tab-alert-settings" aria-selected="{{ $activeTab === 'alert_settings' ? 'true' : 'false' }}">
+            <i class="mdi mdi-bell-cog-outline me-1"></i> Pengaturan Penerima Alert &amp; Approval
+        </button>
+    </li>
 </ul>
 
 <div class="tab-content p-0" id="leaveManagementTabContent">
@@ -229,9 +234,13 @@
                                         {{ $req->reason }}
                                     </div>
                                     @if ($req->attachment)
-                                        <a href="{{ asset($req->attachment) }}" target="_blank" class="small text-primary mt-1 d-inline-block">
-                                            <i class="mdi mdi-paperclip me-1"></i>Lampiran Bukti
+                                        <a href="{{ asset($req->attachment) }}" target="_blank" class="badge bg-label-primary mt-1 d-inline-flex align-items-center gap-1 text-decoration-none">
+                                            <i class="mdi mdi-paperclip"></i>Lihat Surat Dokter / Bukti
                                         </a>
+                                    @elseif ($req->leaveType?->code === 'SK' || str_contains(strtolower($req->leaveType?->name ?? ''), 'sakit'))
+                                        <span class="badge bg-label-warning mt-1 d-inline-flex align-items-center gap-1">
+                                            <i class="mdi mdi-clock-outline"></i>Surat Dokter Menyusul
+                                        </span>
                                     @endif
                                 </td>
                                 <td>
@@ -577,7 +586,145 @@
             </div>
         </div>
     </div>
+
+    {{-- ──────────────────────────────────────────────────────────────────────── --}}
+    {{-- ── TAB 3: PENGATURAN NOTIFIKASI & APPROVAL ALERT ─────────────────────── --}}
+    {{-- ──────────────────────────────────────────────────────────────────────── --}}
+    <div class="tab-pane fade {{ $activeTab === 'alert_settings' ? 'show active' : '' }}" id="tab-alert-settings" role="tabpanel" aria-labelledby="tab-alert-settings-btn">
+        <form action="{{ route('hr.leaves.settings.alert-recipients') }}" method="POST">
+            @csrf
+            <div class="row g-4">
+                {{-- Left Column: Role & Global Switch --}}
+                <div class="col-12 col-lg-7">
+                    <div class="card border-0 shadow-sm rounded-4 mb-4">
+                        <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+                            <div>
+                                <h6 class="card-title mb-0 fw-bold d-flex align-items-center">
+                                    <i class="mdi mdi-bell-ring-outline text-primary me-2"></i> Konfigurasi Notifikasi Navbar
+                                </h6>
+                                <span class="text-muted small">Atur hak akses alert pengingat approval cuti &amp; perizinan karyawan</span>
+                            </div>
+                            <div class="form-check form-switch form-switch-lg mb-0">
+                                <input class="form-check-input" type="checkbox" name="enabled" value="1" id="switchAlertEnabled" @checked($alertSettings['enabled'])>
+                                <label class="form-check-label fw-bold text-dark small" for="switchAlertEnabled">
+                                    {{ $alertSettings['enabled'] ? 'Alert Aktif' : 'Alert Non-Aktif' }}
+                                </label>
+                            </div>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="alert alert-primary d-flex align-items-start gap-2 mb-4 rounded-3 border-0 bg-label-primary font-13">
+                                <i class="mdi mdi-information-outline fs-5 text-primary flex-shrink-0 mt-0.5"></i>
+                                <div>
+                                    <strong>Cara Kerja Alert Approval:</strong>
+                                    <p class="mb-0 text-secondary">
+                                        Ketika ada staf mengajukan Cuti, Izin Sakit, Izin Pribadi, atau Visit Customer, tombol pill 
+                                        <span class="badge bg-info text-white font-11"><i class="mdi mdi-calendar-alert me-1"></i>Approval Cuti/Izin</span> 
+                                        akan muncul berkedip di <strong>Navbar atas</strong> bagi pengguna atau role yang dipilih di bawah ini untuk quick review &amp; approval.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <h6 class="fw-bold text-dark mb-3 d-flex align-items-center">
+                                <i class="mdi mdi-shield-account-outline text-primary me-2"></i> 1. Berdasarkan Role Pengguna
+                            </h6>
+                            <p class="text-muted small mb-3">
+                                Pilih role mana saja yang secara otomatis mendapatkan notifikasi dan akses modal approval di navbar:
+                            </p>
+
+                            <div class="row g-2 mb-4">
+                                @foreach ($availableAlertRoles as $roleOption)
+                                    @php
+                                        $isRoleChecked = in_array($roleOption, $alertSettings['roles'], true);
+                                    @endphp
+                                    <div class="col-6 col-md-4">
+                                        <div class="form-check custom-option custom-option-basic p-3 border rounded-3 h-100 bg-white hover-bg-light transition-all">
+                                            <label class="form-check-label custom-option-content d-flex align-items-center gap-2 cursor-pointer w-100 mb-0" for="roleCheck_{{ $loop->index }}">
+                                                <input class="form-check-input mt-0" type="checkbox" name="roles[]" value="{{ $roleOption }}" id="roleCheck_{{ $loop->index }}" @checked($isRoleChecked)>
+                                                <span class="custom-option-header mb-0">
+                                                    <span class="fw-semibold text-dark font-13">{{ $roleOption }}</span>
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <div class="d-flex align-items-center gap-2 pt-2 border-top">
+                                <button type="submit" class="btn btn-primary shadow-xs px-4">
+                                    <i class="mdi mdi-content-save-outline me-1"></i> Simpan Pengaturan Alert
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Right Column: Specific Account Recipients --}}
+                <div class="col-12 col-lg-5">
+                    <div class="card border-0 shadow-sm rounded-4">
+                        <div class="card-header bg-white border-bottom py-3 px-4">
+                            <h6 class="card-title mb-0 fw-bold d-flex align-items-center">
+                                <i class="mdi mdi-account-star-outline text-warning me-2"></i> 2. Akun Spesifik (Penerima Khusus)
+                            </h6>
+                            <span class="text-muted small">Pilih staf / PIC tertentu di luar role utama</span>
+                        </div>
+                        <div class="card-body p-4">
+                            <p class="text-muted small mb-3">
+                                Jika ada user tertentu yang memerlukan alert approval meskipun rolenya tidak dicentang di sebelah kiri:
+                            </p>
+
+                            <div class="mb-3">
+                                <input type="text" id="searchUserRecipients" class="form-control form-control-sm rounded-pill" placeholder="🔍 Cari nama atau email user...">
+                            </div>
+
+                            <div class="user-recipients-list pe-1" style="max-height: 380px; overflow-y: auto;">
+                                @foreach ($allEligibleUsers as $usr)
+                                    @php
+                                        $isUserChecked = in_array((int) $usr->id, $alertSettings['user_ids'], true);
+                                    @endphp
+                                    <div class="user-recipient-row form-check custom-option custom-option-basic p-2.5 mb-2 border rounded-3 bg-white" data-search="{{ strtolower($usr->name . ' ' . $usr->email . ' ' . $usr->role) }}">
+                                        <label class="form-check-label custom-option-content d-flex align-items-center justify-content-between cursor-pointer w-100 mb-0" for="userCheck_{{ $usr->id }}">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <input class="form-check-input mt-0" type="checkbox" name="user_ids[]" value="{{ $usr->id }}" id="userCheck_{{ $usr->id }}" @checked($isUserChecked)>
+                                                <div class="avatar avatar-xs rounded-circle bg-label-secondary d-flex align-items-center justify-content-center fw-bold font-10">
+                                                    {{ strtoupper(substr($usr->name, 0, 2)) }}
+                                                </div>
+                                                <div>
+                                                    <span class="fw-semibold text-dark font-12 d-block">{{ $usr->name }}</span>
+                                                    <span class="text-muted font-10">{{ $usr->email }}</span>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-label-primary font-10 rounded-pill">{{ $usr->role }}</span>
+                                        </label>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var searchInput = document.getElementById('searchUserRecipients');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                var query = this.value.toLowerCase().trim();
+                var items = document.querySelectorAll('.user-recipient-row');
+                items.forEach(function(item) {
+                    var text = item.getAttribute('data-search') || '';
+                    if (!query || text.includes(query)) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
 
 {{-- Modal Ajukan Cuti Baru --}}
 <div class="modal fade" id="modalNewLeaveRequest" tabindex="-1" aria-hidden="true">

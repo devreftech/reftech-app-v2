@@ -30,6 +30,15 @@
         </div>
 
         <div class="d-flex align-items-center gap-2 flex-wrap">
+            @if ($payroll->status !== 'Paid')
+                <form action="{{ route('hr.payrolls.resync', $payroll->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Sinkronkan ulang data presensi, lembur, dan master gaji terbaru untuk seluruh karyawan pada batch ini?');">
+                    @csrf
+                    <button type="submit" class="btn btn-label-warning shadow-xs" title="Tarik ulang data presensi, lembur, dan absensi terbaru">
+                        <i class="mdi mdi-refresh me-1"></i> Sinkronkan Ulang
+                    </button>
+                </form>
+            @endif
+
             {{-- Status transition action form --}}
             @if ($payroll->status === 'Draft')
                 <form action="{{ route('hr.payrolls.status', $payroll->id) }}" method="POST" class="d-inline">
@@ -407,6 +416,9 @@
 @endsection
 
 @push('after-style')
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-checkboxes-jquery/datatables.checkboxes.css" />
@@ -414,6 +426,31 @@
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/animate-css/animate.css">
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/datatables-rowgroup-bs5/rowgroup.bootstrap5.css" />
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css" />
+    <style>
+        *, *::before, *::after,
+        body,
+        h1, h2, h3, h4, h5, h6,
+        .h1, .h2, .h3, .h4, .h5, .h6,
+        p, span, a, label, input, select, textarea, button,
+        table, th, td, tr, thead, tbody,
+        .card, .card-title, .card-header, .card-body, .card-footer,
+        .breadcrumb, .breadcrumb-item,
+        .badge, .btn, .nav, .nav-link, .modal, .modal-title, .modal-body, .modal-footer,
+        .dropdown-menu, .dropdown-item,
+        .dataTables_wrapper, .dataTables_info, .dataTables_paginate, .paginate_button,
+        .form-control, .form-select, .form-label, .form-text,
+        .alert, .tooltip, .popover {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+            letter-spacing: -0.011em;
+        }
+
+        .font-monospace,
+        code,
+        kbd,
+        samp {
+            font-family: 'SFMono-Regular', Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+        }
+    </style>
 @endpush
 
 @push('after-script')

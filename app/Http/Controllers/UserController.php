@@ -185,6 +185,26 @@ class UserController extends Controller
                 ->orderByDesc('date')
                 ->get();
 
+            // Calculate penalty amount for records
+            $totalLatePenalty = 0;
+            foreach ($monthAttendances as $att) {
+                $pInfo = ($att->late_minutes > 0 || $att->status === 'Alpa')
+                    ? HrAttendance::calculatePenaltyInfo($employee->id, $att->date, (int) $att->late_minutes, $employee)
+                    : null;
+                $att->penalty_info = $pInfo;
+
+                if ($att->penalty_amount !== null && (float) $att->penalty_amount > 0) {
+                    $penaltyVal = (float) $att->penalty_amount;
+                } elseif ($att->late_minutes > 0 && ($att->status ?? 'Hadir') === 'Hadir') {
+                    $penaltyVal = (float) ($pInfo['penalty'] ?? 0);
+                    $att->calculated_penalty = $penaltyVal;
+                } else {
+                    $penaltyVal = 0;
+                }
+                $att->effective_penalty = $penaltyVal;
+                $totalLatePenalty += $penaltyVal;
+            }
+
             // Monthly attendance summary statistics
             $attStats = [
                 'totalRecords'      => $monthAttendances->count(),
@@ -192,6 +212,7 @@ class UserController extends Controller
                 'totalOnTime'       => $monthAttendances->where('status', 'Hadir')->where('late_minutes', '<=', 0)->count(),
                 'totalLate'         => $monthAttendances->where('late_minutes', '>', 0)->count(),
                 'totalLateMins'     => (int) $monthAttendances->sum('late_minutes'),
+                'totalLatePenalty'  => (float) $totalLatePenalty,
                 'totalOvertimeMins' => (int) $monthAttendances->sum('overtime_minutes'),
                 'totalIzin'         => $monthAttendances->whereIn('status', ['Izin', 'Sakit', 'Cuti', 'Dinas Luar'])->count(),
             ];

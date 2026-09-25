@@ -62,6 +62,14 @@ class HrMasterSeeder extends Seeder
                 'requires_attachment' => false,
                 'description' => 'Izin keperluan pribadi di luar kuota cuti tahunan.',
             ],
+            [
+                'name' => 'Visit Customer',
+                'code' => 'VC',
+                'default_days' => 1,
+                'is_paid' => true,
+                'requires_attachment' => false,
+                'description' => 'Izin tugas lapangan / kunjungan ke lokasi customer atau klien.',
+            ],
         ];
 
         foreach ($leaveTypes as $type) {
