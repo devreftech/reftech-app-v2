@@ -42,6 +42,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\DeveloperMaintenanceMiddleware::class,
             \App\Http\Middleware\DeveloperMaintenanceMiddleware::class,
             \App\Http\Middleware\UpdateUserActivity::class,
+            \App\Http\Middleware\RestrictClientVendorAccess::class,
         ],
 
         'api' => [

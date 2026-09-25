@@ -58,6 +58,7 @@ use App\Http\Controllers\EcommerceKpiController;
 use App\Http\Controllers\OnlineLeadController;
 use App\Http\Controllers\ProjectMonitoringController;
 use App\Http\Controllers\WarehouseController;
+use App\Http\Controllers\WorkOrderController;
 use App\Http\Controllers\WatermarkController;
 use App\Http\Controllers\SalesPaymentTemplateController;
 use App\Http\Controllers\RentalAccessoryController;
@@ -1363,9 +1364,9 @@ Route::group(["middleware" => "auth"], function () {
         $data = Reports::join('machine as m', 'm.id', '=', 'reports.id_machine')
             ->join('client as c', 'c.id', '=', 'm.id_client')
             ->join('users as u', 'u.id', '=', 'c.id_sales')
-            ->join('users as t', 't.id', '=', 'reports.id_technician')
-            ->join('serial_product as s', 's.id', '=', 'm.id_unit')
-            ->join('unit as un', 'un.id', '=', 's.id_product')
+            ->leftJoin('users as t', 't.id', '=', 'reports.id_technician')
+            ->leftJoin('serial_product as s', 's.id', '=', 'm.id_unit')
+            ->leftJoin('unit as un', 'un.id', '=', 's.id_product')
             ->where('u.id', Auth::user()->id)
             // ->whereYear('reports.date', $year)
             ->select(
@@ -1380,9 +1381,10 @@ Route::group(["middleware" => "auth"], function () {
                 't.name',
                 'm.tag',
                 'm.location',
-                DB::raw("CONCAT(s.brand, ' ', un.model) as brand_type"),
+                DB::raw("COALESCE(NULLIF(CONCAT_WS(' ', s.brand, COALESCE(un.model, s.pn)), ''), '-') as brand_type"),
                 DB::raw("CONCAT('(', COALESCE(m.serial, '-'), ') - ', COALESCE(m.tag, '-')) AS serial_tag")
             )
+            ->orderByDesc('reports.date')
             ->get();
 
         return response()->json(['data' => $data]);
@@ -1907,7 +1909,20 @@ Route::group(["middleware" => "auth"], function () {
     Route::get('/fixed/next-code', [FixedController::class, 'nextCode'])->name('fixed.next-code');
     Route::get('/fixed/{id}/maintenance/create', [FixedController::class, 'createMaintenanceLog'])->name('fixed.maintenance.create');
     Route::post('/fixed/{id}/maintenance', [FixedController::class, 'storeMaintenanceLog'])->name('fixed.maintenance.store');
+    Route::post('/fixed/{id}/supplier', [FixedController::class, 'updateSupplier'])->name('fixed.update-supplier');
+    Route::post('/fixed/{id}/construction-cost', [FixedController::class, 'storeConstructionCost'])->name('fixed.construction-cost.store');
+    Route::delete('/fixed/{id}/construction-cost/{costId}', [FixedController::class, 'destroyConstructionCost'])->name('fixed.construction-cost.destroy');
+    Route::post('/fixed/{id}/finish-construction', [FixedController::class, 'finishConstruction'])->name('fixed.finish-construction');
+    Route::post('/fixed/{id}/construction-pics', [FixedController::class, 'updateConstructionPics'])->name('fixed.update-construction-pics');
     Route::resource('/fixed', FixedController::class);
+
+    // Proyek Konstruksi & Pencatatan Biaya Lapangan (Workshop / Gedung)
+    Route::get('/proyek-konstruksi', [\App\Http\Controllers\ConstructionProjectController::class, 'index'])->name('proyek-konstruksi.index');
+    Route::post('/proyek-konstruksi', [\App\Http\Controllers\ConstructionProjectController::class, 'store'])->name('proyek-konstruksi.store');
+    Route::post('/proyek-konstruksi/link-po', [\App\Http\Controllers\ConstructionProjectController::class, 'linkPo'])->name('proyek-konstruksi.link-po');
+    Route::put('/proyek-konstruksi/{id}', [\App\Http\Controllers\ConstructionProjectController::class, 'update'])->name('proyek-konstruksi.update');
+    Route::delete('/proyek-konstruksi/{id}', [\App\Http\Controllers\ConstructionProjectController::class, 'destroy'])->name('proyek-konstruksi.destroy');
+    Route::post('/proyek-konstruksi/{id}/map-coa', [\App\Http\Controllers\ConstructionProjectController::class, 'mapCoa'])->name('proyek-konstruksi.map-coa');
 
     // Unit Acquisition (E-Stock) — servis & konfirmasi QC. Pembuatan data barunya
     // tetap lewat Finance > Fixed Asset (kategori "Mesin"), data intinya sama-sama
@@ -1920,6 +1935,21 @@ Route::group(["middleware" => "auth"], function () {
     Route::post('/unit-acquisition/{id}/status', [FixedController::class, 'updateStatusUnit'])->name('unit-acquisition.status');
     Route::post('/unit-acquisition/{id}/harga-jual', [FixedController::class, 'updateHargaJual'])->name('unit-acquisition.harga-jual');
     Route::post('/unit-acquisition/{id}/pricing', [FixedController::class, 'updatePricing'])->name('unit-acquisition.pricing');
+
+    // Work Order (Pergantian Spare Part Mesin Fixed Asset)
+    Route::get('/work-orders', [WorkOrderController::class, 'index'])->name('work-orders.index');
+    Route::get('/work-orders/create', [WorkOrderController::class, 'create'])->name('work-orders.create');
+    Route::post('/work-orders', [WorkOrderController::class, 'store'])->name('work-orders.store');
+    Route::get('/work-orders/api/machine-info/{id}', [WorkOrderController::class, 'getMachineInfo'])->name('work-orders.api.machine-info');
+    Route::get('/work-orders/api/search-machines', [WorkOrderController::class, 'searchMachines'])->name('work-orders.search-machines');
+    Route::get('/work-orders/api/search-parts', [WorkOrderController::class, 'searchParts'])->name('work-orders.search-parts');
+    Route::get('/work-orders/{id}', [WorkOrderController::class, 'show'])->name('work-orders.show');
+    Route::post('/work-orders/{id}/verify-warehouse', [WorkOrderController::class, 'verifyWarehouse'])->name('work-orders.verify-warehouse');
+    Route::post('/work-orders/{id}/generate-pr', [WorkOrderController::class, 'generatePr'])->name('work-orders.generate-pr');
+    Route::post('/work-orders/{id}/approve-accounting', [WorkOrderController::class, 'approveAccounting'])->name('work-orders.approve-accounting');
+    Route::post('/work-orders/{id}/reject', [WorkOrderController::class, 'reject'])->name('work-orders.reject');
+    Route::post('/work-orders/{id}/issue-items', [WorkOrderController::class, 'issueItems'])->name('work-orders.issue-items');
+    Route::get('/work-orders/{id}/print-sj', [WorkOrderController::class, 'printSuratJalan'])->name('work-orders.print-sj');
 
     // Rental Accessories CRUD
     Route::post('/rental-accessories', [RentalAccessoryController::class, 'store'])->name('rental-accessories.store');

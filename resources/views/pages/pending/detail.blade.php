@@ -1,5 +1,71 @@
 @extends('layouts.sales.app')
-@section('title', 'Detail Sales Order')
+@section('title', 'Detail Sales Order - ' . ($pending->no_pending ?? 'SO'))
+
+@push('after-style')
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
+    <style>
+        .asset-kpi-card {
+            border-radius: 10px;
+            border: 1px solid rgba(67, 89, 113, 0.12);
+            box-shadow: 0 2px 6px 0 rgba(67, 89, 113, 0.05);
+            transition: all 0.2s ease-in-out;
+            background: #ffffff;
+        }
+        .asset-kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 14px rgba(67, 89, 113, 0.1);
+        }
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .detail-card {
+            border-radius: 10px;
+            border: 1px solid rgba(67, 89, 113, 0.12);
+            box-shadow: 0 2px 6px 0 rgba(67, 89, 113, 0.05);
+            background: #ffffff;
+        }
+        .detail-label {
+            font-size: 0.72rem;
+            color: #8592a3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .detail-value {
+            font-size: 0.9rem;
+            color: #384551;
+            font-weight: 600;
+        }
+        .info-spec-box {
+            border-radius: 8px;
+            background: #fbfcfd;
+            border: 1px solid #e7ebee;
+            padding: 14px;
+        }
+        .table-custom thead th {
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            color: #697a8d;
+            padding: 0.75rem 1rem;
+            white-space: nowrap;
+        }
+        .table-custom tbody td {
+            padding: 0.75rem 1rem;
+            vertical-align: middle;
+        }
+    </style>
+@endpush
+
 @section('content')
     @php
         $isInvoiceApproved = false;

@@ -717,6 +717,13 @@ class ServiceReportsController extends Controller
         $report->viewed = 0;
         $report->save();
 
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Service report #' . $report->no_service . ' berhasil disetujui.',
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Service report disetujui.');
     }
 
@@ -738,6 +745,13 @@ class ServiceReportsController extends Controller
         $report->approved_by = null;
         $report->approved_at = null;
         $report->save();
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Service report #' . $report->no_service . ' ditolak dan dikembalikan ke teknisi.',
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Service report ditolak dan dikembalikan ke teknisi.');
     }
@@ -785,6 +799,17 @@ class ServiceReportsController extends Controller
             ->orderByDesc('id')
             ->get();
 
+        $currentYear = Carbon::now()->year;
+        $currentMonth = Carbon::now()->month;
+        $totalReportsYear = Reports::whereYear('date', $currentYear)->count();
+        $totalReportsMonth = Reports::whereYear('date', $currentYear)->whereMonth('date', $currentMonth)->count();
+        $pendingCount = Reports::where('approval_status', 'pending')->count();
+        $approvedYearCount = Reports::whereYear('date', $currentYear)->where('approval_status', 'approved')->count();
+        $rejectedYearCount = Reports::whereYear('date', $currentYear)->where('approval_status', 'rejected')->count();
+        $signedCount = Reports::whereYear('date', $currentYear)->where(function ($q) {
+            $q->whereNotNull('customer_signature')->orWhereNotNull('sign_client');
+        })->count();
+
         return view(
             "pages.support.serviceM.reports",
             compact(
@@ -798,7 +823,15 @@ class ServiceReportsController extends Controller
                 'sproduct',
                 'visits',
                 'visited',
-                'pendingReports'
+                'pendingReports',
+                'currentYear',
+                'currentMonth',
+                'totalReportsYear',
+                'totalReportsMonth',
+                'pendingCount',
+                'approvedYearCount',
+                'rejectedYearCount',
+                'signedCount'
             )
         );
     }

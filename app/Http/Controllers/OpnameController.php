@@ -215,6 +215,7 @@ class OpnameController extends Controller
         $isLocked = $opname ? $opname->isLocked() : false;
         $userRole = Auth::user()->role ?? '';
         $isAdmin = in_array($userRole, ['Admin', 'Super Admin', 'Director', 'Warehouse Manager', 'Operational Manager']);
+        $currentUserId = Auth::id();
 
         $since = $request->since ? Carbon::parse($request->since) : null;
 

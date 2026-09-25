@@ -82,6 +82,7 @@
 </div>
 
 <!-- Service Sales Forecast -->
+@if (\App\Models\AppSetting::isSalesForecastMenuEnabled())
 <div class="row gy-4 mb-4">
     <div class="col-12">
         <div class="card h-100">
@@ -98,6 +99,7 @@
         </div>
     </div>
 </div>
+@endif
 
 @push('before-style')
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/apex-charts/apex-charts.css" />

@@ -355,10 +355,8 @@
                 {{-- Items Table + Financial Summary — per Opsi kalau quotation ini
                      punya >1 opsi perbandingan harga, atau 1x aja kalau biasa. --}}
                 @php
-                    // Note/Terms & Conditions sekarang disimpan per-opsi (diisi lewat card
-                    // T&C yang ikut opsi aktif di form create/edit). Kalau quotation cuma
-                    // 1 opsi, tetap tampil 1x global seperti sebelum fitur ini ada.
-                    $hasCustomTerms = $quote->options->count() > 1;
+                    // Note/Terms & Conditions disimpan per-opsi jika >1 opsi dan merge_terms tidak aktif.
+                    $hasCustomTerms = $quote->has_custom_terms;
                 @endphp
                 @if ($quote->options->isNotEmpty())
                     @foreach ($quote->options as $i => $option)
@@ -450,13 +448,15 @@
                     </a>
                 </div>
 
-                {{-- 1.1 Ajukan Retur Barang --}}
+                {{-- 1.1 Ajukan Retur Barang (hanya muncul setelah ada invoice yang diterbitkan) --}}
+                @if ($issuedInvoices->isNotEmpty())
                 <div class="mb-3">
                     <button type="button" class="btn btn-outline-warning w-100 d-flex align-items-center justify-content-center gap-1 shadow-xs fw-semibold"
                         data-bs-toggle="modal" data-bs-target="#modalRequestReturn">
                         <i class="mdi mdi-keyboard-return"></i> Ajukan Retur Barang
                     </button>
                 </div>
+                @endif
 
                 {{-- 2. Edit & Revisi Row --}}
                 @if (($quote->status !== 'po_received') && (Auth::user()->role === 'Sales' || Auth::user()->role === 'Admin'))
@@ -1620,11 +1620,11 @@
             $autoInvoiceType = 'DP';
             $autoDpPercent = $dpVal;
             if ($dpVal == 50) {
-                $autoPaymentMethod = 'DP 50% & Pelunasan NET 50';
+                $autoPaymentMethod = 'DP 50% & BP 50%';
             } elseif ($dpVal == 30) {
-                $autoPaymentMethod = 'DP 30% & Pelunasan NET 70';
+                $autoPaymentMethod = 'DP 30% & BP 70%';
             } else {
-                $autoPaymentMethod = 'DP ' . (int)$dpVal . '% & Pelunasan NET ' . (int)$bpVal;
+                $autoPaymentMethod = 'DP ' . (int)$dpVal . '% & BP ' . (int)$bpVal . '%';
             }
         } elseif (preg_match('/(\d+)\s*(?:days|hari)/i', $rawPayment, $dayMatch) || preg_match('/(?:Tempo|NET)\s*(\d+)/i', $rawPayment, $dayMatch)) {
             $autoPaymentMethod = 'Tempo';
@@ -1644,6 +1644,9 @@
     $activeInvoiceType   = old('invoice_type', $autoInvoiceType);
     $activeDpPercent     = old('dp_percent', $autoDpPercent);
     $activeTempoDays     = old('tempo_days', $autoTempoDays);
+
+    $isStandardPreset = in_array($activePaymentMethod, ['CBD', 'COD', 'DP 50% & BP 50%', 'DP 50% & Pelunasan NET 50', 'DP 30% & BP 70%', 'DP 30% & Pelunasan NET 70', 'Tempo']);
+    $isCustomMethod = !$isStandardPreset && !empty($activePaymentMethod);
 @endphp
 <div class="modal fade" id="modalUploadPO" tabindex="-1">
     <div class="modal-dialog">
@@ -1681,19 +1684,24 @@
                             <option value="" disabled {{ empty($activePaymentMethod) ? 'selected' : '' }}>-- Pilih Metode Pembayaran --</option>
                             <option value="CBD" {{ $activePaymentMethod === 'CBD' ? 'selected' : '' }}>CBD (Cash Before Delivery)</option>
                             <option value="COD" {{ $activePaymentMethod === 'COD' ? 'selected' : '' }}>COD (Cash On Delivery)</option>
-                            <option value="DP 50% & Pelunasan NET 50" {{ $activePaymentMethod === 'DP 50% & Pelunasan NET 50' ? 'selected' : '' }}>DP 50% &amp; Pelunasan NET 50</option>
-                            <option value="DP 30% & Pelunasan NET 70" {{ $activePaymentMethod === 'DP 30% & Pelunasan NET 70' ? 'selected' : '' }}>DP 30% &amp; Pelunasan NET 70</option>
-                            @if(!in_array($activePaymentMethod, ['', 'CBD', 'COD', 'DP 50% & Pelunasan NET 50', 'DP 30% & Pelunasan NET 70', 'Tempo']) && !empty($activePaymentMethod))
-                                <option value="{{ $activePaymentMethod }}" selected>{{ $activePaymentMethod }}</option>
-                            @endif
-                            <option value="Tempo" {{ $activePaymentMethod === 'Tempo' ? 'selected' : '' }}>Tempo</option>
+                            <option value="DP 50% & BP 50%" {{ ($activePaymentMethod === 'DP 50% & BP 50%' || $activePaymentMethod === 'DP 50% & Pelunasan NET 50') ? 'selected' : '' }}>DP 50% &amp; BP 50%</option>
+                            <option value="DP 30% & BP 70%" {{ ($activePaymentMethod === 'DP 30% & BP 70%' || $activePaymentMethod === 'DP 30% & Pelunasan NET 70') ? 'selected' : '' }}>DP 30% &amp; BP 70%</option>
+                            <option value="Tempo" {{ stripos($activePaymentMethod, 'Tempo') !== false ? 'selected' : '' }}>Tempo</option>
+                            <option value="Custom" {{ $isCustomMethod ? 'selected' : '' }}>Custom / Lainnya...</option>
                         </select>
                     </div>
-                    <div class="mb-3 {{ $activePaymentMethod === 'Tempo' ? '' : 'd-none' }}" id="tempo-days-group">
+                    <div class="mb-3 {{ $isCustomMethod ? '' : 'd-none' }}" id="custom-payment-method-group">
+                        <label class="form-label fw-semibold">Custom Payment Method <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="input-custom-payment-method"
+                               placeholder="misal: DP 20% & BP 80% / Termin 3x / dll"
+                               value="{{ $isCustomMethod ? $activePaymentMethod : '' }}">
+                        <div class="form-text text-muted">Ketik metode pembayaran custom sesuai kesepakatan PO.</div>
+                    </div>
+                    <div class="mb-3 {{ (stripos($activePaymentMethod, 'Tempo') !== false) ? '' : 'd-none' }}" id="tempo-days-group">
                         <label class="form-label fw-semibold">Jangka Tempo (hari) <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <input type="number" class="form-control" id="input-tempo-days"
-                                   min="1" placeholder="misal: 30" value="{{ $activeTempoDays }}" {{ $activePaymentMethod === 'Tempo' ? 'required' : '' }}>
+                                   min="1" placeholder="misal: 30" value="{{ $activeTempoDays }}" {{ stripos($activePaymentMethod, 'Tempo') !== false ? 'required' : '' }}>
                             <span class="input-group-text">Hari</span>
                         </div>
                         <div class="form-text text-muted">Masukkan jumlah hari jangka tempo pembayaran.</div>
@@ -1742,6 +1750,11 @@
 @if ($quote->status === 'po_received' && $quote->po_number && !$quote->cancel_request
     && $issuedInvoices->isEmpty()
     && (Auth::user()->role === 'Sales' || Auth::user()->role === 'Admin'))
+@php
+    $editPayment = $quote->payment_method ?? '';
+    $isEditStandard = in_array($editPayment, ['CBD', 'COD', 'DP 50% & BP 50%', 'DP 50% & Pelunasan NET 50', 'DP 30% & BP 70%', 'DP 30% & Pelunasan NET 70']) || stripos($editPayment, 'Tempo') !== false;
+    $isEditCustom = !$isEditStandard && !empty($editPayment);
+@endphp
 <div class="modal fade" id="modalEditPoUnit" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -1749,7 +1762,7 @@
                 <h5 class="modal-title"><i class="mdi mdi-pencil-outline me-1"></i> Edit No PO &amp; Payment Method</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="{{ route('unit-quotation.update-po-number', $quote->id) }}" method="POST">
+            <form id="formEditPoUnit" action="{{ route('unit-quotation.update-po-number', $quote->id) }}" method="POST">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
@@ -1761,16 +1774,34 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Payment Method <span class="text-danger">*</span></label>
                         <select class="form-select" name="payment_method" id="edit-select-payment-method" required>
-                            <option value="CBD" {{ $quote->payment_method === 'CBD' ? 'selected' : '' }}>CBD (Cash Before Delivery)</option>
-                            <option value="COD" {{ $quote->payment_method === 'COD' ? 'selected' : '' }}>COD (Cash On Delivery)</option>
-                            <option value="DP 50% & Pelunasan NET 50" {{ str_contains($quote->payment_method ?? '', '50%') ? 'selected' : '' }}>DP 50% &amp; Pelunasan NET 50</option>
-                            <option value="DP 30% & Pelunasan NET 70" {{ str_contains($quote->payment_method ?? '', '30%') ? 'selected' : '' }}>DP 30% &amp; Pelunasan NET 70</option>
-                            <option value="Tempo" {{ stripos($quote->payment_method ?? '', 'Tempo') !== false ? 'selected' : '' }}>Tempo</option>
-                            @if (!in_array($quote->payment_method, ['CBD', 'COD', 'DP 50% & Pelunasan NET 50', 'DP 30% & Pelunasan NET 70', 'Tempo']) && !empty($quote->payment_method))
-                                <option value="{{ $quote->payment_method }}" selected>{{ $quote->payment_method }}</option>
-                            @endif
+                            <option value="CBD" {{ $editPayment === 'CBD' ? 'selected' : '' }}>CBD (Cash Before Delivery)</option>
+                            <option value="COD" {{ $editPayment === 'COD' ? 'selected' : '' }}>COD (Cash On Delivery)</option>
+                            <option value="DP 50% & BP 50%" {{ (str_contains($editPayment, '50%')) ? 'selected' : '' }}>DP 50% &amp; BP 50%</option>
+                            <option value="DP 30% & BP 70%" {{ (str_contains($editPayment, '30%')) ? 'selected' : '' }}>DP 30% &amp; BP 70%</option>
+                            <option value="Tempo" {{ stripos($editPayment, 'Tempo') !== false ? 'selected' : '' }}>Tempo</option>
+                            <option value="Custom" {{ $isEditCustom ? 'selected' : '' }}>Custom / Lainnya...</option>
                         </select>
                     </div>
+                    <div class="mb-3 {{ $isEditCustom ? '' : 'd-none' }}" id="edit-custom-payment-method-group">
+                        <label class="form-label fw-semibold">Custom Payment Method <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit-input-custom-payment-method"
+                               placeholder="misal: DP 20% & BP 80% / Termin 3x / dll"
+                               value="{{ $isEditCustom ? $editPayment : '' }}">
+                        <div class="form-text text-muted">Ketik metode pembayaran custom sesuai kebutuhan.</div>
+                    </div>
+                    <div class="mb-3 {{ stripos($editPayment, 'Tempo') !== false ? '' : 'd-none' }}" id="edit-tempo-days-group">
+                        <label class="form-label fw-semibold">Jangka Tempo (hari) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            @php
+                                preg_match('/(?:Tempo|Net)\s*(\d+)/i', $editPayment, $editDayMatch);
+                                $editTempoDays = $editDayMatch[1] ?? '30';
+                            @endphp
+                            <input type="number" class="form-control" id="edit-input-tempo-days"
+                                   min="1" placeholder="misal: 30" value="{{ $editTempoDays }}">
+                            <span class="input-group-text">Hari</span>
+                        </div>
+                    </div>
+                    <input type="hidden" name="payment_method_final" id="edit-input-payment-method-final">
                     <div class="alert alert-warning mb-0 py-2" style="font-size:12px;">
                         <i class="mdi mdi-information-outline me-1"></i>
                         Perubahan hanya bisa dilakukan selama <strong>belum ada invoice yang diterbitkan</strong>.
@@ -2210,6 +2241,7 @@
      langsung dibuka via JS begitu Upload PO sukses (AJAX), tanpa perlu reload halaman. --}}
 @include('components.modal.unit-quotation.convert-po')
 
+@if ($issuedInvoices->isNotEmpty())
 @php
     $returnItems = $quote->options->isNotEmpty() 
         ? $quote->options->pluck('details')->flatten() 
@@ -2224,6 +2256,7 @@
     'formAction' => $returnFormAction,
     'returnItems' => $returnItems,
 ])
+@endif
 
 @endsection
 
@@ -2505,12 +2538,23 @@
         var val = $(this).val();
         var $tempoDays = $('#tempo-days-group');
         var $tempoDaysInput = $('#input-tempo-days');
+        var $customGroup = $('#custom-payment-method-group');
+        var $customInput = $('#input-custom-payment-method');
+
         if (val === 'Tempo') {
             $tempoDays.removeClass('d-none');
             $tempoDaysInput.prop('required', true);
         } else {
             $tempoDays.addClass('d-none');
             $tempoDaysInput.prop('required', false).val('');
+        }
+
+        if (val === 'Custom') {
+            $customGroup.removeClass('d-none');
+            $customInput.prop('required', true).focus();
+        } else {
+            $customGroup.addClass('d-none');
+            $customInput.prop('required', false);
         }
 
         // COD/CBD dibayar lunas di muka, jadi invoice pertama otomatis Full Payment.
@@ -2520,12 +2564,69 @@
 
         // Metode "DP nn% & ..." — ikutkan persentase DP invoice pertama supaya
         // nominalnya otomatis kebaca dari Payment Method, tidak perlu diketik ulang manual.
-        var dpMatch = /^DP\s*(\d+(?:\.\d+)?)\s*%/i.exec(val || '');
+        var effectiveVal = val === 'Custom' ? $customInput.val() : val;
+        var dpMatch = /^DP\s*(\d+(?:\.\d+)?)\s*%/i.exec(effectiveVal || '');
         if (dpMatch) {
             $('#select-invoice-type').val('DP').trigger('change');
             $('#dp-percent-input').val(dpMatch[1]);
             updateDpPreview();
         }
+    });
+
+    $('#input-custom-payment-method').on('input', function () {
+        var dpMatch = /^DP\s*(\d+(?:\.\d+)?)\s*%/i.exec($(this).val() || '');
+        if (dpMatch) {
+            $('#select-invoice-type').val('DP').trigger('change');
+            $('#dp-percent-input').val(dpMatch[1]);
+            updateDpPreview();
+        }
+    });
+
+    // Edit PO modal — Payment Method dropdown logic
+    $('#edit-select-payment-method').on('change', function () {
+        var val = $(this).val();
+        var $tempoDays = $('#edit-tempo-days-group');
+        var $tempoDaysInput = $('#edit-input-tempo-days');
+        var $customGroup = $('#edit-custom-payment-method-group');
+        var $customInput = $('#edit-input-custom-payment-method');
+
+        if (val === 'Tempo') {
+            $tempoDays.removeClass('d-none');
+            $tempoDaysInput.prop('required', true);
+        } else {
+            $tempoDays.addClass('d-none');
+            $tempoDaysInput.prop('required', false);
+        }
+
+        if (val === 'Custom') {
+            $customGroup.removeClass('d-none');
+            $customInput.prop('required', true).focus();
+        } else {
+            $customGroup.addClass('d-none');
+            $customInput.prop('required', false);
+        }
+    });
+
+    $('#formEditPoUnit').on('submit', function (e) {
+        var method = $('#edit-select-payment-method').val();
+        var finalValue = method;
+
+        if (method === 'Tempo') {
+            var days = parseInt($('#edit-input-tempo-days').val());
+            finalValue = days && days > 0 ? ('Tempo ' + days + ' Hari') : 'Tempo';
+        } else if (method === 'Custom') {
+            var customVal = $('#edit-input-custom-payment-method').val().trim();
+            if (!customVal) {
+                e.preventDefault();
+                $('#edit-input-custom-payment-method').focus();
+                Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Masukkan keterangan Custom Payment Method.' });
+                return false;
+            }
+            finalValue = customVal;
+        }
+
+        $('#edit-select-payment-method').prop('name', '');
+        $('#edit-input-payment-method-final').attr('name', 'payment_method').val(finalValue);
     });
 
     $('#modalUploadPO').on('shown.bs.modal', function () {
@@ -2553,6 +2654,14 @@
                 return false;
             }
             finalValue = 'Tempo ' + days + ' Hari';
+        } else if (method === 'Custom') {
+            var customVal = $('#input-custom-payment-method').val().trim();
+            if (!customVal) {
+                $('#input-custom-payment-method').focus();
+                Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Masukkan keterangan Custom Payment Method.' });
+                return false;
+            }
+            finalValue = customVal;
         }
 
         // Set nilai final ke hidden input & rename agar server membaca dari sini

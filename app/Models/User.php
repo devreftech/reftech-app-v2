@@ -77,6 +77,30 @@ class User extends Authenticatable
         return $this->role === 'Project Manager' || $this->getRawOriginal('role') === 'Project Manager';
     }
 
+    public function isClientVendor(): bool
+    {
+        return $this->role === 'Client Vendor' || $this->getRawOriginal('role') === 'Client Vendor';
+    }
+
+    /**
+     * Cek apakah user memiliki akses ke menu / modul Proyek Konstruksi
+     * (Admin, Developer, Accounting, Finance Manager, atau akun yang ditugaskan sebagai PIC di Fixed Asset Bangunan).
+     */
+    public function hasConstructionProjectAccess(): bool
+    {
+        if (in_array($this->role, ['Admin', 'Developer', 'Accounting', 'Finance Manager', 'Project Manager']) || $this->isDeveloper() || $this->id == 3) {
+            return true;
+        }
+
+        return \App\Models\FixedAsset::where('type', 'Bangunan')
+            ->whereNotNull('pic_construction_ids')
+            ->get()
+            ->contains(function ($bld) {
+                $pics = $bld->pic_construction_ids ?? [];
+                return is_array($pics) && in_array($this->id, $pics);
+            });
+    }
+
     public function detail()
     {
         return $this->hasMany('App\Models\DetailUser', 'id_users');

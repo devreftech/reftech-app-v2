@@ -34,7 +34,7 @@
 @endpush
 
 @section('content')
-<div class="container-xxl flex-grow-1 container-p-y">
+<div class="container-fluid px-3 px-md-4 py-3 flex-grow-1">
     <!-- Header & Breadcrumb -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
         <div>
@@ -246,10 +246,86 @@
                             </div>
                         </div>
 
+                        <!-- Special Fields for Bangunan -->
+                        <div id="bangunan-fields-wrapper" style="{{ ($fixed->type ?? old('type')) === 'Bangunan' ? '' : 'display:none;' }}">
+                            <div class="field-card mb-3">
+                                <h6 class="fw-bold text-primary mb-3"><i class="mdi mdi-office-building me-1"></i>Spesifikasi Properti & Bangunan</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6 col-12">
+                                        <label for="status-bangunan-input" class="form-label fw-semibold">Status Bangunan / Proyek <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="status-bangunan-input" name="status_bangunan">
+                                            <option value="operational" {{ ($fixed->status_bangunan ?? old('status_bangunan', 'operational')) == 'operational' ? 'selected' : '' }}>
+                                                🏢 Siap Digunakan / Operasional (Aktif Disusutkan)
+                                            </option>
+                                            <option value="construction" {{ ($fixed->status_bangunan ?? old('status_bangunan')) == 'construction' ? 'selected' : '' }}>
+                                                🚧 Dalam Proses Pembangunan / Proyek Konstruksi
+                                            </option>
+                                        </select>
+                                        <small class="text-muted" id="status-bangunan-help">
+                                            Bangunan dalam konstruksi belum disusutkan sampai statusnya diubah menjadi operasional.
+                                        </small>
+                                    </div>
+                                    <div class="col-md-6 col-12">
+                                        <label for="tipe-pengadaan-input" class="form-label fw-semibold">Tipe Pengadaan Bangunan</label>
+                                        <select class="form-select" id="tipe-pengadaan-input" name="tipe_pengadaan">
+                                            <option value="swakelola" {{ ($fixed->tipe_pengadaan ?? old('tipe_pengadaan')) == 'swakelola' ? 'selected' : '' }}>
+                                                🔨 Pembangunan Swakelola / Mandiri (Tanpa Kontraktor)
+                                            </option>
+                                            <option value="kontraktor" {{ ($fixed->tipe_pengadaan ?? old('tipe_pengadaan')) == 'kontraktor' ? 'selected' : '' }}>
+                                                👷 Pengerjaan Kontraktor / Pemborong Utama
+                                            </option>
+                                            <option value="beli_jadi" {{ ($fixed->tipe_pengadaan ?? old('tipe_pengadaan', 'beli_jadi')) == 'beli_jadi' ? 'selected' : '' }}>
+                                                🏠 Beli Bangunan / Ruko Jadi (Siap Pakai)
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="lokasi-bangunan-input" class="form-label fw-semibold">Alamat Lengkap / Lokasi Bangunan</label>
+                                        <textarea class="form-control" rows="2" id="lokasi-bangunan-input" name="lokasi_bangunan" 
+                                            placeholder="Contoh: Jl. Narogong Raya KM 12, Kel. Bantargebang, Kota Bekasi (Workshop 2)...">{{ old('lokasi_bangunan', $fixed->lokasi_bangunan ?? '') }}</textarea>
+                                    </div>
+                                    <div class="col-md-4 col-12">
+                                        <label for="luas-bangunan-input" class="form-label fw-semibold">Luas Bangunan (m²)</label>
+                                        <div class="input-group">
+                                            <input class="form-control" type="number" step="0.01" placeholder="Contoh: 450"
+                                                id="luas-bangunan-input" name="luas_bangunan"
+                                                value="{{ old('luas_bangunan', $fixed->luas_bangunan ?? '') }}">
+                                            <span class="input-group-text">m²</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 col-12">
+                                        <label for="luas-tanah-input" class="form-label fw-semibold">Luas Tanah (m²)</label>
+                                        <div class="input-group">
+                                            <input class="form-control" type="number" step="0.01" placeholder="Contoh: 600"
+                                                id="luas-tanah-input" name="luas_tanah"
+                                                value="{{ old('luas_tanah', $fixed->luas_tanah ?? '') }}">
+                                            <span class="input-group-text">m²</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 col-12">
+                                        <label for="nomor-legalitas-input" class="form-label fw-semibold">No. Legalitas / PBG / IMB</label>
+                                        <input class="form-control" type="text" placeholder="Contoh: PBG-3275-xxxx / SHM No..."
+                                            id="nomor-legalitas-input" name="nomor_dokumen_legalitas"
+                                            value="{{ old('nomor_dokumen_legalitas', $fixed->nomor_dokumen_legalitas ?? '') }}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-warning d-flex align-items-start mb-3" id="alert-construction-notice" style="{{ ($fixed->status_bangunan ?? old('status_bangunan')) === 'construction' ? '' : 'display:none;' }}">
+                                <i class="mdi mdi-information-outline fs-5 me-2 mt-0.5"></i>
+                                <div class="small">
+                                    <strong>Mode Proyek Pembangunan Aktif (Swakelola / Kontraktor):</strong>
+                                    <div class="mt-1">
+                                        Nilai total perolehan awal dapat diisi <strong>Rp 0</strong>. Pengeluaran pembelian material, jasa tukang, dan operasional proyek dapat dicatat secara berkala pada modul Proyek Pembangunan di halaman detail aset. Penyusutan belum akan berjalan selama status masih dalam pembangunan.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Supplier & Invoice -->
                         <div class="row g-3">
                             <div class="col-md-6 col-12">
-                                <label for="supplier-dropdown" class="form-label fw-semibold">Supplier / Rekanan</label>
+                                <label for="supplier-dropdown" class="form-label fw-semibold" id="supplier-label">Supplier / Rekanan</label>
                                 <select id="supplier-dropdown" class="select2 form-select" data-allow-clear="true" name="supplier">
                                     <option value="">Pilih Supplier...</option>
                                     @foreach ($suppliers as $supp)
@@ -259,9 +335,10 @@
                                         </option>
                                     @endforeach
                                 </select>
+                                <small class="text-muted" id="supplier-help-text">Vendor perolehan aset tetap.</small>
                             </div>
                             <div class="col-md-6 col-12">
-                                <label for="no-voucher-input" class="form-label fw-semibold">No. Invoice / Kwitansi Beli</label>
+                                <label for="no-voucher-input" class="form-label fw-semibold" id="invoice-label">No. Invoice / Kwitansi Beli</label>
                                 <input class="form-control" type="text" placeholder="Contoh: INV/2024/09/001"
                                     id="no-voucher-input" name="no_invoice" value="{{ old('no_invoice', $fixed->no_invoice ?? '') }}">
                             </div>
@@ -538,16 +615,60 @@
                     $('#desc-text-wrapper').hide();
                     $('#mesin-fields-wrapper').slideDown();
                     $('#kendaraan-fields-wrapper').slideUp();
+                    $('#bangunan-fields-wrapper').slideUp();
                 } else if (cat === 'Kendaraan') {
                     $('#desc-text-wrapper').slideDown();
                     $('#mesin-fields-wrapper').slideUp();
                     $('#kendaraan-fields-wrapper').slideDown();
+                    $('#bangunan-fields-wrapper').slideUp();
+                } else if (cat === 'Bangunan') {
+                    $('#desc-text-wrapper').slideDown();
+                    $('#mesin-fields-wrapper').slideUp();
+                    $('#kendaraan-fields-wrapper').slideUp();
+                    $('#bangunan-fields-wrapper').slideDown();
+                    
+                    // Default 240 bulan (20 tahun) untuk bangunan jika umur default masih 48
+                    var currentUmur = parseInt($('#umur').val(), 10);
+                    if (!currentUmur || currentUmur === 48) {
+                        $('#umur').val(240);
+                    }
+                    updateBuildingContext();
                 } else {
                     $('#desc-text-wrapper').slideDown();
                     $('#mesin-fields-wrapper').slideUp();
                     $('#kendaraan-fields-wrapper').slideUp();
+                    $('#bangunan-fields-wrapper').slideUp();
                 }
             }
+
+            function updateBuildingContext() {
+                var status = $('#status-bangunan-input').val();
+                var tipe = $('#tipe-pengadaan-input').val();
+
+                if (status === 'construction') {
+                    $('#alert-construction-notice').slideDown();
+                    $('#supplier-label').html('Supplier / Kontraktor <span class="text-muted fw-normal">(Opsional jika Swakelola)</span>');
+                    $('#supplier-help-text').text('Pilih vendor utama jika ada kontraktor, atau kosongkan jika swakelola.');
+                    $('#totalLabel-1').attr('placeholder', '0 (Bisa dimulai Rp 0 untuk swakelola)');
+                } else {
+                    $('#alert-construction-notice').slideUp();
+                    if (tipe === 'kontraktor') {
+                        $('#supplier-label').text('Kontraktor / Pemborong Utama');
+                        $('#invoice-label').text('No. Kontrak / SPK / BAST');
+                    } else if (tipe === 'beli_jadi') {
+                        $('#supplier-label').text('Developer / Penjual / Supplier');
+                        $('#invoice-label').text('No. Invoice / AJB / Kwitansi');
+                    } else {
+                        $('#supplier-label').text('Supplier / Rekanan');
+                        $('#invoice-label').text('No. Invoice / Kwitansi Beli');
+                    }
+                    $('#supplier-help-text').text('Vendor perolehan aset tetap.');
+                }
+            }
+
+            $('#status-bangunan-input, #tipe-pengadaan-input').on('change', function() {
+                updateBuildingContext();
+            });
 
             $('#type').on('change', function() {
                 var selectedType = $(this).val();
@@ -563,6 +684,11 @@
                     }
                 @endif
             });
+
+            // Initial check on load
+            if ($('#type').val() === 'Bangunan') {
+                updateBuildingContext();
+            }
 
             // Update description automatically when unit is selected for Mesin
             $('#unit-dropdown').on('change', function() {

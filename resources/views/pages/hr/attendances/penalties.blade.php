@@ -25,7 +25,7 @@
         </h4>
         <small class="text-muted">
             Periode: <strong class="text-dark">{{ \Carbon\Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y') }}</strong> &bull; 
-            Skema: <span class="badge bg-label-danger font-11">{{ $latePenaltyType === 'per_minute' ? 'Per Menit (Rp '.number_format($latePenaltyRate, 0, ',', '.').'/mnt)' : 'Flat (Rp '.number_format($latePenaltyRate, 0, ',', '.').'/hari)' }}</span>
+            Skema: <span class="badge bg-label-danger font-11">Bertingkat (1x: Rp 50rb &bull; 2x: Rp 75rb &bull; 3x: Rp 100rb &bull; &gt;3x: Potong Gaji 10%)</span>
         </small>
     </div>
 
@@ -102,7 +102,7 @@
                     </div>
                 </div>
                 <h3 class="fw-bold text-primary mb-0 font-22">{{ $totalEmployeesWarning }} <small class="fs-6 fw-normal">Orang</small></h3>
-                <div class="text-muted small mt-1 font-11">&ge; {{ $lateMultiplierThreshold }}x keterlambatan per bulan</div>
+                <div class="text-muted small mt-1 font-11">&gt; 3x keterlambatan (Potong Gaji {{ $lateTierExcessPercent ?? 10 }}%)</div>
             </div>
         </div>
     </div>
@@ -143,9 +143,8 @@
                 <label class="form-label small fw-semibold mb-1">Status Sanksi</label>
                 <select name="strike_status" class="form-select form-select-sm">
                     <option value="all">Semua Status</option>
-                    <option value="penalized" @selected($strikeFilter === 'penalized')>Kena Denda Aktif</option>
-                    <option value="warning_sp" @selected($strikeFilter === 'warning_sp')>Peringatan SP (&ge;{{ $lateMultiplierThreshold }}x)</option>
-                    <option value="tolerance" @selected($strikeFilter === 'tolerance')>Bebas Toleransi</option>
+                    <option value="penalized" @selected($strikeFilter === 'penalized')>Kena Denda (1x - 3x)</option>
+                    <option value="warning_sp" @selected($strikeFilter === 'warning_sp')>Peringatan SP-1 (&gt;3x)</option>
                     <option value="disciplined" @selected($strikeFilter === 'disciplined')>Disiplin (0x)</option>
                 </select>
             </div>

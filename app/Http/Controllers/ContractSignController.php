@@ -295,7 +295,7 @@ class ContractSignController extends Controller
             $dp = (int) $m[1];
             $pelunasan = 100 - $dp;
             return [
-                'payment_method' => "DP {$dp}% & Pelunasan NET {$pelunasan}",
+                'payment_method' => "DP {$dp}% & BP {$pelunasan}%",
                 'invoice_type'   => 'DP',
                 'dp_percent'     => $dp,
             ];

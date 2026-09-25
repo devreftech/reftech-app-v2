@@ -23,18 +23,21 @@ if (Auth::check()) {
         $pdo->exec("SET SESSION sql_mode = ''");
 
     // Query database for data
-    $query = "SELECT STRAIGHT_JOIN r.*, c.company, u.name AS technician, s.name AS sales ,  CONCAT(sp.brand, ' ', un.model) AS brand_type ,  CONCAT('(', COALESCE(m.serial, '-'), ') - ', COALESCE(m.tag, '-')) AS serial_tag
+    $query = "SELECT STRAIGHT_JOIN r.*, COALESCE(c.company, cm.company, '-') AS company, u.name AS technician, s.name AS sales,
+          COALESCE(NULLIF(CONCAT_WS(' ', sp.brand, COALESCE(un.model, sp.pn)), ''), '-') AS brand_type,
+          CONCAT('(', COALESCE(m.serial, '-'), ') - ', COALESCE(m.tag, '-')) AS serial_tag
           FROM reports r
-        JOIN machine m on r.id_machine = m.id
+          JOIN machine m ON r.id_machine = m.id
           LEFT JOIN pic p ON p.id = r.id_pic
           LEFT JOIN client c ON c.id = p.id_client
-          INNER JOIN users u ON u.id = r.id_technician
-          INNER JOIN users s ON s.id = c.id_sales
-        INNER JOIN serial_product sp ON sp.id = m.id_unit
-        INNER JOIN unit un ON un.id = sp.id_product
+          LEFT JOIN client cm ON cm.id = m.id_client
+          LEFT JOIN users u ON u.id = r.id_technician
+          LEFT JOIN users s ON s.id = COALESCE(c.id_sales, cm.id_sales)
+          LEFT JOIN serial_product sp ON sp.id = m.id_unit
+          LEFT JOIN unit un ON un.id = sp.id_product
           WHERE YEAR(r.date) = :year
-          GROUP BY r.id, un.id
-          ORDER BY r.date ASC";
+          GROUP BY r.id
+          ORDER BY r.date DESC";
 
     $stmt = $pdo->prepare($query);
     $stmt->bindValue(':year', $year, PDO::PARAM_INT);

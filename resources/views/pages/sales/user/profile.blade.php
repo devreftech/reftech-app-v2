@@ -179,6 +179,11 @@
                             <span class="text-muted small d-flex align-items-center gap-1 mt-1">
                                 <i class="mdi mdi-clock-in text-primary"></i> Sedang Masuk
                             </span>
+                        @elseif (\Carbon\Carbon::today('Asia/Jakarta')->isWeekend())
+                            <h4 class="mb-0 fw-bold text-info">Libur Weekend</h4>
+                            <span class="text-muted small d-flex align-items-center gap-1 mt-1">
+                                <i class="mdi mdi-calendar-weekend text-info"></i> Bebas Presensi
+                            </span>
                         @else
                             <h4 class="mb-0 fw-bold text-secondary">Belum Absen</h4>
                             <span class="text-muted small d-flex align-items-center gap-1 mt-1">
@@ -191,6 +196,9 @@
         </div>
 
         {{-- Card 2: Sisa Kuota Cuti --}}
+        @php
+            $isQuotaActive = $leaveBalance ? (bool) ($leaveBalance->is_active ?? true) : true;
+        @endphp
         <div class="col-6 col-lg-3">
             <div class="card profile-stat-card border-0 shadow-sm h-100">
                 <div class="card-body p-3 d-flex flex-column justify-content-between">
@@ -201,10 +209,17 @@
                         </div>
                     </div>
                     <div>
-                        <h4 class="mb-0 fw-bold text-primary">{{ $leaveBalance?->remaining_quota ?? 12 }} Hari</h4>
-                        <span class="text-muted small d-flex align-items-center gap-1 mt-1">
-                            <i class="mdi mdi-calendar-blank-outline"></i> Kuota: {{ $leaveBalance?->total_quota ?? 12 }} hari
-                        </span>
+                        @if ($isQuotaActive)
+                            <h4 class="mb-0 fw-bold text-primary">{{ $leaveBalance?->remaining_quota ?? 12 }} Hari</h4>
+                            <span class="text-muted small d-flex align-items-center gap-1 mt-1">
+                                <i class="mdi mdi-calendar-blank-outline"></i> Kuota: {{ $leaveBalance?->total_quota ?? 12 }} hari
+                            </span>
+                        @else
+                            <h5 class="mb-0 fw-bold text-secondary">Non-Aktif</h5>
+                            <span class="text-muted small d-flex align-items-center gap-1 mt-1">
+                                <i class="mdi mdi-information-outline"></i> Kuota tidak dibatasi
+                            </span>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -277,7 +292,11 @@
                     <button class="nav-link {{ $activeTab === 'tabLeave' ? 'active' : '' }} d-flex align-items-center gap-2" id="tab-leave-btn" data-bs-toggle="tab" data-bs-target="#tabLeave" type="button" role="tab" aria-controls="tabLeave" aria-selected="{{ $activeTab === 'tabLeave' ? 'true' : 'false' }}">
                         <i class="mdi mdi-calendar-remove-outline"></i>
                         <span>Cuti &amp; Izin</span>
-                        <span class="badge rounded-pill bg-label-primary">{{ $leaveBalance?->remaining_quota ?? 12 }} Hari</span>
+                        @if ($isQuotaActive)
+                            <span class="badge rounded-pill bg-label-primary">{{ $leaveBalance?->remaining_quota ?? 12 }} Hari</span>
+                        @else
+                            <span class="badge rounded-pill bg-label-secondary">{{ $myLeaves->count() }}</span>
+                        @endif
                     </button>
                 </li>
                 @if ($isOwnProfile || $isAdminOrHr)
@@ -526,9 +545,15 @@
                                             <i class="mdi mdi-shield-account-outline me-1 text-primary"></i> Bebas Presensi Online
                                         </span>
                                     @elseif (!$todayAttendance || !$todayAttendance->clock_in)
-                                        <button type="button" class="btn btn-success btn-lg shadow fw-bold px-4 rounded-pill waves-effect" data-bs-toggle="modal" data-bs-target="#navClockInModal">
-                                            <i class="mdi mdi-clock-in me-1.5"></i> Presensi Masuk (Clock In)
-                                        </button>
+                                        @if (\Carbon\Carbon::today('Asia/Jakarta')->isWeekend())
+                                            <button type="button" class="btn btn-outline-light btn-lg shadow fw-bold px-4 rounded-pill waves-effect" data-bs-toggle="modal" data-bs-target="#navClockInModal">
+                                                <i class="mdi mdi-calendar-weekend me-1.5"></i> Libur Weekend (Presensi Opsional)
+                                            </button>
+                                        @else
+                                            <button type="button" class="btn btn-success btn-lg shadow fw-bold px-4 rounded-pill waves-effect" data-bs-toggle="modal" data-bs-target="#navClockInModal">
+                                                <i class="mdi mdi-clock-in me-1.5"></i> Presensi Masuk (Clock In)
+                                            </button>
+                                        @endif
                                     @elseif ($todayAttendance && !$todayAttendance->clock_out)
                                         <button type="button" class="btn btn-warning btn-lg shadow fw-bold px-4 rounded-pill waves-effect" data-bs-toggle="modal" data-bs-target="#navClockOutModal">
                                             <i class="mdi mdi-clock-out me-1.5"></i> Presensi Pulang (Clock Out)
@@ -841,7 +866,9 @@
                         <div class="card-header border-bottom py-3 bg-white d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="card-title mb-0 fw-bold text-dark">Pengajuan &amp; Riwayat Cuti</h6>
-                                <small class="text-muted">Sisa Kuota: <strong>{{ $leaveBalance?->remaining_quota ?? 12 }} Hari</strong></small>
+                                @if ($isQuotaActive)
+                                    <small class="text-muted">Sisa Kuota: <strong>{{ $leaveBalance?->remaining_quota ?? 12 }} Hari</strong></small>
+                                @endif
                             </div>
                             @if ($isOwnProfile)
                                 <button type="button" class="btn btn-sm btn-primary fw-semibold shadow-xs rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalEssNewLeave">

@@ -12,6 +12,8 @@
     @include('pages.workshop.dashboard._content')
 @elseif (($adminView ?? 'sales') === 'projectmanager')
     @include('pages.projectmanager.dashboard._content')
+@elseif (($adminView ?? 'sales') === 'clientvendor')
+    @include('pages.clientvendor.dashboard._content')
 @else
     @include('pages.sales.dashboard_admin_sales')
 @endif

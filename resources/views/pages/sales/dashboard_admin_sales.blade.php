@@ -154,13 +154,15 @@
                                    aria-controls="navs-sales-{{ $user->id }}" aria-selected="{{ $isActive ? 'true' : 'false' }}"
                                    style="min-width: 90px; transition: all 0.25s ease;">
                                     <div class="position-relative mb-1">
-                                        <img src="{{ url('') . '/' . $user->image }}" alt="{{ $displayName }}"
-                                            class="rounded-circle border"
-                                            style="width: 44px; height: 44px; object-fit: cover; border-width: 2px !important;">
-                                        @if ($user->id == 16)
-                                            <span class="position-absolute bottom-0 end-0 badge rounded-pill bg-primary p-1" style="transform: translate(25%, 25%);">
-                                                <i class="mdi mdi-cart fs-6 text-white" style="font-size: 10px !important;"></i>
-                                            </span>
+                                        @if ($user->id == 16 || ($roster && $roster->sales_type === 'ecommerce'))
+                                            <div class="rounded-circle border bg-label-success d-flex align-items-center justify-content-center"
+                                                style="width: 44px; height: 44px; border-width: 2px !important;">
+                                                <i class="mdi mdi-cart-outline fs-4"></i>
+                                            </div>
+                                        @else
+                                            <img src="{{ url('') . '/' . $user->image }}" alt="{{ $displayName }}"
+                                                class="rounded-circle border"
+                                                style="width: 44px; height: 44px; object-fit: cover; border-width: 2px !important;">
                                         @endif
                                     </div>
                                     <span class="fw-semibold text-dark text-truncate d-block mt-1" style="max-width: 82px; font-size: 0.76rem; line-height: 1.2;">
@@ -221,6 +223,19 @@
                             @if ($user->id == 23) @continue @endif
                             @php
                                 $titleName = $user->id == 16 ? 'Team E-Commerce' : $user->name;
+                                $d = $salesOverviewData[$user->id] ?? [
+                                    'leads' => 0, 'target_leads' => 0, 'percent_leads' => 0,
+                                    'dc' => 0, 'target_dc' => 0, 'percent_dc' => 0,
+                                    'visit' => 0, 'crm' => 0, 'target_crm' => 0, 'percent_crm' => 0,
+                                    'quote' => 0, 'target_quote' => 0, 'percent_quote' => 0,
+                                    'prospect_count' => 0, 'po_count' => 0,
+                                    'total_quotation' => 0, 'total_prospect' => 0, 'total_hot_prospect' => 0,
+                                    'total_po' => 0, 'total_loss' => 0,
+                                    'target_total_po' => 0, 'percent_po' => 0,
+                                    'online_product' => 0, 'online_video' => 0, 'online_stat' => 0,
+                                    'online_delivery' => 0, 'online_response' => 0, 'online_rating' => 0
+                                ];
+                                $poColor = $d['percent_po'] <= 80 ? 'danger' : ($d['percent_po'] <= 100 ? 'warning' : 'success');
                             @endphp
                             <div class="tab-pane fade{{ $user->id == ($firstSales->id ?? 1) ? ' show active' : '' }}"
                                 id="navs-sales-{{ $user->id }}" role="tabpanel">
@@ -229,8 +244,15 @@
                                         <!-- Header Profile Banner -->
                                         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 bg-light rounded-3 border border-dashed mb-3">
                                             <div class="d-flex align-items-center gap-3">
-                                                <img src="{{ url('') . '/' . $user->image }}" alt="{{ $titleName }}"
-                                                    class="rounded-circle border shadow-xs" style="width: 48px; height: 48px; object-fit: cover; border-width: 2px !important;">
+                                                @if ($user->id == 16 || ($roster && $roster->sales_type === 'ecommerce'))
+                                                    <div class="rounded-circle border bg-label-success d-flex align-items-center justify-content-center shadow-xs"
+                                                        style="width: 48px; height: 48px; border-width: 2px !important;">
+                                                        <i class="mdi mdi-cart-outline fs-3"></i>
+                                                    </div>
+                                                @else
+                                                    <img src="{{ url('') . '/' . $user->image }}" alt="{{ $titleName }}"
+                                                        class="rounded-circle border shadow-xs" style="width: 48px; height: 48px; object-fit: cover; border-width: 2px !important;">
+                                                @endif
                                                 <div>
                                                     <div class="d-flex align-items-center gap-2">
                                                         <h5 class="mb-0 fw-bold text-dark">{{ $titleName }}</h5>
@@ -264,10 +286,10 @@
                                                                         <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-reproduction"></i></span>
                                                                         <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Upload Product</span>
                                                                     </div>
-                                                                    <span class="badge bg-label-info rounded-pill filtered-percent-product" style="font-size: 9px;">0%</span>
+                                                                    <span class="badge bg-label-info rounded-pill filtered-percent-product" style="font-size: 9px;">{{ $d['online_product'] > 0 ? '100%' : '0%' }}</span>
                                                                 </div>
                                                                 <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                    <h6 class="mb-0 fw-bold text-dark filtered-product">0</h6>
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-product">{{ $d['online_product'] }}</h6>
                                                                     <small class="text-muted filtered-target-product" style="font-size: 0.7rem;">/ 100</small>
                                                                 </div>
                                                             </div>
@@ -280,10 +302,10 @@
                                                                         <span class="badge bg-label-secondary p-1 rounded"><i class="mdi mdi-video-outline"></i></span>
                                                                         <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Upload Video</span>
                                                                     </div>
-                                                                    <span class="badge bg-label-secondary rounded-pill filtered-percent-video" style="font-size: 9px;">0%</span>
+                                                                    <span class="badge bg-label-secondary rounded-pill filtered-percent-video" style="font-size: 9px;">{{ $d['online_video'] }}%</span>
                                                                 </div>
                                                                 <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                    <h6 class="mb-0 fw-bold text-dark filtered-video">0</h6>
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-video">{{ $d['online_video'] }}</h6>
                                                                     <small class="text-muted filtered-target-video" style="font-size: 0.7rem;">/ 100%</small>
                                                                 </div>
                                                             </div>
@@ -296,11 +318,11 @@
                                                                         <span class="badge bg-label-primary p-1 rounded"><i class="mdi mdi-account-multiple-outline"></i></span>
                                                                         <span class="fw-semibold text-dark" style="font-size: 0.75rem;">CRM</span>
                                                                     </div>
-                                                                    <span class="badge bg-label-primary rounded-pill filtered-percent-crm" style="font-size: 9px;">0%</span>
+                                                                    <span class="badge bg-label-primary rounded-pill filtered-percent-crm" style="font-size: 9px;">{{ $d['percent_crm'] }}%</span>
                                                                 </div>
                                                                 <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                    <h6 class="mb-0 fw-bold text-dark filtered-crm">{{ $user->id == ($firstSales->id ?? 1) ? $filteredCRM : 0 }}</h6>
-                                                                    <small class="text-muted filtered-target-crm" style="font-size: 0.7rem;">/ {{ $targetCrm[$user->id] ?? 0 }}</small>
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-crm">{{ $d['crm'] }}</h6>
+                                                                    <small class="text-muted filtered-target-crm" style="font-size: 0.7rem;">/ {{ $d['target_crm'] }}</small>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -312,10 +334,10 @@
                                                                         <span class="badge bg-label-warning p-1 rounded"><i class="mdi mdi-package-variant-closed-check"></i></span>
                                                                         <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Status Product</span>
                                                                     </div>
-                                                                    <span class="badge bg-label-warning rounded-pill filtered-percent-status" style="font-size: 9px;">0%</span>
+                                                                    <span class="badge bg-label-warning rounded-pill filtered-percent-status" style="font-size: 9px;">{{ $d['online_stat'] > 0 ? round(($d['online_stat'] / 5) * 100) : 0 }}%</span>
                                                                 </div>
                                                                 <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                    <h6 class="mb-0 fw-bold text-dark filtered-status">0</h6>
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-status">{{ $d['online_stat'] > 0 ? number_format($d['online_stat'], 1) : '0' }}</h6>
                                                                     <small class="text-muted filtered-target-status" style="font-size: 0.7rem;">/ 5.0</small>
                                                                 </div>
                                                             </div>
@@ -328,10 +350,10 @@
                                                                         <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-truck-delivery-outline"></i></span>
                                                                         <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Delivery Status</span>
                                                                     </div>
-                                                                    <span class="badge bg-label-info rounded-pill filtered-percent-delivery" style="font-size: 9px;">0%</span>
+                                                                    <span class="badge bg-label-info rounded-pill filtered-percent-delivery" style="font-size: 9px;">{{ $d['online_delivery'] > 0 ? round(($d['online_delivery'] / 5) * 100) : 0 }}%</span>
                                                                 </div>
                                                                 <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                    <h6 class="mb-0 fw-bold text-dark filtered-delivery">0</h6>
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-delivery">{{ $d['online_delivery'] > 0 ? number_format($d['online_delivery'], 1) : '0' }}</h6>
                                                                     <small class="text-muted filtered-target-delivery" style="font-size: 0.7rem;">/ 5.0</small>
                                                                 </div>
                                                             </div>
@@ -344,10 +366,10 @@
                                                                         <span class="badge bg-label-danger p-1 rounded"><i class="mdi mdi-account-heart-outline"></i></span>
                                                                         <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Chat Response</span>
                                                                     </div>
-                                                                    <span class="badge bg-label-danger rounded-pill filtered-percent-response" style="font-size: 9px;">0%</span>
+                                                                    <span class="badge bg-label-danger rounded-pill filtered-percent-response" style="font-size: 9px;">{{ round($d['online_response']) }}%</span>
                                                                 </div>
                                                                 <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                    <h6 class="mb-0 fw-bold text-dark filtered-response">0</h6>
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-response">{{ round($d['online_response']) }}</h6>
                                                                     <small class="text-muted filtered-target-response" style="font-size: 0.7rem;">/ 100%</small>
                                                                 </div>
                                                             </div>
@@ -360,10 +382,10 @@
                                                                         <span class="badge bg-label-warning p-1 rounded"><i class="mdi mdi-star"></i></span>
                                                                         <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Store Rating</span>
                                                                     </div>
-                                                                    <span class="badge bg-label-warning rounded-pill filtered-percent-rating" style="font-size: 9px;">0%</span>
+                                                                    <span class="badge bg-label-warning rounded-pill filtered-percent-rating" style="font-size: 9px;">{{ $d['online_rating'] > 0 ? round(($d['online_rating'] / 5) * 100) : 0 }}%</span>
                                                                 </div>
                                                                 <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                    <h6 class="mb-0 fw-bold text-dark filtered-rating">0</h6>
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-rating">{{ $d['online_rating'] > 0 ? number_format($d['online_rating'], 1) : '0' }}</h6>
                                                                     <small class="text-muted filtered-target-rating" style="font-size: 0.7rem;">/ 5.0</small>
                                                                 </div>
                                                             </div>
@@ -380,52 +402,40 @@
                                                         <span class="badge bg-label-primary rounded-pill" style="font-size: 0.65rem;">Operational</span>
                                                     </div>
                                                     <div class="row g-2">
-                                                        @if ($user->id == 1 || $user->id == 2 || $user->id == 32)
-                                                            @php
-                                                                $salesTargetLeads = ($targetSales[$item][0] ?? null)?->leads ?? 0;
-                                                                $currentLeads = $user->id == ($firstSales->id ?? 1) ? $filteredLeads : 0;
-                                                                $targetLeads = $salesTargetLeads > 0 ? ($currentLeads / $salesTargetLeads) * 100 : 0;
-                                                            @endphp
-                                                            <!-- New Leads -->
-                                                            <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary h-100">
-                                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                        <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-secondary p-1 rounded"><i class="mdi mdi-account-multiple-plus-outline"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.75rem;">New Leads</span>
-                                                                        </div>
-                                                                        <span class="badge bg-label-secondary rounded-pill filtered-percent-leads" style="font-size: 9px;">{{ round($targetLeads) }}%</span>
+                                                        <!-- New Leads -->
+                                                        <div class="col-6">
+                                                            <div class="p-2 border rounded-3 bg-body-tertiary h-100">
+                                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                    <div class="d-flex align-items-center gap-1">
+                                                                        <span class="badge bg-label-secondary p-1 rounded"><i class="mdi mdi-account-multiple-plus-outline"></i></span>
+                                                                        <span class="fw-semibold text-dark" style="font-size: 0.75rem;">New Leads</span>
                                                                     </div>
-                                                                    <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-leads">{{ $user->id == ($firstSales->id ?? 1) ? $filteredLeads : 0 }}</h6>
-                                                                        <small class="text-muted filtered-target-leads" style="font-size: 0.7rem;">/ {{ $salesTargetLeads }}</small>
-                                                                    </div>
+                                                                    <span class="badge bg-label-secondary rounded-pill filtered-percent-leads" style="font-size: 9px;">{{ $d['percent_leads'] }}%</span>
+                                                                </div>
+                                                                <div class="d-flex align-items-baseline gap-1 mt-1">
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-leads">{{ $d['leads'] }}</h6>
+                                                                    <small class="text-muted filtered-target-leads" style="font-size: 0.7rem;">/ {{ $d['target_leads'] }}</small>
                                                                 </div>
                                                             </div>
+                                                        </div>
 
-                                                            <!-- Daily Call -->
-                                                            <div class="col-6">
-                                                                <div class="p-2 border rounded-3 bg-body-tertiary h-100">
-                                                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                                                        <div class="d-flex align-items-center gap-1">
-                                                                            <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-phone-outline"></i></span>
-                                                                            <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Daily Call</span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                        <h6 class="mb-0 fw-bold text-dark filtered-dc">{{ $user->id == ($firstSales->id ?? 1) ? $filteredDC : 0 }}</h6>
-                                                                        <small class="text-muted" style="font-size: 0.7rem;">Call</small>
+                                                        <!-- Daily Call -->
+                                                        <div class="col-6">
+                                                            <div class="p-2 border rounded-3 bg-body-tertiary h-100">
+                                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                                    <div class="d-flex align-items-center gap-1">
+                                                                        <span class="badge bg-label-info p-1 rounded"><i class="mdi mdi-phone-outline"></i></span>
+                                                                        <span class="fw-semibold text-dark" style="font-size: 0.75rem;">Daily Call</span>
                                                                     </div>
                                                                 </div>
+                                                                <div class="d-flex align-items-baseline gap-1 mt-1">
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-dc">{{ $d['dc'] }}</h6>
+                                                                    <small class="text-muted" style="font-size: 0.7rem;">Call</small>
+                                                                </div>
                                                             </div>
-                                                        @endif
+                                                        </div>
 
                                                         <!-- CRM Tile -->
-                                                        @php
-                                                            $crmDenominator = $targetCrm[$user->id] ?? 0;
-                                                            $currentCRM = $user->id == ($firstSales->id ?? 1) ? $filteredCRM : 0;
-                                                            $targetCRM = $crmDenominator > 0 ? ($currentCRM / $crmDenominator) * 100 : 0;
-                                                        @endphp
                                                         <div class="col-6">
                                                             <div class="p-2 border rounded-3 bg-body-tertiary h-100">
                                                                 <div class="d-flex align-items-center justify-content-between mb-1">
@@ -433,13 +443,11 @@
                                                                         <span class="badge bg-label-primary p-1 rounded"><i class="mdi mdi-account-multiple-outline"></i></span>
                                                                         <span class="fw-semibold text-dark" style="font-size: 0.75rem;">CRM</span>
                                                                     </div>
-                                                                    @if ($user->id != 3)
-                                                                        <span class="badge bg-label-primary rounded-pill filtered-percent-crm" style="font-size: 9px;">{{ round($targetCRM) }}%</span>
-                                                                    @endif
+                                                                    <span class="badge bg-label-primary rounded-pill filtered-percent-crm" style="font-size: 9px;">{{ $d['percent_crm'] }}%</span>
                                                                 </div>
                                                                 <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                    <h6 class="mb-0 fw-bold text-dark filtered-crm">{{ $user->id == ($firstSales->id ?? 1) ? $filteredCRM : 0 }}</h6>
-                                                                    <small class="text-muted filtered-target-crm" style="font-size: 0.7rem;">/ {{ $crmDenominator }}</small>
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-crm">{{ $d['crm'] }}</h6>
+                                                                    <small class="text-muted filtered-target-crm" style="font-size: 0.7rem;">/ {{ $d['target_crm'] }}</small>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -454,7 +462,7 @@
                                                                     </div>
                                                                 </div>
                                                                 <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                    <h6 class="mb-0 fw-bold text-dark filtered-quote">{{ $user->id == ($firstSales->id ?? 1) ? $filteredQuote : 0 }}</h6>
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-quote">{{ $d['quote'] }}</h6>
                                                                     <small class="text-muted" style="font-size: 0.7rem;">Dibuat</small>
                                                                 </div>
                                                             </div>
@@ -470,7 +478,7 @@
                                                                     </div>
                                                                 </div>
                                                                 <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                    <h6 class="mb-0 fw-bold text-dark filtered-prospect-sales">{{ $user->id == ($firstSales->id ?? 1) ? $filteredProspect : 0 }}</h6>
+                                                                    <h6 class="mb-0 fw-bold text-dark filtered-prospect-sales">{{ $d['prospect_count'] }}</h6>
                                                                     <small class="text-muted" style="font-size: 0.7rem;">Lead</small>
                                                                 </div>
                                                             </div>
@@ -486,7 +494,7 @@
                                                                     </div>
                                                                 </div>
                                                                 <div class="d-flex align-items-baseline gap-1 mt-1">
-                                                                    <h6 class="mb-0 fw-bold text-success filtered-po-count">{{ $user->id == ($firstSales->id ?? 1) ? $filteredPO : 0 }}</h6>
+                                                                    <h6 class="mb-0 fw-bold text-success filtered-po-count">{{ $d['po_count'] }}</h6>
                                                                     <small class="text-muted" style="font-size: 0.7rem;">PO Won</small>
                                                                 </div>
                                                             </div>
@@ -513,7 +521,7 @@
                                                                     <small class="fw-semibold text-dark" style="font-size: 0.75rem;">Quotation</small>
                                                                 </div>
                                                                 <span class="fw-bold text-dark admin-total-quotation" style="font-size: 0.8rem;">
-                                                                    Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalQuotation, 0, ',', '.') : 0 }}
+                                                                    Rp {{ number_format($d['total_quotation'], 0, ',', '.') }}
                                                                 </span>
                                                             </div>
                                                             <!-- 2. Prospect -->
@@ -523,7 +531,7 @@
                                                                     <small class="fw-semibold text-dark" style="font-size: 0.75rem;">Prospect</small>
                                                                 </div>
                                                                 <span class="fw-bold text-dark admin-total-prospect" style="font-size: 0.8rem;">
-                                                                    Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalProspect, 0, ',', '.') : 0 }}
+                                                                    Rp {{ number_format($d['total_prospect'], 0, ',', '.') }}
                                                                 </span>
                                                             </div>
                                                             <!-- 3. Hot Prospect -->
@@ -533,7 +541,7 @@
                                                                     <small class="fw-semibold text-dark" style="font-size: 0.75rem;">Hot Prospect</small>
                                                                 </div>
                                                                 <span class="fw-bold text-warning admin-total-hot-prospect" style="font-size: 0.8rem;">
-                                                                    Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalHotProspect, 0, ',', '.') : 0 }}
+                                                                    Rp {{ number_format($d['total_hot_prospect'], 0, ',', '.') }}
                                                                 </span>
                                                             </div>
                                                             <!-- 4. PO Received (Closing) -->
@@ -542,17 +550,11 @@
                                                                     <span class="badge bg-label-success p-1 rounded"><i class="mdi mdi-cart-plus"></i></span>
                                                                     <div>
                                                                         <small class="fw-bold text-success d-block" style="font-size: 0.75rem;">PO Received</small>
-                                                                        @php
-                                                                            $salesTargetTotal = ($targetSales[$item][0] ?? null)?->total ?? 0;
-                                                                            $currentPO = $user->id == ($firstSales->id ?? 1) ? $totalPO : 0;
-                                                                            $targetPO = $salesTargetTotal > 0 ? ($currentPO / $salesTargetTotal) * 100 : 0;
-                                                                            $color = $targetPO <= 80 ? 'danger' : ($targetPO <= 100 ? 'warning' : 'success');
-                                                                        @endphp
-                                                                        <span class="badge bg-label-{{ $color }} rounded-pill admin-target-total-po" style="font-size: 8px;">{{ round($targetPO) }}%</span>
+                                                                        <span class="badge bg-label-{{ $poColor }} rounded-pill admin-target-total-po" style="font-size: 8px;">{{ $d['percent_po'] }}%</span>
                                                                     </div>
                                                                 </div>
                                                                 <span class="fw-bold text-success admin-total-po" style="font-size: 0.85rem;">
-                                                                    Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalPO, 0, ',', '.') : 0 }}
+                                                                    Rp {{ number_format($d['total_po'], 0, ',', '.') }}
                                                                 </span>
                                                             </div>
                                                             <!-- 5. Quotation Loss -->
@@ -562,7 +564,7 @@
                                                                     <small class="fw-semibold text-muted" style="font-size: 0.75rem;">Loss</small>
                                                                 </div>
                                                                 <span class="fw-semibold text-danger admin-total-loss" style="font-size: 0.8rem;">
-                                                                    Rp {{ $user->id == ($firstSales->id ?? 1) ? number_format($totalLoss, 0, ',', '.') : 0 }}
+                                                                    Rp {{ number_format($d['total_loss'], 0, ',', '.') }}
                                                                 </span>
                                                             </div>
                                                         </div>

@@ -20,8 +20,8 @@ class ToolAuditController extends Controller
 {
     protected function guardTechnician()
     {
-        if (Auth::user()->role != 'Technician') {
-            abort(403, 'Halaman ini khusus untuk Technician.');
+        if (!in_array(Auth::user()->role, ['Technician', 'Coordinator', 'Support', 'ServiceM', 'Admin', 'Developer'])) {
+            abort(403, 'Halaman ini khusus untuk pemegang tools.');
         }
     }
 

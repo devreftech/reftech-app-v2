@@ -4,6 +4,22 @@ $(function () {
     var dt_project_reports_table = $('.datatable-project-reports');
 
     if (dt_project_reports_table.length) {
+        var hasExistingHeader = dt_project_reports_table.closest('.card').find('.card-header').length > 0;
+
+        var domOption = hasExistingHeader
+            ? '<"row px-3 pt-3"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row px-3 pb-3"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>'
+            : '<"card-header flex-column flex-md-row"<"head-label text-center"><"dt-action-buttons text-end pt-3 pt-md-0"B>><"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>';
+
+        var buttonsOption = hasExistingHeader ? [] : [
+            {
+                text: '<i class="mdi mdi-plus me-1"></i> <span class="d-none d-lg-inline-block">Create Project Report</span>',
+                className: 'create-new btn btn-primary waves-effect waves-light',
+                action: function () {
+                    window.location.href = '/project-reports/create';
+                }
+            }
+        ];
+
         var dt_project_reports = dt_project_reports_table.DataTable({
             ajax: {
                 url: '/db/project-reports',
@@ -18,16 +34,8 @@ $(function () {
                 { data: 'action', name: 'action', orderable: false, searchable: false, className: 'text-center' }
             ],
             order: [[0, 'desc']],
-            dom: '<"card-header flex-column flex-md-row"<"head-label text-center"><"dt-action-buttons text-end pt-3 pt-md-0"B>><"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-center justify-content-md-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
-            buttons: [
-                {
-                    text: '<i class="mdi mdi-plus me-1"></i> <span class="d-none d-lg-inline-block">Create Project Report</span>',
-                    className: 'create-new btn btn-primary waves-effect waves-light',
-                    action: function () {
-                        window.location.href = '/project-reports/create';
-                    }
-                }
-            ],
+            dom: domOption,
+            buttons: buttonsOption,
             language: {
                 paginate: {
                     next: '<i class="mdi mdi-chevron-right"></i>',
@@ -36,7 +44,9 @@ $(function () {
             }
         });
 
-        $('div.head-label').html('<h5 class="card-title mb-0">Daily Project Reports</h5>');
+        if (!hasExistingHeader) {
+            $('div.head-label').html('<h5 class="card-title mb-0">Daily Project Reports</h5>');
+        }
 
         // Delete Handler
         $(document).on('click', '.delete-project-report', function () {

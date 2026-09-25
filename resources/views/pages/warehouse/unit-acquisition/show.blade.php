@@ -101,20 +101,27 @@
 
     {{-- ── Quick KPI Metric Cards ────────────────────────────────── --}}
     <div class="row g-3 mb-4">
-        {{-- Card 1: Nilai Buku & Perolehan --}}
+        {{-- Card 1: Kondisi & Umur Unit --}}
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card border-0 shadow-sm h-100 kpi-card">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small fw-semibold text-uppercase">Nilai Buku Saat Ini</span>
+                        <span class="text-muted small fw-semibold text-uppercase">Kondisi &amp; Umur Unit</span>
                         <span class="avatar avatar-xs rounded bg-label-info p-1">
-                            <i class="mdi mdi-calculator fs-6"></i>
+                            <i class="mdi mdi-history fs-6"></i>
                         </span>
                     </div>
-                    <h5 class="fw-bold mb-1 text-info">Rp {{ number_format($nilaiBuku, 0, ',', '.') }}</h5>
+                    @php
+                        $tglBeli = $fixed->beli ? \Carbon\Carbon::parse($fixed->beli) : null;
+                        $umurUnit = $tglBeli ? $tglBeli->diffForHumans(null, true, false, 2) : '-';
+                    @endphp
+                    <h5 class="fw-bold mb-1 {{ $fixed->kondisi === 'Baru' ? 'text-success' : 'text-info' }} d-flex align-items-center gap-1">
+                        <i class="mdi {{ $fixed->kondisi === 'Baru' ? 'mdi-sparkles' : 'mdi-sync' }}"></i>
+                        <span>{{ $fixed->kondisi === 'Baru' ? 'Unit Baru' : 'Unit Second' }}</span>
+                    </h5>
                     <div class="d-flex justify-content-between text-muted small" style="font-size: 0.76rem;">
-                        <span>Perolehan: <strong>Rp {{ number_format($fixed->total, 0, ',', '.') }}</strong></span>
-                        <span>Penyusutan: <strong>Rp {{ number_format($totalPenyusutan, 0, ',', '.') }}</strong></span>
+                        <span>Umur: <strong>{{ $umurUnit }}</strong></span>
+                        <span>Beli: <strong>{{ $tglBeli ? $tglBeli->format('d M Y') : '-' }}</strong></span>
                     </div>
                 </div>
             </div>
@@ -122,13 +129,22 @@
 
         {{-- Card 2: Harga Jual Unit Second --}}
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100 kpi-card">
+            <div class="card border-0 shadow-sm h-100 kpi-card position-relative">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <span class="text-muted small fw-semibold text-uppercase">Harga Jual Unit</span>
-                        <span class="avatar avatar-xs rounded bg-label-success p-1">
-                            <i class="mdi mdi-tag-outline fs-6"></i>
-                        </span>
+                        <div class="d-flex align-items-center gap-1">
+                            @if (auth()->user()?->role === 'Admin')
+                                <button type="button" class="btn btn-xs btn-label-success rounded-pill px-2 py-0.5 d-flex align-items-center gap-1"
+                                    data-bs-toggle="modal" data-bs-target="#modalEditHargaJual" title="Atur Harga Jual">
+                                    <i class="mdi mdi-pencil-outline" style="font-size: 11px;"></i>
+                                    <span style="font-size: 11px;">Edit</span>
+                                </button>
+                            @endif
+                            <span class="avatar avatar-xs rounded bg-label-success p-1">
+                                <i class="mdi mdi-tag-outline fs-6"></i>
+                            </span>
+                        </div>
                     </div>
                     <h5 class="fw-bold mb-1 {{ $fixed->harga_jual ? 'text-success' : 'text-muted' }}">
                         {{ $fixed->harga_jual ? 'Rp ' . number_format($fixed->harga_jual, 0, ',', '.') : 'Belum Diset' }}
@@ -142,13 +158,22 @@
 
         {{-- Card 3: Tarif Rental (Per Hari & Per Bulan) --}}
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100 kpi-card">
+            <div class="card border-0 shadow-sm h-100 kpi-card position-relative">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <span class="text-muted small fw-semibold text-uppercase">Tarif Rental</span>
-                        <span class="avatar avatar-xs rounded bg-label-primary p-1">
-                            <i class="mdi mdi-clock-time-four-outline fs-6"></i>
-                        </span>
+                        <div class="d-flex align-items-center gap-1">
+                            @if (auth()->user()?->role === 'Admin')
+                                <button type="button" class="btn btn-xs btn-label-primary rounded-pill px-2 py-0.5 d-flex align-items-center gap-1"
+                                    data-bs-toggle="modal" data-bs-target="#modalEditTarifRental" title="Atur Tarif Rental">
+                                    <i class="mdi mdi-pencil-outline" style="font-size: 11px;"></i>
+                                    <span style="font-size: 11px;">Edit</span>
+                                </button>
+                            @endif
+                            <span class="avatar avatar-xs rounded bg-label-primary p-1">
+                                <i class="mdi mdi-clock-time-four-outline fs-6"></i>
+                            </span>
+                        </div>
                     </div>
                     <div class="d-flex justify-content-between align-items-baseline mb-1">
                         <span class="small text-muted fw-semibold">Per Hari:</span>
@@ -166,27 +191,75 @@
             </div>
         </div>
 
-        {{-- Card 4: Status Operasional & Rental Terakhir --}}
+        {{-- Card 4: Status Ketersediaan Fisik --}}
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100 kpi-card">
+            <div class="card border-0 shadow-sm h-100 kpi-card position-relative">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small fw-semibold text-uppercase">Operasional Fisik</span>
-                        <span class="avatar avatar-xs rounded bg-label-warning p-1">
-                            <i class="mdi mdi-warehouse fs-6"></i>
-                        </span>
+                        <span class="text-muted small fw-semibold text-uppercase">Ketersediaan Fisik</span>
+                        <div class="d-flex align-items-center gap-1">
+                            @if (auth()->user()?->role === 'Admin')
+                                <button type="button" class="btn btn-xs btn-label-warning rounded-pill px-2 py-0.5 d-flex align-items-center gap-1"
+                                    data-bs-toggle="modal" data-bs-target="#modalEditStatusUnit" title="Ubah Status Ketersediaan">
+                                    <i class="mdi mdi-pencil-outline" style="font-size: 11px;"></i>
+                                    <span style="font-size: 11px;">Edit</span>
+                                </button>
+                            @endif
+                            <span class="avatar avatar-xs rounded bg-label-warning p-1">
+                                <i class="mdi mdi-tune-vertical fs-6"></i>
+                            </span>
+                        </div>
                     </div>
+                    @php
+                        $statusColors = [
+                            'OK' => 'text-success',
+                            'Rental' => 'text-primary',
+                            'Service' => 'text-warning',
+                            'Breakdown' => 'text-danger',
+                            'Reserved' => 'text-info',
+                            'Sold' => 'text-dark',
+                        ];
+                        $statusNames = [
+                            'OK' => 'Ready / OK',
+                            'Rental' => 'Sedang Rental',
+                            'Service' => 'Sedang Service',
+                            'Breakdown' => 'Breakdown',
+                            'Reserved' => 'Reserved',
+                            'Sold' => 'Terjual (Sold)',
+                        ];
+                    @endphp
+                    <h6 class="fw-bold mb-1 {{ $statusColors[$fixed->status_unit] ?? 'text-dark' }} d-flex align-items-center gap-1">
+                        <i class="mdi {{ $currentStatusBadge['icon'] }}"></i>
+                        <span>{{ $statusNames[$fixed->status_unit] ?? ($fixed->status_unit ?: 'Tidak Diketahui') }}</span>
+                    </h6>
                     @if ($fixed->status_unit === 'Rental' && $lastOutScan)
-                        <div class="fw-bold text-dark text-truncate mb-1" title="{{ optional($lastOutScan->client)->company }}">
+                        <div class="text-muted small text-truncate" style="font-size: 0.76rem;" title="{{ optional($lastOutScan->client)->company }}">
                             <i class="mdi mdi-account-arrow-right-outline text-primary me-1"></i>{{ optional($lastOutScan->client)->company ?? '-' }}
                         </div>
-                        <div class="text-muted small" style="font-size: 0.76rem;">
-                            Keluar sejak: {{ $lastOutScan->created_at->format('d M Y') }}
+                        <div class="text-muted small" style="font-size: 0.72rem;">
+                            Sejak: {{ $lastOutScan->created_at->format('d M Y') }}
                         </div>
+                    @elseif ($fixed->status_unit === 'OK')
+                        <p class="text-muted small mb-0" style="font-size: 0.76rem;">
+                            <i class="mdi mdi-check-circle-outline text-success me-1"></i>Siap sewa / jual di gudang
+                        </p>
+                    @elseif ($fixed->status_unit === 'Service')
+                        <p class="text-muted small mb-0" style="font-size: 0.76rem;">
+                            <i class="mdi mdi-wrench-clock-outline text-warning me-1"></i>Dalam perbaikan / rekondisi
+                        </p>
+                    @elseif ($fixed->status_unit === 'Breakdown')
+                        <p class="text-muted small mb-0" style="font-size: 0.76rem;">
+                            <i class="mdi mdi-alert-circle-outline text-danger me-1"></i>Unit rusak / tidak siap pakai
+                        </p>
+                    @elseif ($fixed->status_unit === 'Reserved')
+                        <p class="text-muted small mb-0" style="font-size: 0.76rem;">
+                            <i class="mdi mdi-bookmark-check-outline text-info me-1"></i>Telah dipesan customer
+                        </p>
+                    @elseif ($fixed->status_unit === 'Sold')
+                        <p class="text-muted small mb-0" style="font-size: 0.76rem;">
+                            <i class="mdi mdi-cash-check text-dark me-1"></i>Unit telah terjual
+                        </p>
                     @else
-                        <h6 class="fw-bold mb-1 text-dark">
-                            <i class="mdi mdi-home-outline text-success me-1"></i>Ready di Gudang
-                        </h6>
                         <div class="text-muted small" style="font-size: 0.76rem;">
                             Tgl Beli: {{ \Carbon\Carbon::parse($fixed->beli)->format('d M Y') }}
                         </div>
@@ -196,10 +269,10 @@
         </div>
     </div>
 
-    {{-- ── Main Layout: Content Tabs (Left 8-cols) & Control Sidebar (Right 4-cols) ── --}}
-    <div class="row g-4">
-        <div class="col-12 col-xl-8">
-            <div class="card border-0 shadow-sm">
+    {{-- ── Main Layout: Fullwidth Content Tabs ────────────────────────────────── --}}
+    <div class="row g-3 mb-3">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm mb-0">
                 {{-- Card Navigation Tabs --}}
                 <div class="card-header border-bottom p-0 bg-transparent">
                     <ul class="nav nav-tabs card-header-tabs border-0 m-0 px-3" id="unitDetailTabs" role="tablist">
@@ -221,7 +294,7 @@
                             <li class="nav-item" role="presentation">
                                 <button type="button" class="nav-link py-3 fw-semibold d-flex align-items-center gap-1"
                                     data-bs-toggle="tab" data-bs-target="#tab-quotation" aria-selected="false">
-                                    <i class="mdi mdi-file-document-outline me-1"></i>Penawaran PO
+                                    <i class="mdi mdi-file-document-outline me-1"></i>Quotation
                                     @if ($confirmedOffers->isNotEmpty())
                                         <span class="badge bg-label-primary rounded-pill ms-1">{{ $confirmedOffers->count() }}</span>
                                     @endif
@@ -242,6 +315,15 @@
                                 <i class="mdi mdi-wrench-outline me-1"></i>Biaya Servis / Spare Part
                                 @if ($services->isNotEmpty())
                                     <span class="badge bg-label-secondary rounded-pill ms-1">{{ $services->count() }}</span>
+                                @endif
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button type="button" class="nav-link py-3 fw-semibold d-flex align-items-center gap-1"
+                                data-bs-toggle="tab" data-bs-target="#tab-work-orders" aria-selected="false">
+                                <i class="mdi mdi-wrench-cog-outline me-1"></i>Work Order Spare Part
+                                @if (isset($workOrders) && $workOrders->isNotEmpty())
+                                    <span class="badge bg-label-primary rounded-pill ms-1">{{ $workOrders->count() }}</span>
                                 @endif
                             </button>
                         </li>
@@ -319,13 +401,16 @@
                                                 </h6>
                                                 <p class="text-muted small mb-3">Unit siap dikirim ke customer. Pilih penawaran PO atau tentukan nama client penyewa.</p>
 
-                                                @if ($confirmedOffers->isNotEmpty())
+                                                @php
+                                                    $dealOffers = $confirmedOffers->filter(fn($o) => $o->status === 'po_received' || $o->po_number);
+                                                @endphp
+                                                @if ($dealOffers->isNotEmpty())
                                                     <div class="mb-3">
                                                         <label class="form-label small fw-semibold text-dark mb-1">
                                                             <i class="mdi mdi-lightning-bolt-outline text-warning me-1"></i>Pilih Cepat dari Penawaran Deal (PO):
                                                         </label>
                                                         <div class="d-flex flex-column gap-2">
-                                                            @foreach ($confirmedOffers as $offer)
+                                                            @foreach ($dealOffers as $offer)
                                                                 <button type="button" class="btn btn-white bg-white border text-start btn-sm offer-pick shadow-sm d-flex justify-content-between align-items-center"
                                                                     data-client-id="{{ $offer->client->id ?? '' }}"
                                                                     data-client-company="{{ $offer->client->company ?? '-' }}">
@@ -350,7 +435,7 @@
                                                     </div>
                                                     <div class="mb-3">
                                                         <label class="form-label small fw-semibold text-muted mb-1">PIC Internal yang Menangani</label>
-                                                        <input type="text" class="form-control form-control-sm bg-white" value="{{ Auth::user()->name }}" disabled>
+                                                        <input type="text" class="form-control form-control-sm bg-white" value="{{ Auth::user()?->name ?? '-' }}" disabled>
                                                     </div>
                                                     <div class="mb-3">
                                                         <label class="form-label small fw-semibold text-muted mb-1">Catatan Sewa (Opsional)</label>
@@ -475,15 +560,15 @@
                         </div>
                     @endif
 
-                    {{-- ── TAB 3: Penawaran Deal (Smart Quote) ────────── --}}
+                    {{-- ── TAB 3: Daftar Quotation (Smart Quote) ────────── --}}
                     @if ($fixed->qc_status === 'ok')
                         <div class="tab-pane fade" id="tab-quotation" role="tabpanel">
                             <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
                                 <div>
                                     <h6 class="fw-bold mb-0 text-dark">
-                                        <i class="mdi mdi-file-check-outline text-success me-2"></i>Penawaran PO (Deal) Unit Ini
+                                        <i class="mdi mdi-file-document-outline text-primary me-2"></i>Daftar Quotation Unit Ini
                                     </h6>
-                                    <p class="text-muted small mb-0">Daftar penawaran Smart Quote yang statusnya sudah PO Received dan merujuk unit fisik ini.</p>
+                                    <p class="text-muted small mb-0">Daftar semua penawaran Smart Quote yang dibuat dan merujuk unit fisik ini.</p>
                                 </div>
                             </div>
                             <div class="table-responsive">
@@ -491,6 +576,7 @@
                                     <thead class="table-light">
                                         <tr>
                                             <th>No. Quotation</th>
+                                            <th>Status</th>
                                             <th>Nomor PO</th>
                                             <th>Customer / Client</th>
                                             <th>Tanggal Quote</th>
@@ -499,9 +585,28 @@
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        @php
+                                            $quoteStatusMap = [
+                                                'draft'        => ['label' => 'Draft',        'class' => 'bg-label-secondary'],
+                                                'sent'         => ['label' => 'Sent',         'class' => 'bg-label-info'],
+                                                'negotiation'  => ['label' => 'Negotiation',  'class' => 'bg-label-warning'],
+                                                'revision'     => ['label' => 'Revisi',       'class' => 'bg-label-primary'],
+                                                'hot_prospect' => ['label' => 'Hot Prospect', 'class' => 'bg-label-danger'],
+                                                'po_received'  => ['label' => 'PO Received',  'class' => 'bg-label-success'],
+                                                'loss'         => ['label' => 'Loss',         'class' => 'bg-label-dark'],
+                                            ];
+                                        @endphp
                                         @forelse ($confirmedOffers as $offer)
+                                            @php
+                                                $stInfo = $quoteStatusMap[$offer->status] ?? ['label' => ucfirst(str_replace('_', ' ', $offer->status)), 'class' => 'bg-label-secondary'];
+                                            @endphp
                                             <tr>
                                                 <td class="fw-bold text-primary font-monospace">{{ $offer->no_quote }}</td>
+                                                <td>
+                                                    <span class="badge {{ $stInfo['class'] }} rounded-pill" style="font-size: 11px;">
+                                                        {{ $stInfo['label'] }}
+                                                    </span>
+                                                </td>
                                                 <td>
                                                     @if ($offer->po_number)
                                                         <span class="badge bg-label-success">{{ $offer->po_number }}</span>
@@ -522,9 +627,9 @@
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="6" class="text-center text-muted py-4">
+                                                <td colspan="7" class="text-center text-muted py-4">
                                                     <i class="mdi mdi-file-document-remove-outline d-block fs-3 mb-1"></i>
-                                                    Belum ada penawaran deal (PO Received) yang menyebut unit fisik ini.
+                                                    Belum ada penawaran (Quotation) yang menyebut unit fisik ini.
                                                 </td>
                                             </tr>
                                         @endforelse
@@ -550,7 +655,7 @@
                                 </a>
                             </div>
                             <div class="table-responsive">
-                                <table class="table table-striped table-bordered m-0 datatable-service-report-history w-100">
+                                <table class="table table-striped table-bordered m-0 datatable-service-report-history w-100" id="tableServiceReportHistory">
                                     <thead class="table-light">
                                         <tr>
                                             <th>No. Service</th>
@@ -614,182 +719,289 @@
                             </table>
                         </div>
                     </div>
+
+                    {{-- ── TAB 6: Riwayat Work Order Internal ────────── --}}
+                    <div class="tab-pane fade" id="tab-work-orders" role="tabpanel">
+                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                            <div>
+                                <h6 class="fw-bold mb-0 text-dark">
+                                    <i class="mdi mdi-wrench-cog text-primary me-2"></i>Riwayat Work Order (Pergantian Spare Part)
+                                </h6>
+                                <p class="text-muted small mb-0">Pengajuan dan pengeluaran suku cadang internal untuk pemeliharaan mesin unit ini.</p>
+                            </div>
+                            <a href="{{ route('work-orders.create') }}" class="btn btn-primary btn-sm shadow-none">
+                                <i class="mdi mdi-plus me-1"></i>Buat Work Order
+                            </a>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>No. WO</th>
+                                        <th>Tgl Pengajuan</th>
+                                        <th>Pemohon</th>
+                                        <th>Part Diminta</th>
+                                        <th class="text-end">Total Biaya</th>
+                                        <th class="text-center">Perlakuan</th>
+                                        <th class="text-center">Status</th>
+                                        <th class="text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($workOrders ?? [] as $woItem)
+                                        @php $woBadge = $woItem->status_badge; @endphp
+                                        <tr>
+                                            <td>
+                                                <a href="{{ route('work-orders.show', $woItem->id) }}" class="fw-bold text-primary">
+                                                    {{ $woItem->no_wo }}
+                                                </a>
+                                            </td>
+                                            <td class="small">{{ $woItem->date ? $woItem->date->format('d-m-Y') : '-' }}</td>
+                                            <td class="small">{{ $woItem->creator->name ?? '-' }}</td>
+                                            <td>
+                                                <span class="badge bg-label-secondary rounded-pill">
+                                                    {{ $woItem->items->count() }} Part
+                                                </span>
+                                            </td>
+                                            <td class="text-end fw-bold text-dark">
+                                                Rp {{ number_format($woItem->total_cost, 0, ',', '.') }}
+                                            </td>
+                                            <td class="text-center">
+                                                @if ($woItem->accounting_treatment === 'capitalize')
+                                                    <span class="badge bg-label-success" style="font-size: 10px;">Kapitalisasi</span>
+                                                @elseif ($woItem->accounting_treatment === 'expense')
+                                                    <span class="badge bg-label-info" style="font-size: 10px;">Beban Biaya</span>
+                                                @else
+                                                    <span class="text-muted small">-</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge {{ $woBadge['class'] }} d-inline-flex align-items-center gap-1">
+                                                    <i class="mdi {{ $woBadge['icon'] }}" style="font-size: 11px;"></i>
+                                                    {{ $woBadge['text'] }}
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <a href="{{ route('work-orders.show', $woItem->id) }}" class="btn btn-xs btn-outline-primary shadow-none">
+                                                    Detail
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="8" class="text-center text-muted py-4">
+                                                <i class="mdi mdi-clipboard-text-outline d-block fs-3 mb-1"></i>
+                                                Belum ada riwayat Work Order yang tercatat untuk mesin ini.
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        {{-- ── Sidebar Controls & Settings (Right 4-cols) ────────────── --}}
-        <div class="col-12 col-xl-4">
-            <div class="d-flex flex-column gap-4">
-                {{-- Card Setting Harga & Tarif Rental --}}
-                @if (auth()->user()->role === 'Admin')
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header py-3 border-bottom bg-transparent d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0 fw-bold text-dark d-flex align-items-center">
-                                <i class="mdi mdi-currency-usd text-primary me-2"></i>Pengaturan Harga Unit
-                            </h6>
-                            <span class="badge bg-label-primary fs-8">Admin</span>
-                        </div>
-                        <div class="card-body p-3">
-                            <p class="text-muted small mb-3">
-                                Atur patokan harga jual putus serta tarif sewa rental (harian &amp; bulanan). Nilai ini otomatis ditarik saat unit dipilih di <strong>Smart Quote</strong>.
-                            </p>
-                            <form action="{{ route('unit-acquisition.pricing', $fixed->id) }}" method="post">
-                                @csrf
-                                {{-- 1. Harga Jual Unit Second --}}
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold text-dark mb-1">
-                                        Harga Jual Unit Second
-                                    </label>
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-light">Rp</span>
-                                        <input type="text" class="form-control rupiah-mask" id="hargaJualInput"
-                                            placeholder="Contoh: 50.000.000" autocomplete="off"
-                                            value="{{ $fixed->harga_jual ? number_format(old('harga_jual', $fixed->harga_jual), 0, ',', '.') : '' }}">
-                                        <input type="hidden" name="harga_jual" id="hargaJualRaw"
-                                            value="{{ old('harga_jual', $fixed->harga_jual) }}">
-                                    </div>
-                                    <small class="text-muted" style="font-size: 0.72rem;">Harga patokan saat unit dijual second.</small>
+    {{-- ── Bottom Control & Navigasi Terkait ─────────────────────────────── --}}
+    <div class="row g-3 mb-4">
+        {{-- Card Menu Cepat & Navigasi Terkait --}}
+        <div class="col-12">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header py-3 border-bottom bg-transparent d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-bold text-dark d-flex align-items-center fs-6">
+                        <i class="mdi mdi-link-variant text-primary me-2"></i>Aksi Terkait &amp; Navigasi
+                    </h6>
+                    @if ($fixed->qc_status === 'checking')
+                        <span class="badge bg-label-warning"><i class="mdi mdi-clock-outline me-1"></i>Menunggu Keputusan QC</span>
+                    @endif
+                </div>
+                <div class="card-body p-3">
+                    @if ($fixed->qc_status === 'checking' && auth()->user()?->role === 'Admin')
+                        <div class="border border-warning border-opacity-50 rounded p-3 bg-warning bg-opacity-10 mb-3">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div>
+                                    <h6 class="mb-1 fw-bold text-warning d-flex align-items-center" style="font-size: 0.9rem;">
+                                        <i class="mdi mdi-clipboard-check-outline me-1.5"></i>Keputusan QC Masuk Unit
+                                    </h6>
+                                    <p class="small text-muted mb-0" style="font-size: 0.78rem;">Unit baru/masuk ini sedang dalam pengecekan inspeksi awal teknisi.</p>
                                 </div>
-
-                                <hr class="my-2 border-secondary border-opacity-10">
-
-                                {{-- 2. Harga Rental Per Hari --}}
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold text-dark mb-1 d-flex justify-content-between">
-                                        <span>Tarif Rental / Hari (<span class="text-primary">Days</span>)</span>
-                                    </label>
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-light">Rp</span>
-                                        <input type="text" class="form-control rupiah-mask" id="rentalHariInput"
-                                            placeholder="Contoh: 1.500.000" autocomplete="off"
-                                            value="{{ $fixed->harga_rental_hari ? number_format(old('harga_rental_hari', $fixed->harga_rental_hari), 0, ',', '.') : '' }}">
-                                        <input type="hidden" name="harga_rental_hari" id="rentalHariRaw"
-                                            value="{{ old('harga_rental_hari', $fixed->harga_rental_hari) }}">
-                                    </div>
-                                    <small class="text-muted" style="font-size: 0.72rem;">Default harga per hari di Smart Quote (satuan Days).</small>
-                                </div>
-
-                                {{-- 3. Harga Rental Per Bulan --}}
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold text-dark mb-1">
-                                        Tarif Rental / Bulan (<span class="text-primary">Month</span>)
-                                    </label>
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-light">Rp</span>
-                                        <input type="text" class="form-control rupiah-mask" id="rentalBulanInput"
-                                            placeholder="Contoh: 25.000.000" autocomplete="off"
-                                            value="{{ $fixed->harga_rental_bulan ? number_format(old('harga_rental_bulan', $fixed->harga_rental_bulan), 0, ',', '.') : '' }}">
-                                        <input type="hidden" name="harga_rental_bulan" id="rentalBulanRaw"
-                                            value="{{ old('harga_rental_bulan', $fixed->harga_rental_bulan) }}">
-                                    </div>
-                                    <small class="text-muted" style="font-size: 0.72rem;">Tarif sewa bulanan untuk kontrak rental jangka panjang.</small>
-                                </div>
-
-                                <button type="submit" class="btn btn-primary btn-sm w-100 shadow-sm">
-                                    <i class="mdi mdi-check me-1"></i> Simpan Pengaturan Harga
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-
-                    {{-- Card Status Fisik Unit --}}
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header py-3 border-bottom bg-transparent">
-                            <h6 class="mb-0 fw-bold text-dark d-flex align-items-center">
-                                <i class="mdi mdi-tune-vertical text-primary me-2"></i>Status Ketersediaan Fisik
-                            </h6>
-                        </div>
-                        <div class="card-body p-3">
-                            <form action="{{ route('unit-acquisition.status', $fixed->id) }}" method="post">
-                                @csrf
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold text-muted mb-1">Pilih Status Unit</label>
-                                    <select class="form-select form-select-sm" name="status_unit">
-                                        <option value="OK" {{ $fixed->status_unit === 'OK' ? 'selected' : '' }}>Ready / OK (Siap Sewa / Jual)</option>
-                                        <option value="Rental" {{ $fixed->status_unit === 'Rental' ? 'selected' : '' }}>Sedang Rental (Di Customer)</option>
-                                        <option value="Service" {{ $fixed->status_unit === 'Service' ? 'selected' : '' }}>Sedang Service / Rekondisi</option>
-                                        <option value="Breakdown" {{ $fixed->status_unit === 'Breakdown' ? 'selected' : '' }}>Breakdown (Rusak)</option>
-                                        <option value="Reserved" {{ $fixed->status_unit === 'Reserved' ? 'selected' : '' }}>Reserved (Dipesan Customer)</option>
-                                        <option value="Sold" {{ $fixed->status_unit === 'Sold' ? 'selected' : '' }}>Terjual / Sold</option>
-                                    </select>
-                                </div>
-                                <button type="submit" class="btn btn-outline-primary btn-sm w-100 shadow-none">
-                                    <i class="mdi mdi-sync me-1"></i> Perbarui Status Unit
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                @endif
-
-                {{-- Card Konfirmasi QC Awal (Jika Checking) --}}
-                @if ($fixed->qc_status === 'checking')
-                    <div class="card border-warning border-opacity-50 shadow-sm bg-warning bg-opacity-10">
-                        <div class="card-header py-3 border-bottom border-warning border-opacity-25 bg-transparent">
-                            <h6 class="mb-0 fw-bold text-warning d-flex align-items-center">
-                                <i class="mdi mdi-clipboard-check-outline me-2"></i>Keputusan QC Masuk
-                            </h6>
-                        </div>
-                        <div class="card-body p-3">
-                            <p class="small text-muted mb-3">Unit masih dalam tahap inspeksi awal teknisi. Pastikan pengecekan fisik dan uji fungsi telah selesai.</p>
-                            @if (auth()->user()->role === 'Admin')
-                                <div class="d-flex flex-column gap-2">
+                                <div class="d-flex gap-2">
                                     <form action="{{ route('unit-acquisition.confirm', $fixed->id) }}" method="post">
                                         @csrf
                                         <input type="hidden" name="decision" value="ok">
-                                        <button type="submit" class="btn btn-success btn-sm w-100 shadow-sm">
-                                            <i class="mdi mdi-check-decagram-outline me-1"></i> Konfirmasi Lolos QC (OK)
+                                        <button type="submit" class="btn btn-success btn-sm shadow-sm px-3">
+                                            <i class="mdi mdi-check me-1"></i> Lolos QC (Siap Operasional)
                                         </button>
                                     </form>
                                     <form action="{{ route('unit-acquisition.confirm', $fixed->id) }}" method="post">
                                         @csrf
                                         <input type="hidden" name="decision" value="reject">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm w-100 shadow-none">
-                                            <i class="mdi mdi-close-octagon-outline me-1"></i> Reject Unit
+                                        <button type="submit" class="btn btn-outline-danger btn-sm shadow-none px-3">
+                                            <i class="mdi mdi-close me-1"></i> Reject Unit
                                         </button>
                                     </form>
                                 </div>
-                            @else
-                                <div class="alert alert-secondary py-2 px-3 small mb-0">
-                                    <i class="mdi mdi-clock-outline me-1"></i>Menunggu keputusan Admin.
-                                </div>
-                            @endif
+                            </div>
                         </div>
-                    </div>
-                @endif
+                    @endif
 
-                {{-- Card Menu Cepat & Navigasi Terkait --}}
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header py-3 border-bottom bg-transparent">
-                        <h6 class="mb-0 fw-bold text-dark d-flex align-items-center">
-                            <i class="mdi mdi-link-variant text-primary me-2"></i>Aksi Terkait
-                        </h6>
-                    </div>
-                    <div class="card-body p-3 d-flex flex-column gap-2">
+                    <div class="d-flex flex-wrap gap-2">
                         @if ($fixed->qc_status === 'checking' || $fixed->kondisi === 'Baru')
-                            <a href="{{ route('unit-acquisition.service.create', $fixed->id) }}" class="btn btn-outline-primary btn-sm text-start shadow-none">
-                                <i class="mdi mdi-wrench-outline me-2"></i>Tambah Pemakaian Part Servis
+                            <a href="{{ route('unit-acquisition.service.create', $fixed->id) }}" class="btn btn-outline-primary btn-sm shadow-none">
+                                <i class="mdi mdi-wrench-outline me-1"></i>Tambah Pemakaian Part Servis
                             </a>
                         @endif
 
                         @if ($fixed->machine)
-                            <a href="{{ route('service-reports.unit.machine', [$fixed->machine->id_unit, $fixed->id_machine]) }}" class="btn btn-outline-secondary btn-sm text-start shadow-none">
-                                <i class="mdi mdi-notebook-edit-outline me-2"></i>Buat Service Report Mesin
+                            <a href="{{ route('service-reports.unit.machine', [$fixed->machine->id_unit, $fixed->id_machine]) }}" class="btn btn-outline-secondary btn-sm shadow-none">
+                                <i class="mdi mdi-notebook-edit-outline me-1"></i>Buat Service Report Mesin
                             </a>
                         @endif
 
-                        <a href="{{ route('fixed.edit', $fixed->id) }}" class="btn btn-outline-secondary btn-sm text-start shadow-none">
-                            <i class="mdi mdi-pencil-box-outline me-2"></i>Edit Data Pokok Fixed Asset
+                        <a href="{{ route('fixed.edit', $fixed->id) }}" class="btn btn-outline-secondary btn-sm shadow-none">
+                            <i class="mdi mdi-pencil-box-outline me-1"></i>Edit Data Pokok Fixed Asset
                         </a>
 
-                        <a href="{{ route('fixed.show', $fixed->id) }}" class="btn btn-outline-secondary btn-sm text-start shadow-none">
-                            <i class="mdi mdi-finance me-2"></i>Buka di Menu Finance
+                        <a href="{{ route('fixed.show', $fixed->id) }}" class="btn btn-outline-secondary btn-sm shadow-none">
+                            <i class="mdi mdi-finance me-1"></i>Buka di Menu Finance
                         </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    @if (auth()->user()?->role === 'Admin')
+        <!-- Modal Edit Harga Jual Unit -->
+        <div class="modal fade" id="modalEditHargaJual" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header py-3 bg-light border-bottom">
+                        <h6 class="modal-title fw-bold text-dark d-flex align-items-center mb-0">
+                            <i class="mdi mdi-tag-outline text-success me-2 fs-5"></i>Edit Harga Jual Unit
+                        </h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form action="{{ route('unit-acquisition.pricing', $fixed->id) }}" method="post">
+                        @csrf
+                        <div class="modal-body p-3">
+                            <p class="text-muted small mb-3">
+                                Tentukan patokan harga jual putus untuk unit second ini saat ditarik ke <strong>Smart Quote</strong>.
+                            </p>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold text-dark mb-1">Harga Jual Unit Second</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light fw-bold text-muted">Rp</span>
+                                    <input type="text" class="form-control rupiah-mask fw-bold text-success" id="modalHargaJualInput"
+                                        placeholder="Contoh: 50.000.000" autocomplete="off"
+                                        value="{{ $fixed->harga_jual ? number_format(old('harga_jual', $fixed->harga_jual), 0, ',', '.') : '' }}">
+                                    <input type="hidden" name="harga_jual" id="modalHargaJualRaw"
+                                        value="{{ old('harga_jual', $fixed->harga_jual) }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer py-2 px-3 bg-light border-top d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-success btn-sm shadow-sm">
+                                <i class="mdi mdi-check me-1"></i>Simpan Harga
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Edit Tarif Rental -->
+        <div class="modal fade" id="modalEditTarifRental" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header py-3 bg-light border-bottom">
+                        <h6 class="modal-title fw-bold text-dark d-flex align-items-center mb-0">
+                            <i class="mdi mdi-clock-time-four-outline text-primary me-2 fs-5"></i>Edit Tarif Rental Unit
+                        </h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form action="{{ route('unit-acquisition.pricing', $fixed->id) }}" method="post">
+                        @csrf
+                        <div class="modal-body p-3">
+                            <p class="text-muted small mb-3">
+                                Tentukan patokan tarif rental (sewa harian &amp; bulanan). Nilai ini otomatis terisi saat unit dipilih pada penawaran <strong>Smart Quote Rental</strong>.
+                            </p>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-dark mb-1">Tarif Rental / Hari (Daily Rate)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light fw-bold text-muted">Rp</span>
+                                    <input type="text" class="form-control rupiah-mask fw-bold text-primary" id="modalRentalHariInput"
+                                        placeholder="Contoh: 1.500.000" autocomplete="off"
+                                        value="{{ $fixed->harga_rental_hari ? number_format(old('harga_rental_hari', $fixed->harga_rental_hari), 0, ',', '.') : '' }}">
+                                    <input type="hidden" name="harga_rental_hari" id="modalRentalHariRaw"
+                                        value="{{ old('harga_rental_hari', $fixed->harga_rental_hari) }}">
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold text-dark mb-1">Tarif Rental / Bulan (Monthly Rate)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light fw-bold text-muted">Rp</span>
+                                    <input type="text" class="form-control rupiah-mask fw-bold text-primary" id="modalRentalBulanInput"
+                                        placeholder="Contoh: 25.000.000" autocomplete="off"
+                                        value="{{ $fixed->harga_rental_bulan ? number_format(old('harga_rental_bulan', $fixed->harga_rental_bulan), 0, ',', '.') : '' }}">
+                                    <input type="hidden" name="harga_rental_bulan" id="modalRentalBulanRaw"
+                                        value="{{ old('harga_rental_bulan', $fixed->harga_rental_bulan) }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer py-2 px-3 bg-light border-top d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-primary btn-sm shadow-sm">
+                                <i class="mdi mdi-check me-1"></i>Simpan Tarif
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Edit Status Ketersediaan Fisik Unit -->
+        <div class="modal fade" id="modalEditStatusUnit" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header py-3 bg-light border-bottom">
+                        <h6 class="modal-title fw-bold text-dark d-flex align-items-center mb-0">
+                            <i class="mdi mdi-tune-vertical text-warning me-2 fs-5"></i>Ubah Status Unit
+                        </h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form action="{{ route('unit-acquisition.status', $fixed->id) }}" method="post">
+                        @csrf
+                        <div class="modal-body p-3">
+                            <p class="text-muted small mb-3">
+                                Pilih status ketersediaan operasional fisik untuk unit ini.
+                            </p>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold text-dark mb-1">Status Ketersediaan</label>
+                                <select class="form-select form-select-sm" name="status_unit">
+                                    <option value="OK" {{ $fixed->status_unit === 'OK' ? 'selected' : '' }}>Ready / OK (Siap Sewa / Jual)</option>
+                                    <option value="Rental" {{ $fixed->status_unit === 'Rental' ? 'selected' : '' }}>Sedang Rental (Di Customer)</option>
+                                    <option value="Service" {{ $fixed->status_unit === 'Service' ? 'selected' : '' }}>Sedang Service / Rekondisi</option>
+                                    <option value="Breakdown" {{ $fixed->status_unit === 'Breakdown' ? 'selected' : '' }}>Breakdown (Rusak)</option>
+                                    <option value="Reserved" {{ $fixed->status_unit === 'Reserved' ? 'selected' : '' }}>Reserved (Dipesan Customer)</option>
+                                    <option value="Sold" {{ $fixed->status_unit === 'Sold' ? 'selected' : '' }}>Terjual / Sold</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer py-2 px-3 bg-light border-top d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-warning btn-sm shadow-sm text-dark fw-semibold">
+                                <i class="mdi mdi-check me-1"></i>Simpan Status
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- ── Modal Print Barcode ────────────────────────────────────── --}}
     <div class="modal fade" id="modalPrintBarcode" tabindex="-1" aria-hidden="true">
@@ -888,9 +1100,9 @@
                 });
             }
 
-            setupRupiahMask('hargaJualInput', 'hargaJualRaw');
-            setupRupiahMask('rentalHariInput', 'rentalHariRaw');
-            setupRupiahMask('rentalBulanInput', 'rentalBulanRaw');
+            setupRupiahMask('modalHargaJualInput', 'modalHargaJualRaw');
+            setupRupiahMask('modalRentalHariInput', 'modalRentalHariRaw');
+            setupRupiahMask('modalRentalBulanInput', 'modalRentalBulanRaw');
 
             // ── Form Jadikan Rental: Select2 Client ─────────────────────────
             if ($('#scanClient').length) {
@@ -934,50 +1146,63 @@
 
             // ── Service Reports Datatable ───────────────────────────────────
             @if ($fixed->machine)
-                var dtServiceReport = $('.datatable-service-report-history').DataTable({
-                    ajax: {
-                        type: 'GET',
-                        url: '/db/service-reports/machine/{{ $fixed->id_machine }}'
-                    },
-                    columns: [
-                        { data: 'no_service' },
-                        { data: 'type' },
-                        { data: 'jobdesc' },
-                        { data: 'date' },
-                        { data: 'technician' },
-                    ],
-                    columnDefs: [
-                        {
-                            targets: 0,
-                            render: function(data, type, full) {
-                                var url = route('service-reports.show', full.id);
-                                return '<a href="' + url + '" class="fw-semibold text-primary">' + (data ?? '-') + '</a>';
-                            }
-                        },
-                        {
-                            targets: 2,
-                            render: function(data) {
-                                if (!data) return '-';
-                                return data.length > 55 ? ('<span title="' + data.replace(/"/g, '&quot;') + '">' + data.substring(0, 52) + '...</span>') : data;
-                            }
-                        },
-                        {
-                            targets: 3,
-                            className: 'text-center',
-                            render: function(data) {
-                                if (!data) return '-';
-                                var d = new Date(data);
-                                return ('0' + d.getDate()).slice(-2) + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + d.getFullYear();
-                            }
-                        },
-                    ],
-                    order: [[3, 'desc']],
-                    dom: '<"row px-3 pt-3 pb-2"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-end"f>>t<"row px-3 pt-2 pb-3"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6 d-flex justify-content-end"p>>',
-                });
+                if (window.jQuery && $.fn.DataTable) {
+                    $.fn.dataTable.ext.errMode = 'none';
 
-                $('button[data-bs-target="#tab-service-report"]').on('shown.bs.tab', function() {
-                    dtServiceReport.columns.adjust().draw(false);
-                });
+                    if ($.fn.DataTable.isDataTable('#tableServiceReportHistory')) {
+                        $('#tableServiceReportHistory').DataTable().destroy();
+                    }
+
+                    var dtServiceReport = $('#tableServiceReportHistory').DataTable({
+                        destroy: true,
+                        processing: true,
+                        serverSide: false,
+                        ajax: {
+                            type: 'GET',
+                            url: '/db/service-reports/machine/{{ $fixed->id_machine }}'
+                        },
+                        columns: [
+                            { data: 'no_service' },
+                            { data: 'type' },
+                            { data: 'jobdesc' },
+                            { data: 'date' },
+                            { data: 'technician' },
+                        ],
+                        columnDefs: [
+                            {
+                                targets: 0,
+                                render: function(data, type, full) {
+                                    var url = '{{ url('service-reports') }}/' + (full.id || '');
+                                    return '<a href="' + url + '" class="fw-semibold text-primary">' + (data ?? '-') + '</a>';
+                                }
+                            },
+                            {
+                                targets: 2,
+                                render: function(data) {
+                                    if (!data) return '-';
+                                    return data.length > 55 ? ('<span title="' + data.replace(/"/g, '&quot;') + '">' + data.substring(0, 52) + '...</span>') : data;
+                                }
+                            },
+                            {
+                                targets: 3,
+                                className: 'text-center',
+                                render: function(data) {
+                                    if (!data) return '-';
+                                    var d = new Date(data);
+                                    return ('0' + d.getDate()).slice(-2) + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + d.getFullYear();
+                                }
+                            },
+                        ],
+                        order: [[3, 'desc']],
+                        dom: '<"row px-3 pt-3 pb-2"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-end"f>>t<"row px-3 pt-2 pb-3"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6 d-flex justify-content-end"p>>',
+                    });
+
+                    $('button[data-bs-target="#tab-service-report"]').on('shown.bs.tab', function() {
+                        if (dtServiceReport) {
+                            dtServiceReport.columns.adjust().draw(false);
+                        }
+                    });
+                }
             @endif
         });
     </script>

@@ -132,10 +132,8 @@
         {{-- Items Table + Financial Summary — per Opsi kalau quotation ini
              punya >1 opsi perbandingan harga, atau 1x aja kalau biasa. --}}
         @php
-            // Note/Terms & Conditions sekarang disimpan per-opsi (diisi lewat card
-            // T&C yang ikut opsi aktif di form create/edit). Kalau quotation cuma
-            // 1 opsi, tetap tampil 1x global seperti sebelum fitur ini ada.
-            $hasCustomTerms = $quote->options->count() > 1;
+            // Note/Terms & Conditions disimpan per-opsi jika >1 opsi dan merge_terms tidak aktif.
+            $hasCustomTerms = $quote->has_custom_terms;
         @endphp
         @if ($quote->options->isNotEmpty())
             @foreach ($quote->options as $i => $option)

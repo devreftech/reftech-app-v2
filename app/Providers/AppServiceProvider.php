@@ -170,9 +170,9 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Inject $prCount ke sidebar agar badge "Purchase Request" (New Purchase)
-        // muncul di semua halaman untuk role Admin/Accounting, bukan cuma di Dashboard.
+        // muncul di semua halaman untuk role Admin/Accounting & Sales (id: 3), bukan cuma di Dashboard.
         View::composer('components.dashboard.sidebar', function ($view) {
-            if (Auth::check() && in_array(Auth::user()->role, ['Admin', 'Accounting'])) {
+            if (Auth::check() && (in_array(Auth::user()->role, ['Admin', 'Accounting']) || Auth::user()->id == 3)) {
                 $sidebarAdminData = \Illuminate\Support\Facades\Cache::remember('sidebar_admin_counts', 60, function () {
                     $validPendingIds = \App\Models\PendingPO::where(function ($q) {
                         $q->whereNotNull('id_quotation')->orWhereNotNull('id_unit_quotation');

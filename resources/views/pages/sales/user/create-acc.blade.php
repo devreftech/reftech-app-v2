@@ -22,13 +22,19 @@
                 </li>
             </ul>
             <div class="card mb-4">
-                <form action="{{ route('profile.store') }}" id="" method="POST" enctype="multipart/form-data">
+                <form action="{{ route('profile.store') }}" id="formCreateUser" method="POST" enctype="multipart/form-data">
                     @csrf
-                    <h4 class="card-header">Profile Details</h4>
-                    <div class="card-body">
+                    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <h4 class="mb-0">Profile Details</h4>
+                        <div id="clientVendorBadge" class="badge bg-label-info d-none p-2 fs-6">
+                            <i class="mdi mdi-account-badge-outline me-1"></i> Mode Input Cepat: Client Vendor (Nama, Email & Password)
+                        </div>
+                    </div>
+                    
+                    <div class="card-body" id="photoUploadSection">
                         <div class="d-flex align-items-start align-items-sm-center gap-4">
                             <img src="{{ asset('asset') }}/profile/profile.jpg" alt="user-avatar"
-                                class="d-block w-px-120 h-px-120 rounded" id="uploadedAvatar">
+                                class="d-block w-px-120 h-px-120 rounded shadow-xs" id="uploadedAvatar">
                             <div class="button-wrapper">
                                 <label for="upload" class="btn btn-primary me-2 mb-3 waves-effect waves-light"
                                     tabindex="0">
@@ -47,44 +53,61 @@
                             </div>
                         </div>
                     </div>
+
                     <div class="card-body pt-2 mt-1">
                         <div class="row mt-2 gy-4">
                             <div class="col-md-6">
+                                <div class="input-group input-group-merge">
+                                    <div class="form-floating form-floating-outline">
+                                        <select class="form-select fw-semibold" id="roleSelect"
+                                            aria-label="Default select example" name="role" required>
+                                            <option value="Client Vendor" selected>Client Vendor</option>
+                                            <option value="Sales">Sales</option>
+                                            <option value="Technician">Technician</option>
+                                            <option value="Warehouse">Warehouse</option>
+                                            <option value="Accounting">Accounting</option>
+                                            <option value="Logistic">Logistic</option>
+                                            <option value="Supervisor">Supervisor</option>
+                                            <option value="Project Manager">Project Manager</option>
+                                        </select>
+                                        <label for="roleSelect">Role Select</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
                                 <div class="form-floating form-floating-outline">
                                     <input class="form-control" type="text" id="name" name="name"
-                                        value="{{ old('name') }}" placeholder="john doe" />
-                                    <label for="name">Name</label>
+                                        value="{{ old('name') }}" placeholder="PT / Nama Vendor atau Client" required />
+                                    <label for="name">Nama <span class="text-danger">*</span></label>
                                 </div>
                             </div>
+
                             <div class="col-md-6">
                                 <div class="form-floating form-floating-outline">
-                                    <input type="text" class="form-control" id="area" name="area"
-                                        placeholder="Put Area here..." value="{{ old('area') }}" />
-                                    <label for="area">Area</label>
+                                    <input class="form-control" type="email" id="email" name="email"
+                                        value="{{ old('email') }}" placeholder="vendor@example.com" required />
+                                    <label for="email">E-mail <span class="text-danger">*</span></label>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-floating form-floating-outline">
-                                    <input class="form-control" type="text" id="email" name="email"
-                                        value="{{ old('email') }}" placeholder="john.doe@example.com" />
-                                    <label for="email">E-mail</label>
-                                </div>
-                            </div>
+
                             <div class="col-md-6">
                                 <div class="input-group input-group-merge">
                                     <div class="form-floating form-floating-outline">
                                         <input type="password" id="password"
-                                            class="form-control  @error('password') is-invalid @enderror" name="password"
-                                            required autocomplete="current-password" name="password"
+                                            class="form-control @error('password') is-invalid @enderror" name="password"
+                                            required autocomplete="new-password"
                                             placeholder="············" aria-describedby="password">
-                                        <label for="password">Password</label>
+                                        <label for="password">Password <span class="text-danger">*</span></label>
                                     </div>
                                     <span class="input-group-text cursor-pointer">
                                         <i class="mdi mdi-eye-off-outline"></i>
                                     </span>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+
+                            {{-- Additional fields for standard internal roles --}}
+                            <div class="col-md-6 extra-role-field">
                                 <div class="form-floating form-floating-outline mb-3 fv-plugins-icon-container">
                                     <div class="input-group input-group-merge">
                                         <span class="input-group-text">+62</span>
@@ -97,23 +120,16 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="input-group input-group-merge">
-                                    <div class="form-floating form-floating-outline">
-                                        <select class="form-select" id="exampleFormControlSelect1"
-                                            aria-label="Default select example" name="role">
-                                            <option value="Sales">Sales</option>
-                                            <option value="Technician">Technician</option>
-                                            <option value="Warehouse">Warehouse</option>
-                                            <option value="Accounting">Accounting</option>
-                                            <option value="Logistic">Logistic</option>
-                                            <option value="Supervisor">Supervisor</option>
-                                        </select>
-                                        <label for="exampleFormControlSelect1">Role select</label>
-                                    </div>
+
+                            <div class="col-md-6 extra-role-field">
+                                <div class="form-floating form-floating-outline">
+                                    <input type="text" class="form-control" id="area" name="area"
+                                        placeholder="Put Area here..." value="{{ old('area') }}" />
+                                    <label for="area">Area</label>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+
+                            <div class="col-md-6 extra-role-field">
                                 <div class="form-floating form-floating-outline">
                                     <input class="form-control" type="text" id="code" name="code"
                                         value="{{ old('code') }}" placeholder="contoh: RZA" />
@@ -121,8 +137,18 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div id="clientVendorInfoAlert" class="alert alert-primary d-flex align-items-center mt-3 mb-0" role="alert">
+                            <i class="mdi mdi-information-outline fs-4 me-2"></i>
+                            <div>
+                                <strong>Role Client Vendor:</strong> Cukup isi <strong>Nama</strong>, <strong>Email</strong>, dan <strong>Password</strong>. Foto avatar otomatis menggunakan default.
+                            </div>
+                        </div>
+
                         <div class="mt-4">
-                            <button type="submit" class="btn btn-primary me-2">Save changes</button>
+                            <button type="submit" class="btn btn-primary me-2 shadow-xs">
+                                <i class="mdi mdi-check-circle-outline me-1"></i> Simpan User
+                            </button>
                             <button type="reset" class="btn btn-outline-secondary">Cancel</button>
                         </div>
                     </div>
@@ -164,9 +190,32 @@
                 var newType = (currentType === "password") ? "text" : "password";
                 inputElement.attr("type", newType);
             }
+
             $("#phone").on("input", function() {
                 $(this).val($(this).val().replace(/[^0-9]/g, ''));
             });
+
+            function handleRoleChange() {
+                var selectedRole = $('#roleSelect').val();
+                if (selectedRole === 'Client Vendor') {
+                    $('#photoUploadSection').slideUp(200);
+                    $('.extra-role-field').slideUp(200);
+                    $('#clientVendorBadge').removeClass('d-none');
+                    $('#clientVendorInfoAlert').slideDown(200);
+                    $('#phone').removeAttr('required');
+                    $('#area').removeAttr('required');
+                } else {
+                    $('#photoUploadSection').slideDown(200);
+                    $('.extra-role-field').slideDown(200);
+                    $('#clientVendorBadge').addClass('d-none');
+                    $('#clientVendorInfoAlert').slideUp(200);
+                    $('#phone').attr('required', 'required');
+                    $('#area').attr('required', 'required');
+                }
+            }
+
+            $('#roleSelect').on('change', handleRoleChange);
+            handleRoleChange();
         });
     </script>
 @endpush

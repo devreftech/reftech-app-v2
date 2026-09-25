@@ -11,6 +11,8 @@
     @include('includes.sales.style')
 
     @stack('after-style')
+    @stack('style')
+    @stack('styles')
     {{-- SweetAlert2 CSS --}}
     <link rel="stylesheet" href="{{ asset('assets') }}/vendor/libs/sweetalert2/sweetalert2.css" />
 

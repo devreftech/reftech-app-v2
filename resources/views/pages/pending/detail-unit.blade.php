@@ -1,8 +1,106 @@
 @extends('layouts.sales.app')
-@section('title', 'Detail Sales Order')
+@section('title', 'Detail Sales Order - ' . ($pending->no_pending ?? 'SO'))
+
+@push('after-style')
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
+    <style>
+        .asset-kpi-card {
+            border-radius: 10px;
+            border: 1px solid rgba(67, 89, 113, 0.12);
+            box-shadow: 0 2px 6px 0 rgba(67, 89, 113, 0.05);
+            transition: all 0.2s ease-in-out;
+            background: #ffffff;
+        }
+        .asset-kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 14px rgba(67, 89, 113, 0.1);
+        }
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .detail-card {
+            border-radius: 10px;
+            border: 1px solid rgba(67, 89, 113, 0.12);
+            box-shadow: 0 2px 6px 0 rgba(67, 89, 113, 0.05);
+            background: #ffffff;
+        }
+        .detail-label {
+            font-size: 0.72rem;
+            color: #8592a3;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .detail-value {
+            font-size: 0.9rem;
+            color: #384551;
+            font-weight: 600;
+        }
+        .info-spec-box {
+            border-radius: 8px;
+            background: #fbfcfd;
+            border: 1px solid #e7ebee;
+            padding: 14px;
+        }
+        .table-custom thead th {
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            color: #697a8d;
+            padding: 0.75rem 1rem;
+            white-space: nowrap;
+        }
+        .table-custom tbody td {
+            padding: 0.75rem 1rem;
+            vertical-align: middle;
+        }
+    </style>
+@endpush
+
 @section('content')
     @php
         $isInvoiceApproved = $invoices->contains(fn ($inv) => $inv->no_invoice !== null);
+
+        switch ($pending->delivery) {
+            case 1: $kurir = 'JNE / J&T / Cargo'; break;
+            case 2: $kurir = 'Send By Technician'; break;
+            case 3: $kurir = 'Taken Directly'; break;
+            case 4: $kurir = 'Other'; break;
+            default: $kurir = 'Belum Ada Kurir'; break;
+        }
+
+        switch ($pending->status) {
+            case 1: $statusName = 'On Check'; $statusBadge = 'bg-warning text-dark'; break;
+            case 2: $statusName = 'Ready Stock'; $statusBadge = 'bg-info text-white'; break;
+            case 3: $statusName = 'Kurang'; $statusBadge = 'bg-danger text-white'; break;
+            case 4: $statusName = 'Pre-Order'; $statusBadge = 'bg-primary text-white'; break;
+            case 5: $statusName = 'Delivery Process'; $statusBadge = 'bg-linkedin text-white'; break;
+            case 6: $statusName = 'Done'; $statusBadge = 'bg-success text-white'; break;
+            case 7: $statusName = 'Cancel'; $statusBadge = 'bg-danger text-white'; break;
+            default: $statusName = 'New PO'; $statusBadge = 'bg-secondary text-white'; break;
+        }
+
+        $chargeLabel = function ($val) {
+            if ($val == 1) return ['Company', 'bg-label-primary'];
+            if ($val == 2) return ['Customer', 'bg-label-success'];
+            return [null, null];
+        };
+        $docChargeVal = $pending->combine_shipping_and_parts ? $pending->charged : $pending->doc_charged;
+        $shippingChargeVal = $pending->combine_shipping_and_parts ? $pending->charged : $pending->shipping_charged;
+        [$docChargeText, $docChargeClass] = $chargeLabel($docChargeVal);
+        [$shippingChargeText, $shippingChargeClass] = $chargeLabel($shippingChargeVal);
+
+        $isPaymentConfirmed = $invoices->contains(fn ($i) => $i->status_p == 1);
+        $isTempoPayment = stripos($quote->payment_method ?? '', 'Tempo') !== false;
     @endphp
 
     @if (!$isInvoiceApproved)
@@ -14,8 +112,10 @@
         </div>
     @endif
 
+    {{-- Top Header Banner (Fixed/161 Style) --}}
     <div class="card mb-4 text-white border-0 position-relative shadow-sm" style="background: linear-gradient(135deg, #696cff 0%, #3f42b3 100%) !important;">
         <div class="position-absolute overflow-hidden" style="inset: 0; border-radius: inherit; z-index: 1;">
+            <!-- Subtle background circle decorations -->
             <div class="position-absolute translate-middle" style="top: 0; right: 0; width: 250px; height: 250px; border-radius: 50%; background: rgba(255,255,255,0.08);"></div>
             <div class="position-absolute translate-middle" style="bottom: -50px; left: -50px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255,255,255,0.05);"></div>
         </div>
@@ -24,37 +124,19 @@
                 <div class="col-md-8">
                     <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
                         <span class="badge bg-white text-primary fw-bold text-uppercase px-3 py-1.5 fs-7" style="border-radius: 5px;">Sales Order</span>
-                        @php
-                            switch ($pending->status) {
-                                case 1: $statusName = 'On Check'; $statusBadge = 'bg-warning text-dark'; break;
-                                case 2: $statusName = 'Ready Stock'; $statusBadge = 'bg-info text-white'; break;
-                                case 3: $statusName = 'Kurang'; $statusBadge = 'bg-danger text-white'; break;
-                                case 4: $statusName = 'Pre-Order'; $statusBadge = 'bg-primary text-white'; break;
-                                case 5: $statusName = 'Delivery Process'; $statusBadge = 'bg-linkedin text-white'; break;
-                                case 6: $statusName = 'Done'; $statusBadge = 'bg-success text-white'; break;
-                                case 7: $statusName = 'Cancel'; $statusBadge = 'bg-danger text-white'; break;
-                                default: $statusName = 'New PO'; $statusBadge = 'bg-secondary text-white'; break;
-                            }
-                        @endphp
                         <span class="badge {{ $statusBadge }} fw-bold"><i class="mdi mdi-checkbox-marked-circle-outline me-1"></i> {{ $statusName }}</span>
                     </div>
                     <h3 class="fw-bold mb-1 text-white">{{ $quote->client->company ?? '-' }}</h3>
-                    <p class="mb-1 opacity-80 small">
+                    <p class="mb-0 opacity-80 small">
                         <i class="mdi mdi-tag-outline me-1"></i> No SO: <span class="fw-semibold text-white">{{ $pending->no_pending }}</span>
                         <span class="mx-2">|</span>
                         <i class="mdi mdi-calendar-blank-outline me-1"></i> Tanggal: <span class="fw-semibold text-white">{{ \Carbon\Carbon::parse($pending->date)->format('d M Y') }}</span>
                     </p>
-                    <p class="mb-0 opacity-80 small">
-                        <i class="mdi mdi-account-tie me-1"></i> Sales PIC: <span class="fw-semibold text-white">{{ $quote->sales->name ?? '-' }}</span>
-                        <span class="mx-2">|</span>
-                        <i class="mdi mdi-account me-1"></i> PIC Klien: <span class="fw-semibold text-white">{{ $quote->pic->name_pic ?? ($quote->attn ?? '-') }}</span>
-                        @if ($quote->pic->phone_pic ?? null)
-                            <span class="mx-2">|</span>
-                            <i class="mdi mdi-phone-outline me-1"></i> <span class="fw-semibold text-white">{{ $quote->pic->phone_pic }}</span>
-                        @endif
-                    </p>
                 </div>
                 <div class="col-md-4 text-md-end mt-3 mt-md-0 d-flex flex-column flex-md-row justify-content-md-end gap-2 align-items-md-center">
+                    <a href="{{ route('pending-po.sales-order') }}" class="btn btn-outline-light waves-effect waves-light text-white">
+                        <i class="mdi mdi-arrow-left me-1"></i> Kembali
+                    </a>
                     @if ($pending->status != '6' && $pending->status != '8' && $pending->status != '9')
                         <div class="btn-group">
                             <button type="button" class="btn btn-outline-light dropdown-toggle waves-effect waves-light text-white"
@@ -91,566 +173,603 @@
                             <i class="mdi mdi-connection me-1"></i> Connect Product Out
                         </button>
                     @endif
-                    <button type="button" class="btn btn-outline-light waves-effect waves-light text-white" data-bs-toggle="modal" data-bs-target="#editAddressesUnit">
-                        <i class="mdi mdi-map-marker-outline me-1"></i> Edit Alamat
-                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="d-flex align-items-center gap-2 mb-3">
-        <i class="mdi mdi-information-outline fs-4 text-primary"></i>
-        <h5 class="fw-bold mb-0 text-dark text-uppercase" style="letter-spacing: .3px; font-size: 14px;">Informasi Detail</h5>
-    </div>
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body p-0">
-            <div class="row g-0">
-                <!-- Alamat Dokumen & Pengiriman -->
-                <div class="col-lg-4 info-col p-4">
-                    <h6 class="fw-bold text-primary mb-3 text-uppercase" style="font-size: 12.5px; letter-spacing: .3px;"><i class="mdi mdi-map-marker-outline me-2"></i> Alamat Dokumen &amp; Pengiriman</h6>
-                            @php
-                                $chargeLabel = function ($val) {
-                                    if ($val == 1) return ['Company', 'bg-label-primary'];
-                                    if ($val == 2) return ['Customer', 'bg-label-success'];
-                                    return [null, null];
-                                };
-                                $docChargeVal = $pending->combine_shipping_and_parts ? $pending->charged : $pending->doc_charged;
-                                $shippingChargeVal = $pending->combine_shipping_and_parts ? $pending->charged : $pending->shipping_charged;
-                                [$docChargeText, $docChargeClass] = $chargeLabel($docChargeVal);
-                                [$shippingChargeText, $shippingChargeClass] = $chargeLabel($shippingChargeVal);
-                            @endphp
+    <!-- 4 KPI Summary Cards (Fixed/161 Style) -->
+    <div class="row g-3 mb-4">
+        <!-- Total Nilai SO -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card asset-kpi-card h-100">
+                <div class="card-body d-flex align-items-center p-3">
+                    <div class="stat-icon bg-label-primary me-3">
+                        <i class="mdi mdi-cash-multiple fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="detail-label">Nilai Pesanan (PO)</div>
+                        <h6 class="mb-0 fw-bold text-primary">Rp {{ number_format($quote->grand_total ?? ($quote->total ?? 0), 0, ',', '.') }}</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                            <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
-                                <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(113, 221, 55, 0.08); color: #71dd37;">
-                                    <i class="mdi mdi-package-variant fs-5"></i>
-                                </div>
-                                <div>
-                                    <small class="text-muted d-block" style="font-size: 11px;">Keterangan Gabung</small>
-                                    <span class="badge {{ $pending->combine_shipping_and_parts ? 'bg-label-success' : 'bg-label-danger' }} fw-semibold" style="font-size: 10px; padding: 3px 6px;">
-                                        {{ $pending->combine_shipping_and_parts ? 'Barang & Part Digabung' : 'Barang & Part Dipisah' }}
+        <!-- No PO Customer -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card asset-kpi-card h-100">
+                <div class="card-body d-flex align-items-center p-3">
+                    <div class="stat-icon bg-label-warning me-3">
+                        <i class="mdi mdi-file-document-outline fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="detail-label">No. PO Customer</div>
+                        <h6 class="mb-0 fw-bold text-dark">{{ $pending->no_po_customer ?: ($quote->no_po_customer ?: '-') }}</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kurir & Pengiriman -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card asset-kpi-card h-100">
+                <div class="card-body d-flex align-items-center p-3">
+                    <div class="stat-icon bg-label-info me-3">
+                        <i class="mdi mdi-truck-delivery-outline fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="detail-label">Ekspedisi & Kurir</div>
+                        <h6 class="mb-0 fw-bold text-dark">{{ $kurir }}</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Invoice & Pembayaran -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card asset-kpi-card h-100">
+                <div class="card-body d-flex align-items-center p-3">
+                    <div class="stat-icon {{ $isInvoiceApproved ? 'bg-label-success' : 'bg-label-danger' }} me-3">
+                        <i class="mdi {{ $isInvoiceApproved ? 'mdi-check-decagram-outline' : 'mdi-alert-circle-outline' }} fs-4"></i>
+                    </div>
+                    <div>
+                        <div class="detail-label">Invoice & Payment</div>
+                        <h6 class="mb-0 fw-bold {{ $isInvoiceApproved ? 'text-success' : 'text-danger' }}">
+                            {{ $isInvoiceApproved ? ($isPaymentConfirmed ? 'Paid / Confirmed' : ($isTempoPayment ? 'Invoice OK (Tempo)' : 'Invoice Approved')) : 'Belum Approve' }}
+                        </h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- Card: Informasi SO, Dokumen & Alamat Pengiriman -->
+        <div class="card detail-card mb-3">
+            <div class="card-header border-bottom py-3 px-3 px-md-4 d-flex justify-content-between align-items-center bg-transparent">
+                <h5 class="card-title mb-0 fw-bold fs-6 d-flex align-items-center">
+                    <i class="mdi mdi-card-bulleted-outline text-primary me-2"></i>Informasi SO, Dokumen &amp; Pengiriman
+                </h5>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm waves-effect" data-bs-toggle="modal" data-bs-target="#editAddressesUnit">
+                        <i class="mdi mdi-pencil-outline me-1"></i> Edit Alamat
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-3 p-md-4">
+                <div class="row g-3">
+                    <!-- Col 1: Alamat Dokumen & Pengiriman -->
+                    <div class="col-lg-4 col-12">
+                        <div class="info-spec-box h-100 d-flex flex-column justify-content-between">
+                            <div>
+                                <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                                    <h6 class="fw-bold text-dark mb-0 fs-7">
+                                        <i class="mdi mdi-map-marker-outline text-primary me-1"></i>Alamat &amp; Penerima
+                                    </h6>
+                                    <span class="badge {{ $pending->combine_shipping_and_parts ? 'bg-label-success' : 'bg-label-danger' }}" style="font-size: 9px;">
+                                        {{ $pending->combine_shipping_and_parts ? 'Digabung' : 'Dipisah' }}
                                     </span>
                                 </div>
-                            </div>
-
-                            <div class="d-flex align-items-start mb-3 p-2 rounded hover-light">
-                                <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(105, 108, 255, 0.08); color: #696cff;">
-                                    <i class="mdi mdi-file-document-box-outline fs-5"></i>
-                                </div>
-                                <div class="text-wrap" style="max-width: calc(100% - 50px);">
-                                    <small class="text-muted d-block" style="font-size: 11px;">Alamat Dokumen / Invoice</small>
-                                    @if (($pending->doc_address_type ?? 'customer') === 'customer')
-                                        <span class="badge bg-label-secondary mb-1 btn-xs" style="font-size: 9px; padding: 2px 4px;">Sesuai Customer</span>
-                                        <span class="fw-semibold text-dark d-block" style="font-size: 12px; line-height: 1.4;">{{ $quote->client->address ?? '-' }}</span>
-                                    @else
-                                        <span class="badge bg-label-warning mb-1 btn-xs" style="font-size: 9px; padding: 2px 4px;">Manual</span>
-                                        <span class="fw-semibold text-dark d-block" style="font-size: 12px; line-height: 1.4;">{{ $pending->doc_address_manual }}</span>
-                                    @endif
-                                    @if ($docChargeText)
-                                        <span class="badge {{ $docChargeClass }} fw-semibold mt-1 btn-xs" style="font-size: 9px; padding: 2px 4px;">Charged to: {{ $docChargeText }}</span>
-                                    @endif
-                                    @if ($pending->doc_recipient)
-                                        <span class="badge bg-label-info fw-semibold mt-1 btn-xs" style="font-size: 9px; padding: 2px 4px;">Penerima: {{ $pending->doc_recipient->name_pic }} | Telp: {{ $pending->doc_recipient->phone ?? '-' }}</span>
-                                    @endif
-                                </div>
-                            </div>
-
-                            <div class="d-flex align-items-start mb-3 p-2 rounded hover-light">
-                                <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(255, 62, 29, 0.08); color: #ff3e1d;">
-                                    <i class="mdi mdi-map-marker-outline fs-5"></i>
-                                </div>
-                                <div class="text-wrap" style="max-width: calc(100% - 50px);">
-                                    <small class="text-muted d-block" style="font-size: 11px;">Alamat Pengiriman Barang</small>
-                                    @if (($pending->shipping_address_type ?? 'customer') === 'customer')
-                                        <span class="badge bg-label-secondary mb-1 btn-xs" style="font-size: 9px; padding: 2px 4px;">Sesuai Customer</span>
-                                        <span class="fw-semibold text-dark d-block" style="font-size: 12px; line-height: 1.4;">{{ $quote->client->address ?? '-' }}</span>
-                                    @else
-                                        <span class="badge bg-label-warning mb-1 btn-xs" style="font-size: 9px; padding: 2px 4px;">Manual</span>
-                                        <span class="fw-semibold text-dark d-block" style="font-size: 12px; line-height: 1.4;">{{ $pending->shipping_address_manual }}</span>
-                                    @endif
-                                    @if ($shippingChargeText)
-                                        <span class="badge {{ $shippingChargeClass }} fw-semibold mt-1 btn-xs" style="font-size: 9px; padding: 2px 4px;">Charged to: {{ $shippingChargeText }}</span>
-                                    @endif
-                                    @if ($pending->shipping_recipient)
-                                        <span class="badge bg-label-info fw-semibold mt-1 btn-xs" style="font-size: 9px; padding: 2px 4px;">Penerima: {{ $pending->shipping_recipient->name_pic }} | Telp: {{ $pending->shipping_recipient->phone ?? '-' }}</span>
-                                    @endif
-                                </div>
-                            </div>
-                </div>
-
-                <!-- Document Info -->
-                <div class="col-lg-4 info-col p-4">
-                    <h6 class="fw-bold text-primary mb-3 text-uppercase" style="font-size: 12.5px; letter-spacing: .3px;"><i class="mdi mdi-file-document-outline me-2"></i> Informasi Dokumen</h6>
-                            <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
-                                <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(255, 171, 0, 0.08); color: #ffab00;">
-                                    <i class="mdi mdi-cart-outline fs-5"></i>
-                                </div>
-                                <div>
-                                    <small class="text-muted d-block" style="font-size: 11px;">No PO</small>
-                                    @if ($quote->po_number)
-                                        <span class="fw-bold text-dark">{{ $quote->po_number }}</span>
-                                    @else
-                                        <span class="text-danger fw-semibold">Belum ada No PO</span>
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-start mb-1 p-2 rounded hover-light">
-                                <div class="avatar avatar-sm me-3 mt-1" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(113, 221, 55, 0.08); color: #71dd37;">
-                                    <i class="mdi mdi-receipt-outline fs-5"></i>
-                                </div>
-                                <div>
-                                    <small class="text-muted d-block mb-1" style="font-size: 11px;">Invoice</small>
-                                    @forelse ($invoices as $inv)
-                                        <div class="mb-1">
-                                            @if ($inv->no_invoice)
-                                                <a class="fw-bold text-success d-block" href="{{ route('invoice.show', $inv->id) }}">{{ $inv->no_invoice }}</a>
-                                            @else
-                                                <span class="text-danger fw-semibold d-block" style="font-size: 12px;">{{ $inv->type }} - Belum di-approve</span>
-                                            @endif
-                                        </div>
-                                    @empty
-                                        <span class="text-danger fw-semibold">Belum ada invoice</span>
-                                    @endforelse
-                                </div>
-                            </div>
-                            @php
-                                $isPaymentConfirmed = $invoices->contains(fn ($i) => $i->status_p == 1);
-                                $isTempoPayment = stripos($quote->payment_method ?? '', 'Tempo') !== false;
-                            @endphp
-                            <div class="d-flex align-items-center mb-1 p-2 rounded hover-light">
-                                <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(255, 62, 29, 0.08); color: #ff3e1d;">
-                                    <i class="mdi mdi-checkbox-marked-circle-outline fs-5"></i>
-                                </div>
-                                <div>
-                                    <small class="text-muted d-block" style="font-size: 11px;">Status Pembayaran</small>
-                                    @if ($isPaymentConfirmed)
-                                        @if ($isTempoPayment)
-                                            <span class="badge bg-label-info fw-semibold">Credit</span>
+                                
+                                <div class="mb-3">
+                                    <div class="detail-label">Alamat Dokumen / Invoice</div>
+                                    <div class="detail-value fs-7">
+                                        @if (($pending->doc_address_type ?? 'customer') === 'customer')
+                                            <span class="badge bg-label-secondary mb-1" style="font-size: 9px; padding: 2px 4px;">Sesuai Customer</span>
+                                            <div class="text-dark">{{ $quote->client->address ?? '-' }}</div>
                                         @else
-                                            <span class="badge bg-label-success fw-semibold">Paid</span>
+                                            <span class="badge bg-label-warning mb-1" style="font-size: 9px; padding: 2px 4px;">Manual</span>
+                                            <div class="text-dark">{{ $pending->doc_address_manual }}</div>
                                         @endif
-                                    @else
-                                        <span class="badge bg-label-danger fw-semibold">Unpaid</span>
-                                    @endif
-                                </div>
-                            </div>
-                </div>
-
-                <!-- Shipping / Resi Info -->
-                <div class="col-lg-4 info-col p-4 d-flex flex-column" style="max-height: 450px; overflow-y: auto;">
-                    <h6 class="fw-bold text-primary mb-3 text-uppercase" style="font-size: 12.5px; letter-spacing: .3px;"><i class="mdi mdi-truck-delivery-outline me-2"></i> Informasi Pengiriman</h6>
-                            @php
-                                switch ($pending->delivery) {
-                                    case 1: $kurir = 'JNE / J&T / Cargo'; break;
-                                    case 2: $kurir = 'Send By Technician'; break;
-                                    case 3: $kurir = 'Taken Directly'; break;
-                                    case 4: $kurir = 'Other'; break;
-                                    default: $kurir = 'Belum Ada Kurir'; break;
-                                }
-                            @endphp
-                            <div class="d-flex align-items-center mb-3 p-2 rounded hover-light">
-                                <div class="avatar avatar-sm me-3" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background-color: rgba(3, 195, 236, 0.08); color: #03c3ec;">
-                                    <i class="mdi mdi-truck-outline fs-5"></i>
-                                </div>
-                                <div>
-                                    <small class="text-muted d-block" style="font-size: 11px;">Kurir</small>
-                                    <span class="fw-semibold text-dark">{{ $kurir }}</span>
-                                </div>
-                            </div>
-
-                            <h6 class="fw-bold text-dark mt-2 mb-2 border-bottom pb-1" style="font-size: 13px;">Daftar Resi & Ongkos Kirim:</h6>
-                            @forelse ($resis as $r)
-                                <div class="mb-3 p-2 rounded bg-label-light border border-light hover-light">
-                                    <small class="text-muted d-block" style="font-size: 10px;">No Tracking / Resi</small>
-                                    <span class="fw-bold text-dark fs-7">{{ $r->no_track ?? '-' }}</span>
-                                    @if ($r->note)
-                                        <p class="mb-0 text-muted small mt-1" style="line-height: 1.3;">{{ $r->note }}</p>
-                                    @endif
-                                    <div class="d-flex justify-content-between align-items-center mt-2 border-top pt-2">
-                                        <span class="fw-bold text-primary" style="font-size: 12px;">Rp {{ number_format($r->cost ?? 0, 0, '.', ',') }}</span>
-                                        @if ($r->image)
-                                            <a href="#" onclick="openPdfViewer('{{ url($r->image) }}', 'Resi {{ $r->no_track }}'); return false;" class="btn btn-xs btn-outline-primary px-2" style="font-size: 10px; padding: 2px 4px;">
-                                                <i class="mdi mdi-image-outline"></i> Resi
-                                            </a>
+                                        @if ($docChargeText)
+                                            <span class="badge {{ $docChargeClass }} mt-1" style="font-size: 9px; padding: 2px 4px;">Charged: {{ $docChargeText }}</span>
+                                        @endif
+                                        @if ($pending->doc_recipient)
+                                            <div class="small text-muted mt-1">Attn: <strong>{{ $pending->doc_recipient->name_pic }}</strong> ({{ $pending->doc_recipient->phone ?? '-' }})</div>
                                         @endif
                                     </div>
                                 </div>
-                            @empty
-                                <div class="text-center py-4 text-muted" style="font-size: 12px;">
-                                    <i class="mdi mdi-alert-circle-outline d-block fs-3 mb-1"></i> Belum ada resi pengiriman yang diunggah.
+
+                                <div>
+                                    <div class="detail-label">Alamat Pengiriman Barang</div>
+                                    <div class="detail-value fs-7">
+                                        @if (($pending->shipping_address_type ?? 'customer') === 'customer')
+                                            <span class="badge bg-label-secondary mb-1" style="font-size: 9px; padding: 2px 4px;">Sesuai Customer</span>
+                                            <div class="text-dark">{{ $quote->client->address ?? '-' }}</div>
+                                        @else
+                                            <span class="badge bg-label-warning mb-1" style="font-size: 9px; padding: 2px 4px;">Manual</span>
+                                            <div class="text-dark">{{ $pending->shipping_address_manual }}</div>
+                                        @endif
+                                        @if ($shippingChargeText)
+                                            <span class="badge {{ $shippingChargeClass }} mt-1" style="font-size: 9px; padding: 2px 4px;">Charged: {{ $shippingChargeText }}</span>
+                                        @endif
+                                        @if ($pending->shipping_recipient)
+                                            <div class="small text-muted mt-1">Attn: <strong>{{ $pending->shipping_recipient->name_pic }}</strong> ({{ $pending->shipping_recipient->phone ?? '-' }})</div>
+                                        @endif
+                                    </div>
                                 </div>
-                            @endforelse
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Col 2: Informasi Dokumen & Keuangan -->
+                    <div class="col-lg-4 col-12">
+                        <div class="info-spec-box h-100 d-flex flex-column justify-content-between">
+                            <div>
+                                <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                                    <h6 class="fw-bold text-dark mb-0 fs-7">
+                                        <i class="mdi mdi-file-document-outline text-primary me-1"></i>Dokumen &amp; Invoice
+                                    </h6>
+                                    @if ($isPaymentConfirmed)
+                                        <span class="badge bg-label-success" style="font-size: 9px;">Paid</span>
+                                    @else
+                                        <span class="badge bg-label-danger" style="font-size: 9px;">Unpaid</span>
+                                    @endif
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="detail-label">No. PO Customer</div>
+                                    <div class="detail-value text-dark font-monospace">{{ $quote->po_number ?: '-' }}</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="detail-label">Daftar Invoice</div>
+                                    <div class="detail-value">
+                                        @forelse ($invoices as $inv)
+                                            <div class="mb-1">
+                                                @if ($inv->no_invoice)
+                                                    <a class="fw-bold text-primary font-monospace" href="{{ route('invoice.show', $inv->id) }}">
+                                                        <i class="mdi mdi-receipt me-1"></i>{{ $inv->no_invoice }}
+                                                    </a>
+                                                @else
+                                                    <span class="badge bg-label-warning" style="font-size: 9px;">{{ $inv->type }} - Pending Approval</span>
+                                                @endif
+                                            </div>
+                                        @empty
+                                            <span class="text-muted small">Belum ada invoice</span>
+                                        @endforelse
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="detail-label">Metode Pembayaran</div>
+                                    <div class="detail-value text-dark">{{ $quote->payment_method ?? 'Cash / Transfer' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Col 3: Informasi Pengiriman & Resi -->
+                    <div class="col-lg-4 col-12">
+                        <div class="info-spec-box h-100 d-flex flex-column justify-content-between">
+                            <div>
+                                <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                                    <h6 class="fw-bold text-dark mb-0 fs-7">
+                                        <i class="mdi mdi-truck-delivery-outline text-primary me-1"></i>Kurir &amp; Resi
+                                    </h6>
+                                    <span class="badge bg-label-info" style="font-size: 9px;">{{ $kurir }}</span>
+                                </div>
+
+                                <div class="detail-label mb-1">Daftar Resi &amp; Biaya Kirim</div>
+                                @forelse ($resis as $r)
+                                    <div class="p-2 mb-2 rounded bg-white border">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <span class="fw-bold text-dark font-monospace fs-7">{{ $r->no_track ?? '-' }}</span>
+                                                @if ($r->note)
+                                                    <div class="text-muted small mt-0.5">{{ $r->note }}</div>
+                                                @endif
+                                            </div>
+                                            @if ($r->image)
+                                                <a href="#" onclick="openPdfViewer('{{ url($r->image) }}', 'Resi {{ $r->no_track }}'); return false;" class="btn btn-xs btn-outline-primary" style="font-size: 10px; padding: 2px 6px;">
+                                                    <i class="mdi mdi-file-image"></i> Lihat
+                                                </a>
+                                            @endif
+                                        </div>
+                                        <div class="mt-1 pt-1 border-top d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">Ongkir:</small>
+                                            <span class="fw-bold text-primary fs-7">Rp {{ number_format($r->cost ?? 0, 0, '.', ',') }}</span>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="text-center py-3 text-muted small">
+                                        <i class="mdi mdi-barcode-scan d-block fs-4 text-muted mb-1"></i>
+                                        Belum ada data resi pengiriman.
+                                    </div>
+                                @endforelse
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-    <div class="d-flex align-items-center gap-2 mb-3 mt-2">
-        <i class="mdi mdi-package-variant-closed fs-4 text-primary"></i>
-        <h5 class="fw-bold mb-0 text-dark text-uppercase" style="letter-spacing: .3px; font-size: 14px;">Logistik &amp; Pengiriman</h5>
-    </div>
-
-    <!-- Items Table -->
-    <div class="card mb-4 shadow-sm border-0">
-        <div class="card-header bg-transparent py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <h5 class="m-0 fw-bold text-primary"><i class="mdi mdi-package-variant-closed me-2"></i> Daftar Barang</h5>
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-                @if ($pending->status != '6' && $pending->status != '7')
-                    <button type="button" class="btn btn-warning btn-sm text-dark fw-bold shadow-xs d-flex align-items-center gap-1"
-                        data-bs-toggle="modal" data-bs-target="#modalCreateProductOut">
-                        <i class="mdi mdi-truck-fast-outline me-1"></i> Barang Keluar
-                    </button>
-                @endif
-                @if ($pending->status != '6')
-                    <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal"
-                        data-bs-target="#replacementEditUnit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
-                        <i class="mdi mdi-list-status me-1"></i> Update Status &amp; Gudang
-                    </button>
-                @endif
-            </div>
         </div>
-        <div class="table-responsive text-nowrap">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width: 50px;">No</th>
-                                <th>Item</th>
-                                <th>Qty</th>
-                                <th>Gudang</th>
-                                <th>Status</th>
-                                <th>Note</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @php
-                                $no = 1;
-                                // Qty asli yang di-order di quotation, dikelompokkan per equivalent —
-                                // dipakai sebagai acuan kolom Qty (bukan bdg+bks yang cuma qty stok teralokasi,
-                                // yang bisa lebih kecil dari qty order saat status Kurang).
-                                $orderedQtyByEquivalent = $quote->details
-                                    ->whereNotNull('id_equivalent')
-                                    ->where('id_equivalent', '!=', 0)
-                                    ->groupBy('id_equivalent')
-                                    ->map(fn ($rows) => $rows->sum('qty'));
-                            @endphp
-                            @forelse ($dPending as $item)
-                                @php
-                                    switch ($item->status) {
-                                        case 1: $status = 'On Check'; $badge = 'bg-label-warning'; break;
-                                        case 2: $status = 'Ready Stock'; $badge = 'bg-label-info'; break;
-                                        case 3: $status = 'Kurang'; $badge = 'bg-label-danger'; break;
-                                        case 4: $status = 'Pre-Order'; $badge = 'bg-label-primary'; break;
-                                        case 5: $status = 'Delivery Process'; $badge = 'bg-label-linkedin'; break;
-                                        case 6: $status = 'Done'; $badge = 'bg-label-success'; break;
-                                        default: $status = 'Belum Di Cek'; $badge = 'bg-label-secondary'; break;
-                                    }
-                                @endphp
-                                @php
-                                    $goLabels = [
-                                        'Replacement' => 'bg-label-warning',
-                                        'Genuine'     => 'bg-label-success',
-                                        'OEM'         => 'bg-label-info',
-                                    ];
-                                    $goVal = $item->equivalent->product->go ?? null;
-                                    $orderedQty = $item->id_equivalent ? ($orderedQtyByEquivalent[$item->id_equivalent] ?? null) : null;
-                                @endphp
-                                <tr style="font-size: 13px">
-                                    <td class="text-center">{{ $no }}</td>
-                                    <td class="fw-semibold">
-                                        @if (empty($item->id_equivalent) || $item->id_equivalent == '0')
-                                            {{ $item->note ?: '-' }}
-                                        @else
-                                            <div class="d-flex align-items-center flex-wrap gap-2">
-                                                <span>{{ $item->equivalent->brand ?? '' }} {{ $item->equivalent->pn ?? '' }}</span>
-                                                @if ($goVal && isset($goLabels[$goVal]))
-                                                    <span class="badge {{ $goLabels[$goVal] }}" style="font-size: 9px;">{{ $goVal }}</span>
-                                                @endif
-                                            </div>
-                                            @if ($item->equivalent->product->description ?? null)
-                                                <div class="text-muted fw-normal text-wrap" style="font-size: 11.5px; line-height: 1.4; max-width: 320px;">{{ $item->equivalent->product->description }}</div>
-                                            @endif
-                                        @endif
-                                    </td>
-                                    <td>{{ $orderedQty !== null ? (float) $orderedQty : ($item->bdg + $item->bks) }}</td>
-                                    <td>
-                                        @if ($item->bdg > 0)
-                                            <span class="badge bg-label-primary" style="font-size: 10px;">BDG: {{ $item->bdg }}</span>
-                                        @endif
-                                        @if ($item->bks > 0)
-                                            <span class="badge bg-label-info" style="font-size: 10px;">BKS: {{ $item->bks }}</span>
-                                        @endif
-                                        @if (!$item->bdg && !$item->bks)
-                                            <span class="text-muted">-</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <span class="badge {{ $pending->status == '6' ? 'bg-label-success' : $badge }}">
-                                            {{ $pending->status == '6' ? 'Done' : $status }}
-                                        </span>
-                                    </td>
-                                    <td class="text-wrap" style="max-width: 250px;">{{ $item->note ?? '-' }}</td>
-                                </tr>
-                                @php $no++; @endphp
-                            @empty
-                                <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">Tidak ada data barang</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
 
-            <!-- Purchase Requests -->
-            @if ((isset($purchases) ? $purchases->isEmpty() : !$purchase) && $dPending->where('status', 3)->count() > 0)
-                <div class="alert alert-warning d-flex align-items-center mb-3">
-                    <i class="mdi mdi-clock-alert-outline me-2 fs-5"></i>
-                    Ada item yang stoknya kurang, tapi Purchase Request belum dibuat — menunggu konfirmasi payment DP dari Accounting.
-                </div>
-            @endif
-            <div class="card mb-4 shadow-sm border-0">
-                <div class="card-header bg-transparent py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <h5 class="m-0 fw-bold text-primary"><i class="mdi mdi-cart-arrow-down me-2"></i> Purchase Request</h5>
-                    @if ($pending->status != '6' && $pending->status != '8')
-                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
-                            data-bs-target="#purchaseReqUnit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
-                            <i class="mdi mdi-plus-box me-1"></i> Purchase Request
+        <!-- Card: Daftar Barang & Alokasi Stok -->
+        <div class="card detail-card mb-3">
+            <div class="card-header border-bottom py-3 px-3 px-md-4 d-flex justify-content-between align-items-center flex-wrap gap-2 bg-transparent">
+                <h5 class="card-title mb-0 fw-bold fs-6 d-flex align-items-center">
+                    <i class="mdi mdi-package-variant-closed text-primary me-2"></i>Daftar Barang &amp; Alokasi Stok
+                </h5>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    @if ($pending->status != '6' && $pending->status != '7')
+                        <button type="button" class="btn btn-warning btn-sm text-dark fw-bold waves-effect shadow-xs d-flex align-items-center gap-1"
+                            data-bs-toggle="modal" data-bs-target="#modalCreateProductOut">
+                            <i class="mdi mdi-truck-fast-outline me-1"></i> Barang Keluar
+                        </button>
+                    @endif
+                    @if ($pending->status != '6')
+                        <button type="button" class="btn btn-outline-warning btn-sm waves-effect" data-bs-toggle="modal"
+                            data-bs-target="#replacementEditUnit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
+                            <i class="mdi mdi-list-status me-1"></i> Update Status &amp; Gudang
                         </button>
                     @endif
                 </div>
+            </div>
+            <div class="table-responsive text-nowrap">
+                <table class="table table-hover table-custom align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px;" class="text-center">No</th>
+                            <th>Item Barang</th>
+                            <th class="text-center">Qty</th>
+                            <th class="text-center">Alokasi Gudang</th>
+                            <th class="text-center">Status</th>
+                            <th>Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @php
+                            $no = 1;
+                            $orderedQtyByEquivalent = $quote->details
+                                ->whereNotNull('id_equivalent')
+                                ->where('id_equivalent', '!=', 0)
+                                ->groupBy('id_equivalent')
+                                ->map(fn ($rows) => $rows->sum('qty'));
+                        @endphp
+                        @forelse ($dPending as $item)
+                            @php
+                                switch ($item->status) {
+                                    case 1: $status = 'On Check'; $badge = 'bg-label-warning'; break;
+                                    case 2: $status = 'Ready Stock'; $badge = 'bg-label-info'; break;
+                                    case 3: $status = 'Kurang'; $badge = 'bg-label-danger'; break;
+                                    case 4: $status = 'Pre-Order'; $badge = 'bg-label-primary'; break;
+                                    case 5: $status = 'Delivery Process'; $badge = 'bg-label-linkedin'; break;
+                                    case 6: $status = 'Done'; $badge = 'bg-label-success'; break;
+                                    default: $status = 'Belum Di Cek'; $badge = 'bg-label-secondary'; break;
+                                }
+                                $goLabels = [
+                                    'Replacement' => 'bg-label-warning',
+                                    'Genuine'     => 'bg-label-success',
+                                    'OEM'         => 'bg-label-info',
+                                ];
+                                $goVal = $item->equivalent->product->go ?? null;
+                                $orderedQty = $item->id_equivalent ? ($orderedQtyByEquivalent[$item->id_equivalent] ?? null) : null;
+                            @endphp
+                            <tr>
+                                <td class="text-center">{{ $no }}</td>
+                                <td class="fw-semibold">
+                                    @if (empty($item->id_equivalent) || $item->id_equivalent == '0')
+                                        {{ $item->note ?: '-' }}
+                                    @else
+                                        <div class="d-flex align-items-center flex-wrap gap-2">
+                                            <span class="text-dark">{{ $item->equivalent->brand ?? '' }} {{ $item->equivalent->pn ?? '' }}</span>
+                                            @if ($goVal && isset($goLabels[$goVal]))
+                                                <span class="badge {{ $goLabels[$goVal] }}" style="font-size: 9px;">{{ $goVal }}</span>
+                                            @endif
+                                        </div>
+                                        @if ($item->equivalent->product->description ?? null)
+                                            <div class="text-muted fw-normal text-wrap" style="font-size: 11.5px; line-height: 1.4; max-width: 320px;">{{ $item->equivalent->product->description }}</div>
+                                        @endif
+                                    @endif
+                                </td>
+                                <td class="text-center fw-bold">{{ $orderedQty !== null ? (float) $orderedQty : ($item->bdg + $item->bks) }}</td>
+                                <td class="text-center">
+                                    @if ($item->bdg > 0)
+                                        <span class="badge bg-label-primary" style="font-size: 10px;">BDG: {{ $item->bdg }}</span>
+                                    @endif
+                                    @if ($item->bks > 0)
+                                        <span class="badge bg-label-info" style="font-size: 10px;">BKS: {{ $item->bks }}</span>
+                                    @endif
+                                    @if (!$item->bdg && !$item->bks)
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge {{ $pending->status == '6' ? 'bg-label-success' : $badge }}">
+                                        {{ $pending->status == '6' ? 'Done' : $status }}
+                                    </span>
+                                </td>
+                                <td class="text-wrap" style="max-width: 250px;">{{ $item->note ?? '-' }}</td>
+                            </tr>
+                            @php $no++; @endphp
+                        @empty
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">Tidak ada data barang</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Purchase Requests -->
+        @if ((isset($purchases) ? $purchases->isEmpty() : !$purchase) && $dPending->where('status', 3)->count() > 0)
+            <div class="alert alert-warning d-flex align-items-center mb-3">
+                <i class="mdi mdi-clock-alert-outline me-2 fs-5"></i>
+                Ada item yang stoknya kurang, tapi Purchase Request belum dibuat — menunggu konfirmasi payment DP dari Accounting.
+            </div>
+        @endif
+        <div class="card detail-card mb-3">
+            <div class="card-header border-bottom py-3 px-3 px-md-4 d-flex justify-content-between align-items-center flex-wrap gap-2 bg-transparent">
+                <h5 class="card-title mb-0 fw-bold fs-6 d-flex align-items-center">
+                    <i class="mdi mdi-cart-arrow-down text-primary me-2"></i>Purchase Request Terkait
+                </h5>
+                @if ($pending->status != '6' && $pending->status != '8')
+                    <button type="button" class="btn btn-outline-primary btn-sm waves-effect" data-bs-toggle="modal"
+                        data-bs-target="#purchaseReqUnit" {{ auth()->user()->role != 'Sales' ? '' : 'disabled' }}>
+                        <i class="mdi mdi-plus-box me-1"></i> Purchase Request
+                    </button>
+                @endif
+            </div>
+            <div class="table-responsive text-nowrap">
+                <table class="table table-hover table-custom align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px;" class="text-center">No</th>
+                            <th>No PR</th>
+                            <th>Item Barang</th>
+                            <th class="text-center">Qty</th>
+                            <th>Catatan</th>
+                            <th class="text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @php
+                            $no = 1;
+                            $allPrDetails = collect();
+                            $prList = (isset($purchases) && $purchases->isNotEmpty()) ? $purchases : ($purchase ? collect([$purchase]) : collect());
+                            foreach ($prList as $prDoc) {
+                                if (($prDoc->status ?? null) == '1' && ($prDoc->purchaseOrders->count() ?? 0) > 0) {
+                                    $status_pr = 'Menunggu Pengiriman Supplier';
+                                    $color_pr = 'bg-label-dark';
+                                } else {
+                                    switch ($prDoc->status ?? null) {
+                                        case '1': $status_pr = 'Approved'; $color_pr = 'bg-label-warning'; break;
+                                        case '2': $status_pr = 'Delivery'; $color_pr = 'bg-label-info'; break;
+                                        case '3': $status_pr = 'Good Receipt'; $color_pr = 'bg-label-success'; break;
+                                        default: $status_pr = 'New Purchase'; $color_pr = 'bg-label-primary'; break;
+                                    }
+                                }
+                                foreach (($prDoc->details ?? collect()) as $det) {
+                                    $allPrDetails->push([
+                                        'pr' => $prDoc,
+                                        'detail' => $det,
+                                        'status_pr' => $status_pr,
+                                        'color_pr' => $color_pr,
+                                    ]);
+                                }
+                            }
+                        @endphp
+                        @forelse ($allPrDetails as $row)
+                            @php
+                                $prDoc = $row['pr'];
+                                $det = $row['detail'];
+                            @endphp
+                            <tr>
+                                <td class="text-center">{{ $no }}</td>
+                                <td class="fw-bold"><a href="{{ route('purchase-request.show', $prDoc->id) }}" class="text-primary font-monospace">{{ $prDoc->no_pr ?? '-' }}</a></td>
+                                <td>
+                                    @if ($det->id_equivalent == '0' || empty($det->id_equivalent))
+                                        -
+                                    @else
+                                        {{ $det->equivalent->brand ?? '' }} {{ $det->equivalent->pn ?? '' }}
+                                    @endif
+                                </td>
+                                <td class="text-center fw-bold">{{ $det->qty }} {{ $det->equivalent->product->unit ?? '' }}</td>
+                                <td class="text-wrap" style="max-width: 250px;">{{ $det->note ?? '-' }}</td>
+                                <td class="text-center"><span class="badge {{ $row['color_pr'] }}">{{ $row['status_pr'] }}</span></td>
+                            </tr>
+                            @php $no++; @endphp
+                        @empty
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">Tidak Ada Purchase Request</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Returns Section -->
+        @if ($return->isNotEmpty())
+            <div class="card detail-card mb-3">
+                <div class="card-header border-bottom py-3 px-3 px-md-4 d-flex justify-content-between align-items-center bg-transparent">
+                    <h5 class="card-title mb-0 fw-bold fs-6 d-flex align-items-center">
+                        <i class="mdi mdi-arrow-u-left-bottom text-primary me-2"></i>Retur Barang
+                    </h5>
+                    <a href="#" class="btn btn-sm btn-outline-danger clear-return-unit waves-effect" data-id="{{ $pending->id }}">
+                        <i class="mdi mdi-eraser-variant me-1"></i> Clear Return
+                    </a>
+                </div>
                 <div class="table-responsive text-nowrap">
-                    <table class="table table-hover align-middle mb-0">
+                    <table class="table table-hover table-custom align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th style="width: 50px;">No</th>
-                                <th>No PR</th>
-                                <th>Item</th>
-                                <th>Qty</th>
-                                <th>Note</th>
-                                <th>Status</th>
+                                <th style="width: 50px;" class="text-center">No</th>
+                                <th>No Return</th>
+                                <th>No DO</th>
+                                <th>Tanggal Return</th>
+                                <th>Tanggal Selesai</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @php
-                                $no = 1;
-                                $allPrDetails = collect();
-                                $prList = (isset($purchases) && $purchases->isNotEmpty()) ? $purchases : ($purchase ? collect([$purchase]) : collect());
-                                foreach ($prList as $prDoc) {
-                                    if (($prDoc->status ?? null) == '1' && ($prDoc->purchaseOrders->count() ?? 0) > 0) {
-                                        $status_pr = 'Menunggu Pengiriman Supplier';
-                                        $color_pr = 'bg-label-dark';
-                                    } else {
-                                        switch ($prDoc->status ?? null) {
-                                            case '1': $status_pr = 'Approved'; $color_pr = 'bg-label-warning'; break;
-                                            case '2': $status_pr = 'Delivery'; $color_pr = 'bg-label-info'; break;
-                                            case '3': $status_pr = 'Good Receipt'; $color_pr = 'bg-label-success'; break;
-                                            default: $status_pr = 'New Purchase'; $color_pr = 'bg-label-primary'; break;
-                                        }
-                                    }
-                                    foreach (($prDoc->details ?? collect()) as $det) {
-                                        $allPrDetails->push([
-                                            'pr' => $prDoc,
-                                            'detail' => $det,
-                                            'status_pr' => $status_pr,
-                                            'color_pr' => $color_pr,
-                                        ]);
-                                    }
-                                }
-                            @endphp
-                            @forelse ($allPrDetails as $row)
-                                @php
-                                    $prDoc = $row['pr'];
-                                    $det = $row['detail'];
-                                @endphp
+                            @php $no = 1; @endphp
+                            @foreach ($return as $retur)
                                 <tr>
                                     <td class="text-center">{{ $no }}</td>
-                                    <td class="fw-bold"><a href="{{ route('purchase-request.show', $prDoc->id) }}" class="text-primary">{{ $prDoc->no_pr ?? '-' }}</a></td>
                                     <td>
-                                        @if ($det->id_equivalent == '0' || empty($det->id_equivalent))
-                                            -
-                                        @else
-                                            {{ $det->equivalent->brand ?? '' }} {{ $det->equivalent->pn ?? '' }}
-                                        @endif
+                                        <a href="{{ route('return.show', $retur->id) }}" class="fw-bold text-primary font-monospace">
+                                            {{ $retur->no_return }}
+                                        </a>
                                     </td>
-                                    <td>{{ $det->qty }} {{ $det->equivalent->product->unit ?? '' }}</td>
-                                    <td class="text-wrap" style="max-width: 250px;">{{ $det->note ?? '-' }}</td>
-                                    <td><span class="badge {{ $row['color_pr'] }}">{{ $row['status_pr'] }}</span></td>
+                                    <td>{{ $retur->product_in->no_do ?? 'Belum Ada Product In' }}</td>
+                                    <td>{{ $retur->date }}</td>
+                                    <td>{{ $retur->date_done ?? '-' }}</td>
                                 </tr>
                                 @php $no++; @endphp
-                            @empty
-                                <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">Tidak Ada Purchase Request</td>
-                                </tr>
-                            @endforelse
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
             </div>
+        @endif
 
-            <!-- Returns Section (hidden kalau belum ada return sama sekali — modul retur lebih lengkap menyusul) -->
-            @if ($return->isNotEmpty())
-                <div class="card mb-4 shadow-sm border">
-                    <div class="card-header bg-light py-3 border-bottom d-flex justify-content-between align-items-center">
-                        <h5 class="m-0 fw-bold"><i class="mdi mdi-arrow-u-left-bottom text-primary me-1"></i> Retur Barang</h5>
-                        <a href="#" class="btn btn-sm btn-outline-danger clear-return-unit waves-effect" data-id="{{ $pending->id }}">
-                            <i class="mdi mdi-eraser-variant me-1"></i> Clear Return
-                        </a>
+        <!-- Finished Product Out Invoice -->
+        @if ($pending->status == '6' && $pending->id_product_out != null && $product)
+            <div class="card detail-card mb-3">
+                <div class="card-header border-bottom py-3 px-3 px-md-4 d-flex justify-content-between align-items-center flex-wrap gap-2 bg-transparent">
+                    <h5 class="card-title mb-0 fw-bold fs-6 d-flex align-items-center">
+                        <i class="mdi mdi-file-document-check-outline text-success me-2"></i>Surat Jalan Barang Keluar ({{ $product->vers }})
+                    </h5>
+                    <span class="badge bg-label-success fs-7">#{{ $product->no_type == '1' ? $product->invoice : $product->po }}</span>
+                </div>
+                <div class="card-body p-3 p-md-4">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <div class="detail-label">Customers / Alamat Pengiriman:</div>
+                            <pre class="mb-0 text-dark fw-medium p-2 bg-light rounded border text-wrap" style="font-family: inherit; font-size: 13px;">{{ $product->detail_client }}</pre>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="detail-label">Tanggal Keluar:</div>
+                            <p class="mb-0 fw-medium text-dark"><i class="mdi mdi-calendar-range me-1"></i> {{ Carbon\Carbon::parse($product->date)->format('d-m-Y') }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="detail-label">Dibuat Oleh:</div>
+                            <p class="mb-0 fw-medium text-dark"><i class="mdi mdi-account-circle-outline me-1"></i> {{ $product->user->name }}</p>
+                        </div>
+                        @if($product->note)
+                            <div class="col-12">
+                                <div class="detail-label">Catatan Tambahan:</div>
+                                <pre class="mb-0 text-muted p-2 bg-light rounded border text-wrap" style="font-family: inherit; font-size: 13px;">{{ $product->note }}</pre>
+                            </div>
+                        @endif
                     </div>
-                    <div class="table-responsive text-nowrap">
-                        <table class="table table-bordered table-striped mb-0">
+
+                    <div class="table-responsive border rounded">
+                        <table class="table table-hover table-custom align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 50px;">No</th>
-                                    <th>No Return</th>
-                                    <th>No DO</th>
-                                    <th>Tanggal Return</th>
-                                    <th>Tanggal Selesai</th>
+                                    <th style="width: 50px;" class="text-center">No</th>
+                                    <th>Item Keluar</th>
+                                    <th class="text-center">Qty</th>
+                                    <th class="text-end">Harga Satuan</th>
+                                    <th class="text-end">Subtotal</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @php $no = 1; @endphp
-                                @foreach ($return as $retur)
+                                @foreach ($detProduct as $products)
                                     <tr>
                                         <td class="text-center">{{ $no }}</td>
                                         <td>
-                                            <a href="{{ route('return.show', $retur->id) }}" class="fw-bold text-primary">
-                                                {{ $retur->no_return }}
-                                            </a>
+                                            <p class="mb-0 fw-semibold text-primary">{{ $products->detailProduct->replacement }}</p>
+                                            <small class="text-muted">{{ $products->detailProduct->product->description }}</small>
                                         </td>
-                                        <td>{{ $retur->product_in->no_do ?? 'Belum Ada Product In' }}</td>
-                                        <td>{{ $retur->date }}</td>
-                                        <td>{{ $retur->date_done ?? '-' }}</td>
+                                        <td class="text-center">{{ $products->qty }} {{ $products->detailProduct->product->unit }}</td>
+                                        <td class="text-end">Rp {{ number_format($products->price, 0, ',', '.') }}</td>
+                                        <td class="text-end fw-bold">Rp {{ number_format($products->amount, 0, ',', '.') }}</td>
                                     </tr>
                                     @php $no++; @endphp
                                 @endforeach
+                                <tr class="table-light">
+                                    <td colspan="3" class="border-0"></td>
+                                    <td class="fw-semibold text-end">Shipping Cost:</td>
+                                    <td class="fw-bold text-end">Rp {{ number_format($product->shipping, 0, ',', '.') }}</td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td colspan="3" class="border-0"></td>
+                                    <td class="fw-semibold border-top text-primary text-end">Grand Total:</td>
+                                    <td class="fw-bold border-top text-primary text-end">Rp {{ number_format($product->total, 0, ',', '.') }}</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
-            @endif
-
-            <!-- Finished Product Out Invoice -->
-            @if ($pending->status == '6' && $pending->id_product_out != null && $product)
-                <div class="card invoice-preview-card border shadow-sm mb-4">
-                    <div class="card-header bg-light py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <h5 class="m-0 fw-bold text-success"><i class="mdi mdi-file-document-check-outline me-1"></i> Surat Jalan Barang Keluar ({{ $product->vers }})</h5>
-                        <h6 class="m-0 fw-semibold text-muted">#{{ $product->no_type == '1' ? $product->invoice : $product->po }}</h6>
-                    </div>
-                    <div class="card-body pt-3">
-                        <div class="row gy-3">
-                            <div class="col-md-6">
-                                <span class="text-muted fw-semibold d-block mb-1">Customers / Alamat Pengiriman:</span>
-                                <pre class="mb-0 text-dark fw-medium p-2 bg-light rounded border text-wrap" style="font-family: inherit; font-size: 14px;">{{ $product->detail_client }}</pre>
-                            </div>
-                            <div class="col-md-3">
-                                <span class="text-muted fw-semibold d-block mb-1">Tanggal Keluar:</span>
-                                <p class="mb-0 fw-medium text-dark"><i class="mdi mdi-calendar-range me-1"></i> {{ Carbon\Carbon::parse($product->date)->format('d-m-Y') }}</p>
-                            </div>
-                            <div class="col-md-3">
-                                <span class="text-muted fw-semibold d-block mb-1">Dibuat Oleh:</span>
-                                <p class="mb-0 fw-medium text-dark"><i class="mdi mdi-account-circle-outline me-1"></i> {{ $product->user->name }}</p>
-                            </div>
-                            @if($product->note)
-                                <div class="col-12">
-                                    <span class="text-muted fw-semibold d-block mb-1">Catatan Tambahan:</span>
-                                    <pre class="mb-0 text-muted p-2 bg-light rounded border text-wrap" style="font-family: inherit; font-size: 13px;">{{ $product->note }}</pre>
-                                </div>
-                            @endif
-                        </div>
-
-                        <div class="table-responsive border rounded mt-4">
-                            <table class="table table-bordered table-striped mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="width: 50px;">No</th>
-                                        <th>Item Keluar</th>
-                                        <th>Qty</th>
-                                        <th>Harga Satuan</th>
-                                        <th>Subtotal</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @php $no = 1; @endphp
-                                    @foreach ($detProduct as $products)
-                                        <tr>
-                                            <td class="text-center">{{ $no }}</td>
-                                            <td>
-                                                <p class="mb-0 fw-semibold text-primary">{{ $products->detailProduct->replacement }}</p>
-                                                <small class="text-muted">{{ $products->detailProduct->product->description }}</small>
-                                            </td>
-                                            <td>{{ $products->qty }} {{ $products->detailProduct->product->unit }}</td>
-                                            <td>Rp {{ number_format($products->price, 0, ',', '.') }}</td>
-                                            <td class="fw-bold">Rp {{ number_format($products->amount, 0, ',', '.') }}</td>
-                                        </tr>
-                                        @php $no++; @endphp
-                                    @endforeach
-                                    <tr class="table-light">
-                                        <td colspan="3" class="border-0"></td>
-                                        <td class="fw-semibold">Shipping Cost</td>
-                                        <td class="fw-bold">: Rp {{ number_format($product->shipping, 0, ',', '.') }}</td>
-                                    </tr>
-                                    <tr class="table-light">
-                                        <td colspan="3" class="border-0"></td>
-                                        <td class="fw-semibold border-top text-primary">Grand Total</td>
-                                        <td class="fw-bold border-top text-primary">: Rp {{ number_format($product->total, 0, ',', '.') }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            @endif
-
-    <!-- Activity Timeline -->
-    @if ($activity->count() >= 1)
-        <div class="d-flex align-items-center gap-2 mb-3 mt-2">
-            <i class="mdi mdi-clock-outline fs-4 text-primary"></i>
-            <h5 class="fw-bold mb-0 text-dark text-uppercase" style="letter-spacing: .3px; font-size: 14px;">Riwayat Aktivitas</h5>
-        </div>
-        <div class="card mb-4 shadow-sm border-0">
-            <div class="card-body pt-4">
-                <ul class="timeline card-timeline mb-0">
-                    @foreach ($activity as $stats)
-                        @php
-                            switch ($stats->status) {
-                                case 1: $color = 'warning'; $st = 'On Check'; break;
-                                case 2: $color = 'info'; $st = 'Ready Stock'; break;
-                                case 3: $color = 'danger'; $st = 'Kurang'; break;
-                                case 4: $color = 'primary'; $st = 'Pre-Order'; break;
-                                case 5: $color = 'linkedin'; $st = 'Delivery Process'; break;
-                                case 6: $color = 'success'; $st = 'Done'; break;
-                                case 8: $color = 'danger'; $st = 'Return'; break;
-                                case 9: $color = 'warning'; $st = 'Delayed'; break;
-                                default: $color = 'secondary'; $st = 'In Progress'; break;
-                            }
-                        @endphp
-                        <li class="timeline-item timeline-item-transparent clearfix">
-                            <span class="timeline-point timeline-point-{{ $color }}"></span>
-                            <div class="timeline-event">
-                                <div class="timeline-header mb-1">
-                                    <h6 class="mb-0 fw-bold text-dark">Status: <span class="badge bg-label-{{ $color }} btn-xs">{{ $st }}</span></h6>
-                                    <small class="text-muted">{{ $stats->created_at->diffForHumans() }} ({{ $stats->created_at->format('d M Y H:i') }})</small>
-                                </div>
-                                <p class="mb-2 small text-muted">Diperbarui oleh: <span class="fw-semibold text-dark">{{ $stats->user->name ?? 'System' }}</span></p>
-
-                                <div class="ms-3 border-start ps-3 py-1">
-                                    @foreach ($stats->comment as $com)
-                                        <div class="mb-2 p-2 rounded bg-light hover-light border border-light position-relative">
-                                            <div class="d-flex justify-content-between align-items-center flex-wrap">
-                                                <span class="fw-bold text-dark" style="font-size: 12px;">{{ $com->user->name }}</span>
-                                                <small class="text-muted" style="font-size: 10px;">{{ $com->date }}</small>
-                                            </div>
-                                            <p class="mb-0 text-muted mt-1" style="font-size: 12px; line-height: 1.4;">{{ $com->comment }}</p>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </li>
-                    @endforeach
-                </ul>
             </div>
-        </div>
-    @endif
+        @endif
+
+        <!-- Activity Timeline -->
+        @if ($activity->count() >= 1)
+            <div class="card detail-card mb-3">
+                <div class="card-header border-bottom py-3 px-3 px-md-4 d-flex justify-content-between align-items-center bg-transparent">
+                    <h5 class="card-title mb-0 fw-bold fs-6 d-flex align-items-center">
+                        <i class="mdi mdi-clock-outline text-primary me-2"></i>Riwayat Aktivitas &amp; Log Perubahan
+                    </h5>
+                    <span class="badge bg-label-secondary">{{ $activity->count() }} Aktivitas</span>
+                </div>
+                <div class="card-body p-3 p-md-4">
+                    <ul class="timeline card-timeline mb-0">
+                        @foreach ($activity as $stats)
+                            @php
+                                switch ($stats->status) {
+                                    case 1: $color = 'warning'; $st = 'On Check'; break;
+                                    case 2: $color = 'info'; $st = 'Ready Stock'; break;
+                                    case 3: $color = 'danger'; $st = 'Kurang'; break;
+                                    case 4: $color = 'primary'; $st = 'Pre-Order'; break;
+                                    case 5: $color = 'linkedin'; $st = 'Delivery Process'; break;
+                                    case 6: $color = 'success'; $st = 'Done'; break;
+                                    case 8: $color = 'danger'; $st = 'Return'; break;
+                                    case 9: $color = 'warning'; $st = 'Delayed'; break;
+                                    default: $color = 'secondary'; $st = 'In Progress'; break;
+                                }
+                            @endphp
+                            <li class="timeline-item timeline-item-transparent clearfix">
+                                <span class="timeline-point timeline-point-{{ $color }}"></span>
+                                <div class="timeline-event">
+                                    <div class="timeline-header mb-1">
+                                        <h6 class="mb-0 fw-bold text-dark">Status: <span class="badge bg-label-{{ $color }} btn-xs">{{ $st }}</span></h6>
+                                        <small class="text-muted">{{ $stats->created_at->diffForHumans() }} ({{ $stats->created_at->format('d M Y H:i') }})</small>
+                                    </div>
+                                    <p class="mb-2 small text-muted">Diperbarui oleh: <span class="fw-semibold text-dark">{{ $stats->user->name ?? 'System' }}</span></p>
+
+                                    <div class="ms-3 border-start ps-3 py-1">
+                                        @foreach ($stats->comment as $com)
+                                            <div class="mb-2 p-2 rounded bg-light hover-light border border-light position-relative">
+                                                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                                    <span class="fw-bold text-dark" style="font-size: 12px;">{{ $com->user->name }}</span>
+                                                    <small class="text-muted" style="font-size: 10px;">{{ $com->date }}</small>
+                                                </div>
+                                                <p class="mb-0 text-muted mt-1" style="font-size: 12px; line-height: 1.4;">{{ $com->comment }}</p>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        @endif
+    </div>
 
     {{-- ==================== MODALS ==================== --}}
 
