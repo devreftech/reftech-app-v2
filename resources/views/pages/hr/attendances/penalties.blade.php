@@ -25,7 +25,7 @@
         </h4>
         <small class="text-muted">
             Periode: <strong class="text-dark">{{ \Carbon\Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y') }}</strong> &bull; 
-            Skema: <span class="badge bg-label-danger font-11">Bertingkat (1x: Rp 50rb &bull; 2x: Rp 75rb &bull; 3x: Rp 100rb &bull; &gt;3x: Potong Gaji 10%)</span>
+            Skema: <span class="badge bg-label-danger font-11">Bertingkat (1x: Rp {{ number_format($lateTier1Rate, 0, ',', '.') }} &bull; 2x: Rp {{ number_format($lateTier2Rate, 0, ',', '.') }} &bull; 3x: Rp {{ number_format($lateTier3Rate, 0, ',', '.') }} &bull; &gt;3x: Potong Gaji {{ $lateTierExcessPercent }}%)</span>
         </small>
     </div>
 
@@ -306,7 +306,7 @@
                 <i class="mdi mdi-information-outline fs-5"></i>
             </div>
             <div class="font-12 text-muted">
-                <strong>Kebijakan Presensi Aktif:</strong> Jam Masuk: <strong>{{ $workStartTime }} WIB</strong> &bull; Toleransi Harian: <strong>{{ $lateToleranceMinutes }} mnt</strong> &bull; Kuota Bebas Bulanan: <strong>{{ $lateFreeCountPerMonth }}x</strong> &bull; Batas Sanksi SP: <strong>&ge;{{ $lateMultiplierThreshold }}x</strong> (Pengali {{ $lateMultiplierRate }}x)
+                <strong>Kebijakan Presensi Aktif:</strong> Jam Masuk: <strong>{{ $workStartTime }} WIB</strong> &bull; Toleransi Harian: <strong>{{ $lateToleranceMinutes }} mnt</strong> &bull; Denda Terlambat: <strong>1x Rp {{ number_format($lateTier1Rate, 0, ',', '.') }}</strong>, <strong>2x Rp {{ number_format($lateTier2Rate, 0, ',', '.') }}</strong>, <strong>3x Rp {{ number_format($lateTier3Rate, 0, ',', '.') }}</strong>, <strong>&gt;3x Potong Gaji {{ $lateTierExcessPercent }}%</strong> (SP-1) &bull; Denda Alpa: <strong>Rp {{ number_format($alphaPenaltyRate, 0, ',', '.') }}</strong> &bull; Sabtu &amp; Minggu: <strong>{{ $isWeekendOffEnabled ? 'Libur' : 'Hari Kerja' }}</strong>
             </div>
         </div>
         <a href="{{ route('hr.attendances.index') }}" class="btn btn-xs btn-outline-primary text-nowrap">
