@@ -1,5 +1,6 @@
 @extends('layouts.sales.app')
 @section('title', 'Kelengkapan Data Finance - Tools')
+@section('no-container') @endsection
 
 @push('after-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}" />
@@ -51,7 +52,7 @@
 @endpush
 
 @section('content')
-<div class="container-xxl flex-grow-1 container-p-y">
+<div class="container-fluid px-4 py-3">
     <!-- Header & Breadcrumb -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
         <div>

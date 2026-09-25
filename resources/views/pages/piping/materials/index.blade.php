@@ -119,6 +119,19 @@
         .btn-manage-prices:hover {
             transform: translateY(-1px);
         }
+        .category-filter-card {
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            user-select: none;
+        }
+        .category-filter-card:hover:not(.active) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            border-color: #0284c7 !important;
+        }
+        .category-filter-card.active {
+            transform: translateY(-2px);
+        }
     </style>
 @endpush
 
@@ -153,55 +166,55 @@
         </div>
     @endif
 
-    <!-- Category Stat Cards -->
+    <!-- Category Stat Cards (Instant Zero-Reload Filter Tabs) -->
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-4 col-lg-2">
-            <a href="{{ route('piping-materials.index') }}" class="card text-decoration-none border {{ empty($category) ? 'border-primary shadow-sm bg-primary text-white' : 'bg-white' }}">
+            <div role="button" data-category="" class="card category-filter-card border {{ empty($category) ? 'border-primary shadow-sm bg-primary text-white active' : 'bg-white' }}">
                 <div class="card-body p-3 text-center">
-                    <div class="fw-bold fs-4">{{ $stats['total'] }}</div>
-                    <small class="{{ empty($category) ? 'text-white-50' : 'text-muted' }}">Semua Material</small>
+                    <div class="fw-bold fs-4 category-count">{{ $stats['total'] }}</div>
+                    <small class="category-label {{ empty($category) ? 'text-white-50' : 'text-muted' }}">Semua Material</small>
                 </div>
-            </a>
+            </div>
         </div>
         <div class="col-6 col-md-4 col-lg-2">
-            <a href="{{ route('piping-materials.index', ['category' => 'pipe']) }}" class="card text-decoration-none border {{ $category === 'pipe' ? 'border-primary shadow-sm bg-primary text-white' : 'bg-white' }}">
+            <div role="button" data-category="pipe" class="card category-filter-card border {{ $category === 'pipe' ? 'border-primary shadow-sm bg-primary text-white active' : 'bg-white' }}">
                 <div class="card-body p-3 text-center">
-                    <div class="fw-bold fs-4">{{ $stats['pipe'] }}</div>
-                    <small class="{{ $category === 'pipe' ? 'text-white-50' : 'text-muted' }}">Pipa (Pipe)</small>
+                    <div class="fw-bold fs-4 category-count">{{ $stats['pipe'] }}</div>
+                    <small class="category-label {{ $category === 'pipe' ? 'text-white-50' : 'text-muted' }}">Pipa (Pipe)</small>
                 </div>
-            </a>
+            </div>
         </div>
         <div class="col-6 col-md-4 col-lg-2">
-            <a href="{{ route('piping-materials.index', ['category' => 'fitting']) }}" class="card text-decoration-none border {{ $category === 'fitting' ? 'border-primary shadow-sm bg-primary text-white' : 'bg-white' }}">
+            <div role="button" data-category="fitting" class="card category-filter-card border {{ $category === 'fitting' ? 'border-primary shadow-sm bg-primary text-white active' : 'bg-white' }}">
                 <div class="card-body p-3 text-center">
-                    <div class="fw-bold fs-4">{{ $stats['fitting'] }}</div>
-                    <small class="{{ $category === 'fitting' ? 'text-white-50' : 'text-muted' }}">Fitting</small>
+                    <div class="fw-bold fs-4 category-count">{{ $stats['fitting'] }}</div>
+                    <small class="category-label {{ $category === 'fitting' ? 'text-white-50' : 'text-muted' }}">Fitting</small>
                 </div>
-            </a>
+            </div>
         </div>
         <div class="col-6 col-md-4 col-lg-2">
-            <a href="{{ route('piping-materials.index', ['category' => 'valve']) }}" class="card text-decoration-none border {{ $category === 'valve' ? 'border-primary shadow-sm bg-primary text-white' : 'bg-white' }}">
+            <div role="button" data-category="valve" class="card category-filter-card border {{ $category === 'valve' ? 'border-primary shadow-sm bg-primary text-white active' : 'bg-white' }}">
                 <div class="card-body p-3 text-center">
-                    <div class="fw-bold fs-4">{{ $stats['valve'] }}</div>
-                    <small class="{{ $category === 'valve' ? 'text-white-50' : 'text-muted' }}">Valves & Instr.</small>
+                    <div class="fw-bold fs-4 category-count">{{ $stats['valve'] }}</div>
+                    <small class="category-label {{ $category === 'valve' ? 'text-white-50' : 'text-muted' }}">Valves & Instr.</small>
                 </div>
-            </a>
+            </div>
         </div>
         <div class="col-6 col-md-4 col-lg-2">
-            <a href="{{ route('piping-materials.index', ['category' => 'support']) }}" class="card text-decoration-none border {{ $category === 'support' ? 'border-primary shadow-sm bg-primary text-white' : 'bg-white' }}">
+            <div role="button" data-category="support" class="card category-filter-card border {{ $category === 'support' ? 'border-primary shadow-sm bg-primary text-white active' : 'bg-white' }}">
                 <div class="card-body p-3 text-center">
-                    <div class="fw-bold fs-4">{{ $stats['support'] }}</div>
-                    <small class="{{ $category === 'support' ? 'text-white-50' : 'text-muted' }}">Support/Hanger</small>
+                    <div class="fw-bold fs-4 category-count">{{ $stats['support'] }}</div>
+                    <small class="category-label {{ $category === 'support' ? 'text-white-50' : 'text-muted' }}">Support/Hanger</small>
                 </div>
-            </a>
+            </div>
         </div>
         <div class="col-6 col-md-4 col-lg-2">
-            <a href="{{ route('piping-materials.index', ['category' => 'consumable']) }}" class="card text-decoration-none border {{ $category === 'consumable' ? 'border-primary shadow-sm bg-primary text-white' : 'bg-white' }}">
+            <div role="button" data-category="consumable" class="card category-filter-card border {{ $category === 'consumable' ? 'border-primary shadow-sm bg-primary text-white active' : 'bg-white' }}">
                 <div class="card-body p-3 text-center">
-                    <div class="fw-bold fs-4">{{ $stats['consumable'] }}</div>
-                    <small class="{{ $category === 'consumable' ? 'text-white-50' : 'text-muted' }}">Consumable</small>
+                    <div class="fw-bold fs-4 category-count">{{ $stats['consumable'] }}</div>
+                    <small class="category-label {{ $category === 'consumable' ? 'text-white-50' : 'text-muted' }}">Consumable</small>
                 </div>
-            </a>
+            </div>
         </div>
     </div>
 
@@ -248,13 +261,13 @@
                     </tr>
                     <tr class="table-search-row bg-white border-bottom">
                         <th class="p-1">
-                            <select class="form-select form-select-sm column-search border-light bg-light" data-col="0" style="font-size: 11px; padding: 3px 6px;">
-                                <option value="">Semua</option>
-                                <option value="Pipa">Pipa</option>
-                                <option value="Fitting">Fitting</option>
-                                <option value="Valve">Valve</option>
-                                <option value="Support">Support</option>
-                                <option value="Consumable">Consumable</option>
+                            <select class="form-select form-select-sm column-search border-light bg-light" id="selectHeaderCategory" data-col="0" style="font-size: 11px; padding: 3px 6px;">
+                                <option value="">Semua Kategori</option>
+                                <option value="pipe" {{ $category === 'pipe' ? 'selected' : '' }}>Pipa (Pipe)</option>
+                                <option value="fitting" {{ $category === 'fitting' ? 'selected' : '' }}>Fitting</option>
+                                <option value="valve" {{ $category === 'valve' ? 'selected' : '' }}>Valve & Instr.</option>
+                                <option value="support" {{ $category === 'support' ? 'selected' : '' }}>Support/Hanger</option>
+                                <option value="consumable" {{ $category === 'consumable' ? 'selected' : '' }}>Consumable</option>
                             </select>
                         </th>
                         <th class="p-1">
@@ -268,7 +281,7 @@
                         </th>
                         <th class="p-1">
                             <select class="form-select form-select-sm column-search border-light bg-light" data-col="4" style="font-size: 11px; padding: 3px 6px;">
-                                <option value="">Semua</option>
+                                <option value="">Semua Satuan</option>
                                 @php
                                     $distinctUnits = $materials->pluck('unit')->filter()->unique()->sort()->values();
                                 @endphp
@@ -297,7 +310,7 @@
                             };
                         @endphp
                         <tr>
-                            <td>
+                            <td data-category="{{ $mat->category }}" data-search="{{ $mat->category }} {{ $mat->formatted_category }}">
                                 <span class="badge bg-label-{{ $badgeColor }}">{{ $mat->formatted_category }}</span>
                             </td>
                             <td>
@@ -752,16 +765,81 @@
             table.page.len(parseInt(this.value)).draw();
         });
 
-        // Individual Column Search Handlers
-        $('.column-search').on('keyup change input', function () {
+        // Individual Column Search Handlers (except col 0 which is handled by applyCategoryFilter)
+        $('.column-search:not(#selectHeaderCategory)').on('keyup change input', function () {
             const colIdx = $(this).data('col');
             table.column(colIdx).search(this.value).draw();
         });
+
+        // Instant Category Tab Filtering (Zero Reload)
+        function applyCategoryFilter(cat, updateUrl = true) {
+            cat = cat || '';
+
+            // 1. Update Card UI States
+            $('.category-filter-card').each(function () {
+                const cardCat = $(this).data('category') || '';
+                const isMatch = cardCat === cat;
+                if (isMatch) {
+                    $(this).addClass('border-primary shadow-sm bg-primary text-white active').removeClass('bg-white');
+                    $(this).find('.category-label').addClass('text-white-50').removeClass('text-muted');
+                } else {
+                    $(this).removeClass('border-primary shadow-sm bg-primary text-white active').addClass('bg-white');
+                    $(this).find('.category-label').removeClass('text-white-50').addClass('text-muted');
+                }
+            });
+
+            // 2. Sync table header category dropdown
+            $('#selectHeaderCategory').val(cat);
+
+            // 3. Filter DataTable Column 0 Instantly
+            if (!cat) {
+                table.column(0).search('').draw();
+            } else {
+                table.column(0).search(cat).draw();
+            }
+
+            // 4. Update browser URL without page reload (for bookmarking/reloads)
+            if (updateUrl) {
+                const url = new URL(window.location);
+                if (cat) {
+                    url.searchParams.set('category', cat);
+                } else {
+                    url.searchParams.delete('category');
+                }
+                window.history.replaceState({ category: cat }, '', url.toString());
+            }
+        }
+
+        // Category Cards Click Event
+        $('.category-filter-card').on('click', function () {
+            const cat = $(this).data('category') || '';
+            applyCategoryFilter(cat, true);
+        });
+
+        // Category Header Dropdown Change Event
+        $('#selectHeaderCategory').on('change', function () {
+            const cat = $(this).val() || '';
+            applyCategoryFilter(cat, true);
+        });
+
+        // Handle browser Back / Forward navigation
+        window.addEventListener('popstate', function () {
+            const params = new URLSearchParams(window.location.search);
+            const cat = params.get('category') || '';
+            applyCategoryFilter(cat, false);
+        });
+
+        // Check if there is an initial category from URL on first load
+        const initialCategory = @json($category ?? '');
+        if (initialCategory) {
+            applyCategoryFilter(initialCategory, false);
+        }
 
         // Reset Column Search Button
         $('#btnResetColSearch').on('click', function () {
             $('.column-search').val('');
             $('#customSearchInput').val('');
+            applyCategoryFilter('', true);
             table.search('').columns().search('').draw();
         });
 

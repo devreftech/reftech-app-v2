@@ -221,6 +221,11 @@ class DashboardController extends Controller
             $pmData = $pmService->getDashboardData($notulens);
 
             return view("pages.sales.dashboard", array_merge(['adminView' => 'projectmanager'], $pmData));
+        } elseif (Auth::user()->role == 'Client Vendor') {
+            $cvService = new \App\Services\Dashboard\ClientVendorDashboardService();
+            $cvData = $cvService->getDashboardData($notulens);
+
+            return view("pages.sales.dashboard", array_merge(['adminView' => 'clientvendor'], $cvData));
         } else {
             $defaultService = new \App\Services\Dashboard\DefaultDashboardService();
             $defaultData = $defaultService->getDashboardData($notulens);

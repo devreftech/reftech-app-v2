@@ -111,8 +111,13 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body p-3">
                 <span class="text-muted small fw-semibold d-block mb-1">Sisa Kuota Cuti {{ date('Y') }}</span>
-                <h4 class="fw-bold text-primary mb-0">{{ $leaveBalance->remaining_quota }} Hari</h4>
-                <div class="text-muted small mt-1" style="font-size:0.75rem;">Dari kuota {{ $leaveBalance->total_quota }} hari</div>
+                @if ($leaveBalance->is_active ?? true)
+                    <h4 class="fw-bold text-primary mb-0">{{ $leaveBalance->remaining_quota }} Hari</h4>
+                    <div class="text-muted small mt-1" style="font-size:0.75rem;">Dari kuota {{ $leaveBalance->total_quota }} hari</div>
+                @else
+                    <h5 class="fw-bold text-secondary mb-0">Non-Aktif</h5>
+                    <div class="text-muted small mt-1" style="font-size:0.75rem;">Kuota tidak dibatasi</div>
+                @endif
             </div>
         </div>
     </div>

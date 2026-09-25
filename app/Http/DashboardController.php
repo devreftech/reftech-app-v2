@@ -967,6 +967,10 @@ class DashboardController extends Controller
                     'logSoDeliveryCount',
                     'logSoDoneCount',
                     'logSoStatusSeries',
+                    'logPoPendingCount',
+                    'logPoOnDeliveryCount',
+                    'logPoReceivedCount',
+                    'logPoStatusSeries',
                     'logPrFromSo',
                     'logIncomingPending',
                     'logLowStock',
@@ -1371,7 +1375,11 @@ class DashboardController extends Controller
 
         // KPI cards
         $logSoBaruCount = PendingPO::where('status', 0)->where('type', 'Non Project')->count();
-        $logPrPendingCount = PurchaseRequest::where('status', '0')->count();
+        $logPrPendingCount = PurchaseRequest::where('status', '0')
+            ->whereNull('rejected_at')
+            ->whereHas('pending')
+            ->whereHas('activeDetails')
+            ->count();
         $logSuoPendingCount = Suo::where('status', 'submitted')->count();
         $logIncomingPendingCount = ProductIn::where('accept', '0')->count();
         $logLowStockCount = DetailProduct::whereRaw('(stock + warehouse_stock) > 0 AND (stock + warehouse_stock) < ?', [$lowStockThreshold])->count();
@@ -1383,10 +1391,37 @@ class DashboardController extends Controller
         $logSoDoneCount = PendingPO::where('pending_po.status', 6)->where('type', 'Non Project')->count();
         $logSoStatusSeries = [$logSoNewCount, $logSoListCount, $logSoDeliveryCount, $logSoDoneCount];
 
+        // Status Purchase Order (Supplier) breakdown
+        $logPoReceivedCount = \App\Models\PurchaseOrder::where('receipt_status', 'Received')->count();
+        $logPoOnDeliveryCount = \App\Models\PurchaseOrder::where(function ($q) {
+                $q->whereNull('receipt_status')->orWhere('receipt_status', '!=', 'Received');
+            })
+            ->where(function ($q) {
+                $q->whereNotNull('on_delivery_at')
+                  ->orWhere(function ($sq) {
+                      $sq->whereHas('prAllocations')
+                         ->whereDoesntHave('prAllocations', fn ($aq) => $aq->whereNull('purchase_type'));
+                  });
+            })->count();
+        $logPoPendingCount = \App\Models\PurchaseOrder::where(function ($q) {
+                $q->whereNull('receipt_status')->orWhere('receipt_status', '!=', 'Received');
+            })
+            ->where(function ($q) {
+                $q->whereNull('on_delivery_at')
+                  ->where(function ($sq) {
+                      $sq->doesntHave('prAllocations')
+                         ->orWhereHas('prAllocations', fn ($aq) => $aq->whereNull('purchase_type'));
+                  });
+            })->count();
+        $logPoStatusSeries = [$logPoPendingCount, $logPoOnDeliveryCount, $logPoReceivedCount];
+
         // PR otomatis dari Sales Order (stok tidak cukup)
         $logPrFromSo = PurchaseRequest::whereNotNull('id_pending')
             ->where('status', '0')
-            ->with(['pending', 'equivalent.product'])
+            ->whereNull('rejected_at')
+            ->whereHas('pending')
+            ->whereHas('activeDetails')
+            ->with(['pending.quote.pic.client', 'user', 'activeDetails.equivalent.product'])
             ->orderByDesc('date')
             ->take(6)
             ->get();
@@ -1444,6 +1479,10 @@ class DashboardController extends Controller
             'logSoDeliveryCount',
             'logSoDoneCount',
             'logSoStatusSeries',
+            'logPoPendingCount',
+            'logPoOnDeliveryCount',
+            'logPoReceivedCount',
+            'logPoStatusSeries',
             'logPrFromSo',
             'logIncomingPending',
             'logLowStock',

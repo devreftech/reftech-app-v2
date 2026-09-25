@@ -172,6 +172,13 @@
                     area: 'Client Company',
                     areaPlaceholder: 'Contoh: Client Company',
                     codePlaceholder: 'Contoh: CLI'
+                },
+                'Client Vendor': {
+                    isSales: false,
+                    position: 'Client Vendor',
+                    area: 'Vendor / Partner',
+                    areaPlaceholder: 'Contoh: Vendor / Partner',
+                    codePlaceholder: 'Contoh: VND'
                 }
             };
 
@@ -189,25 +196,92 @@
 
                 var $targetCard = $modal.find('[id^="inputTarget"]');
                 var $noticeNonSales = $modal.find('[id^="roleNoticeNonSales"]');
+                var $noticeClientVendor = $modal.find('[id^="roleNoticeClientVendor"]');
                 var $posInput = $modal.find('.user-position-input');
                 var $areaInput = $modal.find('.user-area-input');
                 var $codeInput = $modal.find('.user-code-input');
+                var $nameInput = $modal.find('.user-name-input');
+                var $vendorDisableFields = $modal.find('.vendor-disable-field');
 
                 if (config.isSales) {
                     $targetCard.stop(true, true).slideDown(280);
                     $targetCard.find('input').prop('disabled', false);
                     $noticeNonSales.stop(true, true).slideUp(180);
+                    $noticeClientVendor.stop(true, true).slideUp(180);
+                } else if (role === 'Client Vendor') {
+                    $targetCard.stop(true, true).slideUp(220);
+                    $targetCard.find('input').prop('disabled', true);
+                    $noticeNonSales.stop(true, true).slideUp(180);
+                    $noticeClientVendor.stop(true, true).slideDown(220);
                 } else {
                     $targetCard.stop(true, true).slideUp(220);
                     $targetCard.find('input').prop('disabled', true);
                     $noticeNonSales.find('.notice-role-name').text(role);
                     $noticeNonSales.stop(true, true).slideDown(220);
+                    $noticeClientVendor.stop(true, true).slideUp(180);
+                }
+
+                // Handle Client Vendor disabled inputs for Data Profil & Penempatan
+                if (role === 'Client Vendor') {
+                    // Disable inputs in vendor-disable-field
+                    $vendorDisableFields.each(function() {
+                        var $container = $(this);
+                        $container.css({
+                            'opacity': '0.55',
+                            'pointer-events': 'none',
+                            'filter': 'grayscale(40%)'
+                        });
+                        $container.find('input, select, textarea').each(function() {
+                            $(this).prop('disabled', true).removeAttr('required');
+                        });
+                    });
+
+                    // Pastikan Nama Lengkap TETAP AKTIF & REQUIRED
+                    $nameInput.prop('disabled', false).attr('required', 'required').closest('.col-md-6').css({
+                        'opacity': '1',
+                        'pointer-events': 'auto',
+                        'filter': 'none'
+                    });
+
+                    // Set default dummy values jika di create modal
+                    if (isCreateModal) {
+                        var $nipInput = $modal.find('[id^="nip-"]');
+                        if (!$nipInput.val()) {
+                            $nipInput.val('VND-' + Math.floor(100000 + Math.random() * 900000));
+                        }
+                        var $addrInput = $modal.find('[id^="address-"]');
+                        if (!$addrInput.val()) {
+                            $addrInput.val('-');
+                        }
+                        $posInput.val('Client Vendor');
+                        $areaInput.val('Vendor / Partner');
+                        $codeInput.val('VND');
+                    }
+                } else {
+                    // Re-enable all fields for internal roles
+                    $vendorDisableFields.each(function() {
+                        var $container = $(this);
+                        $container.css({
+                            'opacity': '1',
+                            'pointer-events': 'auto',
+                            'filter': 'none'
+                        });
+                        $container.find('input, select, textarea').each(function() {
+                            $(this).prop('disabled', false);
+                            var fieldId = $(this).attr('id') || '';
+                            if (fieldId.startsWith('nip-') || fieldId.startsWith('phone-') || fieldId.startsWith('address-') || $(this).hasClass('user-position-input') || $(this).hasClass('user-area-input') || $(this).hasClass('user-code-input')) {
+                                $(this).attr('required', 'required');
+                            }
+                        });
+                    });
+
+                    $nameInput.prop('disabled', false).attr('required', 'required');
                 }
 
                 // Toggle HR employee registration box based on role
                 var $hrBox = $('#hrEmployeeIntegrationBox');
                 var $hrCheck = $('#create_employee_check');
-                if (role === 'Client') {
+                if (role === 'Client' || role === 'Client Vendor') {
                     $hrBox.stop(true, true).slideUp(200);
                     $hrCheck.prop('checked', false);
                 } else if (isCreateModal) {
@@ -223,7 +297,7 @@
                 $codeInput.attr('placeholder', config.codePlaceholder);
 
                 // Auto-fill defaults on create modal when user changes role
-                if (isCreateModal && isUserAction) {
+                if (isCreateModal && isUserAction && role !== 'Client Vendor') {
                     if (!$posInput.data('custom-edited') || !$posInput.val()) {
                         $posInput.val(config.position);
                     }
@@ -248,7 +322,7 @@
             });
 
             // Re-sync form layout whenever modal opens smoothly
-            $('#createUsers').on('show.bs.modal', function() {
+            $(document).on('show.bs.modal', '.smooth-user-modal, #createUsers', function() {
                 var $roleSelect = $(this).find('.user-role-select');
                 adaptFormToRole($roleSelect, false);
             });

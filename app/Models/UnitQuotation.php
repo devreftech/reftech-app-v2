@@ -50,6 +50,7 @@ class UnitQuotation extends Model
         'id_source_bank',
         'note',
         'rental_terms',
+        'merge_terms',
         'validity',
         'pricing',
         'warranty',
@@ -79,8 +80,21 @@ class UnitQuotation extends Model
         'has_trade_in'          => 'boolean',
         'hide_title'            => 'boolean',
         'is_draft'              => 'boolean',
+        'merge_terms'           => 'boolean',
         'fee_bank_destinations' => 'array',
     ];
+
+    /**
+     * Apakah quotation ini menampilkan T&C khusus per opsi?
+     * Bernilai true jika opsi > 1 DAN merge_terms tidak diaktifkan.
+     */
+    public function getHasCustomTermsAttribute(): bool
+    {
+        if ($this->options->count() <= 1) {
+            return false;
+        }
+        return !$this->merge_terms;
+    }
 
     public function getFeeBankDestinationsAttribute($value)
     {

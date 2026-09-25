@@ -13,7 +13,7 @@ class ToolMasterController extends Controller
 {
     public function index()
     {
-        if (Auth::user()->role != 'Admin') {
+        if (!in_array(Auth::user()->role, ['Admin', 'Developer'])) {
             abort(403, 'Hanya Admin yang bisa mengakses Master Tools.');
         }
         return view('pages.technician.tool-master.index');
@@ -27,7 +27,7 @@ class ToolMasterController extends Controller
 
     public function store(Request $request)
     {
-        if (Auth::user()->role != 'Admin') {
+        if (!in_array(Auth::user()->role, ['Admin', 'Developer'])) {
             abort(403, 'Hanya Admin yang bisa menambah Master Tools.');
         }
 
@@ -60,7 +60,7 @@ class ToolMasterController extends Controller
 
     public function update(Request $request, $id)
     {
-        if (Auth::user()->role != 'Admin') {
+        if (!in_array(Auth::user()->role, ['Admin', 'Developer'])) {
             abort(403, 'Hanya Admin yang bisa mengubah Master Tools.');
         }
 
@@ -93,7 +93,7 @@ class ToolMasterController extends Controller
 
     public function destroy($id)
     {
-        if (Auth::user()->role != 'Admin') {
+        if (!in_array(Auth::user()->role, ['Admin', 'Developer'])) {
             abort(403, 'Hanya Admin yang bisa menghapus Master Tools.');
         }
 

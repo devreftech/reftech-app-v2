@@ -65,6 +65,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/hr/leaves', [LeaveController::class, 'store'])->name('hr.leaves.store');
         Route::post('/hr/leaves/{leave}/approve', [LeaveController::class, 'approve'])->name('hr.leaves.approve');
         Route::post('/hr/leaves/{leave}/reject', [LeaveController::class, 'reject'])->name('hr.leaves.reject');
+        Route::post('/hr/leaves/balances/bulk', [LeaveController::class, 'updateBulkBalance'])->name('hr.leaves.balances.bulk');
+        Route::post('/hr/leaves/balances/individual', [LeaveController::class, 'updateIndividualBalance'])->name('hr.leaves.balances.individual');
+        Route::post('/hr/leaves/balances/{balance}/toggle', [LeaveController::class, 'toggleBalanceStatus'])->name('hr.leaves.balances.toggle');
 
         // ── 3. Payroll Engine & Slip Gaji Digital (Fase 3) ───────────────
         Route::get('/hr/payrolls', [PayrollController::class, 'index'])->name('hr.payrolls.index');

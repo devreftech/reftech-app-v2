@@ -43,48 +43,66 @@ class EmployeeController extends Controller
      */
     public function store(Request $request)
     {
-        $rule = [
-            'nip'      => 'required',
-            'name'     => 'required',
-            'email'    => 'required|email|unique:users,email',
-            'password' => 'required',
-            'area'     => 'required',
-            'address'  => 'required',
-            'position' => 'required',
-            'code'     => 'required',
-            'image'    => 'nullable|file|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'phone'    => 'required',
-        ];
-        $customMessages = [
-            'nip.required'      => 'Field NIP Wajib Diisi!',
-            'name.required'     => 'Field Nama Wajib Diisi!',
-            'email.required'    => 'Field Email Wajib Diisi!',
-            'email.email'       => 'Format Email tidak valid!',
-            'email.unique'      => 'Email sudah terdaftar!',
-            'password.required' => 'Field Password Wajib Diisi!',
-            'area.required'     => 'Field Area Wajib Diisi!',
-            'address.required'  => 'Field Alamat Wajib Diisi!',
-            'position.required' => 'Field Jabatan/Position Wajib Diisi!',
-            'code.required'     => 'Field Kode Karyawan Wajib Diisi!',
-            'phone.required'    => 'Field No. Telepon Wajib Diisi!',
-        ];
-        // dd($request->all());
+        $isClientVendor = ($request->role === 'Client Vendor');
+
+        if ($isClientVendor) {
+            $rule = [
+                'name'     => 'required',
+                'email'    => 'required|email|unique:users,email',
+                'password' => 'required|min:6',
+            ];
+            $customMessages = [
+                'name.required'     => 'Field Nama Wajib Diisi!',
+                'email.required'    => 'Field Email Wajib Diisi!',
+                'email.email'       => 'Format Email tidak valid!',
+                'email.unique'      => 'Email sudah terdaftar!',
+                'password.required' => 'Field Password Wajib Diisi!',
+                'password.min'      => 'Password minimal 6 karakter!',
+            ];
+        } else {
+            $rule = [
+                'nip'      => 'required',
+                'name'     => 'required',
+                'email'    => 'required|email|unique:users,email',
+                'password' => 'required',
+                'area'     => 'required',
+                'address'  => 'required',
+                'position' => 'required',
+                'code'     => 'required',
+                'image'    => 'nullable|file|image|mimes:jpeg,png,jpg,webp|max:5120',
+                'phone'    => 'required',
+            ];
+            $customMessages = [
+                'nip.required'      => 'Field NIP Wajib Diisi!',
+                'name.required'     => 'Field Nama Wajib Diisi!',
+                'email.required'    => 'Field Email Wajib Diisi!',
+                'email.email'       => 'Format Email tidak valid!',
+                'email.unique'      => 'Email sudah terdaftar!',
+                'password.required' => 'Field Password Wajib Diisi!',
+                'area.required'     => 'Field Area Wajib Diisi!',
+                'address.required'  => 'Field Alamat Wajib Diisi!',
+                'position.required' => 'Field Jabatan/Position Wajib Diisi!',
+                'code.required'     => 'Field Kode Karyawan Wajib Diisi!',
+                'phone.required'    => 'Field No. Telepon Wajib Diisi!',
+            ];
+        }
 
         $this->validate($request, $rule, $customMessages);
         $users = new User;
-        $users->nip = $request->nip;
+        $users->nip = $request->nip ?: ('VND-' . time());
         $users->name = $request->name;
-        $users->birthday = $request->birthday;
-        $users->date_in = $request->date_in;
-        $users->address = $request->address;
+        $users->birthday = $request->birthday ?: '1995-01-01';
+        $users->date_in = $request->date_in ?: Carbon::today()->toDateString();
+        $users->address = $request->address ?: '-';
         $users->sign = NULL;
-        $users->code = $request->code;
-        $users->active = $request->active;
+        $users->code = $request->code ?: 'VND';
+        $users->active = $request->active ?? '1';
         $users->role = $request->role;
         $users->email = $request->email;
         $users->password = Hash::make($request->password);
-        $users->phone = '+62' . $request->phone;
-        if ($request->hasFile('image')) {
+        $users->phone = $request->filled('phone') ? ('+62' . preg_replace('/\D/', '', $request->phone)) : null;
+
+        if (!$isClientVendor && $request->hasFile('image')) {
             if ($users->image != 'asset/profile/profile.jpg') {
                 File::delete($users->image);
             }
@@ -103,14 +121,15 @@ class EmployeeController extends Controller
             $users->image = 'asset/profile/profile.jpg';
         }
         $status = $users->save();
+
         if ($request->role == 'Sales') {
             $target = new Target;
             $target->id_sales = $users->id;
             $target->dc = $request->dc;
             $target->crm = $request->crm;
-            if(isset($request->visit)){
+            if (isset($request->visit)) {
                 $target->visit = $request->visit;
-            }else{
+            } else {
                 $target->visit = 1;
             }
             $target->quote = $request->quote;
@@ -118,16 +137,17 @@ class EmployeeController extends Controller
             $target->total = $request->total;
             $target->save();
         }
+
         $detail = new DetailUser;
         $detail->id_users = $users->id;
-        $detail->position = $request->position;
+        $detail->position = $request->position ?: ($isClientVendor ? 'Client Vendor' : '-');
         $detail->roles = $request->role;
-        $detail->area = $request->area;
+        $detail->area = $request->area ?: ($isClientVendor ? 'Vendor / Partner' : '-');
         $detail->date = Carbon::today();
         $dSave = $detail->save();
 
-        // Integrasi opsional ke Modul HR: hanya dibuat bila opsi dicentang dan bukan role Client
-        if ($request->boolean('create_employee') && $request->role !== 'Client') {
+        // Integrasi opsional ke Modul HR: hanya dibuat bila opsi dicentang dan bukan role Client atau Client Vendor
+        if ($request->boolean('create_employee') && !in_array($request->role, ['Client', 'Client Vendor'])) {
             \App\Models\Employee::firstOrCreate(
                 ['user_id' => $users->id],
                 [
@@ -144,7 +164,7 @@ class EmployeeController extends Controller
         }
 
         if ($status && $dSave) {
-            return redirect('/employee')->with('success', 'Data User berhasil dibuat' . ($request->boolean('create_employee') ? ' dan didaftarkan ke Modul HR' : ''));
+            return redirect('/employee')->with('success', 'Data User berhasil dibuat' . ($request->boolean('create_employee') && !in_array($request->role, ['Client', 'Client Vendor']) ? ' dan didaftarkan ke Modul HR' : ''));
         }
     }
 
@@ -183,39 +203,62 @@ class EmployeeController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $rule = [
-            'nip'     => 'required',
-            'name'    => 'required',
-            'email'   => 'required|email|unique:users,email,' . $id,
-            'address' => 'required',
-            'code'    => 'required',
-            'image'   => 'nullable|file|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'phone'   => 'required',
-        ];
-        $customMessages = [
-            'nip.required'      => 'Field NIP Wajib Diisi!',
-            'name.required'     => 'Field Nama Wajib Diisi!',
-            'email.required'    => 'Field Email Wajib Diisi!',
-            'email.email'       => 'Format Email tidak valid!',
-            'email.unique'      => 'Email sudah terdaftar!',
-            'address.required'  => 'Field Alamat Wajib Diisi!',
-            'code.required'     => 'Field Kode Karyawan Wajib Diisi!',
-            'phone.required'    => 'Field No. Telepon Wajib Diisi!',
-        ];
-        // dd($request->all());
+        $users = User::findOrFail($id);
+        $isClientVendor = ($request->role === 'Client Vendor' || $users->role === 'Client Vendor');
+
+        if ($isClientVendor) {
+            $rule = [
+                'name'  => 'required',
+                'email' => 'required|email|unique:users,email,' . $id,
+            ];
+            $customMessages = [
+                'name.required'  => 'Field Nama Wajib Diisi!',
+                'email.required' => 'Field Email Wajib Diisi!',
+                'email.email'    => 'Format Email tidak valid!',
+                'email.unique'   => 'Email sudah terdaftar!',
+            ];
+        } else {
+            $rule = [
+                'nip'     => 'required',
+                'name'    => 'required',
+                'email'   => 'required|email|unique:users,email,' . $id,
+                'address' => 'required',
+                'code'    => 'required',
+                'image'   => 'nullable|file|image|mimes:jpeg,png,jpg,webp|max:5120',
+                'phone'   => 'required',
+            ];
+            $customMessages = [
+                'nip.required'      => 'Field NIP Wajib Diisi!',
+                'name.required'     => 'Field Nama Wajib Diisi!',
+                'email.required'    => 'Field Email Wajib Diisi!',
+                'email.email'       => 'Format Email tidak valid!',
+                'email.unique'      => 'Email sudah terdaftar!',
+                'address.required'  => 'Field Alamat Wajib Diisi!',
+                'code.required'     => 'Field Kode Karyawan Wajib Diisi!',
+                'phone.required'    => 'Field No. Telepon Wajib Diisi!',
+            ];
+        }
 
         $this->validate($request, $rule, $customMessages);
-        $users = User::find($id);
-        $users->nip = $request->nip;
+        $users->nip = $request->nip ?: ($users->nip ?: ('VND-' . time()));
         $users->name = $request->name;
-        $users->birthday = $request->birthday;
-        $users->address = $request->address;
+        if ($request->filled('birthday')) {
+            $users->birthday = $request->birthday;
+        }
+        $users->address = $request->address ?: ($users->address ?: '-');
         $users->sign = NULL;
-        $users->code = $request->code;
-        $users->active = $request->active;
+        $users->code = $request->code ?: ($users->code ?: 'VND');
+        if ($request->has('active')) {
+            $users->active = $request->active;
+        }
+        if ($request->filled('role')) {
+            $users->role = $request->role;
+        }
         $users->email = $request->email;
+        if ($request->filled('phone')) {
+            $users->phone = '+62' . $request->phone;
+        }
         $users->password = $request->password ? Hash::make($request->password) : $users->password;
-        // $users->phone = '+62' . $request->phone;
         if ($request->hasFile('image')) {
             if ($users->image != 'asset/profile/profile.jpg') {
                 File::delete($users->image);

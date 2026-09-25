@@ -220,7 +220,7 @@
                     </div>
 
                     <!-- 2. Customer / Perusahaan (Searchable via Select2) -->
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label small fw-bold text-primary required">
                             <i class="mdi mdi-domain me-1"></i> 2. Customer / Perusahaan (Ketik Cari PT)
                         </label>
@@ -229,37 +229,27 @@
                         </select>
                     </div>
 
-                    <!-- 3. PIC Customer -->
+                    <!-- 3. Tanggal Estimasi -->
                     <div class="col-md-3">
-                        <label class="form-label small fw-semibold text-muted">
-                            <i class="mdi mdi-card-account-details-outline me-1"></i> 3. PIC Customer
-                        </label>
-                        <select name="id_pic" id="selectPic" class="form-select form-select-clean">
-                            <option value="">-- Pilih PIC --</option>
-                        </select>
-                    </div>
-
-                    <!-- 4. Tanggal Estimasi -->
-                    <div class="col-md-2">
                         <label class="form-label small fw-semibold text-muted required">
                             <i class="mdi mdi-calendar me-1"></i> Tanggal
                         </label>
                         <input type="date" name="rab_date" id="inputRabDate" class="form-control form-control-clean" value="{{ date('Y-m-d') }}" required>
                     </div>
 
-                    <!-- 5. Nama Proyek -->
+                    <!-- 4. Nama Proyek -->
                     <div class="col-md-6">
                         <label class="form-label small fw-semibold text-muted required">Nama Pekerjaan / Proyek</label>
                         <input type="text" name="project_name" id="inputProjectName" class="form-control form-control-clean" placeholder="Contoh: Instalasi Piping Kompresor Jalur Utama & Drop Point" required oninput="triggerAutoSave()">
                     </div>
 
-                    <!-- 6. Lokasi / Area Plant -->
+                    <!-- 5. Lokasi / Area Plant -->
                     <div class="col-md-6">
                         <label class="form-label small fw-semibold text-muted">Lokasi / Area Plant</label>
                         <input type="text" name="location_plant" id="inputLocationPlant" class="form-control form-control-clean" placeholder="Contoh: Plant B - Cikarang / Workshop Utility" oninput="triggerAutoSave()">
                     </div>
 
-                    <!-- 7. Catatan Teknis Internal -->
+                    <!-- 6. Catatan Teknis Internal -->
                     <div class="col-12">
                         <label class="form-label small fw-semibold text-muted">Catatan Teknis Internal</label>
                         <textarea name="notes" id="inputNotes" class="form-control form-control-clean" rows="1" placeholder="Asumsi teknis, ketinggian instalasi pipa, safety permit, jadwal weekend..." oninput="triggerAutoSave()"></textarea>
@@ -321,6 +311,12 @@
         materialMap[m.id] = m;
     });
 
+    const rawSuppliers = @json($suppliers);
+    const supplierMap = {};
+    rawSuppliers.forEach(s => {
+        supplierMap[s.id] = s.supplier;
+    });
+
     let sectionCounter = 0;
     let itemCounter = 0;
 
@@ -340,9 +336,8 @@
                 .catch(() => console.log('Keep-alive ping error'));
         }, 300000);
 
-        // PIC Loader on Client Change (Using jQuery for Select2 compatibility)
+        // Client Change -> Trigger Autosave
         $('#selectClient').on('change', function () {
-            loadPicsForClient($(this).val());
             triggerAutoSave();
         });
 
@@ -398,7 +393,7 @@
     }
 
     // When Sales Dropdown Changes -> Load Clients of this Sales
-    function onSalesChanged(salesId, preselectedClientId = null, preselectedPicId = null) {
+    function onSalesChanged(salesId, preselectedClientId = null) {
         const selectClient = $('#selectClient');
         selectClient.html('<option value="">-- Loading Customer... --</option>');
 
@@ -425,45 +420,11 @@
 
                 if (preselectedClientId) {
                     selectClient.val(preselectedClientId).trigger('change');
-                    loadPicsForClient(preselectedClientId, preselectedPicId);
                 }
             })
             .catch(() => {
                 selectClient.html('<option value="">-- Gagal memuat customer --</option>');
                 initSelect2Client();
-            });
-    }
-
-    function loadPicsForClient(clientId, selectedPicId = null) {
-        const selectPic = document.getElementById('selectPic');
-        if (!selectPic) return;
-        selectPic.innerHTML = '<option value="">-- Loading PIC... --</option>';
-
-        if (!clientId) {
-            selectPic.innerHTML = '<option value="">-- Pilih PIC --</option>';
-            return;
-        }
-
-        fetch(`/smart-quote/pics/${clientId}`)
-            .then(res => res.json())
-            .then(data => {
-                const picList = Array.isArray(data) ? data : (data.pics || []);
-                let options = '<option value="">-- Pilih PIC --</option>';
-                if (picList.length > 0) {
-                    picList.forEach(p => {
-                        const isSel = (selectedPicId && selectedPicId == p.id) ? 'selected' : '';
-                        const picName = p.name_pic || p.name || ('PIC #' + p.id);
-                        const picPos = p.position ? ` (${p.position})` : '';
-                        options += `<option value="${p.id}" ${isSel}>${picName}${picPos}</option>`;
-                    });
-                } else {
-                    options = '<option value="">-- Tidak ada data PIC --</option>';
-                }
-                selectPic.innerHTML = options;
-            })
-            .catch(err => {
-                console.error('Error loading PIC:', err);
-                selectPic.innerHTML = '<option value="">-- Gagal memuat PIC --</option>';
             });
     }
 
@@ -587,17 +548,29 @@
         return html;
     }
 
-    function formatRupiahNumber(val) {
-        if (val === null || val === undefined || val === '') return '';
-        const num = Math.round(parseFloat(String(val).replace(/[^0-9]/g, ''))) || 0;
-        if (num === 0) return '0';
-        return new Intl.NumberFormat('id-ID').format(num);
+    function parseRupiahNumber(val) {
+        if (val === null || val === undefined || val === '') return 0;
+        if (typeof val === 'number') return Math.round(val);
+        
+        let str = String(val).trim();
+        str = str.replace(/Rp\s?/gi, '').trim();
+
+        // Hanya format desimal database standar murni (seperti "285000.00" atau "285000.5") dengan 1-2 desimal
+        if (/^\d+\.\d{1,2}$/.test(str)) {
+            return Math.round(parseFloat(str)) || 0;
+        }
+
+        // Format ribuan Indonesia (seperti "285.000" atau "38.500.000")
+        const clean = str.replace(/\./g, '').replace(/,/g, '.');
+        const num = parseFloat(clean);
+        return isNaN(num) ? 0 : Math.round(num);
     }
 
-    function parseRupiahNumber(val) {
-        if (!val) return 0;
-        const clean = String(val).replace(/[^0-9]/g, '');
-        return parseFloat(clean) || 0;
+    function formatRupiahNumber(val) {
+        if (val === null || val === undefined || val === '') return '';
+        const num = parseRupiahNumber(val);
+        if (num === 0) return '0';
+        return new Intl.NumberFormat('id-ID').format(num);
     }
 
     function onHppInput(elem, sIndex, iIndex) {
@@ -623,7 +596,7 @@
         const itemName = initialData ? initialData.item_name : (itemType === 'service' ? 'Jasa Instalasi & Pengelasan Piping' : '');
         const size = initialData ? initialData.size : '';
         const spec = initialData ? initialData.spec : '';
-        const unit = initialData ? initialData.unit : (itemType === 'material' ? 'Batang' : (itemType === 'service' ? 'Lot' : 'Pcs'));
+        const unit = initialData ? (initialData.unit === 'Batang' ? 'Btg' : initialData.unit) : (itemType === 'material' ? 'Btg' : (itemType === 'service' ? 'Lot' : 'Pcs'));
         const inputMeter = initialData ? initialData.input_length_meter : '';
         const lengthPerUnit = initialData ? initialData.length_per_unit : 6.00;
         const wastePercent = initialData && initialData.waste_percent !== null && initialData.waste_percent !== undefined ? initialData.waste_percent : 5;
@@ -697,7 +670,10 @@
                         </select>
                         <input type="number" step="0.5" name="sections[${sIndex}][items][${iIndex}][margin_value]" class="form-control form-control-sm margin-value" value="${marginValue}" placeholder="Margin" oninput="calcRowTotal(${sIndex}, ${iIndex})">
                     </div>
-                    <small class="text-muted d-block" style="font-size: 10px;">Jual/unit: <span class="fw-semibold text-dark unit-sell-display">Rp 0</span></small>
+                    <div class="d-flex flex-column gap-0" style="font-size: 10px; line-height: 1.25;">
+                        <span class="text-success fw-semibold unit-margin-display">Laba: +Rp 0</span>
+                        <span class="text-muted">Jual: <strong class="text-dark unit-sell-display">Rp 0</strong></span>
+                    </div>
                     <input type="hidden" name="sections[${sIndex}][items][${iIndex}][unit_selling_price]" class="input-unit-selling-price" value="${unitSell}">
                 </td>
 
@@ -730,9 +706,8 @@
             });
         }
 
-        if (matId && materialMap[matId]) {
-            populateVendorsForRow(sIndex, iIndex, matId, idSupplier);
-        }
+        const fallbackSupName = initialData && initialData.supplier ? initialData.supplier.supplier : '';
+        populateVendorsForRow(sIndex, iIndex, matId, idSupplier, fallbackSupName);
 
         calcRowTotal(sIndex, iIndex);
         updateRowNumbers(sIndex);
@@ -757,29 +732,65 @@
         });
     }
 
-    function populateVendorsForRow(sIndex, iIndex, materialId, selectedSupplierId) {
+    function populateVendorsForRow(sIndex, iIndex, materialId, selectedSupplierId, fallbackSupplierName = '') {
         const row = document.getElementById(`item_row_${sIndex}_${iIndex}`);
-        if (!row || !materialMap[materialId]) return;
+        if (!row) return;
 
-        const mat = materialMap[materialId];
         const vendorSelect = row.querySelector('.vendor-select');
         vendorSelect.innerHTML = '<option value="">-- Pilih Supplier --</option>';
 
-        if (mat.vendor_prices && mat.vendor_prices.length > 0) {
-            mat.vendor_prices.sort((a, b) => parseFloat(a.price_idr) - parseFloat(b.price_idr));
-            mat.vendor_prices.forEach((vp, vIdx) => {
+        let selectedFound = false;
+
+        // 1. Rekomendasi / Pricelist Material Terdaftar
+        if (materialId && materialMap[materialId] && materialMap[materialId].vendor_prices && materialMap[materialId].vendor_prices.length > 0) {
+            const mat = materialMap[materialId];
+            const sortedPrices = [...mat.vendor_prices].sort((a, b) => parseFloat(a.price_idr) - parseFloat(b.price_idr));
+            
+            const optGroupMat = document.createElement('optgroup');
+            optGroupMat.label = '⭐ Rekomendasi / Pricelist Material';
+
+            sortedPrices.forEach((vp, vIdx) => {
                 const isCheapest = vIdx === 0;
                 const opt = document.createElement('option');
                 opt.value = vp.id_supplier;
                 const priceClean = Math.round(parseFloat(vp.price_idr)) || 0;
                 opt.dataset.price = priceClean;
-                const supName = vp.supplier ? vp.supplier.supplier : 'Supplier #' + vp.id_supplier;
+                const supName = vp.supplier ? vp.supplier.supplier : (supplierMap[vp.id_supplier] || 'Supplier #' + vp.id_supplier);
                 opt.innerText = `${supName} - Rp ${new Intl.NumberFormat('id-ID').format(priceClean)} ${isCheapest ? '⭐ Termurah' : ''}`;
                 if (selectedSupplierId && vp.id_supplier == selectedSupplierId) {
                     opt.selected = true;
+                    selectedFound = true;
                 }
-                vendorSelect.appendChild(opt);
+                optGroupMat.appendChild(opt);
             });
+            vendorSelect.appendChild(optGroupMat);
+        }
+
+        // 2. Semua Master Supplier
+        if (typeof rawSuppliers !== 'undefined' && rawSuppliers && rawSuppliers.length > 0) {
+            const optGroupAll = document.createElement('optgroup');
+            optGroupAll.label = '📋 Semua Master Supplier';
+
+            rawSuppliers.forEach(sup => {
+                const opt = document.createElement('option');
+                opt.value = sup.id;
+                opt.innerText = sup.supplier;
+                if (selectedSupplierId && sup.id == selectedSupplierId) {
+                    opt.selected = true;
+                    selectedFound = true;
+                }
+                optGroupAll.appendChild(opt);
+            });
+            vendorSelect.appendChild(optGroupAll);
+        }
+
+        // 3. Fallback jika supplier ID ada tapi belum ada di list options
+        if (selectedSupplierId && !selectedFound) {
+            const opt = document.createElement('option');
+            opt.value = selectedSupplierId;
+            opt.innerText = fallbackSupplierName ? fallbackSupplierName : `Supplier #${selectedSupplierId}`;
+            opt.selected = true;
+            vendorSelect.appendChild(opt);
         }
     }
 
@@ -804,7 +815,7 @@
         const mat = materialMap[materialId];
         nameInput.value = mat.item_name + (mat.material_type ? ' (' + mat.material_type + ')' : '');
         sizeInput.value = mat.size || '';
-        unitInput.value = mat.unit || 'Batang';
+        unitInput.value = (mat.unit === 'Batang' || mat.unit === 'Btg') ? 'Btg' : (mat.unit || 'Pcs');
         const lengthPerBtg = mat.length_per_unit || 6.00;
         lengthInput.value = lengthPerBtg;
         const lengthDisplay = row.querySelector('.length-display');
@@ -870,10 +881,13 @@
         const marginVal = parseFloat(row.querySelector('.margin-value').value) || 0;
 
         let unitSelling = 0;
+        let unitProfit = 0;
         if (marginType === 'percent') {
-            unitSelling = hpp + (hpp * (marginVal / 100));
+            unitProfit = Math.round(hpp * (marginVal / 100));
+            unitSelling = hpp + unitProfit;
         } else {
-            unitSelling = hpp + marginVal;
+            unitProfit = Math.round(marginVal);
+            unitSelling = hpp + unitProfit;
         }
 
         unitSelling = Math.round(unitSelling);
@@ -881,7 +895,14 @@
         const totalSelling = Math.round(qty * unitSelling);
 
         row.querySelector('.input-unit-selling-price').value = unitSelling;
-        row.querySelector('.unit-sell-display').innerText = 'Rp ' + new Intl.NumberFormat('id-ID').format(unitSelling);
+        const unitMarginDisplay = row.querySelector('.unit-margin-display');
+        if (unitMarginDisplay) {
+            unitMarginDisplay.innerText = 'Laba: +Rp ' + new Intl.NumberFormat('id-ID').format(unitProfit);
+        }
+        const unitSellDisplay = row.querySelector('.unit-sell-display');
+        if (unitSellDisplay) {
+            unitSellDisplay.innerText = 'Rp ' + new Intl.NumberFormat('id-ID').format(unitSelling);
+        }
         row.querySelector('.row-total-sell-display').innerText = 'Rp ' + new Intl.NumberFormat('id-ID').format(totalSelling);
         row.querySelector('.row-total-hpp-display').innerText = 'Rp ' + new Intl.NumberFormat('id-ID').format(totalHpp);
 
@@ -950,7 +971,6 @@
         const draft = {
             id_sales: document.getElementById('selectSales').value,
             id_client: $('#selectClient').val(),
-            id_pic: document.getElementById('selectPic').value,
             rab_date: document.getElementById('inputRabDate').value,
             project_name: document.getElementById('inputProjectName').value,
             location_plant: document.getElementById('inputLocationPlant').value,
@@ -1019,9 +1039,9 @@
     function restoreDraft(draft) {
         if (draft.id_sales) {
             document.getElementById('selectSales').value = draft.id_sales;
-            onSalesChanged(draft.id_sales, draft.id_client, draft.id_pic);
+            onSalesChanged(draft.id_sales, draft.id_client);
         } else if (draft.id_client) {
-            onSalesChanged(document.getElementById('selectSales').value, draft.id_client, draft.id_pic);
+            onSalesChanged(document.getElementById('selectSales').value, draft.id_client);
         }
         if (draft.rab_date) document.getElementById('inputRabDate').value = draft.rab_date;
         if (draft.project_name) document.getElementById('inputProjectName').value = draft.project_name;

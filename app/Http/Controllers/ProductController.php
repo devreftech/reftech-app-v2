@@ -26,7 +26,7 @@ class ProductController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $isSales = ($user && $user->role === 'Sales');
+        $isSales = ($user && $user->role === 'Sales' && $user->id != 3);
 
         $noSaleProspect = Prospect::whereNULL('id_sales')->whereNull('provide')->count();
         $leveledProspect = Prospect::whereNULL('level')->where('id_sales', Auth::id())->count();
@@ -438,7 +438,7 @@ class ProductController extends Controller
     {
         $replace = DetailProduct::findOrFail($id);
         $replace->replacement = $request->replacement;
-        if (Auth::user()->role == 'Admin') {
+        if (Auth::user()->role == 'Admin' || Auth::user()->isDeveloper() || Auth::id() == 3) {
             $replace->modal = $request->modal;
         }
         if ($request->has('is_opname')) {
@@ -730,7 +730,7 @@ class ProductController extends Controller
     public function getSalesData(Request $request)
     {
         $user = Auth::user();
-        $isSales = ($user && strtolower($user->role) === 'sales');
+        $isSales = ($user && strtolower($user->role) === 'sales' && $user->id != 3);
         $cacheKey = 'catalog_products_' . ($isSales ? 'sales_v1' : 'all_v1');
 
         if ($request->has('refresh')) {

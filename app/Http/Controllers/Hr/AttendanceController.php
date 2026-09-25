@@ -101,14 +101,15 @@ class AttendanceController extends Controller
         $autoClockOutTime = $settings['auto_clock_out_time'] ?? '17:00';
 
         // Late & Penalty Policy Settings
-        $workStartTime = $settings['work_start_time'] ?? '08:30';
+        $workStartTime = $settings['work_start_time'] ?? '08:00';
         $lateToleranceMinutes = (int) ($settings['late_tolerance_minutes'] ?? 0);
         $isLatePenaltyEnabled = ($settings['is_late_penalty_enabled'] ?? '1') === '1';
-        $latePenaltyType = $settings['late_penalty_type'] ?? 'per_minute';
-        $latePenaltyRate = (float) ($settings['late_penalty_rate'] ?? 1000);
-        $lateFreeCountPerMonth = (int) ($settings['late_free_count_per_month'] ?? 2);
-        $lateMultiplierThreshold = (int) ($settings['late_multiplier_threshold'] ?? 5);
-        $lateMultiplierRate = (float) ($settings['late_multiplier_rate'] ?? 2.0);
+        $lateTier1Rate = (float) ($settings['late_tier_1_rate'] ?? 50000);
+        $lateTier2Rate = (float) ($settings['late_tier_2_rate'] ?? 75000);
+        $lateTier3Rate = (float) ($settings['late_tier_3_rate'] ?? 100000);
+        $lateTierExcessPercent = (float) ($settings['late_tier_excess_percent'] ?? 10);
+        $alphaPenaltyRate = (float) ($settings['alpha_penalty_rate'] ?? 50000);
+        $isWeekendOffEnabled = ($settings['is_weekend_off_enabled'] ?? '1') === '1';
 
         $currentClientIp = $request->ip();
 
@@ -129,7 +130,7 @@ class AttendanceController extends Controller
             ];
         }
 
-        $monthAllAttendances = HrAttendance::with(['employee.user', 'employee.department', 'employee.position'])
+        $monthAllAttendances = HrAttendance::with(['employee.user', 'employee.department', 'employee.position', 'employee.salary'])
             ->whereMonth('date', $recapMonth)
             ->whereYear('date', $recapYear)
             ->get();
@@ -148,18 +149,22 @@ class AttendanceController extends Controller
             $lateDaysCount = $lateRecords->count();
             $empLateMinutes = $lateRecords->sum('late_minutes');
             $empPenaltyTotal = $empAtts->sum('penalty_amount');
+            $alphaDaysCount = $empAtts->where('status', 'Alpa')->count();
 
-            // Hitung status sanksi / strike
+            // Hitung status sanksi / strike berdasarkan frekuensi keterlambatan bertingkat
             $strikeStatus = 'Disiplin';
             $strikeBadgeClass = 'bg-label-success';
-            if ($lateDaysCount > 0 && $lateDaysCount <= $lateFreeCountPerMonth) {
-                $strikeStatus = "Toleransi ({$lateDaysCount}/{$lateFreeCountPerMonth})";
-                $strikeBadgeClass = 'bg-label-info';
-            } elseif ($lateDaysCount > $lateFreeCountPerMonth && $lateDaysCount < $lateMultiplierThreshold) {
-                $strikeStatus = "Denda Kena ({$lateDaysCount}x)";
+            if ($lateDaysCount === 1) {
+                $strikeStatus = 'Terlambat 1x (Rp ' . number_format($lateTier1Rate, 0, ',', '.') . ')';
                 $strikeBadgeClass = 'bg-label-warning';
-            } elseif ($lateDaysCount >= $lateMultiplierThreshold) {
-                $strikeStatus = "Peringatan SP-1 ({$lateDaysCount}x)";
+            } elseif ($lateDaysCount === 2) {
+                $strikeStatus = 'Terlambat 2x (Rp ' . number_format($lateTier2Rate, 0, ',', '.') . ')';
+                $strikeBadgeClass = 'bg-label-warning';
+            } elseif ($lateDaysCount === 3) {
+                $strikeStatus = 'Terlambat 3x (Rp ' . number_format($lateTier3Rate, 0, ',', '.') . ')';
+                $strikeBadgeClass = 'bg-label-danger';
+            } elseif ($lateDaysCount > 3) {
+                $strikeStatus = "Sanksi SP-1 ({$lateDaysCount}x - Potong {$lateTierExcessPercent}%)";
                 $strikeBadgeClass = 'bg-label-danger';
             }
 
@@ -173,6 +178,7 @@ class AttendanceController extends Controller
                 'employee' => $emp,
                 'present_days' => $presentDays,
                 'late_days_count' => $lateDaysCount,
+                'alpha_days_count' => $alphaDaysCount,
                 'late_minutes' => $empLateMinutes,
                 'penalty_total' => $empPenaltyTotal,
                 'strike_status' => $strikeStatus,
@@ -211,11 +217,12 @@ class AttendanceController extends Controller
             'workStartTime',
             'lateToleranceMinutes',
             'isLatePenaltyEnabled',
-            'latePenaltyType',
-            'latePenaltyRate',
-            'lateFreeCountPerMonth',
-            'lateMultiplierThreshold',
-            'lateMultiplierRate',
+            'lateTier1Rate',
+            'lateTier2Rate',
+            'lateTier3Rate',
+            'lateTierExcessPercent',
+            'alphaPenaltyRate',
+            'isWeekendOffEnabled',
             'currentClientIp',
             'recapMonth',
             'recapYear',
@@ -240,14 +247,15 @@ class AttendanceController extends Controller
 
         // Settings Map
         $settings = DB::table('hr_attendance_settings')->pluck('value', 'key')->toArray();
-        $workStartTime = $settings['work_start_time'] ?? '08:30';
+        $workStartTime = $settings['work_start_time'] ?? '08:00';
         $lateToleranceMinutes = (int) ($settings['late_tolerance_minutes'] ?? 0);
         $isLatePenaltyEnabled = ($settings['is_late_penalty_enabled'] ?? '1') === '1';
-        $latePenaltyType = $settings['late_penalty_type'] ?? 'per_minute';
-        $latePenaltyRate = (float) ($settings['late_penalty_rate'] ?? 1000);
-        $lateFreeCountPerMonth = (int) ($settings['late_free_count_per_month'] ?? 2);
-        $lateMultiplierThreshold = (int) ($settings['late_multiplier_threshold'] ?? 5);
-        $lateMultiplierRate = (float) ($settings['late_multiplier_rate'] ?? 2.0);
+        $lateTier1Rate = (float) ($settings['late_tier_1_rate'] ?? 50000);
+        $lateTier2Rate = (float) ($settings['late_tier_2_rate'] ?? 75000);
+        $lateTier3Rate = (float) ($settings['late_tier_3_rate'] ?? 100000);
+        $lateTierExcessPercent = (float) ($settings['late_tier_excess_percent'] ?? 10);
+        $alphaPenaltyRate = (float) ($settings['alpha_penalty_rate'] ?? 50000);
+        $isWeekendOffEnabled = ($settings['is_weekend_off_enabled'] ?? '1') === '1';
 
         // Daftar 12 bulan terakhir
         $availableMonths = [];
@@ -263,7 +271,7 @@ class AttendanceController extends Controller
         }
 
         // Query Employee
-        $empQuery = Employee::with(['user', 'department', 'position'])
+        $empQuery = Employee::with(['user', 'department', 'position', 'salary'])
             ->where('employment_status', '!=', 'Resign');
 
         if ($departmentId) {
@@ -282,7 +290,7 @@ class AttendanceController extends Controller
         $employees = $empQuery->orderBy('id')->get();
 
         // Get attendances for this month & year
-        $allAttendances = HrAttendance::with(['employee.user', 'employee.department'])
+        $allAttendances = HrAttendance::with(['employee.user', 'employee.department', 'employee.salary'])
             ->whereMonth('date', $month)
             ->whereYear('date', $year)
             ->get();
@@ -302,22 +310,27 @@ class AttendanceController extends Controller
             $lateDaysCount = $lateRecords->count();
             $empLateMinutes = $lateRecords->sum('late_minutes');
             $empPenaltyTotal = $empAtts->sum('penalty_amount');
+            $alphaDaysCount = $empAtts->where('status', 'Alpa')->count();
 
             // Hitung status sanksi / strike
             $strikeStatus = 'Disiplin';
             $strikeBadgeClass = 'bg-label-success';
             $strikeKey = 'disciplined';
 
-            if ($lateDaysCount > 0 && $lateDaysCount <= $lateFreeCountPerMonth) {
-                $strikeStatus = "Toleransi ({$lateDaysCount}/{$lateFreeCountPerMonth})";
-                $strikeBadgeClass = 'bg-label-info';
-                $strikeKey = 'tolerance';
-            } elseif ($lateDaysCount > $lateFreeCountPerMonth && $lateDaysCount < $lateMultiplierThreshold) {
-                $strikeStatus = "Denda Kena ({$lateDaysCount}x)";
+            if ($lateDaysCount === 1) {
+                $strikeStatus = 'Terlambat 1x (Rp ' . number_format($lateTier1Rate, 0, ',', '.') . ')';
                 $strikeBadgeClass = 'bg-label-warning';
                 $strikeKey = 'penalized';
-            } elseif ($lateDaysCount >= $lateMultiplierThreshold) {
-                $strikeStatus = "Peringatan SP ({$lateDaysCount}x)";
+            } elseif ($lateDaysCount === 2) {
+                $strikeStatus = 'Terlambat 2x (Rp ' . number_format($lateTier2Rate, 0, ',', '.') . ')';
+                $strikeBadgeClass = 'bg-label-warning';
+                $strikeKey = 'penalized';
+            } elseif ($lateDaysCount === 3) {
+                $strikeStatus = 'Terlambat 3x (Rp ' . number_format($lateTier3Rate, 0, ',', '.') . ')';
+                $strikeBadgeClass = 'bg-label-danger';
+                $strikeKey = 'penalized';
+            } elseif ($lateDaysCount > 3) {
+                $strikeStatus = "Sanksi SP-1 ({$lateDaysCount}x - Potong {$lateTierExcessPercent}%)";
                 $strikeBadgeClass = 'bg-label-danger';
                 $strikeKey = 'warning_sp';
             }
@@ -330,7 +343,7 @@ class AttendanceController extends Controller
             if ($lateDaysCount > 0) {
                 $totalEmployeesLate++;
             }
-            if ($lateDaysCount >= $lateMultiplierThreshold) {
+            if ($lateDaysCount > 3) {
                 $totalEmployeesWarning++;
             }
 
@@ -341,6 +354,7 @@ class AttendanceController extends Controller
                 'employee' => $emp,
                 'present_days' => $presentDays,
                 'late_days_count' => $lateDaysCount,
+                'alpha_days_count' => $alphaDaysCount,
                 'late_minutes' => $empLateMinutes,
                 'penalty_total' => $empPenaltyTotal,
                 'strike_status' => $strikeStatus,
@@ -376,11 +390,12 @@ class AttendanceController extends Controller
             'workStartTime',
             'lateToleranceMinutes',
             'isLatePenaltyEnabled',
-            'latePenaltyType',
-            'latePenaltyRate',
-            'lateFreeCountPerMonth',
-            'lateMultiplierThreshold',
-            'lateMultiplierRate'
+            'lateTier1Rate',
+            'lateTier2Rate',
+            'lateTier3Rate',
+            'lateTierExcessPercent',
+            'alphaPenaltyRate',
+            'isWeekendOffEnabled'
         ));
     }
 
@@ -399,12 +414,17 @@ class AttendanceController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
+        $settings = DB::table('hr_attendance_settings')->pluck('value', 'key')->toArray();
+
+        // Jika Alpa dan belum diset nominal penalti, isi default denda alpa
+        if ($validated['status'] === 'Alpa' && !isset($validated['penalty_amount'])) {
+            $validated['penalty_amount'] = (float) ($settings['alpha_penalty_rate'] ?? 50000);
+        }
+
         $lateMinutes = (int) ($validated['late_minutes'] ?? 0);
         if ($lateMinutes > 0 && !isset($validated['penalty_amount'])) {
-            $settings = DB::table('hr_attendance_settings')->pluck('value', 'key')->toArray();
-            $rate = (float) ($settings['late_penalty_rate'] ?? 1000);
-            $type = $settings['late_penalty_type'] ?? 'per_minute';
-            $validated['penalty_amount'] = ($type === 'per_minute') ? ($lateMinutes * $rate) : $rate;
+            $penaltyInfo = HrAttendance::calculatePenaltyInfo($validated['employee_id'], $validated['date'], $lateMinutes);
+            $validated['penalty_amount'] = $penaltyInfo['penalty'];
         }
 
         HrAttendance::updateOrCreate(
@@ -505,14 +525,15 @@ class AttendanceController extends Controller
         $isAutoClockOut = $request->boolean('is_auto_clock_out_enabled') ? '1' : '0';
         $autoClockOutTime = $request->input('auto_clock_out_time', '17:00');
 
-        $workStartTime = $request->input('work_start_time', '08:30');
+        $workStartTime = $request->input('work_start_time', '08:00');
         $lateToleranceMinutes = $request->input('late_tolerance_minutes', 0);
         $isLatePenalty = $request->boolean('is_late_penalty_enabled') ? '1' : '0';
-        $latePenaltyType = $request->input('late_penalty_type', 'per_minute');
-        $latePenaltyRate = $request->input('late_penalty_rate', 1000);
-        $lateFreeCount = $request->input('late_free_count_per_month', 2);
-        $lateMultiplierThreshold = $request->input('late_multiplier_threshold', 5);
-        $lateMultiplierRate = $request->input('late_multiplier_rate', 2.0);
+        $lateTier1Rate = $request->input('late_tier_1_rate', 50000);
+        $lateTier2Rate = $request->input('late_tier_2_rate', 75000);
+        $lateTier3Rate = $request->input('late_tier_3_rate', 100000);
+        $lateTierExcessPercent = $request->input('late_tier_excess_percent', 10);
+        $alphaPenaltyRate = $request->input('alpha_penalty_rate', 50000);
+        $isWeekendOff = $request->boolean('is_weekend_off_enabled') ? '1' : '0';
 
         $settings = [
             'is_wifi_restriction_enabled' => [$isWifi, 'Batasi absensi online hanya dari jaringan WiFi kantor yang terdaftar'],
@@ -520,14 +541,15 @@ class AttendanceController extends Controller
             'is_selfie_required' => [$isSelfie, 'Wajibkan Foto Selfie Kamera Live saat Presensi Masuk (Clock In)'],
             'is_auto_clock_out_enabled' => [$isAutoClockOut, 'Auto Clock-Out Otomatis pada jam pulang yang ditentukan'],
             'auto_clock_out_time' => [$autoClockOutTime, 'Jam default auto Clock-Out (contoh: 17:00)'],
-            'work_start_time' => [$workStartTime, 'Jam Masuk Standar Kantor (Contoh: 08:30)'],
-            'late_tolerance_minutes' => [$lateToleranceMinutes, 'Toleransi Keterlambatan Harian dalam Menit'],
-            'is_late_penalty_enabled' => [$isLatePenalty, 'Aktifkan Kebijakan Denda & Pemotongan Keterlambatan'],
-            'late_penalty_type' => [$latePenaltyType, 'Tipe Denda: per_minute atau flat'],
-            'late_penalty_rate' => [$latePenaltyRate, 'Tarif Nominal Denda (Rp per menit atau Rp flat)'],
-            'late_free_count_per_month' => [$lateFreeCount, 'Kuota Frekuensi Terlambat Bebas Denda (Toleransi Bulanan)'],
-            'late_multiplier_threshold' => [$lateMultiplierThreshold, 'Batas Frekuensi Terlambat untuk Sanksi Eskalasi (SP-1)'],
-            'late_multiplier_rate' => [$lateMultiplierRate, 'Faktor Pengali Denda setelah Melewati Batas Eskalasi'],
+            'work_start_time' => [$workStartTime, 'Jam Masuk Standar Kantor (08:00 WIB)'],
+            'late_tolerance_minutes' => [$lateToleranceMinutes, 'Toleransi Keterlambatan Harian dalam Menit (0 = Tanpa Toleransi)'],
+            'is_late_penalty_enabled' => [$isLatePenalty, 'Aktifkan Kebijakan Denda & Sanksi Keterlambatan'],
+            'late_tier_1_rate' => [$lateTier1Rate, 'Nominal Denda Terlambat ke-1 dalam Bulan Berjalan (Rp)'],
+            'late_tier_2_rate' => [$lateTier2Rate, 'Nominal Denda Terlambat ke-2 dalam Bulan Berjalan (Rp)'],
+            'late_tier_3_rate' => [$lateTier3Rate, 'Nominal Denda Terlambat ke-3 dalam Bulan Berjalan (Rp)'],
+            'late_tier_excess_percent' => [$lateTierExcessPercent, 'Persentase Pemotongan Gaji Pokok untuk Keterlambatan > 3 Kali (%)'],
+            'alpha_penalty_rate' => [$alphaPenaltyRate, 'Nominal Denda/Potongan Alpa Tanpa Kabar Seharian Penuh (Rp)'],
+            'is_weekend_off_enabled' => [$isWeekendOff, 'Sabtu & Minggu adalah Hari Libur Bebas Absensi & Bebas Denda Alpa'],
         ];
 
         foreach ($settings as $key => $data) {
@@ -537,7 +559,7 @@ class AttendanceController extends Controller
             );
         }
 
-        return redirect()->back()->with('success', 'Pengaturan Keamanan Presensi, Kebijakan Denda, & Auto Clock-Out berhasil diperbarui.');
+        return redirect()->back()->with('success', 'Pengaturan Jam Kerja, Kebijakan Denda Bertingkat, Hari Libur Akhir Pekan, & Anti-Fraud berhasil diperbarui.');
     }
 
     /**

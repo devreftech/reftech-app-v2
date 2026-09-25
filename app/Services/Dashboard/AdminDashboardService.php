@@ -16,6 +16,7 @@ use App\Models\PurchaseRequest;
 use App\Models\Contract;
 use App\Models\Comment;
 use App\Models\Reports;
+use App\Models\SalesOnline;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -154,13 +155,16 @@ class AdminDashboardService
         $firstDayOfMonth = "{$yearNow}-{$monthNow}-01";
         $lastDayOfMonth = date('Y-m-t', strtotime($firstDayOfMonth));
 
-        // Quotation stats untuk firstSalesId, digabung jadi satu query pakai
-        // conditional aggregation + UnitQuotation
-        $quoteAgg = Quotation::whereBetween('estimated_date', [$firstDayOfMonth, $lastDayOfMonth])
-            ->where('id_sales', $firstSalesId)
+        $salesIds = $sales->pluck('id')->toArray();
+
+        // 1. Quotation aggregation by id_sales
+        $quoteAggs = Quotation::whereBetween('estimated_date', [$firstDayOfMonth, $lastDayOfMonth])
+            ->whereIn('id_sales', $salesIds)
             ->where('level', '1')
             ->where('is_primary', '1')
+            ->groupBy('id_sales')
             ->selectRaw("
+                id_sales,
                 COUNT(*) as filtered_quote,
                 COALESCE(SUM(nett), 0) as total_quotation,
                 COALESCE(SUM(CASE WHEN status IN ('20','30','40','60','80') THEN nett ELSE 0 END), 0) as total_prospect_support,
@@ -168,12 +172,15 @@ class AdminDashboardService
                 COALESCE(SUM(CASE WHEN status IN ('80','90') THEN nett ELSE 0 END), 0) as total_hot_prospect,
                 COALESCE(SUM(CASE WHEN status = '0' THEN nett ELSE 0 END), 0) as total_loss
             ")
-            ->first();
+            ->get()->keyBy('id_sales');
 
-        $unitQuoteAgg = UnitQuotation::whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
-            ->where('id_sales', $firstSalesId)
+        // 2. UnitQuotation aggregation by id_sales
+        $unitQuoteAggs = UnitQuotation::whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
+            ->whereIn('id_sales', $salesIds)
             ->where('is_latest', 1)
+            ->groupBy('id_sales')
             ->selectRaw("
+                id_sales,
                 COUNT(*) as filtered_quote,
                 COALESCE(SUM(total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)), 0) as total_quotation,
                 COALESCE(SUM(CASE WHEN status IN ('draft','sent','negotiation','revision','hot_prospect') THEN (total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)) ELSE 0 END), 0) as total_prospect_support,
@@ -181,62 +188,201 @@ class AdminDashboardService
                 COALESCE(SUM(CASE WHEN status = 'hot_prospect' THEN (total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)) ELSE 0 END), 0) as total_hot_prospect,
                 COALESCE(SUM(CASE WHEN status = 'loss' THEN (total - IFNULL(tax_amount, 0) - IFNULL(fee, 0)) ELSE 0 END), 0) as total_loss
             ")
-            ->first();
+            ->get()->keyBy('id_sales');
 
-        $filteredQuote = (int) $quoteAgg->filtered_quote + (int) ($unitQuoteAgg->filtered_quote ?? 0);
-        $totalQuotation = (float) $quoteAgg->total_quotation + (float) ($unitQuoteAgg->total_quotation ?? 0);
-        $totalProspectSupport = (float) $quoteAgg->total_prospect_support + (float) ($unitQuoteAgg->total_prospect_support ?? 0);
-        $totalForecast = (float) $quoteAgg->total_forecast + (float) ($unitQuoteAgg->total_forecast ?? 0);
-        $totalHotProspect = (float) $quoteAgg->total_hot_prospect + (float) ($unitQuoteAgg->total_hot_prospect ?? 0);
-        $totalLoss = (float) $quoteAgg->total_loss + (float) ($unitQuoteAgg->total_loss ?? 0);
-
-        $totalProspect = Quotation::join('prospect as p', 'quotation.id', '=', 'p.id_quotation')
-            ->whereNotNull('id_quotation')->whereYear('estimated_date', $yearNow)->whereMonth('estimated_date', $monthNow)
-            ->where('quotation.id_sales', $firstSalesId)->whereIn('status', ['80', '90'])->where('quotation.level', '1')->where('is_primary', '1')->sum('nett');
-
-        // totalPO & filteredPO (sum + count dari filter yang sama) digabung jadi
-        // 1 query per tabel (Quotation, UnitQuotation) — sebelumnya 4 query.
-        $poQuotationAgg = Quotation::whereBetween('po_date', [$firstDayOfMonth, $lastDayOfMonth])
-            ->where('id_sales', $firstSalesId)
+        // 3. PO aggregation by id_sales
+        $poQuoteAggs = Quotation::whereBetween('po_date', [$firstDayOfMonth, $lastDayOfMonth])
+            ->whereIn('id_sales', $salesIds)
             ->where('status', '100')
             ->where('level', '1')
             ->where('is_primary', '1')
-            ->selectRaw('COALESCE(SUM(nett), 0) as total_nett, COUNT(*) as cnt')
-            ->first();
+            ->groupBy('id_sales')
+            ->selectRaw('id_sales, COALESCE(SUM(nett), 0) as total_po, COUNT(*) as po_count')
+            ->get()->keyBy('id_sales');
 
-        $poUnitAgg = UnitQuotation::where('status', 'po_received')
+        $poUnitAggs = UnitQuotation::where('status', 'po_received')
             ->where('is_latest', 1)
             ->whereYear('po_received', $yearNow)
             ->whereMonth('po_received', $monthNow)
-            ->where('id_sales', $firstSalesId)
-            ->selectRaw('COALESCE(SUM(total - tax_amount), 0) as total_nett, COUNT(*) as cnt')
-            ->first();
+            ->whereIn('id_sales', $salesIds)
+            ->groupBy('id_sales')
+            ->selectRaw('id_sales, COALESCE(SUM(total - tax_amount), 0) as total_po, COUNT(*) as po_count')
+            ->get()->keyBy('id_sales');
 
-        $totalPO = (float) $poQuotationAgg->total_nett + (float) $poUnitAgg->total_nett;
-        $filteredPO = (int) $poQuotationAgg->cnt + (int) $poUnitAgg->cnt;
+        // 4. Prospect nominal
+        $prospectAggs = Quotation::join('prospect as p', 'quotation.id', '=', 'p.id_quotation')
+            ->whereNotNull('id_quotation')
+            ->whereYear('estimated_date', $yearNow)
+            ->whereMonth('estimated_date', $monthNow)
+            ->whereIn('quotation.id_sales', $salesIds)
+            ->whereIn('status', ['80', '90'])
+            ->where('quotation.level', '1')
+            ->where('quotation.is_primary', '1')
+            ->groupBy('quotation.id_sales')
+            ->selectRaw('quotation.id_sales, SUM(nett) as total_prospect')
+            ->get()->keyBy('id_sales');
 
-        $filteredLeads = Client::whereBetween('created_at', [$firstDayOfMonth . ' 00:00:00', $lastDayOfMonth . ' 23:59:59'])->where('id_sales', $firstSalesId)->count();
+        // 5. Leads count by sales
+        $leadsAggs = Client::whereBetween('created_at', [$firstDayOfMonth . ' 00:00:00', $lastDayOfMonth . ' 23:59:59'])
+            ->whereIn('id_sales', $salesIds)
+            ->groupBy('id_sales')
+            ->selectRaw('id_sales, COUNT(*) as cnt')
+            ->get()->keyBy('id_sales');
 
-        // filteredDC & filteredVisit sama-sama Activities join client dengan filter
-        // identik kecuali nama activity — digabung jadi 1 query (sebelumnya 2 query).
-        $dcVisitAgg = Activities::join('client as c', 'activities.id_client', '=', 'c.id')
-            ->whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])->where('c.id_sales', $firstSalesId)
-            ->where('status', 'Responded')
+        // 6. Activities DC & Visit by sales
+        $dcVisitAggs = Activities::join('client as c', 'activities.id_client', '=', 'c.id')
+            ->whereBetween('date', [$firstDayOfMonth, $lastDayOfMonth])
+            ->whereIn('c.id_sales', $salesIds)
+            ->where('activities.status', 'Responded')
+            ->groupBy('c.id_sales')
             ->selectRaw("
-                COALESCE(SUM(CASE WHEN activities.name IN ('Daily Call','Follow Up') THEN 1 ELSE 0 END), 0) as filtered_dc,
-                COALESCE(SUM(CASE WHEN activities.name = 'Visit' THEN 1 ELSE 0 END), 0) as filtered_visit
+                c.id_sales,
+                COUNT(DISTINCT CASE WHEN activities.name IN ('Daily Call','Follow Up') THEN c.id ELSE NULL END) as filtered_dc,
+                COUNT(DISTINCT CASE WHEN activities.name = 'Visit' THEN c.id ELSE NULL END) as filtered_visit
             ")
-            ->first();
-        $filteredDC = (int) $dcVisitAgg->filtered_dc;
-        $filteredVisit = (int) $dcVisitAgg->filtered_visit;
+            ->get()->keyBy('id_sales');
 
-        $filteredCRM = Activities::join('client as c', 'activities.id_client', '=', 'c.id')
+        // 7. Activities CRM by sales
+        $crmAggs = Activities::join('client as c', 'activities.id_client', '=', 'c.id')
             ->join(DB::raw('(SELECT id_client, status FROM crm_status WHERE id IN (SELECT MAX(id) FROM crm_status GROUP BY id_client)) as cs'), 'c.id', '=', 'cs.id_client')
-            ->whereYear('date', $yearNow)->whereMonth('date', $monthNow)->where('c.id_sales', $firstSalesId)
-            ->where('activities.status', 'Responded')->where('activities.name', 'CRM')->where('cs.status', '2')->count(DB::raw('DISTINCT c.id'));
+            ->whereYear('date', $yearNow)
+            ->whereMonth('date', $monthNow)
+            ->whereIn('c.id_sales', $salesIds)
+            ->where('activities.status', 'Responded')
+            ->where('activities.name', 'CRM')
+            ->where('cs.status', '2')
+            ->groupBy('c.id_sales')
+            ->selectRaw('c.id_sales, COUNT(DISTINCT c.id) as cnt')
+            ->get()->keyBy('id_sales');
 
+        // 8. Prospect count by sales
+        $prospectCountAggs = Prospect::whereNotNull('id_quotation')
+            ->whereMonth('date', $monthNow)
+            ->whereYear('date', $yearNow)
+            ->whereIn('id_sales', $salesIds)
+            ->groupBy('id_sales')
+            ->selectRaw('id_sales, COUNT(*) as cnt')
+            ->get()->keyBy('id_sales');
+
+        // 9. Online Metrics (for Didik / Ecommerce)
+        $onlineProducts = SalesOnline::where('type', 'Product')
+            ->whereMonth('date', $monthNow)
+            ->whereYear('date', $yearNow)
+            ->whereIn('id_sales', $salesIds)
+            ->groupBy('id_sales')
+            ->selectRaw('id_sales, COUNT(*) as cnt')
+            ->get()->keyBy('id_sales');
+
+        $onlineVideos = SalesOnline::where('type', 'Video')
+            ->whereMonth('date', $monthNow)
+            ->whereYear('date', $yearNow)
+            ->whereIn('id_sales', $salesIds)
+            ->get()
+            ->groupBy('id_sales');
+
+        $onlineStats = SalesOnline::whereIn('type', ['Stat', 'Delivery', 'Response', 'Rating'])
+            ->whereMonth('date', $monthNow)
+            ->whereYear('date', $yearNow)
+            ->whereIn('id_sales', $salesIds)
+            ->groupBy('id_sales', 'type')
+            ->selectRaw('id_sales, type, AVG(average) as avg_val')
+            ->get();
+
+        $salesOverviewData = [];
+        foreach ($sales as $sale) {
+            $sid = $sale->id;
+            $target = $targetsBySale->get($sid);
+            $targetLeads = $target?->leads ?? 0;
+            $targetDc = $target?->dc ?? 0;
+            $targetQuote = $target?->quote ?? 0;
+            $targetTotalPo = $target?->total ?? 0;
+            $targetCrmCount = $targetCrm[$sid] ?? 0;
+
+            $leads = (int) ($leadsAggs[$sid]->cnt ?? 0);
+            $dc = (int) ($dcVisitAggs[$sid]->filtered_dc ?? 0);
+            $visit = (int) ($dcVisitAggs[$sid]->filtered_visit ?? 0);
+            $crm = (int) ($crmAggs[$sid]->cnt ?? 0);
+            $quote = (int) (($quoteAggs[$sid]->filtered_quote ?? 0) + ($unitQuoteAggs[$sid]->filtered_quote ?? 0));
+            $prospectCount = (int) ($prospectCountAggs[$sid]->cnt ?? 0);
+            $poCount = (int) (($poQuoteAggs[$sid]->po_count ?? 0) + ($poUnitAggs[$sid]->po_count ?? 0));
+
+            $totalQuotationVal = (float) (($quoteAggs[$sid]->total_quotation ?? 0) + ($unitQuoteAggs[$sid]->total_quotation ?? 0));
+            $totalProspectSupportVal = (float) (($quoteAggs[$sid]->total_prospect_support ?? 0) + ($unitQuoteAggs[$sid]->total_prospect_support ?? 0));
+            $totalForecastVal = (float) (($quoteAggs[$sid]->total_forecast ?? 0) + ($unitQuoteAggs[$sid]->total_forecast ?? 0));
+            $totalProspectVal = (float) ($prospectAggs[$sid]->total_prospect ?? 0);
+            $totalHotProspectVal = (float) (($quoteAggs[$sid]->total_hot_prospect ?? 0) + ($unitQuoteAggs[$sid]->total_hot_prospect ?? 0));
+            $totalPoVal = (float) (($poQuoteAggs[$sid]->total_po ?? 0) + ($poUnitAggs[$sid]->total_po ?? 0));
+            $totalLossVal = (float) (($quoteAggs[$sid]->total_loss ?? 0) + ($unitQuoteAggs[$sid]->total_loss ?? 0));
+
+            // Online specific
+            $prodCount = (int) ($onlineProducts[$sid]->cnt ?? 0);
+            $vidScore = 0;
+            if (isset($onlineVideos[$sid])) {
+                foreach ($onlineVideos[$sid] as $ov) {
+                    if (!empty($ov->ig)) $vidScore += 30;
+                    if (!empty($ov->tiktok)) $vidScore += 30;
+                    if (!empty($ov->tokped)) $vidScore += 30;
+                }
+            }
+            $statVal = 0; $deliveryVal = 0; $responseVal = 0; $ratingVal = 0;
+            foreach ($onlineStats->where('id_sales', $sid) as $os) {
+                if ($os->type === 'Stat') $statVal = (float) $os->avg_val;
+                if ($os->type === 'Delivery') $deliveryVal = (float) $os->avg_val;
+                if ($os->type === 'Response') $responseVal = (float) $os->avg_val;
+                if ($os->type === 'Rating') $ratingVal = (float) $os->avg_val;
+            }
+
+            $salesOverviewData[$sid] = [
+                'leads'                  => $leads,
+                'target_leads'           => $targetLeads,
+                'percent_leads'          => $targetLeads > 0 ? round(($leads / $targetLeads) * 100) : 0,
+                'dc'                     => $dc,
+                'target_dc'              => $targetDc,
+                'percent_dc'             => $targetDc > 0 ? round(($dc / $targetDc) * 100) : 0,
+                'visit'                  => $visit,
+                'crm'                    => $crm,
+                'target_crm'             => $targetCrmCount,
+                'percent_crm'            => $targetCrmCount > 0 ? round(($crm / $targetCrmCount) * 100) : 0,
+                'quote'                  => $quote,
+                'target_quote'           => $targetQuote,
+                'percent_quote'          => $targetQuote > 0 ? round(($quote / $targetQuote) * 100) : 0,
+                'prospect_count'         => $prospectCount,
+                'po_count'               => $poCount,
+                'total_quotation'        => $totalQuotationVal,
+                'total_prospect_support' => $totalProspectSupportVal,
+                'total_forecast'         => $totalForecastVal,
+                'total_prospect'         => $totalProspectVal,
+                'total_hot_prospect'     => $totalHotProspectVal,
+                'total_po'               => $totalPoVal,
+                'total_loss'             => $totalLossVal,
+                'target_total_po'        => $targetTotalPo,
+                'percent_po'             => $targetTotalPo > 0 ? round(($totalPoVal / $targetTotalPo) * 100) : 0,
+                // Online
+                'online_product'         => $prodCount,
+                'online_video'           => $vidScore,
+                'online_stat'            => $statVal,
+                'online_delivery'        => $deliveryVal,
+                'online_response'        => $responseVal,
+                'online_rating'          => $ratingVal,
+            ];
+        }
+
+        // Backward compatibility for firstSales
+        $firstSalesData = $salesOverviewData[$firstSalesId] ?? [];
+        $filteredQuote = $firstSalesData['quote'] ?? 0;
+        $totalQuotation = $firstSalesData['total_quotation'] ?? 0;
+        $totalProspectSupport = $firstSalesData['total_prospect_support'] ?? 0;
+        $totalForecast = $firstSalesData['total_forecast'] ?? 0;
+        $totalHotProspect = $firstSalesData['total_hot_prospect'] ?? 0;
+        $totalLoss = $firstSalesData['total_loss'] ?? 0;
+        $totalProspect = $firstSalesData['total_prospect'] ?? 0;
+        $totalPO = $firstSalesData['total_po'] ?? 0;
+        $filteredPO = $firstSalesData['po_count'] ?? 0;
+        $filteredLeads = $firstSalesData['leads'] ?? 0;
+        $filteredDC = $firstSalesData['dc'] ?? 0;
+        $filteredVisit = $firstSalesData['visit'] ?? 0;
+        $filteredCRM = $firstSalesData['crm'] ?? 0;
         $filteredProspect = Prospect::whereNotNull('id_quotation')->whereMonth('date', $monthNow)->whereYear('date', $yearNow)->count();
-
         $allProspect = Prospect::whereMonth('date', $monthNow)->whereYear('date', $yearNow)->count();
 
         // "Sales Project" — quotation yang dibuat oleh Admin/Sales Manager (bukan Sales individu),
@@ -442,7 +588,7 @@ class AdminDashboardService
         // Admin / Developer bisa berpindah antar dashboard divisi lewat switcher menu
         $defaultView = (Auth::check() && Auth::user()->isDeveloper()) ? 'developer' : 'sales';
         $adminView = request()->query('view', $defaultView);
-        if (!in_array($adminView, ['sales', 'salesmanager', 'accounting', 'finance', 'logistic', 'workshop', 'projectmanager', 'developer'], true)) {
+        if (!in_array($adminView, ['sales', 'salesmanager', 'accounting', 'finance', 'logistic', 'workshop', 'projectmanager', 'clientvendor', 'developer'], true)) {
             $adminView = $defaultView;
         }
 
@@ -453,6 +599,7 @@ class AdminDashboardService
             'logistic' => (new LogisticDashboardService())->getLogisticDashboardData(),
             'workshop' => (new WorkshopDashboardService())->getWorkshopDashboardData(),
             'projectmanager' => (new ProjectManagerDashboardService())->getProjectManagerDashboardData(),
+            'clientvendor' => (new ClientVendorDashboardService())->getDashboardData(),
             'developer' => (new DeveloperDashboardService())->getDeveloperDashboardData(),
             default => [],
         };
@@ -513,6 +660,7 @@ class AdminDashboardService
                 'projectQuoteCount',
                 'projectQuoteNominal',
                 'marketingAgg',
+                'salesOverviewData',
             ),
             $adminExtraData,
             $forecastData,

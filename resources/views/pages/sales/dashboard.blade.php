@@ -1445,6 +1445,8 @@
     @include('pages.logistic.dashboard._content')
 @elseif (Auth::user()->role == 'Project Manager')
     @include('pages.projectmanager.dashboard._content')
+@elseif (Auth::user()->role == 'Client Vendor')
+    @include('pages.clientvendor.dashboard._content')
 @endif
     @foreach ($notulens as $notulen)
         @include('components.modal.notulen.detail')
@@ -1677,7 +1679,9 @@
     {{-- @if (Auth::user()->role == 'Admin') --}}
     <script>
         function formatNumber(n) {
-            return n.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+            if (n === null || n === undefined || n === '') return '0';
+            let num = typeof n === 'number' ? Math.round(n) : parseInt(String(n).replace(/\D/g, "") || '0', 10);
+            return isNaN(num) ? '0' : new Intl.NumberFormat('id-ID').format(num);
         }
 
         function validateFloatInputAkurasi(input) {
@@ -1956,124 +1960,126 @@
             input.value = value;
         }
 
-        $('.change-sales').on('click', function(ev) {
+        $(document).on('click', '.change-sales', function(ev) {
             var id = $(this).data('id');
-            if (id === 'project' || id === 'marketing') return; // Sales Project & Marketing Team di-render server-side, gak butuh AJAX per-tab.
-            console.log('sales ini ber id : ' + id);
+            if (!id || id === 'project' || id === 'marketing') return; // Sales Project & Marketing Team di-render server-side
             var $pane = $('#navs-sales-' + id);
+            if (!$pane.length) return;
 
             // Ajax Sales Kiri
             $.ajax({
                 url: '/dashboard/filteredLeads/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-leads').text(response);
+                    $pane.find('.filtered-leads').text(response !== undefined && response !== null ? response : 0);
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredPercentLeads/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-percent-leads').text(response + '%');
+                    $pane.find('.filtered-percent-leads').text((response !== undefined && response !== null ? response : 0) + '%');
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredTargetLeads/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-target-leads').text('/ ' + response.leads);
-                    console.log(response.leads);
+                    var val = (response && response.leads !== undefined) ? response.leads : 0;
+                    $pane.find('.filtered-target-leads').text('/ ' + val);
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredDc/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-dc').text(response);
+                    $pane.find('.filtered-dc').text(response !== undefined && response !== null ? response : 0);
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredPercentDc/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-percent-dc').text(response + '%');
+                    $pane.find('.filtered-percent-dc').text((response !== undefined && response !== null ? response : 0) + '%');
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredTargetDc/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-target-dc').text('/ ' + response.dc);
+                    var val = (response && response.dc !== undefined) ? response.dc : 0;
+                    $pane.find('.filtered-target-dc').text('/ ' + val);
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredCRM/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-crm').text(response);
+                    $pane.find('.filtered-crm').text(response !== undefined && response !== null ? response : 0);
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredPercentCRM/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-percent-crm').text(response + ' %');
+                    $pane.find('.filtered-percent-crm').text((response !== undefined && response !== null ? response : 0) + ' %');
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredTargetCRM/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-target-crm').text('/ ' + response);
+                    $pane.find('.filtered-target-crm').text('/ ' + (response !== undefined && response !== null ? response : 0));
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredQuote/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-quote').text(response);
+                    $pane.find('.filtered-quote').text(response !== undefined && response !== null ? response : 0);
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredPercentQuote/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-percent-quote').text(response + '%');
+                    $pane.find('.filtered-percent-quote').text((response !== undefined && response !== null ? response : 0) + '%');
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredTargetQuote/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-target-quote').text('/ ' + response.quote);
+                    var val = (response && response.quote !== undefined) ? response.quote : 0;
+                    $pane.find('.filtered-target-quote').text('/ ' + val);
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredProspectAdmin/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-prospect-sales').text(response);
+                    $pane.find('.filtered-prospect-sales').text(response !== undefined && response !== null ? response : 0);
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredPercentProspectAdmin/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-percent-prospect-sales').text(response + '%');
+                    $pane.find('.filtered-percent-prospect-sales').text((response !== undefined && response !== null ? response : 0) + '%');
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredAllProspect/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-all-prospect').text('/ ' + response);
+                    $pane.find('.filtered-all-prospect').text('/ ' + (response !== undefined && response !== null ? response : 0));
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredPo/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-po-count').text(response);
+                    $pane.find('.filtered-po-count').text(response !== undefined && response !== null ? response : 0);
                 }
             });
 
@@ -2082,60 +2088,53 @@
                 url: '/dashboard/totalQuotation/' + id,
                 type: 'GET',
                 success: function(response) {
-                    total = formatNumber(response);
-                    $pane.find('.admin-total-quotation').text('Rp ' + total);
+                    $pane.find('.admin-total-quotation').text('Rp ' + formatNumber(response));
                 }
             });
             $.ajax({
                 url: '/dashboard/totalProspect/' + id,
                 type: 'GET',
                 success: function(response) {
-                    total = formatNumber(response);
-                    $pane.find('.admin-total-prospect').text('Rp ' + total);
+                    $pane.find('.admin-total-prospect').text('Rp ' + formatNumber(response));
                 }
             });
             $.ajax({
                 url: '/dashboard/totalHotProspect/' + id,
                 type: 'GET',
                 success: function(response) {
-                    total = formatNumber(response);
-                    $pane.find('.admin-total-hot-prospect').text('Rp ' + total);
+                    $pane.find('.admin-total-hot-prospect').text('Rp ' + formatNumber(response));
                 }
             });
             $.ajax({
                 url: '/dashboard/totalLoss/' + id,
                 type: 'GET',
                 success: function(response) {
-                    total = formatNumber(response);
-                    $pane.find('.admin-total-loss').text('Rp ' + total);
+                    $pane.find('.admin-total-loss').text('Rp ' + formatNumber(response));
                 }
             });
             $.ajax({
                 url: '/dashboard/totalPo/' + id,
                 type: 'GET',
                 success: function(response) {
-                    total = formatNumber(response);
-                    $pane.find('.admin-total-po').text('Rp ' + total);
+                    $pane.find('.admin-total-po').text('Rp ' + formatNumber(response));
                 }
             });
             $.ajax({
                 url: '/dashboard/totalTargetPo/' + id,
                 type: 'GET',
                 success: function(response) {
-                    total = formatNumber(response);
+                    let pct = parseFloat(response) || 0;
                     let color = 'danger';
-                    if (response > 80 && response <= 100) {
+                    if (pct > 80 && pct <= 100) {
                         color = 'warning';
-                    } else if (response > 100) {
+                    } else if (pct > 100) {
                         color = 'success';
                     }
 
-                    // Update class
                     const $el = $pane.find('.admin-target-total-po');
-                    $el.removeClass(
-                            'bg-label-danger bg-label-warning bg-label-success')
+                    $el.removeClass('bg-label-danger bg-label-warning bg-label-success')
                         .addClass(`bg-label-${color}`);
-                    $pane.find('.admin-target-total-po').text(response + ' %');
+                    $pane.find('.admin-target-total-po').text(Math.round(pct) + ' %');
                 }
             });
 
@@ -2143,30 +2142,29 @@
                 url: '/dashboard/target/' + id,
                 type: 'GET',
                 success: function(response) {
-                    var targetPercentage = (response / 100).toFixed(3);
+                    var targetPercentage = ((parseFloat(response) || 0) / 100).toFixed(3);
                     $pane.find('.target-po').text(targetPercentage + '%');
-                    console.log(targetPercentage);
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredProspectQuote/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-prospect-quotation').text(response);
+                    $pane.find('.filtered-prospect-quotation').text(response !== undefined && response !== null ? response : 0);
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredProspectPO/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-prospect-po').text(response);
+                    $pane.find('.filtered-prospect-po').text(response !== undefined && response !== null ? response : 0);
                 }
             });
             $.ajax({
                 url: '/dashboard/totalProspectPO/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.total-prospect-po').text('Rp ' + response);
+                    $pane.find('.total-prospect-po').text('Rp ' + formatNumber(response));
                 }
             });
             // Ajax Online Sales
@@ -2174,8 +2172,8 @@
                 url: '/dashboard/filteredProduct/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-product').text(response);
-                    $pane.find('.filtered-percent-product').text(response + ' %');
+                    $pane.find('.filtered-product').text(response !== undefined && response !== null ? response : 0);
+                    $pane.find('.filtered-percent-product').text((response ? '100' : '0') + ' %');
                 }
             });
             $.ajax({
@@ -2199,18 +2197,17 @@
                 url: '/dashboard/filteredVideo/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-video').text(response);
-                    $pane.find('.filtered-percent-video').text(response + ' %');
+                    $pane.find('.filtered-video').text(response !== undefined && response !== null ? response : 0);
+                    $pane.find('.filtered-percent-video').text((response !== undefined && response !== null ? response : 0) + ' %');
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredStat/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-status').text(response);
                     const value = parseFloat(response) || 0;
-                    let percent;
-                    percent = value / 5 * 100;
+                    $pane.find('.filtered-status').text(value > 0 ? value.toFixed(1) : '0');
+                    let percent = value / 5 * 100;
                     $pane.find('.filtered-percent-status').text(percent.toFixed(1) + ' %');
                 }
             });
@@ -2218,10 +2215,9 @@
                 url: '/dashboard/filteredDelivery/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-delivery').text(response);
                     const value = parseFloat(response) || 0;
-                    let percent;
-                    percent = value / 5 * 100;
+                    $pane.find('.filtered-delivery').text(value > 0 ? value.toFixed(1) : '0');
+                    let percent = value / 5 * 100;
                     $pane.find('.filtered-percent-delivery').text(percent.toFixed(1) + ' %');
                 }
             });
@@ -2229,10 +2225,9 @@
                 url: '/dashboard/filteredCustomer/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-customer').text(response);
                     const value = parseFloat(response) || 0;
-                    let percent;
-                    percent = value / 5 * 100;
+                    $pane.find('.filtered-customer').text(value);
+                    let percent = value / 5 * 100;
                     $pane.find('.filtered-percent-customer').text(percent.toFixed(1) + ' %');
                 }
             });
@@ -2240,18 +2235,17 @@
                 url: '/dashboard/filteredResponse/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-response').text(response);
-                    $pane.find('.filtered-percent-response').text(response + ' %');
+                    $pane.find('.filtered-response').text(Math.round(parseFloat(response) || 0));
+                    $pane.find('.filtered-percent-response').text(Math.round(parseFloat(response) || 0) + ' %');
                 }
             });
             $.ajax({
                 url: '/dashboard/filteredRating/' + id,
                 type: 'GET',
                 success: function(response) {
-                    $pane.find('.filtered-rating').text(response);
                     const value = parseFloat(response) || 0;
-                    let percent;
-                    percent = value / 5 * 100;
+                    $pane.find('.filtered-rating').text(value > 0 ? value.toFixed(1) : '0');
+                    let percent = value / 5 * 100;
                     $pane.find('.filtered-percent-rating').text(percent.toFixed(1) + ' %');
                 }
             });

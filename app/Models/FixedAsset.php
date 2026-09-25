@@ -54,27 +54,50 @@ class FixedAsset extends Model
         'tanggal_disposal',
         'nilai_buku_disposal',
         'harga_jual_final',
+        'lokasi_bangunan',
+        'luas_bangunan',
+        'luas_tanah',
+        'status_bangunan',
+        'tipe_pengadaan',
+        'nomor_dokumen_legalitas',
+        'pic_construction_ids',
+    ];
+
+    protected $casts = [
+        'pic_construction_ids' => 'array',
     ];
 
     /**
-     * Garis lurus, 25%/tahun hardcoded, dicap maksimal `umur` bulan. Basis nilai
-     * adalah `total` (sudah termasuk kapitalisasi servis). Unit "Dalam Pengecekan"
-     * belum boleh disusutkan sama sekali. Diekstrak dari FixedController::show()
-     * supaya bisa dipakai ulang saat disposal (unit keluar) tanpa duplikasi logic.
+     * Dapatkan koleksi User yang ditugaskan sebagai PIC Penginput Biaya Pembangunan.
+     */
+    public function getPicConstructionUsersAttribute()
+    {
+        $ids = $this->pic_construction_ids;
+        if (empty($ids) || !is_array($ids)) {
+            return collect();
+        }
+        return \App\Models\User::whereIn('id', $ids)->get();
+    }
+
+    /**
+     * Garis lurus, dihitung berdasarkan `umur` bulan (default 48 bulan = 25%/thn, bangunan 240 bulan = 5%/thn).
+     * Basis nilai adalah `total` (sudah termasuk kapitalisasi material/servis).
+     * Unit "Dalam Pengecekan" atau Bangunan "Dalam Pembangunan (construction)" belum boleh disusutkan.
      */
     public function hitungNilaiBuku(): array
     {
-        if ($this->qc_status === 'checking') {
-            return ['total_penyusutan' => 0, 'nilai_buku' => $this->total];
+        if ($this->qc_status === 'checking' || $this->status_bangunan === 'construction') {
+            return ['total_penyusutan' => 0, 'nilai_buku' => (float) $this->total];
         }
 
         $startDate = Carbon::parse($this->mulai_penyusutan ?? $this->beli);
         $endDate = Carbon::now();
         $diffMonth = $startDate->greaterThan($endDate) ? 0 : $startDate->diffInMonths($endDate);
-        $bulanPenyusutan = min($diffMonth, $this->umur);
-        $penyusutanPerBulan = ($this->total * 0.25) / 12;
+        $umurBulan = (int) ($this->umur ?: 48);
+        $bulanPenyusutan = min($diffMonth, $umurBulan);
+        $penyusutanPerBulan = $umurBulan > 0 ? ($this->total / $umurBulan) : (($this->total * 0.25) / 12);
         $totalPenyusutan = $penyusutanPerBulan * $bulanPenyusutan;
-        $nilaiBuku = $this->total - $totalPenyusutan;
+        $nilaiBuku = max(0, $this->total - $totalPenyusutan);
 
         return ['total_penyusutan' => $totalPenyusutan, 'nilai_buku' => $nilaiBuku];
     }
@@ -134,5 +157,13 @@ class FixedAsset extends Model
     public function hrEmployeeAssets()
     {
         return $this->hasMany('App\Models\HrEmployeeAsset', 'fixed_asset_id')->orderByDesc('handover_date');
+    }
+    public function workOrders()
+    {
+        return $this->hasMany('App\Models\WorkOrder', 'id_fixed_asset')->orderByDesc('id');
+    }
+    public function constructionCosts()
+    {
+        return $this->hasMany(FixedAssetConstructionCost::class, 'fixed_asset_id')->orderByDesc('tanggal')->orderByDesc('id');
     }
 }

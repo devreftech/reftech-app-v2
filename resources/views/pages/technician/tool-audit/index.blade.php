@@ -191,7 +191,7 @@
                 <h4 class="fw-bold mb-0 text-dark">
                     <i class="mdi mdi-tools text-primary me-2"></i>Self-Audit Tools Teknisi
                 </h4>
-                <span class="badge bg-label-primary font-12 rounded-pill px-3 py-1">Role: Teknisi</span>
+                <span class="badge bg-label-primary font-12 rounded-pill px-3 py-1">Role: {{ Auth::user()->role ?? 'Teknisi' }}</span>
             </div>
             <p class="text-muted mb-0 small mt-1">
                 Lakukan pengecekan fisik berkala, kelola kepemilikan alat, dan laporkan kondisi terkini alat kerja Anda.

@@ -127,10 +127,10 @@ class PortalController extends Controller
 
         // Late & Penalty calculation
         $workStartSetting = DB::table('hr_attendance_settings')->where('key', 'work_start_time')->first();
-        $startTimeStr = ($workStartSetting && !empty($workStartSetting->value)) ? $workStartSetting->value : '08:30';
+        $startTimeStr = ($workStartSetting && !empty($workStartSetting->value)) ? $workStartSetting->value : '08:00';
         $timeParts = explode(':', $startTimeStr);
         $startHour = (int) ($timeParts[0] ?? 8);
-        $startMinute = (int) ($timeParts[1] ?? 30);
+        $startMinute = (int) ($timeParts[1] ?? 0);
 
         $standardStart = Carbon::createFromTime($startHour, $startMinute, 0);
         $lateMinutes = 0;
@@ -138,7 +138,7 @@ class PortalController extends Controller
             $lateMinutes = Carbon::now()->diffInMinutes($standardStart);
         }
 
-        $penaltyInfo = $this->calculateLatePenalty($employee->id, $today, $lateMinutes);
+        $penaltyInfo = $this->calculateLatePenalty($employee->id, $today, $lateMinutes, $employee);
         $penaltyAmount = $penaltyInfo['penalty'];
 
         $dataToSave = [
@@ -328,63 +328,11 @@ class PortalController extends Controller
     }
 
     /**
-     * Hitung denda keterlambatan berdasarkan late_minutes dan kuota toleransi bulan berjalan.
+     * Hitung denda keterlambatan berdasarkan late_minutes dan skema bertingkat bulan berjalan.
      */
-    protected function calculateLatePenalty(int $employeeId, string $date, int $lateMinutes): array
+    protected function calculateLatePenalty(int $employeeId, string $date, int $lateMinutes, ?\App\Models\Employee $employee = null): array
     {
-        $settings = DB::table('hr_attendance_settings')->pluck('value', 'key')->toArray();
-        $isEnabled = ($settings['is_late_penalty_enabled'] ?? '1') === '1';
-
-        if (!$isEnabled || $lateMinutes <= 0) {
-            return ['penalty' => 0, 'late_count' => 0, 'status_label' => 'Tepat Waktu', 'is_multiplier' => false];
-        }
-
-        $tolerance = (int) ($settings['late_tolerance_minutes'] ?? 0);
-        if ($lateMinutes <= $tolerance) {
-            return ['penalty' => 0, 'late_count' => 0, 'status_label' => 'Toleransi Menit Bebas Denda', 'is_multiplier' => false];
-        }
-
-        $billableMinutes = $lateMinutes - $tolerance;
-        $penaltyType = $settings['late_penalty_type'] ?? 'per_minute';
-        $rate = (float) ($settings['late_penalty_rate'] ?? 1000);
-        $freeCount = (int) ($settings['late_free_count_per_month'] ?? 2);
-        $multiplierThreshold = (int) ($settings['late_multiplier_threshold'] ?? 5);
-        $multiplierRate = (float) ($settings['late_multiplier_rate'] ?? 2.0);
-
-        // Hitung frekuensi terlambat di bulan berjalan
-        $carbonDate = Carbon::parse($date);
-        $previousLateCount = HrAttendance::where('employee_id', $employeeId)
-            ->whereMonth('date', $carbonDate->month)
-            ->whereYear('date', $carbonDate->year)
-            ->where('date', '<', $date)
-            ->where('late_minutes', '>', $tolerance)
-            ->count();
-        
-        $currentLateCount = $previousLateCount + 1;
-
-        if ($currentLateCount <= $freeCount) {
-            return [
-                'penalty' => 0,
-                'late_count' => $currentLateCount,
-                'status_label' => "Toleransi Bulanan ({$currentLateCount}/{$freeCount})",
-                'is_multiplier' => false
-            ];
-        }
-
-        $basePenalty = ($penaltyType === 'per_minute') ? ($billableMinutes * $rate) : $rate;
-        $isMultiplier = ($currentLateCount >= $multiplierThreshold);
-        $finalPenalty = $isMultiplier ? ($basePenalty * $multiplierRate) : $basePenalty;
-
-        $statusLabel = $isMultiplier
-            ? "Sanksi Berlipat ({$multiplierRate}x) - Terlambat ke-{$currentLateCount}"
-            : "Terlambat ke-{$currentLateCount}";
-
-        return [
-            'penalty' => $finalPenalty,
-            'late_count' => $currentLateCount,
-            'status_label' => $statusLabel,
-            'is_multiplier' => $isMultiplier
-        ];
+        return HrAttendance::calculatePenaltyInfo($employeeId, $date, $lateMinutes, $employee);
     }
 }
 

@@ -25,7 +25,7 @@
             class="btn btn-sm btn-label-primary rounded-pill px-3">
             <i class="mdi mdi-pencil-outline me-1"></i> Edit
         </a>
-        @if (Auth::user()->role == 'Admin')
+        @if (Auth::user()->role == 'Admin' || Auth::user()->isDeveloper() || Auth::id() == 3)
             <a href="#" data-id="{{ $product->id }}" class="btn btn-sm btn-label-danger rounded-pill px-3 delete-product">
                 <i class="mdi mdi-delete-outline me-1"></i> Delete
             </a>
@@ -168,7 +168,7 @@
                             <th>Stock</th>
                             <th class="text-center">Total In/Out</th>
                             <th class="text-center">Opname</th>
-                            @if (Auth::user()->role == 'Admin')
+                            @if (Auth::user()->role == 'Admin' || Auth::user()->isDeveloper() || Auth::id() == 3)
                                 <th>Modal</th>
                             @endif
                             <th>Action</th>
@@ -199,13 +199,13 @@
                                         <i class="mdi {{ $detail->is_opname ? 'mdi-check-circle-outline' : 'mdi-close-circle-outline' }} me-1"></i>{{ $detail->is_opname ? 'Bisa Opname' : 'Non-Opname' }}
                                     </button>
                                 </td>
-                                @if (Auth::user()->role == 'Admin')
+                                @if (Auth::user()->role == 'Admin' || Auth::user()->isDeveloper() || Auth::id() == 3)
                                     <td>
                                         Rp.{{ number_format($detail->modal, 0, '', '.') }}
                                     </td>
                                 @endif
                                 <td>
-                                    @if (Auth::user()->role == 'Admin')
+                                    @if (Auth::user()->role == 'Admin' || Auth::user()->isDeveloper() || Auth::id() == 3)
                                         @if ($isUsed)
                                             <a href="#" class="btn btn-sm btn-label-danger disabled" style="pointer-events:none; opacity:0.5;" title="Sudah dipakai di Product In/Out, tidak bisa dihapus">
                                                 <i class="menu-icon tf-icons mdi mdi-14px mdi-delete-outline m-0"></i>

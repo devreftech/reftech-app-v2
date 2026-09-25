@@ -179,6 +179,7 @@
                                                 <option value="Admin" {{ $currentRole == 'Admin' ? 'selected' : '' }}>Admin</option>
                                                 <option value="Developer" {{ $currentRole == 'Developer' ? 'selected' : '' }}>Developer</option>
                                                 <option value="Project Manager" {{ $currentRole == 'Project Manager' ? 'selected' : '' }}>Project Manager</option>
+                                                <option value="Client Vendor" {{ $currentRole == 'Client Vendor' ? 'selected' : '' }}>Client Vendor</option>
                                                 <option value="Accounting" {{ $currentRole == 'Accounting' ? 'selected' : '' }}>Accounting</option>
                                                 <option value="Finance Manager" {{ $currentRole == 'Finance Manager' ? 'selected' : '' }}>Finance Manager</option>
                                                 <option value="Logistic" {{ $currentRole == 'Logistic' ? 'selected' : '' }}>Logistic</option>
@@ -237,117 +238,131 @@
 
                         <!-- KOLOM KANAN: DATA PROFIL, PENEMPATAN, & TARGET SALES -->
                         <div class="col-lg-8 col-md-7">
-                            <!-- Section 1: Profil & Biodata -->
-                            <div class="form-section-header first-header">
-                                <span class="form-section-badge"><i class="mdi mdi-card-account-details-outline"></i></span>
-                                <h6 class="form-section-title">Data Profil &amp; Identitas</h6>
+                            <!-- Notifikasi Khusus Role Client Vendor -->
+                            <div id="roleNoticeClientVendor-{{ @$users ? @$users->id : 'create' }}"
+                                class="alert alert-primary border border-primary d-flex align-items-center gap-2 mb-3 py-2 px-3"
+                                style="display: none;">
+                                <i class="mdi mdi-information-outline fs-4 text-primary"></i>
+                                <span class="small mb-0 text-dark">
+                                    <strong>Mode Akun Client Vendor:</strong> Data Identitas &amp; Penempatan Jabatan dinonaktifkan otomatis. Anda hanya perlu mengisi <strong>Nama Lengkap</strong>, <strong>Email</strong>, dan <strong>Password</strong>.
+                                </span>
                             </div>
 
-                            <div class="row g-3 mt-1">
-                                <!-- NIP -->
-                                <div class="col-md-6">
-                                    <div class="form-floating form-floating-outline">
-                                        <input class="form-control" type="text" id="nip-{{ @$users ? @$users->id : 'create' }}" name="nip"
-                                            value="{{ old('nip', @$users->nip ?? '') }}" placeholder="Contoh: 61256996" required />
-                                        <label for="nip-{{ @$users ? @$users->id : 'create' }}">NIP (Nomor Induk Pegawai)</label>
-                                    </div>
+                            <!-- Section 1: Profil & Biodata -->
+                            <div class="section-profile-identity" id="sectionProfile-{{ @$users ? @$users->id : 'create' }}">
+                                <div class="form-section-header first-header">
+                                    <span class="form-section-badge"><i class="mdi mdi-card-account-details-outline"></i></span>
+                                    <h6 class="form-section-title">Data Profil &amp; Identitas</h6>
                                 </div>
 
-                                <!-- Nama Lengkap -->
-                                <div class="col-md-6">
-                                    <div class="form-floating form-floating-outline">
-                                        <input class="form-control user-name-input" type="text" id="name-{{ @$users ? @$users->id : 'create' }}" name="name"
-                                            value="{{ old('name', @$users->name ?? '') }}" placeholder="Contoh: Budi Santoso" required />
-                                        <label for="name-{{ @$users ? @$users->id : 'create' }}">Nama Lengkap</label>
-                                    </div>
-                                </div>
-
-                                <!-- No HP / WA -->
-                                <div class="col-md-6">
-                                    <div class="input-group input-group-merge">
-                                        <span class="input-group-text fw-medium">+62</span>
+                                <div class="row g-3 mt-1">
+                                    <!-- NIP -->
+                                    <div class="col-md-6 vendor-disable-field">
                                         <div class="form-floating form-floating-outline">
-                                            <input type="text" class="form-control phone-number-input" pattern="[0-9]*"
-                                                placeholder="8123456789" id="phone-{{ @$users ? @$users->id : 'create' }}" name="phone"
-                                                value="{{ old('phone', @$users->phone ? (str_starts_with(@$users->phone, '+62') ? substr(@$users->phone, 3) : @$users->phone) : '') }}" required>
-                                            <label for="phone-{{ @$users ? @$users->id : 'create' }}">No. WhatsApp / HP</label>
+                                            <input class="form-control" type="text" id="nip-{{ @$users ? @$users->id : 'create' }}" name="nip"
+                                                value="{{ old('nip', @$users->nip ?? '') }}" placeholder="Contoh: 61256996" required />
+                                            <label for="nip-{{ @$users ? @$users->id : 'create' }}">NIP (Nomor Induk Pegawai)</label>
                                         </div>
                                     </div>
-                                </div>
 
-                                <!-- Tanggal Lahir -->
-                                <div class="col-md-6">
-                                    <div class="form-floating form-floating-outline">
-                                        <input class="form-control" type="date" id="birthday-{{ @$users ? @$users->id : 'create' }}" name="birthday"
-                                            value="{{ old('birthday', @$users->birthday ?? '1995-01-01') }}">
-                                        <label for="birthday-{{ @$users ? @$users->id : 'create' }}">Tanggal Lahir</label>
+                                    <!-- Nama Lengkap -->
+                                    <div class="col-md-6">
+                                        <div class="form-floating form-floating-outline">
+                                            <input class="form-control user-name-input" type="text" id="name-{{ @$users ? @$users->id : 'create' }}" name="name"
+                                                value="{{ old('name', @$users->name ?? '') }}" placeholder="Contoh: Budi Santoso / PT Vendor" required />
+                                            <label for="name-{{ @$users ? @$users->id : 'create' }}">Nama Lengkap <span class="text-danger">*</span></label>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <!-- Alamat -->
-                                <div class="col-12">
-                                    <div class="form-floating form-floating-outline">
-                                        <input type="text" class="form-control" placeholder="Alamat lengkap domisili tempat tinggal"
-                                            name="address" id="address-{{ @$users ? @$users->id : 'create' }}"
-                                            value="{{ old('address', @$users->address ?? '') }}" required>
-                                        <label for="address-{{ @$users ? @$users->id : 'create' }}">Alamat Domisili</label>
+                                    <!-- No HP / WA -->
+                                    <div class="col-md-6 vendor-disable-field">
+                                        <div class="input-group input-group-merge">
+                                            <span class="input-group-text fw-medium">+62</span>
+                                            <div class="form-floating form-floating-outline">
+                                                <input type="text" class="form-control phone-number-input" pattern="[0-9]*"
+                                                    placeholder="8123456789" id="phone-{{ @$users ? @$users->id : 'create' }}" name="phone"
+                                                    value="{{ old('phone', @$users->phone ? (str_starts_with(@$users->phone, '+62') ? substr(@$users->phone, 3) : @$users->phone) : '') }}" required>
+                                                <label for="phone-{{ @$users ? @$users->id : 'create' }}">No. WhatsApp / HP</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tanggal Lahir -->
+                                    <div class="col-md-6 vendor-disable-field">
+                                        <div class="form-floating form-floating-outline">
+                                            <input class="form-control" type="date" id="birthday-{{ @$users ? @$users->id : 'create' }}" name="birthday"
+                                                value="{{ old('birthday', @$users->birthday ?? '1995-01-01') }}">
+                                            <label for="birthday-{{ @$users ? @$users->id : 'create' }}">Tanggal Lahir</label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Alamat -->
+                                    <div class="col-12 vendor-disable-field">
+                                        <div class="form-floating form-floating-outline">
+                                            <input type="text" class="form-control" placeholder="Alamat lengkap domisili tempat tinggal"
+                                                name="address" id="address-{{ @$users ? @$users->id : 'create' }}"
+                                                value="{{ old('address', @$users->address ?? '') }}" required>
+                                            <label for="address-{{ @$users ? @$users->id : 'create' }}">Alamat Domisili</label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Section 2: Penempatan & Organisasi -->
-                            <div class="form-section-header mt-3">
-                                <span class="form-section-badge"><i class="mdi mdi-briefcase-outline"></i></span>
-                                <h6 class="form-section-title">Penempatan &amp; Jabatan</h6>
-                            </div>
-
-                            <div class="row g-3 mt-1">
-                                <!-- Jabatan / Position -->
-                                <div class="col-md-6">
-                                    <div class="form-floating form-floating-outline">
-                                        <input type="text" class="form-control user-position-input"
-                                            id="position-{{ @$users ? @$users->id : 'create' }}" name="position"
-                                            placeholder="Contoh: Sales Engineer"
-                                            value="{{ old('position', @$users->detailUser[0]->position ?? '') }}" required />
-                                        <label for="position-{{ @$users ? @$users->id : 'create' }}" id="positionLabel-{{ @$users ? @$users->id : 'create' }}">
-                                            Jabatan / Posisi
-                                        </label>
-                                    </div>
+                            <div class="section-placement-position" id="sectionPlacement-{{ @$users ? @$users->id : 'create' }}">
+                                <div class="form-section-header mt-3">
+                                    <span class="form-section-badge"><i class="mdi mdi-briefcase-outline"></i></span>
+                                    <h6 class="form-section-title">Penempatan &amp; Jabatan</h6>
                                 </div>
 
-                                <!-- Area Kerja -->
-                                <div class="col-md-6">
-                                    <div class="form-floating form-floating-outline">
-                                        <input type="text" class="form-control user-area-input"
-                                            id="area-{{ @$users ? @$users->id : 'create' }}" name="area"
-                                            placeholder="Contoh: Surabaya / Head Office"
-                                            value="{{ old('area', @$users->detailUser[0]->area ?? '') }}" required />
-                                        <label for="area-{{ @$users ? @$users->id : 'create' }}" id="areaLabel-{{ @$users ? @$users->id : 'create' }}">
-                                            Area Kerja
-                                        </label>
+                                <div class="row g-3 mt-1">
+                                    <!-- Jabatan / Position -->
+                                    <div class="col-md-6 vendor-disable-field">
+                                        <div class="form-floating form-floating-outline">
+                                            <input type="text" class="form-control user-position-input"
+                                                id="position-{{ @$users ? @$users->id : 'create' }}" name="position"
+                                                placeholder="Contoh: Sales Engineer"
+                                                value="{{ old('position', @$users->detailUser[0]->position ?? '') }}" required />
+                                            <label for="position-{{ @$users ? @$users->id : 'create' }}" id="positionLabel-{{ @$users ? @$users->id : 'create' }}">
+                                                Jabatan / Posisi
+                                            </label>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <!-- Kode Karyawan / Inisial -->
-                                <div class="col-md-6">
-                                    <div class="form-floating form-floating-outline">
-                                        <input class="form-control text-uppercase user-code-input" type="text"
-                                            id="code-{{ @$users ? @$users->id : 'create' }}" name="code"
-                                            value="{{ old('code', @$users->code ?? '') }}"
-                                            placeholder="Contoh: RZA" required />
-                                        <label for="code-{{ @$users ? @$users->id : 'create' }}" id="codeLabel-{{ @$users ? @$users->id : 'create' }}">
-                                            Kode Karyawan / Inisial
-                                        </label>
+                                    <!-- Area Kerja -->
+                                    <div class="col-md-6 vendor-disable-field">
+                                        <div class="form-floating form-floating-outline">
+                                            <input type="text" class="form-control user-area-input"
+                                                id="area-{{ @$users ? @$users->id : 'create' }}" name="area"
+                                                placeholder="Contoh: Surabaya / Head Office"
+                                                value="{{ old('area', @$users->detailUser[0]->area ?? '') }}" required />
+                                            <label for="area-{{ @$users ? @$users->id : 'create' }}" id="areaLabel-{{ @$users ? @$users->id : 'create' }}">
+                                                Area Kerja
+                                            </label>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <!-- Tanggal Masuk -->
-                                <div class="col-md-6">
-                                    <div class="form-floating form-floating-outline">
-                                        <input class="form-control" type="date"
-                                            id="date_in-{{ @$users ? @$users->id : 'create' }}" name="date_in"
-                                            value="{{ old('date_in', @$users->date_in ?? now()->format('Y-m-d')) }}">
-                                        <label for="date_in-{{ @$users ? @$users->id : 'create' }}">Tanggal Masuk (Entry Date)</label>
+                                    <!-- Kode Karyawan / Inisial -->
+                                    <div class="col-md-6 vendor-disable-field">
+                                        <div class="form-floating form-floating-outline">
+                                            <input class="form-control text-uppercase user-code-input" type="text"
+                                                id="code-{{ @$users ? @$users->id : 'create' }}" name="code"
+                                                value="{{ old('code', @$users->code ?? '') }}"
+                                                placeholder="Contoh: RZA" required />
+                                            <label for="code-{{ @$users ? @$users->id : 'create' }}" id="codeLabel-{{ @$users ? @$users->id : 'create' }}">
+                                                Kode Karyawan / Inisial
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tanggal Masuk -->
+                                    <div class="col-md-6 vendor-disable-field">
+                                        <div class="form-floating form-floating-outline">
+                                            <input class="form-control" type="date"
+                                                id="date_in-{{ @$users ? @$users->id : 'create' }}" name="date_in"
+                                                value="{{ old('date_in', @$users->date_in ?? now()->format('Y-m-d')) }}">
+                                            <label for="date_in-{{ @$users ? @$users->id : 'create' }}">Tanggal Masuk (Entry Date)</label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

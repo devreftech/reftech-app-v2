@@ -52,32 +52,51 @@ class UserController extends Controller
      */
     public function store(StoreUserRequest $request)
     {
-        $rule = [
-            'name' => 'required',
-            'email' => 'required|email|unique:users,email',
-            'area' => 'required',
-            'image' => 'nullable|file|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'phone' => 'required',
-        ];
-        $customMessages = [
-            'name.required' => 'Field Nama Wajib Diisi!',
-            'email.required' => 'Field EMail Wajib Diisi',
-            'image.required' => 'Field Foto Wajib Diisi',
-            'area.required' => 'Field Area Wajib Diisi',
-            'phone.required' => 'Field phone Wajib Diisi!',
-        ];
+        $isClientVendor = ($request->role === 'Client Vendor');
+
+        if ($isClientVendor) {
+            $rule = [
+                'name'     => 'required',
+                'email'    => 'required|email|unique:users,email',
+                'password' => 'required|min:6',
+            ];
+            $customMessages = [
+                'name.required'     => 'Field Nama Wajib Diisi!',
+                'email.required'    => 'Field Email Wajib Diisi!',
+                'email.unique'      => 'Email sudah terdaftar.',
+                'password.required' => 'Field Password Wajib Diisi!',
+                'password.min'      => 'Password minimal 6 karakter.',
+            ];
+        } else {
+            $rule = [
+                'name'  => 'required',
+                'email' => 'required|email|unique:users,email',
+                'area'  => 'required',
+                'image' => 'nullable|file|image|mimes:jpeg,png,jpg,webp|max:5120',
+                'phone' => 'required',
+            ];
+            $customMessages = [
+                'name.required'  => 'Field Nama Wajib Diisi!',
+                'email.required' => 'Field Email Wajib Diisi',
+                'email.unique'   => 'Email sudah terdaftar.',
+                'image.required' => 'Field Foto Wajib Diisi',
+                'area.required'  => 'Field Area Wajib Diisi',
+                'phone.required' => 'Field Phone Wajib Diisi!',
+            ];
+        }
 
         $this->validate($request, $rule, $customMessages);
         $users = new User;
         $users->name = $request->name;
         $users->email = $request->email;
-        $users->area = $request->area;
+        $users->area = $request->area ?: '-';
         $users->code = $request->code;
-        $users->active = $request->active;
+        $users->active = $request->active ?? '1';
         $users->role = $request->role;
-        $users->phone = '+62' . $request->phone;
+        $users->phone = $request->filled('phone') ? ('+62' . preg_replace('/\D/', '', $request->phone)) : null;
         $users->password = Hash::make($request->password);
-        if ($request->hasFile('image')) {
+
+        if (!$isClientVendor && $request->hasFile('image')) {
             if ($users->image != 'asset/profile/profile.jpg') {
                 File::delete($users->image);
             }
@@ -96,7 +115,7 @@ class UserController extends Controller
         }
         $status = $users->save();
         if ($status) {
-            return redirect('/profile' . '/' . Auth::user()->id)->with('success', 'Data Has been created');
+            return redirect('/profile' . '/' . Auth::user()->id)->with('success', 'User akun berhasil dibuat!');
         }
     }
 
@@ -111,6 +130,10 @@ class UserController extends Controller
         $user = ($profile instanceof User && $profile->exists) ? $profile : User::find($profile);
         if (!$user) {
             $user = User::find(Auth::id());
+        }
+
+        if ($user && $user->role === 'Client Vendor') {
+            return redirect()->route('profile.edit', $user->id);
         }
 
         $employee = $user->employee;
@@ -190,7 +213,7 @@ class UserController extends Controller
             // Leave balances & requests
             $leaveBalance = HrLeaveBalance::firstOrCreate(
                 ['employee_id' => $employee->id, 'year' => $currentYear],
-                ['total_quota' => 12, 'used_quota' => 0, 'remaining_quota' => 12]
+                ['total_quota' => 12, 'used_quota' => 0, 'remaining_quota' => 12, 'is_active' => true]
             );
             $myLeaves = HrLeaveRequest::with('leaveType')
                 ->where('employee_id', $employee->id)
@@ -335,6 +358,32 @@ class UserController extends Controller
      */
     public function update(UpdateUserRequest $request, $id)
     {
+        $users = User::findOrFail($id);
+
+        if ($users->role === 'Client Vendor') {
+            $rule = [
+                'name'     => 'required|string|max:255',
+                'email'    => 'required|email|unique:users,email,' . $id,
+                'password' => 'nullable|string|min:6',
+            ];
+            $customMessages = [
+                'name.required'  => 'Field Nama Wajib Diisi!',
+                'email.required' => 'Field EMail Wajib Diisi!',
+                'email.unique'   => 'Email sudah digunakan oleh akun lain.',
+                'password.min'   => 'Password minimal 6 karakter.',
+            ];
+
+            $this->validate($request, $rule, $customMessages);
+            $users->name = $request->name;
+            $users->email = $request->email;
+            if ($request->filled('password')) {
+                $users->password = Hash::make($request->password);
+            }
+            $users->save();
+
+            return redirect()->route('profile.edit', $id)->with('success', 'Profil Client Vendor berhasil diperbarui!');
+        }
+
         $rule = [
             'name'   => 'required',
             'email'  => 'required|email|unique:users,email,' . $id,
@@ -350,7 +399,6 @@ class UserController extends Controller
         ];
 
         $this->validate($request, $rule, $customMessages);
-        $users = User::find($id);
         $users->name = $request->name;
         $users->email = $request->email;
         $users->birthday = $request->birthday;

@@ -11,7 +11,7 @@ class ToolAuditSummaryController extends Controller
 {
     public function index(Request $request)
     {
-        if (Auth::user()->role != 'Admin') {
+        if (!in_array(Auth::user()->role, ['Admin', 'Developer'])) {
             abort(403, 'Hanya Admin yang bisa mengakses Summary Audit Tools.');
         }
 

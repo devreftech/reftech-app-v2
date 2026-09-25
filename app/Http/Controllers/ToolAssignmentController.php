@@ -20,7 +20,7 @@ class ToolAssignmentController extends Controller
 {
     protected function guardAdmin()
     {
-        if (Auth::user()->role != 'Admin') {
+        if (!in_array(Auth::user()->role, ['Admin', 'Developer'])) {
             abort(403, 'Hanya Admin yang bisa mengakses Management Tools.');
         }
     }

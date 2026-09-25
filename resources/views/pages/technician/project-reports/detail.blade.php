@@ -7,7 +7,7 @@
             <span class="text-muted fw-light">Service Department / Project Reports /</span> Detail Report
         </h4>
         <div class="d-flex gap-2 flex-wrap">
-            <a href="{{ route('service-reports.index', ['tab' => 'project']) }}" class="btn btn-outline-secondary">
+            <a href="{{ Auth::check() && Auth::user()->role === 'Client Vendor' ? url('/') : route('service-reports.index', ['tab' => 'project']) }}" class="btn btn-outline-secondary">
                 <i class="mdi mdi-arrow-left me-1"></i> Kembali
             </a>
             <a href="{{ $report->sign_url }}" target="_blank" class="btn btn-label-primary">

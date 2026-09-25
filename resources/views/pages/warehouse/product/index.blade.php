@@ -2,8 +2,8 @@
 @section('title', 'Katalog Produk')
 @section('content')
     @php
-        $showTransaksi = Auth::check() && in_array(strtolower(Auth::user()->role), ['developer', 'admin']);
-        $isSales = Auth::check() && strtolower(Auth::user()->role) === 'sales';
+        $showTransaksi = Auth::check() && (in_array(strtolower(Auth::user()->role), ['developer', 'admin']) || Auth::id() == 3);
+        $isSales = Auth::check() && strtolower(Auth::user()->role) === 'sales' && Auth::id() != 3;
     @endphp
     {{-- ── Hero Header ───────────────────────────────────────────── --}}
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
@@ -14,7 +14,7 @@
                 </span>
                 Katalog Produk &amp; Spare Part
                 <span class="badge bg-label-primary rounded-pill fs-7">
-                    @if (Auth::user()->role === 'Sales')
+                    @if (Auth::user()->role === 'Sales' && Auth::id() != 3)
                         Sales Portal
                     @else
                         {{ Auth::user()->role }}
@@ -26,7 +26,7 @@
             </p>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            @if (in_array(Auth::user()->role, ['Admin', 'developer', 'Logistic', 'Finance Manager', 'Finance', 'Accounting']))
+            @if (in_array(Auth::user()->role, ['Admin', 'developer', 'Logistic', 'Finance Manager', 'Finance', 'Accounting']) || Auth::id() == 3)
                 <div class="dropdown">
                     <button class="btn btn-outline-secondary btn-sm dropdown-toggle shadow-none" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="mdi mdi-export-variant me-1"></i> Export
@@ -52,7 +52,7 @@
                 </div>
             @endif
 
-            @if (in_array(Auth::user()->role, ['Admin', 'developer', 'Logistic']))
+            @if (in_array(Auth::user()->role, ['Admin', 'developer', 'Logistic']) || Auth::id() == 3)
                 <button type="button" class="btn btn-primary btn-sm shadow-none" data-bs-toggle="modal" data-bs-target="#createProduct">
                     <i class="mdi mdi-plus me-1"></i> Tambah Produk
                 </button>
@@ -143,8 +143,8 @@
         </div>
     </div>
 
-    {{-- ── Strip Informasi Finansial & Master (Untuk Admin, Developer, Logistic, Finance, Accounting) ── --}}
-    @if (Auth::user()->role !== 'Sales')
+    {{-- ── Strip Informasi Finansial & Master (Untuk Admin, Developer, Logistic, Finance, Accounting, User 3) ── --}}
+    @if (Auth::user()->role !== 'Sales' || Auth::id() == 3)
         <div class="row g-3 mb-4">
             <div class="col-12 col-md-4">
                 <div class="card border-0 shadow-sm p-3 bg-white">

@@ -132,16 +132,25 @@ $(function () {
             $pane.find('.display-subtotal').text('Rp ' + formatRupiah(Math.round(subtotal)));
 
             // Update display baris Trade-In & DPP
-            if (hasTradeIn && tradeInPrice > 0) {
-                $pane.find('.display-trade-in-row').show();
+            if (hasTradeIn) {
+                $pane.find('.display-trade-in-row').removeClass('d-none').addClass('d-flex');
                 $pane.find('.display-trade-in').text('- Rp ' + formatRupiah(Math.round(tradeInPrice)));
                 var tradeInLabel = (tradeInBrand + ' ' + tradeInModel).trim();
-                $pane.find('.trade-in-summary-badge').text(tradeInLabel ? '(' + tradeInLabel + ')' : '');
-                $pane.find('.display-dpp-row').show();
-                $pane.find('.display-dpp').text('Rp ' + formatRupiah(Math.round(dpp)));
+                if (tradeInLabel) {
+                    $pane.find('.trade-in-summary-badge').text('(' + tradeInLabel + ')').show();
+                } else {
+                    $pane.find('.trade-in-summary-badge').text('').hide();
+                }
+
+                if (tradeInPrice > 0) {
+                    $pane.find('.display-dpp-row').removeClass('d-none').addClass('d-flex');
+                    $pane.find('.display-dpp').text('Rp ' + formatRupiah(Math.round(dpp)));
+                } else {
+                    $pane.find('.display-dpp-row').removeClass('d-flex').addClass('d-none');
+                }
             } else {
-                $pane.find('.display-trade-in-row').hide();
-                $pane.find('.display-dpp-row').hide();
+                $pane.find('.display-trade-in-row').removeClass('d-flex').addClass('d-none');
+                $pane.find('.display-dpp-row').removeClass('d-flex').addClass('d-none');
             }
 
             $pane.find('.display-tax').text('Rp ' + formatRupiah(taxAmount));
@@ -503,12 +512,33 @@ $(function () {
         autoResizeDescTextarea($row.find('.field-description')[0]);
         $row.find('.field-qty').val(item.qty || 1);
 
-        var $infoQty = $row.find('select[name*="[info_qty]"]');
+        var $select = $row.find('.field-info-qty-select');
+        var $customInput = $row.find('.field-info-qty-custom');
+        var $cancelBtn = $row.find('.btn-custom-qty-cancel');
+        var $hidden = $row.find('.field-info-qty');
+
         if (item.info_qty) {
-            $infoQty.val(item.info_qty);
-            if ($infoQty.val() === null) {
-                $infoQty.append(new Option(item.info_qty, item.info_qty, true, true));
+            $hidden.val(item.info_qty);
+            var existsInSelect = false;
+            $select.find('option').each(function () {
+                if ($(this).val() !== '__custom__' && $(this).val().toLowerCase() === String(item.info_qty).toLowerCase()) {
+                    $select.val($(this).val());
+                    existsInSelect = true;
+                    return false;
+                }
+            });
+
+            if (existsInSelect) {
+                $select.show();
+                $customInput.hide().val('');
+                $cancelBtn.hide();
+            } else {
+                $select.hide();
+                $customInput.show().val(item.info_qty);
+                $cancelBtn.show();
             }
+        } else if ($select.length) {
+            $hidden.val($select.val() || 'Lot');
         }
 
         $row.find('.field-price').val(formatRupiah(Math.round(item.price || 0)));
@@ -624,6 +654,36 @@ $(function () {
 
         $row.find('.field-label').val(item.label || '');
         $row.find('.field-qty').val(item.qty || 1);
+
+        var $select = $row.find('.field-info-qty-select');
+        var $customInput = $row.find('.field-info-qty-custom');
+        var $cancelBtn = $row.find('.btn-custom-qty-cancel');
+        var $hidden = $row.find('.field-info-qty');
+
+        if (item.info_qty) {
+            $hidden.val(item.info_qty);
+            var existsInSelect = false;
+            $select.find('option').each(function () {
+                if ($(this).val() !== '__custom__' && $(this).val().toLowerCase() === String(item.info_qty).toLowerCase()) {
+                    $select.val($(this).val());
+                    existsInSelect = true;
+                    return false;
+                }
+            });
+
+            if (existsInSelect) {
+                $select.show();
+                $customInput.hide().val('');
+                $cancelBtn.hide();
+            } else {
+                $select.hide();
+                $customInput.show().val(item.info_qty);
+                $cancelBtn.show();
+            }
+        } else if ($select.length) {
+            $hidden.val($select.val() || 'Lot');
+        }
+
         $row.find('.field-price').val(formatRupiah(Math.round(item.price || 0)));
         $row.find('.field-disc').val(item.disc || 0);
         updateRowAmount($row);
@@ -747,10 +807,14 @@ $(function () {
         return $pane;
     }
 
+    // Helper check apakah T&C digabung untuk semua opsi
+    function isTermsMerged() {
+        return $('#toggle-merge-terms').is(':checked');
+    }
+
     // ── Card Term & Condition (di bawah form) — ikut opsi mana yang lagi aktif ──
     function readTermsCardIntoStore(idx) {
-        if (idx === undefined || idx === null) return;
-        optionTermsStore[idx] = {
+        var currentData = {
             note: $('#note').val() || '',
             validity: $('#validity').val() || '',
             pricing: $('#pricing').val() || '',
@@ -759,6 +823,17 @@ $(function () {
             delivery_process: $('#delivery').val() || '',
             rental_terms: $('#rental_terms').val() || ''
         };
+
+        if (isTermsMerged()) {
+            $('.option-pane').each(function () {
+                var oIdx = $(this).data('option-idx');
+                optionTermsStore[oIdx] = Object.assign({}, currentData);
+            });
+            return;
+        }
+
+        if (idx === undefined || idx === null) return;
+        optionTermsStore[idx] = currentData;
     }
 
     function writeStoreIntoTermsCard(idx) {
@@ -793,16 +868,42 @@ $(function () {
         var count = $('.option-pane').length;
         var $label = $('#terms-card-active-option-label');
         var $hint = $('#terms-card-hint');
-        if (!$label.length) return;
+        var $mergedHint = $('#terms-card-merged-hint');
+        var $wrapperToggle = $('#wrapper-toggle-merge-terms');
+
         if (count > 1) {
-            var title = $('#options-tab-nav .nav-item[data-option-idx="' + activeTermsOptionIdx + '"] .tab-title-display').text() || ('Opsi ' + (activeTermsOptionIdx + 1));
-            $label.text(title).show();
-            $hint.removeClass('d-none');
+            $wrapperToggle.show();
+            if (isTermsMerged()) {
+                $label.hide();
+                $hint.addClass('d-none');
+                $mergedHint.removeClass('d-none');
+            } else {
+                var title = $('#options-tab-nav .nav-item[data-option-idx="' + activeTermsOptionIdx + '"] .tab-title-display').text() || ('Opsi ' + (activeTermsOptionIdx + 1));
+                $label.text(title).show();
+                $hint.removeClass('d-none');
+                $mergedHint.addClass('d-none');
+            }
         } else {
+            $wrapperToggle.hide();
             $label.hide();
             $hint.addClass('d-none');
+            $mergedHint.addClass('d-none');
         }
     }
+
+    $(document).on('change', '#toggle-merge-terms', function () {
+        if ($(this).is(':checked')) {
+            readTermsCardIntoStore(activeTermsOptionIdx);
+        }
+        updateTermsCardLabel();
+    });
+
+    // Real-time sync saat merge_terms aktif
+    $(document).on('input change', '#note, #validity, #pricing, #payment-select, #input-payment-manual, #warranty, #delivery, #rental_terms', function () {
+        if (isTermsMerged()) {
+            readTermsCardIntoStore(activeTermsOptionIdx);
+        }
+    });
 
     $(document).on('shown.bs.tab', '#options-tab-nav a[data-bs-toggle="pill"]', function (e) {
         var $prevTab = $(e.relatedTarget);
@@ -811,7 +912,9 @@ $(function () {
 
         var newIdx = $(this).closest('.nav-item').data('option-idx');
         activeTermsOptionIdx = newIdx;
-        writeStoreIntoTermsCard(newIdx);
+        if (!isTermsMerged()) {
+            writeStoreIntoTermsCard(newIdx);
+        }
         updateTermsCardLabel();
     });
 
@@ -824,6 +927,9 @@ $(function () {
         var opt = $pane.data('option-idx');
         $('#options-tab-nav .nav-item[data-option-idx="' + opt + '"] .nav-link').addClass('active').attr('aria-selected', 'true');
         activeTermsOptionIdx = opt;
+        if (isTermsMerged()) {
+            optionTermsStore[opt] = Object.assign({}, optionTermsStore[0] || {});
+        }
         writeStoreIntoTermsCard(opt);
         updateTermsCardLabel();
         $('html, body').animate({ scrollTop: $pane.offset().top - 100 }, 300);
@@ -1306,8 +1412,40 @@ $(function () {
 
         $row.find('.field-info-qty-select').on('change', function () {
             var mode = $(this).val();
-            $row.find('.field-info-qty').val(mode);
-            applyRentalPrice($row);
+            if (mode === '__custom__') {
+                $(this).hide();
+                var $customInput = $row.find('.field-info-qty-custom');
+                var $cancelBtn = $row.find('.btn-custom-qty-cancel');
+                $customInput.show().val('').focus();
+                $cancelBtn.show();
+                $row.find('.field-info-qty').val('');
+            } else {
+                $row.find('.field-info-qty').val(mode);
+                applyRentalPrice($row);
+            }
+            if (typeof window.triggerAutoSaveSmartQuote === 'function') {
+                window.triggerAutoSaveSmartQuote();
+            }
+        });
+
+        $row.find('.field-info-qty-custom').on('input', function () {
+            var val = $(this).val();
+            $row.find('.field-info-qty').val(val);
+            if (typeof window.triggerAutoSaveSmartQuote === 'function') {
+                window.triggerAutoSaveSmartQuote();
+            }
+        });
+
+        $row.find('.btn-custom-qty-cancel').on('click', function () {
+            var $customInput = $row.find('.field-info-qty-custom');
+            var $select = $row.find('.field-info-qty-select');
+            $customInput.hide().val('');
+            $(this).hide();
+            $select.show().val('Lot');
+            $row.find('.field-info-qty').val('Lot');
+            if (typeof window.triggerAutoSaveSmartQuote === 'function') {
+                window.triggerAutoSaveSmartQuote();
+            }
         });
 
         // Event listener untuk baris spesifikasi manual (source: other)

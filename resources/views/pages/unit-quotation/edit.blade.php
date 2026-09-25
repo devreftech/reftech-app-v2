@@ -325,12 +325,25 @@
 
                         {{-- Terms & Conditions --}}
                         <div>
-                            <h6 class="fw-bold mb-1 text-dark">
-                                <i class="mdi mdi-shield-check-outline me-1 text-primary"></i> Terms & Conditions
-                                <span id="terms-card-active-option-label" class="badge bg-label-primary ms-1" style="display:none; font-size:11px; vertical-align:middle;"></span>
-                            </h6>
+                            <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+                                <h6 class="fw-bold mb-0 text-dark">
+                                    <i class="mdi mdi-shield-check-outline me-1 text-primary"></i> Terms & Conditions
+                                    <span id="terms-card-active-option-label" class="badge bg-label-primary ms-1" style="display:none; font-size:11px; vertical-align:middle;"></span>
+                                </h6>
+                                <div id="wrapper-toggle-merge-terms" style="display: none;">
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" id="toggle-merge-terms" name="merge_terms" value="1" {{ old('merge_terms', $quote->merge_terms) ? 'checked' : '' }}>
+                                        <label class="form-check-label fw-semibold small text-primary" for="toggle-merge-terms" style="font-size:11.5px; cursor:pointer;">
+                                            <i class="mdi mdi-set-all me-1"></i>Gabungkan T&amp;C Semua Opsi
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                             <p class="text-muted small mb-3 d-none" id="terms-card-hint" style="font-size:11px;">
                                 <i class="mdi mdi-information-outline me-1"></i>Isian di bawah ini T&amp;C khusus untuk opsi yang lagi aktif di tab atas — tiap Opsi bisa beda, tinggal pindah tab lalu isi ulang.
+                            </p>
+                            <p class="text-primary small mb-3 d-none" id="terms-card-merged-hint" style="font-size:11px; background: #eef2ff; padding: 6px 10px; border-radius: 6px; border-left: 3px solid #696cff;">
+                                <i class="mdi mdi-check-circle-outline me-1"></i><strong>Mode T&amp;C Tergabung Aktif:</strong> Ketentuan di bawah ini berlaku sama untuk semua opsi dan dicetak 1 kali di bagian bawah dokumen.
                             </p>
                             <div class="row mb-3 align-items-center">
                                 <label class="col-sm-4 col-form-label text-muted small fw-semibold" for="validity">Validity of Quotation</label>
@@ -604,7 +617,7 @@
                                 <span class="input-group-text">Qty</span>
                                 <input type="number" class="form-control text-center field-qty"
                                     name="items[__IDX__][qty]" value="1" min="1">
-                                <select class="form-select field-info-qty" name="items[__IDX__][info_qty]" style="max-width:70px;">
+                                <select class="form-select field-info-qty-select" style="max-width:72px;">
                                     <option value="Lot">Lot</option>
                                     <option value="Set">Set</option>
                                     <option value="Unit">Unit</option>
@@ -613,7 +626,18 @@
                                     <option value="Btg">Btg</option>
                                     <option value="Mtr">Mtr</option>
                                     <option value="Days">Days</option>
+                                    <option value="Bln">Bln</option>
+                                    <option value="Box">Box</option>
+                                    <option value="Roll">Roll</option>
+                                    <option value="Kg">Kg</option>
+                                    <option value="Jam">Jam</option>
+                                    <option value="Paket">Paket</option>
+                                    <option value="Titik">Titik</option>
+                                    <option value="__custom__">+ Custom</option>
                                 </select>
+                                <input type="text" class="form-control text-center field-info-qty-custom px-1" placeholder="Satuan" style="display:none; max-width:65px;" maxlength="25">
+                                <button type="button" class="btn btn-outline-secondary btn-custom-qty-cancel px-1" title="Batal custom (kembali ke list satuan)" style="display:none;"><i class="mdi mdi-close"></i></button>
+                                <input type="hidden" class="field-info-qty" name="items[__IDX__][info_qty]" value="Lot">
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -822,16 +846,16 @@
                             </div>
 
                             {{-- Potongan Trade-In --}}
-                            <div class="d-flex justify-content-between align-items-center py-1 display-trade-in-row" style="display: none;">
-                                <div>
-                                    <span class="text-danger fw-semibold" style="font-size: 13.5px;"><i class="mdi mdi-swap-horizontal-bold me-1"></i>Potongan Trade-In</span>
-                                    <span class="badge bg-label-secondary trade-in-summary-badge d-block text-start mt-0.5" style="font-size: 10px; font-weight: 500;">-</span>
-                                </div>
-                                <span class="fw-bold text-danger fs-6 display-trade-in">- Rp 0</span>
+                            <div class="d-none justify-content-between align-items-center py-1 display-trade-in-row">
+                                 <div>
+                                     <span class="text-danger fw-semibold" style="font-size: 13.5px;"><i class="mdi mdi-swap-horizontal-bold me-1"></i>Potongan Trade-In</span>
+                                     <span class="badge bg-label-secondary trade-in-summary-badge d-block text-start mt-0.5" style="font-size: 10px; font-weight: 500; display: none;">-</span>
+                                 </div>
+                                 <span class="fw-bold text-danger fs-6 display-trade-in">- Rp 0</span>
                             </div>
 
                             {{-- Dasar Pengenaan Pajak (DPP) --}}
-                            <div class="d-flex justify-content-between align-items-center py-1 display-dpp-row" style="display: none;">
+                            <div class="d-none justify-content-between align-items-center py-1 display-dpp-row">
                                 <span class="text-muted fw-semibold" style="font-size: 13px;">Dasar Pengenaan Pajak (DPP)</span>
                                 <span class="fw-bold text-dark display-dpp" style="font-size: 13px;">Rp 0</span>
                             </div>

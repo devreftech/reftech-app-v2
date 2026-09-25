@@ -12,6 +12,8 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('piping-materials', PipingMaterialController::class)->only(['index', 'store', 'update', 'destroy']);
 
     // 2. Estimasi / RAB Proyek Piping
+    Route::post('/piping-rab/suppliers/quick-store', [PipingRabController::class, 'quickStoreSupplier'])->name('piping-rab.suppliers.quick-store');
+    Route::post('/piping-rab/items/{id}/update-supplier', [PipingRabController::class, 'updateItemSupplier'])->name('piping-rab.items.update-supplier');
     Route::post('/piping-rab/{id}/revise', [PipingRabController::class, 'revise'])->name('piping-rab.revise');
     Route::post('/piping-rab/{id}/convert', [PipingRabController::class, 'convertToQuotation'])->name('piping-rab.convert');
     Route::resource('piping-rab', PipingRabController::class);
