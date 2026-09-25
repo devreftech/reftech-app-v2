@@ -17,6 +17,7 @@ class HrLeaveBalance extends Model
         'total_quota',
         'used_quota',
         'remaining_quota',
+        'is_active',
     ];
 
     protected $casts = [
@@ -24,6 +25,7 @@ class HrLeaveBalance extends Model
         'total_quota' => 'integer',
         'used_quota' => 'integer',
         'remaining_quota' => 'integer',
+        'is_active' => 'boolean',
     ];
 
     public function employee()

@@ -1,6 +1,6 @@
 @php
     $myPendingAudit = null;
-    if (Auth::check() && Auth::user()->role === 'Technician') {
+    if (Auth::check() && in_array(Auth::user()->role, ['Technician', 'Coordinator', 'Support', 'ServiceM'])) {
         try {
             $myPendingAudit = \App\Models\ToolAudit::with('period')
                 ->where('id_technician', Auth::id())

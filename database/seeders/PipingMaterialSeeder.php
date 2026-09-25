@@ -15,8 +15,7 @@ class PipingMaterialSeeder extends Seeder
      */
     public function run(): void
     {
-        $suppliers = Supplier::take(5)->pluck('id')->toArray();
-        $defaultSupId = !empty($suppliers) ? $suppliers[0] : null;
+        $defaultSupId = 128;
 
         $items = [
             // =========================================================================

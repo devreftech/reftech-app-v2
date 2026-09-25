@@ -53,10 +53,17 @@
                 @if ($navEmp && $navEmp->can_online_attendance)
                 <li class="nav-item me-2">
                     @if (!$navTodayAtt || !$navTodayAtt->clock_in)
-                        <button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-1 d-flex align-items-center shadow-xs" data-bs-toggle="modal" data-bs-target="#navClockInModal" title="Klik untuk Presensi Masuk (Clock In)">
-                            <i class="mdi mdi-clock-in me-1"></i>
-                            <span class="fw-bold d-none d-sm-inline">Clock In</span>
-                        </button>
+                        @if (\Carbon\Carbon::today('Asia/Jakarta')->isWeekend())
+                            <button type="button" class="btn btn-sm btn-label-secondary rounded-pill px-3 py-1 d-flex align-items-center shadow-xs" data-bs-toggle="modal" data-bs-target="#navClockInModal" title="Hari Libur Akhir Pekan (Sabtu/Minggu). Presensi opsional.">
+                                <i class="mdi mdi-calendar-weekend me-1 text-primary"></i>
+                                <span class="fw-semibold d-none d-sm-inline">Libur Weekend</span>
+                            </button>
+                        @else
+                            <button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-1 d-flex align-items-center shadow-xs" data-bs-toggle="modal" data-bs-target="#navClockInModal" title="Klik untuk Presensi Masuk (Clock In)">
+                                <i class="mdi mdi-clock-in me-1"></i>
+                                <span class="fw-bold d-none d-sm-inline">Clock In</span>
+                            </button>
+                        @endif
                     @elseif ($navTodayAtt && !$navTodayAtt->clock_out)
                         <button type="button" class="btn btn-sm btn-warning rounded-pill px-3 py-1 d-flex align-items-center shadow-xs" data-bs-toggle="modal" data-bs-target="#navClockOutModal" title="Presensi Masuk: {{ substr($navTodayAtt->clock_in, 0, 5) }}. Klik untuk Presensi Pulang (Clock Out)">
                             <i class="mdi mdi-clock-check me-1"></i>
@@ -1216,7 +1223,7 @@
 
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li>
-                            <a class="dropdown-item" href="{{ route('profile.show', Auth::user()?->id) }}">
+                            <a class="dropdown-item" href="{{ in_array(Auth::user()?->role, ['Client', 'Client Vendor']) ? route('profile.edit', Auth::user()?->id) : route('profile.show', Auth::user()?->id) }}">
                                 <div class="d-flex">
                                     <div class="flex-shrink-0 me-3">
                                         <div class="avatar avatar-online">
@@ -1234,12 +1241,14 @@
                         <li>
                             <div class="dropdown-divider"></div>
                         </li>
-                        <li>
-                            <a class="dropdown-item" href="{{ route('profile.show', Auth::user()?->id) }}">
-                                <i class="mdi mdi-account-circle-outline me-2"></i>
-                                <span class="align-middle">My Portal</span>
-                            </a>
-                        </li>
+                        @if (!in_array(Auth::user()?->role, ['Client', 'Client Vendor']))
+                            <li>
+                                <a class="dropdown-item" href="{{ route('profile.show', Auth::user()?->id) }}">
+                                    <i class="mdi mdi-account-circle-outline me-2"></i>
+                                    <span class="align-middle">My Portal</span>
+                                </a>
+                            </li>
+                        @endif
                         <li>
                             <a class="dropdown-item" href="{{ route('profile.edit', Auth::user()?->id) }}">
                                 <i class="mdi mdi-cog-outline me-2"></i>

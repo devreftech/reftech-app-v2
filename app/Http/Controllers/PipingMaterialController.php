@@ -15,11 +15,9 @@ class PipingMaterialController extends Controller
         $category = $request->query('category');
         $search = $request->query('search');
 
-        $query = PipingMaterial::with(['vendorPrices.supplier'])->orderBy('category')->orderBy('item_name');
-
-        if ($category) {
-            $query->where('category', $category);
-        }
+        $query = PipingMaterial::with(['vendorPrices.supplier'])
+            ->orderBy('category')
+            ->orderBy('item_name');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -33,13 +31,19 @@ class PipingMaterialController extends Controller
         $materials = $query->get();
         $suppliers = Supplier::orderBy('supplier', 'asc')->get(['id', 'supplier']);
 
+        // Optimize stats query to 1 single grouped query
+        $statsRaw = PipingMaterial::selectRaw("category, count(*) as count")
+            ->groupBy('category')
+            ->pluck('count', 'category')
+            ->toArray();
+
         $stats = [
-            'total'      => PipingMaterial::count(),
-            'pipe'       => PipingMaterial::where('category', 'pipe')->count(),
-            'fitting'    => PipingMaterial::where('category', 'fitting')->count(),
-            'valve'      => PipingMaterial::where('category', 'valve')->count(),
-            'support'    => PipingMaterial::where('category', 'support')->count(),
-            'consumable' => PipingMaterial::where('category', 'consumable')->count(),
+            'total'      => array_sum($statsRaw),
+            'pipe'       => $statsRaw['pipe'] ?? 0,
+            'fitting'    => $statsRaw['fitting'] ?? 0,
+            'valve'      => $statsRaw['valve'] ?? 0,
+            'support'    => $statsRaw['support'] ?? 0,
+            'consumable' => $statsRaw['consumable'] ?? 0,
         ];
 
         return view('pages.piping.materials.index', compact('materials', 'suppliers', 'stats', 'category', 'search'));

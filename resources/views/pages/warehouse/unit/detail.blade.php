@@ -1,5 +1,5 @@
 @extends('layouts.sales.app')
-@section('title', 'Data Unit')
+@section('title', 'Stock Unit')
 @section('content')
     <h4 class="fw-bold py-3 mb-4">
         <span class="text-muted fw-light">Units /</span> {{ $product->sku }}

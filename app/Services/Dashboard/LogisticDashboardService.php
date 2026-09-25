@@ -30,7 +30,11 @@ class LogisticDashboardService
 
         // KPI cards
         $logSoBaruCount = PendingPO::where('status', 0)->where('type', 'Non Project')->count();
-        $logPrPendingCount = PurchaseRequest::where('status', '0')->count();
+        $logPrPendingCount = PurchaseRequest::where('status', '0')
+            ->whereNull('rejected_at')
+            ->whereHas('pending')
+            ->whereHas('activeDetails')
+            ->count();
         $logSuoPendingCount = Suo::where('status', 'submitted')->count();
         // PO yang udah "On Delivery" (semua alokasinya ada info pengiriman) tapi GR-nya
         // belum diverifikasi — gantiin flag ProductIn.accept yang udah gak relevan sejak
@@ -47,17 +51,44 @@ class LogisticDashboardService
         $logSoDoneCount = PendingPO::where('pending_po.status', 6)->where('type', 'Non Project')->count();
         $logSoStatusSeries = [$logSoNewCount, $logSoListCount, $logSoDeliveryCount, $logSoDoneCount];
 
-        // PR otomatis dari Sales Order (stok tidak cukup)
+        // Status Purchase Order (Supplier) breakdown
+        $logPoReceivedCount = PurchaseOrder::where('receipt_status', 'Received')->count();
+        $logPoOnDeliveryCount = PurchaseOrder::where(function ($q) {
+                $q->whereNull('receipt_status')->orWhere('receipt_status', '!=', 'Received');
+            })
+            ->where(function ($q) {
+                $q->whereNotNull('on_delivery_at')
+                  ->orWhere(function ($sq) {
+                      $sq->whereHas('prAllocations')
+                         ->whereDoesntHave('prAllocations', fn ($aq) => $aq->whereNull('purchase_type'));
+                  });
+            })->count();
+        $logPoPendingCount = PurchaseOrder::where(function ($q) {
+                $q->whereNull('receipt_status')->orWhere('receipt_status', '!=', 'Received');
+            })
+            ->where(function ($q) {
+                $q->whereNull('on_delivery_at')
+                  ->where(function ($sq) {
+                      $sq->doesntHave('prAllocations')
+                         ->orWhereHas('prAllocations', fn ($aq) => $aq->whereNull('purchase_type'));
+                  });
+            })->count();
+        $logPoStatusSeries = [$logPoPendingCount, $logPoOnDeliveryCount, $logPoReceivedCount];
+
+        // PR otomatis dari Sales Order (stok tidak cukup) yang valid & belum di-approve (status = 0)
         $logPrFromSo = PurchaseRequest::whereNotNull('id_pending')
             ->where('status', '0')
-            ->with(['pending', 'details.equivalent.product'])
+            ->whereNull('rejected_at')
+            ->whereHas('pending')
+            ->whereHas('activeDetails')
+            ->with(['pending.quote.pic.client', 'user', 'activeDetails.equivalent.product'])
             ->orderByDesc('date')
             ->take(6)
             ->get();
 
         // Incoming Goods - Pending Receipt
         $logIncomingPending = $this->onDeliveryPendingReceiptQuery()
-            ->with('supplier')
+            ->with(['supplier', 'details.product', 'details.unit', 'prAllocations.detail.equivalent.product'])
             ->orderByDesc('date')
             ->take(6)
             ->get();
@@ -116,6 +147,10 @@ class LogisticDashboardService
             'logSoDeliveryCount',
             'logSoDoneCount',
             'logSoStatusSeries',
+            'logPoPendingCount',
+            'logPoOnDeliveryCount',
+            'logPoReceivedCount',
+            'logPoStatusSeries',
             'logPrFromSo',
             'logIncomingPending',
             'logLowStock',

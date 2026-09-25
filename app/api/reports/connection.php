@@ -23,16 +23,18 @@ if (Auth::check()) {
         $pdo->exec("SET SESSION sql_mode = ''");
 
         // Query database for data
-        $query = "SELECT r.id, r.no_service, c.company, r.jobdesc, CONCAT(sp.brand, ' ', un.model) AS brand_type,
+        $query = "SELECT r.id, r.no_service, COALESCE(c.company, cm.company, '-') AS company, r.jobdesc,
+        COALESCE(NULLIF(CONCAT_WS(' ', sp.brand, COALESCE(un.model, sp.pn)), ''), '-') AS brand_type,
         COALESCE(NULLIF(CONCAT_WS(' / ', m.serial, m.tag), ''), '-') AS serial_tag, r.date,
         r.approval_status, r.reject_note
         FROM reports r
-        JOIN machine m on r.id_machine = m.id
-        LEFT JOIN pic p on p.id = r.id_pic
-        LEFT JOIN client c on c.id = p.id_client
-        INNER JOIN users u on u.id = r.id_technician
-        INNER JOIN serial_product sp ON sp.id = m.id_unit
-        INNER JOIN unit un ON un.id = sp.id_product
+        JOIN machine m ON r.id_machine = m.id
+        LEFT JOIN pic p ON p.id = r.id_pic
+        LEFT JOIN client c ON c.id = p.id_client
+        LEFT JOIN client cm ON cm.id = m.id_client
+        INNER JOIN users u ON u.id = r.id_technician
+        LEFT JOIN serial_product sp ON sp.id = m.id_unit
+        LEFT JOIN unit un ON un.id = sp.id_product
         WHERE u.id = :user_id";
 
         if ($year && $year !== 'all') {

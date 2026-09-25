@@ -122,4 +122,124 @@ class HrAttendance extends Model
             return 0;
         }
     }
+
+    /**
+     * Hitung denda keterlambatan berdasarkan late_minutes dan kuota bertingkat bulan berjalan.
+     */
+    public static function calculatePenaltyInfo(int $employeeId, string $date, int $lateMinutes, ?Employee $employee = null): array
+    {
+        $settings = \Illuminate\Support\Facades\DB::table('hr_attendance_settings')->pluck('value', 'key')->toArray();
+        $isEnabled = ($settings['is_late_penalty_enabled'] ?? '1') === '1';
+        $isWeekendOff = ($settings['is_weekend_off_enabled'] ?? '1') === '1';
+
+        $carbonDate = \Carbon\Carbon::parse($date);
+        
+        // Jika akhir pekan dan setting libur akhir pekan aktif -> Bebas denda
+        if ($isWeekendOff && $carbonDate->isWeekend()) {
+            return [
+                'penalty' => 0,
+                'late_count' => 0,
+                'status_label' => 'Libur Akhir Pekan (Sabtu/Minggu)',
+                'strike_status' => 'Libur Akhir Pekan',
+                'strike_badge' => 'bg-label-secondary',
+                'strike_key' => 'weekend_off',
+                'is_multiplier' => false,
+            ];
+        }
+
+        if (!$isEnabled || $lateMinutes <= 0) {
+            return [
+                'penalty' => 0,
+                'late_count' => 0,
+                'status_label' => 'Tepat Waktu',
+                'strike_status' => 'Disiplin',
+                'strike_badge' => 'bg-label-success',
+                'strike_key' => 'disciplined',
+                'is_multiplier' => false,
+            ];
+        }
+
+        $tolerance = (int) ($settings['late_tolerance_minutes'] ?? 0);
+        if ($lateMinutes <= $tolerance) {
+            return [
+                'penalty' => 0,
+                'late_count' => 0,
+                'status_label' => 'Toleransi Bebas Denda',
+                'strike_status' => 'Toleransi Menit',
+                'strike_badge' => 'bg-label-info',
+                'strike_key' => 'tolerance',
+                'is_multiplier' => false,
+            ];
+        }
+
+        $tier1Rate = (float) ($settings['late_tier_1_rate'] ?? 50000);
+        $tier2Rate = (float) ($settings['late_tier_2_rate'] ?? 75000);
+        $tier3Rate = (float) ($settings['late_tier_3_rate'] ?? 100000);
+        $tierExcessPercent = (float) ($settings['late_tier_excess_percent'] ?? 10);
+
+        // Hitung frekuensi terlambat di bulan berjalan sebelum tanggal ini
+        $previousLateCount = self::where('employee_id', $employeeId)
+            ->whereMonth('date', $carbonDate->month)
+            ->whereYear('date', $carbonDate->year)
+            ->where('date', '<', $date)
+            ->where('status', 'Hadir')
+            ->where('late_minutes', '>', $tolerance)
+            ->count();
+        
+        $currentLateCount = $previousLateCount + 1;
+
+        if ($currentLateCount === 1) {
+            return [
+                'penalty' => $tier1Rate,
+                'late_count' => 1,
+                'status_label' => 'Terlambat ke-1 (Denda Rp ' . number_format($tier1Rate, 0, ',', '.') . ')',
+                'strike_status' => 'Terlambat ke-1',
+                'strike_badge' => 'bg-label-warning',
+                'strike_key' => 'penalized',
+                'is_multiplier' => false,
+            ];
+        }
+
+        if ($currentLateCount === 2) {
+            return [
+                'penalty' => $tier2Rate,
+                'late_count' => 2,
+                'status_label' => 'Terlambat ke-2 (Denda Rp ' . number_format($tier2Rate, 0, ',', '.') . ')',
+                'strike_status' => 'Terlambat ke-2',
+                'strike_badge' => 'bg-label-warning',
+                'strike_key' => 'penalized',
+                'is_multiplier' => false,
+            ];
+        }
+
+        if ($currentLateCount === 3) {
+            return [
+                'penalty' => $tier3Rate,
+                'late_count' => 3,
+                'status_label' => 'Terlambat ke-3 (Denda Rp ' . number_format($tier3Rate, 0, ',', '.') . ')',
+                'strike_status' => 'Terlambat ke-3',
+                'strike_badge' => 'bg-label-danger',
+                'strike_key' => 'penalized',
+                'is_multiplier' => false,
+            ];
+        }
+
+        // Terlambat > 3 kali (ke-4, ke-5, dst): Potong Gaji Basic Salary 10%
+        if (!$employee) {
+            $employee = Employee::with('salary')->find($employeeId);
+        }
+        $basicSalary = (float) ($employee?->salary?->basic_salary ?? 0);
+        $salaryCut = $basicSalary > 0 ? round(($basicSalary * $tierExcessPercent) / 100) : $tier3Rate;
+
+        return [
+            'penalty' => $salaryCut,
+            'late_count' => $currentLateCount,
+            'status_label' => "Terlambat ke-{$currentLateCount} (Sanksi Potong Gaji {$tierExcessPercent}%: Rp " . number_format($salaryCut, 0, ',', '.') . ")",
+            'strike_status' => "Sanksi SP-1 (>3x Potong Gaji {$tierExcessPercent}%)",
+            'strike_badge' => 'bg-label-danger',
+            'strike_key' => 'warning_sp',
+            'is_multiplier' => true,
+        ];
+    }
 }
+

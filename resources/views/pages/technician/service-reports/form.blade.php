@@ -786,28 +786,133 @@
                 $('#selectSales').trigger('change', [true]);
             }
 
+            // Backend error popup modal jika ada error validasi dari server
+            @if ($errors->any())
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Mohon Koreksi Inputan',
+                    html: `
+                        <div class="text-start p-2">
+                            <ul class="mb-0 ps-3 text-danger">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    `,
+                    confirmButtonText: 'Mengerti',
+                    customClass: {
+                        confirmButton: 'btn btn-primary waves-effect waves-light',
+                    },
+                    buttonsStyling: false,
+                });
+            @endif
+
             $('#serviceReports').on('submit', function(e) {
                 e.preventDefault();
                 var form = this;
 
-                // Client-side quick check
-                var picVal = $('#pic-dropdown').val();
-                var machineVal = $('#machine-dropdown').val();
+                var missingFields = [];
+                var firstInvalidEl = null;
+
+                // 1. Pelanggan & PIC
+                if (!isInternalStock) {
+                    if (!$('#selectSales').val()) {
+                        missingFields.push('Sales Representative wajib dipilih.');
+                        firstInvalidEl = firstInvalidEl || $('#selectSales');
+                    }
+                    if (!$('#client-dropdown').val()) {
+                        missingFields.push('Client / Company wajib dipilih.');
+                        firstInvalidEl = firstInvalidEl || $('#client-dropdown');
+                    }
+                    if (!$('#pic-dropdown').val()) {
+                        missingFields.push('PIC Klien wajib dipilih.');
+                        firstInvalidEl = firstInvalidEl || $('#pic-dropdown');
+                    }
+                }
+
+                // 2. Jenis Layanan (Service Type)
                 var typeVal = $('#service-type-select').val();
-
-                if (!isInternalStock && !picVal) {
-                    Swal.fire('Data Belum Lengkap', 'Silakan pilih Sales, Client, dan PIC Klien terlebih dahulu.', 'warning');
-                    return;
-                }
-                if (!machineVal) {
-                    Swal.fire('Data Belum Lengkap', 'Silakan pilih Unit Mesin terlebih dahulu.', 'warning');
-                    return;
-                }
                 if (!typeVal) {
-                    Swal.fire('Data Belum Lengkap', 'Silakan pilih Jenis Layanan (Service Type) terlebih dahulu.', 'warning');
+                    missingFields.push('Jenis Layanan (Service Type) wajib dipilih.');
+                    firstInvalidEl = firstInvalidEl || $('#service-type-select');
+                }
+
+                // 3. Unit Mesin
+                var machineVal = $('#machine-dropdown').val();
+                if (!machineVal) {
+                    missingFields.push('Unit Mesin wajib dipilih.');
+                    firstInvalidEl = firstInvalidEl || $('#machine-dropdown');
+                }
+
+                // 4. Tanggal Pengerjaan
+                var dateVal = $('#date').val();
+                if (!dateVal) {
+                    missingFields.push('Tanggal Pengerjaan wajib diisi.');
+                    firstInvalidEl = firstInvalidEl || $('#date');
+                }
+
+                // 5. Running Hours
+                var runningVal = $('#running').val();
+                if (runningVal === '' || runningVal === null || isNaN(runningVal)) {
+                    missingFields.push('Running Hours wajib diisi.');
+                    firstInvalidEl = firstInvalidEl || $('#running');
+                }
+
+                // 6. Load Hours
+                var loadVal = $('#load').val();
+                if (loadVal === '' || loadVal === null || isNaN(loadVal)) {
+                    missingFields.push('Load Hours wajib diisi.');
+                    firstInvalidEl = firstInvalidEl || $('#load');
+                }
+
+                // 7. Job Description
+                var jobdescVal = $.trim($('#jobdesc').val());
+                if (!jobdescVal) {
+                    missingFields.push('Job Description (Ringkasan Tugas) wajib diisi.');
+                    firstInvalidEl = firstInvalidEl || $('#jobdesc');
+                }
+
+                // 8. Detail Temuan / Description
+                var descVal = $.trim($('#description').val());
+                if (!descVal) {
+                    missingFields.push('Detail Temuan & Keterangan Servis wajib diisi.');
+                    firstInvalidEl = firstInvalidEl || $('#description');
+                }
+
+                // Jika ada field wajib yang belum diisi, munculkan Modal SweetAlert
+                if (missingFields.length > 0) {
+                    var listHtml = '<div class="text-start p-2"><ul class="mb-0 ps-3 text-danger">';
+                    $.each(missingFields, function(idx, msg) {
+                        listHtml += '<li>' + msg + '</li>';
+                    });
+                    listHtml += '</ul></div>';
+
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Form Belum Lengkap',
+                        html: listHtml,
+                        confirmButtonText: 'Lengkapi Data',
+                        customClass: {
+                            confirmButton: 'btn btn-primary waves-effect waves-light',
+                        },
+                        buttonsStyling: false,
+                    }).then(function() {
+                        if (firstInvalidEl) {
+                            if (firstInvalidEl.hasClass('select2-hidden-accessible')) {
+                                firstInvalidEl.select2('open');
+                            } else {
+                                $('html, body').animate({
+                                    scrollTop: firstInvalidEl.offset().top - 120
+                                }, 300);
+                                firstInvalidEl.focus();
+                            }
+                        }
+                    });
                     return;
                 }
 
+                // Konfirmasi Submit jika semua field valid
                 Swal.fire({
                     title: 'Apakah data service report sudah benar?',
                     icon: 'question',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Client;
 use App\Models\Pic;
 use App\Models\PipingMaterial;
+use App\Models\PipingMaterialVendorPrice;
 use App\Models\PipingRab;
 use App\Models\PipingRabItem;
 use App\Models\PipingRabSection;
@@ -209,17 +210,170 @@ class PipingRabController extends Controller
             'admin',
             'convertedQuotation',
             'sections.items.supplier',
-            'sections.items.material'
+            'sections.items.material.vendorPrices.supplier'
         ])->findOrFail($id);
 
         $revisions = $rab->revisions();
+        $allSuppliers = Supplier::orderBy('supplier', 'asc')->get(['id', 'supplier']);
 
-        return view('pages.piping.rab.show', compact('rab', 'revisions'));
+        return view('pages.piping.rab.show', compact('rab', 'revisions', 'allSuppliers'));
+    }
+
+    public function quickStoreSupplier(Request $request)
+    {
+        $validated = $request->validate([
+            'supplier' => 'required|string|max:255',
+            'phone'    => 'nullable|string|max:50',
+            'email'    => 'nullable|email|max:100',
+            'address'  => 'nullable|string',
+        ]);
+
+        try {
+            $supplier = Supplier::create([
+                'supplier' => $validated['supplier'],
+                'phone'    => $validated['phone'] ?? null,
+                'email'    => $validated['email'] ?? null,
+                'address'  => $validated['address'] ?? null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Supplier baru berhasil ditambahkan.',
+                'data'    => [
+                    'id'       => $supplier->id,
+                    'supplier' => $supplier->supplier,
+                    'phone'    => $supplier->phone,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menambahkan supplier: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateItemSupplier(Request $request, $id)
+    {
+        $request->validate([
+            'id_supplier'    => 'nullable|exists:supplier,id',
+            'unit_price_hpp' => 'required|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $item = PipingRabItem::with(['section.rab'])->findOrFail($id);
+
+            $item->id_supplier = $request->id_supplier ?: null;
+            $item->unit_price_hpp = (float) $request->unit_price_hpp;
+
+            // Recalculate selling price based on existing margin
+            if ($item->margin_type === 'percent') {
+                $item->unit_selling_price = $item->unit_price_hpp * (1 + ($item->margin_value / 100));
+            } else {
+                $item->unit_selling_price = $item->unit_price_hpp + $item->margin_value;
+            }
+
+            $item->total_hpp = (float) $item->calculated_qty * $item->unit_price_hpp;
+            $item->total_selling_price = (float) $item->calculated_qty * $item->unit_selling_price;
+            $item->save();
+
+            // Auto-save to Master Material Vendor Price if requested
+            if ($request->boolean('save_to_master') && $item->id_piping_material && $item->id_supplier) {
+                PipingMaterialVendorPrice::updateOrCreate(
+                    [
+                        'id_piping_material' => $item->id_piping_material,
+                        'id_supplier'        => $item->id_supplier,
+                    ],
+                    [
+                        'price_idr'  => $item->unit_price_hpp,
+                        'date'       => now()->toDateString(),
+                        'notes'      => 'Disimpan dari RAB ' . ($item->section && $item->section->rab ? $item->section->rab->no_rab : ''),
+                        'is_primary' => false,
+                    ]
+                );
+            }
+
+            // Recalculate Section Subtotals
+            $section = $item->section;
+            $section->subtotal_hpp = $section->items()->sum('total_hpp');
+            $section->subtotal_selling_price = $section->items()->sum('total_selling_price');
+            $section->save();
+
+            // Recalculate RAB Totals
+            $rab = $section->rab;
+            $rab->total_hpp = $rab->sections()->sum('subtotal_hpp');
+            $rab->total_selling_price = $rab->sections()->sum('subtotal_selling_price');
+            $rab->total_margin = $rab->total_selling_price - $rab->total_hpp;
+            $rab->save();
+
+            DB::commit();
+
+            $item->load(['supplier', 'material.vendorPrices.supplier']);
+
+            $vendorPricesData = [];
+            if ($item->material && $item->material->vendorPrices) {
+                foreach ($item->material->vendorPrices as $vp) {
+                    $vendorPricesData[] = [
+                        'id_supplier'    => $vp->id_supplier,
+                        'supplier_name'  => $vp->supplier ? $vp->supplier->supplier : 'Supplier #' . $vp->id_supplier,
+                        'supplier_phone' => $vp->supplier && $vp->supplier->phone ? $vp->supplier->phone : null,
+                        'supplier_area'  => $vp->supplier && $vp->supplier->area ? $vp->supplier->area : null,
+                        'price_idr'      => (float) $vp->price_idr,
+                        'date'           => $vp->date ? $vp->date->format('d/m/Y') : null,
+                        'notes'          => $vp->notes,
+                        'is_primary'     => (bool) $vp->is_primary,
+                    ];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Supplier dan HPP item berhasil diperbarui.',
+                'data' => [
+                    'item' => [
+                        'id'                  => $item->id,
+                        'id_supplier'         => $item->id_supplier,
+                        'supplier_name'       => $item->supplier ? $item->supplier->supplier : '-',
+                        'unit_price_hpp'      => (float) $item->unit_price_hpp,
+                        'unit_selling_price'  => (float) $item->unit_selling_price,
+                        'total_hpp'           => (float) $item->total_hpp,
+                        'total_selling_price' => (float) $item->total_selling_price,
+                        'margin_type'         => $item->margin_type,
+                        'margin_value'        => (float) $item->margin_value,
+                        'calculated_qty'      => (float) $item->calculated_qty,
+                        'unit'                => $item->unit == 'Batang' ? 'Btg' : $item->unit,
+                        'vendor_prices'       => $vendorPricesData,
+                    ],
+                    'section' => [
+                        'id'                     => $section->id,
+                        'subtotal_hpp'           => (float) $section->subtotal_hpp,
+                        'subtotal_selling_price' => (float) $section->subtotal_selling_price,
+                    ],
+                    'rab' => [
+                        'id'                  => $rab->id,
+                        'total_hpp'           => (float) $rab->total_hpp,
+                        'total_margin'        => (float) $rab->total_margin,
+                        'total_selling_price' => (float) $rab->total_selling_price,
+                        'margin_percent'      => $rab->total_hpp > 0 ? round(($rab->total_margin / $rab->total_hpp) * 100, 1) : 0,
+                    ]
+                ]
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengubah vendor: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function edit($id)
     {
-        $rab = PipingRab::with(['sections.items'])->findOrFail($id);
+        $rab = PipingRab::with([
+            'sections.items.supplier',
+            'sections.items.material.vendorPrices.supplier'
+        ])->findOrFail($id);
         $clients = Client::orderBy('company', 'asc')->get(['id', 'company', 'address']);
         $salesList = User::whereIn('id', [1, 2, 3, 4, 32])->orderBy('name', 'asc')->get(['id', 'name']);
         $suppliers = Supplier::orderBy('supplier', 'asc')->get(['id', 'supplier']);
@@ -241,7 +395,7 @@ class PipingRabController extends Controller
             'location_plant' => 'nullable|string|max:255',
             'rab_date'       => 'required|date',
             'notes'          => 'nullable|string',
-            'status'         => 'required|in:Draft,Reviewed,Approved,Converted',
+            'status'         => 'nullable|in:Draft,Reviewed,Approved,Converted',
             'sections'       => 'required|array|min:1',
         ]);
 
@@ -331,13 +485,13 @@ class PipingRabController extends Controller
             }
 
             $rab->update([
-                'id_client'           => $validated['id_client'] ?? null,
-                'id_pic'              => $validated['id_pic'] ?? null,
+                'id_client'           => $validated['id_client'] ?? $rab->id_client,
+                'id_pic'              => $validated['id_pic'] ?? $rab->id_pic,
                 'id_sales'            => $validated['id_sales'] ?? $rab->id_sales,
                 'project_name'        => $validated['project_name'],
                 'location_plant'      => $validated['location_plant'] ?? null,
                 'rab_date'            => $validated['rab_date'],
-                'status'              => $validated['status'],
+                'status'              => $validated['status'] ?? ($rab->status ?? 'Draft'),
                 'total_hpp'           => $grandHpp,
                 'total_margin'        => $grandSelling - $grandHpp,
                 'total_selling_price' => $grandSelling,
@@ -358,12 +512,18 @@ class PipingRabController extends Controller
 
         DB::beginTransaction();
         try {
-            // Set all old versions to is_latest = false
             $rootId = $sourceRab->root_id ?: $sourceRab->id;
+
+            // Pastikan record root memiliki root_id terisi
+            PipingRab::where('id', $rootId)->whereNull('root_id')->update(['root_id' => $rootId]);
+
+            // Set seluruh versi lama dalam silsilah revisi ini menjadi is_latest = false
             PipingRab::where('id', $rootId)->orWhere('root_id', $rootId)->update(['is_latest' => false]);
 
-            $newRevisionNumber = $sourceRab->revision_number + 1;
-            $baseNo = preg_replace('/-R\d+$/', '', $sourceRab->no_rab);
+            $maxRev = PipingRab::where('id', $rootId)->orWhere('root_id', $rootId)->max('revision_number');
+            $newRevisionNumber = ($maxRev !== null ? (int)$maxRev : $sourceRab->revision_number) + 1;
+
+            $baseNo = preg_replace('/-R\d+$/i', '', $sourceRab->no_rab);
             $newNoRab = $baseNo . '-R' . $newRevisionNumber;
 
             $newRab = $sourceRab->replicate();

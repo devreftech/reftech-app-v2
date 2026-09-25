@@ -28,6 +28,9 @@ class ProjectReportsController extends Controller
         if ($request->ajax()) {
             return $this->data();
         }
+        if (Auth::check() && Auth::user()->role === 'Client Vendor') {
+            return redirect('/');
+        }
         return redirect('/service-reports?tab=project');
     }
 
@@ -36,7 +39,13 @@ class ProjectReportsController extends Controller
      */
     public function data()
     {
-        $reports = ProjectReport::with(['creator', 'client', 'kanbanTask.board'])->orderBy('id', 'desc')->get();
+        $query = ProjectReport::with(['creator', 'client', 'kanbanTask.board'])->orderBy('id', 'desc');
+
+        if (Auth::check() && Auth::user()->role === 'Client Vendor') {
+            $query->where('created_by', Auth::id());
+        }
+
+        $reports = $query->get();
 
         $data = $reports->map(function ($row) {
             $showUrl = route('project-reports.show', $row->id);
@@ -323,6 +332,11 @@ class ProjectReportsController extends Controller
     public function show($id)
     {
         $report = ProjectReport::with(['tasks', 'materials', 'equipments', 'manpowers', 'photos', 'creator', 'client'])->findOrFail($id);
+
+        if (Auth::check() && Auth::user()->role === 'Client Vendor' && $report->created_by != Auth::id()) {
+            abort(403, 'Akses ditolak. Anda hanya dapat melihat laporan proyek harian yang Anda buat.');
+        }
+
         return view('pages.technician.project-reports.detail', compact('report'));
     }
 
@@ -332,6 +346,11 @@ class ProjectReportsController extends Controller
     public function edit($id)
     {
         $report = ProjectReport::with(['tasks', 'materials', 'equipments', 'manpowers', 'photos', 'kanbanTask'])->findOrFail($id);
+
+        if (Auth::check() && Auth::user()->role === 'Client Vendor' && $report->created_by != Auth::id()) {
+            abort(403, 'Akses ditolak. Anda hanya dapat mengedit laporan proyek harian yang Anda buat.');
+        }
+
         $clients = Client::select('id', 'company')->orderBy('company', 'asc')->get();
         $kanbanTasks = KanbanTask::with(['board', 'column'])
             ->where(function ($query) use ($report) {
@@ -353,6 +372,10 @@ class ProjectReportsController extends Controller
     public function update(Request $request, $id)
     {
         $report = ProjectReport::findOrFail($id);
+
+        if (Auth::check() && Auth::user()->role === 'Client Vendor' && $report->created_by != Auth::id()) {
+            abort(403, 'Akses ditolak. Anda hanya dapat memperbarui laporan proyek harian yang Anda buat.');
+        }
 
         $request->validate([
             'job_name' => 'required|string|max:255',
@@ -506,6 +529,10 @@ class ProjectReportsController extends Controller
     public function destroy($id)
     {
         $report = ProjectReport::findOrFail($id);
+
+        if (Auth::check() && Auth::user()->role === 'Client Vendor' && $report->created_by != Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak. Anda tidak memiliki izin menghapus laporan ini.'], 403);
+        }
         $photos = ProjectReportPhoto::where('id_project_report', $id)->get();
         foreach ($photos as $p) {
             if ($p->photo_path && Storage::disk('public')->exists($p->photo_path)) {
@@ -529,6 +556,11 @@ class ProjectReportsController extends Controller
     public function print($id)
     {
         $report = ProjectReport::with(['tasks', 'materials', 'equipments', 'manpowers', 'photos', 'client'])->findOrFail($id);
+
+        if (Auth::check() && Auth::user()->role === 'Client Vendor' && $report->created_by != Auth::id()) {
+            abort(403, 'Akses ditolak. Anda hanya dapat mencetak laporan proyek harian yang Anda buat.');
+        }
+
         return view('pages.technician.project-reports.print', compact('report'));
     }
 
@@ -538,6 +570,10 @@ class ProjectReportsController extends Controller
     public function saveSignature(Request $request, $id)
     {
         $report = ProjectReport::findOrFail($id);
+
+        if (Auth::check() && Auth::user()->role === 'Client Vendor' && $report->created_by != Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+        }
 
         if ($request->has('client_sign_base64') && $request->client_sign_base64) {
             $report->client_sign = $this->saveBase64Image($request->client_sign_base64, 'project-reports/signs');
@@ -563,6 +599,10 @@ class ProjectReportsController extends Controller
     public function uploadPhoto(Request $request, $id)
     {
         $report = ProjectReport::findOrFail($id);
+
+        if (Auth::check() && Auth::user()->role === 'Client Vendor' && $report->created_by != Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+        }
         $request->validate([
             'photo' => 'required|image|max:5120',
             'caption' => 'nullable|string|max:255',
@@ -587,6 +627,10 @@ class ProjectReportsController extends Controller
     public function deletePhoto($photo_id)
     {
         $photo = ProjectReportPhoto::findOrFail($photo_id);
+        $report = ProjectReport::find($photo->id_project_report);
+        if ($report && Auth::check() && Auth::user()->role === 'Client Vendor' && $report->created_by != Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+        }
         if ($photo->photo_path && Storage::disk('public')->exists($photo->photo_path)) {
             Storage::disk('public')->delete($photo->photo_path);
         }
@@ -600,6 +644,10 @@ class ProjectReportsController extends Controller
     public function updatePhotoCaption(Request $request, $photo_id)
     {
         $photo = ProjectReportPhoto::findOrFail($photo_id);
+        $report = ProjectReport::find($photo->id_project_report);
+        if ($report && Auth::check() && Auth::user()->role === 'Client Vendor' && $report->created_by != Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+        }
         $photo->caption = $request->caption;
         $photo->save();
         return response()->json(['success' => true, 'message' => 'Keterangan foto diperbarui.']);

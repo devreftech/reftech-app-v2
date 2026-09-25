@@ -80,7 +80,7 @@
             <div class="card-body p-3">
                 <span class="text-muted small fw-semibold d-block mb-1">Terlambat Masuk</span>
                 <h4 class="fw-bold text-warning mb-0">{{ $stats['total_late'] }}</h4>
-                <div class="text-muted small mt-1" style="font-size:0.75rem;">Lewat jam {{ $workStartTime ?? '08:30' }}</div>
+                <div class="text-muted small mt-1" style="font-size:0.75rem;">Lewat jam {{ $workStartTime ?? '08:00' }}</div>
             </div>
         </div>
     </div>
@@ -483,7 +483,7 @@
                     
                     <div class="tab-content p-0" id="settingsTabContent">
                         
-                        {{-- TAB 1: Jam Masuk & Kebijakan Denda Keterlambatan --}}
+                        {{-- TAB 1: Jam Masuk, Kebijakan Denda Bertingkat & Hari Libur --}}
                         <div class="tab-pane fade show active" id="tab-penalty" role="tabpanel" aria-labelledby="tab-penalty-tab">
                             <div class="card border-0 shadow-sm mb-0" style="border-radius: 12px;">
                                 <div class="card-body p-4">
@@ -494,7 +494,7 @@
                                             </div>
                                             <div>
                                                 <h5 class="fw-bold mb-0 text-heading">Kebijakan Denda &amp; Sanksi Keterlambatan</h5>
-                                                <small class="text-muted">Aktifkan pemotongan denda otomatis per menit atau tarif flat bulanan</small>
+                                                <small class="text-muted">Atur jam masuk, skema denda berjenjang bulanan, denda alpa harian, dan hari libur akhir pekan</small>
                                             </div>
                                         </div>
                                         <div class="form-check form-switch mb-0">
@@ -503,77 +503,139 @@
                                         </div>
                                     </div>
 
-                                    <div class="row g-3">
-                                        <div class="col-12 col-md-6 col-lg-3">
-                                            <label class="form-label fw-semibold text-dark mb-1">Jam Masuk Standar Kantor</label>
+                                    {{-- Section 1: Jam Masuk & Toleransi & Libur Akhir Pekan --}}
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-12 col-md-4">
+                                            <label class="form-label fw-semibold text-dark mb-1"><i class="mdi mdi-clock-in text-primary me-1"></i>Jam Masuk Kantor</label>
                                             <div class="input-group">
-                                                <span class="input-group-text bg-light"><i class="mdi mdi-clock-in text-primary"></i></span>
-                                                <input type="time" name="work_start_time" class="form-control" value="{{ $workStartTime ?? '08:30' }}" required>
+                                                <span class="input-group-text bg-light"><i class="mdi mdi-clock-outline text-muted"></i></span>
+                                                <input type="time" name="work_start_time" class="form-control fw-bold text-primary" value="{{ $workStartTime ?? '08:00' }}" required>
                                                 <span class="input-group-text bg-light">WIB</span>
                                             </div>
-                                            <small class="text-muted font-11">Batas jam presensi normal</small>
+                                            <small class="text-muted font-11">Batas normal presensi masuk (Default: 08:00)</small>
                                         </div>
 
-                                        <div class="col-12 col-md-6 col-lg-3">
-                                            <label class="form-label fw-semibold text-dark mb-1">Toleransi Bebas Harian</label>
+                                        <div class="col-12 col-md-4">
+                                            <label class="form-label fw-semibold text-dark mb-1"><i class="mdi mdi-timer-sand text-warning me-1"></i>Toleransi Menit Keterlambatan</label>
                                             <div class="input-group">
-                                                <input type="number" name="late_tolerance_minutes" class="form-control" value="{{ $lateToleranceMinutes ?? 0 }}" min="0">
+                                                <input type="number" name="late_tolerance_minutes" class="form-control" value="{{ $lateToleranceMinutes ?? 0 }}" min="0" required>
                                                 <span class="input-group-text bg-light">Menit</span>
                                             </div>
-                                            <small class="text-muted font-11">Contoh: 15 menit dispensasi</small>
+                                            <small class="text-muted font-11">0 Menit = Tanpa toleransi (lewat 08:00 langsung denda)</small>
                                         </div>
 
-                                        <div class="col-12 col-md-6 col-lg-3">
-                                            <label class="form-label fw-semibold text-dark mb-1">Skema Perhitungan Denda</label>
-                                            <select name="late_penalty_type" class="form-select">
-                                                <option value="per_minute" @selected(($latePenaltyType ?? 'per_minute') === 'per_minute')>Per Menit Keterlambatan</option>
-                                                <option value="flat" @selected(($latePenaltyType ?? '') === 'flat')>Nominal Flat per Kejadian</option>
-                                            </select>
-                                            <small class="text-muted font-11">Dihitung dari selisih menit</small>
-                                        </div>
-
-                                        <div class="col-12 col-md-6 col-lg-3">
-                                            <label class="form-label fw-semibold text-dark mb-1">Tarif Nominal Denda (Rp)</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text bg-light">Rp</span>
-                                                <input type="number" name="late_penalty_rate" class="form-control" value="{{ $latePenaltyRate ?? 1000 }}" min="0" required>
-                                            </div>
-                                            <small class="text-muted font-11">Per menit / per kejadian</small>
-                                        </div>
-
-                                        <div class="col-12 col-md-4 mt-3">
-                                            <div class="p-3 rounded border bg-light h-100">
-                                                <label class="form-label fw-semibold text-dark mb-1"><i class="mdi mdi-shield-star-outline text-warning me-1"></i>Kuota Bebas Denda Bulanan</label>
-                                                <div class="input-group input-group-sm mb-1">
-                                                    <input type="number" name="late_free_count_per_month" class="form-control" value="{{ $lateFreeCountPerMonth ?? 2 }}" min="0" required>
-                                                    <span class="input-group-text bg-white">Kali / Bulan</span>
+                                        <div class="col-12 col-md-4">
+                                            <label class="form-label fw-semibold text-dark mb-1"><i class="mdi mdi-calendar-weekend text-success me-1"></i>Hari Libur Akhir Pekan</label>
+                                            <div class="p-2 px-3 rounded border bg-light d-flex align-items-center justify-content-between">
+                                                <div>
+                                                    <span class="fw-bold text-dark font-12 d-block">Sabtu &amp; Minggu Libur</span>
+                                                    <span class="text-muted font-10">Bebas absensi &amp; bebas denda alpa</span>
                                                 </div>
-                                                <small class="text-muted font-11">Misal: 2x pertama terlambat dalam sebulan tidak dikenakan denda.</small>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-12 col-md-4 mt-3">
-                                            <div class="p-3 rounded border bg-light h-100">
-                                                <label class="form-label fw-semibold text-dark mb-1"><i class="mdi mdi-alert-octagon-outline text-danger me-1"></i>Batas Sanksi SP (Terlambat ke-)</label>
-                                                <div class="input-group input-group-sm mb-1">
-                                                    <input type="number" name="late_multiplier_threshold" class="form-control" value="{{ $lateMultiplierThreshold ?? 5 }}" min="1" required>
-                                                    <span class="input-group-text bg-white">Kali</span>
+                                                <div class="form-check form-switch mb-0">
+                                                    <input class="form-check-input cursor-pointer" type="checkbox" name="is_weekend_off_enabled" value="1"
+                                                           style="width: 2.6rem; height: 1.4rem;" @checked(!isset($isWeekendOffEnabled) || $isWeekendOffEnabled)>
                                                 </div>
-                                                <small class="text-muted font-11">Ambang batas akumulasi terlambat untuk memicu sanksi eskalasi.</small>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-12 col-md-4 mt-3">
-                                            <div class="p-3 rounded border bg-light h-100">
-                                                <label class="form-label fw-semibold text-dark mb-1"><i class="mdi mdi-multiplication text-danger me-1"></i>Pengali Denda Sanksi Eskalasi</label>
-                                                <div class="input-group input-group-sm mb-1">
-                                                    <input type="number" step="0.1" name="late_multiplier_rate" class="form-control" value="{{ $lateMultiplierRate ?? 2.0 }}" min="1" required>
-                                                    <span class="input-group-text bg-white">x Lipat</span>
-                                                </div>
-                                                <small class="text-muted font-11">Contoh: 2.0 = denda menjadi 2x lipat jika melanggar batas SP.</small>
                                             </div>
                                         </div>
                                     </div>
+
+                                    {{-- Section 2: Skema Denda Keterlambatan Bertingkat (Bulanan) --}}
+                                    <div class="p-3.5 rounded-3 border bg-white shadow-xs mb-4">
+                                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge bg-label-danger p-1.5 rounded"><i class="mdi mdi-stairs-up fs-5"></i></span>
+                                                <div>
+                                                    <h6 class="fw-bold mb-0 text-heading font-14">Skema Denda Keterlambatan Bertingkat (Bulan Berjalan)</h6>
+                                                    <small class="text-muted font-11">Denda dikenakan bertahap berdasarkan frekuensi keterlambatan karyawan di bulan aktif</small>
+                                                </div>
+                                            </div>
+                                            <span class="badge bg-label-primary font-11">Reset Otomatis Awal Bulan</span>
+                                        </div>
+
+                                        <div class="row g-3">
+                                            <div class="col-12 col-sm-6 col-md-3">
+                                                <div class="p-2.5 rounded border bg-light h-100">
+                                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                                        <span class="fw-bold text-dark font-12">Terlambat Ke-1</span>
+                                                        <span class="badge bg-warning font-10">Kejadian 1</span>
+                                                    </div>
+                                                    <div class="input-group input-group-sm mb-1">
+                                                        <span class="input-group-text bg-white">Rp</span>
+                                                        <input type="number" name="late_tier_1_rate" class="form-control fw-semibold" value="{{ $lateTier1Rate ?? 50000 }}" min="0" required>
+                                                    </div>
+                                                    <small class="text-muted font-10 d-block">Denda nominal flat kejadian pertama</small>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-12 col-sm-6 col-md-3">
+                                                <div class="p-2.5 rounded border bg-light h-100">
+                                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                                        <span class="fw-bold text-dark font-12">Terlambat Ke-2</span>
+                                                        <span class="badge bg-warning font-10">Kejadian 2</span>
+                                                    </div>
+                                                    <div class="input-group input-group-sm mb-1">
+                                                        <span class="input-group-text bg-white">Rp</span>
+                                                        <input type="number" name="late_tier_2_rate" class="form-control fw-semibold" value="{{ $lateTier2Rate ?? 75000 }}" min="0" required>
+                                                    </div>
+                                                    <small class="text-muted font-10 d-block">Denda nominal flat kejadian kedua</small>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-12 col-sm-6 col-md-3">
+                                                <div class="p-2.5 rounded border bg-light h-100">
+                                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                                        <span class="fw-bold text-dark font-12">Terlambat Ke-3</span>
+                                                        <span class="badge bg-danger font-10">Kejadian 3</span>
+                                                    </div>
+                                                    <div class="input-group input-group-sm mb-1">
+                                                        <span class="input-group-text bg-white">Rp</span>
+                                                        <input type="number" name="late_tier_3_rate" class="form-control fw-semibold text-danger" value="{{ $lateTier3Rate ?? 100000 }}" min="0" required>
+                                                    </div>
+                                                    <small class="text-muted font-10 d-block">Denda nominal flat kejadian ketiga</small>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-12 col-sm-6 col-md-3">
+                                                <div class="p-2.5 rounded border bg-danger-subtle h-100 border-danger">
+                                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                                        <span class="fw-bold text-danger font-12">&gt; 3x Terlambat (SP)</span>
+                                                        <span class="badge bg-danger font-10">Eskalasi</span>
+                                                    </div>
+                                                    <div class="input-group input-group-sm mb-1">
+                                                        <input type="number" step="1" name="late_tier_excess_percent" class="form-control fw-bold text-danger" value="{{ $lateTierExcessPercent ?? 10 }}" min="0" max="100" required>
+                                                        <span class="input-group-text bg-white fw-bold text-danger">% Gaji</span>
+                                                    </div>
+                                                    <small class="text-danger font-10 d-block">Potong persentase dari Salary karyawan</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- Section 3: Sanksi Alpa / Mangkir Tanpa Kabar --}}
+                                    <div class="p-3.5 rounded-3 border bg-white shadow-xs">
+                                        <div class="row align-items-center g-3">
+                                            <div class="col-12 col-md-8">
+                                                <div class="d-flex align-items-start gap-2.5">
+                                                    <div class="avatar avatar-sm bg-label-danger rounded p-1 flex-shrink-0 mt-1">
+                                                        <i class="mdi mdi-account-remove-outline fs-4"></i>
+                                                    </div>
+                                                    <div>
+                                                        <h6 class="fw-bold mb-1 text-dark font-13">Sanksi Alpa / Tanpa Kabar Seharian Penuh</h6>
+                                                        <p class="text-muted mb-0 font-11">Dikenakan kepada karyawan yang tidak hadir dan tidak melakukan pengajuan izin/cuti/sakit resmi pada hari kerja operasional (Senin s/d Jumat).</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 col-md-4">
+                                                <label class="form-label font-11 fw-semibold mb-1 text-dark">Nominal Potongan Alpa / Hari</label>
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text bg-light">Rp</span>
+                                                    <input type="number" name="alpha_penalty_rate" class="form-control fw-bold text-danger" value="{{ $alphaPenaltyRate ?? 50000 }}" min="0" required>
+                                                    <span class="input-group-text bg-light">/ hari</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
                         </div>

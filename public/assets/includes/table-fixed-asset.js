@@ -36,19 +36,32 @@ $(function () {
                     targets: 0,
                     render: function (data, type, full) {
                         var code = data || "-";
+                        var badge = "";
+                        if (full.type === "Bangunan") {
+                            if (full.status_bangunan === "construction") {
+                                badge = ' <span class="badge bg-label-warning py-0.5 px-1.5 font-sans" style="font-size: 10px;"><i class="mdi mdi-hammer-wrench me-0.5"></i>Konstruksi</span>';
+                            } else {
+                                badge = ' <span class="badge bg-label-success py-0.5 px-1.5 font-sans" style="font-size: 10px;"><i class="mdi mdi-check-circle-outline me-0.5"></i>Operasional</span>';
+                            }
+                        }
                         return (
                             '<a href="/fixed/' +
                             full.id +
-                            '" class="fw-semibold text-primary">' +
+                            '" class="fw-semibold text-primary font-monospace">' +
                             code +
-                            "</a>"
+                            "</a>" + badge
                         );
                     },
                 },
                 {
                     targets: 1,
-                    render: function (data) {
-                        return data || "-";
+                    render: function (data, type, full) {
+                        var title = data || "-";
+                        var sub = "";
+                        if (full.lokasi_bangunan) {
+                            sub = '<div class="text-muted small text-truncate" style="max-width: 280px;"><i class="mdi mdi-map-marker-outline me-0.5"></i>' + full.lokasi_bangunan + '</div>';
+                        }
+                        return '<div class="fw-semibold text-dark">' + title + '</div>' + sub;
                     },
                 },
                 {

@@ -248,6 +248,7 @@ class UnitQuotationController extends Controller
             'total'            => $first['total'],
             'note'             => $first['note'] ?? $request->note,
             'rental_terms'     => $request->type === 'Rental' ? ($first['rental_terms'] ?? $request->rental_terms) : null,
+            'merge_terms'      => $request->boolean('merge_terms'),
             'validity'         => $first['validity'] ?? $request->validity,
             'pricing'          => $first['pricing'] ?? $request->pricing,
             'warranty'         => $first['warranty'] ?? $request->warranty,
@@ -638,6 +639,7 @@ class UnitQuotationController extends Controller
             'total'            => $first['total'],
             'note'             => $first['note'] ?? $request->note,
             'rental_terms'     => $request->type === 'Rental' ? ($first['rental_terms'] ?? $request->rental_terms) : null,
+            'merge_terms'      => $request->boolean('merge_terms'),
             'validity'         => $first['validity'] ?? $request->validity,
             'pricing'          => $first['pricing'] ?? $request->pricing,
             'warranty'         => $first['warranty'] ?? $request->warranty,
@@ -723,6 +725,7 @@ class UnitQuotationController extends Controller
                 'total'            => $source->total,
                 'note'             => $source->note,
                 'rental_terms'     => $source->rental_terms,
+                'merge_terms'      => $source->merge_terms,
                 'validity'         => $source->validity,
                 'pricing'          => $source->pricing,
                 'warranty'         => $source->warranty,
@@ -775,6 +778,13 @@ class UnitQuotationController extends Controller
                         'tax_amount'        => $opt->tax_amount,
                         'shipping'          => $opt->shipping,
                         'total'             => $opt->total,
+                        'note'              => $opt->note,
+                        'validity'          => $opt->validity,
+                        'pricing'           => $opt->pricing,
+                        'payment'           => $opt->payment,
+                        'warranty'          => $opt->warranty,
+                        'delivery_process'  => $opt->delivery_process,
+                        'rental_terms'      => $opt->rental_terms,
                     ]);
                     foreach ($opt->details as $d) {
                         $duplicateDetail($d, $newQuote->id, $newOption->id);

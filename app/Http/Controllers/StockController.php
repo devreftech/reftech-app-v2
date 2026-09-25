@@ -84,26 +84,25 @@ class StockController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $product = Product::find($id);
+        $product = Product::findOrFail($id);
         $details = DetailProduct::where('id_product', $id)->get();
 
-        // dd($request->all());
-        $product->first_stock = $request->first_stock;
-        $product->stock = $request->office_recent_stock;
-        $product->warehouse_stock = $request->warehouse_recent_stock;
-        $product->pending_stock = $request->pending_recent_stock;
+        $product->first_stock = $request->first_stock ?? 0;
+        $product->stock = $request->office_recent_stock ?? 0;
+        $product->warehouse_stock = $request->warehouse_recent_stock ?? 0;
+        $product->pending_stock = $request->pending_recent_stock ?? 0;
         $product->date = $request->date;
         $productSave = $product->save();
-        if ($productSave) {
+
+        if ($productSave && $details->count() > 0) {
             foreach ($details as $item => $detail) {
-                $detail->stock = $request->office_stock[$item];
-                $detail->warehouse_stock = $request->warehouse_stock[$item];
-                $detailSave = $detail->save();
+                $detail->stock = $request->office_stock[$item] ?? 0;
+                $detail->warehouse_stock = $request->warehouse_stock[$item] ?? 0;
+                $detail->save();
             }
         }
-        if ($detailSave) {
-            return redirect('/product/' .$id)->with('message', 'data telah di tambahkan');
-        }
+
+        return redirect('/product/' . $id)->with('message', 'Data stok berhasil diperbarui');
     }
 
     /**
@@ -119,24 +118,23 @@ class StockController extends Controller
     
     public function updateUnit(Request $request, $id)
     {
-        $product = Unit::find($id);
+        $product = Unit::findOrFail($id);
         $details = DetailProduct::where('id_product', $id)->get();
 
-        // dd($request->all());
-        $product->first_stock = $request->first_stock;
-        $product->stock = $request->office_recent_stock;
-        $product->warehouse_stock = $request->warehouse_recent_stock;
+        $product->first_stock = $request->first_stock ?? 0;
+        $product->stock = $request->office_recent_stock ?? 0;
+        $product->warehouse_stock = $request->warehouse_recent_stock ?? 0;
         $product->date = $request->date;
         $productSave = $product->save();
-        if ($productSave) {
+
+        if ($productSave && $details->count() > 0) {
             foreach ($details as $item => $detail) {
-                $detail->stock = $request->office_stock[$item];
-                $detail->warehouse_stock = $request->warehouse_stock[$item];
-                $detailSave = $detail->save();
+                $detail->stock = $request->office_stock[$item] ?? 0;
+                $detail->warehouse_stock = $request->warehouse_stock[$item] ?? 0;
+                $detail->save();
             }
         }
-        if ($detailSave) {
-            return redirect('/unit/' .$id)->with('message', 'data telah di tambahkan');
-        }
+
+        return redirect('/unit/' . $id)->with('message', 'Data stok berhasil diperbarui');
     }
 }
